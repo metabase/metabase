@@ -98,8 +98,8 @@
    constraints :- [:maybe ::lib.schema.constraints/constraints]
    middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
    & [ids] :- [:* [:map {:closed true}
-                  [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
-                  [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]
+                   [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
+                   [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]
   (when (seq dataset-query)
     (let [stage-numbers           (explict-stage-references parameters)
           explicit-stage-numbers? (boolean (seq stage-numbers))

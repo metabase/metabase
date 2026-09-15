@@ -2,8 +2,8 @@
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
    [malli.core :as mc]
-   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
    [metabase.util.log :as log]

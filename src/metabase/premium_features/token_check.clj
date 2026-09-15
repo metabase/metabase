@@ -180,9 +180,9 @@
                                                           [:email :string]]]]]
    [:meters        {:optional true} ms/OpaqueJSONObject]
    [:quotas        {:optional true} [:sequential [:map {:closed true}
-                                                   [:hosting-feature {:optional true} :string]
-                                                   [:soft-limit      {:optional true} number?]
-                                                   [:usage           {:optional true} number?]]]]])
+                                                  [:hosting-feature {:optional true} :string]
+                                                  [:soft-limit      {:optional true} number?]
+                                                  [:usage           {:optional true} number?]]]]])
 
 (defn- http-fetch
   [base-url token site-uuid]

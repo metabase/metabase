@@ -73,8 +73,8 @@
   "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT."
   [:map {:closed true}
    [:resource          {:optional true} [:map {:closed true}
-                                          [:question  {:optional true} ResourceId]
-                                          [:dashboard {:optional true} ResourceId]]]
+                                         [:question  {:optional true} ResourceId]
+                                         [:dashboard {:optional true} ResourceId]]]
    [:params            {:optional true} SlugValueMap]
    [:_embedding_params {:optional true} SlugValueMap]])
 
@@ -461,8 +461,8 @@
   "Return the info needed for embedding about Dashboard specified in `token`."
   [unsigned-token :- UnsignedToken
    & {:keys [embedding-params enable-embedding?]} :- [:maybe [:map {:closed true}
-                                                               [:embedding-params {:optional true} [:maybe ms/EmbeddingParams]]
-                                                               [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
+                                                              [:embedding-params {:optional true} [:maybe ms/EmbeddingParams]]
+                                                              [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
                              (embedding-rest.db/dashboard-embedding-params dashboard-id))

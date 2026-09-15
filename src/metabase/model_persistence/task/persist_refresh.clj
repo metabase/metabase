@@ -93,8 +93,8 @@
    [:error         :int]
    [:trigger       :string]
    [:error-details {:optional true} [:sequential [:map {:closed true}
-                                                   [:persisted-info-id ms/PositiveInt]
-                                                   [:error {:optional true} [:maybe :string]]]]]])
+                                                  [:persisted-info-id ms/PositiveInt]
+                                                  [:error {:optional true} [:maybe :string]]]]]])
 
 (mu/defn- publish-refresh-error-event!
   "Fire off an event that will eventually send an email to the admin if there are any errors in the persisted model

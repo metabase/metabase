@@ -555,7 +555,7 @@
   (into [:map {:closed true}]
         (update-input-entries notification-card-entries
                               (second (m/find-first (comp #{:payload} first)
-                                                     (:nested-specs notification-update-spec))))))
+                                                    (:nested-specs notification-update-spec))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                            Helpers                                              ;;
@@ -830,7 +830,7 @@
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications :- [:or (ms/InstanceOf :model/Notification)
-                                      [:sequential (ms/InstanceOf :model/Notification)]]]
+                                     [:sequential (ms/InstanceOf :model/Notification)]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]

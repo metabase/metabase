@@ -61,8 +61,8 @@
    [:skipped       {:optional true} :int]
    [:trigger       {:optional true} :string]
    [:error-details {:optional true} [:sequential [:map {:closed true}
-                                                   [:persisted-info-id ms/PositiveInt]
-                                                   [:error {:optional true} [:maybe :string]]]]]])
+                                                  [:persisted-info-id ms/PositiveInt]
+                                                  [:error {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::task-details.sync-step
   "The `:task_details` of a sync/analyze step: the union of the count/diagnostic keys any step

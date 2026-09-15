@@ -136,8 +136,8 @@
    [:body          {:optional true} ::conformed-param]
    [:request       {:optional true} ::conformed-param]
    [:respond-raise {:optional true} [:map {:closed true}
-                                      [:respond symbol?]
-                                      [:raise   symbol?]]]])
+                                     [:respond symbol?]
+                                     [:raise   symbol?]]]])
 
 (mr/def ::conformed-route
   "Shape of `(:route (s/conform ::defendpoint args))`, before [[parse-route]] transforms it into [[::route]]."
@@ -833,17 +833,17 @@
   [:map {:closed true}
    [:scope       {:optional true} ::metadata-value-or-form]
    [:multipart   {:optional true} [:or :boolean [:map {:closed true}
-                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
-                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
+                                                 [:max-file-size  {:optional true} [:or :int symbol? seq?]]
+                                                 [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
    [:deprecated  {:optional true} :boolean]
    [:tool        {:optional true} [:map {:closed true}
-                                    [:name         :string]
-                                    [:title        {:optional true} :string]
-                                    [:description  {:optional true} ::metadata-value-or-form]
-                                    [:annotations  {:optional true} [:map {:closed true}
-                                                                      [:read-only?  {:optional true} :boolean]
-                                                                      [:idempotent? {:optional true} :boolean]]]
-                                    [:task-support {:optional true} :keyword]]]])
+                                   [:name         :string]
+                                   [:title        {:optional true} :string]
+                                   [:description  {:optional true} ::metadata-value-or-form]
+                                   [:annotations  {:optional true} [:map {:closed true}
+                                                                    [:read-only?  {:optional true} :boolean]
+                                                                    [:idempotent? {:optional true} :boolean]]]
+                                   [:task-support {:optional true} :keyword]]]])
 
 (mr/def ::handler-map
   [:map-of ::method [:sequential [:tuple

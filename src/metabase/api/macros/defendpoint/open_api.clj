@@ -144,18 +144,18 @@
       (:type schema)                 (update :type keyword)
       (:description schema)          (update :description str)
       (:properties schema)           (update :properties (fn [props]
+                                                           (into {}
+                                                                 (map (fn [[k v]] [(u/qualified-name k) (normalize-raw-json-schema v)]))
+                                                                 props)))
+      (:definitions schema)          (update :definitions (fn [defs]
                                                             (into {}
                                                                   (map (fn [[k v]] [(u/qualified-name k) (normalize-raw-json-schema v)]))
-                                                                  props)))
-      (:definitions schema)          (update :definitions (fn [defs]
-                                                             (into {}
-                                                                   (map (fn [[k v]] [(u/qualified-name k) (normalize-raw-json-schema v)]))
-                                                                   defs)))
+                                                                  defs)))
       (:required schema)             (update :required (partial mapv u/qualified-name))
       (:items schema)                (update :items (fn [items]
-                                                       (if (sequential? items)
-                                                         (mapv normalize-raw-json-schema items)
-                                                         (normalize-raw-json-schema items))))
+                                                      (if (sequential? items)
+                                                        (mapv normalize-raw-json-schema items)
+                                                        (normalize-raw-json-schema items))))
       (map? (:additionalProperties schema)) (update :additionalProperties normalize-raw-json-schema)
       (:oneOf schema)                 (update :oneOf (partial mapv normalize-raw-json-schema))
       (:anyOf schema)                 (update :anyOf (partial mapv normalize-raw-json-schema))

@@ -68,26 +68,26 @@
             (update-stages [stages]
               (if (empty? stages)
                 stages
-              (let [stages        (fix-mongodb-first-stage stages)
-                    stages        (for [stage stages]
-                                    ;; This is for detecting circular refs below, and is later used as part of
-                                    ;; permissions enforcement
-                                    (assoc stage :qp/stage-is-from-source-card card-id))
-                    ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
-                    card-metadata (into []
-                                        (remove :remapped-from)
-                                        (lib.card/card-returned-columns metadata-providerable card))
-                    last-stage    (cond-> (last stages)
-                                    (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
-                                    ;; This will be applied, if still appropriate, by
-                                    ;; the [[metabase.query-processor.middleware.persistence]] middleware
-                                    ;;
-                                    ;; TODO -- not 100% sure I did this right, there are almost no tests for this
-                                    persisted? (assoc :persisted-info/native
-                                                      (qp.persisted/persisted-info-native-query
-                                                       (:database-id card)
-                                                       persisted-info)))]
-                (conj (vec (butlast stages)) last-stage))))
+                (let [stages        (fix-mongodb-first-stage stages)
+                      stages        (for [stage stages]
+                                      ;; This is for detecting circular refs below, and is later used as part of
+                                      ;; permissions enforcement
+                                      (assoc stage :qp/stage-is-from-source-card card-id))
+                      ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
+                      card-metadata (into []
+                                          (remove :remapped-from)
+                                          (lib.card/card-returned-columns metadata-providerable card))
+                      last-stage    (cond-> (last stages)
+                                      (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
+                                      ;; This will be applied, if still appropriate, by
+                                      ;; the [[metabase.query-processor.middleware.persistence]] middleware
+                                      ;;
+                                      ;; TODO -- not 100% sure I did this right, there are almost no tests for this
+                                      persisted? (assoc :persisted-info/native
+                                                        (qp.persisted/persisted-info-native-query
+                                                         (:database-id card)
+                                                         persisted-info)))]
+                  (conj (vec (butlast stages)) last-stage))))
             (update-query [query]
               (-> (lib/query metadata-providerable query)
                   ;; Now that cards' queries can come out of the AppDB already in MBQL 5, complete with `:lib/uuid`s,

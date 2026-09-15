@@ -195,7 +195,7 @@
             [:model_id     ms/PositiveInt]
             [:user_id      [:maybe ::lib.schema.id/user]]
             [:object       [:merge schema (into [:map {:closed true} [:id {:optional true} ms/PositiveInt]]
-                                                 (get revision-object-extra-keys model))]]
+                                                (get revision-object-extra-keys model))]]
             [:is_creation  :boolean]
             [:is_reversion :boolean]
             [:message      {:optional true} [:maybe :string]]]])))

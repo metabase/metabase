@@ -46,8 +46,8 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
-   [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

@@ -23,8 +23,8 @@
   "One cell to color: its value (possibly a formatter wrapper), its row index (row-highlight rules read the whole row
   from the `:rows` passed alongside), and its column name."
   [:tuple [:or ms/FieldValue
-              (ms/InstanceOfClass metabase.formatter.impl.NumericWrapper)
-              (ms/InstanceOfClass metabase.formatter.impl.TextWrapper)]
+           (ms/InstanceOfClass metabase.formatter.impl.NumericWrapper)
+           (ms/InstanceOfClass metabase.formatter.impl.TextWrapper)]
    :int [:maybe :string]])
 
 (defn- ->js-number

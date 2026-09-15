@@ -25,10 +25,10 @@
            [:status                {:optional true} [:maybe [:or :string :keyword]]]
            [:status-message        {:optional true} [:maybe :string]]
            [:sources               {:optional true} [:maybe [:sequential
-                                                              [:map {:closed true}
-                                                               [:type     [:or :string :keyword]]
-                                                               [:field-id {:optional true} [:maybe :int]]
-                                                               [:binning  {:optional true} [:maybe :boolean]]]]]]
+                                                             [:map {:closed true}
+                                                              [:type     [:or :string :keyword]]
+                                                              [:field-id {:optional true} [:maybe :int]]
+                                                              [:binning  {:optional true} [:maybe :boolean]]]]]]
            [:group                 {:optional true} [:maybe ::lib-metric.schema/dimension-group]]
            [:default-temporal-unit {:optional true} [:or :string :keyword]]
            [:default               {:optional true} [:maybe :boolean]]]]

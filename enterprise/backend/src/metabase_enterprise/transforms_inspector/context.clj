@@ -314,7 +314,7 @@
         target-table (get-target-table transform)
         target-info (when target-table
                       (build-table-info (select-keys (set/rename-keys target-table {:id :table-id :name :table-name :db_id :db-id})
-                                                      [:table-id :table-name :schema :db-id])))
+                                                     [:table-id :table-name :schema :db-id])))
         query-info (query-analysis/analyze-query transform source-type sources-info)
         join-structure (:join-structure query-info)
         column-matches (when (and (seq sources-info) target-info)

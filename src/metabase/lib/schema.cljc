@@ -742,8 +742,8 @@
     :encode/for-hashing #'encode-query-for-hashing
     :closed             true}
    [:lib/type [:=
-                {:decode/normalize common/normalize-keyword, :default :mbql/query}
-                :mbql/query]]
+               {:decode/normalize common/normalize-keyword, :default :mbql/query}
+               :mbql/query]]
    ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
    ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
    ;; whatever breaks.

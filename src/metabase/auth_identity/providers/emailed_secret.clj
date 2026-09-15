@@ -5,8 +5,8 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
-   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util :as u]
@@ -28,7 +28,7 @@
   [token :- :string
    & {:keys [expires-in-ms]
       :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true}
-                                                          [:expires-in-ms {:optional true} [:maybe :int]]]]]
+                                                         [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :consumed_at nil})

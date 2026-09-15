@@ -79,8 +79,8 @@
   ([a :- :int] {:type :sized :size a})
   ([a :- :int b :- :int] {:type :sized :size (+ a b)})
   ([a :- :int b :- :int & c :- [:* :int]] {:type :human
-                           :name "Jim"
-                           :address {:street (str  (+ a b (apply + c)) " ln")}}))
+                                           :name "Jim"
+                                           :address {:street (str  (+ a b (apply + c)) " ln")}}))
 
 (deftest ^:parallel mu-defn-docstrings
   (testing "docstrings are preserved"

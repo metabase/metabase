@@ -612,8 +612,8 @@
   for reordering items the way they were."
   [f :- ifn?
    items :- [:sequential [:map {:closed true}
-                           [:id ms/PositiveInt]
-                           [:model :keyword]]]]
+                          [:id ms/PositiveInt]
+                          [:model :keyword]]]]
   (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
     (->> items
          (group-by :model)

@@ -12,10 +12,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.queries.schema :as queries.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]

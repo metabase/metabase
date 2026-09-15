@@ -172,7 +172,7 @@
     stage-number :- :int
     column       :- ::lib.schema.metadata/column
     {:keys [preserve-type?]} :- [:maybe [:map {:closed true}
-                                          [:preserve-type? {:optional true} :boolean]]]]
+                                         [:preserve-type? {:optional true} :boolean]]]]
    ;; TODO: This is a hack to workaround field refs confusion that should be fixed by the field refs overhaul. Remove
    ;; this function and possible-model-mapped-breakout-column?, above, once the field refs overhaul lands.
    ;;

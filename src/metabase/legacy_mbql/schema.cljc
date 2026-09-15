@@ -255,8 +255,8 @@
 (mr/def ::ValueTypeInfo
   [:map
    {:closed true, :decode/normalize (fn [m]
-                        (when (map? m)
-                          (update-keys m (comp keyword u/->snake_case_en))))
+                                      (when (map? m)
+                                        (update-keys m (comp keyword u/->snake_case_en))))
     :description      (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
                            " middleware to values in filter clauses based on the Field in the clause.")}
    [:database_type {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -1595,8 +1595,8 @@
   are merged into the parameter value the QP builds for the tag."
   [:map
    {:closed true, :decode/normalize (fn [m]
-                        (when (map? m)
-                          (update-keys m lib.schema.common/normalize-keyword)))}
+                                      (when (map? m)
+                                        (update-keys m lib.schema.common/normalize-keyword)))}
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 

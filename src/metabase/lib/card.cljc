@@ -240,8 +240,8 @@
     model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
     {:keys [native-model? own-model-query?]
      :or   {native-model? false, own-model-query? false}} :- [:map {:closed true}
-                                                               [:native-model?    {:optional true} :boolean]
-                                                               [:own-model-query? {:optional true} :boolean]]]
+                                                              [:native-model?    {:optional true} :boolean]
+                                                              [:own-model-query? {:optional true} :boolean]]]
    (cond
      (empty? model-cols)
      (not-empty result-cols)

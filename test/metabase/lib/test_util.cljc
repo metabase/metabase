@@ -383,8 +383,8 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    {mbql-query :dataset-query, metadata :result-metadata} :- [:map {:closed true}
                                                               [:dataset-query [:or
-                                                                              ::lib.schema/query
-                                                                              :metabase.legacy-mbql.schema/Query]]
+                                                                               ::lib.schema/query
+                                                                               :metabase.legacy-mbql.schema/Query]]
                                                               [:result-metadata [:sequential {:min 1}
                                                                                  ::lib.schema.metadata/lib-or-legacy-column]]]]
   (let [mbql-query (cond-> (assoc (lib.convert/->mbql5 mbql-query)

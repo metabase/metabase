@@ -11,10 +11,10 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.config.core :as config]
+   [metabase.request.schema :as request.schema]
    [metabase.server.instance :as server.instance]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.streaming-response :as streaming-response]
-   [metabase.request.schema :as request.schema]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
@@ -393,11 +393,11 @@
         content-type     (get-in request-options [:headers "content-type"] "application/json")]
     (m/deep-merge
      {:headers        (u/assoc-dissoc {"content-type" content-type}
-                                       @#'mw.session/metabase-session-header
-                                       (when credentials
-                                         (if (map? credentials)
-                                           (authenticate credentials)
-                                           credentials)))
+                                      @#'mw.session/metabase-session-header
+                                      (when credentials
+                                        (if (map? credentials)
+                                          (authenticate credentials)
+                                          credentials)))
       :query-string   (build-query-string query-parameters)
       :remote-addr    "127.0.0.1"
       :request-method method

@@ -180,7 +180,7 @@
    table-identifier          :- ::h2x/expr
    rows                      :- [:sequential [:map-of :string ::tx/dataset-value]]
    {:keys [transaction?] :or {transaction? true}} :- [:maybe [:map {:closed true}
-                                                               [:transaction? {:optional true} [:maybe :boolean]]]]]
+                                                              [:transaction? {:optional true} [:maybe :boolean]]]]]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet

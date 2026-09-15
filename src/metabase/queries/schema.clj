@@ -51,9 +51,9 @@
     [:persisted/state       {:optional true} [:maybe :string]]
     [:persisted/table_name  {:optional true} [:maybe :string]]
     [:collection            {:optional true} [:maybe [:merge
-                                                       :metabase.collections.schema/collection
-                                                       [:map {:closed true}
-                                                        [:is_personal {:optional true} [:maybe :boolean]]]]]]
+                                                      :metabase.collections.schema/collection
+                                                      [:map {:closed true}
+                                                       [:is_personal {:optional true} [:maybe :boolean]]]]]]
     [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
     [:dashboard             {:optional true} [:maybe :metabase.dashboards.schema/dashboard]]
     [:moderation_reviews    {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]

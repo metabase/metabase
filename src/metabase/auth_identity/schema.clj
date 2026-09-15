@@ -26,12 +26,12 @@
    [:secret          {:optional true} :string]
    [:last_used_step  {:optional true} :int]
    [:used_jtis       {:optional true} [:sequential [:map {:closed true}
-                                                     [:jti :string]
-                                                     [:exp :int]]]]
+                                                    [:jti :string]
+                                                    [:exp :int]]]]
    [:recovery_codes  {:optional true} [:sequential :string]]
    [:email_otp       {:optional true} [:map {:closed true}
-                                        [:hash :string]
-                                        [:exp  :int]]]])
+                                       [:hash :string]
+                                       [:exp  :int]]]])
 
 (mr/def ::auth-identity.credentials
   "The `:credentials` column of a AuthIdentity, decoded."

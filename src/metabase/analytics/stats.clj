@@ -562,7 +562,7 @@
     :as _snowplow-grouped-metric-info}
    :- [:map {:closed true}
        [:eid-translations-24h [:map {:closed true}
-                                [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]]
+                               [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]]
        [:query-executions     QueryExecutionCounts]
        [:query-executions-24h QueryExecutionCounts]]]
   (deep-string-keywords
@@ -743,14 +743,14 @@
 (mu/defn- snowplow-metrics
   [stats :- LegacyAnonymousUsageStats
    metric-info :- [:map {:closed true}
-                         [:models :int]
-                         [:new_embedded_dashboards :int]
-                         [:new_users_last_24h :int]
-                         [:pivot_tables :int]
-                         [:query_executions_last_24h :int]
-                         [:entity_id_translations_last_24h :int]
-                         [:transforms :int]
-                         [:transform_runs_last_24h :int]]]
+                   [:models :int]
+                   [:new_embedded_dashboards :int]
+                   [:new_users_last_24h :int]
+                   [:pivot_tables :int]
+                   [:query_executions_last_24h :int]
+                   [:entity_id_translations_last_24h :int]
+                   [:transforms :int]
+                   [:transform_runs_last_24h :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")

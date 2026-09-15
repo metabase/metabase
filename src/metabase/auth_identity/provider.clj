@@ -357,8 +357,8 @@
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
   [request :- (into [:map {:closed true}
-                      [:user {:optional true} [:maybe PipelineUser]]]
-                     login-pipeline-entries)]
+                     [:user {:optional true} [:maybe PipelineUser]]]
+                    login-pipeline-entries)]
   (cond-> request
     (and (nil? (:error request))
          (:user request)
@@ -370,8 +370,8 @@
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
   [request :- (into [:map {:closed true}
-                      [:user PipelineUser]]
-                     login-pipeline-entries)
+                     [:user PipelineUser]]
+                    login-pipeline-entries)
    provider :- :keyword]
   (if-not (get-in request [:user :is_active])
     (assoc request :success? false

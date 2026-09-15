@@ -88,7 +88,7 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     table-id              :- ::lib.schema.id/table
     opts                  :- [:maybe [:map {:closed true}
-                                       [:include-sensitive? {:optional true} [:maybe :boolean]]]]]
+                                      [:include-sensitive? {:optional true} [:maybe :boolean]]]]]
    (fields* metadata-providerable table-id opts)))
 
 (mu/defn metadatas-for-table :- [:maybe [:sequential [:or

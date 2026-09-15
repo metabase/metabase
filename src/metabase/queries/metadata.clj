@@ -227,11 +227,11 @@
   "Fetch dependent metadata for dashboards."
   [dashboards :- [:sequential
                   [:map {:closed true, :optional true} [:dashcards
-                                          [:sequential
-                                           [:map {:closed true}
-                                            [:card   {:optional true} [:maybe ::queries.schema/card]]
-                                            [:series {:optional true} [:maybe [:sequential [:map {:closed true}
-                                                                                            [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
+                                                        [:sequential
+                                                         [:map {:closed true}
+                                                          [:card   {:optional true} [:maybe ::queries.schema/card]]
+                                                          [:series {:optional true} [:maybe [:sequential [:map {:closed true}
+                                                                                                          [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

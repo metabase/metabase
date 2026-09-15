@@ -490,8 +490,8 @@
   "Insert the Query `rows`, returning the number inserted."
   [rows :- [:sequential [:map {:closed true}
                          [:query                  [:or
-                                                    ::lib-be.schema/empty-query
-                                                    :metabase.query-processor.schema/any-query]]
+                                                   ::lib-be.schema/empty-query
+                                                   :metabase.query-processor.schema/any-query]]
                          [:query_hash             bytes?]
                          [:average_execution_time number?]]]]
   (t2/insert! :model/Query rows))

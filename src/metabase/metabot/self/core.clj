@@ -169,8 +169,8 @@
    [:type        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:items       {:optional true} [:map {:closed true}
-                                    [:type        {:optional true} [:maybe :string]]
-                                    [:description {:optional true} [:maybe :string]]]]
+                                   [:type        {:optional true} [:maybe :string]]
+                                   [:description {:optional true} [:maybe :string]]]]
    [:minimum     {:optional true} number?]
    [:maximum     {:optional true} number?]])
 

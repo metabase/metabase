@@ -48,9 +48,9 @@
                       [:field :int]
                       [:repeated-measure :int]]]
            [:embedding-model {:optional true} [:maybe [:map {:closed true}
-                                                        [:provider [:maybe :string]]
-                                                        [:model-name [:maybe :string]]
-                                                        [:model-dimensions [:maybe :int]]]]]
+                                                       [:provider [:maybe :string]]
+                                                       [:model-name [:maybe :string]]
+                                                       [:model-dimensions [:maybe :int]]]]]
            [:text-variant {:optional true} [:maybe :keyword]]
            [:metabot-source {:optional true} [:maybe :keyword]]]]])
 

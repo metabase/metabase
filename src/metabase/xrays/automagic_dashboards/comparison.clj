@@ -285,9 +285,9 @@
    right     :- ComparisonEntityInstance
    opts      :- [:map {:closed true}
                  [:left  {:optional true} [:map {:closed true}
-                                            [:cell-query {:optional true} ::ads/root.cell-query]]]
+                                           [:cell-query {:optional true} ::ads/root.cell-query]]]
                  [:right {:optional true} [:map {:closed true}
-                                            [:cell-query {:optional true} ::ads/root.cell-query]]]]]
+                                           [:cell-query {:optional true} ::ads/root.cell-query]]]]]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
   ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
   ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework

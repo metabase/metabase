@@ -104,16 +104,16 @@
 
 (mu/defn- reduce-results* :- :some
   [honeysql-query :- [:map {:closed true}
-                       [:with       {:optional true} [:sequential [:tuple :keyword ::h2x/expr]]]
-                       [:select     {:optional true} [:sequential ::h2x/expr]]
-                       [:from       {:optional true} [:sequential ::h2x/expr]]
-                       [:join       {:optional true} [:sequential ::h2x/expr]]
-                       [:left-join  {:optional true} [:sequential ::h2x/expr]]
-                       [:where      {:optional true} ::h2x/expr]
-                       [:order-by   {:optional true} [:sequential ::h2x/expr]]
-                       [:limit      {:optional true} ::h2x/expr]
-                       [:offset     {:optional true} ::h2x/expr]
-                       [:union-all  {:optional true} [:sequential ::h2x/expr]]]
+                      [:with       {:optional true} [:sequential [:tuple :keyword ::h2x/expr]]]
+                      [:select     {:optional true} [:sequential ::h2x/expr]]
+                      [:from       {:optional true} [:sequential ::h2x/expr]]
+                      [:join       {:optional true} [:sequential ::h2x/expr]]
+                      [:left-join  {:optional true} [:sequential ::h2x/expr]]
+                      [:where      {:optional true} ::h2x/expr]
+                      [:order-by   {:optional true} [:sequential ::h2x/expr]]
+                      [:limit      {:optional true} ::h2x/expr]
+                      [:offset     {:optional true} ::h2x/expr]
+                      [:union-all  {:optional true} [:sequential ::h2x/expr]]]
    rff            :- ::qp.schema/rff
    init           :- ::qp.schema/accumulator]
   (let [driver         (mdb/db-type)

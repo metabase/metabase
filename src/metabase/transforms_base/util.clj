@@ -871,12 +871,12 @@
   Accepts both keyword and string keys for alias.
   Enriches entries with full metadata via [[normalize-source-tables]]."
   [m :- [:map-of :string
-                [:or :int
-                 [:map {:closed true}
-                  [:database_id {:optional true} [:maybe :int]]
-                  [:schema      {:optional true} [:maybe :string]]
-                  [:table       {:optional true} [:maybe :string]]
-                  [:table_id    {:optional true} [:maybe :int]]]]]]
+         [:or :int
+          [:map {:closed true}
+           [:database_id {:optional true} [:maybe :int]]
+           [:schema      {:optional true} [:maybe :string]]
+           [:table       {:optional true} [:maybe :string]]
+           [:table_id    {:optional true} [:maybe :int]]]]]]
   (normalize-source-tables
    (mapv (fn [[alias v]]
            (if (int? v)

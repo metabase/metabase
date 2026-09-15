@@ -43,7 +43,6 @@
     [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
     ;;  the subscription that triggered this notification
     [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]
-    ;; the following are only present once the notification has been hydrated for sending
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
     [:handlers                {:optional true} [:maybe [:sequential ::models.notification/NotificationHandler]]]
     [:payload_id              {:optional true} [:maybe ms/PositiveInt]]]
