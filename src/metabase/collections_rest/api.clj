@@ -6,7 +6,6 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [malli.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections-rest.db :as collections-rest.db]
@@ -281,15 +280,13 @@
 
 (mu/defn- present-dashboard-question-candidate
   [{:keys [in_dashboards] :as card}
-   :- (-> (mr/schema ::queries.schema/card)
-          (malli.util/assoc :in_dashboards [:sequential CardInDashboard]))]
+   :- [:merge ::queries.schema/card [:map {:closed true} [:in_dashboards [:sequential CardInDashboard]]]]]
   (-> card
       (select-keys [:id :name :description])
       (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
 
 (mu/defn- present-dashboard-question-candidates
-  [cards :- [:sequential (-> (mr/schema ::queries.schema/card)
-                             (malli.util/assoc :in_dashboards [:sequential CardInDashboard]))]]
+  [cards :- [:sequential [:merge ::queries.schema/card [:map {:closed true} [:in_dashboards [:sequential CardInDashboard]]]]]]
   ;; we're paginating in Clojure rather than in the query itself because the criteria here is quite complicated to
   ;; express in SQL: we need to join to `report_dashboardcard` AND `dashboardcard_series`, and find cards that have
   ;; exactly one matching dashboard across both of those joins. I'm sure it's doable, but for now we can just do this

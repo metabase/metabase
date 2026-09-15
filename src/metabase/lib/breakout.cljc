@@ -48,11 +48,11 @@
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
   ([query :- ::lib.schema/query
-    expr  :- [:or fn? ::lib.schema.expression/expression]]
+    expr  :- [:or fn? ::lib.ref/referenceable]]
    (breakout query -1 expr))
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    expr         :- [:or fn? ::lib.schema.expression/expression]]
+    expr         :- [:or fn? ::lib.ref/referenceable]]
    (let [expr (if (fn? expr) (expr query stage-number) expr)]
      (if (lib.schema.util/distinct-mbql-clauses? (map lib.ref/ref (cons expr (breakouts query stage-number))))
        (lib.util/add-summary-clause query stage-number :breakout expr)

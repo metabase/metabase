@@ -561,11 +561,9 @@
                                              {:aggregation &match})))])))
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
-  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized. `query` can also be any of the other
-  Lib metadata shapes or stages that [[metabase.lib.query/query]] can build a query from, since its dispatch checks
-  every map that comes through it this way before falling back to [[metabase.lib.dispatch/dispatch-value]]."
+  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:or
-             :metabase.query-processor.schema/any-query
+             ::legacy-or-mbql5-query
              ::lib.schema.metadata/table
              ::lib.schema.metadata/card
              ::lib.schema.metadata/metric
@@ -579,7 +577,7 @@
 (mu/defn normalized-mbql-version :- [:maybe [:enum :mbql-version/mbql5 :mbql-version/legacy]]
   "Version of MBQL a `query` map is using, either `:mbql-version/mbql-5` or `:mbql-version/legacy`."
   [query :- [:or
-             :metabase.query-processor.schema/any-query
+             ::legacy-or-mbql5-query
              ::lib.schema.metadata/table
              ::lib.schema.metadata/card
              ::lib.schema.metadata/metric
