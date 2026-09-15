@@ -1,8 +1,4 @@
-import { setupSdkPlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { resetPluginSlots } from "metabase/plugins/slot";
 
 import {
   captureClickModifierKeys,
@@ -10,9 +6,11 @@ import {
   openUrl,
   shouldOpenInBlankWindow,
 } from "./open-url";
+import { PLUGIN_HOST_NAVIGATION } from "./plugins";
 
 describe("shouldOpenInBlankWindow", () => {
   afterEach(() => {
+    resetPluginSlots();
     jest.restoreAllMocks();
   });
 
@@ -22,8 +20,8 @@ describe("shouldOpenInBlankWindow", () => {
     expect(result).toBe(false);
   });
 
-  it("should always return true when in embedding SDK", async () => {
-    await mockIsEmbeddingSdk();
+  it("should always return true when a host owns navigation", () => {
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: async () => false };
     const url = `${window.location.origin}/dashboard/1`;
     const result = shouldOpenInBlankWindow(url);
     expect(result).toBe(true);
@@ -63,6 +61,7 @@ describe("captureClickModifierKeys", () => {
 
 describe("getUrlTarget", () => {
   afterEach(() => {
+    resetPluginSlots();
     jest.restoreAllMocks();
   });
 
@@ -72,8 +71,8 @@ describe("getUrlTarget", () => {
     expect(result).toBe("_self");
   });
 
-  it("should always return _blank when in the embedding SDK", async () => {
-    await mockIsEmbeddingSdk();
+  it("should always return _blank when a host owns navigation", () => {
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: async () => false };
     const url = `${window.location.origin}/dashboard/1`;
     const result = getUrlTarget(url);
     expect(result).toBe("_blank");
@@ -81,99 +80,67 @@ describe("getUrlTarget", () => {
 });
 
 describe("openUrl()", () => {
-  beforeEach(async () => {
-    await mockIsEmbeddingSdk();
-    // Ensure a clean store before each test
-    ensureMetabaseProviderPropsStore().cleanup();
-
-    mockSettings({
-      "token-features": createMockTokenFeatures({ embedding_sdk: true }),
-    });
-    setupSdkPlugins();
-  });
+  const url = "https://example.com/dashboard/1";
 
   afterEach(() => {
+    resetPluginSlots();
     jest.restoreAllMocks();
-    ensureMetabaseProviderPropsStore().cleanup();
   });
 
-  it("should prevent default behavior when handleLink returns { handled: true }", async () => {
-    const handleLink = jest.fn().mockReturnValue({ handled: true });
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
+  it("should not open the url when the host link handler returns true", async () => {
+    const handleLink = jest.fn().mockResolvedValue(true);
+    PLUGIN_HOST_NAVIGATION.host = { handleLink };
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
 
-    await openUrl(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
+    await openUrl(url, { openInSameWindow, openInBlankWindow });
 
     expect(handleLink).toHaveBeenCalledWith(url);
     expect(openInSameWindow).not.toHaveBeenCalled();
     expect(openInBlankWindow).not.toHaveBeenCalled();
   });
 
-  it("should allow default behavior when handleLink returns { handled: false }", async () => {
-    const handleLink = jest.fn().mockReturnValue({ handled: false });
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
+  it("should open the url when the host link handler returns false", async () => {
+    const handleLink = jest.fn().mockResolvedValue(false);
+    PLUGIN_HOST_NAVIGATION.host = { handleLink };
 
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
 
-    await openUrl(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
+    await openUrl(url, { openInSameWindow, openInBlankWindow });
 
     expect(handleLink).toHaveBeenCalledWith(url);
     expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
 
-  it("should throw error when handleLink returns invalid value", async () => {
-    const handleLink = jest.fn().mockReturnValue(true);
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
-
+  it("should open the url when no host link handler is installed", async () => {
     const openInSameWindow = jest.fn();
     const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
 
-    await expect(
-      openUrl(url, {
-        openInSameWindow,
-        openInBlankWindow,
-      }),
-    ).rejects.toThrow(
-      "handleLink plugin must return an object with a 'handled' property",
-    );
+    await openUrl(url, { openInSameWindow, openInBlankWindow });
 
-    expect(handleLink).toHaveBeenCalledWith(url);
+    expect(openInSameWindow).not.toHaveBeenCalled();
+    expect(openInBlankWindow).toHaveBeenCalledWith(url);
   });
 
-  it("should not call handleLink when not in embedding SDK", async () => {
-    await mockIsEmbeddingSdk(false);
-    const handleLink = jest.fn();
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
-
-    const openInSameWindow = jest.fn();
+  // shouldOpenInBlankWindow reads window.event, which is gone after an await.
+  it("should open the url synchronously when no host link handler is installed", async () => {
     const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
 
-    await openUrl(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
+    const opened = openUrl(url, { openInBlankWindow });
 
-    expect(handleLink).not.toHaveBeenCalled();
+    expect(openInBlankWindow).toHaveBeenCalledWith(url);
+    await opened;
+  });
+});
+
+describe("host navigation policy", () => {
+  afterEach(resetPluginSlots);
+
+  it("should restore the default navigation policy on reset", () => {
+    PLUGIN_HOST_NAVIGATION.host = { handleLink: async () => false };
+    resetPluginSlots();
+    expect(getUrlTarget(window.location.origin + "/dashboard/1")).toBe("_self");
   });
 });
