@@ -239,7 +239,7 @@
         ;; the functions that return formatted SQL are sanitizers too, at a sink and across a binding
         sanitizing (into vocab/resolved-sanitizers (cg/sanitizing-fns tables resolution))
         sanitized  (cg/resolved-sanitized-regions tables (:var-usages analysis) sanitizing)
-        {tainted :tainted return-sites :return-sites}
+        {tainted :tainted return-sites :return-sites shape-feeders :shape-feeders}
         (cg/propagate* {:tables          tables
                         :locals          (:locals analysis)
                         :local-usages    (:local-usages analysis)
@@ -285,6 +285,14 @@
                              acc))
                          {}
                          (:var-usages analysis))
+     ;; {filename {[row col] [{:pos :fq} ...]}}: at every usage of a parameter, the calls that handed it a map
+     ;; whose keys are not the code's. A rule about what a map sets reports at the call rather than at the write.
+     :feeders    (reduce (fn [acc {:keys [id filename row col]}]
+                           (if-let [fs (get shape-feeders id)]
+                             (update acc filename (fnil assoc {}) [row col] fs)
+                             acc))
+                         {}
+                         (:local-usages analysis))
      :reach      reach
      :ns-by-file ns-by-file}))
 
@@ -460,6 +468,7 @@
         bindings (:bindings graph)
         origin-pos (:origins graph)
         sanitized-pos (:sanitized graph)
+        feeders-pos (:feeders graph)
         reach    (:reach graph)
         ns-by-file (into {} (map (juxt :filename :name)) (:namespace-definitions analysis))
         endpoint-rules (filter :endpoint-rule rules)]
@@ -501,6 +510,8 @@
                                 :marks               (:marks site #{})
                                 :origin-calls        (get origin-pos filename {})
                                 :sanitized-calls     (get sanitized-pos filename #{})
+                                ;; the calls that handed a parameter a map of unknown keys, by usage position
+                                :shape-feeders       (get feeders-pos filename {})
                                 ;; so a use of a local can be judged by what it was bound to
                                 :local-inits         @inits
                                 ;; what can reach this code: :http means a request can
@@ -511,13 +522,23 @@
                         ctx    (if-let [n (:tainted-arg (:rule site))]
                                  (assoc ctx :tainted? (taint/tainted? ctx (ast/arg node n)))
                                  ctx)
-                        result ((:detect (:rule site)) ctx)]
-              :when    result]
-          (let [flows (when reach (cg/flows-to reach site))]
-            (cond-> (finding site node result kinds ctx)
+                        results ((:detect (:rule site)) ctx)]
+              :when    results
+              ;; a rule may answer with several findings -- one per call that makes the site a problem -- and may
+              ;; place each of them elsewhere with `:at`: what a reviewer fixes is not always what the rule matched
+              result   (if (sequential? results) results [results])
+              :let     [at      (or (:at result) site)
+                        at-node (if (:at result)
+                                  (some-> (get indexes (:filename at)) (node-at (:row at) (:col at)))
+                                  node)]
+              :when    at-node]
+          (let [site'  (merge site (select-keys at [:filename :row :col]))
+                kinds' (if (and reach (:at result)) (cg/reachable-from reach at) kinds)
+                flows  (when reach (cg/flows-to reach at))]
+            (cond-> (finding site' at-node (dissoc result :at) kinds' ctx)
               reach          (assoc :flows flows)
               ;; nothing reaches it: say how it is called anyway, from the outermost caller down
-              (and reach (empty? flows)) (assoc :callers (cg/callers-of reach site)))))
+              (and reach (empty? flows)) (assoc :callers (cg/callers-of reach at)))))
         ;; endpoint-triggered rules visit only the files that hold an endpoint form
         (when (and reach (seq endpoint-rules))
           (for [filename (sort (distinct (map :filename (cg/entries reach))))

@@ -343,6 +343,8 @@
 (defn- inner! [m] (sink m))
 (defn- outer! [m] (inner! m))
 (defn- composed! [{:keys [name]}] (inner! {:name name}))
+(defn- bound! [m] (sink m))
+(defn- rebound! [m] (sink m))
 (api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body]
   (keyed! {:name (:name body) :id id})
   (opaque! body)
@@ -354,6 +356,8 @@
   (-> {:name (:name body)} (merge body) merged!)
   (outer! {:name (:name body)})
   (composed! body)
+  (let [m {:name (:name body)}] (bound! m))
+  (let [m body, m2 m] (rebound! m2))
   (sink body))")] :rules [rule]}))]
     (testing "every caller passed a map literal with keyword keys: the code chose the keys, whatever the values"
       (is (= "[(:shape/keyed) (:request)]" (get by-row 3))))
@@ -372,8 +376,109 @@
     (testing "a bare parameter handed on carries the shape its own callers gave it; a map built from a parameter's
               fields is keyed however the parameter was shaped, so inner! sees keyed from both"
       (is (= "[(:shape/keyed) (:request)]" (get by-row 10))))
+    (testing "a local bound to a keyed literal and handed on is keyed; one bound, through another, to a request map
+              is opaque"
+      (is (= "[(:shape/keyed) (:request)]" (get by-row 13)))
+      (is (= "[(:shape/opaque) (:request)]" (get by-row 14))))
     (testing "a request parameter itself was handed in by no call: no shape, and the shape labels are not origins"
-      (is (= "[() (:request)]" (get by-row 24))))))
+      (is (= "[() (:request)]" (get by-row 28))))))
+
+(deftest shape-terms-test
+  (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+              :triggers '#{t/sink}
+              :detect (fn [{:keys [node] :as ctx}]
+                        {:message (pr-str (sort (taint/shape ctx (ast/arg node 0))))})}
+        by-row (into {} (map (juxt :row :message))
+                     (engine/analyze {:paths [(temp! "(ns t (:require [metabase.api.macros :as api.macros]))
+(defn sink [x] x)
+(defn- row [id] {:id id :name \"x\"})
+(defn- row-or-nil [id] (when id (let [r {:id id}] r)))
+(defn- passthrough [m] m)
+(defn- threaded! [m] (sink m))
+(defn- merged-keyed! [m] (sink m))
+(defn- merged-opaque! [m] (sink m))
+(defn- assoced! [m] (sink m))
+(defn- rows-for! [ms] (sink ms))
+(defn- rows-map! [ms] (sink ms))
+(defn- rows-fn! [ms] (sink ms))
+(defn- rows-concat! [ms] (sink ms))
+(defn- rows-opaque! [ms] (sink ms))
+(defn- returned! [m] (sink m))
+(defn- returned-opaque! [m] (sink m))
+(defn- branches! [m] (sink m))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body]
+  (threaded! (cond-> {:id id} (:x body) (assoc :x (:x body))))
+  (let [pii (select-keys body [:name])]
+    (merged-keyed! (merge {:id id} pii))
+    (merged-opaque! (merge {:id id} body)))
+  (assoced! (assoc body :id id))
+  (rows-for! (for [i [1 2] :when i] {:id i}))
+  (rows-map! (map row [1 2]))
+  (rows-fn! (mapv (fn [i] {:id i}) [1 2]))
+  (rows-concat! (concat (for [i [1]] {:id i}) (map #(row %) [2])))
+  (rows-opaque! (map #(merge % body) [{:id 1}]))
+  (returned! (row-or-nil id))
+  (returned-opaque! (passthrough body))
+  (branches! (if id {:id id} (select-keys body [:name]))))")] :rules [rule]}))]
+    (testing "a threading form seeded with a literal, through steps that keep its keys"
+      (is (= "(:shape/keyed)" (get by-row 6))))
+    (testing "`merge` is keyed when every argument is -- a literal and a `select-keys` local -- and opaque when
+              one is a request map"
+      (is (= "(:shape/keyed)" (get by-row 7)))
+      (is (= "(:shape/opaque)" (get by-row 8))))
+    (testing "`assoc` keeps its map's shape"
+      (is (= "(:shape/opaque)" (get by-row 9))))
+    (testing "a collection of maps has its element's shape: a `for` body, a named function's return, a `fn` body,
+              a `concat` of those"
+      (is (= "(:shape/keyed)" (get by-row 10)))
+      (is (= "(:shape/keyed)" (get by-row 11)))
+      (is (= "(:shape/keyed)" (get by-row 12)))
+      (is (= "(:shape/keyed)" (get by-row 13)))
+      (is (= "(:shape/opaque)" (get by-row 14))))
+    (testing "a function's return has the shape of its tails, a nil branch and a `let` looked through; a
+              parameter handed back has what its callers gave"
+      (is (= "(:shape/keyed)" (get by-row 15)))
+      (is (= "(:shape/opaque)" (get by-row 16))))
+    (testing "an `if` is keyed when both branches are"
+      (is (= "(:shape/keyed)" (get by-row 17))))))
+
+(deftest schema-shape-test
+  (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+              :triggers '#{t/sink}
+              :detect (fn [{:keys [node] :as ctx}]
+                        {:message (pr-str (sort (taint/shape ctx (ast/arg node 0))))})}
+        by-row (into {} (map (juxt :row :message))
+                     (engine/analyze {:paths [(temp! "(ns t (:require [metabase.api.macros :as api.macros] [metabase.util.malli.schema :as ms]))
+(defn sink [x] x)
+(defn- inline! [m] (sink m))
+(defn- registry! [m] (sink m))
+(defn- open! [m] (sink m))
+(defn- bare! [m] (sink m))
+(defn- entry! [m] (sink m))
+(api.macros/defendpoint :put \"/a/:id\" \"doc\" [{:keys [id]} _q body :- [:map {:closed true} [:name :string]]]
+  (sink body)
+  (inline! body))
+(api.macros/defendpoint :put \"/b/:id\" \"doc\" [{:keys [id]} _q {:keys [name] :as body} :- ::t/update]
+  (registry! body))
+(api.macros/defendpoint :put \"/c/:id\" \"doc\" [{:keys [id]} _q details :- ms/DatabaseDetails]
+  (open! details))
+(api.macros/defendpoint :put \"/d/:id\" \"doc\" [{:keys [id]} _q body]
+  (bare! body))
+(api.macros/defendpoint :put \"/e/:id\" \"doc\" [{:keys [id]} _q {:keys [settings viz]} :- [:map {:closed true} [:settings [:map {:closed true} [:x :int]]] [:viz ms/VisualizationSettings]]]
+  (entry! settings)
+  (entry! viz))")] :rules [rule]}))]
+    (testing "a request map under a map schema is keyed: every map an endpoint can reach is closed at load time and
+              the decoder strips undeclared keys, so the schema is the allow-list"
+      (is (= "(:shape/keyed)" (get by-row 9)))
+      (is (= "(:shape/keyed)" (get by-row 3))))
+    (testing "a registry schema is closed by the same check; the `:as` binding is the whole map"
+      (is (= "(:shape/keyed)" (get by-row 4))))
+    (testing "a deliberately open schema is what it says"
+      (is (= "(:shape/opaque)" (get by-row 5))))
+    (testing "no schema, no shape"
+      (is (= "(:shape/opaque)" (get by-row 6))))
+    (testing "a destructured key has its own entry's shape: one closed map, one deliberately open"
+      (is (= "(:shape/keyed :shape/opaque)" (get by-row 7))))))
 
 (deftest let-404-binding-test
   (let [rule {:id :test/checks :name "n" :description "d" :severity :error :precision :high :cwe "C"

@@ -365,6 +365,9 @@
 (defn- run! [xs] (reduce step! nil xs))
 (defn- lonely [] (sink 1))
 (defn- also-lonely [] (sink 2))
+(defn- recursive ([] (recursive 1)) ([n] (sink n)))
+(defn- looping-a [] (looping-b))
+(defn- looping-b [] (looping-a) (sink 3))
 ")
 
 (deftest callers-of-test
@@ -380,9 +383,16 @@
       (is (every? #(and (:filename %) (pos-int? (:row %))) (:path (at 3)))))
     (testing "a function nothing calls is its own outermost caller"
       (is (= ["t/lonely"] (mapv :name (:path (at 5))))))
+    (testing "a function that calls itself -- one arity delegating to another -- is still a root: the self-call is
+              not what calls it"
+      (is (= ["t/recursive"] (mapv :name (:path (at 7)))))
+      (is (not (:cyclic? (at 7)))))
+    (testing "when every caller loops back, the farthest one is named and the chain says so"
+      (is (= ["t/looping-a" "t/looping-b"] (mapv :name (:path (at 9)))))
+      (is (:cyclic? (at 9))))
     (testing "the deepest root wins, and how many there are is counted"
       (is (= ["t/run!" "t/step!" "t/sink"] (mapv :name (:path (at 2)))))
-      (is (= 3 (:count (at 2))) "run!, lonely, also-lonely"))
+      (is (= 4 (:count (at 2))) "run!, lonely, also-lonely, recursive -- not the two that loop"))
     (testing "nothing outside every function"
       (is (nil? (at 99))))))
 

@@ -84,6 +84,14 @@
   '#{map mapv mapcat filter filterv remove keep keep-indexed run! some every? not-any?
      sort-by group-by partition-by take-while drop-while})
 
+(def open-schema-names
+  "The `defendpoint` schemas whose maps are deliberately open -- marked `::mr/deliberately-open` in
+  `metabase.util.malli.schema` and Lib, the one exemption `closed-schemas` grants. A value under one of these
+  arrives with whatever keys the client sent; under any other map or registry schema, with the keys the schema
+  declares and no others: the decoder strips the rest, and a map that is not closed fails the endpoint at load.
+  Matched by the schema's name, symbol or keyword."
+  #{"VisualizationSettings" "DatabaseDetails" "DatabaseSettings" "OpaqueJSONObject" "visualization-settings"})
+
 (def merging-heads
   "Functions that put another map's keys into the map threaded through them, so a threaded map literal no longer
   has only the keys the code wrote. Matched by name."
