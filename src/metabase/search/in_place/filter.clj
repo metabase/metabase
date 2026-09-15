@@ -216,6 +216,18 @@
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
 
+(doseq [model ["measure" "segment"]]
+  (defmethod build-optional-filter-query [:curated model]
+    [_filter _model query curated?]
+    (assert (true? curated?) "filter for non-curated content is not supported")
+    ;; A measure or segment is curated when its parent table is published into the Library (curated? reads the
+    ;; table's root collection type off the index row). Approximate that here as "parent table is published",
+    ;; gated on the :library feature like the table filter above. The legacy query joins the parent table as
+    ;; `table`, see metabase.search.in-place.legacy/search-query-for-model.
+    (sql.helpers/where query (if (premium-features/has-feature? :library)
+                               [:= :table.is_published true]
+                               false-clause))))
+
 ;; Created at filters
 
 (defn- date-range-filter-clause
