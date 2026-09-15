@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
@@ -380,6 +381,23 @@
               (is (= [false false true true true true true]
                      (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
+(deftest measure-segment-library-test
+  ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
+  (search.tu/with-temp-index-table
+    (testing "measures and segments on a published Library table inherit its library boost and curated status"
+      (collections.tu/with-library [{data :data}]
+        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
+                       :model/Table   plain-tbl {:name "plain_tbl"}
+                       :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
+                       :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
+                       :model/Segment _ {:name "foo segment lib"   :table_id (:id lib-tbl)}
+                       :model/Segment _ {:name "foo segment plain" :table_id (:id plain-tbl)}]
+          (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
+            (is (= [true true false false]
+                   (map #(str/ends-with? (:name %) " lib") results)))
+            (is (= [true true false false]
+                   (map :curated results)))))))))
+
 (deftest ^:parallel data-layer-test
   (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
     (with-index-contents
@@ -421,6 +439,15 @@
          {:model "card"    :id 2 :name "foo question" :last_viewed_at long-ago}
          {:model "metric"  :id 3 :name "foo metric"   :last_viewed_at long-ago}]
         (is (= [3 2 1] (map second (search-results* "foo" :context :metabot)))))))
+  (testing "with Metabot weights, measures and segments rank with metrics, above questions and models"
+    (with-index-contents
+      [{:model "dataset" :id 1 :name "foo model"}
+       {:model "card"    :id 2 :name "foo question"}
+       {:model "measure" :id 3 :name "foo measure"}
+       {:model "segment" :id 4 :name "foo segment"}]
+      (let [ids (map second (search-results* "foo" :context :metabot))]
+        (is (= #{3 4} (set (take 2 ids))))
+        (is (= [2 1] (drop 2 ids))))))
   (testing "with Metabot weights, library membership outranks type weights"
     (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
       (with-index-contents

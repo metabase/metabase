@@ -364,6 +364,31 @@
                     :created_at "2024-01-06"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
+(deftest ^:parallel postprocess-search-result-measure-segment-test
+  (testing "measure and segment results carry their base table straight off the index row, and none of the
+            collection-housed fields"
+    (doseq [model ["measure" "segment"]]
+      (is (= {:id                5
+              :type              model
+              :name              "Big Orders"
+              :description       "desc"
+              :updated_at        "2024-01-05"
+              :created_at        "2024-01-05"
+              :database_id       2
+              :base_table_id     10
+              :base_table_name   "ORDERS"
+              :base_table_schema "PUBLIC"}
+             (#'search/postprocess-search-result {:model        model
+                                                  :id           5
+                                                  :name         "Big Orders"
+                                                  :description  "desc"
+                                                  :updated_at   "2024-01-05"
+                                                  :created_at   "2024-01-05"
+                                                  :database_id  2
+                                                  :table_id     10
+                                                  :table_name   "ORDERS"
+                                                  :table_schema "PUBLIC"}))))))
+
 (deftest search-native-query-test
   (mt/with-test-user :rasta
     (with-redefs [perms/impersonated-user? (fn [] false)
@@ -393,13 +418,13 @@
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
                     api/*current-user-id* 1]
-        (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
+        (testing "nlq-search-tool with no entity_types searches only the queryable types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
-            (is (= #{"table" "dataset" "metric" "card"} @captured))
+            (is (= #{"table" "dataset" "metric" "measure" "segment" "card"} @captured))
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
@@ -424,6 +449,13 @@
                                                              {:data []})]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
+        (testing "agent-supplied measure and segment types reach the engine unchanged"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"] :entity_types ["measure" "segment"]}))
+            (is (= #{"measure" "segment"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
@@ -591,6 +623,46 @@
             (testing "dashboard results do NOT get :portable_entity_id (source-card only accepts cards)"
               (is (some? dash-res) "expected the dashboard to appear in search results")
               (is (not (contains? dash-res :portable_entity_id))))))))))
+
+(deftest measure-segment-search-test
+  (testing "measure and segment hits carry a portable entity id and their base table's portable FK, the same
+            affordances a metric hit gets"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Measure
+                       {measure-id :id measure-eid :entity_id}
+                       {:name     "MeasureSearch Sample Revenue"
+                        :table_id (mt/id :orders)}
+
+                       :model/Segment
+                       {segment-id :id segment-eid :entity_id}
+                       {:name     "MeasureSearch Sample Big Orders"
+                        :table_id (mt/id :orders)}]
+          (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                by-key  (into {} (map (juxt (juxt :type :id) identity))
+                              (search/search {:term-queries ["MeasureSearch Sample"]}))]
+            (is (=? {:type                   "measure"
+                     :name                   "MeasureSearch Sample Revenue"
+                     :database_id            (mt/id)
+                     :database_name          db-name
+                     :portable_entity_id     measure-eid
+                     :base_table_id          (mt/id :orders)
+                     :base_table_portable_fk [db-name "PUBLIC" "ORDERS"]}
+                    (get by-key ["measure" measure-id])))
+            (is (=? {:type                   "segment"
+                     :name                   "MeasureSearch Sample Big Orders"
+                     :database_id            (mt/id)
+                     :database_name          db-name
+                     :portable_entity_id     segment-eid
+                     :base_table_id          (mt/id :orders)
+                     :base_table_portable_fk [db-name "PUBLIC" "ORDERS"]}
+                    (get by-key ["segment" segment-id])))
+            (testing "the XML the agent sees carries a read_resource uri and the portable ids"
+              (let [xml (llm-shape/search-results->xml (vals by-key))]
+                (is (str/includes? xml (str "<measure id=\"" measure-id "\" uri=\"metabase://measure/" measure-id "\"")))
+                (is (str/includes? xml (str "<segment id=\"" segment-id "\" uri=\"metabase://segment/" segment-id "\"")))
+                (is (str/includes? xml (str "portable_entity_id=\"" measure-eid "\"")))
+                (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))))))))))
 
 (deftest entity-refs->search-results-test
   (testing "hydrates {:model :id} refs (as stored by the semantic layer) into enriched search records"

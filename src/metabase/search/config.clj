@@ -164,6 +164,8 @@
     ;; List every model Metabot searches; otherwise [[models-search-order]] supplies its fallback boost.
     :model               10
     :model/metric        1     ; ≈ 10
+    :model/measure       1     ; ≈ 10
+    :model/segment       1     ; ≈ 10
     :model/dashboard     0.3   ; ≈ 3
     :model/card          0.3   ; ≈ 3
     :model/table         0
