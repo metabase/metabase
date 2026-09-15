@@ -1,12 +1,6 @@
 // This file contains plugins that are needed to make the sdk bundle work.
 
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
-import {
-  connectToInstanceAuthSso,
-  jwtDefaultRefreshTokenFunction,
-  openSamlLoginPopup,
-  validateSession,
-} from "embedding/auth-common";
 
 import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
@@ -28,6 +22,12 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSession,
+} from "embedding/auth-common";
 import { PLUGIN_API } from "metabase/api/client";
 import {
   currentUserApi,

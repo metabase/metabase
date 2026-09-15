@@ -6,21 +6,37 @@
       {
         "groupName": "internal-pre-metabase",
         "elementNamePattern": [
+          "__support__",
           "__support__/**",
+          "assets",
           "assets/**",
+          "build-configs",
           "build-configs/**",
+          "cljs",
           "cljs/**",
+          "docs",
           "docs/**",
+          "e2e",
           "e2e/**",
+          "ee-overrides",
+          "ee-overrides/**",
+          "ee-plugins",
           "ee-plugins/**",
+          "embedding",
+          "embedding/**",
+          "embedding-sdk-bundle",
           "embedding-sdk-bundle/**",
+          "embedding-sdk-package",
+          "embedding-sdk-package/**",
+          "embedding-sdk-shared",
           "embedding-sdk-shared/**",
-          "embedding-sdk-package/**"
+          "img",
+          "img/**"
         ]
       },
       {
         "groupName": "metabase-core",
-        "elementNamePattern": ["metabase/**"]
+        "elementNamePattern": ["metabase", "metabase/**"]
       },
       {
         "groupName": "metabase-scoped",
@@ -28,7 +44,14 @@
       },
       {
         "groupName": "internal-post-metabase",
-        "elementNamePattern": ["sdk-ee-plugins/**"]
+        "elementNamePattern": [
+          "sdk-ee-plugins",
+          "sdk-ee-plugins/**",
+          "sdk-iframe-embedding-ee-plugins",
+          "sdk-iframe-embedding-ee-plugins/**",
+          "sdk-iframe-embedding-script-ee-plugins",
+          "sdk-iframe-embedding-script-ee-plugins/**"
+        ]
       }
     ],
     "groups": [

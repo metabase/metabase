@@ -1,7 +1,6 @@
 // eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
-import { initializePlugins } from "sdk-ee-plugins";
 
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
@@ -31,6 +30,7 @@ import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/settings";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
