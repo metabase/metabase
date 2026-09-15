@@ -19,6 +19,7 @@ const DEFAULT_VALUE: RelativeDatePickerValue = {
 interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
+  settingsLoaded?: boolean;
 }
 
 const userEvent = _userEvent.setup({
@@ -28,8 +29,15 @@ const userEvent = _userEvent.setup({
 function setup({
   value = DEFAULT_VALUE,
   availableUnits = DATE_PICKER_UNITS,
+  settingsLoaded = true,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
+  const settings = createMockSettingsState({ "start-of-week": "sunday" });
+
+  if (!settingsLoaded) {
+    settings.loading = true;
+    Reflect.deleteProperty(settings.values, "start-of-week");
+  }
 
   renderWithProviders(
     <CurrentDatePicker
@@ -39,7 +47,7 @@ function setup({
     />,
     {
       storeInitialState: {
-        settings: createMockSettingsState({ "start-of-week": "sunday" }),
+        settings,
       },
     },
   );
@@ -67,6 +75,16 @@ describe("CurrentDatePicker", () => {
 
   it("should show the date range for the selected interval", async () => {
     setup();
+
+    await userEvent.hover(screen.getByText("Week"));
+
+    expect(
+      await screen.findByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),
+    ).toBeInTheDocument();
+  });
+
+  it("should use Sunday while settings are loading", async () => {
+    setup({ settingsLoaded: false });
 
     await userEvent.hover(screen.getByText("Week"));
 
