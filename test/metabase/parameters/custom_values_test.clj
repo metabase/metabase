@@ -373,6 +373,30 @@
                     nil
                     (constantly mock-default-result))))))))))
 
+(deftest ^:parallel parameter->values-input-box-test
+  (testing "a parameter whose widget is an Input box (values_query_type = none) offers no values, whatever its source"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query (mt/mbql-query venues))]
+        (doseq [[source-desc source] [["a connected field" {}]
+                                      ["a static list"     {:values_source_type   :static-list
+                                                            :values_source_config {:values ["African" "American"]}}]
+                                      ["a card"            {:values_source_type   :card
+                                                            :values_source_config {:card_id     card-id
+                                                                                   :value_field (mt/$ids $venues.name)}}]]
+                query-string [nil "af"]]
+          (testing (format "source: %s, query: %s" source-desc (pr-str query-string))
+            (is (= {:values          []
+                    :has_more_values false}
+                   (custom-values/parameter->values
+                    (merge {:name              "Name"
+                            :slug              "name"
+                            :id                "_NAME_"
+                            :type              :string/=
+                            :values_query_type :none}
+                           source)
+                    query-string
+                    (fn [] (throw (ex-info "Shouldn't ask the connected field for values" {}))))))))))))
+
 (deftest ^:parallel parameter->values-join-aliased-value-field-test
   (let [mp (mt/metadata-provider)
         venue-table (lib.metadata/table mp (mt/id :venues))
