@@ -23,10 +23,18 @@ import {
 
 import { AIProviderList } from "./AIProviderList";
 
+const SEMANTIC_SEARCH_IN_USE_MESSAGE =
+  "Semantic search sends its embedding requests through this connection.";
+
 const setup = ({
   usable = true,
   models = [],
-}: { usable?: boolean; models?: LlmConnectionModels[] } = {}) => {
+  openaiInUseMessage = null,
+}: {
+  usable?: boolean;
+  models?: LlmConnectionModels[];
+  openaiInUseMessage?: string | null;
+} = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
@@ -45,6 +53,7 @@ const setup = ({
       key: "openai",
       type: "openai",
       name: "OpenAI",
+      in_use_message: openaiInUseMessage,
     }),
   ]);
   setupLlmModelsEndpoint(models);
@@ -127,30 +136,30 @@ describe("AIProviderList", () => {
     );
   });
 
-  it("warns that removing the openai connection also turns off semantic search", async () => {
+  it("keeps a connection another feature sends its requests through from being removed", async () => {
+    setup({ openaiInUseMessage: SEMANTIC_SEARCH_IN_USE_MESSAGE });
+
+    const modal = await openRemoveDialog("openai");
+
+    expect(
+      within(modal).getByText(SEMANTIC_SEARCH_IN_USE_MESSAGE),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Remove provider" }),
+    ).toBeDisabled();
+  });
+
+  it("lets a connection no other feature uses be removed", async () => {
     setup();
 
     const modal = await openRemoveDialog("openai");
 
     expect(
-      within(modal).getByText(/Semantic search also runs on this connection/),
-    ).toBeInTheDocument();
-    expect(
-      within(modal).getByText(/saved credentials will be deleted/),
-    ).toBeInTheDocument();
-  });
-
-  it("does not warn about dependent features when removing the anthropic connection", async () => {
-    setup();
-
-    const modal = await openRemoveDialog("anthropic");
-
-    expect(
       within(modal).getByText(/saved credentials will be deleted/),
     ).toBeInTheDocument();
     expect(
-      within(modal).queryByText(/also runs on this connection/),
-    ).not.toBeInTheDocument();
+      within(modal).getByRole("button", { name: "Remove provider" }),
+    ).toBeEnabled();
   });
 
   it("shows the skeleton until the connections have loaded", async () => {

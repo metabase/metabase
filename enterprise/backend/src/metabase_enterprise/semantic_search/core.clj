@@ -16,7 +16,9 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
@@ -52,6 +54,15 @@
   ;; maintenance while the embedder is temporarily unconfigured.
   (and (semantic.util/semantic-search-available?)
        (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
+
+(defenterprise connection-in-use-message
+  "Why the LLM provider connection `conn-key` can't be removed: semantic search sends its embedding requests
+  through it."
+  :feature :semantic-search
+  [conn-key]
+  (when (= conn-key (semantic.embedding/embedding-connection-key))
+    (tru "Semantic search sends its embedding requests through this connection. Set {0} to another connection, or switch semantic search to another embedding provider, before removing it."
+         (setting/env-var-name :ee-embedding-connection))))
 
 (defonce ^:private hnsw-index-build-running? (atom false))
 

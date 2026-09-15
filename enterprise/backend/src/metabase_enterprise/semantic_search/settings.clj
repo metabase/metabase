@@ -63,15 +63,16 @@
   :export? false
   :doc false)
 
-(defn openai-api-base-url
-  "Get the OpenAI API base url from the existing LLM settings."
-  []
-  (llm-settings/llm-openai-api-base-url))
-
-(defn openai-api-key
-  "Get the OpenAI API key from the existing LLM settings."
-  []
-  (llm-settings/llm-openai-api-key))
+(defsetting ee-embedding-connection
+  (deferred-tru (str "Key of the AI provider connection semantic search embeds through. Its type selects the "
+                     "embedding API, so an OpenAI connection embeds through the OpenAI API. Leave empty to embed "
+                     "through the provider named by ee-embedding-provider instead."))
+  :encryption :no
+  :visibility :settings-manager
+  :default    nil
+  :type       :string
+  :export?    false
+  :doc        false)
 
 (defsetting ee-embedding-service-base-url
   (deferred-tru "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy).")

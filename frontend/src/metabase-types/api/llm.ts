@@ -95,6 +95,7 @@ export interface LlmProviderConnection {
   env_vars: string[];
   env_fields: string[];
   config: LlmProviderConfig;
+  in_use_message: string | null;
 }
 
 export interface LlmModel {

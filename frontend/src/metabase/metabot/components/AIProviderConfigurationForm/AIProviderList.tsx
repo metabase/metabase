@@ -176,30 +176,24 @@ export function AIProviderList() {
         title={t`Remove this provider?`}
         message={getDeleteWarning(deleting, providerTypes)}
         confirmButtonText={t`Remove provider`}
+        confirmButtonProps={{ disabled: deleting?.in_use_message != null }}
         onConfirm={handleConfirmDelete}
       />
     </Stack>
   );
 }
 
-// Features that read a fixed connection key directly rather than following the Metabot selection: deleting
-// the connection they name turns them off, which the admin deserves to hear before confirming.
-const KEYED_DEPENDENTS: Record<string, () => string> = {
-  openai: () =>
-    t`Semantic search also runs on this connection, and will stop working without it.`,
-};
-
 function getDeleteWarning(
   deleting: LlmProviderConnection | undefined,
   providerTypes: LlmProviderType[],
 ) {
-  const base = providerTypes.find((type) => type.type === deleting?.type)
-    ?.managed
+  if (deleting?.in_use_message) {
+    return deleting.in_use_message;
+  }
+  return providerTypes.find((type) => type.type === deleting?.type)?.managed
     ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
       t`This cancels your Metabase AI service subscription, and its models will no longer be available.`
     : t`This provider's models will no longer be available, and its saved credentials will be deleted.`;
-  const dependent = deleting && KEYED_DEPENDENTS[deleting.key]?.();
-  return dependent ? `${base} ${dependent}` : base;
 }
 
 function RowActions({ children }: { children: ReactNode }) {

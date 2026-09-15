@@ -194,7 +194,8 @@
                :usable     true
                :env_vars   []
                :env_fields []
-               :config     {:api-key "**********et" :base-url "https://api.anthropic.com"}}
+               :config     {:api-key "**********et" :base-url "https://api.anthropic.com"}
+               :in_use_message nil}
               {:key        "openai"
                :type       "openai"
                :name       "openai"
@@ -202,7 +203,8 @@
                :usable     false
                :env_vars   []
                :env_fields []
-               :config     {:api-key ""}}]
+               :config     {:api-key ""}
+               :in_use_message nil}]
              (mt/user-http-request :crowberto :get 200 "llm/providers"))))))
 
 (deftest list-providers-marks-env-connections-test
@@ -218,7 +220,8 @@
                  :env_fields ["api-key"]
                  ;; only what the environment supplies: the base URL's registry default is filled in when the
                  ;; connection is resolved for a request, not stored on it
-                 :config     {:api-key "**********nv"}}]
+                 :config     {:api-key "**********nv"}
+                 :in_use_message nil}]
                (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
 
 (deftest list-providers-marks-env-shadowed-fields-test
@@ -250,7 +253,8 @@
                   :usable     true
                   :env_vars   []
                   :env_fields []
-                  :config     {:api-key "**********id"}}
+                  :config     {:api-key "**********id"}
+                  :in_use_message nil}
                  (mt/user-http-request :crowberto :post 200 "llm/providers"
                                        {:type "anthropic" :config {:api-key "sk-ant-valid"}}))))
         (testing "the credentials are verified against the provider exactly once, unmasked and with the
@@ -658,7 +662,8 @@
               :usable     true
               :env_vars   []
               :env_fields []
-              :config     {:api-key "**********ed" :base-url "https://api.anthropic.com"}}
+              :config     {:api-key "**********ed" :base-url "https://api.anthropic.com"}
+              :in_use_message nil}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
                                     :config {:api-key "**********ed"}})))

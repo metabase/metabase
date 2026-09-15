@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -622,15 +623,33 @@
       :network-policy-floor network-policy-floor
       :instance-token?      instance-token?})))
 
+(def ^:private unresolved-connection-provider "unresolved-connection")
+
+(def ^:private connection-backed-providers #{"openai"})
+
+(defn- connection-key-for-provider
+  [provider]
+  (or (not-empty (semantic-settings/ee-embedding-connection))
+      provider))
+
 ;;;; OpenAI provider
+
+(defn- openai-connection-config
+  [conn-key]
+  (let [{:keys [type config]} (llm.provider/connection conn-key)]
+    (when (= "openai" type)
+      (llm.provider/with-field-defaults type config))))
 
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
   []
-  (let [api-key (semantic-settings/openai-api-key)]
-    (when-not api-key
-      (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
-    [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
+  (let [conn-key                   (connection-key-for-provider "openai")
+        {:keys [api-key base-url]} (openai-connection-config conn-key)]
+    (when-not (not-empty api-key)
+      (throw (ex-info (str "ee-embedding-connection names " (pr-str conn-key)
+                           ", which is not an OpenAI connection with an API key")
+                      {:setting "ee-embedding-connection" :connection conn-key})))
+    [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod embedder-circuit-endpoint "openai" [_]
   (first (openai-resolve-config!)))
@@ -675,7 +694,8 @@
      "openai"
      {:embedding-spi-version spi-version
       :readiness             (fn [_]
-                               {:ready? (boolean (not-empty (semantic-settings/openai-api-key)))})
+                               {:ready? (boolean (not-empty (:api-key (openai-connection-config
+                                                                       (connection-key-for-provider "openai")))))})
       :resolve-model         legacy
       :embed-texts           openai-get-embeddings-batch})))
 
@@ -715,11 +735,23 @@
 ;;;; Global embedding model
 
 (defn get-configured-model
-  "Get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings."
+  "Get the environments default embedding model according to the ee-embedding-connection / ee-embedding-provider /
+  ee-embedding-model settings. A named connection selects the provider: its type is the embedding API used."
   []
-  {:provider (semantic-settings/ee-embedding-provider)
+  {:provider (if-let [conn-key (not-empty (semantic-settings/ee-embedding-connection))]
+               (or (:type (llm.provider/connection conn-key)) unresolved-connection-provider)
+               (semantic-settings/ee-embedding-provider))
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
+
+(defn embedding-connection-key
+  "The key of the LLM provider connection semantic search embeds through, or nil when the configured model embeds
+  through a provider that needs none. Before `ee-embedding-connection` existed, a connection-backed provider read
+  whichever connection was keyed after it, so that is what it falls back to."
+  []
+  (let [provider (:provider (get-configured-model))]
+    (when (contains? connection-backed-providers provider)
+      (connection-key-for-provider provider))))
 
 (defn embedding-supported?
   "Whether the selected provider is installed and configured. This is not a remote liveness probe."
@@ -773,7 +805,7 @@
   ;;   - Ollama default: "mxbai-embed-large"
   ;; MB_EE_EMBEDDING_SERVICE_BASE_URL: URL of the embedding service (for ai-service provider)
   ;; MB_EE_EMBEDDING_SERVICE_API_KEY: API key for the embedding service
-  ;; MB_EE_OPENAI_API_KEY: your OpenAI API key (for openai provider)
+  ;; MB_EE_EMBEDDING_CONNECTION: key of the AI provider connection to embed through; its type selects the API
   ;; MB_EE_EMBEDDING_MODEL_DIMENSIONS: defaults to 1024.
 
   (def embedding-model (get-configured-model))
