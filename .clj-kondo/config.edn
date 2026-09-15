@@ -895,7 +895,61 @@
    :name    app-db-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {;; direct-jdbc-access-forbidden (from the HugSQL PoC): a converted module runs app-db SQL only
+  ;; through its `queries` ns -> metabase.app-db.hugsql, never a direct execution sink. This bans
+  ;; the sink *name*, not the query *value*, so `(str ...)` / `(let [q (str ...)] ...)` laundering
+  ;; has nowhere to land -- kondo enforces it with certainty, no dataflow analysis needed. Toucan
+  ;; model-definition macros (table-name, deftransforms, define-before-insert, hydrate) are not
+  ;; sinks and stay.
+  ;;
+  ;; Glossary is fully ported: every query is a statement in glossary.sql, and no Toucan sink
+  ;; survives anywhere in the module. So the Toucan sinks are banned here too, not just raw JDBC --
+  ;; unlike a partially ported module, which keeps `t2/*` in its queries ns for writes whose model
+  ;; has before-insert/before-update hooks.
+  ;;
+  ;; INVERSION (end state, per the PoC's note): this is per-ns because each namespace opts in as it
+  ;; converts. The target is the reverse -- ban these sinks globally and allow them in a small named
+  ;; set (the `*.queries` nses, metabase.app-db.hugsql, migrations, audit-db, QP). Then "where can
+  ;; app-db SQL run?" is that list rather than a per-ns opt-in.
+  metabase.glossary.queries
+  {:linters {:discouraged-var
+             {next.jdbc/execute!            {:message "no dropping to raw JDBC; app-db SQL is a statement in glossary.sql"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; app-db SQL is a statement in glossary.sql"}
+              next.jdbc/plan                {:message "no dropping to raw JDBC; app-db SQL is a statement in glossary.sql"}
+              toucan2.core/query            {:message "raw SQL does not belong in a queries ns; add a statement to glossary.sql"}
+              toucan2.core/query-one        {:message "raw SQL does not belong in a queries ns; add a statement to glossary.sql"}
+              toucan2.core/select           {:message "glossary is fully ported; add a statement to glossary.sql"}
+              toucan2.core/select-one       {:message "glossary is fully ported; add a statement to glossary.sql"}
+              toucan2.core/insert!          {:message "glossary is fully ported; add a statement to glossary.sql"}
+              toucan2.core/update!          {:message "glossary is fully ported; add a statement to glossary.sql"}
+              toucan2.core/delete!          {:message "glossary is fully ported; add a statement to glossary.sql"}
+              metabase.app-db.query/query   {:message "app-db SQL is a statement in glossary.sql"}
+              metabase.app-db.query/compile {:message "app-db SQL is a statement in glossary.sql"}}}}
+
+  ;; The module's consumers: every app-db access goes through glossary.queries. `t2/hydrate` is not
+  ;; a sink and stays -- api.clj hydrates :creator on the rows the queries ns returns.
+  metabase.glossary.api
+  {:linters {:discouraged-var
+             {toucan2.core/select           {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/select-one       {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/insert!          {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/update!          {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/delete!          {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/query            {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              next.jdbc/execute!            {:message "no dropping to raw JDBC; go through glossary.queries (HugSQL)"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through glossary.queries (HugSQL)"}
+              metabase.app-db.query/query   {:message "app-db SQL goes through glossary.queries (HugSQL)"}}}}
+  metabase.glossary.models.glossary
+  {:linters {:discouraged-var
+             {toucan2.core/select           {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/select-one       {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/select-pk->fn    {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              toucan2.core/query            {:message "app-db SQL goes through glossary.queries (HugSQL)"}
+              next.jdbc/execute!            {:message "no dropping to raw JDBC; go through glossary.queries (HugSQL)"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; go through glossary.queries (HugSQL)"}
+              metabase.app-db.query/query   {:message "app-db SQL goes through glossary.queries (HugSQL)"}}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}
