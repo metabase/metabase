@@ -5,7 +5,7 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { resetPluginSlots } from "metabase/plugin-slots";
+import { reinitialize } from "metabase/plugins";
 import { PLUGIN_HOST_NAVIGATION } from "metabase/urls";
 import { formatValue } from "metabase/value-formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -172,7 +172,7 @@ describe("registered JSX url formatting", () => {
   });
 
   afterEach(() => {
-    resetPluginSlots();
+    reinitialize();
     jest.restoreAllMocks();
   });
 

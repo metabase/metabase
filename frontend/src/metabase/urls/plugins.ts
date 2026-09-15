@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugin-slots";
+import { definePluginSlot } from "metabase/plugins/slot";
 
 export type HostNavigation = {
   /** Resolves to whether the host opened the link itself. */

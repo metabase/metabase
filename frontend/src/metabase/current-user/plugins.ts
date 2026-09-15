@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugin-slots";
+import { definePluginSlot } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 
 import { getUserIsAdmin } from "./selectors";

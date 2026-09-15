@@ -1,4 +1,4 @@
-import { definePluginSlot } from "metabase/plugin-slots";
+import { definePluginSlot } from "metabase/plugins";
 import type { Dispatch, GetState } from "metabase/redux/store";
 
 import type { SlashCommand } from "./state/types";

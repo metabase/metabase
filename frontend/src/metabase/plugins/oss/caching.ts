@@ -3,7 +3,6 @@ import { t } from "ttag";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 
-import { definePluginSlot } from "metabase/plugin-slots";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { AdminPath } from "metabase/redux/store";
 import type { ModalOverlayProps, StackProps } from "metabase/ui";
@@ -13,6 +12,8 @@ import type {
   CacheableModel,
   CardId,
 } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 // Types
 
