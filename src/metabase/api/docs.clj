@@ -40,8 +40,9 @@
 (defn- schema-refs
   [x]
   (into #{}
-        (keep #(when (map? %)
-                 (some->> (:$ref %) (re-matches #"#/components/schemas/(.+)") second)))
+        (keep #(let [ref (when (map? %) (:$ref %))]
+                 (when (string? ref)
+                   (second (re-matches #"#/components/schemas/(.+)" ref)))))
         (tree-seq coll? seq x)))
 
 (defn- reachable-schemas
@@ -143,7 +144,8 @@
 
 (defn- json-handler
   "Given the [[metabase.api-routes.core/routes]] handler, return a Ring handler that returns `openapi.json`.
-  Attempts to read from the local file first; if not available, generates on-the-fly."
+  When `mb-enable-openapi-auto-regen` is set, it serves the spec written to [[openapi-file-path]] if that file exists.
+  Otherwise it generates the spec from `root-handler` on each request."
   [root-handler]
   (fn handler*
     ([_request]
