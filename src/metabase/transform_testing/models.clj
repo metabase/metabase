@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.models.transform-test-suite
+(ns metabase.transform-testing.models
   (:require
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
