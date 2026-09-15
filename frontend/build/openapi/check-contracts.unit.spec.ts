@@ -3,10 +3,13 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+import {
+  BASELINE_PATH,
+  CONTRACTS_REPORT_PATH,
+  GENERATED_DECLARATIONS_PATH,
+} from "./paths";
+
 const SCRIPT = path.join(__dirname, "check-contracts.ts");
-const BASELINE = "frontend/build/openapi/baseline.json";
-const GENERATED = ".tmp/openapi/types/types.gen.d.ts";
-const REPORT = ".tmp/openapi/contracts-report.json";
 const ENDPOINT_ID = "endpoints:example";
 
 function endpointSource(user: string) {
@@ -56,27 +59,37 @@ describe("contract checker CLI", () => {
       "frontend/src/api.ts",
       endpointSource("{ owner: { email: string } }"),
     );
-    write(GENERATED, generatedDeclarations());
-    write(BASELINE, "[]");
+    write(GENERATED_DECLARATIONS_PATH, generatedDeclarations());
+    write(BASELINE_PATH, "[]");
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
   it("should explain exempted nested mismatches without changing the baseline", () => {
     const baseline = JSON.stringify([ENDPOINT_ID]);
-    write(BASELINE, baseline);
+    write(BASELINE_PATH, baseline);
     const result = run("--explain", "example");
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(/\$\.owner\.email/);
-    expect(result.stdout).toMatch(/null is not assignable to string/);
-    expect(read(BASELINE)).toBe(baseline);
+    expect(result.stdout).toMatch(
+      /backend type null is not assignable to frontend type string/,
+    );
+    expect(read(BASELINE_PATH)).toBe(baseline);
   });
 
   it("should still fail the gate in explanation mode", () => {
     const result = run("--explain", "example");
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/\$\.owner\.email/);
+  });
+
+  it("should point to the fix-api-contract skill after failing gate output", () => {
+    const result = run();
+    expect(result.status).toBe(1);
+    expect(result.stderr.trimEnd()).toMatch(
+      /To investigate and fix these, see \.claude\/skills\/fix-api-contract\/SKILL\.md\.$/,
+    );
   });
 
   it("should fail the gate for an optional frontend field absent from the backend", () => {
@@ -114,17 +127,20 @@ describe("contract checker CLI", () => {
   });
 
   it("should update the baseline once per failing endpoint and keep every diagnostic", () => {
-    write(GENERATED, generatedDeclarations({ body: "body: { name: string }" }));
-    write(BASELINE, JSON.stringify(["removedApi:oldEndpoint"]));
+    write(
+      GENERATED_DECLARATIONS_PATH,
+      generatedDeclarations({ body: "body: { name: string }" }),
+    );
+    write(BASELINE_PATH, JSON.stringify(["removedApi:oldEndpoint"]));
 
     const update = run("--update-baseline");
     expect(update.stderr).toBe("");
     expect(update.status).toBe(0);
-    expect(JSON.parse(read(BASELINE))).toEqual([ENDPOINT_ID]);
+    expect(JSON.parse(read(BASELINE_PATH))).toEqual([ENDPOINT_ID]);
 
     const result = run();
     expect(result.status).toBe(0);
-    expect(JSON.parse(read(REPORT))).toMatchObject({
+    expect(JSON.parse(read(CONTRACTS_REPORT_PATH))).toMatchObject({
       endpointCount: 1,
       exemptEndpoints: [ENDPOINT_ID],
       results: [
@@ -134,28 +150,31 @@ describe("contract checker CLI", () => {
       ],
     });
 
-    write(BASELINE, "[]");
+    write(BASELINE_PATH, "[]");
     expect(run().status).toBe(1);
   });
 
   it("should report stale exemptions without failing or editing the baseline", () => {
-    write(GENERATED, generatedDeclarations({ email: "string" }));
+    write(
+      GENERATED_DECLARATIONS_PATH,
+      generatedDeclarations({ email: "string" }),
+    );
     const baseline = JSON.stringify([ENDPOINT_ID, "removedApi:oldEndpoint"]);
-    write(BASELINE, baseline);
+    write(BASELINE_PATH, baseline);
     const result = run();
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(
       /2 endpoint exemptions have no current failures/,
     );
-    expect(JSON.parse(read(REPORT))).toMatchObject({
+    expect(JSON.parse(read(CONTRACTS_REPORT_PATH))).toMatchObject({
       staleExemptions: [ENDPOINT_ID, "removedApi:oldEndpoint"],
     });
-    expect(read(BASELINE)).toBe(baseline);
+    expect(read(BASELINE_PATH)).toBe(baseline);
   });
 
   it("should not let a stale exemption hide an unexempted endpoint's failure", () => {
-    write(BASELINE, JSON.stringify(["removedApi:oldEndpoint"]));
+    write(BASELINE_PATH, JSON.stringify(["removedApi:oldEndpoint"]));
     const result = run();
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/endpoints:example:response\.2XX/);
@@ -167,7 +186,7 @@ describe("contract checker CLI", () => {
     { baseline: [""] },
     { baseline: null },
   ])("should reject malformed baseline $baseline", ({ baseline }) => {
-    write(BASELINE, JSON.stringify(baseline));
+    write(BASELINE_PATH, JSON.stringify(baseline));
     const result = run();
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/array of non-empty endpoint IDs/);

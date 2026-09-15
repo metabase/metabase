@@ -22,6 +22,8 @@ import {
 const USAGE =
   "Usage: bun run api-contract-check-pure [--update-baseline | --explain <endpoint>]";
 
+const FIX_SKILL_PATH = ".claude/skills/fix-api-contract/SKILL.md";
+
 const root = process.cwd();
 const baselinePath = resolve(root, BASELINE_PATH);
 const generatedPath = resolve(root, GENERATED_DECLARATIONS_PATH);
@@ -178,6 +180,7 @@ function main(): void {
     const problems = baselineProblems(results, exemptEndpoints);
     if (problems.length) {
       console.error(problems.join("\n\n"));
+      console.error(`\nTo investigate and fix these, see ${FIX_SKILL_PATH}.`);
       process.exitCode = 1;
     }
   }
