@@ -42,7 +42,7 @@ interface Unconstrained {
 export interface Verdict {
   status: "compatible" | Problem["status"];
   message: string;
-  unconstrained?: Unconstrained[];
+  unconstrained?: Unconstrained;
 }
 
 export interface CompareContext {
@@ -1095,66 +1095,24 @@ function unconstrainedLines({ location, positions }: Unconstrained): string[] {
   ];
 }
 
-function mergeUnconstrained(groups: Unconstrained[]): Unconstrained[] {
-  const locations = [...new Set(groups.map(({ location }) => location))];
-  return locations.map((location) => ({
-    location,
-    positions: sortedPositions(
-      groups
-        .filter((group) => group.location === location)
-        .flatMap((group) => group.positions),
-    ),
-  }));
-}
-
-/**
- * An `unverified` verdict for every `any`, `unknown` or unresolved type parameter in `type`.
- * `location` names the backend route and part.
- */
-export function looseTypeVerdict(
-  context: CompareContext,
-  side: Side,
-  type: ts.Type,
-  at: ts.Node,
-  location: string,
-  position: Position = ROOT,
-): Verdict | undefined {
-  return looseShapeVerdict(
-    context,
-    side,
-    typeShape(type),
-    at,
-    location,
-    position,
-  );
-}
-
 /** An `unverified` verdict for every `any`, `unknown` or unresolved type parameter inside a shape. */
-function looseShapeVerdict(
+export function looseShapeVerdict(
   context: CompareContext,
   side: Side,
   shape: Shape,
   at: ts.Node,
   location: string,
-  position: Position,
 ): Verdict | undefined {
-  const positions = unconstrainedPositions(context, side, shape, at, position);
+  const positions = unconstrainedPositions(context, side, shape, at, ROOT);
   if (!positions.length) {
     return undefined;
   }
-  const unconstrained = [{ location, positions }];
+  const unconstrained = { location, positions };
   return {
     status: "unverified",
-    message: unconstrained.flatMap(unconstrainedLines).join(LINE_BREAK),
+    message: unconstrainedLines(unconstrained).join(LINE_BREAK),
     unconstrained,
   };
-}
-
-function looseTypeVerdicts(
-  verdicts: (Verdict | undefined)[],
-): Verdict | undefined {
-  const found = verdicts.filter((verdict) => verdict !== undefined);
-  return found.length ? combineVerdicts(found, []) : undefined;
 }
 
 export function compareShape(
@@ -1164,30 +1122,19 @@ export function compareShape(
   sent: Shape,
   target: ts.Type,
   at: ts.Node,
-  position: Position = ROOT,
 ): Verdict {
   const direction: Direction =
     kind === "response"
       ? { from: "backend", to: "frontend" }
       : { from: "frontend", to: "backend" };
-  const gap = looseTypeVerdicts([
-    looseShapeVerdict(context, direction.from, sent, at, location, position),
-    looseTypeVerdict(context, direction.to, target, at, location, {
-      path: position.path,
-      declaration: undefined,
-    }),
-  ]);
-  if (gap) {
-    return gap;
+  const gaps = [
+    looseShapeVerdict(context, direction.from, sent, at, location),
+    looseShapeVerdict(context, direction.to, typeShape(target), at, location),
+  ].filter((verdict) => verdict !== undefined);
+  if (gaps.length) {
+    return combineVerdicts(gaps, []);
   }
-  const problems = shapeProblems(
-    context,
-    direction,
-    sent,
-    target,
-    at,
-    position,
-  );
+  const problems = shapeProblems(context, direction, sent, target, at, ROOT);
   if (!problems.length) {
     return COMPATIBLE;
   }
@@ -1195,26 +1142,6 @@ export function compareShape(
     status: problemStatus(problems),
     message: uniqueLines(problems.map((problem) => problem.message)),
   };
-}
-
-export function compareTypes(
-  context: CompareContext,
-  kind: "request" | "response",
-  location: string,
-  from: ts.Type,
-  to: ts.Type,
-  at: ts.Node,
-  position: Position = ROOT,
-): Verdict {
-  return compareShape(
-    context,
-    kind,
-    location,
-    typeShape(from),
-    to,
-    at,
-    position,
-  );
 }
 
 /** One verdict for several checks of the same part: unverified wins over mismatch. */
@@ -1225,27 +1152,23 @@ export function combineVerdicts(verdicts: Verdict[], notes: string[]): Verdict {
     : failing.length
       ? "mismatch"
       : "compatible";
-  const unconstrained = mergeUnconstrained(
-    failing.flatMap((verdict) => verdict.unconstrained ?? []),
-  );
-  const listed = new Set<string>();
+  const groups = failing.flatMap((verdict) => verdict.unconstrained ?? []);
+  const [first] = groups;
+  const unconstrained = first && {
+    location: first.location,
+    positions: sortedPositions(groups.flatMap((group) => group.positions)),
+  };
+  let listed = false;
   const lines = failing.length
     ? failing.flatMap((verdict) => {
         if (!verdict.unconstrained) {
           return verdict.message.split(LINE_BREAK);
         }
-        return unconstrained
-          .filter(({ location }) => {
-            const first = !listed.has(location);
-            listed.add(location);
-            return (
-              first &&
-              verdict.unconstrained?.some(
-                (group) => group.location === location,
-              )
-            );
-          })
-          .flatMap(unconstrainedLines);
+        if (listed || !unconstrained) {
+          return [];
+        }
+        listed = true;
+        return unconstrainedLines(unconstrained);
       })
     : [COMPATIBLE.message];
   return {
@@ -1253,6 +1176,6 @@ export function combineVerdicts(verdicts: Verdict[], notes: string[]): Verdict {
     message: [...new Set(lines), ...notes.map((note) => `note: ${note}`)].join(
       LINE_BREAK,
     ),
-    ...(unconstrained.length ? { unconstrained } : {}),
+    ...(unconstrained ? { unconstrained } : {}),
   };
 }

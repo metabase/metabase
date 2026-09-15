@@ -6,6 +6,7 @@ import {
   modelClientRequest,
 } from "./client-request";
 import { type RtkRequest, resolveRtkRequest } from "./rtk-request";
+import { typeShape } from "./shape";
 import {
   type CompareContext,
   LINE_BREAK,
@@ -14,9 +15,8 @@ import {
   type Verdict,
   combineVerdicts,
   compareShape,
-  compareTypes,
   isStackOverflow,
-  looseTypeVerdict,
+  looseShapeVerdict,
 } from "./type-comparison";
 import {
   hasComputedName,
@@ -120,9 +120,7 @@ export function checkContracts(
         message: check.message,
         ...(check.unconstrained
           ? {
-              unconstrained: check.unconstrained.flatMap(
-                ({ positions }) => positions,
-              ),
+              unconstrained: check.unconstrained.positions,
             }
           : {}),
       }),
@@ -456,11 +454,11 @@ function checkResponse(
   }
   return successes.map((success) =>
     guardedCheck(endpointId, { kind: "response", part: success.name }, () =>
-      compareTypes(
+      compareShape(
         context,
         "response",
         `${route} response ${success.name}`,
-        checker.getTypeOfSymbolAtLocation(success, generated),
+        typeShape(checker.getTypeOfSymbolAtLocation(success, generated)),
         frontendResponse,
         node,
       ),
@@ -538,7 +536,13 @@ function comparePart(
         part.notes,
       );
     }
-    const gap = looseTypeVerdict(context, "backend", expected, at, location);
+    const gap = looseShapeVerdict(
+      context,
+      "backend",
+      typeShape(expected),
+      at,
+      location,
+    );
     return combineVerdicts(
       [
         { status: "unverified", message: part.unverified },

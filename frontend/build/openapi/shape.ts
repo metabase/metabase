@@ -13,7 +13,6 @@ export type Shape =
   | {
       kind: "object";
       from: ts.Type | undefined;
-      description?: string;
       fields: ShapeField[];
       indexes: ShapeIndex[];
     }
@@ -35,7 +34,7 @@ export interface ShapeIndex {
   declaration: ts.Declaration | undefined;
 }
 
-export function typeShape(type: ts.Type): Shape {
+export function typeShape(type: ts.Type): Extract<Shape, { kind: "type" }> {
   return { kind: "type", type };
 }
 
@@ -73,10 +72,9 @@ export function describeShape(checker: ts.TypeChecker, view: Shape): string {
       case "union":
         return view.members.map(describe).join(" | ");
       case "object":
-        return (
-          view.description ??
-          `{ ${view.fields.map((field) => `${field.name}${field.optional ? "?" : ""}: ${describe(field.shape)};`).join(" ")} }`
-        );
+        return view.fields.length
+          ? `{ ${view.fields.map((field) => `${field.name}${field.optional ? "?" : ""}: ${describe(field.shape)};`).join(" ")} }`
+          : "{}";
     }
   };
   return describe(view);

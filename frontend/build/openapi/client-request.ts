@@ -61,9 +61,7 @@ export interface ClientRequest {
   unverified: string | undefined;
 }
 
-type Payload =
-  | Extract<Shape, { kind: "type" | "object" }>
-  | { kind: "nothing" };
+type Payload = Extract<Shape, { kind: "type" | "object" }>;
 
 interface PayloadPair {
   params: Payload;
@@ -74,8 +72,6 @@ interface ModelContext {
   checker: ts.TypeChecker;
   at: ts.Node;
 }
-
-const NOTHING: Payload = { kind: "nothing" };
 
 export function modelClientRequest(
   checker: ts.TypeChecker,
@@ -135,16 +131,12 @@ export function modelClientRequest(
       );
       bodyVariants.push(typeShape(checker.getUndefinedType()));
     } else {
-      bodyVariants.push(
-        finishPayload(
-          checker,
-          sendAsJson(context, pair.body, bodyNotes),
-          "body",
-        ),
-      );
+      bodyVariants.push(sendAsJson(context, pair.body, bodyNotes));
     }
     sentQuery = mergeQueryPayloads(inlinePayload, sentQuery, onUnverified);
-    queryVariants.push(finishPayload(checker, sentQuery, "query"));
+    queryVariants.push(
+      isEmpty(sentQuery) ? typeShape(checker.getUndefinedType()) : sentQuery,
+    );
   }
   if (foldsBody) {
     queryNotes.push(
@@ -302,7 +294,8 @@ function typePayload(
 
 function isEmpty(payload: Payload): boolean {
   return (
-    payload.kind === "nothing" ||
+    (payload.kind === "type" &&
+      (payload.type.flags & ts.TypeFlags.Undefined) !== 0) ||
     (payload.kind === "object" &&
       !payload.fields.length &&
       !payload.indexes.length)
@@ -315,7 +308,11 @@ function paramsPayloads(
 ): { payloads: Payload[]; notes: string[]; unverified: string | undefined } {
   const { checker } = context;
   if (!expression) {
-    return { payloads: [NOTHING], notes: [], unverified: undefined };
+    return {
+      payloads: [typeShape(checker.getUndefinedType())],
+      notes: [],
+      unverified: undefined,
+    };
   }
   const type = checker.getTypeAtLocation(expression);
   const members = unionMembers(checker, type);
@@ -333,7 +330,7 @@ function paramsPayloads(
   return {
     payloads: [
       ...copied.map((entry) => entry.payload),
-      ...(dropped.length ? [NOTHING] : []),
+      ...(dropped.length ? [typeShape(checker.getUndefinedType())] : []),
     ],
     notes,
     unverified: copied.find((entry) => entry.unverified)?.unverified,
@@ -368,7 +365,7 @@ function bodyPayloads(
   let alwaysSent = method !== "GET";
   if (!expression) {
     return {
-      payloads: [NOTHING],
+      payloads: [typeShape(checker.getUndefinedType())],
       notes,
       unverified,
       failure,
@@ -385,11 +382,11 @@ function bodyPayloads(
       checker.isTypeAssignableTo(member, candidate.type),
     );
     if (member.flags & UNDEFINED) {
-      payloads.push(NOTHING);
+      payloads.push(typeShape(checker.getUndefinedType()));
       alwaysSent = false;
     } else if (member.flags & ts.TypeFlags.Null) {
       if (method === "GET") {
-        payloads.push(NOTHING);
+        payloads.push(typeShape(checker.getUndefinedType()));
       } else {
         payloads.push({
           kind: "object",
@@ -403,7 +400,7 @@ function bodyPayloads(
       }
     } else if (raw) {
       if (method === "GET") {
-        payloads.push(NOTHING);
+        payloads.push(typeShape(checker.getUndefinedType()));
         notes.push(
           `a ${raw.name} body is not sent with a GET request (ApiClient._prepareRequest)`,
         );
@@ -744,28 +741,6 @@ function mergeQueryPayloads(
   return first;
 }
 
-function finishPayload(
-  checker: ts.TypeChecker,
-  payload: Payload,
-  channel: "query" | "body",
-): Shape {
-  if (payload.kind === "nothing" || (channel === "query" && isEmpty(payload))) {
-    return typeShape(checker.getUndefinedType());
-  }
-  if (payload.kind === "type") {
-    return typeShape(payload.type);
-  }
-  const fields = payload.fields.length ? describeShape(checker, payload) : "{}";
-  const declared = payload.from && typeText(checker, payload.from);
-  return {
-    ...payload,
-    description:
-      declared && declared !== fields
-        ? `${declared} sent as ${fields}`
-        : fields,
-  };
-}
-
 function extraOptionsUnverified(rtk: RtkRequest): string | undefined {
   const extraOptions = rtk.extraOptions && unwrap(rtk.extraOptions);
   const replacesRequest =
@@ -880,7 +855,7 @@ function substituteTag(
         (part) => (part.flags & UNDEFINED) !== 0,
       ));
   const unknownKeys =
-    params.kind === "type" ||
+    (params.kind === "type" && !isEmpty(params)) ||
     (params.kind === "object" &&
       !field &&
       params.indexes.some((index) =>

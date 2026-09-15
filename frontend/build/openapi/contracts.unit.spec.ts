@@ -1170,69 +1170,6 @@ describe("request comparison rules", () => {
       "unverified",
     ],
     [
-      "converted union member",
-      '{ kind: "a"; date: Date }',
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      'body: { kind: "a"; date: string } | { kind: "b"; count: number }',
-      "request.body",
-      "compatible",
-    ],
-    [
-      "mixed union members",
-      '{ kind: "a"; count: number }',
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      'body: { kind: "a"; date: string } | { kind: "b"; count: number }',
-      "request.body",
-      "mismatch",
-    ],
-    [
-      "unsupported conversion against a union",
-      "{ value: { toJSON(): { id: string } } }",
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      "body: { value: { id: string } } | { value: { name: string } }",
-      "request.body",
-      "unverified",
-    ],
-    [
-      "optional symbol",
-      "{ inner: { a?: string | symbol; b: number } }",
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      "body: { inner: { a?: string; b: number } }",
-      "request.body",
-      "compatible",
-    ],
-    [
-      "optional function",
-      "{ inner: { a?: string | (() => void); b: number } }",
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      "body: { inner: { a?: string; b: number } }",
-      "request.body",
-      "compatible",
-    ],
-    [
-      "JSON index signatures",
-      "{ inner: { a: Date; [key: string]: unknown } }",
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      "body: { inner: { a: string } }",
-      "request.body",
-      "unverified",
-    ],
-    [
-      "own toJSON",
-      "{ id: number; toJSON: () => { name: string } }",
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      "body: { id: number }",
-      "request.body",
-      "unverified",
-    ],
-    [
       "branded primitive",
       'string & { readonly __brand: "Id" }',
       '{ method: "POST", url: "/api/user", body: { id: arg } }',
@@ -1240,15 +1177,6 @@ describe("request comparison rules", () => {
       'body: { id: { length: number; __brand: "Id" } }',
       "request.body",
       "mismatch",
-    ],
-    [
-      "own getter",
-      "{ inner: { get a(): number } }",
-      '{ method: "POST", url: "/api/user", body: arg }',
-      "Post",
-      "body: { inner: { a: number } }",
-      "request.body",
-      "compatible",
     ],
   ])(
     "should handle %s without a false verdict",
@@ -1261,6 +1189,85 @@ describe("request comparison rules", () => {
       expect(resultFor(results, part)?.status).toBe(status);
     },
   );
+
+  it.each([
+    [
+      "should handle converted union member without a false verdict",
+      '{ kind: "a"; date: Date }',
+      '{ kind: "a"; date: string } | { kind: "b"; count: number }',
+      "compatible",
+    ],
+    [
+      "should handle mixed union members without a false verdict",
+      '{ kind: "a"; count: number }',
+      '{ kind: "a"; date: string } | { kind: "b"; count: number }',
+      "mismatch",
+    ],
+    [
+      "should handle unsupported conversion against a union without a false verdict",
+      "{ value: { toJSON(): { id: string } } }",
+      "{ value: { id: string } } | { value: { name: string } }",
+      "unverified",
+    ],
+    [
+      "should handle optional symbol without a false verdict",
+      "{ inner: { a?: string | symbol; b: number } }",
+      "{ inner: { a?: string; b: number } }",
+      "compatible",
+    ],
+    [
+      "should handle optional function without a false verdict",
+      "{ inner: { a?: string | (() => void); b: number } }",
+      "{ inner: { a?: string; b: number } }",
+      "compatible",
+    ],
+    [
+      "should handle JSON index signatures without a false verdict",
+      "{ inner: { a: Date; [key: string]: unknown } }",
+      "{ inner: { a: string } }",
+      "unverified",
+    ],
+    [
+      "should handle own toJSON without a false verdict",
+      "{ id: number; toJSON: () => { name: string } }",
+      "{ id: number }",
+      "unverified",
+    ],
+    [
+      "should handle own getter without a false verdict",
+      "{ inner: { get a(): number } }",
+      "{ inner: { a: number } }",
+      "compatible",
+    ],
+    [
+      "should accept a sent key the backend takes through an index signature",
+      "{ user: { name: string } }",
+      "{ user: { [key: string]: string } }",
+      "compatible",
+    ],
+    [
+      "should accept numeric keys through a string index signature, since JSON keys are text",
+      "{ collections: Record<number, boolean> }",
+      "{ collections: { [key: string]: boolean } | null }",
+      "compatible",
+    ],
+    [
+      "should accept an optional backend field the frontend does not send",
+      "{ name: string }",
+      "{ name: string; nickname?: string }",
+      "compatible",
+    ],
+  ])("%s", (_name, argument, backendBody, status) => {
+    const results = check({
+      frontend: `${frontend} type Args = ${argument};`,
+      backend: operation({ method: "Post", body: `body: ${backendBody}` }),
+      endpoint: request(
+        "Args",
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe(status);
+  });
 
   function operation({
     method = "Get",
@@ -1404,51 +1411,6 @@ describe("request comparison rules", () => {
         "$.user.nickname (endpoint.ts:11): frontend sends a field the backend type does not declare",
       ),
     });
-  });
-
-  it("should accept a sent key the backend takes through an index signature", () => {
-    const results = check({
-      frontend,
-      backend: operation({
-        method: "Post",
-        body: "body: { user: { [key: string]: string } }",
-      }),
-      endpoint: request(
-        "{ user: { name: string } }",
-        '(body) => ({ method: "POST", url: "/api/user", body })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
-  });
-
-  it("should accept numeric keys through a string index signature, since JSON keys are text", () => {
-    const results = check({
-      frontend,
-      backend: operation({
-        method: "Post",
-        body: "body: { collections: { [key: string]: boolean } | null }",
-      }),
-      endpoint: request(
-        "{ collections: Record<number, boolean> }",
-        '(body) => ({ method: "POST", url: "/api/user", body })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
-  });
-
-  it("should accept an optional backend field the frontend does not send", () => {
-    const results = check({
-      frontend,
-      backend: operation({
-        method: "Post",
-        body: "body: { name: string; nickname?: string }",
-      }),
-      endpoint: request(
-        "{ name: string }",
-        '(body) => ({ method: "POST", url: "/api/user", body })',
-      ),
-    });
-    expect(resultFor(results, "request.body")?.status).toBe("compatible");
   });
 
   it("should compare the text String gives for a URL tag with the backend path parameter", () => {
