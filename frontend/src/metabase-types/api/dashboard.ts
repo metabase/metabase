@@ -16,6 +16,7 @@ import type {
   ParameterValueOrArray,
   SingleSeries,
   Table,
+  TimelineEvent,
   UserId,
   UserInfo,
   VirtualCardDisplay,
@@ -162,6 +163,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   collection_authority_level?: CollectionAuthorityLevel;
   entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
+  timeline_events?: TimelineEvent[];
   justAdded?: boolean;
   created_at: string;
   updated_at: string;

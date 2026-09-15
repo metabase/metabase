@@ -89,6 +89,7 @@ const setup = ({
   series = getSeries(savedSettings),
   settings = getComputedSettingsForSeries(series),
   onTimelineEventsShown,
+  isDashboard = false,
 }: {
   savedSettings?: VisualizationSettings;
   timelineEvents?: TimelineEvent[];
@@ -97,6 +98,7 @@ const setup = ({
   series?: RawSeries;
   settings?: VisualizationProps["settings"];
   onTimelineEventsShown?: VisualizationProps["onTimelineEventsShown"];
+  isDashboard?: boolean;
 } = {}) => {
   setupTimelinesEndpoints(timelines);
   return renderHookWithProviders(
@@ -105,6 +107,7 @@ const setup = ({
         timelineEvents,
         timelineEventsVisibility,
         onTimelineEventsShown,
+        isDashboard,
         ...props,
       }),
     { initialProps: { series, settings } },
@@ -272,12 +275,67 @@ describe("useTimelineEvents", () => {
         jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true),
     ],
     ["the embedding SDK", () => mockIsEmbeddingSdk()],
-  ])("does not load events on %s", async (_surface, mockSurface) => {
-    await mockSurface();
+  ])(
+    "does not load events on standalone questions in %s",
+    async (_surface, mockSurface) => {
+      await mockSurface();
 
-    const { result } = setup();
+      const { result } = setup();
 
-    expect(result.current.timelineEvents).toEqual([]);
-    expect(getTimelineRequests()).toHaveLength(0);
+      expect(result.current.timelineEvents).toEqual([]);
+      expect(getTimelineRequests()).toHaveLength(0);
+    },
+  );
+
+  describe.each([
+    ["public dashboards", "isPublicEmbedding"],
+    ["static embedded dashboards", "isStaticEmbedding"],
+  ] as const)("%s", (_surface, configMethod) => {
+    beforeEach(() => {
+      jest.spyOn(embeddingConfig, configMethod).mockReturnValue(true);
+    });
+
+    it("shows the supplied events without requesting collection timelines", () => {
+      const { result } = setup({
+        isDashboard: true,
+        timelineEvents: [SHOWN_EVENT],
+      });
+
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
+      expect(getTimelineRequests()).toHaveLength(0);
+    });
+
+    it.each([undefined, []])(
+      "does not fetch additional events when the payload is %s",
+      (timelineEvents) => {
+        const { result } = setup({ isDashboard: true, timelineEvents });
+
+        expect(result.current.timelineEvents).toEqual([]);
+        expect(getTimelineRequests()).toHaveLength(0);
+      },
+    );
+  });
+
+  it("only shows saved events on an authenticated SDK dashboard", async () => {
+    await mockIsEmbeddingSdk();
+    const unrelatedTimeline = createMockTimeline({
+      id: 20,
+      events: [
+        createMockTimelineEvent({
+          id: 5,
+          timeline_id: 20,
+          timestamp: SHOWN_EVENT.timestamp,
+        }),
+      ],
+    });
+    const { result } = setup({
+      isDashboard: true,
+      timelines: [TIMELINE, unrelatedTimeline],
+    });
+
+    await waitFor(() => {
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
+    });
+    expect(getTimelineRequests()).toHaveLength(1);
   });
 });
