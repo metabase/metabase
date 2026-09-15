@@ -56,7 +56,7 @@ export function DateOffsetIntervalPicker({
   const offsetUnitOptions = getOffsetUnitOptions(value, availableUnits);
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(timeConfig, value);
-  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
+  const outOfBounds = isOutOfBounds(timeConfig, value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
