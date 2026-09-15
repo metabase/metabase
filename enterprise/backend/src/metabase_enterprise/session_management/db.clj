@@ -6,6 +6,7 @@
    [metabase-enterprise.session-management.schema :as sm.schema]
    [metabase.session.core :as session]
    [metabase.session.schema :as session.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -72,7 +73,7 @@
 
 (mu/defn- count-where :- ms/IntGreaterThanOrEqualToZero
   "How many `core_session` rows satisfy `where`."
-  [where :- :any]
+  [where :- ::h2x/honeysql-expr]
   (-> (t2/query (merge sm.query/session-list-from-and-joins
                        {:select [[[:count [:inline 1]] :count]]
                         :where  where}))

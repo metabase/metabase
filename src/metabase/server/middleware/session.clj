@@ -102,7 +102,10 @@
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
-(mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
+(mu/defn- current-user-info-for-session :- [:maybe [:merge
+                                                    ::request.schema/current-user-info
+                                                    [:map {:closed true}
+                                                     [:session-key-hash :string]]]]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired, plus
   `:session-key-hash`, the `key_hashed` value the row was matched on."
   [session-key     :- [:maybe :string]

@@ -96,6 +96,7 @@
    [:is-group-manager?       {:optional true} :boolean]
    [:user-locale             {:optional true} [:maybe :string]]
    [:embedding/auth-method   {:optional true} [:maybe :string]]
+   [:metabase/authed-session-key-hash {:optional true} [:maybe :string]]
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]
