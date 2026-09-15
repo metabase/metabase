@@ -255,6 +255,15 @@
               (is (:isError result))
               (is (str/includes? (-> result :content first :text) "agent:sql:run"))
               (is (zero? (t2/count :model/Card :name "From SQL Handle")))))
+          (testing "GHY-4543: the refusal is a scope denial at the registry, not an isError result, so the transport
+                    can answer it with a 403 step-up challenge for agent:sql:run"
+            (let [sid                    (str (random-uuid))
+                  {:keys [result error]} (registry/call-tool #{"agent:content:write"} sid "question_write"
+                                                             {:method "create" :name "From SQL Handle"
+                                                              :query_handle (mint! sid)})]
+              (is (nil? result))
+              (is (= "agent:sql:run" (get-in error [:insufficient-scope :required-scope])))
+              (is (zero? (t2/count :model/Card :name "From SQL Handle")))))
           (testing "with agent:sql:run it saves, and the native query round-trips"
             (let [sid    (str (random-uuid))
                   result (call-tool #{"agent:content:write" "agent:sql:run"} sid "question_write"

@@ -311,9 +311,14 @@
                                                             mcp-ui-client)
                                         response-text)
                                     "Insufficient scope"))))
-          (testing (str tool-name " can read the shell it points at")
-            (is (= :ok (:status (mcp.ui-resource/with-fallback-template
-                                  (v2.resources/read-resource uri only-this {})))))))))))
+          (testing (str tool-name " gets a credential in the shell it points at")
+            ;; Any token reads a shell, so `:ok` alone proves nothing: the scope is what earns the credential.
+            (let [credential (delay "test-ui-credential")
+                  result     (mcp.ui-resource/with-fallback-template
+                               (v2.resources/read-resource uri only-this {:ui-credential credential}))]
+              (is (= :ok (:status result)))
+              (is (realized? credential))
+              (is (str/includes? (-> result :contents first :text) "test-ui-credential")))))))))
 
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
 
@@ -327,7 +332,7 @@
         (is (contains? advertised scope) scope)))))
 
 (deftest resources-scope-gating-test
-  (testing "GHY-4543: resources/list lists every shell regardless of scope"
+  (testing "GHY-4543: resources/list lists every resource regardless of scope"
     (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
              v2.resources/fields-catalog-uri}
            (set (map :uri (:resources (v2.resources/list-resources)))))))
@@ -353,12 +358,21 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
+      (testing "GHY-4543: a scope covering the shell's scope earns the credential too: wildcards, and the unrestricted
+                sentinel a cookie session binds"
+        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"} #{:metabase.api.macros.scope/unrestricted}]]
+          (testing (pr-str token-scopes)
+            (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
+              (is (str/includes? text "test-ui-credential"))
+              (is (true? minted?))))))
       (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
                 challenge for it"
         (is (= {:status :scope-denied :required-scope "agent:resource:read"}
                (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:content:read"} {}))))
-      (testing "the fields catalog reads with agent:resource:read"
-        (is (= :ok (:status (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})))))
+      (testing "the fields catalog reads with agent:resource:read, and a data resource mints no credential"
+        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})]
+          (is (= :ok status))
+          (is (false? minted?))))
       (testing "GHY-4157: an unknown URI is not found"
         (is (= :not-found (:status (read-with "ui://metabase/nope.html" viz-scopes))))))))
 

@@ -860,6 +860,10 @@
              (is (= 200 (:status response)))
              (is (nil? (get-in response [:headers "WWW-Authenticate"])))
              (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent])))))
+         (testing "a denied call sent as a notification gets no reply, so it is a bare 202 with no challenge"
+           (let [response (post! 202 (dissoc denied :id))]
+             (is (= 202 (:status response)))
+             (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
          (testing "a batch keeps HTTP 200 with the denial in band, since one status cannot describe mixed results"
            (doseq [[label batch] {"denied call and a ping"     [denied (assoc (jsonrpc-request "ping") :id 2)]
                                   "a batch of one denied call" [denied]}]
@@ -1081,6 +1085,18 @@
               (is (zero? @minted)))
             (testing "a token without even agent:resource:read reads the shell too, and still mints none"
               (is (nil? (embedded-credential (shell-text #{"agent:content:read"}))))
+              (is (zero? @minted)))
+            (testing "a token holding every scope a read could need reads the fields catalog, and mints none: only a shell
+                      embeds a credential"
+              (do-with-bearer-token!
+               #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+               (fn [headers]
+                 (let [response ((bearer-session-post! headers)
+                                 200
+                                 (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri}))]
+                   (is (nil? (get-in response [:body :error])))
+                   (is (= [v2.resources/fields-catalog-uri]
+                          (map :uri (get-in response [:body :result :contents])))))))
               (is (zero? @minted)))
             (testing "a token holding agent:query:run still gets one embedded, minted once"
               (let [query-run (shell-text #{"agent:content:read" "agent:query:run"})]

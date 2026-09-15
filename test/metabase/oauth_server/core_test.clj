@@ -22,9 +22,9 @@
 
 (deftest mb-full-is-advertised-nowhere-test
   (testing "GHY-4226: `mb:full` grants full user-equivalent REST access, and advertising it put that
-            in front of every client reading discovery metadata. It is now absent from all three
-            advertised sets and from the default DCR grant, so no client is led toward it and none
-            can request it without having registered for it explicitly."
+            in front of every client reading discovery metadata. It is now absent from both advertised
+            sets, from the set the MCP resource accepts, and from the default DCR grant, so no client is
+            led toward it and none can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-advertised-scopes (mcp/mcp-canonical-path))) "mb:full")))
@@ -69,22 +69,23 @@
           (is (not (contains? (set @#'v2.api/default-ask-scopes) scope))))))))
 
 (deftest advertised-scopes-are-distinct-test
-  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414), so no scope may be
+  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414, RFC 9728), so no scope may be
             advertised twice.
 
-            Asserted on the sources rather than on the output. Every advertised set is built through
-            a `sorted-set`, which makes the output distinct by construction no matter what goes in --
-            so counting the result can never fail. What can go wrong is upstream: the same scope
-            declared in both `v2-surface-scopes` and a v1 resource scope list, which the sorted-set
-            silently swallows."
-    (doseq [path (mcp/mcp-endpoint-paths)]
-      (testing path
-        (let [scopes (oauth-server/mcp-resource-scopes path)]
-          (is (= (count (distinct scopes)) (count scopes))
-              (str "duplicate scopes: "
-                   (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))))))
-    (testing "the v2 surface literal has no duplicates of its own"
-      (is (= (count (distinct (mcp/v2-scopes))) (count (mcp/v2-scopes)))))))
+            GHY-4543: the protected-resource metadata advertises `mcp-resource-advertised-scopes`, a vector copied
+            from the `v2-baseline-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
+            set, `mcp-resource-scopes`, is built through a `sorted-set` and cannot repeat by construction; it is
+            checked too, alongside the literals both are built from, where a duplicate would be silently swallowed."
+    (let [duplicates (fn [scopes] (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))]
+      (doseq [path (mcp/mcp-endpoint-paths)]
+        (testing path
+          (doseq [[label scopes] {"advertised" (oauth-server/mcp-resource-advertised-scopes path)
+                                  "accepted"   (oauth-server/mcp-resource-scopes path)}]
+            (testing label
+              (is (empty? (duplicates scopes)))))))
+      (testing "the v2 surface and baseline literals have no duplicates of their own"
+        (is (empty? (duplicates (mcp/v2-scopes))))
+        (is (empty? (duplicates (mcp/v2-baseline-scopes))))))))
 
 (deftest rationalized-scopes-are-in-the-default-grant-test
   (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered
@@ -105,7 +106,7 @@
     (doseq [path (mcp/mcp-endpoint-paths)]
       (testing path
         (let [mcp (set (oauth-server/mcp-resource-scopes path))]
-          (testing "the rationalized scopes are advertised"
+          (testing "the rationalized scopes are accepted"
             (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
                            "agent:sql:run" "agent:delivery:write"]]
               (testing scope

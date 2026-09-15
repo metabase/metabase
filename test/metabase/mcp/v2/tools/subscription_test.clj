@@ -830,6 +830,14 @@
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     {:schedule_type "hourly"}}))))))
+        (testing "GHY-4543: the refusal is a scope denial at the registry, not an isError result, so the transport can
+                  answer it with a 403 step-up challenge for agent:query:run"
+          (let [{:keys [result error]} (call-tool! :crowberto write-only
+                                                   (wire {:method       "create"
+                                                          :dashboard_id dash-id
+                                                          :schedule     {:schedule_type "hourly"}}))]
+            (is (nil? result))
+            (is (= "agent:query:run" (get-in error [:insufficient-scope :required-scope])))))
         (testing "redirecting delivery with only the write scope is refused"
           (is (re-find #"agent:query:run"
                        (tool-error (call-tool! :crowberto write-only
