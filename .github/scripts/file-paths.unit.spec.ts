@@ -113,6 +113,8 @@ describe("file-paths.yaml", () => {
     "frontend/build/shared/rspack/css-config.js",
     "frontend/test/__support__/custom-viz-fixtures/calendar-heatmap/index.js",
     "patches/@loki+browser+0.35.0.patch",
+    "frontend/src/metabase/css/index.module.css",
+    "frontend/src/metabase/css/core/base.module.css",
     "resources/frontend_client/app/fonts/Lato/lato-v16-latin-regular.woff2",
     "resources/frontend_client/app/assets/img/no_results.svg",
     "frontend/src/metabase/ui/components/icons/Icon/icons/warning.svg",
@@ -124,6 +126,7 @@ describe("file-paths.yaml", () => {
 
   it.each([
     "frontend/src/metabase/ui/Button.stories.tsx",
+    "frontend/src/metabase/ui/components/feedback/Alert/Alert.module.css",
     "frontend/build/embedding-sdk/rspack.config.js",
   ])("allows a change to %s to narrow the Loki run", (file) => {
     expect(matches("frontend_loki_all", file)).toBe(true);

@@ -100,6 +100,8 @@ frontend_loki_infra: &frontend_loki_infra
   - "frontend/build/shared/**"
   - "frontend/test/__support__/**"
   - "patches/**"
+  # dependency-cruiser doesn't follow CSS @import, so global styles must run every story.
+  - "frontend/src/metabase/css/**/*.css"
   # Storybook serves resources/frontend_client as static files, and the stories bundle the app's SVGs.
   - "resources/frontend_client/**"
   - "frontend/**/*.svg"
