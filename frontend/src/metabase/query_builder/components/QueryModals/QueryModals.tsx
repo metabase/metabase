@@ -21,7 +21,7 @@ import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
-import { setArchivedQuestion } from "../../actions";
+import { type OnCreateOptions, setArchivedQuestion } from "../../actions";
 import { updateUrl } from "../../actions/url";
 import {
   getQuestionWithoutComposing,
@@ -30,8 +30,6 @@ import {
 import { ImpossibleToCreateModelModal } from "../ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "../NewDatasetModal";
 import { PreviewQueryModal } from "../view/PreviewQueryModal";
-
-type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
 interface QueryModalsProps {
   modal: QueryModalType;
@@ -268,6 +266,9 @@ export function QueryModals({
 
             const object = await onCreate(question, {
               dashboardTabId: formValues.dashboard_tab_id,
+              sourceCardId: underlyingQuestion.isSaved()
+                ? underlyingQuestion.id()
+                : undefined,
             });
 
             return object.card();

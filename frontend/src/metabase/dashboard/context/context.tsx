@@ -14,6 +14,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, noop } from "underscore";
 
 import { isAbortError } from "metabase/api/client";
+import { isEmbedding } from "metabase/embedding/config";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
 import { type NavigateFunction, navigate } from "metabase/router";
@@ -89,7 +90,7 @@ export type DashboardContextOwnProps = {
    * instead of being filtered out. Used by the SDK for internal navigation.
    */
   enableEntityNavigation?: boolean;
-  /** Whether charts may show timeline events and offer the Events menus */
+  /** Whether the dashboard offers Events menus and session visibility controls */
   withTimelineEvents?: boolean;
 };
 
@@ -203,7 +204,7 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
-    const { token } = useEmbeddingEntityContext();
+    const { uuid, token } = useEmbeddingEntityContext();
 
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
@@ -453,7 +454,12 @@ const DashboardContextProviderInner = forwardRef(
           clickActionMode,
           withFooter,
           enableEntityNavigation,
-          withTimelineEvents,
+          withTimelineEvents:
+            withTimelineEvents &&
+            !uuid &&
+            !token &&
+            !isGuestEmbed &&
+            !isEmbedding(),
 
           // redux selectors
           selectedTabId,

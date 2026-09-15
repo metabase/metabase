@@ -1,9 +1,10 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
 // brand (#509EE3) in getComputedStyle's normalized color format
 const HIGHLIGHTED_DOT_FILL = "rgb(80, 158, 227)";
@@ -784,6 +785,92 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("Last quarter").should("exist");
         cy.findByText("Last year").should("exist");
       });
+    });
+  });
+
+  describe("saved selections", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+    });
+
+    it("should keep changing the display after a selected timeline is deleted", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      }).then(({ timeline }) => {
+        H.createQuestion(
+          {
+            name: "Orders by month",
+            display: "table",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
+            visualization_settings: {
+              "timeline.selected_timeline_ids": [timeline.id],
+            },
+          },
+          { wrapId: true },
+        );
+        cy.request("DELETE", `/api/timeline/${timeline.id}`);
+      });
+
+      H.visitQuestion("@questionId");
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar().findByTestId("Line-button").click();
+      H.echartsContainer().findByText("Created At: Month").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@updateQuestion").its("response.statusCode").should("eq", 200);
+      cy.findByTestId("qb-header").button("Save").should("not.exist");
+    });
+
+    it("should duplicate a question whose selected timeline the user cannot access", () => {
+      cy.intercept("POST", "/api/card").as("cardCreate");
+      H.createCollection({ name: "Events" }).then(({ body: { id } }) => {
+        H.createTimelineWithEvents({
+          timeline: { name: "Releases", collection_id: id },
+          events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+        }).then(({ timeline }) => {
+          H.createQuestion(
+            {
+              name: "Orders by month",
+              display: "line",
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [
+                  ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+                ],
+              },
+              visualization_settings: {
+                "timeline.selected_timeline_ids": [timeline.id],
+              },
+            },
+            { wrapId: true },
+          );
+        });
+        cy.updateCollectionGraph({
+          [ALL_USERS_GROUP]: { [id]: "none" },
+          [COLLECTION_GROUP]: { [id]: "none" },
+          [DATA_GROUP]: { [id]: "none" },
+        });
+      });
+
+      cy.signInAsNormalUser();
+      H.visitQuestion("@questionId");
+      H.openQuestionActions();
+      H.popover().findByText("Duplicate").click();
+      H.modal().button("Duplicate").click();
+
+      cy.wait("@cardCreate").its("response.statusCode").should("eq", 200);
+      cy.findByTestId("qb-header-left-side")
+        .findByDisplayValue("Orders by month - Duplicate")
+        .should("be.visible");
     });
   });
 

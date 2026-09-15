@@ -41,7 +41,7 @@ export interface TimelineData {
 export interface TimelineEvent extends TimelineEventData {
   id: TimelineEventId;
   timeline_id: TimelineId;
-  creator: UserInfo;
+  creator?: UserInfo;
   created_at: string;
 }
 

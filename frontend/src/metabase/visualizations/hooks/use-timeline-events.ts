@@ -11,18 +11,26 @@ import {
   isTimelineEventsEnabled,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
-import type { VisualizationProps } from "metabase/visualizations/types";
-import { getTimeseriesXAxis, isTimelineEventInRange } from "metabase/viz-core";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import {
+  type ComputedVisualizationSettings,
+  getTimeseriesXAxis,
+  isTimelineEventInRange,
+} from "metabase/viz-core";
+import type {
+  Series,
+  Timeline,
+  TimelineEvent,
+  TimelineEventsVisibility,
+} from "metabase-types/api";
 
-type UseTimelineEventsProps = Pick<
-  VisualizationProps,
-  | "timelineEvents"
-  | "timelineEventsVisibility"
-  | "settings"
-  | "series"
-  | "onTimelineEventsShown"
->;
+interface UseTimelineEventsProps {
+  series: Series;
+  settings: ComputedVisualizationSettings;
+  timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
+  onTimelineEventsShown?: () => void;
+  isDashboard?: boolean;
+}
 
 interface UseTimelineEventsResult {
   timelineEvents: TimelineEvent[];
@@ -34,8 +42,10 @@ interface UseTimelineEventsResult {
 const EMPTY_EVENTS: TimelineEvent[] = [];
 const NO_TIMELINES: Timeline[] = [];
 
-const canLoadTimelineEvents = () =>
-  !isPublicEmbedding() && !isStaticEmbedding() && !isEmbeddingSdk();
+const canLoadTimelineEvents = (isDashboard: boolean) =>
+  !isPublicEmbedding() &&
+  !isStaticEmbedding() &&
+  (!isEmbeddingSdk() || isDashboard);
 
 export function useTimelineEvents({
   timelineEvents: explicitEvents,
@@ -43,6 +53,7 @@ export function useTimelineEvents({
   settings,
   series,
   onTimelineEventsShown,
+  isDashboard = false,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
   const isEnabled = isTimelineEventsEnabled(settings);
   const visibility = isEnabled
@@ -53,7 +64,10 @@ export function useTimelineEvents({
     (visibility?.["timeline.selected_timeline_ids"]?.length ?? 0) > 0;
 
   const shouldFetch =
-    isEnabled && !explicitEvents && hasSelection && canLoadTimelineEvents();
+    isEnabled &&
+    !explicitEvents &&
+    hasSelection &&
+    canLoadTimelineEvents(isDashboard);
 
   const {
     data: timelines = NO_TIMELINES,

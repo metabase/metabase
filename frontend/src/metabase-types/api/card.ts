@@ -627,6 +627,7 @@ export interface CreateCardRequest {
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
+  source_card_id?: CardId;
 }
 
 export interface CreateCardFromCsvRequest {

@@ -3013,6 +3013,90 @@
                (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                      {:name "Number of Blueberries Consumed Per Month"})))))))
 
+(deftest update-card-timeline-selection-permissions-test
+  (testing "PUT /api/card/:id requires read perms for the timelines selected in visualization settings"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "card/" (:id card))
+                                   {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})))
+      (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card (:id card))
+                          :timeline.selected_timeline_ids))))))
+
+(deftest copy-card-keeps-inaccessible-timeline-selection-test
+  (testing "POST /api/card/:id/copy keeps a timeline selection the user cannot read"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {:dataset_query          (mt/mbql-query venues)
+                                     :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-model-cleanup [:model/Card]
+        (is (= [(:id timeline)]
+               (get-in (mt/user-http-request :rasta :post 200 (format "card/%d/copy" (:id card)))
+                       [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest create-card-with-source-card-id-preserves-timeline-selection-test
+  (testing "POST /api/card with source_card_id treats the new card as a copy for timeline permission purposes"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Timeline timeline-2 {:collection_id (:id collection)}
+                   :model/Card source-card {:dataset_query          (mt/mbql-query venues)
+                                            :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-model-cleanup [:model/Card]
+        (testing "an identical selection is preserved without a fresh read check"
+          (let [card (mt/user-http-request :rasta :post 200 "card"
+                                           (assoc (card-with-name-and-query)
+                                                  :source_card_id (:id source-card)
+                                                  :visualization_settings (:visualization_settings source-card)))]
+            (is (= [(:id timeline)]
+                   (get-in card [:visualization_settings :timeline.selected_timeline_ids])))))
+        (testing "a selection that differs from the source card is still permission-checked"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :source_card_id (:id source-card)
+                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                       [(:id timeline) (:id timeline-2)]})))))
+        (testing "source_card_id must itself be readable"
+          (mt/with-temp [:model/Collection unreadable-collection {}
+                         :model/Card unreadable-card {:collection_id (:id unreadable-collection)}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) unreadable-collection)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "card"
+                                         (assoc (card-with-name-and-query)
+                                                :source_card_id (:id unreadable-card)))))))))))
+
+(deftest card-with-restricted-timeline-on-public-dashboard-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline timeline {:collection_id (:id restricted)}
+                   :model/Card source-card {:dataset_query          (mt/mbql-query venues)
+                                            :display                :line
+                                            :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                   :model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (mt/with-model-cleanup [:model/Card]
+        (testing "POST /api/card cannot copy the card into a public dashboard"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :display                "line"
+                                              :source_card_id         (:id source-card)
+                                              :dashboard_id           (:id dashboard)
+                                              :visualization_settings (:visualization_settings source-card))))))
+        (testing "PUT /api/card/:id cannot move the card into a public dashboard"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "card/" (:id source-card))
+                                       {:dashboard_id (:id dashboard)})))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card (:id source-card)))))
+        (testing "a user who can read the timeline can move the card into the public dashboard"
+          (is (= (:id dashboard)
+                 (:dashboard_id (mt/user-http-request :crowberto :put 200 (str "card/" (:id source-card))
+                                                      {:dashboard_id (:id dashboard)})))))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"

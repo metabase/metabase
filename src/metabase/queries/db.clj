@@ -62,6 +62,11 @@
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
 
+(mu/defn timelines
+  "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
+  [timeline-ids :- [:set ms/PositiveInt]]
+  (t2/select :model/Timeline :id [:in timeline-ids]))
+
 (mu/defn card-query-info
   "The query, type, result metadata, and schema of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
