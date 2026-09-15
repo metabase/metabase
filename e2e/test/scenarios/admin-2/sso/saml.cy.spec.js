@@ -74,9 +74,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    cy.findByRole("switch", { name: "User provisioning" })
-      .should("be.checked")
-      .click({ force: true });
+    cy.findByRole("switch", { name: "User provisioning" }).should("be.checked");
+    cy.contains("label", "User provisioning").click();
     cy.wait("@updateSetting");
     H.undoToast().findByText("Changes saved").should("exist");
     cy.findByRole("switch", { name: "User provisioning" }).should(
@@ -122,7 +121,6 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
         .and("not.contain", "nosql");
 
       cy.log("Everything comes back after a reload");
-      // the assertions retry until the reloaded page has rendered, so there is nothing to wait on
       cy.reload();
       groupMappingSwitch().should("be.checked");
       mappingRow("ops").should("contain", "readonly");
@@ -132,7 +130,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
       );
 
       cy.log("Turning group mapping off hides the mappings and sticks");
-      groupMappingSwitch().click({ force: true });
+      clickGroupMappingSwitch();
       cy.wait("@updateSetting")
         .its("request.body")
         .should("deep.equal", { value: false });
@@ -166,15 +164,18 @@ const newMappingButton = () =>
 
 const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
-// the switch saves on its own, so wait for that write before adding mappings
+// Mantine hides the switch input, so the click goes to the title label wired to it
+const clickGroupMappingSwitch = () =>
+  groupMappingSection().contains("label", "Group mapping").click();
+
 const turnGroupMappingOn = () => {
-  groupMappingSwitch().should("not.be.checked").click({ force: true });
+  groupMappingSwitch().should("not.be.checked");
+  clickGroupMappingSwitch();
   cy.wait("@updateSetting")
     .its("request.body")
     .should("deep.equal", { value: true });
 };
 
-// adding a mapping saves it right away, so wait for that write before moving on
 const addMapping = (name, groups) => {
   newMappingButton().click();
   cy.findByLabelText("SAML group name").type(name);

@@ -7,18 +7,10 @@ import {
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
-import { settingsApi } from "metabase/settings";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
-import { GROUP_SYNC_WRITE_DEBOUNCE_MS } from "./SamlGroupMappingSection";
 import { SettingsSAMLForm } from "./SettingsSAMLForm";
 
 const GROUPS = [
@@ -39,7 +31,7 @@ const setup = async (
   const settings = createMockSettings(settingValues ?? {});
   setupSettingsEndpoints(settingDefinitions);
   // the switches and the mappings read their values back after saving, so the properties mock has to remember writes
-  setupStatefulSettingsEndpoints(settings);
+  const settingsStore = setupStatefulSettingsEndpoints(settings);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
   fetchMock.put("path:/api/saml/settings", { status: 204 });
@@ -51,10 +43,14 @@ const setup = async (
     }),
   });
 
-  // the page renders its cards only once both settings queries have answered
   await screen.findByText("Identity provider (IdP) configuration");
-  return { store };
+  return { store, settingsStore };
 };
+
+const setupConfigured = (
+  settingValues?: Partial<EnterpriseSettings>,
+  settingDefinitions?: SettingDefinition[],
+) => setup({ "saml-configured": true, ...settingValues }, settingDefinitions);
 
 // Unjustified type cast. FIXME
 const fields = [
@@ -65,6 +61,7 @@ const fields = [
 
 const CONFIGURED = {
   "saml-enabled": true,
+  "saml-configured": true,
   "saml-identity-provider-uri": "https://example.test",
   "saml-identity-provider-certificate": fields[1].value,
   "saml-identity-provider-issuer": fields[2].value,
@@ -108,7 +105,6 @@ describe("SettingsSAMLForm", () => {
     expect(body["saml-identity-provider-uri"]).toBe(fields[0].value);
     expect(body["saml-identity-provider-certificate"]).toBe(fields[1].value);
     expect(body["saml-identity-provider-issuer"]).toBe(fields[2].value);
-    // the group mapping switch saves on its own, so the form leaves it alone
     expect(body).not.toHaveProperty("saml-group-sync");
   });
 
@@ -272,8 +268,19 @@ describe("SettingsSAMLForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("stays editable before the identity provider is set up", async () => {
+    it("stays disabled until the identity provider is set up", async () => {
       await setup();
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("switch", { name: "Group mapping" }),
+      ).toBeDisabled();
+    });
+
+    it("comes alive once the identity provider is set up", async () => {
+      await setup(CONFIGURED);
 
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
@@ -345,12 +352,21 @@ describe("SettingsSAMLForm", () => {
   });
 
   describe("group mapping", () => {
-    afterEach(() => {
-      jest.useRealTimers();
+    it("stays disabled until the identity provider is set up", async () => {
+      await setup({ "saml-group-sync": true });
+
+      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toBeChecked();
+      expect(
+        screen.queryByText("Manual group mappings"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("textbox", { name: /Group attribute name/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("keeps the mappings and the group attribute hidden while group mapping is off", async () => {
-      await setup();
+      await setupConfigured();
 
       expect(groupMappingSwitch()).not.toBeChecked();
       expect(
@@ -362,7 +378,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("turns group mapping on right away and reveals the mappings and the group attribute", async () => {
-      await setup();
+      await setupConfigured();
 
       await userEvent.click(groupMappingSwitch());
 
@@ -380,38 +396,49 @@ describe("SettingsSAMLForm", () => {
       expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
-    it("keeps the switch on while a refetch that started before its write lands", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      const { store } = await setup();
+    it("shows the new value and holds the switch while the write is in flight", async () => {
+      const { settingsStore } = await setupConfigured();
+      // the properties mock answers the write late, so the in-flight state can be seen
+      fetchMock.removeRoute("update-setting");
+      fetchMock.put(
+        new RegExp("/api/setting/(.+)"),
+        ({ url, options }) => {
+          const key = decodeURIComponent(url.split("/api/setting/")[1]);
+          settingsStore[key] = JSON.parse(String(options.body)).value;
+          return { status: 204 };
+        },
+        { name: "update-setting", delay: 200 },
+      );
 
-      await user.click(groupMappingSwitch());
-      expect(groupMappingSwitch()).toBeChecked();
+      await userEvent.click(groupMappingSwitch());
 
-      // a save elsewhere on the page refetches the settings before the debounced write goes out
-      act(() => {
-        store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
-      });
-      await act(async () => {
-        await jest.advanceTimersByTimeAsync(50);
-      });
-      expect(await findRequests("PUT")).toHaveLength(0);
       expect(groupMappingSwitch()).toBeChecked();
+      expect(groupMappingSwitch()).toBeDisabled();
       expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-
-      await act(async () => {
-        await jest.advanceTimersByTimeAsync(GROUP_SYNC_WRITE_DEBOUNCE_MS + 50);
-      });
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupMappingSwitch()).toBeChecked();
       expect(await findRequests("PUT")).toHaveLength(1);
-      await act(async () => {
-        await jest.advanceTimersByTimeAsync(50);
+    });
+
+    it("puts the old value back when the write fails", async () => {
+      await setupConfigured();
+      fetchMock.removeRoute("update-setting");
+      fetchMock.put(new RegExp("/api/setting/(.+)"), 500, {
+        name: "update-setting",
       });
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
+
+      await userEvent.click(groupMappingSwitch());
+
+      expect(await screen.findByText(/Error saving/)).toBeInTheDocument();
+      expect(groupMappingSwitch()).not.toBeChecked();
+      expect(groupMappingSwitch()).toBeEnabled();
+      expect(
+        screen.queryByText("Manual group mappings"),
+      ).not.toBeInTheDocument();
     });
 
     it("adds a mapping and writes it without touching the page form", async () => {
-      await setup({ "saml-group-sync": true });
+      await setupConfigured({ "saml-group-sync": true });
 
       await userEvent.click(screen.getByRole("button", { name: "New" }));
       expect(
@@ -444,7 +471,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("keeps group mapping on when the last mapping is deleted", async () => {
-      await setup({
+      await setupConfigured({
         "saml-group-sync": true,
         "saml-group-mappings": { engineering: [3] },
       });
@@ -469,7 +496,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("saves the group attribute with the page form", async () => {
-      await setup({ ...CONFIGURED, "saml-group-sync": true });
+      await setupConfigured({ ...CONFIGURED, "saml-group-sync": true });
 
       await userEvent.type(
         screen.getByRole("textbox", { name: /Group attribute name/ }),
@@ -488,7 +515,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("locks the mappings to the ones an env var sets", async () => {
-      await setup(
+      await setupConfigured(
         {
           "saml-group-sync": true,
           "saml-group-mappings": { engineering: [3] },
@@ -520,7 +547,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("locks the switch to the value an env var sets", async () => {
-      await setup({ "saml-group-sync": true }, [
+      await setupConfigured({ "saml-group-sync": true }, [
         {
           key: "saml-group-sync",
           is_env_setting: true,
