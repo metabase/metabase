@@ -918,6 +918,11 @@
   metabase.content-translation.db
   {:linters {:metabase/unmarked-sql-value {:level :warning}}}
 
+  ;; A partially ported module: its HugSQL reads have no value slots, but the Toucan writes it
+  ;; keeps (for models with before-insert/before-update hooks) still do.
+  metabase.sso.queries
+  {:linters {:metabase/unmarked-sql-value {:level :warning}}}
+
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
   metabase.lib.aggregation-test
