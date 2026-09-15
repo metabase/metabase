@@ -461,6 +461,20 @@ describe("parseConnectionUriRegex - SQL Server", () => {
       }),
     );
   });
+
+  it("should preserve equals signs in parameter values", () => {
+    const connectionString =
+      "jdbc:sqlserver://localhost:1433;password=abc=def;databaseName=mydb";
+    const result = parseConnectionUriRegex(connectionString, "sqlserver");
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          password: "abc=def",
+          databaseName: "mydb",
+        },
+      }),
+    );
+  });
 });
 
 describe("parseConnectionUriRegex - Starburst", () => {
