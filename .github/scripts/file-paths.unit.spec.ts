@@ -80,12 +80,15 @@ describe("file-paths.yaml", () => {
     ).toBe(true);
   });
 
-  it.each(["jest.config.js", "jest.base.conf.js", "jest.esm-packages.js"])(
-    "runs CI script tests when %s changes",
-    (path) => {
-      expect(matches("ci_scripts", path)).toBe(true);
-    },
-  );
+  it.each([
+    "jest.config.js",
+    "jest.base.conf.js",
+    "jest.esm-packages.js",
+    ".storybook/story-files.cjs",
+    ".github/workflows/loki.yml",
+  ])("runs CI script tests when %s changes", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
 
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
@@ -132,13 +135,5 @@ describe("file-paths.yaml", () => {
     "frontend/test/metabase/scenarios/Button.unit.spec.tsx",
   ])("does not run Loki stories when %s changes", (file) => {
     expect(matches("frontend_loki_all", file)).toBe(false);
-  });
-
-  it("runs CI-script tests when the story inventory changes", () => {
-    expect(matches("ci_scripts", ".storybook/story-files.cjs")).toBe(true);
-  });
-
-  it("runs CI-script tests when the Loki workflow changes", () => {
-    expect(matches("ci_scripts", ".github/workflows/loki.yml")).toBe(true);
   });
 });
