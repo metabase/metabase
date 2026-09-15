@@ -78,12 +78,19 @@ jobs:
           path: ./target/uberjar/metabase.jar
           retention-days: 30
 
+  # Two runners, taking alternate commits. Waiting for the paint to settle puts
+  # the whole list past one job's ceiling, and alternating rather than splitting
+  # by date keeps any difference between the two runners off the time axis.
   backfill:
     needs: [build]
     # A commit whose build failed has no jar, and the loop skips it with a warning.
     if: ${{ !cancelled() && github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 350
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        half: [0, 1]
     env:
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
@@ -180,7 +187,7 @@ jobs:
               echo "::warning::Could not measure ${sha}"
             fi
             echo "::endgroup::"
-          done < .github/backfill-load-times-commits.tsv
+          done < <(awk -v half=${{ matrix.half }} 'NR % 2 == half' .github/backfill-load-times-commits.tsv)
 
           echo "Measured ${measured}, failed ${failed}"
           [ "$measured" -gt 0 ]
@@ -188,6 +195,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: bundle-load-times-backfill
+          name: bundle-load-times-backfill-${{ matrix.half }}
           path: artifacts/
           retention-days: 30

@@ -60,6 +60,11 @@ interface Run {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Polls of 150ms the largest paint must hold still before the page is drawn. */
+const STILL_POLLS = 5;
+/** Ceiling on that wait, so a page that never settles still reports. */
+const SETTLE_ATTEMPTS = 60;
+
 // Cleared by the first load that shows the build records no performance
 // marks, so the rest of the series skips waiting for them.
 let buildRecordsMarks = true;
@@ -253,24 +258,33 @@ async function loadOnce() {
     await sleep(150);
   }
 
-  // The marks land after the entry scripts, `mb:page-ready` only on a route that
-  // records it, and the largest paint later still. Wait a bounded while rather
-  // than missing them.
+  // Wait for the page to finish drawing, and for the marks when the build
+  // records them.
   //
-  // They must not gate the reading itself. A jar built before the marks existed
-  // never fires either one, and waiting on them there would turn each load into
-  // a 45s timeout and then report no reading at all. One load settles it for the
-  // whole series, so the rest do not pay the wait again.
-  for (
-    let attempt = 0;
-    buildRecordsMarks &&
-    metrics &&
-    (!metrics.pageReady || !metrics.largestContentfulPaint) &&
-    attempt < 40;
-    attempt++
-  ) {
+  // The largest paint is the reading every build produces. A jar built before
+  // the marks existed fires neither `mb:app-mounted` nor `mb:page-ready`, so
+  // without this it reports only DOMContentLoaded, which stops before a lazily
+  // loaded route has drawn anything. The browser revises the largest paint as
+  // the page fills in, so the page has drawn once it stops moving.
+  //
+  // None of it gates the reading itself: the loop gives up on its own and the
+  // run still reports what it has.
+  let lastPaint = -1;
+  let stillFor = 0;
+  for (let attempt = 0; metrics && attempt < SETTLE_ATTEMPTS; attempt++) {
+    const paintSettled = metrics.largestContentfulPaint > 0 && stillFor >= STILL_POLLS;
+    const marksLanded = !buildRecordsMarks || metrics.pageReady > 0;
+    if (paintSettled && marksLanded) {
+      break;
+    }
     await sleep(150);
     metrics = (await read()) || metrics;
+    if (metrics.largestContentfulPaint === lastPaint) {
+      stillFor += 1;
+    } else {
+      lastPaint = metrics.largestContentfulPaint;
+      stillFor = 0;
+    }
   }
   if (metrics && !metrics.appMounted) {
     buildRecordsMarks = false;
