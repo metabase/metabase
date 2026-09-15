@@ -134,6 +134,8 @@
                                   "String.prototype.slice = function () { return this + '' };"
                                   "globalThis.String = () => huge;"
                                   "globalThis.Error = function () { return {message: huge} };"
+                                  "Error.prototype.name = huge;"
+                                  "Object.defineProperty(Error.prototype, 'message', {get() { return huge }});"
                                   "globalThis.eval = () => huge;"
                                   "globalThis.MetabaseStaticViz = { get render() { throw huge } };"
                                   "try { delete globalThis." @#'graal/guard-global "; } catch (_) {}"

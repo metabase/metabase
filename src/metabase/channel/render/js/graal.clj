@@ -88,16 +88,20 @@
   result only if it is a string of at most `max` characters — or, with a negative `max`, discards the result and
   returns `undefined`. `evalScript(source)` evaluates `source` as a classic script (indirect `eval`, so top-level
   declarations land on the global object) and discards its completion value. Anything either throws — a getter,
-  the callee, a validation failure — is rethrown as a fresh error whose message is truncated to
-  [[max-error-chars]], so no unbounded string ever crosses to the host. `typeof` and a string primitive's own
+  the callee, a validation failure — is rethrown as a fresh error with an own, fixed `name` and a message truncated
+  to [[max-error-chars]], so no unbounded string ever crosses to the host. `typeof` and a string primitive's own
   `length` don't consult anything guest code can patch."
   (str "(() => {"
-       "  const ErrorCtor = Error, StringCtor = String, evalFn = eval;"
+       "  const ErrorCtor = Error, StringCtor = String, evalFn = eval, defineProperty = Object.defineProperty;"
        "  const slice = Function.prototype.call.bind(String.prototype.slice);"
        "  const bounded = (e) => {"
        "    let message = 'guest error';"
        "    try { message = StringCtor(e?.message ?? e); } catch (_) {}"
-       "    return new ErrorCtor(slice(message, 0, " max-error-chars "));"
+       "    const error = new ErrorCtor(slice(message, 0, " max-error-chars "));"
+       ;; the host-side message is `${name}: ${message}`, and `name` would otherwise be inherited from the mutable
+       ;; `Error.prototype`; `message` is already an own data property, which shadows a prototype getter
+       "    defineProperty(error, 'name', { value: 'Error', writable: false, configurable: false, enumerable: false });"
+       "    return error;"
        "  };"
        "  const call = (name, max, ...args) => {"
        "    let s;"
