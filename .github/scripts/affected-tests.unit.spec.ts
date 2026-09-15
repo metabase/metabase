@@ -28,6 +28,7 @@ const baseInput = {
   rules: RULES,
   loadFileDependencies: () => null,
   testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
+  lokiPreviewFile: ".storybook/preview.tsx",
   e2eSpecFiles: null,
   unitInfraTouched: false,
   lokiInfraTouched: false,
@@ -41,7 +42,10 @@ const baseInput = {
 
 describe("createTestPlan", () => {
   it("runs only specs in affected modules (rules graph)", () => {
-    const plan = createTestPlan({ ...baseInput, changedFiles: ["src/foo/x.ts"] });
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+    });
 
     expect(plan.stats.fe_modules_changed).toBe(1);
     expect(plan.stats.fe_modules_affected_rules).toBe(1);
@@ -97,8 +101,57 @@ describe("createTestPlan", () => {
     expect(plan.stats.loki_stories_to_run_rules).toBe(0);
   });
 
+  // The preview imports the theme, which imports the colors.
+  const PREVIEW_DEPS = [
+    { source: ".storybook/preview.tsx", dependencies: ["src/utils/theme.ts"] },
+    { source: "src/utils/theme.ts", dependencies: ["src/utils/colors.ts"] },
+    { source: "src/foo/foo.tsx", dependencies: ["src/foo/x.ts"] },
+  ];
+
+  it("forces a full Loki run when the Storybook preview imports a changed file", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/utils/colors.ts"],
+      loadFileDependencies: () => PREVIEW_DEPS,
+      e2eSpecFiles: { "e2e/test/scenarios/a.cy.spec.ts": ["src/bar/b.ts"] },
+    });
+
+    expect(plan.stats.loki_preview_touched).toBe(true);
+    expect(plan.stats.loki_stories_to_run_rules).toBe(LOKI_FILES.length);
+    expect(plan.loki_stories_to_run).toEqual(LOKI_FILES);
+    // Unit and e2e still narrow to what the usage graph reaches from the change.
+    expect(plan.fe_unit_specs_to_run).toEqual(["src/utils/utils.unit.spec.ts"]);
+    expect(plan.e2e_specs_to_run).toEqual([]);
+  });
+
+  it("narrows Loki when the Storybook preview does not import the changed file", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+      loadFileDependencies: () => PREVIEW_DEPS,
+    });
+
+    expect(plan.stats.loki_preview_touched).toBe(false);
+    expect(plan.loki_stories_to_run).toEqual(["src/foo/Foo.stories.tsx"]);
+  });
+
+  it("does not check the Storybook preview's imports without the usage graph", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/utils/colors.ts"],
+      loadFileDependencies: () => null,
+    });
+
+    expect(plan.stats.loki_preview_touched).toBe(false);
+    // The rules graph lets every feature import lib/utils, so it runs both stories anyway.
+    expect(plan.loki_stories_to_run).toEqual(LOKI_FILES);
+  });
+
   it("runs the full e2e suite when no coverage manifest is available", () => {
-    const plan = createTestPlan({ ...baseInput, changedFiles: ["src/foo/x.ts"] });
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+    });
 
     expect(plan.stats.e2e_specs_to_run_rules).toBe(E2E_FILES.length);
     expect(plan.stats.e2e_specs_to_run_usage).toBe(E2E_FILES.length);
