@@ -79,177 +79,51 @@
   [:enum :get :post :put :delete :patch])
 
 (mr/def ::parameter.type
-  "Before [[metabase.api.macros.defendpoint.open-api/fix-json-schema]] runs, `malli.json-schema/transform` emits
-  `:type` as a plain JSON Schema string; after, it's a keyword."
-  [:enum "string" "number" "integer" "boolean" "null" "object" "array"
-   :string :number :integer :boolean :null :object :array])
+  (ms/enum-decode-keyword [:string :number :integer :boolean :null :object :array]))
 
 (mr/def ::parameter.in
   [:enum :query :header :path :cookie])
 
-(mr/def ::parameter.schema.common
-  [:map {:closed true}
-   [:default     {:optional true} ::request.schema/json-value]
-   [:description {:optional true} :string]
-   [:optional    {:optional true} :boolean]])
-
-(mr/def ::parameter.schema.typed.common
-  [:merge
-   ::parameter.schema.common
-   [:map {:closed true}
-    [:type ::parameter.type]
-    ;; TODO -- I don't think `:null` can have `:enum`
-    [:enum {:optional true} [:sequential ::request.schema/json-value]]
-    [:definitions {:optional true} [:map-of :string [:ref ::parameter.schema]]]]])
-
-(mr/def ::parameter.schema.string
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type [:enum "string" :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid" :date-time "date-time"]]
-    [:minLength {:optional true} integer?]
-    [:maxLength {:optional true} integer?]
-    [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
-
-(mr/def ::parameter.schema.number
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type [:enum "number" :number]]
-    [:minimum {:optional true} number?]
-    [:maximum {:optional true} number?]]])
-
-(mr/def ::parameter.schema.integer
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type [:enum "integer" :integer]]
-    [:minimum {:optional true} integer?]
-    [:maximum {:optional true} integer?]]])
-
-(mr/def ::parameter.schema.boolean
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type [:enum "boolean" :boolean]]]])
-
-(mr/def ::parameter.schema.null
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type [:enum "null" :null]]]])
-
-(mr/def ::parameter.schema.object
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type                 [:enum "object" :object]]
-    [:properties           {:optional true} [:map-of :string [:ref ::parameter.schema]]]
-    [:additionalProperties {:optional true} [:multi
-                                             {:dispatch boolean?}
-                                             [true  [:= false]]
-                                             [false [:ref ::parameter.schema]]]]
-    [:required             {:optional true} [:sequential :string]]
-    [:definitions          {:optional true} [:map-of :string [:ref ::parameter.schema]]]]])
-
-(mr/def ::parameter.schema.array
-  [:merge
-   ::parameter.schema.typed.common
-   [:map {:closed true}
-    [:type        [:enum "array" :array]]
-    [:items           {:optional true} [:multi
-                                        {:dispatch map?}
-                                        [true [:ref ::parameter.schema]]
-                                        ;; for a tuple. I don't think this is correct, I think you're supposed to use `prefixItems` -- see
-                                        ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
-                                        [false [:sequential [:ref ::parameter.schema]]]]]
-    [:uniqueItems     {:optional true} :boolean]
-    [:additionalItems {:optional true} :boolean] ; for tuples
-    [:minItems        {:optional true} integer?]
-    [:maxItems        {:optional true} integer?]]])
-
-(mr/def ::parameter.schema.typed
-  [:multi
-   {:dispatch (comp keyword :type)}
-   [:string  ::parameter.schema.string]
-   [:number  ::parameter.schema.number]
-   [:integer ::parameter.schema.integer]
-   [:boolean ::parameter.schema.boolean]
-   [:null    ::parameter.schema.null]
-   [:object  ::parameter.schema.object]
-   [:array   ::parameter.schema.array]])
-
-(mr/def ::parameter.schema.ref
-  [:merge
-   ::parameter.schema.common
-   [:map {:closed true}
-    [:$ref [:re
-            {:description "string starting with '#/components/schemas/'"}
-            #"^#/components/schemas/[^/]+$"]]
-    [:definitions {:optional true} [:map-of :string [:ref ::parameter.schema]]]]])
-
-(mr/def ::parameter.schema.or
-  "Not sure what the difference is between `:oneOf` and `:anyOf` but they seem to both mean 'or'."
-  [:multi
-   {:dispatch (fn [x]
-                (if (contains? x :anyOf)
-                  :anyOf
-                  :oneOf))}
-   [:anyOf
-    [:merge
-     ::parameter.schema.common
-     [:map {:closed true}
-      [:anyOf [:sequential [:ref ::parameter.schema]]]]]]
-   [:oneOf
-    [:merge
-     ::parameter.schema.common
-     [:map {:closed true}
-      [:oneOf [:sequential [:ref ::parameter.schema]]]]]]])
-
-(mr/def ::parameter.schema.and
-  [:merge
-   ::parameter.schema.common
-   [:map {:closed true}
-    [:allOf [:sequential [:ref ::parameter.schema]]]]])
-
-(mr/def ::parameter.schema.const
-  [:merge
-   ::parameter.schema.common
-   [:map {:closed true}
-    [:const ::request.schema/json-value]]])
-
-(mr/def ::parameter.schema.untyped-enum
-  [:merge
-   ::parameter.schema.common
-   [:map {:closed true}
-    [:enum [:sequential ::request.schema/json-value]]]])
-
-(mr/def ::parameter.schema.empty
-  "These are mostly the result of `:fn` schemas which get translated to empty maps."
-  ::parameter.schema.common)
-
 (mr/def ::parameter.schema
-  [:multi
-   {:dispatch (fn [x]
-                (cond
-                  (not (map? x))       :invalid
-                  (:type x)            :typed
-                  (contains? x :$ref)  :ref
-                  (contains? x :oneOf) :or
-                  (contains? x :anyOf) :or
-                  (contains? x :allOf) :and
-                  (contains? x :const) :const
-                  (:enum x)            :untyped-enum
-                  :else                :empty))}
-   [:invalid      [:map {:closed true}]]
-   [:typed        ::parameter.schema.typed]
-   [:ref          ::parameter.schema.ref]
-   [:or           ::parameter.schema.or]
-   [:and          ::parameter.schema.and]
-   [:const        ::parameter.schema.const]
-   [:untyped-enum ::parameter.schema.untyped-enum]
-   [:empty        ::parameter.schema.empty]])
+  "A JSON Schema node as [[metabase.api.macros.defendpoint.open-api]] builds it: any combination of JSON Schema keywords."
+  [:map {:closed true}
+   [:type                 {:optional true} ::parameter.type]
+   [:$ref                 {:optional true} [:re
+                                            {:description "string starting with '#/components/schemas/'"}
+                                            #"^#/components/schemas/[^/]+$"]]
+   [:description          {:optional true} :string]
+   [:title                {:optional true} :string]
+   [:optional             {:optional true} :boolean]
+   [:default              {:optional true} [:or :keyword ms/RawJSON]]
+   [:examples             {:optional true} [:sequential ms/RawJSON]]
+   [:nullable             {:optional true} :boolean]
+   [:deprecated           {:optional true} :boolean]
+   [:const                {:optional true} [:or :keyword ms/RawJSON]]
+   [:enum                 {:optional true} [:sequential [:or :keyword ms/RawJSON]]]
+   [:format               {:optional true} (ms/enum-decode-keyword [:binary :byte :uuid :date-time :date :time :email :uri])]
+   [:pattern              {:optional true} [:or :string (ms/InstanceOfClass java.util.regex.Pattern)]]
+   [:minLength            {:optional true} integer?]
+   [:maxLength            {:optional true} integer?]
+   [:minimum              {:optional true} number?]
+   [:maximum              {:optional true} number?]
+   [:exclusiveMinimum     {:optional true} [:or number? :boolean]]
+   [:exclusiveMaximum     {:optional true} [:or number? :boolean]]
+   [:multipleOf           {:optional true} number?]
+   [:properties           {:optional true} [:map-of :string [:ref ::parameter.schema]]]
+   [:required             {:optional true} [:sequential :string]]
+   [:additionalProperties {:optional true} [:or :boolean [:ref ::parameter.schema]]]
+   [:minProperties        {:optional true} integer?]
+   [:maxProperties        {:optional true} integer?]
+   [:items                {:optional true} [:or :boolean [:ref ::parameter.schema] [:sequential [:ref ::parameter.schema]]]]
+   [:prefixItems          {:optional true} [:sequential [:ref ::parameter.schema]]]
+   [:additionalItems      {:optional true} :boolean]
+   [:uniqueItems          {:optional true} :boolean]
+   [:minItems             {:optional true} integer?]
+   [:maxItems             {:optional true} integer?]
+   [:oneOf                {:optional true} [:sequential [:ref ::parameter.schema]]]
+   [:anyOf                {:optional true} [:sequential [:ref ::parameter.schema]]]
+   [:allOf                {:optional true} [:sequential [:ref ::parameter.schema]]]
+   [:definitions          {:optional true} [:map-of :string [:ref ::parameter.schema]]]])
 
 (mr/def ::parameter
   "https://swagger.io/specification/#parameter-object"

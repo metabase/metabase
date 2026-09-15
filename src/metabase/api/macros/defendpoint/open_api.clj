@@ -50,8 +50,8 @@
            (str/replace #"[{}]" "")
            (str/replace #"/" "-"))))
 
-(mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
-  [schema :- :metabase.api.open-api/parameter.schema.object]
+(mu/defn- merge-required :- :metabase.api.open-api/parameter.schema
+  [schema :- :metabase.api.open-api/parameter.schema]
   (let [optional? (set (keep (fn [[k v]] (when (or (:optional v) (contains? v :default)) k))
                              (:properties schema)))]
     (-> schema
@@ -142,6 +142,7 @@
     schema
     (cond-> schema
       (:type schema)                 (update :type keyword)
+      (:format schema)               (update :format keyword)
       (:description schema)          (update :description str)
       (:properties schema)           (update :properties (fn [props]
                                                            (into {}
@@ -156,6 +157,7 @@
                                                       (if (sequential? items)
                                                         (mapv normalize-raw-json-schema items)
                                                         (normalize-raw-json-schema items))))
+      (:prefixItems schema)          (update :prefixItems (partial mapv normalize-raw-json-schema))
       (map? (:additionalProperties schema)) (update :additionalProperties normalize-raw-json-schema)
       (:oneOf schema)                 (update :oneOf (partial mapv normalize-raw-json-schema))
       (:anyOf schema)                 (update :anyOf (partial mapv normalize-raw-json-schema))

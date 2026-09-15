@@ -835,7 +835,7 @@
    [:multipart   {:optional true} [:or :boolean [:map {:closed true}
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
-   [:deprecated  {:optional true} :boolean]
+   [:deprecated  {:optional true} [:or :boolean :string]]
    [:tool        {:optional true} [:map {:closed true}
                                    [:name         :string]
                                    [:title        {:optional true} :string]
