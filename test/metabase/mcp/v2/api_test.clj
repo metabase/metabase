@@ -815,6 +815,20 @@
 (def ^:private metadata-url
   "http://localhost:3000/.well-known/oauth-protected-resource")
 
+(def ^:private unticked-note
+  "What every `insufficient_scope` `error_description` ends with."
+  ". On the consent screen this permission starts unticked; the user must tick it.")
+
+(deftest ^:parallel step-up-description-test
+  (testing "GHY-4555: a step-up opens a consent screen where the missing permission is unticked, so a client that shows
+            the error_description tells the user to tick it; the text stays inside RFC 6750's error_description
+            characters (printable ASCII without quote or backslash)"
+    (is (= (str "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
+                unticked-note)
+           (#'v2.api/step-up-description
+            "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)")))
+    (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" unticked-note))))
+
 (deftest scope-denial-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a scope denial must be a real HTTP 403 carrying an `insufficient_scope` WWW-Authenticate
             challenge (MCP authorization spec, runtime insufficient scope). Claude Code only records a step-up
@@ -832,7 +846,7 @@
                          "scope=\"agent:content:read agent:sql:run\", "
                          "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                          "error_description=\"execute_sql requires agent:sql:run "
-                         "(Write and run its own raw SQL on your connected databases)\"")
+                         "(Write and run its own raw SQL on your connected databases)" unticked-note "\"")
                     (get-in response [:headers "WWW-Authenticate"]))
                  "scope is the held v2 scopes plus the required one; the legacy non-v2 scope is not echoed")
              (testing "the body is still the JSON-RPC error, for clients that read it"
@@ -885,7 +899,7 @@
                        "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
                        "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                        "error_description=\"alert_write requires agent:query:run "
-                       "(Run queries against your connected databases and see the results)\"")
+                       "(Run queries against your connected databases and see the results)" unticked-note "\"")
                   (get-in response [:headers "WWW-Authenticate"])))
            (is (= -32600 (get-in response [:body :error :code])))
            (is (re-find #"requires the agent:query:run scope" (get-in response [:body :error :message])))
@@ -950,7 +964,7 @@
                            "scope=\"agent:content:read agent:query:run agent:sql:run agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"execute_sql requires agent:sql:run "
-                           "(Write and run its own raw SQL on your connected databases)\"")
+                           "(Write and run its own raw SQL on your connected databases)" unticked-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
@@ -971,7 +985,7 @@
                            "scope=\"agent:content:read agent:resource:read\", "
                            "resource_metadata=\"" metadata-url "/api/metabase-mcp\", "
                            "error_description=\"catalog://metabase/fields requires agent:resource:read "
-                           "(View resources)\"")
+                           "(View resources)" unticked-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))
                (testing "the body is the JSON-RPC error, with no transport-internal marker"
                  (is (= #{:jsonrpc :id :error} (set (keys (:body response)))))

@@ -54,6 +54,13 @@
     (into (filterv wanted surface-scopes)
           (sort (distinct (remove (set surface-scopes) required))))))
 
+(defn- step-up-description
+  "The `insufficient_scope` challenge's `error_description`: `description`, which names the missing permission, then a
+   note that the consent screen shows it unticked."
+  [description]
+  ;; Printable ASCII without `\"` or `\\`: the characters RFC 6750 allows in `error_description`.
+  (str description ". On the consent screen this permission starts unticked; the user must tick it."))
+
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
         arguments        (or (:arguments params) {})
@@ -75,7 +82,7 @@
                             (step-up-scopes mcp.paths/v2-surface-scopes
                                             token-scopes
                                             [(:required-scope insufficient-scope)])
-                            (:description insufficient-scope)))
+                            (step-up-description (:description insufficient-scope))))
       (transport/jsonrpc-response id result))))
 
 (defn- handle-resources-list [id _params]
@@ -92,9 +99,10 @@
                                                (str "your token holds " (str/join ", " held) ".")
                                                "your token holds no scopes.")))
      (step-up-scopes mcp.paths/v2-surface-scopes token-scopes [required-scope])
-     (str uri " requires " required-scope
-          (when-let [label (registry/english-scope-label required-scope)]
-            (str " (" label ")"))))))
+     (step-up-description
+      (str uri " requires " required-scope
+           (when-let [label (registry/english-scope-label required-scope)]
+             (str " (" label ")")))))))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
