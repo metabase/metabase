@@ -1495,18 +1495,12 @@
   :hierarchy #'hierarchy)
 
 (defmulti query-on-connection
-  "Runs the `[sql params]` query on a connection from [[do-with-test-connection]] and returns at most `max-rows` of
-  its rows as vectors."
+  "`{:rows :columns}` for the `[sql params]` `query` on a connection from [[do-with-test-connection]]:
+  at most `max-rows` rows as vectors, and one `{:name :database_type}` per column, in order.
+
+  Names and types are the engine's own, after whatever folding it applies to unquoted identifiers,
+  and are reported whether or not any row comes back."
   {:added "0.64.0", :arglists '([driver conn query {:keys [max-rows]}])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti columns-on-connection
-  "The column labels of the `[sql params]` `query`, in order, without fetching any rows.
-
-  The labels are the engine's own, after whatever folding it applies to unquoted identifiers — not
-  the spellings in the query text."
-  {:added "0.64.0", :arglists '([driver conn query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

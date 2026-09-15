@@ -1346,11 +1346,15 @@
   [_driver {:keys [client session-id]} query {:keys [max-rows]}]
   (let [^TableResult result (.getQueryResults (run-session-job! client session-id query)
                                               (u/varargs BigQuery$QueryResultsOption))]
-    (into []
-          (comp (map (fn [^FieldValueList row]
-                       (perf/mapv #(.getValue ^FieldValue %) row)))
-                (if max-rows (take max-rows) identity))
-          (.iterateAll result))))
+    {:columns (perf/mapv (fn [^Field field]
+                           {:name          (.getName field)
+                            :database_type (.. field getType name)})
+                         (.getFields ^Schema (.getSchema result)))
+     :rows    (into []
+                    (comp (map (fn [^FieldValueList row]
+                                 (perf/mapv #(.getValue ^FieldValue %) row)))
+                          (if max-rows (take max-rows) identity))
+                    (.iterateAll result))}))
 
 (defmethod driver/compile-create-temp-table :bigquery-cloud-sdk
   [_driver {:keys [table query]}]

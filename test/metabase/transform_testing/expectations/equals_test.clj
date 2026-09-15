@@ -28,16 +28,39 @@
                                        :columns columns
                                        :rows    rows}]))))
 
+(def ^:private comparison-columns
+  "The comparison probe's own column metadata: the resolved output columns, then the delta. The
+  spellings are the warehouse's, which is the point — a report names columns as the author did."
+  [{:name "ID" :database_type "INTEGER"}
+   {:name "NAME" :database_type "CHARACTER VARYING"}
+   {:name "__mb_delta" :database_type "BIGINT"}])
+
+(def ^:private reported-columns
+  "What `interpret` should report for [[id+name]]: the author's names, the warehouse's types."
+  [{:name "id" :database_type "INTEGER"}
+   {:name "name" :database_type "CHARACTER VARYING"}])
+
+(defn- probe-results
+  "Probe results as the runner delivers them: each probe's rows alongside its own column metadata."
+  ([comparison] (probe-results comparison [[1]]))
+  ([comparison actual-count] (probe-results comparison actual-count comparison-columns))
+  ([comparison actual-count columns]
+   (cond-> {:comparison {:rows comparison :columns columns}}
+     actual-count (assoc :actual-count {:rows    actual-count
+                                        :columns [{:name "__mb_count" :database_type "BIGINT"}]}))))
+
 (defn- interpret-comparison
   "`interpret` over a synthetic comparison probe: each row is the declared columns followed by the
   signed multiplicity."
   [comparison]
   (expectations/interpret (equals-rows id+name [{"id" 1 "name" "abc"}])
-                          {:comparison comparison :actual-count [[1]]}))
+                          (probe-results comparison)))
 
 (defn- resolve-cols
+  "`resolve-columns` over `output-columns`, written as bare names."
   [columns output-columns]
-  (expectations.equals/resolve-columns (equals-rows "cols" columns []) output-columns))
+  (expectations.equals/resolve-columns (equals-rows "cols" columns [])
+                                       (mapv #(array-map :name % :database_type "INTEGER") output-columns)))
 
 (defn- caught
   "The `ExceptionInfo` thrown by `f`."
@@ -55,6 +78,7 @@
     (is (= {:name            "output"
             :type            :equals
             :status          :passed
+            :columns         reported-columns
             :row-counts      {:actual 1 :expected 1}
             :extra-rows      []
             :missing-rows    []
@@ -66,13 +90,13 @@
   (let [two-rows [{"id" 1 "name" "abc"} {"id" 2 "name" "def"}]
         counts   #(:row-counts (expectations/interpret (equals-rows id+name two-rows) %))]
     (testing ":expected counts the declared rows; :actual comes from the row-count probe"
-      (is (= {:actual 7 :expected 2} (counts {:comparison [] :actual-count [[7]]}))))
+      (is (= {:actual 7 :expected 2} (counts (probe-results [] [[7]])))))
     (testing "a probe count is coerced to a long — JDBC may hand back a BigDecimal"
-      (is (= {:actual 7 :expected 2} (counts {:comparison [] :actual-count [[7M]]}))))
+      (is (= {:actual 7 :expected 2} (counts (probe-results [] [[7M]])))))
     (testing "a missing or empty probe falls back to 0 rather than throwing"
-      (is (= {:actual 0 :expected 2} (counts {:comparison []})))
-      (is (= {:actual 0 :expected 2} (counts {:comparison [] :actual-count []})))
-      (is (= {:actual 0 :expected 2} (counts {:comparison [] :actual-count [[]]}))))))
+      (is (= {:actual 0 :expected 2} (counts (probe-results [] nil))))
+      (is (= {:actual 0 :expected 2} (counts (probe-results [] []))))
+      (is (= {:actual 0 :expected 2} (counts (probe-results [] [[]])))))))
 
 (deftest interpret-multiset-expansion-test
   ;; Why the comparison is a multiset difference rather than EXCEPT: EXCEPT deduplicates, so an
@@ -131,16 +155,18 @@
   ;; Resolution to the warehouse's spelling builds the SQL and nothing else: a failure names the
   ;; column the way the author wrote it, which is the way they can find it in their own test.
   (let [expectation (equals-rows id+name [{"id" 1 "name" "abc"}])]
-    (is (= ["ID" "NAME"] (expectations.equals/resolve-columns expectation ["ID" "NAME"])))
+    (is (= ["ID" "NAME"] (resolve-cols id+name ["ID" "NAME"])))
     (is (= [{"id" 1 "name" "abc"}]
-           (:extra-rows (expectations/interpret expectation
-                                                {:comparison [[1 "abc" 1]] :actual-count [[1]]}))))))
+           (:extra-rows (expectations/interpret expectation (probe-results [[1 "abc" 1]])))))))
 
 (deftest interpret-cell-rendering-test
   (testing "a BigDecimal keeps its scale"
     (let [expectation (equals-rows [{:name "amount" :database_type "DECIMAL(10,2)"}] [{"amount" 1.5}])
-          result      (expectations/interpret expectation
-                                              {:comparison [[1.50M 1] [1.5M -1]] :actual-count [[1]]})]
+          result      (expectations/interpret
+                       expectation
+                       (probe-results [[1.50M 1] [1.5M -1]] [[1]]
+                                      [{:name "AMOUNT" :database_type "NUMERIC"}
+                                       {:name "__mb_delta" :database_type "BIGINT"}]))]
       (is (= [{"amount" "1.50"}] (:extra-rows result)))
       (is (= [{"amount" "1.5"}] (:missing-rows result)))
       (is (= [{:column "amount" :expected "1.5" :actual "1.50"}] (:cell-mismatches result)))))

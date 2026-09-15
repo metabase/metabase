@@ -122,12 +122,13 @@
   whatever that expectation type has to say about a failure, so a new type adds its own keys
   without touching this schema."
   [:map
-   [:name   :string]
-   [:type   :keyword]
-   [:status ::status]
-   [:error  {:optional true} [:map
-                              [:type    :keyword]
-                              [:message :string]]]])
+   [:name    :string]
+   [:type    :keyword]
+   [:status  ::status]
+   [:columns {:optional true} [:sequential ::column]]
+   [:error   {:optional true} [:map
+                               [:type    :keyword]
+                               [:message :string]]]])
 
 (mr/def ::run-result
   "The outcome of a transform test run.

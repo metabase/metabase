@@ -96,7 +96,12 @@
                                    :expectations [{:type :empty :name "no abc" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE NAME = 'abc'"}]})]
               (is (= "failed" (:status result)))
               (is (= ["no abc"] (mapv :name (:expectations result))))
-              (is (= [["abc"]] (mapv #(vec (rest (first (:sample %)))) (:expectations result))))))
+              (testing "the sample names its cells rather than making the reader zip them"
+                (is (= [{:ID 1 :NAME "abc"}] (mapv (comp first :sample) (:expectations result)))))
+              (testing "and the columns carry the warehouse's own type for each"
+                (is (= [[{:name "ID" :database_type "INTEGER"}
+                         {:name "NAME" :database_type "CHARACTER VARYING"}]]
+                       (mapv :columns (:expectations result)))))))
           (testing "rejects a test that doesn't replace every table the transform reads"
             (run 400 {:inputs [] :expectations []})))))))
 

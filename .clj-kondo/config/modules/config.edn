@@ -2790,6 +2790,7 @@
            lib.schema
            models
            sql-tools
+           sql-tools.parsing
            transforms.base
            util}
    :model-imports #{:model/Collection

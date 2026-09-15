@@ -13,16 +13,19 @@
 (defrecord Empty [type name sql]
   expectations.protocol/Expectation
   (probes [_this {:keys [driver replacements]}]
-    {:rows {:query    (transform-testing.compile/replace-tables driver sql replacements)
-            :params   []
-            :max-rows expectations.report/row-cap}})
+    {:violations {:query    (transform-testing.compile/replace-tables driver sql replacements)
+                  :params   []
+                  :max-rows expectations.report/row-cap}})
 
   (interpret [_this results]
-    (let [rows (vec (:rows results))
-          [sample dropped] (expectations.report/capped rows)]
+    (let [{:keys [rows columns]} (:violations results)
+          rows                   (vec rows)
+          [sample dropped]       (expectations.report/capped rows)
+          column-names           (mapv :name columns)]
       (cond-> {:name name :type :empty :status (if (empty? rows) :passed :failed)}
         (seq rows)
-        (assoc :sample    (mapv #(mapv expectations.report/cell %) sample)
+        (assoc :sample    (mapv #(zipmap column-names (map expectations.report/cell %)) sample)
+               :columns   (vec columns)
                :truncated dropped)))))
 
 (defn build

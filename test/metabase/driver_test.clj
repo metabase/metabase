@@ -495,9 +495,20 @@
                                          {:table table
                                           :query {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id" :params []}}))
          (testing "the temp table is readable on the connection that created it"
-           (is (= 2 (count (select-all-on-connection conn table 10)))))
+           (is (= 2 (count (:rows (select-all-on-connection conn table 10))))))
          (testing "max-rows caps the rows returned"
-           (is (= 1 (count (select-all-on-connection conn table 1)))))
+           (is (= 1 (count (:rows (select-all-on-connection conn table 1))))))
+         (testing "the answer names its columns, each with the warehouse's own type"
+           ;; Engines differ on how they fold an unquoted identifier, so compare the name case-aside.
+           (let [columns (:columns (select-all-on-connection conn table 10))]
+             (is (= ["id"] (mapv (comp u/lower-case-en :name) columns)))
+             (is (every? (comp seq :database_type) columns) (pr-str columns))))
+         (testing "the columns are reported even when no row comes back"
+           (let [{:keys [rows columns]} (driver/query-on-connection
+                                         driver/*driver* conn
+                                         [(str "SELECT * FROM " table " WHERE 1 = 0") []] {:max-rows 1})]
+             (is (= [] rows))
+             (is (= ["id"] (mapv (comp u/lower-case-en :name) columns)))))
          (driver/execute-on-connection! driver/*driver* conn (driver/compile-drop-temp-table driver/*driver* table))
          (testing "dropping a temp table that no longer exists succeeds"
            (is (some? (driver/execute-on-connection! driver/*driver* conn

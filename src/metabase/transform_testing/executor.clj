@@ -10,6 +10,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.transform-testing.compile :as transform-testing.compile]
+   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -31,8 +32,8 @@
     (catch Exception e
       (log/warnf "Failed to drop transform test temp table %s: %s" table (ex-message e)))))
 
-(mu/defn table-columns :- [:sequential :string]
-  "The column names of the temp table `table` on `conn`, in order, fetching no rows."
+(mu/defn table-columns :- [:sequential ::transform-testing.schema/column]
+  "The columns of the temp table `table` on `conn`, in order, fetching no rows."
   [driver :- :keyword
    conn   :- :some
    table  :- :string]
@@ -40,10 +41,10 @@
                                 driver
                                 {:select [:*] :from [(keyword table)]
                                  :where  [:= [:inline 1] [:inline 0]]})]
-    (driver/columns-on-connection driver conn [query params])))
+    (:columns (driver/query-on-connection driver conn [query params] {:max-rows 1}))))
 
 (mu/defn run-query
-  "Run the compiled `[sql params]` `query` on `conn`, returning at most `max-rows` rows as vectors."
+  "Run the compiled `[sql params]` `query` on `conn`, returning `{:rows :columns}`."
   [driver   :- :keyword
    conn     :- :some
    query    :- [:tuple :string [:sequential :any]]

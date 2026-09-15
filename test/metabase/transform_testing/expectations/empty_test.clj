@@ -27,35 +27,53 @@
 
 ;;; --------------------------------------------- interpret ---------------------------------------------
 
+(def ^:private violation-columns
+  [{:name "ID" :database_type "INTEGER"}
+   {:name "NAME" :database_type "CHARACTER VARYING"}
+   {:name "AMOUNT" :database_type "NUMERIC"}])
+
+(defn- interpret-violations
+  "`interpret` over `rows`, as the runner delivers them: the probe's rows and its column metadata."
+  [rows]
+  (expectations.protocol/interpret @an-expectation
+                                   {:violations {:rows rows :columns violation-columns}}))
+
 (deftest interpret-no-rows-test
-  (let [result (expectations.protocol/interpret @an-expectation {:rows []})]
+  (let [result (interpret-violations [])]
     (is (= {:name "no orphan rows" :type :empty :status :passed} result))
     (testing "a pass carries no sample: there is nothing to show"
       (is (not (contains? result :sample)))
-      (is (not (contains? result :truncated)))))
+      (is (not (contains? result :truncated))))
+    (testing "and no columns: they describe a sample that is not there"
+      (is (not (contains? result :columns)))))
   (testing "no rows at all reads the same as an empty list"
     (is (= {:name "no orphan rows" :type :empty :status :passed}
-           (expectations.protocol/interpret @an-expectation {:rows nil})))))
+           (interpret-violations nil)))))
 
 (deftest interpret-rows-test
-  (let [result (expectations.protocol/interpret @an-expectation
-                                                {:rows [[1 "a" nil] [2 "b" (java.math.BigDecimal. "1.50")]]})]
+  (let [result (interpret-violations [[1 "a" nil] [2 "b" (java.math.BigDecimal. "1.50")]])]
     (is (= :failed (:status result)))
     (testing "the result always identifies itself by the author's name and its type"
       (is (= "no orphan rows" (:name result)))
       (is (= :empty (:type result))))
-    (testing "the sample is the rows rendered through report/cell"
-      (is (= [[1 "a" nil] [2 "b" "1.50"]] (:sample result))))
+    (testing "the sample names its cells, as an equals diff does"
+      (is (= [{"ID" 1 "NAME" "a" "AMOUNT" nil}
+              {"ID" 2 "NAME" "b" "AMOUNT" "1.50"}]
+             (:sample result))))
+    (testing "the columns carry the warehouse's own type for each"
+      (is (= violation-columns (:columns result))))
     (is (= 0 (:truncated result)))))
 
 (deftest interpret-truncation-test
-  (let [rows   (mapv (fn [i] [i]) (range (+ expectations.report/row-cap 4)))
-        result (expectations.protocol/interpret @an-expectation {:rows rows})]
+  (let [rows   (mapv (fn [i] [i nil nil]) (range (+ expectations.report/row-cap 4)))
+        result (interpret-violations rows)]
     (is (= :failed (:status result)))
     (is (= expectations.report/row-cap (count (:sample result))))
     (is (= 4 (:truncated result)))
     (testing "the sample is the first rows, not an arbitrary selection"
-      (is (= (vec (take expectations.report/row-cap rows)) (:sample result))))))
+      (is (= (mapv (fn [[i]] {"ID" i "NAME" nil "AMOUNT" nil})
+                   (take expectations.report/row-cap rows))
+             (:sample result))))))
 
 ;;; ----------------------------------------------- probes -----------------------------------------------
 
@@ -74,14 +92,14 @@
 (deftest probes-shape-test
   (let [ps (probes)]
     (testing "one probe"
-      (is (= [:rows] (keys ps))))
-    (let [{:keys [params max-rows]} (:rows ps)]
+      (is (= [:violations] (keys ps))))
+    (let [{:keys [params max-rows]} (:violations ps)]
       (is (= [] params))
       (testing "the cap is the report's, so a runaway failure cannot be read into memory whole"
         (is (= expectations.report/row-cap max-rows))))))
 
 (deftest probes-query-is-the-authors-sql-rewritten-test
-  (let [query (u/lower-case-en (:query (:rows (probes))))]
+  (let [query (u/lower-case-en (:query (:violations (probes))))]
     (testing "the author's SQL is put through table replacement"
       (is (str/includes? query "tmp_in_1"))
       (is (not (str/includes? query "people"))))

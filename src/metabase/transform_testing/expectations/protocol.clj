@@ -14,7 +14,7 @@
   `context` carries the driver, the name of the output temp table, the columns that table actually
   has, and the input-table replacements. Pure.")
   (interpret [this results]
-    "This expectation's result map, given `{probe-id rows}` from the probes.
+    "This expectation's result map, given `{probe-id {:rows :columns}}` from the probes.
 
   Always carries `:name`, `:type` and `:status`; what else it says about a failure is the type's
   own business. Pure."))

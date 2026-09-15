@@ -124,7 +124,8 @@
   Only the SQL uses these. A failure reports the column under the name the author wrote, which is
   what they can find in their own test."
   [{:keys [name columns]} output-columns]
-  (mapv #(resolve-column name output-columns (:name %)) columns))
+  (let [output-names (mapv :name output-columns)]
+    (mapv #(resolve-column name output-names (:name %)) columns)))
 
 ;;; ----------------------------------------------- Types -----------------------------------------------
 
@@ -140,7 +141,7 @@
     (let [column-names (mapv :name columns)
           ;; A comparison row is the declared columns followed by the signed multiplicity: how many
           ;; times too often the row appears in the output (+) or in the expectation (-).
-          diffs        (for [row (:comparison results)]
+          diffs        (for [row (:rows (:comparison results))]
                          [(long (last row))
                           (zipmap column-names (map expectations.report/cell (butlast row)))])
           expand       (fn [keep?]
@@ -158,11 +159,18 @@
                            [rows (- total (count rows))]))
           [extra   extra-dropped]   (expand pos?)
           [missing missing-dropped] (expand neg?)
-          actual-count (some-> results :actual-count ffirst long)]
+          actual-count (some-> results :actual-count :rows ffirst long)
+          ;; The comparison selects the resolved output columns in declared order, then the delta,
+          ;; so dropping the delta lines its column metadata up with what the author declared.
+          reported     (mapv (fn [declared {:keys [database_type]}]
+                               {:name declared :database_type database_type})
+                             column-names
+                             (butlast (:columns (:comparison results))))]
       ;; Every key is always present: a consumer should not have to tell nil from [].
       (cond-> {:name            name
                :type            :equals
                :status          (if (and (empty? extra) (empty? missing)) :passed :failed)
+               :columns         reported
                :row-counts      {:actual (or actual-count 0) :expected (count rows)}
                :extra-rows      extra
                :missing-rows    missing
