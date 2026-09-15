@@ -42,13 +42,13 @@ describe("E2E workflow result", () => {
 describe("E2E plan handoff", () => {
   it("should give shards the plan the matrix was built from", () => {
     const { with: inputs } = workflow("e2e-tests.yml").jobs["e2e-tests"];
-    const download = workflow("e2e-test.yml").jobs["e2e-tests"].steps.find(
-      (step) => step.name === "Download test plan",
+    const selection = workflow("e2e-test.yml").jobs["e2e-tests"].steps.find(
+      (step) => step.uses === "./.github/actions/prepare-test-selection",
     );
 
     expect(inputs["test-plan-artifact-id"]).toBe(
       "${{ needs.e2e-matrix-builder.outputs.test-plan-artifact-id }}",
     );
-    expect(download["continue-on-error"]).toBeUndefined();
+    expect(selection.with["require-download"]).toBe(true);
   });
 });

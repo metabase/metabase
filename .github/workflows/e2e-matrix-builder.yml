@@ -47,20 +47,13 @@ jobs:
         if: ${{ inputs.test-plan-artifact-id != '' }}
         with:
           bun-version-file: "package.json"
-      - name: Download test plan
-        id: test-plan
-        if: ${{ inputs.test-plan-artifact-id != '' }}
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          artifact-ids: ${{ inputs.test-plan-artifact-id }}
-          path: ${{ runner.temp }}/test-plan
       - name: Prepare E2E spec selection
         id: selection
         if: ${{ inputs.test-plan-artifact-id != '' }}
-        env:
-          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
-        run: bun .github/scripts/prepare-test-selection.ts e2e
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: e2e
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
       - name: Build e2e matrix
         uses: actions/github-script@v9
         id: matrix
