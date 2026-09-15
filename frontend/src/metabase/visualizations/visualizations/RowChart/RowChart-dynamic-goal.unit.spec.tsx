@@ -11,7 +11,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import type {
-  DatasetData,
   RawSeries,
   ReferencedEntitiesResults,
   VisualizationSettings,
@@ -50,24 +49,13 @@ const SETTINGS: VisualizationSettings = {
   "graph.goal_label": GOAL_LABEL,
 };
 
-function answeredGoal(value: number): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
-}
-
 const FAILED: ReferencedEntitiesResults = {
   card: { 9: { status: "failed", error: "boom" } },
 };
 
 type SetupOpts = {
   settings?: VisualizationSettings;
-  referencedEntities?: DatasetData["referenced_entities"];
+  referencedEntities?: ReferencedEntitiesResults;
 };
 
 function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
@@ -89,38 +77,6 @@ function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
   return { series };
 }
 
-function getGraphicsSymbols(roleDescription: string) {
-  return screen
-    .queryAllByRole("graphics-symbol")
-    .filter(
-      (element) =>
-        element.getAttribute("aria-roledescription") === roleDescription,
-    );
-}
-
-async function findGoalLine() {
-  await waitFor(() => expect(getGraphicsSymbols("goal line")).toHaveLength(1));
-  const [goalLine] = getGraphicsSymbols("goal line");
-  return goalLine;
-}
-
-function getGoalLineX(goalLine: HTMLElement) {
-  return Number(goalLine.querySelector("line")?.getAttribute("x1"));
-}
-
-// bars start at x = 0 on a linear scale, so a bar's width is its value's scaled length
-function getExpectedGoalX(goalValue: number) {
-  const bars = getGraphicsSymbols("bar");
-  const widestBar = bars.reduce((widest, bar) =>
-    Number(bar.getAttribute("width")) > Number(widest.getAttribute("width"))
-      ? bar
-      : widest,
-  );
-  const x = Number(widestBar.getAttribute("x"));
-  const width = Number(widestBar.getAttribute("width"));
-  return x + (width * goalValue) / MAX_COUNT;
-}
-
 describe("row chart dynamic goal", () => {
   beforeEach(() => {
     mockGetBoundingClientRect({ width: 800, height: 600 });
@@ -140,7 +96,7 @@ describe("row chart dynamic goal", () => {
   });
 
   it("draws the goal line at the value answered by the dataset", async () => {
-    setup({ referencedEntities: answeredGoal(GOAL) });
+    setup({ referencedEntities: createReferencedEntitiesResults(GOAL) });
 
     const goalLine = await findGoalLine();
 
@@ -152,7 +108,7 @@ describe("row chart dynamic goal", () => {
   it("reads an answered goal as a percentage of a normalized stack", async () => {
     setup({
       settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
-      referencedEntities: answeredGoal(50),
+      referencedEntities: createReferencedEntitiesResults(50),
     });
 
     const goalLine = await findGoalLine();
@@ -170,7 +126,7 @@ describe("row chart dynamic goal", () => {
         data: createMockDatasetData({
           cols: COLS,
           rows: ROWS,
-          referenced_entities: answeredGoal(GOAL),
+          referenced_entities: createReferencedEntitiesResults(GOAL),
         }),
       },
     });
@@ -212,3 +168,48 @@ describe("row chart dynamic goal", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });
+
+function getGraphicsSymbols(roleDescription: string) {
+  return screen
+    .queryAllByRole("graphics-symbol")
+    .filter(
+      (element) =>
+        element.getAttribute("aria-roledescription") === roleDescription,
+    );
+}
+
+async function findGoalLine() {
+  await waitFor(() => expect(getGraphicsSymbols("goal line")).toHaveLength(1));
+  const [goalLine] = getGraphicsSymbols("goal line");
+  return goalLine;
+}
+
+function getGoalLineX(goalLine: HTMLElement) {
+  return Number(goalLine.querySelector("line")?.getAttribute("x1"));
+}
+
+// bars start at x = 0 on a linear scale, so a bar's width is its value's scaled length
+function getExpectedGoalX(goalValue: number) {
+  const bars = getGraphicsSymbols("bar");
+  const widestBar = bars.reduce((widest, bar) =>
+    Number(bar.getAttribute("width")) > Number(widest.getAttribute("width"))
+      ? bar
+      : widest,
+  );
+  const x = Number(widestBar.getAttribute("x"));
+  const width = Number(widestBar.getAttribute("width"));
+  return x + (width * goalValue) / MAX_COUNT;
+}
+
+function createReferencedEntitiesResults(
+  value: number,
+): ReferencedEntitiesResults {
+  return {
+    card: {
+      9: {
+        status: "completed",
+        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
+      },
+    },
+  };
+}

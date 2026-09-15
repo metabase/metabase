@@ -37,17 +37,6 @@ const SETTINGS: VisualizationSettings = {
   "graph.goal_label": GOAL_LABEL,
 };
 
-function answeredGoal(value: number): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
-}
-
 type SetupOpts = {
   settings?: VisualizationSettings;
   referencedEntities?: DatasetData["referenced_entities"];
@@ -142,3 +131,14 @@ describe("static row chart with a dynamic goal", () => {
     ).toThrow(GOAL_ERROR);
   });
 });
+
+function answeredGoal(value: number): ReferencedEntitiesResults {
+  return {
+    card: {
+      9: {
+        status: "completed",
+        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
+      },
+    },
+  };
+}
