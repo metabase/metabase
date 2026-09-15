@@ -1,14 +1,13 @@
 import {
+  INVALID_AUTH_METHOD,
+  MetabaseError,
+} from "embedding-sdk-shared/errors";
+import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   validateSession,
 } from "embedding/auth-common";
-
-import {
-  INVALID_AUTH_METHOD,
-  MetabaseError,
-} from "embedding-sdk-shared/errors";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { EmbedAuthManagerContext } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 

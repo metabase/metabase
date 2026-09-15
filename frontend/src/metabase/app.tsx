@@ -15,12 +15,12 @@ import "metabase/auth/plugins";
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp-setup";
 import { type Middleware, isAction } from "@reduxjs/toolkit";
-import { initializePlugins } from "ee-plugins";
 import { useLayoutEffect } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 
+import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
