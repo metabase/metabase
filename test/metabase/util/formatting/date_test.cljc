@@ -18,18 +18,18 @@
 (def ^:private time-config {:start-of-week :sunday})
 
 (defn- format-for-parameter [value options]
-  (date/format-for-parameter value (merge time-config options)))
+  (date/format-for-parameter time-config value options))
 
 (defn- format-range-with-unit [value options]
-  (date/format-range-with-unit value (merge time-config options)))
+  (date/format-range-with-unit time-config value options))
 
 (defn- format-datetime-with-unit [value options]
-  (date/format-datetime-with-unit value (merge time-config options)))
+  (date/format-datetime-with-unit time-config value options))
 
 (deftest ^:parallel format-for-parameter-test
   (testing "some units have custom formatting"
     (are [exp date unit] (= exp (format-for-parameter (u.time/coerce-to-timestamp date)
-                                                      (assoc time-config :unit unit)))
+                                                      {:unit unit}))
       ;; Years
       "2022-01-01~2022-12-31" "2022-12-19T12:03:19" "year"
       ;; Months
@@ -49,7 +49,7 @@
 (deftest ^:parallel format-for-parameter-test-2
   (testing "other units are treated as days or day ranges"
     (are [exp date unit] (= exp (format-for-parameter (u.time/coerce-to-timestamp date)
-                                                      (assoc time-config :unit unit, :locale locale)))
+                                                      {:unit unit, :locale locale}))
       ;; Hour and minute are treated as days.
       "2022-12-19" "2022-12-19T12:03:19" "hour"
       "2022-12-19" "2022-12-19T00:03:19" "hour"
@@ -63,10 +63,9 @@
 
 (deftest ^:parallel format-range-with-unit-test
   (letfn [(week-of [d]
-            (format-range-with-unit d (assoc time-config
-                                             :unit "week"
-                                             :compact true
-                                             :locale locale)))]
+            (format-range-with-unit d {:unit "week"
+                                       :compact true
+                                       :locale locale}))]
     (testing "full form (M d, Y - M d Y)"
       (testing "when not abbreviated"
         (is (= (str "November 1, 2022" date/range-separator "November 30, 2022")
@@ -79,7 +78,13 @@
              (week-of "2022-08-31T11:19:04"))))
     (testing "shared month and year (M d - d, Y)"
       (is (= (str "Dec 11" date/range-separator "17, 2022")
-             (week-of "2022-12-14T11:19:04"))))))
+             (week-of "2022-12-14T11:19:04"))))
+    (testing "uses the configured start of week"
+      (is (= (str "Dec 12" date/range-separator "18, 2022")
+             (date/format-range-with-unit
+              {:start-of-week :monday}
+              "2022-12-14T11:19:04"
+              {:unit "week", :compact true, :locale locale}))))))
 
 (deftest ^:parallel format-datetime-with-unit-test-1a1
   (testing "special cases"
