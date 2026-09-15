@@ -33,18 +33,12 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: "package.json"
-      - name: Download test plan
-        id: test-plan
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          artifact-ids: ${{ inputs.test-plan-artifact-id }}
-          path: ${{ runner.temp }}/test-plan
       - name: Prepare Loki story selection
         id: selection
-        env:
-          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
-        run: bun .github/scripts/prepare-test-selection.ts loki
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
   visual-test:
     needs: story-selection
@@ -78,21 +72,13 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
-      - name: Download test plan
-        id: test-plan
-        if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          artifact-ids: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
-          path: ${{ runner.temp }}/test-plan
-
       - name: Prepare Loki story selection
         id: selection
         if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
-        env:
-          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
-        run: bun .github/scripts/prepare-test-selection.ts loki
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
 
       - name: Build Storybook
         env:

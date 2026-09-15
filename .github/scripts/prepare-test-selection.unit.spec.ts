@@ -21,11 +21,10 @@ type Step = {
   uses?: string;
   run?: string;
   env?: Record<string, string>;
-  with?: Record<string, string>;
+  with?: Record<string, string | boolean>;
 };
 
 const SCRIPT = resolve(__dirname, "prepare-test-selection.ts");
-const WORKFLOWS = ["frontend.yml", "loki.yml"];
 
 function loadWorkflow(file: string) {
   // js-yaml returns an untyped value, and these repository workflows define jobs with steps.
@@ -36,6 +35,19 @@ function loadWorkflow(file: string) {
       string,
       { if?: string; outputs?: Record<string, string>; steps?: Step[] }
     >;
+  };
+}
+
+function loadAction() {
+  // js-yaml returns an untyped value, and this repository action defines outputs and steps.
+  return load(
+    readFileSync(
+      resolve(__dirname, "../actions/prepare-test-selection/action.yml"),
+      "utf8",
+    ),
+  ) as {
+    outputs: Record<string, { value: string }>;
+    runs: { steps: Step[] };
   };
 }
 
@@ -191,14 +203,11 @@ describe("prepareTestSelection", () => {
 });
 
 describe("test selection workflow steps", () => {
-  const selectionSteps = WORKFLOWS.flatMap((file) => {
-    const workflow = loadWorkflow(file);
-    return Object.entries(workflow.jobs).flatMap(([job, { steps = [] }]) =>
-      steps
-        .filter((step) => step.run?.includes("prepare-test-selection.ts"))
-        .map((step) => ({ name: `${file} ${job}`, step, steps })),
-    );
-  });
+  const ACTION = "./.github/actions/prepare-test-selection";
+  const CONSUMERS: Record<string, { suite: keyof typeof SUITES }> = {
+    "frontend.yml": { suite: "unit" },
+    "loki.yml": { suite: "loki" },
+  };
 
   it("skips Loki visual tests only for an empty story selection", () => {
     const { jobs } = loadWorkflow("loki.yml");
@@ -211,26 +220,47 @@ describe("test selection workflow steps", () => {
     expect(jobs["visual-test"].if).not.toMatch(/outputs\.[\w-]+ *[!=]= *'\d+'/);
   });
 
-  it.each(selectionSteps)(
-    "downloads the test plan before preparing the selection in $name",
-    ({ step, steps }) => {
-      const [, suiteName] =
-        step.run?.match(/prepare-test-selection\.ts (\S+)/) ?? [];
-      expect(Object.keys(SUITES)).toContain(suiteName);
+  it.each(Object.entries(CONSUMERS))(
+    "selects tests through the composite action in %s",
+    (file, { suite, ...inputs }) => {
+      const steps = Object.values(loadWorkflow(file).jobs).flatMap(
+        ({ steps = [] }) => steps.filter((step) => step.uses === ACTION),
+      );
 
-      const [, downloadId] =
-        step.env?.PLAN_DOWNLOADED?.match(/steps\.([\w-]+)\.outcome/) ?? [];
-      const downloadIndex = steps.findIndex((s) => s.id === downloadId);
-      const download = steps[downloadIndex];
-      expect(download).toMatchObject({
-        uses: expect.stringMatching(/^actions\/download-artifact@/),
-        with: {
-          "artifact-ids": expect.any(String),
-          path: "${{ runner.temp }}/test-plan",
-        },
-      });
-      expect(download?.if).toBe(step.if);
-      expect(downloadIndex).toBeLessThan(steps.indexOf(step));
+      expect(steps.length).toBeGreaterThan(0);
+      for (const step of steps) {
+        expect(step.with).toEqual({
+          suite,
+          "test-plan-artifact-id": expect.stringMatching(/^\$\{\{ .+ \}\}$/),
+          ...inputs,
+        });
+      }
     },
   );
+
+  it("downloads the test plan before preparing the selection", () => {
+    const { outputs, runs } = loadAction();
+    const [download, prepare] = runs.steps;
+
+    expect(download).toMatchObject({
+      uses: expect.stringMatching(/^actions\/download-artifact@/),
+      "continue-on-error": "${{ inputs.require-download != 'true' }}",
+      with: {
+        "artifact-ids": "${{ inputs.test-plan-artifact-id }}",
+        path: "${{ runner.temp }}/test-plan",
+      },
+    });
+    expect(prepare).toMatchObject({
+      env: { PLAN_DOWNLOADED: `\${{ steps.${download.id}.outcome }}` },
+      run: expect.stringContaining(
+        'prepare-test-selection.ts "${{ inputs.suite }}"',
+      ),
+    });
+    expect(outputs).toMatchObject({
+      "paths-file": {
+        value: `\${{ steps.${prepare.id}.outputs.paths-file }}`,
+      },
+      selection: { value: `\${{ steps.${prepare.id}.outputs.selection }}` },
+    });
+  });
 });

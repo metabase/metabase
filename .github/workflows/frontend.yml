@@ -118,20 +118,13 @@ jobs:
         # Resolve JOB_ID before the long test step so the ci-conductor reporter
         # below can link failures to this exact job. Best-effort.
         uses: ./.github/actions/resolve-job-id
-      - name: Download test plan
-        id: test-plan
-        if: ${{ inputs.test-plan-artifact-id != '' }}
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          artifact-ids: ${{ inputs.test-plan-artifact-id }}
-          path: ${{ runner.temp }}/test-plan
       - name: Prepare unit test selection
         id: unit-selection
         if: ${{ inputs.test-plan-artifact-id != '' }}
-        env:
-          PLAN_DOWNLOADED: ${{ steps.test-plan.outcome }}
-        run: bun .github/scripts/prepare-test-selection.ts unit
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: unit
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
       - name: Run frontend unit tests
         id: fe-tests
         env:
