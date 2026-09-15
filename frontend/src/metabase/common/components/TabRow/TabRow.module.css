@@ -16,7 +16,8 @@
   background: linear-gradient(
     to left,
     transparent,
-    var(--mb-color-background_page-primary) 50%
+    8%,
+    var(--mb-color-background_page-primary)
   );
 }
 
@@ -24,6 +25,7 @@
   background: linear-gradient(
     to right,
     transparent,
-    var(--mb-color-background_page-primary) 50%
+    8%,
+    var(--mb-color-background_page-primary)
   );
 }
