@@ -23,6 +23,10 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
+(methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
+  [_original-model _k]
+  :model/Transform)
+
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::transform-testing.schema/inputs)
    :expectations (json-column ::transform-testing.schema/expectations)})
@@ -61,11 +65,11 @@
   #{[{:model "Transform" :id transform_id}]})
 
 (defmethod serdes/storage-path "TransformTest" [transform-test ctx]
-  (let [{:keys [name entity_id collection_entity_id]} (transform-testing.db/transform-storage-summary
-                                                       (:transform_id transform-test))]
-    (conj (serdes/storage-path {:serdes/meta   [{:model "Transform" :id entity_id}]
-                                :name          name
-                                :entity_id     entity_id
-                                :collection_id collection_entity_id}
+  (let [{:keys [transform]} (t2/hydrate (transform-testing.db/transform-test-by-entity-id (:entity_id transform-test))
+                                        :transform)]
+    (conj (serdes/storage-path {:serdes/meta   [{:model "Transform" :id (:entity_id transform)}]
+                                :name          (:name transform)
+                                :entity_id     (:entity_id transform)
+                                :collection_id (serdes/*export-fk* (:collection_id transform) :model/Collection)}
                                ctx)
           {:label (:name transform-test) :key (:entity_id transform-test)})))
