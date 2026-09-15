@@ -27,6 +27,27 @@ Two rules follow:
 - A slice with no JS readers is still live. Search for its key in
   `metadata.cljc` before you call it dead.
 
+## The provider needs the hydrated object, not the records
+
+`Lib.metadataProvider` reads eight keys off the object it is given: `databases`,
+`tables`, `fields`, `questions`, `snippets`, `measures`, `metrics` and
+`segments`. The store holds all eight, so passing `state.entities` looks like it
+would work, and for plain tables it does.
+
+Two things break, both covered by `provider-parity.unit.spec.ts`:
+
+- A saved question's columns. `assemble-card` in `metadata.cljc` reads the
+  virtual table's `fields` and deliberately ignores `_plainObject`, "because it
+  can contain field names in the field property instead of the field objects
+  themselves". The store's record holds field ids, so the card falls through to
+  its source table and reports the wrong columns.
+- A field's values and remapping. `getMetadata` assigns `field.values` and
+  `field.remapping` during hydration, and the bridge excludes neither, so both
+  reach the provider's columns. The records carry neither.
+
+So the provider cannot be moved off `getMetadata` by handing it the records.
+Anything that replaces it has to denormalize those relations first.
+
 ## The RTK Query cache is not a drop-in for an accumulator
 
 RTK Query removes a cache entry 60 seconds after its last subscriber unmounts.
