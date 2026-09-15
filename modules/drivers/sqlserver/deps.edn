@@ -2,4 +2,10 @@
  ["src" "resources"]
 
  :deps
- {com.microsoft.sqlserver/mssql-jdbc {:mvn/version "13.2.1.jre11"}}}
+ {com.microsoft.sqlserver/mssql-jdbc {:mvn/version "13.2.1.jre11"}
+  ;; Required at runtime by mssql-jdbc for Entra ID auth modes: ActiveDirectoryPassword,
+  ;; ActiveDirectoryServicePrincipal, ActiveDirectoryServicePrincipalCertificate, ActiveDirectoryInteractive.
+  ;; mssql-jdbc declares this only transitively via azure-identity as <optional>, so it is not
+  ;; bundled in Metabase's uberjar unless we depend on it explicitly. Version 1.19.0 is what
+  ;; azure-identity 1.15.3 (the version pinned in mssql-jdbc 13.2.1's pom) ships with.
+  com.microsoft.azure/msal4j        {:mvn/version "1.19.0"}}}
