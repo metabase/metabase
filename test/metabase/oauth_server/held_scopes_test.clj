@@ -56,3 +56,27 @@
   (testing "a custom-scheme redirect only matches through the client_id"
     (is (not (held-scopes/same-app? (client "a" "Cursor" "cursor://anysphere.cursor-mcp/oauth/callback")
                                     (client "b" "Cursor" "cursor://anysphere.cursor-mcp/oauth/callback"))))))
+
+(deftest declined-scopes-test
+  (testing "GHY-4555: declined is the offered scopes the app already holds that the user left unticked, in offered order"
+    (is (= ["agent:content:write"]
+           (held-scopes/declined-scopes ["agent:content:read" "agent:content:write" "agent:sql:run"]
+                                        #{"agent:content:read" "agent:content:write" "agent:delivery:write"}
+                                        ["agent:content:read" "agent:sql:run"]))))
+  (testing "a held scope that was not offered is never declined"
+    (is (empty? (held-scopes/declined-scopes ["agent:content:read"]
+                                             #{"agent:content:read" "agent:sql:run"}
+                                             ["agent:content:read"]))))
+  (testing "an unticked scope the app does not hold is not declined"
+    (is (empty? (held-scopes/declined-scopes ["agent:content:read" "agent:sql:run"]
+                                             #{"agent:content:read"}
+                                             ["agent:content:read"])))))
+
+(deftest narrowed-scope-test
+  (testing "GHY-4555: narrowing removes exactly the declined scope strings and keeps the rest in order"
+    (is (= ["agent:content:read" "agent:sql:run"]
+           (held-scopes/narrowed-scope ["agent:content:read" "agent:content:write" "agent:sql:run"]
+                                       ["agent:content:write" "agent:delivery:write"]))))
+  (testing "a wildcard that covers a declined scope is left alone"
+    (is (= ["agent:*" "mb:full"]
+           (held-scopes/narrowed-scope ["agent:*" "mb:full"] ["agent:content:write"])))))

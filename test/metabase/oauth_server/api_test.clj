@@ -1685,11 +1685,13 @@
 ;;; ------------------------------------------ Pre-ticking held scopes -------------------------------------------
 
 (defn- register-app-client!
-  "Register a confidential DCR client named `client-name` whose only redirect is `redirect-uri`. Returns the
-  registration response."
+  "Register a confidential DCR client named `client-name` whose only redirect is `redirect-uri` and which may use
+  refresh tokens. Returns the registration response."
   [client-name redirect-uri]
   (register-client! {:redirect_uris              [redirect-uri]
                      :client_name                client-name
+                     :grant_types                ["authorization_code" "refresh_token"]
+                     :response_types             ["code"]
                      :token_endpoint_auth_method "client_secret_basic"}))
 
 (defn- consent-page-at!
@@ -1809,3 +1811,126 @@
                              "agent:delivery:write" [false false]})
                      (checkbox-states (consent-page-at! :crowberto (:client_id requester-client)
                                                         (second requester))))))))))))
+
+;;; ------------------------------------------- Narrowing on untick ----------------------------------------------
+
+(defn- authorize-at!
+  "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` and ticking
+  exactly `granted`, then exchange the code. Returns the token response."
+  [client redirect-uri scope granted]
+  (let [consent  (consent-page-at! :crowberto (:client_id client) redirect-uri scope)
+        body     (:body consent)
+        decision (form-post-decision!
+                  :crowberto
+                  (cond-> {:approved      "true"
+                           :csrf_token    (extract-csrf-token-from-consent body)
+                           :params_sig    (extract-params-sig-from-consent body)
+                           :client_id     (:client_id client)
+                           :redirect_uri  redirect-uri
+                           :response_type "code"
+                           :scope         (extract-hidden-field "scope" body)
+                           :resource      (mcp-resource-uri)
+                           :state         "test-state"}
+                    (seq granted) (assoc :granted_scope (vec granted)))
+                  302
+                  :csrf-cookie (extract-csrf-cookie consent))]
+    (token-request! {:grant_type   "authorization_code"
+                     :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                     :redirect_uri redirect-uri
+                     :resource     (mcp-resource-uri)}
+                    :authorization (basic-auth-header (:client_id client) (:client_secret client)))))
+
+(defn- access-token-scopes
+  "The scope set the bearer `token-response`'s access token resolves to, or nil when it no longer resolves."
+  [token-response]
+  (:scopes (oauth-server/resolve-access-token (:access_token token-response))))
+
+(defn- live-refresh-scopes
+  "The scope sets of the unrevoked refresh tokens of `client`."
+  [client]
+  (set (map (comp set :scope) (t2/select :model/OAuthRefreshToken :client_id (:client_id client) :revoked_at nil))))
+
+(defn- refresh!
+  "Refresh `token-response` for `client`, optionally asking for `scope`. Returns the response body."
+  [client token-response & {:keys [scope expected-status] :or {expected-status 200}}]
+  (token-request! (cond-> {:grant_type "refresh_token" :refresh_token (:refresh_token token-response)}
+                    scope (assoc :scope scope))
+                  :expected-status expected-status
+                  :authorization (basic-auth-header (:client_id client) (:client_secret client))))
+
+(def ^:private claude-redirect "https://claude.ai/api/mcp/auth_callback")
+
+(deftest untick-narrows-the-same-app-tokens-in-place-test
+  (testing (str "GHY-4555: unticking a pre-ticked scope removes exactly that scope from the same app's other live "
+                "tokens, access and refresh, without revoking them. A held scope that was not offered on this "
+                "screen is kept.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [window-a  (register-app-client! "Claude" claude-redirect)
+              token-a   (authorize-at! window-a claude-redirect all-v2-scopes
+                                       ["agent:content:write" "agent:sql:run" "agent:delivery:write"])
+              ;; the Claude connector registers a new client for the step-up, which leaves out delivery:write
+              window-b  (register-app-client! "Claude" claude-redirect)
+              step-up   (str/join " " (conj (sort v2-baseline-scope-set) "agent:content:write" "agent:sql:run"))
+              _         (is (= [true false] (get (checkbox-states (consent-page-at! :crowberto (:client_id window-b)
+                                                                                    claude-redirect step-up))
+                                                 "agent:content:write"))
+                            "content:write is pre-ticked")
+              token-b   (authorize-at! window-b claude-redirect step-up ["agent:sql:run"])
+              narrowed  (disj v2-scope-set "agent:content:write")]
+          (is (= (conj v2-baseline-scope-set "agent:sql:run") (token-scope-set token-b)))
+          (testing "the other window's access token is narrowed and refused the removed scope right away"
+            (is (= narrowed (access-token-scopes token-a))))
+          (testing "its refresh token is narrowed in place, not revoked"
+            (is (= #{narrowed} (live-refresh-scopes window-a))))
+          (testing "a refresh with the narrowed refresh token cannot mint the removed scope"
+            (is (= "invalid_request"
+                   (:error (refresh! window-a token-a :scope "agent:content:write" :expected-status 400))))
+            (let [refreshed (refresh! window-a token-a)]
+              (is (= narrowed (token-scope-set refreshed)))
+              (is (= narrowed (access-token-scopes refreshed))))))))))
+
+(deftest untick-never-widens-or-touches-other-apps-test
+  (testing (str "GHY-4555: ticking a scope never adds it to the same app's other tokens, and neither another app's "
+                "tokens nor another user's tokens are narrowed")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [held      (conj v2-baseline-scope-set "agent:content:write")
+              window-a  (register-app-client! "Claude" claude-redirect)
+              token-a   (authorize-at! window-a claude-redirect all-v2-scopes ["agent:content:write"])
+              other-app (register-app-client! "Claude" "https://example.com/callback")
+              token-c   (authorize-at! other-app "https://example.com/callback" all-v2-scopes ["agent:content:write"])
+              _         (insert-token! :model/OAuthAccessToken :rasta (:client_id window-a) held)
+              window-b  (register-app-client! "Claude" claude-redirect)]
+          (testing "ticking sql:run and keeping content:write leaves the other window unchanged"
+            (authorize-at! window-b claude-redirect all-v2-scopes ["agent:content:write" "agent:sql:run"])
+            (is (= held (access-token-scopes token-a)))
+            (is (= #{held} (live-refresh-scopes window-a))))
+          (testing "unticking content:write narrows only this user's tokens of this app"
+            (authorize-at! window-b claude-redirect all-v2-scopes ["agent:sql:run"])
+            (is (= v2-baseline-scope-set (access-token-scopes token-a)))
+            (is (= held (access-token-scopes token-c)) "another app's access token")
+            (is (= #{held} (live-refresh-scopes other-app)) "another app's refresh token")
+            (is (= #{(set held)}
+                   (set (map (comp set :scope)
+                             (t2/select :model/OAuthAccessToken
+                                        :client_id (:client_id window-a) :user_id (mt/user->id :rasta)))))
+                "another user's token")))))))
+
+(deftest untick-revokes-a-token-left-with-no-scope-test
+  (testing (str "GHY-4555: narrowing never revokes a token that keeps a scope, but a token whose only scopes were "
+                "declined is revoked rather than left alive with nothing")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [offered  "agent:content:write agent:sql:run"
+              window-a (register-app-client! "Claude" claude-redirect)
+              token-a  (authorize-at! window-a claude-redirect offered ["agent:content:write"])
+              window-b (register-app-client! "Claude" claude-redirect)]
+          (is (= #{"agent:content:write"} (access-token-scopes token-a)))
+          (authorize-at! window-b claude-redirect offered ["agent:sql:run"])
+          (is (nil? (access-token-scopes token-a)) "the access token no longer resolves")
+          (is (empty? (live-refresh-scopes window-a)) "the refresh token is revoked")
+          (is (= "invalid_request" (:error (refresh! window-a token-a :expected-status 400)))))))))

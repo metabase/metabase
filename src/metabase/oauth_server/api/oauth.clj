@@ -448,12 +448,24 @@
                                    :error_description "No scope was selected."}}
 
                         :else
-                        (redirect-authorization-decision provider
-                                                         (cond-> parsed
-                                                           (and approved (seq offered))
-                                                           (assoc :scope (str/join " " granted)))
-                                                         approved
-                                                         request)))
+                        (let [response (redirect-authorization-decision provider
+                                                                        (cond-> parsed
+                                                                          (and approved (seq offered))
+                                                                          (assoc :scope (str/join " " granted)))
+                                                                        approved
+                                                                        request)]
+                          ;; Unticking a scope the same app already holds takes it away from that app's other tokens
+                          ;; too, or the choice would mean nothing. This runs once the code is issued rather than at
+                          ;; the exchange because the code row has nowhere to carry the declined scopes to the token
+                          ;; endpoint. That is safe to do early: it only removes scopes the user just declined, and
+                          ;; leaves every token with any other scope working.
+                          (when (and approved (seq offered))
+                            (held-scopes/narrow-declined-scopes! (:metabase-user-id request)
+                                                                 (:client_id parsed)
+                                                                 (:redirect_uri parsed)
+                                                                 offered
+                                                                 granted))
+                          response)))
                     (catch ExceptionInfo e
                       (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400

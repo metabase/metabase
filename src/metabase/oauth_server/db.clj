@@ -171,6 +171,18 @@
   [client-ids :- [:sequential {:min 1} :string]]
   (t2/select :model/OAuthClient :client_id [:in client-ids]))
 
+(mu/defn update-access-token-scope!
+  "Set the scope of the OAuthAccessToken with primary key `id` to `scope`, returning the number updated."
+  [id    :- ms/PositiveInt
+   scope :- [:sequential :string]]
+  (t2/update! :model/OAuthAccessToken id {:scope scope}))
+
+(mu/defn update-refresh-token-scope!
+  "Set the scope of the OAuthRefreshToken with primary key `id` to `scope`, returning the number updated."
+  [id    :- ms/PositiveInt
+   scope :- [:sequential :string]]
+  (t2/update! :model/OAuthRefreshToken id {:scope scope}))
+
 (mu/defn revoke-access-token!
   "Revoke the OAuthAccessToken `token`, returning the number revoked."
   [token :- :string]
