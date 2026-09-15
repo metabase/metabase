@@ -60,19 +60,12 @@ export function DataPermissionsPage() {
       : skipToken,
   );
 
-  if (
+  const isLoading =
     isLoadingDatabases ||
     isLoadingGroups ||
     isLoadingAllUsers ||
     isLoadingAdminstrators ||
-    isLoadingTables
-  ) {
-    return (
-      <Center h="100%">
-        <Loader size="lg" />
-      </Center>
-    );
-  }
+    isLoadingTables;
 
   return (
     <PermissionsPageLayout
@@ -84,7 +77,13 @@ export function DataPermissionsPage() {
       helpContent={<DataPermissionsHelp />}
       canShowSplitPermsModal
     >
-      <Outlet />
+      {isLoading ? (
+        <Center h="100%" w="100%">
+          <Loader size="lg" />
+        </Center>
+      ) : (
+        <Outlet />
+      )}
     </PermissionsPageLayout>
   );
 }

@@ -32,7 +32,7 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
-const setup = async () => {
+const setup = async ({ shouldWaitForLoader = true } = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
@@ -68,7 +68,9 @@ const setup = async () => {
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  if (shouldWaitForLoader) {
+    await waitForLoaderToBeRemoved();
+  }
 
   return { mockEventListener };
 };
@@ -90,6 +92,16 @@ describe("DatabasesPermissionsPage", () => {
   });
 
   describe("rendering", () => {
+    it("should keep the permissions tabs visible while data is loading", async () => {
+      await setup({ shouldWaitForLoader: false });
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Data" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Collections" }),
+      ).toBeInTheDocument();
+    });
+
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();
 
