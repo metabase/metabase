@@ -385,5 +385,6 @@
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
 (def card-display-enum
-  "[[card-display-values]] as an undescribed Malli enum."
-  (into [:enum] card-display-values))
+  "[[card-display-values]] as a Malli enum, described for the published tool schema."
+  (into [:enum {:description "Visualization type. learn(\"visualization-settings\") covers the choice."}]
+        card-display-values))

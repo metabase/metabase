@@ -25,6 +25,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -464,16 +465,41 @@
 
 (def ^:private document-write-args-schema
   [:map {:closed true}
-   [:method [:enum "create" "update"]]
-   [:id {:optional true} [:maybe [:or :int :string]]]
-   [:name {:optional true} [:maybe documents/DocumentName]]
-   [:content_markdown {:optional true} [:maybe :string]]
+   [:method
+    [:enum {:description (str "\"create\" makes a new document (requires `name` and `content_markdown`); "
+                              "\"update\" edits the one named by `id`.")}
+     "create" "update"]]
+   [:id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the document to update."}]
+             [:string {:description "21-character entity_id of the document to update."}]]]]
+   ;; `DocumentName` carries a `:json-schema` override, which Malli's JSON Schema walker returns
+   ;; verbatim — a `:description` beside it would never be published — so the prose goes inside it.
+   [:name {:optional true}
+    [:maybe (mu/with documents/DocumentName
+                     {:json-schema {:type        "string"
+                                    :minLength   1
+                                    :maxLength   254
+                                    :description "Document title. Required on create; on update, renames it."}})]]
+   [:content_markdown {:optional true}
+    [:maybe [:string {:description (str "The full body in Metabase-flavored Markdown: CommonMark plus card "
+                                        "embeds, entity links, and ::: layout containers (learn(\"documents\")). "
+                                        "Required on create. On update it is a deliberate full-body rewrite "
+                                        "that orphans every comment thread anchored to the body; pass `edits` "
+                                        "to change text in place instead.")}]]]
    [:edits {:optional true}
-    [:maybe [:sequential
+    [:maybe [:sequential {:description (str "Update only: surgical text edits, each {old_str, new_str, "
+                                            "replace_all?}, applied in order against the current server-side "
+                                            "Markdown. Exactly one of `edits` or `content_markdown`. An empty "
+                                            "list changes only name, collection_id, collection_position, or "
+                                            "archived without touching the body.")}
              [:map
-              [:old_str :string]
-              [:new_str :string]
-              [:replace_all {:optional true} [:maybe :boolean]]]]]]
+              [:old_str [:string {:description (str "Text to replace. Must match the current Markdown exactly "
+                                                    "once: zero matches is always an error, and more than one "
+                                                    "is an error unless replace_all is set.")}]]
+              [:new_str [:string {:description "Replacement text, parsed as Markdown."}]]
+              [:replace_all {:optional true}
+               [:maybe [:boolean {:description "When true, every match of old_str is replaced."}]]]]]]]
    ;; Numeric ids and positions are positive here, matching what the model layer enforces. Declared
    ;; loosely they pass validation and then fail a `mu/defn` schema deeper in, which the caller only
    ;; ever sees as the sanitized "Internal error" — a rejection that names the constraint is the
@@ -481,9 +507,18 @@
    ;; Kept as an `:or` so the generated JSON schema still shows both accepted shapes, which is what
    ;; the agent reads. The humanized message lists each branch rather than one sentence; an
    ;; `:error/message` on the `:or` itself is ignored by Malli's humanizer.
-   [:collection_id {:optional true} [:maybe [:or ms/PositiveInt :string]]]
-   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:archived {:optional true} [:maybe :boolean]]
+   ;; `PositiveInt`'s own `:description` is its humanized error message, so it is replaced here
+   ;; with prose while its `:error/fn` is kept.
+   [:collection_id {:optional true}
+    [:maybe [:or
+             (mu/with ms/PositiveInt
+                      {:description "Numeric id of the collection to put it in. Omit on create for your personal collection."})
+             [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
+   [:collection_position {:optional true}
+    [:maybe (mu/with ms/PositiveInt
+                     {:description "Pin position within the collection; omit to leave it unpinned."})]]
+   [:archived {:optional true}
+    [:maybe [:boolean {:description "Update only: true moves it to the trash, false restores it."}]]]
    [:clear {:optional true}
     [:maybe [:sequential [:enum {:description (str "Update only: property names to unset "
                                                    "(collection_position). A null cannot say this — "

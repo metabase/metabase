@@ -187,6 +187,16 @@
         (is (= (contains? (set required-extensions) :mcp-app-ui) (some? (:ui _meta)))
             (str name " disagrees about being an MCP Apps tool"))))))
 
+(deftest all-arguments-described-test
+  (testing "every top-level argument of every tool carries a description the page can show"
+    ;; `description-cell` renders an em dash when a schema says nothing. Prose on the keys of a nested object is
+    ;; unreachable by design (see `item-descriptions`), so an array of objects needs it on the `:sequential`
+    ;; wrapper and a nested map on the `:map` itself; anything else wants it on the innermost schema.
+    (doseq [{tool-name :name :keys [inputSchema]} (#'mcp-tools-dox/all-tools)
+            [k property]                          (:properties inputSchema)]
+      (is (not= "—" (#'mcp-tools-dox/description-cell property))
+          (str tool-name " argument " (name k) " has no description")))))
+
 (deftest ^:parallel group-tools-test
   (testing "an interactive tool is claimed by the interactive section even though it's also read-only"
     ;; section order is load-bearing: a reader needs to know it won't show up in every client

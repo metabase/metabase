@@ -469,15 +469,32 @@
 
 (def ^:private question-write-args-schema
   [:map {:closed true}
-   [:method [:enum "create" "update"]]
-   [:id {:optional true} [:maybe [:or :int :string]]]
-   [:card_type {:optional true} [:maybe [:enum "question" "model"]]]
-   [:query_handle {:optional true} [:maybe :string]]
-   [:query {:optional true} [:maybe :map]]
+   [:method
+    [:enum {:description (str "\"create\" makes a new question or model (requires `name` and exactly one of "
+                              "`query_handle`, `query`, or `native`); \"update\" edits the one named by `id`.")}
+     "create" "update"]]
+   [:id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the question to update."}]
+             [:string {:description "21-character entity_id of the question to update."}]]]]
+   [:card_type {:optional true}
+    [:maybe [:enum {:description "\"question\" (default) or \"model\"."} "question" "model"]]]
+   [:query_handle {:optional true}
+    [:maybe [:string {:description (str "A handle returned by execute_query, execute_sql, or visualize_query. The "
+                                        "preferred query source on create: it saves exactly the query that tool "
+                                        "validated.")}]]]
+   [:query {:optional true}
+    [:maybe [:map {:description (str "An inline query with numeric ids and a top-level database id "
+                                     "(learn(\"query-dialect\")). Prefer `query_handle`.")}]]]
    [:native {:optional true}
-    [:maybe [:map
-             [:database_id [:or :int :string]]
-             [:sql [:string {:min 1}]]
+    [:maybe [:map {:description (str "A native SQL query to save: {database_id, sql, template_tags?}. Requires "
+                                     "the agent:sql:run scope and the mcp-execute-sql-enabled setting. Call "
+                                     "learn(\"native-parameters\") before first passing template_tags.")}
+             [:database_id [:or
+                            [:int {:description "Numeric id of the database the SQL runs against."}]
+                            [:string {:description (str "The numeric database id as a string, for clients that "
+                                                        "send every id as a string. Databases have no entity_id.")}]]]
+             [:sql [:string {:min 1 :description "The SQL text. Write template tags as {{tag}}."}]]
              [:template_tags {:optional true}
               [:maybe [:map-of
                        {:description (str "One entry per {{tag}} in the SQL, keyed by tag name; a name "
@@ -505,24 +522,41 @@
                                                              "\"id\".")}]]]
                         [:required {:optional true} [:maybe :boolean]]
                         [:default {:optional true} [:maybe :any]]]]]]]]]
-   [:name {:optional true} [:maybe [:string {:min 1}]]]
-   [:description {:optional true} [:maybe :string]]
-   [:collection_id {:optional true} [:maybe [:or :int :string]]]
-   [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
-   [:collection_position {:optional true} [:maybe :int]]
+   [:name {:optional true} [:maybe [:string {:min 1 :description "Question title. Required on create."}]]]
+   [:description {:optional true}
+    [:maybe [:string {:description "One or two sentences on what the question answers."}]]]
+   [:collection_id {:optional true}
+    [:maybe [:or
+             [:int {:description (str "Numeric id of the collection to save it in. Omit on create for your "
+                                      "personal collection. Exclusive with `dashboard_id`.")}]
+             [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
+   [:dashboard_id {:optional true}
+    [:maybe [:or
+             [:int {:description (str "Numeric id of a dashboard to save the question inside; it inherits that "
+                                      "dashboard's collection. On update, moves the card into that dashboard. "
+                                      "Exclusive with `collection_id`.")}]
+             [:string {:description "21-character entity_id of the dashboard to save the question inside."}]]]]
+   [:collection_position {:optional true}
+    [:maybe [:int {:description "Pin position within the collection; omit to leave it unpinned."}]]]
    [:display {:optional true} [:maybe common/card-display-enum]]
-   [:visualization_settings {:optional true} [:maybe :map]]
-   [:cache_ttl {:optional true} [:maybe :int]]
-   [:archived {:optional true} [:maybe :boolean]]
+   [:visualization_settings {:optional true}
+    [:maybe [:map {:description (str "Display settings for the chosen `display`; learn(\"visualization-settings\") "
+                                     "lists the keys.")}]]]
+   [:cache_ttl {:optional true}
+    [:maybe [:int {:description (str "Legacy per-question cache TTL. Stored and echoed back, but no longer "
+                                     "read: caching is configured through cache policies in admin settings.")}]]]
+   [:archived {:optional true}
+    [:maybe [:boolean {:description "Update only: true moves it to the trash, false restores it."}]]]
    [:clear {:optional true}
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:column_metadata {:optional true}
-    [:maybe [:sequential
+    [:maybe [:sequential {:description (str "Per-column result metadata to set, matched to the query's result "
+                                            "columns by name. Typically used with card_type \"model\".")}
              [:map
-              [:name [:string {:min 1}]]
-              [:display_name {:optional true} [:maybe :string]]
-              [:description {:optional true} [:maybe :string]]
+              [:name [:string {:min 1 :description "The result column's name, as the query returns it."}]]
+              [:display_name {:optional true} [:maybe [:string {:description "Label shown for the column."}]]]
+              [:description {:optional true} [:maybe [:string {:description "What the column holds."}]]]
               [:semantic_type {:optional true}
                [:maybe [:string {:description (str "A type in the \"type/…\" namespace, e.g. \"type/Currency\", "
                                                    "\"type/PK\", \"type/Email\".")}]]]

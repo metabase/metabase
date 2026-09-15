@@ -402,24 +402,69 @@
 
 (def ^:private alert-write-args-schema
   [:map {:closed true}
-   [:method [:enum "create" "update"]]
-   [:id {:optional true} [:maybe [:or :int :string]]]
-   [:card_id {:optional true} [:maybe [:or :int :string]]]
+   [:method
+    [:enum {:description (str "\"create\" makes a new alert (requires `card_id` and `schedule`); "
+                              "\"update\" edits the one named by `id`, changing only the fields you pass.")}
+     "create" "update"]]
+   [:id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the alert to update."}]
+             [:string {:description (str "The numeric id as a string, for clients that send every id as a "
+                                         "string. Alerts have no entity_id.")}]]]]
+   [:card_id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the saved question the alert runs. Fixed at creation."}]
+             [:string {:description "21-character entity_id of the saved question the alert runs. Fixed at creation."}]]]]
    [:condition {:optional true}
-    [:maybe [:map {:closed true}
-             [:type {:optional true} [:maybe [:enum "has_result" "goal_above" "goal_below"]]]
-             [:send_once {:optional true} [:maybe :boolean]]]]]
+    [:maybe [:map {:closed true
+                   :description (str "When the alert sends. Defaults to sending whenever the question returns "
+                                     "rows; the goal conditions need a goal line on the question's chart.")}
+             [:type {:optional true}
+              [:maybe [:enum {:description (str "\"has_result\" (default) sends when the question returns any rows; "
+                                                "\"goal_above\" / \"goal_below\" send when a value crosses the "
+                                                "question's goal line.")}
+                       "has_result" "goal_above" "goal_below"]]]
+             [:send_once {:optional true}
+              [:maybe [:boolean {:description (str "When true, the alert pauses itself (active: false) after "
+                                                   "it first fires.")}]]]]]]
    [:schedule {:optional true}
-    [:maybe [:map {:closed true}
-             [:schedule_type [:enum "hourly" "daily" "weekly" "monthly"]]
-             [:schedule_hour {:optional true} [:maybe [:int {:min 0 :max 23}]]]
-             [:schedule_minute {:optional true} [:maybe [:int {:min 0 :max 59}]]]
-             [:schedule_day {:optional true} [:maybe [:enum "mon" "tue" "wed" "thu" "fri" "sat" "sun"]]]
-             [:schedule_frame {:optional true} [:maybe [:enum "first" "mid" "last"]]]]]]
-   [:channel {:optional true} [:maybe [:enum "email" "slack"]]]
-   [:slack_channel {:optional true} [:maybe [:string {:min 1}]]]
-   [:recipients {:optional true} [:maybe [:sequential [:or :int [:string {:min 1}]]]]]
-   [:active {:optional true} [:maybe :boolean]]])
+    [:maybe [:map {:closed true
+                   :description (str "When the question runs, in the instance's report time zone. Required on "
+                                     "create; never a cron string.")}
+             [:schedule_type
+              [:enum {:description "How often to run."} "hourly" "daily" "weekly" "monthly"]]
+             [:schedule_hour {:optional true}
+              [:maybe [:int {:min 0 :max 23
+                             :description "Hour of the day to run, 0-23. Required for daily, weekly, and monthly."}]]]
+             [:schedule_minute {:optional true}
+              [:maybe [:int {:min 0 :max 59 :description "Minute of the hour to run, 0-59. Hourly only."}]]]
+             [:schedule_day {:optional true}
+              [:maybe [:enum {:description (str "Day of the week. Required for weekly; with a monthly "
+                                                "schedule_frame of \"first\" or \"last\" it picks that weekday "
+                                                "of the month.")}
+                       "mon" "tue" "wed" "thu" "fri" "sat" "sun"]]]
+             [:schedule_frame {:optional true}
+              [:maybe [:enum {:description (str "Which part of the month to run on. Required for monthly. "
+                                                "\"mid\" is the 15th and takes no schedule_day.")}
+                       "first" "mid" "last"]]]]]]
+   [:channel {:optional true}
+    [:maybe [:enum {:description (str "Where to deliver: \"email\" (default) with `recipients`, or \"slack\" with "
+                                      "`slack_channel`. Passing any of channel, slack_channel, or recipients on "
+                                      "update replaces the alert's delivery; omit all three to leave it alone.")}
+             "email" "slack"]]]
+   [:slack_channel {:optional true}
+    [:maybe [:string {:min 1
+                      :description "Slack channel name to post to, e.g. \"#data-team\". Required for channel \"slack\"."}]]]
+   [:recipients {:optional true}
+    [:maybe [:sequential {:description (str "Who gets the email: numeric user ids, or email addresses. Defaults "
+                                            "to you. On update this replaces the current list. Not used for "
+                                            "channel \"slack\".")}
+             [:or [:int {:description "Numeric id of a Metabase user."}]
+              [:string {:min 1 :description "An email address."}]]]]]
+   [:active {:optional true}
+    [:maybe [:boolean {:description (str "false pauses the alert, true resumes it (resuming needs the "
+                                         "agent:query:run scope). Defaults to true on create. Alerts have no "
+                                         "archived state and cannot be deleted here.")}]]]])
 
 (registry/deftool alert-write
   "Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition.
@@ -429,7 +474,7 @@
   for weekly, and picks the weekday for a monthly \"first\" or \"last\" frame), schedule_frame? (\"first\" | \"mid\"
   | \"last\", required for monthly — \"mid\" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: \"has_result\" (default) |
   \"goal_above\" | \"goal_below\", send_once?: boolean} — the goal conditions need a goal line on the question's chart,
-  and send_once archives the alert after it fires. Delivery is one channel: \"email\" (default) with recipients, a list
+  and send_once pauses the alert (active: false) after it first fires. Delivery is one channel: \"email\" (default) with recipients, a list
   mixing user ids and email addresses that defaults to you, or \"slack\" with slack_channel, a channel name like
   \"#data-team\" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the
   alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no

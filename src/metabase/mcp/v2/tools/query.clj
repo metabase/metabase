@@ -609,7 +609,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
          [:int {:min 1 :description "Numeric card id."}]
          [:string {:min 1 :description "A 21-character entity_id."}]]]
    [:parameters {:optional true}
-    [:maybe [:sequential
+    [:maybe [:sequential {:description (str "Parameter values to apply, each {id, value} where id is the "
+                                            "parameter's id or slug. The card's stored target and type "
+                                            "always apply. Discover a card's parameters with get_content.")}
              [:map
               [:id {:optional true}
                [:maybe [:string {:min 1 :description "The parameter's id (or slug) from the card's parameter list."}]]]
