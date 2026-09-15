@@ -49,6 +49,15 @@
   [s]
   (some-> s str str/trim not-empty (str/replace #"\s+" " ")))
 
+(defn escape-liquid
+  "`s` with every span the docs site's Liquid pass would swallow — `{{ … }}` and `{% … %}`, or a lone opener —
+  wrapped in `{% raw %}…{% endraw %}`. Tool prose describes Metabase's own template syntax (`{{tag}}`,
+  `{% card … %}`) in exactly Liquid's spelling; unescaped, the site rejects the unknown tags and renders the
+  known-looking ones as blank. Balanced spans are tried first, then a bare opener, so an unclosed `{{` can't
+  still break the page."
+  [s]
+  (str/replace (str s) #"\{\{.*?\}\}|\{%.*?%\}|\{\{|\{%" "{% raw %}$0{% endraw %}"))
+
 (defn sentence
   "`s` as a sentence: forced out of i18n and terminated with a period. Nil when there is nothing to say, so a field
   whose text is blank contributes no stray `.` to its bullet.

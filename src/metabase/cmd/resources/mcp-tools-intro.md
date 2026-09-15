@@ -17,6 +17,8 @@ Some clients (like Claude Desktop) ask you to approve or block each tool the fir
 
 The descriptions and argument notes here are exactly what your agent sees (which is why they sound robotic). Your agent can also call the `learn` tool for longer guides on the things a tool description can't fit.
 
+The argument tables don't mark anything as required, and a nested object (an item in a list, say) shows only as `object`. The description says which arguments a call needs, and the argument's own note describes the nested shape. If your client shows every argument as required, that's the strict-schema convention some clients use: any argument the description doesn't call for can be sent as `null`.
+
 Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. Handles expire after 24 hours.
 
 Your agent should reach for `execute_query` for anything it can say in Metabase's structured query language: counts, sums, averages, grouping, filtering, sorting, and joins. `execute_sql` is for what that language can't express (window functions, CTEs, set operations, engine-specific functions) or for when you ask for SQL outright.

@@ -103,12 +103,19 @@
             (map str/capitalize)
             (str/join " ")))))
 
+(defn- prose
+  "Registry prose readied for the page: flattened to one line, then Liquid-escaped. Only text that came from a
+  `deftool` or `defscope` goes through here — the intro resource is hand-written docs and may use Liquid on
+  purpose."
+  [s]
+  (some-> (md/flatten-prose s) md/escape-liquid))
+
 (defn- tool-description
   "The tool's description, as one line of prose. Throws when there is none: a tool section without one is an empty
   entry on a reference page. `register-tool!` already rejects a `deftool` with no docstring, so this is a
   belt-and-braces check on the page rather than the first line of defence."
   [tool]
-  (or (md/flatten-prose (:description tool))
+  (or (prose (:description tool))
       (throw (ex-info (str "No description for MCP tool " (pr-str (:name tool))
                            ". Give its deftool a docstring.")
                       {:tool (:name tool)}))))
@@ -117,7 +124,7 @@
   "The description [[metabase.api-scope.core/defscope]] registered for `scope`. Throws when the scope isn't
   registered — a tool pointing at a scope that no consent screen can explain is a bug, not a page to publish."
   [tool scope]
-  (or (md/flatten-prose (api-scope/scope-description scope))
+  (or (prose (api-scope/scope-description scope))
       (throw (ex-info (str "MCP tool " (pr-str (:name tool)) " uses unregistered scope " (pr-str scope)
                            ". Declare it with metabase.api-scope.core/defscope.")
                       {:tool (:name tool) :scope scope}))))
@@ -254,7 +261,7 @@
   [property]
   (let [values (enum-values property)
         bounds (some-> (int-range property) range-sentence)
-        parts  (cond->> (map md/flatten-prose (property-descriptions property))
+        parts  (cond->> (map prose (property-descriptions property))
                  bounds       (cons bounds)
                  (seq values) (cons (str "One of: " (str/join ", " (map md/code values)) ".")))]
     (if (seq parts)

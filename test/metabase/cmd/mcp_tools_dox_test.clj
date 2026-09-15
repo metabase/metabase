@@ -33,6 +33,11 @@
     (is (= "Search for tables. Ranked using RRF."
            (#'mcp-tools-dox/tool-description {:name "search"
                                               :description "Search for tables.\n\n  Ranked using\n  RRF."}))))
+  (testing "template syntax the description quotes is fenced from the docs site's Liquid pass"
+    ;; `execute_sql` and `document_write` spell out `{{tag}}` and `{% card … %}` in exactly Liquid's syntax
+    (is (= "Put values behind {% raw %}{{tag}}{% endraw %} or a {% raw %}{% card id=1 %}{% endraw %} embed."
+           (#'mcp-tools-dox/tool-description {:name "execute_sql"
+                                              :description "Put values behind {{tag}} or a\n  {% card id=1 %} embed."}))))
   (testing "a tool with nothing to say fails loudly rather than rendering an empty section"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"No description for MCP tool \"nope\""
@@ -179,7 +184,14 @@
   (testing "a pipe in a description doesn't split the row"
     (is (str/includes? (#'mcp-tools-dox/arguments-markdown
                         {:inputSchema {:properties {:q {:type "string" :description "a | b"}}}})
-                       "a \\| b"))))
+                       "a \\| b")))
+  (testing "template syntax in a description is Liquid-fenced inside the cell, before the column is padded"
+    (let [markdown (#'mcp-tools-dox/arguments-markdown
+                    {:inputSchema {:properties {:sql {:type "string" :description "Use {{tag}}."}
+                                                :x   {:type "string" :description "Short."}}}})]
+      (is (str/includes? markdown "| Use {% raw %}{{tag}}{% endraw %}. |"))
+      (testing "and the shorter cell is padded to the fenced width"
+        (is (str/includes? markdown "| Short.                            |"))))))
 
 ;;;; Which tools land on the page
 
@@ -290,6 +302,15 @@
           (is (not (str/includes? ops-row "Add a tab.")))))
       (testing "the app-only credential tool has no section"
         (is (not (str/includes? markdown "refresh_ui_credential"))))
+      (testing "no unfenced Liquid reaches the page"
+        ;; the docs site rejects `{% card %}` outright and renders `{{tag}}` as nothing; the intro is hand-written
+        ;; and may carry a real `{% include %}`, so only the generated sections are held to this
+        (let [generated (subs markdown (str/index-of markdown "\n## "))
+              unfenced  (str/replace generated #"\{% raw %\}.*?\{% endraw %\}" "")]
+          (is (not (re-find #"\{\{|\{%" unfenced)))
+          (testing "and the fencing was exercised, not vacuous"
+            ;; `execute_sql` quotes `{{tag}}`; if that tool stops doing so, pick another that quotes template syntax
+            (is (str/includes? generated "{% raw %}{{tag}}{% endraw %}")))))
       (testing "the page ends with exactly one newline"
         (is (str/ends-with? markdown "\n"))
         (is (not (str/ends-with? markdown "\n\n")))))))
