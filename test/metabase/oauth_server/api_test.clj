@@ -1617,3 +1617,46 @@
             (let [token (exchange-code! client (post-mcp-decision! (:client_id client) again
                                                                    ["agent:sql:run"] 302))]
               (is (= (conj v2-baseline-scope-set "agent:sql:run") (token-scope-set token))))))))))
+
+(defn- consent-checkboxes
+  "The `{:scope <value> :checked? :disabled?}` of each scope checkbox on the consent page `body`, in page order."
+  [body]
+  (for [tag (re-seq #"<input[^>]*type=\"checkbox\"[^>]*>" body)]
+    {:scope     (second (re-find #"value=\"([^\"]*)\"" tag))
+     :checked?  (boolean (re-find #"\schecked[\s=/>]" tag))
+     :disabled? (boolean (re-find #"\sdisabled[\s=/>]" tag))}))
+
+(deftest consent-page-scope-order-test
+  (testing (str "GHY-4555: the six v2 scopes are listed least to most harmful whatever order they were requested in, "
+                "and any other requested scope follows in request order")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [requested ["zeta:other" "agent:delivery:write" "agent:sql:run" oauth-server/full-access-scope
+                         "agent:content:write" "agent:query:run" "agent:content:read" "agent:resource:read"]
+              client-id (:client_id (create-test-client! {:scopes requested}))
+              body      (:body (mt/user-http-request-full-response
+                                :crowberto :get 200 "oauth/authorize"
+                                :client_id     client-id
+                                :redirect_uri  "https://example.com/callback"
+                                :response_type "code"
+                                :scope         (str/join " " requested)
+                                :state         "test-state"))]
+          (is (= ["agent:resource:read" "agent:content:read" "agent:query:run"
+                  "agent:content:write" "agent:sql:run" "agent:delivery:write"
+                  "zeta:other" oauth-server/full-access-scope]
+                 (map :scope (consent-checkboxes body))))
+          (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts unticked"
+            (is (= {"agent:resource:read"          [true true]
+                    "agent:content:read"           [true true]
+                    "agent:query:run"              [true true]
+                    "agent:content:write"          [false false]
+                    "agent:sql:run"                [false false]
+                    "agent:delivery:write"         [false false]
+                    "zeta:other"                   [false false]
+                    oauth-server/full-access-scope [false false]}
+                   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
+
+(deftest consent-scope-order-covers-v2-scopes-test
+  (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"
+    (is (= (set (mcp/v2-scopes)) (set @#'api.oauth/consent-scope-order)))
+    (is (= (count (mcp/v2-scopes)) (count @#'api.oauth/consent-scope-order)))))

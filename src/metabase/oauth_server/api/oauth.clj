@@ -100,27 +100,40 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
-(defn- requested-scope-descriptions
-  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description}` maps for the
-   consent page, so the user sees exactly what the client is asking for. Falls back to the raw scope
-   string when a scope has no registered human-readable description. Returns nil when no scope was
-   requested."
-  [scope-param]
-  (when-let [scope-str (some-> scope-param str not-empty)]
-    (->> (str/split scope-str #"\s+")
-         (remove str/blank?)
-         distinct
-         (mapv (fn [s]
-                 {:scope        s
-                  :description  (or (some-> (api-scope/scope-description s) str) s)
-                  ;; Flag the broad first-party grant so the consent page can warn about it without
-                  ;; hardcoding the scope string in the view.
-                  :full-access? (= s oauth-server/full-access-scope)})))))
+(def ^:private consent-scope-order
+  "The MCP v2 scopes in the order the consent page lists them, least to most harmful."
+  ["agent:resource:read"
+   "agent:content:read"
+   "agent:query:run"
+   "agent:content:write"
+   "agent:sql:run"
+   "agent:delivery:write"])
 
 (defn- scope-tokens
   "Split a space-separated OAuth `scope` value into its scope strings, in order. Returns nil when blank."
   [scope-param]
   (some-> scope-param str str/trim not-empty (str/split #"\s+")))
+
+(defn- requested-scope-descriptions
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?}` maps
+   for the consent page, so the user sees exactly what the client is asking for. Scopes in [[consent-scope-order]]
+   come first in that order, then the rest in request order. `:locked?` marks an MCP baseline scope, which is always
+   granted. Falls back to the raw scope string when a scope has no registered human-readable description. Returns nil
+   when no scope was requested."
+  [scope-param]
+  (when-let [scopes (some-> (scope-tokens scope-param) distinct seq)]
+    (let [rank     (zipmap consent-scope-order (range))
+          baseline (set (mcp/v2-baseline-scopes))]
+      (->> scopes
+           ;; `sort-by` is stable, so unranked scopes keep their request order
+           (sort-by #(rank % (count rank)))
+           (mapv (fn [s]
+                   {:scope        s
+                    :description  (or (some-> (api-scope/scope-description s) str) s)
+                    ;; Flag the broad first-party grant so the consent page can warn about it without
+                    ;; hardcoding the scope string in the view.
+                    :full-access? (= s oauth-server/full-access-scope)
+                    :locked?      (contains? baseline s)}))))))
 
 (defn- form-values
   "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."

@@ -77,29 +77,50 @@
      :default-logo?  (= logo-url default-logo-url)
      :brand-color    (sanitize-css-color (get colors "brand"))}))
 
+(defn- full-access-warning
+  [client-name]
+  [:div.warning
+   [:span.mark "!"]
+   [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
+    (or client-name "this application") " can do, including reading and changing all data you "
+    "can reach. Only approve it for a tool you trust and control."]])
+
 (defn- render-scope-list
-  "Render the requested OAuth scopes as a hiccup list so the user sees exactly what they're granting.
-   `scopes` is a vector of `{:scope <string> :description <localized-string-or-raw-scope>}` maps.
+  "Render the requested OAuth scopes as a hiccup list of checkboxes named `granted_scope`, so the user sees exactly
+   what they're granting and picks which of it to grant. `scopes` is a vector of
+   `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
+   in order.
+
+   A `:locked?` scope is ticked, disabled, and labelled as always granted; every other scope starts unticked. A
+   `:full-access?` scope carries the full-access warning in its own row.
 
    Shows the human description and the raw scope string: the description is readable, the raw string
    is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
    When a scope has no registered description (it falls back to the raw string) the raw span is
    omitted to avoid showing the same value twice."
-  [scopes]
+  [scopes client-name]
   (when (seq scopes)
     [:ul.scopes
-     (for [{:keys [scope description full-access?]} scopes]
-       [:li (when full-access? {:class "full"})
-        [:span {:class (if full-access? "dot full" "dot")}]
-        (if full-access? [:strong description] [:span description])
-        (when (not= description scope)
-          [:span.raw scope])])]))
+     (for [{:keys [scope description full-access? locked?]} scopes]
+       [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
+        [:label
+         [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope}
+                   locked? (assoc :checked true :disabled true))]
+         [:span.text
+          (if full-access? [:strong description] [:span description])
+          (when (not= description scope)
+            [:span.raw scope])]
+         (when locked?
+           [:span.always "Always granted"])]
+        (when full-access?
+          (full-access-warning client-name))])]))
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow.
 
-   `scopes` is a vector of `{:scope :description}` maps describing what the client is requesting; it is
-   shown to the user so a broad grant (e.g. full account access) is never approved blindly."
+   `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
+   requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) so a broad
+   grant (e.g. full account access) is never approved blindly."
   [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
@@ -128,14 +149,18 @@
                    .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
                    .scopes { list-style: none; margin: 0 0 1.5rem; padding: 0;
                              border: 1px solid #f0f0f0; border-radius: 8px; }
-                   .scopes li { display: flex; align-items: baseline; gap: 0.5rem;
-                                padding: 0.75rem 1rem; font-size: 0.875rem; color: #4c5773; }
+                   .scopes li { padding: 0.75rem 1rem; font-size: 0.875rem; color: #4c5773; }
                    .scopes li + li { border-top: 1px solid #f0f0f0; }
-                   .scopes .dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%;
-                                  background: " brand-color "; transform: translateY(-1px); }
+                   .scopes label { display: flex; align-items: baseline; gap: 0.5rem; cursor: pointer; }
+                   .scopes input { flex: 0 0 auto; margin: 0; accent-color: " brand-color ";
+                                   transform: translateY(2px); cursor: pointer; }
+                   .scopes .text { flex: 1 1 auto; display: flex; flex-wrap: wrap; column-gap: 0.5rem; }
                    .scopes .raw { font-family: monospace; font-size: 0.75rem; color: #949aab; }
+                   .scopes li.locked label, .scopes li.locked input { cursor: default; }
+                   .scopes .always { flex: 0 0 auto; font-size: 0.75rem; color: #949aab; white-space: nowrap; }
                    .scopes li.full strong { color: #2e353b; }
-                   .scopes .dot.full { background: #e35a4c; width: 8px; height: 8px; }
+                   .scopes li.full input { accent-color: #e35a4c; }
+                   .scopes li .warning { margin: 0.625rem 0 0; }
                    .warning { display: flex; gap: 0.5rem; align-items: flex-start;
                               background: #fdf3f2; border: 1px solid #f7d3cf; border-radius: 8px;
                               padding: 0.75rem 1rem; margin-bottom: 1.5rem;
@@ -160,18 +185,12 @@
          [:h1 "Authorize " (or client-name "Unknown Application") "?"]
          [:p.subtitle (or client-name "This application") " is requesting access to "
           [:strong (appearance/application-name)] " on your behalf:"]
-         (when (some :full-access? scopes)
-           [:div.warning
-            [:span.mark "!"]
-            [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
-             (or client-name "this application") " can do, including reading and changing all data you "
-             "can reach. Only approve it for a tool you trust and control."]])
-         (render-scope-list scopes)
-         (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
-           [:p.destination "Redirects to " [:strong redirect-host]])
          ;; Absolute action: a root-relative path would drop the subpath when Metabase is hosted
          ;; under one (site-url like https://example.com/metabase).
          [:form {:method "POST" :action (absolute-url "/oauth/authorize/decision")}
+          (render-scope-list scopes client-name)
+          (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
+            [:p.destination "Redirects to " [:strong redirect-host]])
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           [:input {:type "hidden" :name "params_sig" :value params-sig}]
           (for [[k v] oauth-params

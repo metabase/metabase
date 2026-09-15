@@ -154,3 +154,55 @@
                                       :full-access? false}])]
       (is (not (re-find #"class=\"warning\"" html)))
       (is (not (re-find #"complete access to your account" html))))))
+
+(defn- checkbox-tags
+  "The `<input type=\"checkbox\">` tags in `html`, in document order."
+  [html]
+  (re-seq #"<input[^>]*type=\"checkbox\"[^>]*>" html))
+
+(defn- tag-value [tag]
+  (second (re-find #"value=\"([^\"]*)\"" tag)))
+
+(defn- tag-has-attribute? [tag attribute]
+  (boolean (re-find (re-pattern (str "\\s" attribute "[\\s=/>]")) tag)))
+
+(def ^:private checkbox-scopes
+  [{:scope "agent:content:read" :description "Read content" :locked? true}
+   {:scope "agent:sql:run" :description "Run SQL"}
+   {:scope        "mb:full"
+    :description  "Full access to Metabase as your user account"
+    :full-access? true}])
+
+(deftest consent-page-scope-checkboxes-test
+  (testing "GHY-4555: every offered scope gets a checkbox named `granted_scope` whose value is the raw scope, in the given order"
+    (let [tags (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (is (= ["agent:content:read" "agent:sql:run" "mb:full"] (map tag-value tags)))
+      (is (every? #(re-find #"name=\"granted_scope\"" %) tags))))
+  (testing "the checkboxes are inside the form, so ticking one is what gets submitted"
+    (let [html (render-with-scopes! checkbox-scopes)]
+      (is (< (.indexOf ^String html "<form")
+             (.indexOf ^String html "type=\"checkbox\"")
+             (.indexOf ^String html "</form>"))))))
+
+(deftest consent-page-locked-baseline-checkbox-test
+  (testing "GHY-4555: a locked scope is ticked and disabled, and the page says it is always granted"
+    (let [html        (render-with-scopes! checkbox-scopes)
+          [locked]    (checkbox-tags html)]
+      (is (tag-has-attribute? locked "checked"))
+      (is (tag-has-attribute? locked "disabled"))
+      (is (re-find #"(?s)value=\"agent:content:read\"(?:(?!</li>).)*Always granted" html)
+          "the note sits in the locked scope's row")))
+  (testing "every other scope, including a full-access one, starts unticked and can be ticked"
+    (let [[_ sql full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (doseq [tag [sql full]]
+        (is (not (tag-has-attribute? tag "checked")) tag)
+        (is (not (tag-has-attribute? tag "disabled")) tag))))
+  (testing "no always-granted note when nothing is locked"
+    (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))
+
+(deftest consent-page-full-access-warning-placement-test
+  (testing "GHY-4555: the full-access warning sits in the full-access scope's own row, next to its checkbox"
+    (let [html (render-with-scopes! checkbox-scopes)]
+      (is (re-find #"(?s)value=\"mb:full\"(?:(?!</li>).)*class=\"warning\"" html))
+      (is (not (re-find #"(?s)class=\"warning\".*type=\"checkbox\" value=\"mb:full\"" html))
+          "the warning does not precede the checkbox it is about"))))
