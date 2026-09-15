@@ -18,6 +18,33 @@
   (try (thunk) nil
        (catch clojure.lang.ExceptionInfo e [(:status-code (ex-data e)) (ex-message e)])))
 
+;;; ------------------------------------------- First-stage database ---------------------------------------------
+
+(deftest first-stage-database-id-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "a numeric source-table resolves to its table's database"
+      (is (= (mt/id) (v2.queries/first-stage-database-id {:lib/type "mbql.stage/mbql" :source-table (mt/id :orders)}))))
+    (testing "a numeric source-card resolves to its card's database"
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (is (= (mt/id) (v2.queries/first-stage-database-id {:source-card card-id})))))
+    (testing "a stage naming no source by numeric id is nil, not an error — the caller keeps its own
+              missing-database report, and the portable dialect stays the pipeline's to resolve"
+      (is (nil? (v2.queries/first-stage-database-id {:lib/type "mbql.stage/mbql"})))
+      (is (nil? (v2.queries/first-stage-database-id {:source-table ["Sample Database" "PUBLIC" "ORDERS"]})))
+      (is (nil? (v2.queries/first-stage-database-id {:source-card "abcdefghijklmnopqrstu"}))))
+    (testing "an unknown id is a teaching error ending in the v2 recovery sentence"
+      (let [[_ message] (thrown #(v2.queries/first-stage-database-id {:source-table Integer/MAX_VALUE}))]
+        (is (re-find #"No table found with id 2147483647" message))
+        (is (re-find #"browse_data" message)))
+      (let [[_ message] (thrown #(v2.queries/first-stage-database-id {:source-card Integer/MAX_VALUE}))]
+        (is (re-find #"No saved question or model found with id 2147483647" message))
+        (is (re-find #"`search`" message)))))
+  (testing "a table the caller cannot read is reported exactly like one that does not exist"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [[_ message] (thrown #(v2.queries/first-stage-database-id {:source-table (mt/id :orders)}))]
+          (is (re-find (re-pattern (str "No table found with id " (mt/id :orders))) message)))))))
+
 (defn- mbql-handle!
   "Mint a handle for an orders-sourced MBQL query owned by `uid` in session `sid`."
   [sid uid & [prompt]]

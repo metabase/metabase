@@ -505,10 +505,36 @@
                table-fks))
      already-checked)))
 
-(defn resolve-database-id-from-first-stage
-  "Resolve the application database id from the first stage's source.
+(defn- with-recovery-hint
+  "Return `e` with the caller's recovery sentence appended to its message, or unchanged when
+  `recovery-hint` is absent or has nothing to say about this error."
+  [e recovery-hint]
+  (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
+    (ex-info (str (ex-message e) " " hint) (ex-data e) e)
+    e))
 
-  Public only so tests can stub it. Strategy:
+(declare resolve-database-id-from-first-stage*)
+
+(defn resolve-database-id-from-first-stage
+  "Resolve the application database id from the first stage's source. See
+  [[resolve-database-id-from-first-stage*]] for the strategy. Public only so tests can stub it.
+
+  `opts` may carry `:recovery-hint`, as for [[execute-representations-query]]: an agent error
+  leaves with the caller's recovery sentence appended. A surface that resolves a first stage on
+  its own — outside the pipeline, which appends the hint itself — passes it here so the sentence
+  is glued on in one place."
+  ([parsed-query]
+   (resolve-database-id-from-first-stage parsed-query nil))
+  ([parsed-query {:keys [recovery-hint]}]
+   (try
+     (resolve-database-id-from-first-stage* parsed-query)
+     (catch clojure.lang.ExceptionInfo e
+       (throw (if (:agent-error? (ex-data e))
+                (with-recovery-hint e recovery-hint)
+                e))))))
+
+(defn- resolve-database-id-from-first-stage*
+  "Resolve the application database id from the first stage's source. Strategy:
 
     * If `stages[0].source-table` is a portable FK `[db schema table]`, look up the database
       by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
@@ -751,14 +777,6 @@
           (throw (as-agent-input-error e)))))))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
-
-(defn- with-recovery-hint
-  "Return `e` with the caller's recovery sentence appended to its message, or unchanged when
-  `recovery-hint` is absent or has nothing to say about this error."
-  [e recovery-hint]
-  (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
-    (ex-info (str (ex-message e) " " hint) (ex-data e) e)
-    e))
 
 (defn execute-representations-query
   "Run `external-query` through the representations pipeline. See
