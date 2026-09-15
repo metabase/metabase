@@ -4,9 +4,10 @@
   Contains the `ui://` iframe shells behind the MCP Apps tools (`visualize_query`, `render_drill_through`)
   and the fields-catalog data resource. Documentation/skill resources land with the skills work.
 
-  Every resource carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]], the same
-  all-or-nothing gate v2 tools use. There are deliberately no public resources, so there is no looser gate to
-  accidentally ship one through.
+  Every resource is listed and read whatever the token's scopes, so a resource must carry nothing a scope should
+  guard. A UI resource's `:scope` is the scope of the tool that renders it and the scope a token must hold for the
+  shell's render to receive a UI credential; the data behind the shell stays gated by that tool,
+  `refresh_ui_credential`, and [[metabase.mcp.ui-surface/request-surface]].
 
    Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require
@@ -34,7 +35,6 @@
                 [:name :string]
                 [:description :string]
                 [:mimeType :string]
-                [:scope :string]
                 [:render-fn fn?]]]
   (swap! resources* assoc (:uri resource) resource)
   (:uri resource))
@@ -53,13 +53,13 @@
   (:uri resource))
 
 (defn resource-scope
-  "The scope guarding `uri`, or nil when no such resource is registered. UI tools read this so a
+  "The `:scope` of the UI resource at `uri`, or nil when none is registered. UI tools read this so a
    tool and the resource it renders can never drift onto different scopes."
   [uri]
   (get-in @resources* [uri :scope]))
 
 (defn resource-scopes
-  "The distinct scope strings across all registered v2 resources."
+  "The distinct `:scope` strings across the registered v2 UI resources."
   []
   (into (sorted-set) (keep :scope) (vals @resources*)))
 
@@ -73,20 +73,20 @@
                     (vals @resources*))})
 
 (defn read-resource
-  "Read a registered resource by URI, gated by `token-scopes`. Returns one of
-   `{:status :ok :contents [...]}`, `{:status :scope-denied :required-scope scope}`, or `{:status :not-found}`. The
-   single registry lookup keeps the gate atomic with the render, so callers cannot bypass the
-   scope check.
+  "Read a registered resource by URI, whatever `token-scopes` holds. Returns `{:status :ok :contents [...]}` or
+   `{:status :not-found}`.
 
-   `opts` is threaded to the `:render-fn` — see [[metabase.mcp.ui-resource/embed-render-fn]]."
+   `opts` is threaded to the `:render-fn` — see [[metabase.mcp.ui-resource/embed-render-fn]] — except that its
+   `:ui-credential` is dropped unless `token-scopes` matches the resource's `:scope`, so a read can never hand a
+   credential to a token that lacks that scope."
   [uri token-scopes opts]
   (if-let [{:keys [render-fn scope] :as resource} (get @resources* uri)]
-    (if (mcp.scope/matches? token-scopes scope)
-      {:status   :ok
-       :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
-                              (assoc :text (render-fn opts)))
-                    (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
-      {:status :scope-denied :required-scope scope})
+    {:status   :ok
+     :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
+                            (assoc :text (render-fn (cond-> opts
+                                                      (not (mcp.scope/matches? token-scopes scope))
+                                                      (dissoc :ui-credential)))))
+                  (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
     {:status :not-found}))
 
 ;;; ------------------------------------------------ Registrations -------------------------------------------------
@@ -125,5 +125,4 @@
     :name        "Fields Catalog"
     :description "The dot-paths each content type supports in `fields` arguments (e.g. get_content), keyed by type."
     :mimeType    "application/json"
-    :scope       metabot.scope/agent-resource-read
     :render-fn   (fn [_opts] (json/encode (projections/all-catalogs)))}))

@@ -20,8 +20,9 @@
    scope-checked, and `ensure-scopes-checked` refuses it. Adding a route is therefore a decision about which
    scope pays for it, and a route reached by mistake — a routing change, a new alias — fails closed.
 
-   `agent:query:run` is the scope that already bought the iframe: the v2 shell resources in
-   [[metabase.mcp.v2.resources]] declare it, so a client that can mount the iframe at all holds it."
+   `agent:query:run` is the scope the iframe's tools cost. Any token can read the v2 shell resources in
+   [[metabase.mcp.v2.resources]], so mounting the iframe proves nothing: the `refresh_ui_credential` tool and
+   the route costs below are what require it."
   {[:get  "/api/embed-mcp/bootstrap"]         nil
    [:post "/api/embed-mcp/feedback"]          nil
    [:post "/api/embed-mcp/drills"]            metabot.scope/agent-query-run

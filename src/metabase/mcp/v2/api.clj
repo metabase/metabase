@@ -79,21 +79,6 @@
 (defn- handle-resources-list [id _params]
   (transport/jsonrpc-response id (v2.resources/list-resources)))
 
-(defn- resource-scope-denial
-  "The JSON-RPC error refusing request `id` a read of `uri` because `token-scopes` lack `required-scope`, marked with
-   [[transport/insufficient-scope]]."
-  [id uri token-scopes required-scope]
-  (let [held (sort (filter string? token-scopes))]
-    (transport/insufficient-scope
-     (transport/jsonrpc-error id -32600 (str "Insufficient scope to read resource: " uri ". Requires " required-scope "; "
-                                             (if (seq held)
-                                               (str "your token holds " (str/join ", " held) ".")
-                                               "your token holds no scopes.")))
-     (step-up-scopes mcp.paths/v2-surface-scopes token-scopes [required-scope])
-     (str uri " requires " required-scope
-          (when-let [label (registry/english-scope-label required-scope)]
-            (str " (" label ")"))))))
-
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
@@ -103,17 +88,16 @@
       ;; templates that embed it (the test fallback), and the production template discards it.
       ;; Deliberately a delay: the URI has not been resolved yet, so minting eagerly would hand a live
       ;; 5-minute authenticator to data resources that ignore it, and burn one on reads that turn out
-      ;; to be unknown or scope-denied. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it,
-      ;; and only after the scope gate has passed.
+      ;; to be unknown. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it, and
+      ;; [[metabase.mcp.v2.resources/read-resource]] withholds it from a token lacking the resource's scope.
       (let [user-id       api/*current-user-id*
             ui-credential (when user-id
                             (delay (mcp.session/issue-ui-credential session-id user-id token-scopes)))
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
-          :not-found    (transport/jsonrpc-error id -32602 "Resource not found")
-          :scope-denied (resource-scope-denial id uri token-scopes (:required-scope result))
-          :ok           (transport/jsonrpc-response id {:contents (:contents result)})
+          :not-found (transport/jsonrpc-error id -32602 "Resource not found")
+          :ok        (transport/jsonrpc-response id {:contents (:contents result)})
           (transport/jsonrpc-error id -32603 (str "Unexpected resource status: " (:status result))))))))
 
 (defn- handle-ping [id _params]

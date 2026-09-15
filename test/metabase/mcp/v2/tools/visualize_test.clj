@@ -324,22 +324,36 @@
         (is (contains? advertised scope) scope)))))
 
 (deftest resources-scope-gating-test
-  (testing "GHY-4543: resources/list lists every shell regardless of scope; only the read is gated"
+  (testing "GHY-4543: resources/list lists every shell regardless of scope"
     (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
              v2.resources/fields-catalog-uri}
            (set (map :uri (:resources (v2.resources/list-resources)))))))
-  (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
-            still-live token carrying one unlocks nothing — a bare grant matches only itself"
-    (doseq [grant ["agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
-            uri   [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
-      (is (= :scope-denied (:status (v2.resources/read-resource uri #{grant} {})))
-          (str grant " -> " uri))))
-  (testing "GHY-4157: reading a shell without its scope is denied, not served"
-    (testing "GHY-4543: and the denial names the scope, so the transport can challenge for it"
-      (is (= {:status :scope-denied :required-scope "agent:query:run"}
-             (v2.resources/read-resource v2.resources/visualize-query-uri #{"agent:content:read"} {}))))
-    (is (= :not-found (:status (v2.resources/read-resource "ui://metabase/nope.html"
-                                                           viz-scopes {}))))))
+  (mcp.ui-resource/with-fallback-template
+    (let [read-with (fn [uri token-scopes]
+                      (let [credential (delay "test-ui-credential")
+                            result     (v2.resources/read-resource uri token-scopes {:ui-credential credential})]
+                        {:status  (:status result)
+                         :text    (-> result :contents first :text)
+                         :minted? (realized? credential)}))]
+      (testing "GHY-4543: a shell reads without its scope, but its credential is neither embedded nor forced"
+        (doseq [uri [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+          (let [{:keys [status text minted?]} (read-with uri #{"agent:content:read"})]
+            (is (= :ok status) uri)
+            (is (not (str/includes? text "test-ui-credential")) uri)
+            (is (false? minted?) uri))))
+      (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
+                still-live token carrying one earns no credential — a bare grant matches only itself"
+        (doseq [grant ["agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+                uri   [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+          (is (false? (:minted? (read-with uri #{grant}))) (str grant " -> " uri))))
+      (testing "a token holding the shell's scope gets the credential embedded"
+        (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
+          (is (str/includes? text "test-ui-credential"))
+          (is (true? minted?))))
+      (testing "GHY-4543: the fields catalog reads without agent:resource:read"
+        (is (= :ok (:status (read-with v2.resources/fields-catalog-uri #{"agent:content:read"})))))
+      (testing "GHY-4157: an unknown URI is not found"
+        (is (= :not-found (:status (read-with "ui://metabase/nope.html" viz-scopes))))))))
 
 (deftest resource-read-renders-iframe-shell-test
   (mcp.ui-resource/with-fallback-template

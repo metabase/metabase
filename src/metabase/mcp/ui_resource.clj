@@ -169,8 +169,8 @@
 
    The returned fn takes the `resources/read` options map: `:ui-credential` (the scoped credential
    the iframe authenticates with, as a delay — forcing it here is what mints one, so resources that
-   do not embed a credential never cause one to exist) and `:session-id` (the MCP session id it
-   echoes back on callbacks). Since #81041 the production template discards both — the iframe
+   do not embed a credential never cause one to exist; absent or nil renders none) and `:session-id`
+   (the MCP session id it echoes back on callbacks). Since #81041 the production template discards both — the iframe
    fetches its credential through the `refresh_ui_credential` tool — so on a production shell read
    the minted credential (HMAC-only, no DB row) is unused; the test fallback template still embeds
    it, which is what the shell-credential tests exercise."

@@ -189,11 +189,12 @@
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   ;; The MCP Apps iframe credential is accepted for `/dataset` and is stamped unrestricted, so the endpoint
-   ;; scope middleware cannot hold the `agent:sql:run` line here — the guard is what stops a credential lifted
-   ;; out of the resource HTML from POSTing raw SQL. The spec-generation wrapper keeps the guard transparent
-   ;; to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here fails openapi.json generation
-   ;; for the whole /api tree.
+   ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
+   ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
+   ;; token's scopes as a signed claim (unrestricted only when minted from a cookie session), and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
+   ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
                                     agent-api.query-guards/+refuse-unscoped-native-sql)
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
