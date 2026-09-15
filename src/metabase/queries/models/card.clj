@@ -768,8 +768,73 @@
   (cond->> (lib/normalize ::queries.schema/card card)
     (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
 
+(defn timeline-events-supported-display?
+  "Whether `display`, a keyword or string, supports timeline events."
+  [display]
+  ;; Keep this aligned with the frontend's canDisplayTimelineEvents registry check.
+  (contains? #{:line :bar :area :combo :scatter :waterfall} (keyword display)))
+
+(defn- check-timeline-visibility-permissions!
+  [card previous-card]
+  ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
+  (when api/*current-user-id*
+    (let [visibility-keys         [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
+                                   :timeline_events.enabled]
+          visibility              (select-keys (:visualization_settings card) visibility-keys)
+          previous-visibility     (select-keys (:visualization_settings previous-card) visibility-keys)
+          display-reveals-events? (and (not (false? (:timeline_events.enabled visibility)))
+                                       (timeline-events-supported-display? (:display card))
+                                       (not (timeline-events-supported-display? (:display previous-card))))]
+      ;; Any change to timeline visibility settings, even one hiding more events, needs read access to the timelines.
+      (when (or display-reveals-events? (not= visibility previous-visibility))
+        (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
+          (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
+                         (tru "Selected timeline IDs must be a sequence of positive integers."))
+          ;; Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
+          (doseq [timeline (queries.db/timelines (set timeline-ids))]
+            (api/read-check timeline)))))))
+
+(defn- dashboard-exposed-timeline-ids
+  "The ids of the timelines whose events `card` shows when it is on a dashboard."
+  [{:keys [display archived] settings :visualization_settings}]
+  (let [timeline-ids (:timeline.selected_timeline_ids settings)]
+    (when (and (not archived)
+               (timeline-events-supported-display? display)
+               (not (false? (:timeline_events.enabled settings)))
+               (sequential? timeline-ids))
+      (filter pos-int? timeline-ids))))
+
+(defn check-shared-dashboard-timeline-permissions!
+  "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
+  publicly shared or embedded, so the current user needs read access to those timelines."
+  [dashboard cards]
+  (when (and api/*current-user-id*
+             (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+    (let [timeline-ids (into #{} (mapcat dashboard-exposed-timeline-ids) cards)]
+      (doseq [timeline (queries.db/timelines timeline-ids)]
+        (api/read-check timeline)))))
+
+(defn check-shared-dashboard-timeline-permissions-for-card-ids!
+  "[[check-shared-dashboard-timeline-permissions!]] for the saved Cards with `card-ids`."
+  [dashboard card-ids]
+  (when (seq card-ids)
+    (check-shared-dashboard-timeline-permissions! dashboard (queries.db/cards (set card-ids)))))
+
+(def ^:dynamic *copy-source-card*
+  "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
+  copying a Card does not require read access to the timelines it already selects."
+  nil)
+
+(defmacro with-copy-source-card
+  "Runs `body`, treating a Card inserted within it as a copy of `source-card`: an inherited timeline selection does
+  not require read access to those timelines. `source-card` must be a Card the current user has already passed a
+  read check on, and `body` should perform only the single copy insert."
+  [source-card & body]
+  `(binding [*copy-source-card* ~source-card] ~@body))
+
 (t2/define-before-insert :model/Card
   [card]
+  (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
@@ -829,8 +894,11 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some-> card t2/changes normalize-card)
-        card    (normalize-card card)]
+  (let [previous-card (t2/original card)
+        changes       (some-> card t2/changes normalize-card)
+        card          (normalize-card card)]
+    (when (or (contains? changes :visualization_settings) (contains? changes :display))
+      (check-timeline-visibility-permissions! card previous-card))
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
