@@ -672,10 +672,13 @@
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
-       ([[query-not-runnable-explanation]]), then run the FE expression editor's own
+       ([[query-not-runnable-explanation]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
-       ([[repr.repair/assert-editor-accepts-expressions!]]). Either failure is a retryable
-       `:agent-error?` - success on a query the editor rejects is BOT-1442.
+       ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
+       sitting on a column that is not temporal
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of the three
+       failing is a retryable `:agent-error?` - success on a query the editor rejects is
+       BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
@@ -735,6 +738,7 @@
             ;; after the `_runnable` gate: `diagnose-expression` itself validates its query
             ;; argument against the same schema.
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
+            _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]

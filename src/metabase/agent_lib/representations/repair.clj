@@ -34,9 +34,12 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.walk :as lib.walk]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -311,7 +314,7 @@
 ;;; ============================================================
 ;;; Pass 1.87 -- rewrite known misspelled `lib/type` markers to their canonical value.
 ;;;
-;;; Pass 2's `infer-*` helpers only FILL a missing marker; they never rewrite a present one.
+;;; Pass 2's `ensure-lib-types*` only FILLS a missing marker; it never rewrites a present one.
 ;;; This pass handles the present-but-wrong case via a small alias table, exactly like the
 ;;; `rewrite-operator-name-aliases*` / `rewrite-temporal-bucket-aliases*` passes.
 ;;; ============================================================
@@ -802,29 +805,16 @@
     (&recur (-> &match (assoc 3 (nth &match 4)) (assoc 4 (nth &match 3))))))
 
 ;;; ============================================================
-;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
-;;; `[absolute-datetime, {}, <iso-str>, "day"]`.
-;;;
-;;; LLMs frequently write `[between, {}, <date-field>, "2024-01-01", "2024-12-31"]`,
-;;; using bare strings as the bounds. lib's `:between` schema demands a temporal
-;;; expression on each side once any side is temporal; bare strings won't satisfy
-;;; `:type/Date`. We detect the case where at least one of the two bounds matches the
-;;; ISO-8601 `yyyy-mm-dd` pattern and wrap each matching string as an
-;;; `["absolute-datetime" {} <iso-str> "day"]` clause. Carried over from the sexp
-;;; pipeline's `wrap-iso-date-as-absolute-datetime` (see
-;;; `repr-deletion-followups.md` § 1.6). High-frequency LLM pattern.
-;;;
-;;; Idempotency: after wrap, bounds are vectors, so the predicate (string + ISO regex)
-;;; no longer matches.
+;;; Temporal-literal helpers, shared by the passes below.
 ;;; ============================================================
 
-(def ^:private iso-date-pattern
+(def ^:private iso-date-or-datetime-pattern
   "Recognises an ISO-8601 calendar-date string (yyyy-mm-dd, optionally with a time portion)."
   #"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+\-]\d{2}:?\d{2})?)?")
 
 (defn- iso-date-string? [v]
   (and (string? v)
-       (re-matches iso-date-pattern (str/trim v))))
+       (re-matches iso-date-or-datetime-pattern (str/trim v))))
 
 (defn- temporal-clause-head?
   "Heads that are unambiguously temporal-shaped clauses."
@@ -839,37 +829,6 @@
        (>= (count v) 1)
        (string? (nth v 0))
        (temporal-clause-head? (nth v 0))))
-
-(defn- wrap-iso-date [v]
-  (if (iso-date-string? v)
-    ["absolute-datetime" {} (str/trim v) "day"]
-    v))
-
-(defn- between-needs-iso-wrap?
-  "Trigger the ISO-wrap when at least one bound is already a temporal-shaped clause OR
-  at least one bound is an ISO-date string. The first case mirrors sexp's behaviour
-  (`temporal-expression?` on either side), the second case is a small extension - if
-  both bounds are bare ISO date strings the structure is unambiguous and bare strings
-  would fail validation anyway."
-  [lo hi]
-  (or (temporal-shaped-clause? lo)
-      (temporal-shaped-clause? hi)
-      (iso-date-string? lo)
-      (iso-date-string? hi)))
-
-(defn- between-needs-iso-wrap-clause? [node]
-  (and (between-clause? node)
-       (between-needs-iso-wrap? (nth node 3) (nth node 4))))
-
-(defn- wrap-iso-date-bounds*
-  [form]
-  ;; No `&recur`: a wrapped ISO bound becomes an `absolute-datetime` clause, which is itself
-  ;; temporal-shaped, so `between-needs-iso-wrap-clause?` would fire on the result forever.
-  (match/replace form
-    (_ :guard between-needs-iso-wrap-clause?)
-    (-> &match
-        (assoc 3 (wrap-iso-date (nth &match 3)))
-        (assoc 4 (wrap-iso-date (nth &match 4))))))
 
 ;;; ============================================================
 ;;; Pass 1.865 -- wrap bare `"now"` string literals in temporal contexts as the canonical
@@ -900,7 +859,11 @@
 
 (defn- temporal-context-operand? [v]
   (or (temporal-shaped-clause? v)
-      (field-with-temporal-unit? v)))
+      (field-with-temporal-unit? v)
+      ;; A bare ISO-date bound counts as a temporal sibling: in `["between" {} <field>
+      ;; "2024-01-01" "now"]` neither operand is a clause, and without this the `"now"`
+      ;; would survive as a bare string and blow up in `wrap-value-literals`.
+      (iso-date-string? v)))
 
 (def ^:private temporal-comparison-heads
   "Comparison-style heads for which we'll wrap a bare `\"now\"` literal in another operand
@@ -936,6 +899,458 @@
    (fn [node]
      (if (temporal-comparison-clause? node)
        (maybe-wrap-now-operands node)
+       node))
+   form))
+
+;;; ============================================================
+;;; Structural predicates -- what a bare map looks like, with no `lib/type` marker to go on.
+;;;
+;;; Shared by Pass 2.95, which hoists only inside a stage, and Pass 2, which stamps a missing
+;;; marker on one. One definition, so the hoist's notion of a stage is the one that stamps the
+;;; marker -- a marker the model wrote can be wrong, a derivation cannot disagree with itself.
+;;; ============================================================
+
+(defn- top-level-query-map?
+  [m]
+  (match/matches? m {"database" _, "stages" _}))
+
+(defn- join-like-map?
+  "A map that looks like an explicit join: it carries join-only keys (`conditions`, or
+  `alias`+`stages`) that never appear on a stage or top-level query. We key on these rather
+  than on `\"fields\"` (which a join shares with a stage) so a join is not mistaken for a
+  stage by [[stage-like-map?]]."
+  [m]
+  (and (map? m)
+       (or (contains? m "conditions")
+           (and (contains? m "alias")
+                (contains? m "stages")))))
+
+(defn- stage-like-map?
+  "A map that looks like an MBQL stage: has `\"source-table\"`, `\"source-card\"`, or any of the
+  stage-body keys (`filters`, `aggregation`, `breakout`, `order-by`, `fields`, `joins`,
+  `expressions`, `limit`). Not a top-level query and not an explicit join (a join can carry
+  `\"fields\"`, so we exclude it explicitly)."
+  [m]
+  (and (map? m)
+       (not (top-level-query-map? m))
+       (not (join-like-map? m))
+       (boolean
+        (some #(contains? m %)
+              ["source-table" "source-card" "filters" "aggregation"
+               "breakout" "order-by" "fields" "joins" "expressions" "limit"]))))
+
+;;; ============================================================
+;;; Pass 2.95 -- hoist a temporal bucket: move it off an `absolute-datetime` literal and onto the
+;;; ref it is compared to, aligning the literal to the unit it gives up. Sideways, within one
+;;; clause; nothing moves up a level.
+;;;
+;;;   ["=", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "month"]]
+;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-01-01"]
+;;;
+;;;   ["during", {}, ["field", {}, <col>], "2025-06-15", "month"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "month"}, <col>], "2025-06-01"]
+;;;
+;;;   ["during", {}, ["field", {}, <col>], "2025-01-01T10:30:00", "hour"]
+;;;   => ["=", {}, ["field", {"temporal-unit": "hour"}, <col>], "2025-01-01T10:00"]
+;;;
+;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
+;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
+;;;
+;;; Why: the frontend opens a Metabot question from a `/question#` hash holding *legacy* MBQL
+;;; (`metabase.metabot.agent.links/->legacy-mbql`). JSON turns the unit into a string, and the legacy
+;;; schema cannot decode it back for `absolute-datetime` / `during`, so the clause never survives the
+;;; hop -- the last paragraph below says what that costs, which depends on where the clause sits. A
+;;; `temporal-unit` on a ref decodes fine (`legacy-json-round-trip-temporal-filters-test`).
+;;;
+;;; Only inside a stage's `filters` and `expressions`, at every nesting level of the two -- a
+;;; comparison inside a `case` included -- and in every stage of the query, a join's inner stages
+;;; among them, where `optimize-temporal-filters` reads the unit from either side. Not in
+;;; `aggregation:` (`count-where`, `sum-where`, `share`), `order-by:` or a join's own `conditions:`:
+;;; that middleware walks `:filters` and `:expressions` and nothing else, so there the bucket really
+;;; would truncate the column --
+;;;
+;;;   ["count-where", {}, [">", {}, <col>, ["absolute-datetime", {}, "2027-06-15", "month"]]]
+;;;     as written: SUM(CASE WHEN created_at                    > date_trunc(month, ...) ...)
+;;;     hoisted:    SUM(CASE WHEN date_trunc(month, created_at) > date_trunc(month, ...) ...)
+;;;
+;;; -- a different answer. Also left as written: a unit the literal cannot carry (`hour` on a date,
+;;; `month-of-year`), `year` on an `expression` ref ([[unit-hoistable-onto-ref?]] says why), a ref
+;;; that already has a `temporal-unit`, `between` bounds with different buckets, and an unparseable
+;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
+;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
+;;; query builder writes it.
+;;;
+;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
+;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
+;;;
+;;; Both forms then select the same rows -- or compute the same value, inside `expressions` --
+;;; wherever `optimize-temporal-filters` can read the unit off either side: a `field` ref, or an
+;;; `expression` ref that carries a type. Two exceptions.
+;;;
+;;; (1) `!=` / `not-in` on a `:type/Date` column bucketed by `day`. Only the hoisted form reaches
+;;; `date-field-with-day-bucketing?`, so the literal-side form becomes a negated range
+;;; (`d < x OR d >= x+1`, dropping NULL rows) while the hoisted one stays an `!=` and gets the
+;;; `IS NULL` disjunct `sql.qp` adds to every other `!=` (`correct-null-behaviour`). Hoisting is the
+;;; only option here, not just the better one: every `!=` shape that survives the JSON hop compiles
+;;; to `<> ... OR ... IS NULL`, and the one shape that does not is the broken one above. Pinned by
+;;; `optimize-date-not-equals-null-semantics-test`. The divergence is about *which rows*; inside a
+;;; `case` under `expressions` that becomes a difference in a computed value rather than in the
+;;; filter.
+;;;
+;;; (2) An `expression` ref. The middleware optimises neither form, for two unrelated reasons: as
+;;; written, resolve stamps no `base-type` on the ref and `temporal-ref?` reads the type from the
+;;; ref's own options, so the clause is not optimizable at all; hoisted, `wrap-value-literals` copies
+;;; a ref's unit onto the bare literal only for `field` refs (`type-info-from-col` sits behind a
+;;; `clause-of-type? :field` guard), so a `month`-bucketed `expression` ref meets a `day` literal and
+;;; the units disagree.
+;;;
+;;;   [">", {}, ["expression", {}, "Ship"], ["absolute-datetime", {}, "2025-06-01", "month"]]
+;;;     as written: WHERE <Ship>                    > date_trunc(month, '2025-06-01')   -- 18744 rows
+;;;     hoisted:    WHERE date_trunc(month, <Ship>) > '2025-06-01'                      -- 18709 rows
+;;;
+;;; The hoisted count is what both forms give once the ref is typed, so the rewrite makes an untyped
+;;; *temporal* `expression` ref behave like a typed one -- a real change, and the right one. `=` and
+;;; `<=` diverge the same way; `<` and `>=` happen to agree. Both asymmetries are QP gaps
+;;; (`temporal-ref?` should consult `lib/type-of`; `wrap-value-literals` should read a unit off any
+;;; ref); worth their own issue. Pinned by `optimize-untyped-expression-ref-not-optimized-test`.
+;;;
+;;; That is also why the pass aligns the literal itself ([[align-literal-to-unit]]). The middleware
+;;; truncates *both* sides of a comparison, so on a `field` ref a literal sitting in the middle of
+;;; its bucket costs nothing. On a hoisted `expression` ref it fires only when the literal carries a
+;;; time component, which `wrap-value-literals` types for it; a date-only literal is left alone, so
+;;; only the column is truncated and the comparison asks a different question --
+;;;
+;;;   ["=", {}, ["expression", {"temporal-unit": "month"}, "Ship"], "2025-06-15"]
+;;;     date-only:          WHERE date_trunc(month, <Ship>) = '2025-06-15'   -- never true
+;;;     "…T10:00:00" or "Z": WHERE <Ship> >= '2025-06-01' AND <Ship> < '2025-07-01'
+;;;
+;;; -- and the ordered heads land up to one bucket out. `during` makes that the mainline case, since
+;;; it names the unit *containing* its literal. Aligning reproduces what the middleware would have
+;;; done, and is a no-op on a `field` ref.
+;;;
+;;; The one unit alignment cannot rescue is `year`, which is both a truncation and an extraction
+;;; unit: `lib/type-of` calls a `year`-bucketed untyped ref `:type/Integer`, and the QP's
+;;; `auto-parse-filter-values` then fails on the date literal. [[unit-hoistable-onto-ref?]] declines
+;;; that hoist on an `expression` ref, leaving the clause to Pass 6; a model writing the bucketed ref
+;;; itself still reaches the QP, so the hole belongs with the two gaps above.
+;;;
+;;; Column types are unknown here, so a bucket can land on a text or numeric column;
+;;; [[assert-temporal-buckets-on-temporal-columns!]] rejects that after resolve, on an `expression`
+;;; ref as well as a `field` one. It matters more on the former: the QP drops the bucket silently on
+;;; a `field` ref, but keeps it on an `expression` ref, where it compiles to nonsense on a text
+;;; column and fails preprocessing outright on a numeric one. That is the same exposure `filters`
+;;; already has; walking `expressions` opens a second position onto it.
+;;;
+;;; Runs after Pass 2.9, which creates new `filters`. Idempotent: the output matches neither
+;;; predicate.
+;;;
+;;; None of the survivors above is merely unrewritten -- each is broken. The legacy unit enums have no
+;;; `:decode/normalize`, so after the JSON hop the clause never normalizes back. What that costs
+;;; depends on where it sits. In `filters`, `expressions` and join `conditions:` the dev and CI
+;;; question page 400s, while a production JAR -- where `normalize-or-throw`'s `mu/defn` output check
+;;; is compiled out -- lets `lib/query`'s `clean-stage-schema-errors` delete the clause, and the
+;;; question silently answers something else. In `aggregation:` the legacy schema is permissive
+;;; enough that even dev never throws: the `count-where` above is deleted in both, silently. Pass 6's
+;;; [[unencodable-temporal-clause-error!]] catches every one and raises a retryable `:agent-error?`,
+;;; except the unparseable literal, which resolve names more precisely.
+;;; ============================================================
+
+(def ^:private date-truncation-units
+  "Bucketing units that mean the same thing on a ref as on a date literal."
+  #{"day" "week" "month" "quarter" "year"})
+
+(def ^:private datetime-truncation-units
+  "The date units plus the sub-day ones a datetime literal supports."
+  (into date-truncation-units #{"second" "minute" "hour"}))
+
+(def ^:private bucket-hoistable-heads
+  "Comparison heads whose literal operands may carry a hoistable bucket."
+  #{"=" "!=" "<" "<=" ">" ">=" "in" "not-in"})
+
+(def ^:private date-only-pattern #"\d{4}-\d{2}-\d{2}")
+(def ^:private year-month-pattern #"\d{4}-\d{2}")
+(def ^:private year-pattern #"\d{4}")
+
+(defn- widen-partial-date
+  "`yyyy-MM` -> `yyyy-MM-01`, `yyyy` -> `yyyy-01-01`; anything else unchanged."
+  [s]
+  (cond
+    (re-matches year-month-pattern s) (str s "-01")
+    (re-matches year-pattern s)       (str s "-01-01")
+    :else                             s))
+
+(defn- align-literal-to-unit
+  "Truncate `literal` to the start of the `unit` that contains it.
+
+    [\"2025-06-15\" \"month\"] => \"2025-06-01\"
+    [\"2025-06-15\" \"day\"]   => \"2025-06-15\"   ; already aligned, returned as written
+
+  The generalisation of [[widen-partial-date]], which already does this for `yyyy-MM` / `yyyy`. On a
+  `field` ref it changes no answer - the QP truncates both sides of such a comparison itself - and on
+  an `expression` ref it is what keeps the hoisted clause meaning what the literal-side one did; the
+  pass header says why the QP cannot do it there.
+
+  `literal` comes back as written unless truncation both moves the instant and leaves an ISO string.
+  `default` names no unit, so it is skipped."
+  [literal unit]
+  (if (= "default" unit)
+    literal
+    (let [parsed  (u.date/parse literal)
+          t       (u.date/truncate parsed (keyword unit))
+          ;; a `Z`-suffixed literal parses to a `ZonedDateTime`, which renders back as
+          ;; `2025-06-01T00:00Z[UTC]` - that would reach the `/question#` hash and the LLM-facing
+          ;; export verbatim, so a rewrite that is not ISO is dropped rather than emitted
+          aligned (str t)]
+      (if (and (not= parsed t) (iso-date-string? aligned))
+        aligned
+        literal))))
+
+(defn- parseable-temporal-literal? [s]
+  (try
+    (some? (u.date/parse s))
+    (catch Exception _
+      false)))
+
+(defn- truncation-units-for
+  "The bucketing units a widened literal of this shape can carry.
+
+  A date-only literal takes the date units; a datetime literal also takes the sub-day ones."
+  [literal]
+  (if (re-matches date-only-pattern literal)
+    date-truncation-units
+    datetime-truncation-units))
+
+(defn- hoistable-bucket
+  "Return `[literal unit]` for an `absolute-datetime` literal whose bucket the compared ref can take.
+
+    [\"absolute-datetime\" {} \"2025-03\" \"MONTH\"]    => [\"2025-03-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-06-15\" \"month\"] => [\"2025-06-01\" \"month\"]
+    [\"absolute-datetime\" {} \"2025-01-01\" \"hour\"]  => nil   ; a date cannot carry `hour`
+
+  Both values come back normalised: trimmed, lower-cased, `yyyy-MM` / `yyyy` widened to the first day
+  they name, and the literal aligned to its unit ([[align-literal-to-unit]]) so the hoisted clause
+  means what the literal-side one did. `nil` for anything that is not such a literal."
+  [v]
+  (when (and (vector? v)
+             (= 4 (count v))
+             (string? (nth v 0))
+             (= "absolute-datetime" (u/lower-case-en (nth v 0)))
+             (map? (nth v 1))
+             ;; a named literal is only ever an expression's top-level clause, never a comparison
+             ;; operand; a type hint is safe to drop
+             (empty? (dissoc (nth v 1) "base-type" "effective-type"))
+             (string? (nth v 2))
+             (string? (nth v 3)))
+    (let [literal (widen-partial-date (str/trim (nth v 2)))
+          unit    (u/lower-case-en (nth v 3))
+          units   (truncation-units-for literal)]
+      (when (and (iso-date-string? literal)
+                 (or (= "default" unit) (contains? units unit))
+                 (parseable-temporal-literal? literal))
+        [(align-literal-to-unit literal unit) unit]))))
+
+(defn- during-clause? [v]
+  (and (vector? v)
+       (= 5 (count v))
+       (= "during" (nth v 0))
+       (map? (nth v 1))))
+
+(defn- unbucketed-ref-clause?
+  "A `field` or `expression` ref with no `temporal-unit`. A `nil` unit counts as none: lib drops it."
+  [v]
+  (and (vector? v)
+       (= 3 (count v))
+       (contains? #{"field" "expression"} (nth v 0))
+       (map? (nth v 1))
+       (nil? (get (nth v 1) "temporal-unit"))))
+
+(defn- hoistable-comparison-node?
+  "A comparison clause shaped so that a bucket could move onto its ref operand. Says nothing about
+  whether the literal operands actually carry one."
+  [v]
+  (and (vector? v)
+       (>= (count v) 4)
+       (string? (nth v 0))
+       (map? (nth v 1))
+       (unbucketed-ref-clause? (nth v 2))
+       (or (between-clause? v)
+           (during-clause? v)
+           (contains? bucket-hoistable-heads (nth v 0)))))
+
+(defn- with-temporal-unit [ref-clause unit]
+  (assoc-in ref-clause [1 "temporal-unit"] unit))
+
+(defn- unit-hoistable-onto-ref?
+  "Whether `unit` may move onto `ref-clause`. False only for `year` on an `expression` ref.
+
+  `year` is both a truncation and an extraction unit, so `lib/type-of` answers `:type/Integer` for a
+  `year`-bucketed ref that carries no `effective-type` - which is exactly an `expression` ref, since
+  resolve stamps no type on one - and the QP's `auto-parse-filter-values` then fails outright trying
+  to read the date literal as an integer. A `field` ref carries a type, so the same bucket is fine
+  there. Declining leaves the literal standing for [[unencodable-temporal-clause-error!]] to turn
+  into a retryable error."
+  [ref-clause unit]
+  (not (and (= "expression" (nth ref-clause 0))
+            (= "year" unit))))
+
+(defn- hoist-bucket-in-comparison
+  "When every literal of a comparison carries the same hoistable bucket, put it on the ref.
+
+    [\"in\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]
+                                  [\"absolute-datetime\" {} \"2025-03-01\" \"month\"]]
+    => [\"in\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\" \"2025-03-01\"]"
+  [[head opts ref & literals :as node]]
+  (let [buckets (map hoistable-bucket literals)
+        unit    (second (first buckets))]
+    (if (and (every? some? buckets)
+             (apply = (map second buckets))
+             (unit-hoistable-onto-ref? ref unit))
+      (into [head opts (with-temporal-unit ref unit)] (map first buckets))
+      node)))
+
+(defn- redundant-bucket-literal
+  "The bare literal of a bucketed bound whose bucket adds nothing to it: `default`, or `day` on a
+  date-only literal. `nil` otherwise."
+  [v]
+  (when-let [[literal unit] (hoistable-bucket v)]
+    (when (or (= "default" unit)
+              (and (= "day" unit) (re-matches date-only-pattern literal)))
+      literal)))
+
+(defn- hoist-bucket-in-between
+  "Both bounds bucketed alike: hoist the bucket onto the ref. Otherwise drop only a wrapper that adds nothing.
+
+    [\"between\" {} <ref> [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]
+                         [\"absolute-datetime\" {} \"2025-06-01\" \"month\"]]
+    => [\"between\" {} <ref bucketed by month> \"2025-01-01\" \"2025-06-01\"]
+
+    [\"between\" {} <ref> [\"absolute-datetime\" {} \"2025-01-01\" \"day\"] [\"now\" {}]]
+    => [\"between\" {} <ref> \"2025-01-01\" [\"now\" {}]]"
+  [[head opts ref lo hi]]
+  (let [[lo' lo-unit] (hoistable-bucket lo)
+        [hi' hi-unit] (hoistable-bucket hi)]
+    (if (and lo' hi' (= lo-unit hi-unit) (unit-hoistable-onto-ref? ref lo-unit))
+      [head opts (with-temporal-unit ref lo-unit) lo' hi']
+      [head opts ref (or (redundant-bucket-literal lo) lo) (or (redundant-bucket-literal hi) hi)])))
+
+(defn- hoist-bucket-in-during
+  "`during` is `=` against the ref bucketed by the same unit; say it that way.
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"month\"]
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-06-15\" \"month\"]
+    => [\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-06-01\"]
+
+    [\"during\" {} [\"field\" {} <col>] \"2025-01-01\" \"hour\"] => unchanged
+
+  The unit set follows the literal's shape, as it does for a comparison ([[hoistable-bucket]]):
+  rewriting `hour` on a date would narrow the filter to one hour. `during` names the unit
+  *containing* the literal, so a literal in the middle of its bucket is its normal input and is
+  [[align-literal-to-unit]]'s mainline case - the second example above.
+  [[unencodable-temporal-clause-error!]] reports what is left standing."
+  [[_ opts ref literal unit :as node]]
+  (let [literal (when (string? literal) (widen-partial-date (str/trim literal)))
+        unit    (when (string? unit) (u/lower-case-en unit))]
+    (if (and literal
+             (iso-date-string? literal)
+             (contains? (truncation-units-for literal) unit)
+             (unit-hoistable-onto-ref? ref unit)
+             (parseable-temporal-literal? literal))
+      ["=" opts (with-temporal-unit ref unit) (align-literal-to-unit literal unit)]
+      node)))
+
+(defn- hoist-bucket-in-clause [node]
+  (cond
+    (during-clause? node)  (hoist-bucket-in-during node)
+    (between-clause? node) (hoist-bucket-in-between node)
+    :else                  (hoist-bucket-in-comparison node)))
+
+(def ^:private bucket-hoist-stage-keys
+  "The stage keys the QP's `optimize-temporal-filters` rewrites, and so the only ones a bucket may
+  move inside."
+  ["filters" "expressions"])
+
+(defn- hoist-buckets-in-clauses
+  "Rewrite every hoistable comparison at any depth of one stage key's clause vector."
+  [clauses]
+  (walk/postwalk (fn [n] (if (hoistable-comparison-node? n) (hoist-bucket-in-clause n) n)) clauses))
+
+(defn- hoist-temporal-buckets*
+  "Hoist each `absolute-datetime` bucket in a stage's `filters` / `expressions` onto the compared ref.
+
+    {\"filters\" [[\"=\" {} [\"field\" {} <col>] [\"absolute-datetime\" {} \"2025-01-01\" \"month\"]]]}
+    => {\"filters\" [[\"=\" {} [\"field\" {\"temporal-unit\" \"month\"} <col>] \"2025-01-01\"]]}
+
+  Only those two keys, and only on a map [[stage-like-map?]] recognises -- the same predicate Pass 2
+  uses to decide what a stage is, so the hoist's notion of a stage is the one that stamps the marker.
+  The pass header says why the scope is those two keys."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (stage-like-map? node)
+       (reduce (fn [stage k]
+                 (cond-> stage
+                   ;; belt and braces: Pass 1.5 `normalize-expressions-shape*` has already turned a
+                   ;; map-form `expressions:` into the sequential form, and a stage carrying neither
+                   ;; key falls through untouched
+                   (vector? (get stage k)) (update k hoist-buckets-in-clauses)))
+               node
+               bucket-hoist-stage-keys)
+       node))
+   form))
+
+;;; ============================================================
+;;; Pass 1.867 -- rewrite `temporal-extract` to the `get-*` clause that means the same thing.
+;;;
+;;;   ["temporal-extract", {}, <col>, "month-of-year"]        => ["get-month", {}, <col>]
+;;;   ["temporal-extract", {}, <col>, "week-of-year-iso"]     => ["get-week", {}, <col>, "iso"]
+;;;   ["temporal-extract", {}, <col>, "day-of-week", "us"]    => ["get-day-of-week", {}, <col>]
+;;;
+;;; Same hazard as Pass 2.95: the unit lands in the legacy `::TemporalExtractUnit` enum, which has
+;;; no decoder, so the question page 400s. A `get-*` clause carries no unit. The week-mode units keep
+;;; their meaning through the trailing argument `get-week` / `get-day-of-week` already take. The
+;;; clause's own optional mode slot (third example) is dropped: SQL compilation reads only the unit
+;;; (`:temporal-extract` in `metabase.driver.sql.query-processor`), so it never mattered.
+;;;
+;;; An exact synonym wherever the clause appears, so not scoped to `filters`. Idempotent: the new
+;;; head is not `temporal-extract`.
+;;; ============================================================
+
+(def ^:private temporal-extract-unit->getter
+  "Extraction unit -> the `get-*` head meaning exactly the same thing, followed by any trailing
+  week-mode argument that head needs to preserve the unit's meaning."
+  {"year-of-era"           ["get-year"]
+   "quarter-of-year"       ["get-quarter"]
+   "month-of-year"         ["get-month"]
+   "day-of-month"          ["get-day"]
+   "day-of-week"           ["get-day-of-week"]
+   "day-of-week-iso"       ["get-day-of-week" "iso"]
+   "hour-of-day"           ["get-hour"]
+   "minute-of-hour"        ["get-minute"]
+   "second-of-minute"      ["get-second"]
+   "week-of-year-iso"      ["get-week" "iso"]
+   "week-of-year-us"       ["get-week" "us"]
+   "week-of-year-instance" ["get-week" "instance"]})
+
+(defn- rewrite-temporal-extract*
+  "Rewrite each `temporal-extract` clause in `form` to the `get-*` clause that means the same thing.
+
+    [\"temporal-extract\" {} <col> \"week-of-year-iso\"]  => [\"get-week\" {} <col> \"iso\"]
+    [\"temporal-extract\" {} <col> \"day-of-week\" \"us\"] => [\"get-day-of-week\" {} <col>]
+
+  A unit with no `get-*` equivalent is left as written for validation to report."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if-let [[getter & mode] (and (vector? node)
+                                   (<= 4 (count node) 5)
+                                   (string? (nth node 0))
+                                   (= "temporal-extract" (u/lower-case-en (nth node 0)))
+                                   (map? (nth node 1))
+                                   (string? (nth node 3))
+                                   (temporal-extract-unit->getter (u/lower-case-en (nth node 3))))]
+       (into [getter (nth node 1) (nth node 2)] mode)
        node))
    form))
 
@@ -1091,36 +1506,10 @@
 
 ;;; ============================================================
 ;;; Pass 2 -- fill in missing `lib/type` markers
+;;;
+;;; The structural predicates `needs-lib-type-marker?` keys on live in the shared section above Pass
+;;; 2.95, which gates on the same notion of a stage.
 ;;; ============================================================
-
-(defn- top-level-query-map?
-  [m]
-  (match/matches? m {"database" _, "stages" _}))
-
-(defn- join-like-map?
-  "A map that looks like an explicit join: it carries join-only keys (`conditions`, or
-  `alias`+`stages`) that never appear on a stage or top-level query. We key on these rather
-  than on `\"fields\"` (which a join shares with a stage) so a join is not mistaken for a
-  stage by [[stage-like-map?]]."
-  [m]
-  (and (map? m)
-       (or (contains? m "conditions")
-           (and (contains? m "alias")
-                (contains? m "stages")))))
-
-(defn- stage-like-map?
-  "A map that looks like an MBQL stage: has `\"source-table\"`, `\"source-card\"`, or any of the
-  stage-body keys (`filters`, `aggregation`, `breakout`, `order-by`, `fields`, `joins`,
-  `expressions`, `limit`). Not a top-level query and not an explicit join (a join can carry
-  `\"fields\"`, so we exclude it explicitly)."
-  [m]
-  (and (map? m)
-       (not (top-level-query-map? m))
-       (not (join-like-map? m))
-       (boolean
-        (some #(contains? m %)
-              ["source-table" "source-card" "filters" "aggregation"
-               "breakout" "order-by" "fields" "joins" "expressions" "limit"]))))
 
 (defn- needs-lib-type-marker? [m]
   (and (map? m)
@@ -2426,6 +2815,82 @@
                :error        :numeric-field-id
                :clause       &match})))))
 
+;;; ----- E7: a temporal clause the `/question#` hash cannot carry ---------------------
+
+(defn- deferred-to-invalid-temporal-literal?
+  "True for an `absolute-datetime` whose literal cannot parse.
+
+  Resolve's own check names the literal (`:invalid-temporal-literal`,
+  [[metabase.agent-lib.representations.resolve/validate-temporal-literals]]), which is the more
+  useful complaint, so E7 stays quiet and lets that one fire. It does not inspect `during` or
+  `value`, which is why only this head gets the carve-out.
+
+  The carve-out is per *clause*, not per query: a query holding an unparseable literal alongside any
+  other offender still reports that other offender, because E7 throws on the first match anywhere.
+  Deferring the whole query instead would be a worse trade -- `validate-temporal-literals` does not
+  inspect every position, since a bare literal on a comparison head is checked only when an operand
+  is *known* temporal, so an unparseable literal in a position it does not inspect would silence E7
+  with nothing to replace it, reopening the silent-deletion hole
+  Pass 2.95 and this detector exist to close. The model fixes what E7 named and sees the literal
+  complaint on the next turn."
+  [node]
+  (let [literal (nth node 2)]
+    (and (string? literal)
+         (not (parseable-temporal-literal? literal)))))
+
+(defn- unencodable-temporal-clause-error!
+  "Detect an `absolute-datetime`, `during` or unit-carrying `value` clause that Pass 2.95 could not
+  rewrite.
+
+    [\"count-where\", {}, [\">\", {}, <col>, [\"absolute-datetime\", {}, \"2025-01-01\", \"month\"]]]
+
+  All three hold a temporal unit in a slot the legacy schema types with `::DateUnit` /
+  `::DateTimeUnit` (`metabase.legacy-mbql.schema`, via `::ValueTypeInfo` for `value`), and neither
+  enum carries a `:decode/normalize`. Once the `/question#` hash has JSON-encoded the query the unit
+  is a string and the clause never normalizes back. In `filters`, `expressions` and join
+  `conditions:` that is a 400 on the dev and CI question page, and in a production JAR -- where
+  `normalize-or-throw`'s `mu/defn` output check is compiled out -- `lib/query`'s
+  `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
+  else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
+  clause is deleted silently in both. Pass 2.95 rewrites every shape it can rewrite without changing
+  the answer, so anything still standing here is broken either way.
+
+  `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
+  and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
+  1.867 has already rewritten every one to a `get-*` clause by the time this runs -- narrow that pass
+  and this detector needs the head. `time` is excluded on purpose: it 400s in dev, but `->mbql5`
+  salvages the raw clause in prod (unit correctly keywordized, filter intact), so flagging it would
+  reject a query that works for customers. This detector exists only because `::DateUnit`,
+  `::TimeUnit`, `::DateTimeUnit` and `::TemporalExtractUnit` lack decoders -- if they ever gain them,
+  delete it rather than inherit a false-positive machine.
+
+  Throws `:agent-error?` ex-info on the first offender."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     ;; `map-entry?`: a `{\"value\" …}` entry postwalks as a 2-element vector. The arity checks below
+     ;; already exclude it; the guard matches E2 / E6 and survives a head being added at that arity.
+     (when (and (vector? node)
+                (not (map-entry? node))
+                (string? (nth node 0 nil))
+                (map? (nth node 1 nil))
+                (case (u/lower-case-en (nth node 0))
+                  "absolute-datetime" (and (= 4 (count node))
+                                           (not (deferred-to-invalid-temporal-literal? node)))
+                  "during"            (= 5 (count node))
+                  ;; a `nil` unit counts as none, as it does on a ref -- that shape round-trips fine
+                  "value"             (and (= 3 (count node))
+                                           (some? (get (nth node 1) "unit")))
+                  false))
+       (throw (ex-info
+               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to a plain date string like \"2025-01-01\" - or write the range out with `between` and two plain date strings. Inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:` moving the unit onto the column would change the answer, so the explicit range is the only rewrite there."
+                    (pr-str node))
+               {:agent-error? true
+                :error        :unencodable-temporal-clause
+                :clause       node})))
+     node)
+   form))
+
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
 (defn- friendly-errors*
@@ -2439,7 +2904,8 @@
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
-    (numeric-field-id-error! query))
+    (numeric-field-id-error! query)
+    (unencodable-temporal-clause-error! query))
   query)
 
 ;;; ============================================================
@@ -2464,8 +2930,8 @@
       rewrite-lib-type-aliases*
       merge-trailing-options*
       merge-string-filter-trailing-options*
-      wrap-iso-date-bounds*
       wrap-now-literals*
+      rewrite-temporal-extract*
       swap-between-bounds*
       normalise-case-clauses*
       normalise-fields-shape*
@@ -2489,11 +2955,16 @@
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
+    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, so its unit no longer sits
+       where legacy normalization cannot decode it (examples in the pass header);
     1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
+    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
+       `absolute-datetime` literal and onto the ref it is compared to, for the same reason
+       (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
@@ -2560,6 +3031,7 @@
        rewrite-order-by-inline-aggs*
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*
+       hoist-temporal-buckets*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
        (infer-source-card-field-types* mp content-store)
@@ -2606,4 +3078,110 @@
                  :stage        stage-idx
                  :mode         mode
                  :clause       clause})))))
+  pmbql-query)
+
+(defn- unbucketed-ref
+  "`clause` with its `temporal-unit`, and the type the bucket stamped on it, taken off.
+
+  A *coercion's* `:effective-type` is the column's own type rather than a bucket artifact, and stays.
+
+    [:expression {:temporal-unit :day-of-week, :effective-type :type/Integer,
+                  :base-type :type/DateTime} \"Ship\"]
+    => [:expression {:base-type :type/DateTime} \"Ship\"]
+
+    ;; field 105 is ISO-8601 text an admin coerced to a timestamp
+    [:field {:temporal-unit :year, :effective-type :type/DateTime,
+             :base-type :type/Text} 105]
+    => [:field {:effective-type :type/DateTime, :base-type :type/Text} 105]
+
+  `with-temporal-bucket` alone restores `:effective-type` from `:lib/original-effective-type`, which
+  is only there on a ref lib or [[metabase.agent-lib.representations.resolve/export-query]] produced.
+  On a ref resolve typed, an *extraction* unit leaves `:effective-type` describing the bucket rather
+  than the column - `:type/Integer` for `day-of-week` on a datetime column - and
+  [[metabase.lib.core/type-of]] reads that key first, so it has to go too. What is left resolves to
+  `:base-type`, or to the expression's own type when the ref carries none."
+  [clause]
+  (let [{:keys [effective-type temporal-unit] :lib/keys [original-effective-type]} (nth clause 1)]
+    (cond-> (lib/with-temporal-bucket clause nil)
+      (and (nil? original-effective-type)
+           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
+           ;; A bucket's own type is never temporal, so a temporal stamp has to be the column's:
+           ;; resolve copies `:effective-type` straight off a coerced column, where it is the
+           ;; post-coercion type and `:base-type` is the storage type. Dropping it there would leave
+           ;; `:type/Text` on an ISO-8601 column and make the gate reject a bucket lib itself offers.
+           (not (isa? effective-type :type/Temporal)))
+      (update 1 dissoc :effective-type))))
+
+(defn- assert-bucketed-ref-is-temporal!
+  "Throw when the bucketed ref `clause` names a column that is not temporal.
+
+  Call only on a `field` / `expression` ref that carries a `temporal-unit`: the walk in
+  [[assert-temporal-buckets-on-temporal-columns!]] tests that itself, before resolving a stage."
+  [query stage-number clause]
+  (let [temporal-unit (:temporal-unit (nth clause 1))
+        bare-ref      (unbucketed-ref clause)
+        column-type   (lib/type-of query stage-number bare-ref)]
+    (when (and column-type
+               (not= column-type :type/*)
+               (not (isa? column-type :type/Temporal)))
+      (let [column-name (lib/display-name query stage-number bare-ref)
+            type-name   (name column-type)
+            unit-name   (name temporal-unit)]
+        (throw (ex-info (if (= :expression (nth clause 0))
+                          (tru "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                               column-name type-name unit-name)
+                          (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                               column-name type-name unit-name))
+                        {:agent-error?  true
+                         :error         :temporal-unit-on-non-temporal-column
+                         :status-code   400
+                         :column-type   column-type
+                         :temporal-unit temporal-unit
+                         :clause        clause}))))))
+
+(defn assert-temporal-buckets-on-temporal-columns!
+  "Throw a retryable `:agent-error?` when a resolved `field` or `expression` ref carries a
+  `temporal-unit` but its column is not temporal. Returns `pmbql-query`.
+
+  lib accepts that shape - its unit check only knows Date / Time / DateTime columns. The QP then
+  drops the bucket silently on a `field` ref; on an `expression` ref it keeps it and applies it to a
+  non-temporal value, which compiles to nonsense on a text column and fails preprocessing outright
+  on a numeric one. Pass 2.95 can produce either, in `filters` and in `expressions`, since it moves a
+  bucket onto a ref without knowing the column's type; a model writing the bucket itself lands here
+  too, and Pass 6's [[unencodable-temporal-clause-error!]] sees neither, because the hoist has
+  already consumed the literal.
+
+  Walks with [[metabase.lib.walk/walk-clauses]] rather than `clojure.walk`: an `expression` ref
+  carries no type in its options, so the column type has to come from [[metabase.lib.core/type-of]],
+  which needs the ref's stage. A join condition's refs do not all live in the same stage - one
+  carrying `:join-alias` belongs to the join, one without it to the parent stage - so the path is
+  chosen per ref. A ref whose type cannot be resolved is skipped rather than reported: this gate must
+  never reject a query it merely failed to understand.
+
+  Must run after the `::lib.schema/query` gate ([[metabase.metabot.tools.construct]]'s `_runnable`):
+  a dangling expression ref makes `type-of` throw rather than resolve, and while `walk-clauses`
+  rejects the query first under `mu/defn` instrumentation, that is compiled out of a production JAR."
+  [pmbql-query]
+  (lib.walk/walk-clauses
+   pmbql-query
+   (fn [query path-type path clause]
+     ;; `walk-clauses` calls this on non-clause arguments too - the bare `2` in `[:= {} <ref> 2]`.
+     ;; Everything a bucketed ref is not falls out here, before a stage is resolved for it: that is
+     ;; the expensive half, and all but a handful of nodes skip it.
+     (let [opts (when (vector? clause) (nth clause 1 nil))]
+       (when (and (map? opts)
+                  (:temporal-unit opts)
+                  (contains? #{:field :expression} (nth clause 0 nil)))
+         (let [stage-path (if (and (= path-type :lib.walk/join) (not (:join-alias opts)))
+                            (lib.walk/join-parent-stage-path path)
+                            path)]
+           (try
+             (lib.walk/apply-f-for-stage-at-path assert-bucketed-ref-is-temporal! query stage-path clause)
+             ;; `Throwable`, not `ExceptionInfo`: the contract is that an unresolvable ref is skipped,
+             ;; and anything narrower leaks past `execute-representations-query`'s relay as a 500
+             (catch Throwable e
+               ;; re-throw our own complaint; swallow lib's failure to resolve the ref
+               (when (:agent-error? (ex-data e))
+                 (throw e)))))))
+     nil))
   pmbql-query)
