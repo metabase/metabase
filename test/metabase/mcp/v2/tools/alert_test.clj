@@ -183,13 +183,23 @@
                 compiler ignores it, so the alert would send on a schedule nobody asked for while
                 the call reported success — an {hourly, schedule_hour 9} alert fires 24 times a day"
         (are [schedule pattern] (re-find pattern (schedule-error schedule))
-          {:schedule_type "hourly" :schedule_hour 9}                       #"\"hourly\" schedule doesn't use schedule_hour"
-          {:schedule_type "hourly" :schedule_day "mon"}                    #"\"hourly\" schedule doesn't use schedule_day"
-          {:schedule_type "daily" :schedule_hour 9 :schedule_minute 30}    #"\"daily\" schedule doesn't use schedule_minute"
-          {:schedule_type "daily" :schedule_hour 9 :schedule_day "mon"}    #"\"daily\" schedule doesn't use schedule_day"
-          {:schedule_type "daily" :schedule_hour 9 :schedule_frame "first"} #"\"daily\" schedule doesn't use schedule_frame"
-          {:schedule_type "weekly" :schedule_hour 8 :schedule_day "mon"
-           :schedule_frame "first"}                                        #"\"weekly\" schedule doesn't use schedule_frame")))))
+          {:schedule_type "hourly" :schedule_hour 9}
+          #"\"hourly\" schedule doesn't use schedule_hour"
+
+          {:schedule_type "hourly" :schedule_day "mon"}
+          #"\"hourly\" schedule doesn't use schedule_day"
+
+          {:schedule_type "daily" :schedule_hour 9 :schedule_minute 30}
+          #"\"daily\" schedule doesn't use schedule_minute"
+
+          {:schedule_type "daily" :schedule_hour 9 :schedule_day "mon"}
+          #"\"daily\" schedule doesn't use schedule_day"
+
+          {:schedule_type "daily" :schedule_hour 9 :schedule_frame "first"}
+          #"\"daily\" schedule doesn't use schedule_frame"
+
+          {:schedule_type "weekly" :schedule_hour 8 :schedule_day "mon" :schedule_frame "first"}
+          #"\"weekly\" schedule doesn't use schedule_frame")))))
 
 (deftest condition-test
   (mt/with-model-cleanup [:model/Notification]

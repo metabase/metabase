@@ -347,7 +347,8 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
       (fn [created!]
-        (let [message "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}."
+        (let [message (str "Markdown tables are not supported. Save the query as a question with `display: table` "
+                           "and embed it with {% card id=… %}.")
               table   "| Table | Rows |\n|---|---|\n| users | 5,000 |"
               created (created! (call {:method "create" :name "Table test" :content_markdown "No table"}))
               doc-id  (:id created)]
@@ -389,7 +390,8 @@
                       {"entityId" secret-id "model" "collection" "label" nil "href" "/"}]
                      (written-smart-link-attrs
                       created!
-                      (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                      (format (str "{%% entity id=\"%d\" model=\"dashboard\" %%} and "
+                                   "{%% entity id=\"%d\" model=\"collection\" %%}")
                               hidden-id secret-id)))))
             (testing "a readable target still resolves its label and href"
               (is (= [{"entityId" readable-id "model" "card" "label" "Open Question"
@@ -415,9 +417,10 @@
                   (mt/with-temporary-setting-values [user-visibility :none]
                     (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" nil "href" "/"}
                             {"entityId" (mt/user->id :rasta) "model" "user" "label" "Rasta Toucan" "href" "/"}]
-                           (written-smart-link-attrs created!
-                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
-                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
+                           (written-smart-link-attrs
+                            created!
+                            (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                    (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{"entityId" hidden-id "model" "dashboard" "label" "CONFIDENTIAL Layoffs"

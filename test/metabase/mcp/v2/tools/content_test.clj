@@ -150,10 +150,11 @@
                                                        :dashboard_tab_id   tab-id
                                                        :row                0
                                                        :col                0
-                                                       :parameter_mappings [{:parameter_id "_CAT_"
-                                                                             :card_id      card-id
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :venues :name) nil]]}]}]
+                                                       :parameter_mappings
+                                                       [{:parameter_id "_CAT_"
+                                                         :card_id      card-id
+                                                         :target       [:dimension
+                                                                        [:field (mt/id :venues :name) nil]]}]}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "dashboard" :id dash-id}]})]
           (is (nil? (:error row)))
@@ -425,7 +426,8 @@
                                                                    :type     "query"
                                                                    :query    {:source-table (mt/id :venues)}}}
                                                   :target {:type   :table
-                                                           :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                           :schema (t2/select-one-fn :schema :model/Table
+                                                                                     :id (mt/id :venues))
                                                            :name   "t1_out"}}]
           (mt/with-test-user :crowberto
             (let [row (content-one {:items [{:type "transform" :id id}]})]
@@ -644,7 +646,8 @@
                                                                      :type     "query"
                                                                      :query    {:source-table (mt/id :venues)}}}
                                                     :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :schema (t2/select-one-fn :schema :model/Table
+                                                                                       :id (mt/id :venues))
                                                              :name   "t1_out"}}]
             (mt/with-test-user :crowberto
               (let [row (content-one #{"agent:content:read"} {:items [{:type "transform" :id id}]})]
@@ -1002,7 +1005,8 @@
                                                                      :type     "query"
                                                                      :query    {:source-table (mt/id :venues)}}}
                                                     :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :schema (t2/select-one-fn :schema :model/Table
+                                                                                       :id (mt/id :venues))
                                                              :name   "t1_out"}}]
             (mt/with-test-user :crowberto
               (let [row (content-one {:items [{:type "transform" :id id}] :include ["definition"]})]
@@ -1286,7 +1290,8 @@
       (testing "the SQL itself, collapsed onto one line"
         (mt/with-temp [:model/Card {card-id :id}
                        {:query_type    :native
-                        :dataset_query (native-card-query "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
+                        :dataset_query (native-card-query
+                                        "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
           (is (= "SQL: select date_trunc('month', placed_at) from orders group by 1"
                  (:query_summary (content-one {:items [{:type "question" :id card-id}]}))))))
       (testing "a long query is truncated to a bounded head, marked with an ellipsis"

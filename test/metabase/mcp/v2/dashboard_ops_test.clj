@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
-   [metabase.parameters.mapping-targets]
+   [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (set! *warn-on-reflection* true)
@@ -579,7 +579,8 @@
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :inline_parameters ["p1" "p2"]
                                 :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
-                                                     {:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}]}]}
+                                                     {:parameter_id "p2" :card_id 9
+                                                      :target [:dimension [:field 2 nil]]}]}]}
           {:keys [parameters dashcards]} (dashboard-ops/compile-ops
                                           current [{:op "remove_parameter" :parameter_id "p1"}] {})
           dc (first dashcards)]
@@ -666,7 +667,7 @@
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :parameter_mappings []}]}
-          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field
+          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field
                                                                       (fn [_card _param field-id]
                                                                         [:dimension [:field field-id nil]])]
                                 (dashboard-ops/compile-ops
@@ -682,7 +683,7 @@
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :parameter_mappings []}]}
-          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field
+          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field
                                                                       (fn [_card _param field-id]
                                                                         [:dimension [:field field-id nil]])]
                                 (dashboard-ops/compile-ops
@@ -699,7 +700,7 @@
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"op 0.*wire_parameter"
-           (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field (constantly nil)]
+           (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field (constantly nil)]
              (dashboard-ops/compile-ops
               current
               [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
@@ -720,9 +721,10 @@
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}
                                {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
-          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [metabase.parameters.mapping-targets/target-for-field
+          {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field
                                                                       (fn [card _param field-id]
-                                                                        (when (= 9 (:id card)) [:dimension [:field field-id nil]]))]
+                                                                        (when (= 9 (:id card))
+                                                                          [:dimension [:field field-id nil]]))]
                                 (dashboard-ops/compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
@@ -735,9 +737,11 @@
   (testing "GHY-4147: unwire_parameter clears one card's mapping, or every card's when dashcard_id is omitted"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
-                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}]}
+                                :parameter_mappings [{:parameter_id "p1" :card_id 9
+                                                      :target [:dimension [:field 1 nil]]}]}
                                {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4
-                                :parameter_mappings [{:parameter_id "p1" :card_id 10 :target [:dimension [:field 2 nil]]}]}]}]
+                                :parameter_mappings [{:parameter_id "p1" :card_id 10
+                                                      :target [:dimension [:field 2 nil]]}]}]}]
       (testing "one card"
         (let [{:keys [dashcards]} (dashboard-ops/compile-ops
                                    current [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
@@ -977,7 +981,8 @@
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :inline_parameters ["p1" "p2"]
                                 :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
-                                                     {:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}]}]}
+                                                     {:parameter_id "p2" :card_id 9
+                                                      :target [:dimension [:field 2 nil]]}]}]}
           state (select-keys current [:dashcards :tabs :parameters])
           s     (#'dashboard-ops/remove-row state :parameters "p1")
           s     (#'dashboard-ops/map-rows s :parameters

@@ -193,7 +193,8 @@
                                              :patch {:parameter_mappings
                                                      [{:parameter_id "p1"
                                                        :card_id (:id card)
-                                                       :target ["dimension" ["field" (mt/id :venues :price) nil]]}]}}]}))]
+                                                       :target ["dimension"
+                                                                ["field" (mt/id :venues :price) nil]]}]}}]}))]
         (is (not (:isError result)) (-> result :content first :text))
         (is (=? [{:parameter_id "p1" :target [:dimension [:field (mt/id :venues :price) nil]]}]
                 (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dc))))))))

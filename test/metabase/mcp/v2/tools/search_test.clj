@@ -310,8 +310,10 @@
 (deftest browse-redirect-text-test
   (testing "GHY-4544: the redirect quotes the caller's collection_id and types"
     (is (= (str "This is a listing, not a search — it has filters but no term_queries or semantic_queries. "
-                "To browse without a query, use browse_collection(id: 5, mode: \"items\", type: [\"dashboard\", \"question\"], created_by: \"me\").")
-           (thrown-message #(validate-modes! {:type ["question" "dashboard"] :collection_id 5 :created_by "me"} false true))))
+                "To browse without a query, use browse_collection(id: 5, mode: \"items\", "
+                "type: [\"dashboard\", \"question\"], created_by: \"me\").")
+           (thrown-message #(validate-modes! {:type ["question" "dashboard"] :collection_id 5 :created_by "me"}
+                                             false true))))
     (is (= (str "This is a listing, not a search — it has filters but no term_queries or semantic_queries. "
                 "To browse without a query, use browse_data (list_databases, then list_tables).")
            (thrown-message #(validate-modes! {:type ["table"]} false true)))))

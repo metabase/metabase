@@ -177,12 +177,14 @@
                (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :description "d"})))))
       (testing "GHY-4137: a whitespace-only revision_message is rejected the same way"
         (is (re-find #"`revision_message` is required"
-                     (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :revision_message " "}))))))))
+                     (tool-error (call-tool! :crowberto nil tool
+                                             {:method "update" :id 13371337 :revision_message " "}))))))))
 
 (deftest ^:parallel method-exclusive-args-test
   (doseq [tool ["segment_write" "measure_write"]]
     (testing tool
-      (testing "GHY-4137: update-only fields on create are rejected, so a caller never believes an ignored field took effect"
+      (testing "GHY-4137: update-only fields on create are rejected, so a caller never believes an ignored field
+                took effect"
         (doseq [[k v] {:id 1, :archived true, :revision_message "x"}]
           (is (= (format "`%s` applies to method \"update\" only — remove it from this create call." (name k))
                  (tool-error (call-tool! :crowberto nil tool
@@ -218,7 +220,8 @@
 
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
-    (is (= "Invalid id \"abc\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
+    (is (= (str "Invalid id \"abc\" — pass the positive numeric id, or the 21-character entity_id from a search "
+                "or list result.")
            (tool-error (call-tool! :crowberto nil "segment_write"
                                    {:method "update" :id "abc" :revision_message "x"}))))))
 
@@ -293,17 +296,21 @@
           (is (= (mt/id :venues) (:table_id updated)))
           (is (= 1 (count (get-in updated [:definition :stages]))))))
       (testing "GHY-4137: archived true trashes and archived false restores — the only removal path"
-        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
+        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"}
+                                                       "segment_write"
                                                        {:method "update" :id (:id created)
                                                         :archived true :revision_message "trash"})))))
-        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "segment_write"
+        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"}
+                                                        "segment_write"
                                                         {:method "update" :id (:id created)
                                                          :archived false :revision_message "restore"}))))))
       (testing "GHY-4137: MBQL 4 full queries and MBQL 5 queries are accepted on create too"
         (doseq [[label definition] {"legacy full query" {:database (mt/id)
                                                          :type     "query"
                                                          :query    {:source-table (mt/id :venues)
-                                                                    :filter ["=" ["field" (mt/id :venues :price) nil] 2]}}
+                                                                    :filter       ["="
+                                                                                   ["field" (mt/id :venues :price) nil]
+                                                                                   2]}}
                                     "MBQL 5 query"      (venues-filter-definition)}]
           (testing label
             (let [result (create! (str "definitions-test segment " label) definition)]
@@ -354,10 +361,12 @@
                                                 :revision_message "move to checkins"}))]
           (is (= (mt/id :checkins) (:table_id updated)))))
       (testing "GHY-4137: archived true trashes and archived false restores"
-        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
+        (is (true? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"}
+                                                       "measure_write"
                                                        {:method "update" :id (:id created)
                                                         :archived true :revision_message "trash"})))))
-        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} "measure_write"
+        (is (false? (:archived (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"}
+                                                        "measure_write"
                                                         {:method "update" :id (:id created)
                                                          :archived false :revision_message "restore"})))))))))
 
@@ -479,7 +488,8 @@
         (is (= 1 (count (get-in created [:definition :stages 0 :filters]))))))))
 
 (deftest ^:parallel table-id-definition-mismatch-test
-  (testing "GHY-4153/GHY-4154: a full-query definition whose source table differs from table_id is a teaching error, not silent"
+  (testing "GHY-4153/GHY-4154: a full-query definition whose source table differs from table_id is a teaching error,
+            not silent"
     (testing "segment"
       (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
                                         {:method "create" :table_id (mt/id :checkins)
@@ -677,7 +687,8 @@
           (testing "GHY-4137: not admin-only — a data analyst with unrestricted view-data creates both"
             (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id nil "segment_write" segment-args))))
             (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id nil "measure_write" measure-args)))))
-          (testing "GHY-4137: the same table grants without the data-analyst role are a permission denial, not a not-found"
+          (testing "GHY-4137: the same table grants without the data-analyst role are a permission denial, not a
+                    not-found"
             (is (= "\"You don't have permissions to do that.\""
                    (tool-error (call-tool! plain-id nil "segment_write"
                                            (assoc segment-args :name "definitions-test denied segment")))))
