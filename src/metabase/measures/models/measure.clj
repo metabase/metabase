@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -135,7 +136,19 @@
   (cond-> measure
     (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
 
+(defenterprise pre-update-check-sandbox-constraints-for-measure
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_ _])
+
+(defenterprise pre-delete-check-sandbox-constraints-for-measure
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
+
 (t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
+  ;; additional checks (Enterprise Edition only)
+  (pre-update-check-sandbox-constraints-for-measure measure (t2/changes measure))
   ;; throw an Exception if someone tries to update creator_id
   (when (contains? (t2/changes measure) :creator_id)
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Measure."))))
@@ -148,6 +161,12 @@
     (m/assoc-some measure
                   :table_id (lib/primary-source-table-id definition))
     measure))
+
+(t2/define-before-delete :model/Measure
+  [measure]
+  ;; additional checks (Enterprise Edition only)
+  (pre-delete-check-sandbox-constraints-for-measure measure)
+  measure)
 
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]

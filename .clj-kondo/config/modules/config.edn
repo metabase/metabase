@@ -1398,6 +1398,7 @@
            metrics
            models
            permissions
+           premium-features
            remote-sync
            search
            util
@@ -2404,6 +2405,7 @@
            lib.schema
            models
            permissions
+           premium-features
            remote-sync
            search
            util
