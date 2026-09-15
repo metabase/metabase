@@ -55,6 +55,12 @@
   (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
        (authorization-server-metadata-url)))
 
+(defn missing-scope-description
+  "The `error_description` for an authorization request with no scope."
+  []
+  (str "The request must include a scope. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
 (defn mcp-resource-scopes
   "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
   accept\", and every path in [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they

@@ -1359,19 +1359,30 @@
                   (is (re-matches #"[\x20-\x21\x23-\x5B\x5D-\x7E]*" description)
                       "the description stays within the RFC 6749 section 5.2 error_description character set"))))))))))
 
-(deftest authorize-without-scope-still-renders-consent-test
-  (testing "a client that sends no `scope` at all is not the same case as one whose scopes were all
-            narrowed away -- narrowing answers nil for both, and only the first may drop the parameter.
-            This pins that the `invalid_scope` branch above did not swallow the no-scope request."
+(deftest authorize-rejects-missing-scope-test
+  (testing "GHY-4542: a request with no scope used to render a consent screen listing no permissions and
+            mint a token with no scopes. Nothing downstream should have to tell a scope-less OAuth token
+            apart from scope-unaware auth, so /authorize answers `invalid_scope` instead, whether `scope`
+            is absent, empty, or whitespace, and with or without a `resource` indicator."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-id (:client_id (create-test-client! {:scopes ["agent:content:read"]}))]
-          (is (mt/user-http-request :crowberto :get 200 "oauth/authorize"
-                                    :client_id     client-id
-                                    :redirect_uri  "https://example.com/callback"
-                                    :response_type "code"
-                                    :resource      (str "http://localhost:3000" (mcp/mcp-canonical-path))
-                                    :state         "test-state")))))))
+          (doseq [scope-params [[] [:scope ""] [:scope "   "]]
+                  resource     [nil (str "http://localhost:3000" (mcp/mcp-canonical-path))]]
+            (testing (pr-str {:scope-params scope-params :resource resource})
+              (let [response    (apply mt/user-http-request-full-response
+                                       :crowberto :get 400 "oauth/authorize"
+                                       :client_id     client-id
+                                       :redirect_uri  "https://example.com/callback"
+                                       :response_type "code"
+                                       :state         "test-state"
+                                       (concat scope-params
+                                               (when resource [:resource resource])))
+                    description (str (get-in response [:body :error_description]))]
+                (is (= "invalid_scope" (get-in response [:body :error])))
+                (is (= (str "The request must include a scope. Request only scopes listed in scopes_supported at "
+                            "http://localhost:3000/.well-known/oauth-authorization-server")
+                       description))))))))))
 
 (deftest mb-full-client-can-still-authorize-test
   (testing "removing `mb:full` from the advertised sets must not break a first-party client that
