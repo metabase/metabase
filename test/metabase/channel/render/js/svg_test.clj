@@ -132,12 +132,25 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedded images would decode to"
                               (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 8000) attr)))
             attr)))
-    (testing "an embedded data: URI that isn't a sizeable raster (e.g. a nested svg) is refused"
-      (let [nested (str "data:image/svg+xml;base64,"
-                        (.encodeToString (Base64/getEncoder)
-                                         (.getBytes "<svg xmlns=\"http://www.w3.org/2000/svg\"/>" "UTF-8")))]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not in a supported raster format"
-                              (js.svg/svg-string->bytes (data-uri-svg nested "xlink:href"))))))
+    (let [nested (str "data:image/svg+xml;base64,"
+                      (.encodeToString (Base64/getEncoder)
+                                       (.getBytes (str "<!DOCTYPE svg [<!ENTITY c \"green\">]>"
+                                                       "<svg xmlns=\"http://www.w3.org/2000/svg\">"
+                                                       "<rect id=\"r\" width=\"10\" height=\"10\" fill=\"&c;\"/>"
+                                                       "<linearGradient id=\"g\"/></svg>")
+                                                  "UTF-8")))]
+      (testing "an embedded data: URI that isn't a sizeable raster (e.g. a nested svg) is refused as an image"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not a base64 raster"
+                              (js.svg/svg-string->bytes (data-uri-svg nested "xlink:href")))))
+      (testing "a data: URI on any other element is refused — Batik would load a nested svg document (and its
+                DOCTYPE) through its own loader, bypassing the outer DOCTYPE check"
+        (doseq [inner [(str "<use xlink:href=\"" nested "#r\"/>")
+                       (str "<linearGradient id=\"lg\" xlink:href=\"" nested "#g\"/>"
+                            "<rect width=\"10\" height=\"10\" fill=\"url(#lg)\"/>")]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only image elements may embed data: URIs"
+                                (js.svg/svg-string->bytes
+                                 (str "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"10\" height=\"10\">"
+                                      inner "</svg>")))))))
     (testing "a small embedded image within the budget still renders"
       (is (bytes? (js.svg/svg-string->bytes (data-uri-svg (png-data-uri 64) "xlink:href")))))))
 

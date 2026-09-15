@@ -147,10 +147,7 @@
         img))))
 
 (def ^:private max-embedded-image-pixels
-  "Budget for the decoded size of the raster images an svg embeds as `data:` URIs, summed across the document.
-  Batik decodes an embedded image at its intrinsic dimensions before scaling it into place, so the output-size
-  caps don't bound it: a 17 KB all-black 12000x12000 PNG costs ~550 MB of host heap to decode. Chart images are
-  small; 25 megapixels (~100 MB ARGB) leaves room for a few inlined photos."
+  "Budget for the decoded size of the raster images an svg embeds as `data:` URIs, summed across the document."
   25000000)
 
 (defn- data-uri-bytes
@@ -180,35 +177,39 @@
   (let [xlink (.getAttributeNS el "http://www.w3.org/1999/xlink" "href")]
     (if (str/blank? xlink) (.getAttribute el "href") xlink)))
 
-(defn- check-embedded-images!
-  "Fail the render if the raster images the document embeds would decode to more than
-  [[max-embedded-image-pixels]] in total, or if an embedded `data:` URI isn't a raster format ImageIO can size
-  (so e.g. a nested svg can't smuggle further images past the check). Non-`data:` hrefs are left to Batik, which
-  refuses them (the document has no base URI)."
+(defn- check-embedded-resources!
+  "Fail the render if any element other than `<image>`/`<feImage>` references a `data:` URI (Batik would load a
+  nested svg — and its DOCTYPE — through its own parser, bypassing [[refuse-doctype!]]), if an embedded image isn't
+  a base64 raster ImageIO can size from its header, or if the embedded images exceed [[max-embedded-image-pixels]]."
   [^SVGOMDocument svg-document]
-  (let [elements (for [tag ["image" "feImage"]
-                       :let [^NodeList nodes (.getElementsByTagNameNS svg-document "*" tag)]
-                       i (range (.getLength nodes))]
-                   (.item nodes i))
-        total    (reduce (fn [total ^Element el]
-                           (if-let [bytes (some-> (element-href el) data-uri-bytes)]
-                             (let [[w h] (image-dimensions bytes)]
-                               (when-not w
-                                 (throw (ex-info (i18n/tru "Embedded image is not in a supported raster format")
-                                                 {:type ::embedded-image-refused})))
-                               (+ total (* (long w) (long h))))
-                             total))
-                         0
-                         elements)]
+  (let [^NodeList nodes (.getElementsByTagNameNS svg-document "*" "*")
+        elements        (for [i (range (.getLength nodes))] (.item nodes i))
+        refuse!         (fn [message data]
+                          (throw (ex-info message (assoc data :type ::embedded-resource-refused))))
+        total           (reduce (fn [total ^Element el]
+                                  (let [href (element-href el)]
+                                    (if-not (str/starts-with? href "data:")
+                                      total
+                                      (let [tag (.getLocalName el)]
+                                        (when-not (contains? #{"image" "feImage"} tag)
+                                          (refuse! (i18n/tru "Only image elements may embed data: URIs, not <{0}>" tag)
+                                                   {:element tag}))
+                                        (let [[w h] (some-> (data-uri-bytes href) image-dimensions)]
+                                          (when-not w
+                                            (refuse! (i18n/tru "Embedded image is not a base64 raster in a supported format")
+                                                     {}))
+                                          (+ total (* (long w) (long h))))))))
+                                0
+                                elements)]
     (when (> total (long max-embedded-image-pixels))
-      (throw (ex-info (i18n/tru "Embedded images would decode to {0} pixels, more than the {1} allowed"
-                                total max-embedded-image-pixels)
-                      {:type ::embedded-image-refused, :pixels total})))))
+      (refuse! (i18n/tru "Embedded images would decode to {0} pixels, more than the {1} allowed"
+                         total max-embedded-image-pixels)
+               {:pixels total}))))
 
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
-  (check-embedded-images! svg-document)
+  (check-embedded-resources! svg-document)
   (with-open [os (ByteArrayOutputStream.)]
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
