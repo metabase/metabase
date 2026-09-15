@@ -86,6 +86,14 @@
               "2022-12-14T11:19:04"
               {:unit "week", :compact true, :locale locale}))))))
 
+#?(:cljs
+   (deftest ^:parallel format-range-with-unit-js-time-config-test
+     (is (= (str "Dec 12" date/range-separator "18, 2022")
+            (date/format-range-with-unit
+             #js {"start-of-week" "monday"}
+             "2022-12-14T11:19:04"
+             #js {"unit" "week", "compact" true})))))
+
 (deftest ^:parallel format-datetime-with-unit-test-1a1
   (testing "special cases"
     (testing "is-exclude"
