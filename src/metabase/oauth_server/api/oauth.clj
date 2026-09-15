@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
@@ -115,6 +116,27 @@
                   ;; Flag the broad first-party grant so the consent page can warn about it without
                   ;; hardcoding the scope string in the view.
                   :full-access? (= s oauth-server/full-access-scope)})))))
+
+(defn- scope-tokens
+  "Split a space-separated OAuth `scope` value into its scope strings, in order. Returns nil when blank."
+  [scope-param]
+  (some-> scope-param str str/trim not-empty (str/split #"\s+")))
+
+(defn- form-values
+  "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."
+  [v]
+  (cond
+    (nil? v)        []
+    (sequential? v) (vec v)
+    :else           [v]))
+
+(defn- granted-scopes
+  "The scopes an approved decision grants, in offered order: every `offered` scope the user `chosen`, plus every
+   offered MCP baseline scope, which the consent page shows as always granted. Returns nil when `chosen` names a scope
+   that was not offered."
+  [offered chosen]
+  (when (every? (set offered) chosen)
+    (filterv (some-fn (set chosen) (set (mcp/v2-baseline-scopes))) offered)))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -351,6 +373,7 @@
             [:response_type         {:optional true} [:maybe :string]]
             [:redirect_uri          {:optional true} [:maybe :string]]
             [:scope                 {:optional true} [:maybe :string]]
+            [:granted_scope         {:optional true} [:maybe [:or :string [:sequential :string]]]]
             [:state                 {:optional true} [:maybe :string]]
             [:code_challenge        {:optional true} [:maybe :string]]
             [:code_challenge_method {:optional true} [:maybe :string]]
@@ -378,15 +401,35 @@
                     (let [parsed        (oidc/parse-authorization-request provider auth-params)
                           ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                           ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
-                          parsed-params (select-keys parsed oauth-param-keys)]
-                      (if (or (str/blank? params-sig)
-                              (not (re-matches #"[a-fA-F0-9]+" params-sig))
-                              (odd? (count params-sig))
-                              (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
+                          parsed-params (select-keys parsed oauth-param-keys)
+                          ;; The signed `scope` is what the page offered; the user's choice is unsigned, so it
+                          ;; may only narrow the offer.
+                          offered       (scope-tokens (:scope parsed))
+                          granted       (granted-scopes offered (form-values (:granted_scope body)))]
+                      (cond
+                        (or (str/blank? params-sig)
+                            (not (re-matches #"[a-fA-F0-9]+" params-sig))
+                            (odd? (count params-sig))
+                            (not (verify-oauth-params-signature cookie-token parsed-params params-sig))
+                            (and approved (nil? granted)))
                         {:status  403
                          :headers {"Content-Type" "application/json"}
                          :body    {:error "params_tampered"}}
-                        (redirect-authorization-decision provider parsed approved request)))
+
+                        ;; Offered but nothing granted would mint a token that can do nothing.
+                        (and approved (seq offered) (empty? granted))
+                        {:status  400
+                         :headers {"Content-Type" "application/json"}
+                         :body    {:error             "invalid_request"
+                                   :error_description "No scope was selected."}}
+
+                        :else
+                        (redirect-authorization-decision provider
+                                                         (cond-> parsed
+                                                           (and approved (seq offered))
+                                                           (assoc :scope (str/join " " granted)))
+                                                         approved
+                                                         request)))
                     (catch ExceptionInfo e
                       (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
