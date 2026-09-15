@@ -51,3 +51,10 @@
   (api/write-check (transform-testing.db/test-suite id))
   (transform-testing.db/delete-test-suite! id)
   nil)
+
+(api.macros/defendpoint :post "/:id/run" :- :nil
+  "Run a transform test suite."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/read-check (transform-testing.db/test-suite id))
+  nil)
