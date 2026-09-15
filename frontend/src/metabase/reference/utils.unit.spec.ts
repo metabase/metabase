@@ -16,17 +16,16 @@ describe("Reference utils.js", () => {
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations and sort tables by name", () => {
       const tables = {
-        1: { id: 1, name: "Toucan", schema_name: "foo" },
-        2: { id: 2, name: "Elephant", schema_name: "bar" },
-        3: { id: 3, name: "Giraffe", schema_name: "boo" },
-        4: { id: 4, name: "Wombat", schema_name: "bar" },
-        5: { id: 5, name: "Anaconda", schema_name: "foo" },
-        6: { id: 6, name: "Buffalo", schema_name: "bar" },
+        1: { id: 1, name: "Toucan", schema: "foo" },
+        2: { id: 2, name: "Elephant", schema: "bar" },
+        3: { id: 3, name: "Giraffe", schema: "boo" },
+        4: { id: 4, name: "Wombat", schema: "bar" },
+        5: { id: 5, name: "Anaconda", schema: "foo" },
+        6: { id: 6, name: "Buffalo", schema: "bar" },
       };
 
-      const createSchemaSeparator = (table: { schema_name: string }) =>
-        table.schema_name;
-      const createListItem = (table: { schema_name: string }) => table;
+      const createSchemaSeparator = (table: { schema: string }) => table.schema;
+      const createListItem = (table: { schema: string }) => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
         tables,
@@ -35,12 +34,12 @@ describe("Reference utils.js", () => {
       );
 
       expect(schemaSeparatedTables).toEqual([
-        ["bar", { id: 6, name: "Buffalo", schema_name: "bar" }],
-        { id: 2, name: "Elephant", schema_name: "bar" },
-        { id: 4, name: "Wombat", schema_name: "bar" },
-        ["boo", { id: 3, name: "Giraffe", schema_name: "boo" }],
-        ["foo", { id: 5, name: "Anaconda", schema_name: "foo" }],
-        { id: 1, name: "Toucan", schema_name: "foo" },
+        ["bar", { id: 6, name: "Buffalo", schema: "bar" }],
+        { id: 2, name: "Elephant", schema: "bar" },
+        { id: 4, name: "Wombat", schema: "bar" },
+        ["boo", { id: 3, name: "Giraffe", schema: "boo" }],
+        ["foo", { id: 5, name: "Anaconda", schema: "foo" }],
+        { id: 1, name: "Toucan", schema: "foo" },
       ]);
     });
   });
