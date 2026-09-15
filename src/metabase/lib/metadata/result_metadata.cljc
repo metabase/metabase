@@ -292,10 +292,15 @@
 ;;; TODO (Cam 6/12/25) -- all this stuff should be moved into the main [[metabase.lib.field]] namespace as and done
 ;;; automatically when [[lib.ref/*ref-style*]] is `:ref.style/broken-legacy-qp-results`
 (mu/defn- super-broken-legacy-field-ref :- [:maybe ::mbql.s/Reference]
-  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
+  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage.
+
+  The synthetic pivot-grouping column is skipped — the multi-query pivot path splices it in fresh (no
+  `:field_ref`) via `metabase.query-processor.pivot.middleware/add-pivot-grouping`, so the SQL native path
+  emits nothing here for parity with what the FE contract already sees for that column."
   [query :- ::lib.schema/query
    col   :- ::kebab-cased-map]
-  (when (= (:lib/type col) :metadata/column)
+  (when (and (= (:lib/type col) :metadata/column)
+             (not= (:lib/source col) :source/pivot-grouping))
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
       (-> (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
             (let [col (cond-> col

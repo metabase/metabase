@@ -15,6 +15,7 @@
    ;; direct unit test of the private `check-parameter-value!`
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
@@ -359,11 +360,15 @@
                                               :columns ["VENDOR"]
                                               :values  ["count"]}}}]
       (mt/with-current-user (mt/user->id :rasta)
-        (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 5}))]
-          (is (= 5 (:returned payload)))
-          (is (= 5 (count (:rows payload))))
-          (is (true? (:truncated payload)))
-          (is (some? (::steering payload))))))))
+        ;; Multi-query caps each subquery at row_limit → sum across combos; UA caps the total once.
+        ;; Both flows produce the same column shape and the tool layer truncates to `row_limit`
+        ;; downstream; don't compare row bags.
+        (qp.pivot.tu/with-metadata-only-parity
+          (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 5}))]
+            (is (= 5 (:returned payload)))
+            (is (= 5 (count (:rows payload))))
+            (is (true? (:truncated payload)))
+            (is (some? (::steering payload)))))))))
 
 (deftest ^:parallel numeric-string-id-parity-test
   (testing "GHY-4498: Claude Desktop sends every value of an int-or-string param as a JSON string,
