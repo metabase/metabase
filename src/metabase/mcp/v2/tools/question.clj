@@ -56,7 +56,7 @@
                           (message/msg [(str "Invalid template tag type %s — use \"text\", \"number\", "
                                              "\"date\", \"boolean\", \"dimension\", or \"temporal-unit\".")
                                         "%s"]
-                                       tag-type (message/raw skills/template-tag-contract))))
+                                       tag-type skills/template-tag-contract)))
         display-name (or display_name (:display-name tag))
         widget-type  (or widget_type (:widget-type tag))
         field-ref?   (contains? #{:dimension :temporal-unit} t)
@@ -66,13 +66,12 @@
        (message/msg [(str "A dimension template tag requires a widget_type, e.g. "
                           "\"string/=\", \"number/=\", or \"date/all-options\".")
                      "%s"]
-                    (message/raw skills/template-tag-contract))))
+                    skills/template-tag-contract)))
     (when (and field-ref? (nil? field-id))
-      ;; `t` is one of `tag-type->kw`'s own keywords.
       (common/throw-teaching-error
        (message/msg ["A %s template tag requires a field_id — the numeric id of the column it binds."
                      "%s"]
-                    (message/raw (name t)) (message/raw skills/template-tag-contract))))
+                    (name t) skills/template-tag-contract)))
     (cond-> (assoc existing-tag :type t)
       display-name (assoc :display-name display-name)
       (some? required) (assoc :required (boolean required))

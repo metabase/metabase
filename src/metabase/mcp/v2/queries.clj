@@ -171,8 +171,8 @@
 ;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
 
 (defn check-execute-sql-enabled!
-  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`, server text,
-   opens the refusal sentence, naming what the instance refused.
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject` opens the
+   refusal sentence, naming what the instance refused.
 
    The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and
    `question_write` / `transform_write` storing agent-authored native SQL — so a switch an admin

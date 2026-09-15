@@ -589,8 +589,7 @@
     (catch clojure.lang.ExceptionInfo e
       (let [text          (ex-message e)
             retry-seconds (some->> text (re-find #"(\d+) seconds") second)]
-        ;; The throttle library writes this sentence itself, from the delay it computed.
-        (cond-> (json-response 429 (jsonrpc-error nil -32000 (message/msg ["%s"] (message/raw text))))
+        (cond-> (json-response 429 (jsonrpc-error nil -32000 (message/msg ["ERROR: %s"] text)))
           retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------

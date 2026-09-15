@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.config.core :as config]
+   [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
@@ -156,12 +157,11 @@
 (defn missing-extensions-error
   "Teaching message for a call to registered tool `tool-name` from a client missing `missing-extensions`."
   [tool-name missing-extensions]
-  ;; The tool name comes from the registry and the extensions from the tool's declaration, so both are server text.
-  (let [extension-names (str/join ", " (map #(get extension-labels % (name %)) missing-extensions))]
+  (let [extension-names (common/list-message (map #(get extension-labels % (name %)) missing-extensions))]
     (message/msg ["%s requires a client that supports %s."
                   "Reconnect from a client that advertises text/html;profile=mcp-app."]
-                 (message/raw tool-name)
-                 (message/raw extension-names))))
+                 tool-name
+                 extension-names)))
 
 (defn embed-render-fn
   "Build a `:render-fn` that serves the MCP Apps iframe shell.

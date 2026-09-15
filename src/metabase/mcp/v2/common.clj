@@ -148,6 +148,11 @@
   [items :- [:sequential :any]]
   (joined-message #(message/msg ["%s, %s"] %1 %2) items))
 
+(mu/defn lines-message :- ::message/message
+  "A message of `items`, one per line, each cleaned unless it is raw or a message."
+  [items :- [:sequential :any]]
+  (joined-message #(message/msg ["%s" "%s"] %1 %2) items))
+
 (defn- semicolon-list-message
   [items]
   (joined-message #(message/msg ["%s; %s"] %1 %2) items))
@@ -247,7 +252,6 @@
   [e]
   (let [{:keys [type fn-name humanized]} (ex-data e)]
     (when (contains? schema-failure-types type)
-      ;; `fn-name` is the symbol of a server function, not caller input.
       (if (= type :metabase.util.malli.fn/invalid-input)
         (message/msg [(str "Server-side schema check failed in `%s`: %s. This is "
                            "a bug in Metabase, not something to retry — report it.")]
@@ -374,7 +378,6 @@
      (throw-teaching-error (message/msg ["Use `fields` OR `response_format`/`include`, not both."])))
    (when (empty? fields)
      (throw-teaching-error (message/msg ["`fields` must name at least one path."])))
-   ;; `type` and the catalog paths are server-declared.
    (let [catalog (or (projections/catalog type)
                      (throw-teaching-error (message/msg ["`fields` is not supported for type %s."]
                                                         (message/raw (name type)))))]

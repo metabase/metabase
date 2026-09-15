@@ -12,7 +12,6 @@
    is not optional: the v2 gate denies a nil `:scope` outright, so omitting it would hide the
    tool rather than make it public."
   (:require
-   [clojure.string :as str]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
@@ -23,10 +22,9 @@
 
 (defn- unknown-topic!
   [topic]
-  ;; Topic names ship with the server's skill packs.
   (common/throw-teaching-error
    (message/msg ["Unknown topic %s. Topics: %s. Call learn() with no arguments for the catalog with descriptions."]
-                topic (message/raw (str/join ", " (skills/topics))))))
+                topic (common/list-message (skills/topics)))))
 
 (registry/deftool learn
   "Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference \"operators\" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference \"settings\" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context."
@@ -54,9 +52,8 @@
          (if-let [names (skills/reference-names topic)]
            (common/throw-teaching-error
             (if (seq names)
-              ;; Reference names ship with the server's skill packs.
               (message/msg ["Topic %s has no reference %s. Its references: %s."]
-                           topic reference (message/raw (str/join ", " names)))
+                           topic reference (common/list-message names))
               (message/msg [(str "Topic %s has no reference %s. It has no reference "
                                  "files — call learn(topic) for the skill itself.")]
                            topic reference)))

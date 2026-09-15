@@ -356,7 +356,8 @@
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (let [sid (str (random-uuid))]
         (testing "the kill switch refuses execution and names the setting that re-enables it"
-          (is (= "execute_sql is disabled on this instance — an admin can re-enable it with the mcp-execute-sql-enabled setting."
+          (is (= (str "\"execute_sql\" is disabled on this instance — an admin can re-enable it with the "
+                      "mcp-execute-sql-enabled setting.")
                  (error-text (call! sid {:database_id (mt/id) :sql "SELECT 1"})))))
         (testing "validate_only is refused identically — it is not a kill-switch bypass"
           (is (str/includes? (error-text (call! sid {:database_id (mt/id) :sql "SELECT 1" :validate_only true}))

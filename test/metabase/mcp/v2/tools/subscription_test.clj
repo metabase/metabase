@@ -128,7 +128,7 @@
 
 (deftest create-requires-dashboard-id-test
   (testing "GHY-4156: create without a dashboard_id is a teaching error, not a schema dump"
-    (is (re-find #"`dashboard_id` is required"
+    (is (re-find #"\"dashboard_id\" is required"
                  (tool-error (call-tool! :crowberto nil
                                          (wire {:method "create"
                                                 :schedule {:schedule_type "hourly"}})))))))
@@ -136,7 +136,7 @@
 (deftest create-requires-schedule-test
   (testing "GHY-4156: create without a schedule is a teaching error"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}]
-      (is (re-find #"`schedule` is required"
+      (is (re-find #"\"schedule\" is required"
                    (tool-error (call-tool! :crowberto nil
                                            (wire {:method "create" :dashboard_id dash-id}))))))))
 
@@ -332,13 +332,13 @@
                (= expected error)
                (re-find expected error)))
         {:schedule_type "daily"}
-        "A \"daily\" schedule needs schedule_hour — the hour of the day to send, 0-23."
+        "A \"daily\" schedule needs \"schedule_hour\" — the hour of the day to send, 0-23."
 
         {:schedule_type "weekly" :schedule_hour 9}
-        "A \"weekly\" schedule needs schedule_day — the day of the week, e.g. \"mon\"."
+        "A \"weekly\" schedule needs \"schedule_day\" — the day of the week, e.g. \"mon\"."
 
         {:schedule_type "monthly" :schedule_hour 9}
-        "A \"monthly\" schedule needs schedule_frame — \"first\", \"mid\", or \"last\"."
+        "A \"monthly\" schedule needs \"schedule_frame\" — \"first\", \"mid\", or \"last\"."
 
         {:schedule_type "monthly" :schedule_hour 9
          :schedule_frame "mid" :schedule_day "mon"}                 #"schedule_day"))))
@@ -791,7 +791,7 @@
                   err     (response-text outcome)]
               (is (dispatch-error? outcome) "the surplus field must be refused, not silently dropped")
               (is (re-find (re-pattern ignored) err))
-              (is (str/includes? err (str "\"" (:schedule_type schedule) "\" schedule doesn't use " ignored)))
+              (is (str/includes? err (str "\"" (:schedule_type schedule) "\" schedule doesn't use \"" ignored "\"")))
               (is (re-find #"would be ignored" err)))))
         (testing "an explicit null is an omission, not a request, so it is not refused"
           (is (some? (tool-result (call-tool! :crowberto nil

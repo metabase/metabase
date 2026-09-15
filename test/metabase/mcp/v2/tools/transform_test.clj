@@ -210,10 +210,10 @@
 (deftest transform-write-create-required-args-test
   (testing "GHY-4240: the create-only requirements are teaching errors naming the missing field"
     (with-transforms
-      (is (re-find #"`name` is required when method is \"create\""
+      (is (re-find #"\"name\" is required when method is \"create\""
                    (tool-error (write! {:method "create" :definition (query-definition)
                                         :target {:name "x" :schema (venues-schema)}}))))
-      (is (re-find #"`target` is required when method is \"create\""
+      (is (re-find #"\"target\" is required when method is \"create\""
                    (tool-error (write! {:method "create" :name "x" :definition (query-definition)}))))
       (testing "and a target without a name is caught before anything is written"
         (is (re-find #"`target.name` is required"

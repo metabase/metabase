@@ -318,7 +318,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
    re-checks inside `process-query`) so a refusal short-circuits before any query machinery
    spins up."
   [database-id]
-  (v2.queries/check-execute-sql-enabled! (message/raw "execute_sql"))
+  (v2.queries/check-execute-sql-enabled! "execute_sql")
   (when-not (mi/can-read? :model/Database database-id)
     (common/throw-not-found :model/Database database-id))
   (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
@@ -363,7 +363,6 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
                                              (message/raw "none"))))
 
                              (contains? #{:card :snippet} tag-type)
-                             ;; `tag-type` is one of the two reference kinds just matched.
                              (common/throw-teaching-error
                               (message/msg [(str "%s is a %s-reference tag — it splices server-side SQL "
                                                  "text and cannot be populated through template_tag_values, "

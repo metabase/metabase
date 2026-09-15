@@ -289,11 +289,10 @@
                                         (let [[_ body] dispatched]
                                           (doseq [k [:id :archived]]
                                             (when (contains? body k)
-                                              ;; `k` is one of the tool's own argument keys.
                                               (common/throw-teaching-error
-                                               (message/msg [(str "`%s` applies to method \"update\" only "
+                                               (message/msg [(str "%s applies to method \"update\" only "
                                                                   "— remove it from this create call.")]
-                                                            (message/raw (name k))))))
+                                                            (name k)))))
                                           (create! (dissoc body :id) session-id))
 
                                         :update

@@ -60,10 +60,9 @@
           ;; `actual` is nil for a card type this tool doesn't surface (only question/model/metric
           ;; are bookmarkable-by-flavor); name the id without a "null" type in that case.
           (common/throw-teaching-error
-           ;; `actual` is a value of the server's own `card-type->tool-type` table.
            (if actual
-             (message/msg ["Card %d is a %s — bookmark it with type: \"%s\"."]
-                          (:id row) (message/raw actual) (message/raw actual))
+             (message/msg ["Card %d is a %s — bookmark it with type: %s."]
+                          (:id row) actual actual)
              (message/msg ["Card %d can't be bookmarked as type: %s."] (:id row) type))))))
     row))
 

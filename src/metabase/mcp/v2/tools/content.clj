@@ -596,13 +596,12 @@
   (doseq [inc-name includes]
     (let [applicable (get include->types inc-name)]
       (when-not (some applicable batch-types)
-        ;; The applicable types are `type->spec`'s own names; the section and batch types are the caller's.
         (common/throw-teaching-error
          (message/msg ["`include` section %s does not apply to type%s %s — it is available for: %s."]
                       inc-name
                       (message/raw (if (= 1 (count batch-types)) "" "s"))
                       (common/list-message (sort batch-types))
-                      (message/raw (str/join ", " (sort applicable)))))))))
+                      (common/list-message (sort applicable))))))))
 
 (defn- build-include
   "Apply the `inc-name` section builder that `type` declares in [[type->spec]] to `row`, or nil

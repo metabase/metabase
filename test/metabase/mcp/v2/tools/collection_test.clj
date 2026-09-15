@@ -88,7 +88,7 @@
 ;; `metabase.mcp.v2.tools.content`, which lands later in the stack.
 
 (deftest create-requires-name-test
-  (is (re-find #"`name` is required when method is \"create\""
+  (is (re-find #"\"name\" is required when method is \"create\""
                (tool-error (call-tool! :crowberto {:method "create" :description "no name"})))))
 
 (deftest create-nests-under-parent-test
@@ -153,7 +153,7 @@
 (deftest create-rejects-update-only-args-test
   (doseq [[k v] {:archived true :id 1}]
     (testing (str "`" (name k) "` on create is a teaching error, not silently ignored")
-      (is (re-find (re-pattern (str "`" (name k) "` applies to method \"update\" only"))
+      (is (re-find (re-pattern (str "\"" (name k) "\" applies to method \"update\" only"))
                    (tool-error (call-tool! :crowberto {:method "create" :name "x" k v})))))))
 
 (deftest create-requires-write-perms-on-parent-test
@@ -396,7 +396,7 @@
 (deftest scope-gating-test
   (mt/with-model-cleanup [:model/Collection]
     (testing "a bearer token without the write scope cannot call the tool at all"
-      (is (re-find #"^Insufficient scope to call tool: collection_write\."
+      (is (re-find #"^Insufficient scope to call tool: \"collection_write\"\."
                    (tool-error (call-tool! :crowberto #{"agent:content:read"} {:method "create" :name "x"})))))
     (testing "the write scope creates"
       (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:content:write"}
@@ -408,7 +408,7 @@
                                            {:method "update" :id 13371337 :name "x"})))))
     (testing "the v1 create scope does not reach this tool — it gates POST /api/agent/v1/collection,
               and collection_write is not that endpoint"
-      (is (re-find #"^Insufficient scope to call tool: collection_write\."
+      (is (re-find #"^Insufficient scope to call tool: \"collection_write\"\."
                    (tool-error (call-tool! :crowberto #{"agent:collection:create"}
                                            {:method "create" :name "x"})))))
     ;; GHY-4225: the metabot permission wildcards no longer bear on v2 — in-app callers use

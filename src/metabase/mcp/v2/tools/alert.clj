@@ -46,10 +46,12 @@
 
 (def ^:private schedule-field-advice
   "What to do instead, per field a schedule type doesn't read."
-  {:schedule_minute "only an hourly schedule sends at a minute past the hour"
-   :schedule_hour   "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" to send at one hour"
-   :schedule_day    "use \"weekly\", or \"monthly\" with schedule_frame \"first\" or \"last\", to send on a weekday"
-   :schedule_frame  "only a monthly schedule sends on a frame of the month"})
+  {:schedule_minute (message/raw "only an hourly schedule sends at a minute past the hour")
+   :schedule_hour   (message/raw (str "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" "
+                                      "to send at one hour"))
+   :schedule_day    (message/raw (str "use \"weekly\", or \"monthly\" with \"schedule_frame\" \"first\" or \"last\", "
+                                      "to send on a weekday"))
+   :schedule_frame  (message/raw "only a monthly schedule sends on a frame of the month")})
 
 (defn- check-ignored-schedule-fields!
   "Reject a schedule field the caller's `schedule_type` doesn't read. The cron compiler drops such
@@ -65,10 +67,9 @@
                      sort
                      first)]
     (when ignored
-      ;; `ignored` and its advice come from the server's own tables.
       (common/throw-teaching-error
        (message/msg ["A %s schedule doesn't use %s, so it would be ignored — %s."]
-                    schedule_type (message/raw (name ignored)) (message/raw (schedule-field-advice ignored)))))))
+                    schedule_type (name ignored) (schedule-field-advice ignored))))))
 
 (defn- check-schedule!
   "Reject a schedule the cron compiler would mis-encode: one missing a field its type needs, or one
@@ -84,26 +85,17 @@
                             schedule_type field explanation))))]
     (case schedule_type
       "hourly"  nil
-      "daily"   (require! schedule_hour
-                          (message/raw "schedule_hour")
-                          (message/raw "the hour of the day to send, 0-23"))
-      "weekly"  (do (require! schedule_hour
-                              (message/raw "schedule_hour")
-                              (message/raw "the hour of the day to send, 0-23"))
-                    (require! schedule_day
-                              (message/raw "schedule_day")
-                              (message/raw "the day of the week, e.g. \"mon\"")))
-      "monthly" (do (require! schedule_hour
-                              (message/raw "schedule_hour")
-                              (message/raw "the hour of the day to send, 0-23"))
-                    (require! schedule_frame
-                              (message/raw "schedule_frame")
-                              (message/raw "\"first\", \"mid\", or \"last\""))
+      "daily"   (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+      "weekly"  (do (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+                    (require! schedule_day "schedule_day" (message/raw "the day of the week, e.g. \"mon\"")))
+      "monthly" (do (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+                    (require! schedule_frame "schedule_frame" (message/raw "\"first\", \"mid\", or \"last\""))
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
-                       (message/msg [(str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, "
-                                          "so it cannot also take a schedule_day — drop schedule_day, or use "
-                                          "frame \"first\" or \"last\" to send on a particular weekday.")]))))))
+                       (message/msg [(str "A monthly schedule with \"schedule_frame\" \"mid\" sends on the 15th, "
+                                          "so it cannot also take a \"schedule_day\" — drop \"schedule_day\", "
+                                          "or use \"schedule_frame\" \"first\" or \"last\" "
+                                          "to send on a particular weekday.")]))))))
   (check-ignored-schedule-fields! schedule))
 
 (defn- schedule->cron
@@ -117,11 +109,10 @@
       (common/throw-teaching-error
        (message/msg ["Metabase can't schedule {%s} — check schedule_type against the other schedule fields."]
                     (common/list-message
-                     ;; The field names are literals; only their values come from the caller.
                      (for [field [:schedule_type :schedule_hour :schedule_minute :schedule_day :schedule_frame]
                            :let  [value (get schedule field)]
                            :when (some? value)]
-                       (message/msg ["%s: %s"] (message/raw (name field)) value))))))))
+                       (message/msg ["%s: %s"] (name field) value))))))))
 
 (defn- cron-subscription
   [schedule]

@@ -103,19 +103,19 @@
   (testing "GHY-4544: op errors name the index and op once, with caller-sent values quoted once"
     (is (= "op 0 (\"frobnicate\"): unknown op — see the tool description for the supported list."
            (op-error-text empty-dash [{:op "frobnicate"}])))
-    (is (= "op 0 (add_link): pass exactly one of `url` or `entity`."
+    (is (= "op 0 (\"add_link\"): pass exactly one of `url` or `entity`."
            (op-error-text empty-dash [{:op "add_link" :id -1}])))
-    (is (= "op 0 (patch_dashcard): \"nonsense\" is not a patchable property."
+    (is (= "op 0 (\"patch_dashcard\"): \"nonsense\" is not a patchable property."
            (op-error-text (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
                           [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}]))))
   (testing "GHY-4544: an op sent without its `op` or a referenced id says so rather than naming null"
     (is (= "op 0: missing `op` — see the tool description for the supported list."
            (op-error-text empty-dash [{:id -1}])))
-    (is (= "op 0 (dashcard_id): missing `dashcard_id`."
+    (is (= "op 0 (\"dashcard_id\"): missing `dashcard_id`."
            (op-error-text empty-dash [{:op "remove"}])))
-    (is (= "op 0 (tab_id): missing `tab_id`."
+    (is (= "op 0 (\"tab_id\"): missing `tab_id`."
            (op-error-text empty-dash [{:op "remove_tab"}])))
-    (is (= "op 0 (parameter_id): missing `parameter_id`."
+    (is (= "op 0 (\"parameter_id\"): missing `parameter_id`."
            (op-error-text empty-dash [{:op "remove_parameter"}])))))
 
 (deftest add-text-test
@@ -350,15 +350,15 @@
 
 (deftest patch-dashcard-rejects-layout-keys-test
   (testing "GHY-4147: layout and identity keys in a patch are rejected, naming the op that owns them"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*`row`.*move"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*\"row\" is not patchable — use the \"move\" op"
                           (dashboard-ops/compile-ops
                            (dash-with [a-dashcard])
                            [{:op "patch_dashcard" :dashcard_id 7 :patch {:row 0}}])))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*`size_x`.*resize"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*\"size_x\" is not patchable — use the \"resize\" op"
                           (dashboard-ops/compile-ops
                            (dash-with [a-dashcard])
                            [{:op "patch_dashcard" :dashcard_id 7 :patch {:size_x 4}}])))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*`card_id`.*replace_card"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*\"card_id\" is not patchable — use the \"replace_card\" op"
                           (dashboard-ops/compile-ops
                            (dash-with [a-dashcard])
                            [{:op "patch_dashcard" :dashcard_id 7 :patch {:card_id 1}}])))))
@@ -487,11 +487,11 @@
             naming the op index — a dashcard on a foreign tab renders nowhere and cannot be repaired
             in the editor"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"op 0 \(add_card\): no tab with id 77 on this dashboard\."
+         clojure.lang.ExceptionInfo #"op 0 \(\"add_card\"\): no tab with id 77 on this dashboard\."
          (dashboard-ops/compile-ops one-tab-dash [{:op "add_card" :id -1 :card_id 42 :tab 77}]))))
   (testing "GHY-4147: a tab id that exists nowhere teaches the same way instead of failing opaquely later"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"op 1 \(add_card\): no tab with id 999 on this dashboard\."
+         clojure.lang.ExceptionInfo #"op 1 \(\"add_card\"\): no tab with id 999 on this dashboard\."
          (dashboard-ops/compile-ops one-tab-dash
                                     [{:op "add_card" :id -1 :card_id 42 :tab 5}
                                      {:op "add_card" :id -2 :card_id 42 :tab 999}])))))
@@ -499,13 +499,13 @@
 (deftest virtual-dashcard-rejects-a-tab-not-on-this-dashboard-test
   (testing "GHY-4147: the virtual add ops validate `tab` the same way add_card does"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"op 0 \(add_text\): no tab with id 77 on this dashboard\."
+         clojure.lang.ExceptionInfo #"op 0 \(\"add_text\"\): no tab with id 77 on this dashboard\."
          (dashboard-ops/compile-ops one-tab-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}])))))
 
 (deftest duplicate-card-rejects-a-tab-not-on-this-dashboard-test
   (testing "GHY-4147: duplicate_card's optional `tab` is validated too"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"op 0 \(duplicate_card\): no tab with id 77 on this dashboard\."
+         clojure.lang.ExceptionInfo #"op 0 \(\"duplicate_card\"\): no tab with id 77 on this dashboard\."
          (dashboard-ops/compile-ops
           (assoc one-tab-dash :dashcards [{:id 7 :card_id 9 :dashboard_tab_id 5
                                            :row 0 :col 0 :size_x 4 :size_y 4}])

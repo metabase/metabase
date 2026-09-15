@@ -2,7 +2,6 @@
   "Write-path machinery shared by v2 `_write` tools. Landed with its first consumers: [[readback]] with
    `bookmark_content`, `_write` method dispatch with `collection_write`."
   (:require
-   [clojure.string :as str]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -30,14 +29,13 @@
     (if (empty? missing)
       row
       (assoc (select-keys row (into [:id :url] ack-keys))
-             ;; The read scopes are server-declared constants. The note is a value in the JSON-encoded row, so it
-             ;; must be text.
+             ;; The note is a value in the JSON-encoded row, so it must be text.
              :note (message/render
                     (if (next missing)
                       (message/msg ["Written. Reading it back requires the %s scopes this token doesn't have."]
-                                   (message/raw (str/join " and " missing)))
+                                   (common/list-message missing))
                       (message/msg ["Written. Reading it back requires the %s scope this token doesn't have."]
-                                   (message/raw (first missing)))))))))
+                                   (first missing))))))))
 
 (defn- expand-clear
   "Turn a `clear` list of property names into explicit nils on `args`. Null can't carry this
@@ -53,18 +51,16 @@
           fields    (map keyword clear)]
       (doseq [field fields]
         (when-not (contains? clearable field)
-          ;; `field` is the caller's; the clearable names are the tool's own.
           (common/throw-teaching-error
            (if (seq clearable)
              (message/msg ["%s can't be cleared. This tool can clear: %s."]
-                          (name field) (message/raw (str/join ", " (sort (map name clearable)))))
+                          (name field) (common/list-message (sort (map name clearable))))
              (message/msg ["%s can't be cleared — this tool has no clearable properties."]
                           (name field)))))
-        ;; Past the check above, `field` is one of the tool's clearable names.
         (when (some? (get args field))
           (common/throw-teaching-error
-           (message/msg ["`%s` is both set and cleared in the same call — pass one or the other."]
-                        (message/raw (name field))))))
+           (message/msg ["%s is both set and cleared in the same call — pass one or the other."]
+                        (name field)))))
       (reduce #(assoc %1 %2 nil) (dissoc args :clear) fields))))
 
 (defn dispatch-write
@@ -86,9 +82,8 @@
          (message/msg ["`clear` applies to method \"update\" only — a new object has nothing set to clear."])))
       (doseq [k create-required]
         (when (nil? (get args k))
-          ;; `create-required` is the tool's own argument keys.
-          (common/throw-teaching-error (message/msg ["`%s` is required when method is \"create\"."]
-                                                    (message/raw (name k))))))
+          (common/throw-teaching-error (message/msg ["%s is required when method is \"create\"."]
+                                                    (name k)))))
       [:create (dissoc args :method :clear)])
 
     "update"

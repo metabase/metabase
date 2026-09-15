@@ -81,7 +81,7 @@
 
 (deftest create-requires-name-test
   (testing "GHY-4147: create without a name is a teaching error, not a schema dump"
-    (is (re-find #"`name` is required"
+    (is (re-find #"\"name\" is required"
                  (tool-error (call-tool! :crowberto nil "dashboard_write" (wire {:method "create"})))))))
 
 (deftest update-requires-id-test

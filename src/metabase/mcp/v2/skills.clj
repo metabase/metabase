@@ -13,7 +13,7 @@
    this namespace — so a miss recovers within one round trip even when no pack was read."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
+   [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]))
 
 (set! *warn-on-reflection* true)
@@ -35,25 +35,47 @@
   "The pack catalog, in the order `learn()` lists it. `:description` doubles as the catalog line
    and must say when to read the pack, not just what it is."
   [{:name        "query-dialect"
-    :description "The query dialect for execute_query (the default route) and question_write's `query`: numeric-id refs, clause grammar, joins, expressions, multi-stage queries, limit vs paging, when SQL is warranted. Read before any non-trivial query. Reference `operators`: every filter/aggregation/expression operator."
+    :description (message/raw
+                  (str "The query dialect for execute_query (the default route) and question_write's `query`: "
+                       "numeric-id refs, clause grammar, joins, expressions, multi-stage queries, limit vs paging, "
+                       "when SQL is warranted. Read before any non-trivial query. Reference `operators`: "
+                       "every filter/aggregation/expression operator."))
     :references  ["operators"]}
    {:name        "native-parameters"
-    :description "Template tags for native SQL (question_write's `native`): tag kinds, field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks. Read before first passing template_tags."
+    :description (message/raw
+                  (str "Template tags for native SQL (question_write's `native`): tag kinds, "
+                       "field filter vs raw variable, the template_tags shape, widget types, [[ ]] optional blocks. "
+                       "Read before first passing template_tags."))
     :references  []}
    {:name        "dashboard-filters"
-    :description "Dashboard parameters: add_parameter types, wire_parameter target grammar, autowire, linked filters, value sources, inline parameters. Read before your first add_parameter or wire_parameter."
+    :description (message/raw
+                  (str "Dashboard parameters: add_parameter types, wire_parameter target grammar, autowire, "
+                       "linked filters, value sources, inline parameters. "
+                       "Read before your first add_parameter or wire_parameter."))
     :references  []}
    {:name        "dashboard-layout"
-    :description "The 24-column grid: per-display default sizes, explicit placement vs autoplace, the KPI-row pattern, tabs and the every-card-needs-a-tab rule."
+    :description (message/raw
+                  (str "The 24-column grid: per-display default sizes, explicit placement vs autoplace, "
+                       "the KPI-row pattern, tabs and the every-card-needs-a-tab rule."))
     :references  []}
    {:name        "documents"
-    :description "document_write's Markdown grammar: the CommonMark subset, {% card %} embeds, {% entity %} links, ::: layout containers, how `edits` behave."
+    :description (message/raw
+                  (str "document_write's Markdown grammar: the CommonMark subset, {% card %} embeds, "
+                       "{% entity %} links, ::: layout containers, how `edits` behave."))
     :references  []}
    {:name        "transforms"
-    :description "transform_write: materializing a query into a real warehouse table — definition vs query_handle, the target table and what patching it renames, the shapes it refuses (python, incremental), tags and folders. Read before your first transform_write."
+    :description (message/raw
+                  (str "transform_write: materializing a query into a real warehouse table — "
+                       "definition vs query_handle, the target table and what patching it renames, "
+                       "the shapes it refuses (python, incremental), tags and folders. "
+                       "Read before your first transform_write."))
     :references  []}
    {:name        "visualization-settings"
-    :description "Choosing a card's display and visualization_settings: which chart fits which data, the output-column-name rule, minimum settings per chart family. Reference `settings`: the per-chart key catalog incl. column_settings, series_settings, click behavior."
+    :description (message/raw
+                  (str "Choosing a card's display and visualization_settings: which chart fits which data, "
+                       "the output-column-name rule, minimum settings per chart family. "
+                       "Reference `settings`: the per-chart key catalog incl. column_settings, series_settings, "
+                       "click behavior."))
     :references  ["settings"]}])
 
 (def ^:private content
@@ -77,22 +99,21 @@
 (defn catalog-text
   "The `learn()` response message: one line per pack — name, description, reference names."
   []
-  ;; Every part is the server's own catalog text.
   (message/msg ["Topics — fetch one with learn(topic); a reference with learn(topic, reference):" "" "%s"]
-               (message/raw (str/join "\n"
-                                      (for [{pack-name :name :keys [description references]} packs]
-                                        (str "- " pack-name " — " description
-                                             (when (seq references)
-                                               (str " [references: " (str/join ", " references) "]"))))))))
+               (common/lines-message
+                (for [{pack-name :name :keys [description references]} packs]
+                  (if (seq references)
+                    (message/msg ["- %s — %s [references: %s]"]
+                                 pack-name description (common/list-message references))
+                    (message/msg ["- %s — %s"] pack-name description))))))
 
 (defn skill-text
   "`topic`'s whole SKILL.md as a message, with a footer naming its references, or nil for an unknown topic."
   [topic]
   (when-let [{:keys [skill references]} (get content topic)]
-    ;; The pack file and its reference names ship with the server, and `topic` names a pack that exists.
     (if (seq references)
-      (message/msg ["%s" "" "---" "References for this topic — fetch with learn(\"%s\", \"<name>\"): %s."]
-                   (message/raw @skill) (message/raw topic) (message/raw (str/join ", " (keys references))))
+      (message/msg ["%s" "" "---" "References for this topic — fetch with learn(%s, \"<name>\"): %s."]
+                   (message/raw @skill) topic (common/list-message (keys references)))
       (message/msg ["%s"] (message/raw @skill)))))
 
 (defn reference-text
@@ -112,15 +133,25 @@
 
 (def template-tag-contract
   "The question_write template_tags contract, embedded in tag-shape teaching errors."
-  (str "template_tags is a map keyed by {{tag}} name; each entry:\n"
-       "  field filter:  {\"type\": \"dimension\", \"field_id\": <numeric id or entity_id>, \"widget_type\": \"string/=\" | \"number/=\" | \"date/all-options\" | …, \"display_name\"?, \"required\"?, \"default\"?}\n"
-       "  raw variable:  {\"type\": \"text\" | \"number\" | \"date\" | \"boolean\", \"display_name\"?, \"required\"?, \"default\"?}\n"
-       "  time grouping: {\"type\": \"temporal-unit\", \"field_id\": <numeric id or entity_id>}\n"
-       "Write a field filter BARE in the SQL (WHERE {{tag}}, never col = {{tag}}); a raw variable is a literal you wrap yourself (WHERE total > {{tag}}). "
-       "get_content's template_tags are accepted back verbatim; snippet/card reference entries are ignored (the SQL configures them). Full doc: learn(\"native-parameters\")."))
+  (message/msg ["template_tags is a map keyed by {{tag}} name; each entry:"
+                (str "  field filter:  {\"type\": \"dimension\", \"field_id\": <numeric id or entity_id>, "
+                     "\"widget_type\": \"string/=\" | \"number/=\" | \"date/all-options\" | …, "
+                     "\"display_name\"?, \"required\"?, \"default\"?}")
+                (str "  raw variable:  {\"type\": \"text\" | \"number\" | \"date\" | \"boolean\", "
+                     "\"display_name\"?, \"required\"?, \"default\"?}")
+                "  time grouping: {\"type\": \"temporal-unit\", \"field_id\": <numeric id or entity_id>}"
+                (str "Write a field filter BARE in the SQL (WHERE {{tag}}, never col = {{tag}}); "
+                     "a raw variable is a literal you wrap yourself (WHERE total > {{tag}}). "
+                     "get_content's template_tags are accepted back verbatim; "
+                     "snippet/card reference entries are ignored (the SQL configures them). "
+                     "Full doc: learn(\"native-parameters\").")]))
 
 (def wire-target-grammar
   "The wire_parameter target grammar, embedded in wiring teaching errors."
-  (str "wire_parameter takes exactly one of: `target_field` (numeric field id — MBQL cards and native field-filter tags; the server derives the mapping), "
-       "`target_tag` (a tag name on a native card; the server derives dimension vs variable from the tag's type), "
-       "or raw `target` (advanced, e.g. [\"dimension\", [\"template-tag\", \"category\"]]; [\"text-tag\", \"name\"] binds a {{name}} placeholder in a text/heading/iframe card's own content). Full doc: learn(\"dashboard-filters\")."))
+  (message/msg [(str "wire_parameter takes exactly one of: `target_field` (numeric field id — MBQL cards and "
+                     "native field-filter tags; the server derives the mapping), "
+                     "`target_tag` (a tag name on a native card; the server derives dimension vs variable "
+                     "from the tag's type), "
+                     "or raw `target` (advanced, e.g. [\"dimension\", [\"template-tag\", \"category\"]]; "
+                     "[\"text-tag\", \"name\"] binds a {{name}} placeholder in a text/heading/iframe card's "
+                     "own content). Full doc: learn(\"dashboard-filters\").")]))

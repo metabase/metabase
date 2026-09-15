@@ -1022,7 +1022,7 @@
       (mt/with-test-user :crowberto
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
           (is (re-find #"does not apply to type \"question\"" error))
-          (is (re-find #"available for: dashboard, document" error)))))))
+          (is (re-find #"available for: \"dashboard\", \"document\"" error)))))))
 
 (deftest get-content-settings-include-test
   (testing "GHY-4511: a question's stored visualization_settings read back — through the

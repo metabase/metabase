@@ -105,7 +105,7 @@
 (deftest card-flavor-mismatch-test
   (testing "GHY-4152: bookmarking a card under the wrong flavor is a teaching error naming the right type"
     (mt/with-temp [:model/Card {card-id :id} {:type :metric}]
-      (is (= (format "Card %d is a metric — bookmark it with type: \"metric\"." card-id)
+      (is (= (format "Card %d is a \"metric\" — bookmark it with type: \"metric\"." card-id)
              (tool-error (call-tool! :rasta {:type "question" :id card-id :bookmarked true}))))
       (is (not (t2/exists? :model/CardBookmark :card_id card-id))))))
 
@@ -145,7 +145,7 @@
 (deftest scope-test
   (testing "GHY-4152: the tool requires agent:content:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
-      (is (re-find #"^Insufficient scope to call tool: bookmark_content\."
+      (is (re-find #"^Insufficient scope to call tool: \"bookmark_content\"\."
                    (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
                                            {:type "question" :id card-id :bookmarked true}))))
       ;; Reachability is the point here — without agent:content:read the echo degrades to the

@@ -43,9 +43,9 @@
   (testing "tools/call re-checks scope even for a tool that exists"
     (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "test_echo" {})]
       (is (= common/error-code-invalid-request (:code error)))
-      (is (= (str "Insufficient scope to call tool: test_echo. Requires "
+      (is (= (str "Insufficient scope to call tool: \"test_echo\". Requires \""
                   (:scope (get @@#'registry/tools* "test_echo"))
-                  "; your token holds \"agent:metadata:read\".")
+                  "\"; your token holds \"agent:metadata:read\".")
              (message/render (:message error)))))))
 
 (deftest ^:parallel call-tool-unknown-tool-injection-test
@@ -178,7 +178,7 @@
           (is (= "test_echo" (:tool-name r)))
           (is (= "error" (:status r)))
           (is (= common/error-code-invalid-request (:error-code r)))
-          (is (str/starts-with? (:error-message r) "Insufficient scope to call tool: test_echo.")))))
+          (is (str/starts-with? (:error-message r) "Insufficient scope to call tool: \"test_echo\".")))))
     (testing "unknown tool → status \"error\", method-not-found code"
       (let [records (capture-usage-records! #(registry/call-tool nil nil "does_not_exist" {}))]
         (is (= 1 (count records)))
@@ -395,10 +395,10 @@
             (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} nil tool-name {})]
               (is (= common/error-code-invalid-request (:code error)))
               (is (str/starts-with? (message/render (:message error))
-                                    (str "Insufficient scope to call tool: " tool-name ".")))
+                                    (str "Insufficient scope to call tool: \"" tool-name "\".")))
               (testing "the message names the scope the tool wants and the ones the token holds —
                         naming only the tool leaves the caller nothing to act on"
                 (is (str/includes? (message/render (:message error))
-                                   (str "Requires " (:scope (get @@#'registry/tools* tool-name)))))
+                                   (str "Requires \"" (:scope (get @@#'registry/tools* tool-name)) "\"")))
                 (is (str/includes? (message/render (:message error))
                                    "your token holds \"agent:content:read\"."))))))))))

@@ -90,6 +90,13 @@
     (is (= "\"only\"" (message/render (common/list-message ["only"]))))
     (is (= "" (message/render (common/list-message []))))))
 
+(deftest ^:parallel lines-message-test
+  (testing "GHY-4544: items are cleaned and joined one per line; raw text and nested messages embed as they are"
+    (is (= "\"a\\nb\"\n2\nx\n50% off"
+           (message/render (common/lines-message ["a\nb" 2 (message/msg ["x"]) (message/raw "50% off")]))))
+    (is (= "\"only\"" (message/render (common/lines-message ["only"]))))
+    (is (= "" (message/render (common/lines-message []))))))
+
 (deftest ^:parallel humanize-detail-test
   (testing "GHY-4544: paths and expectations are quoted, positions labelled, satisfied entries dropped"
     (is (= "\"table_ids\": [1] \"should be an integer\"; \"name\": \"missing required key\", \"should be a string\""

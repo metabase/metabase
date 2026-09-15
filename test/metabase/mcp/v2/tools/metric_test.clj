@@ -155,7 +155,7 @@
 
 (deftest ^:parallel create-required-args-test
   (testing "GHY-4146: `name` is enforced at create with a teaching error naming it"
-    (is (= "`name` is required when method is \"create\"."
+    (is (= "\"name\" is required when method is \"create\"."
            (tool-error (call-tool! :crowberto write-scope "metric_write"
                                    {:method "create" :definition (count-definition)})))))
   (testing "GHY-4146: create with no query source names both sources"
@@ -178,7 +178,7 @@
     (is (= "Invalid id \"abc\" — pass the positive numeric id, or the 21-character entity_id from a search or list result."
            (tool-error (call-tool! :crowberto write-scope "metric_write" {:method "update" :id "abc"})))))
   (testing "GHY-4146: create-only fields on update are rejected, so a caller never believes an ignored field took effect"
-    (is (= "`archived` applies to method \"update\" only — remove it from this create call."
+    (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."
            (tool-error (call-tool! :crowberto write-scope "metric_write"
                                    {:method "create" :name "x" :archived true
                                     :definition (count-definition)}))))))
@@ -552,7 +552,7 @@
 
 (deftest ^:parallel scope-gating-test
   (testing "GHY-4146: a bearer token without the write scope can't call the tool at all"
-    (is (re-find #"^Insufficient scope to call tool: metric_write\."
+    (is (re-find #"^Insufficient scope to call tool: \"metric_write\"\."
                  (tool-error (call-tool! :crowberto #{"agent:content:read"} "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
   (testing "GHY-4146: the one write scope covers update as well as create — there is no second method-level gate"
@@ -560,7 +560,7 @@
                  (tool-error (call-tool! :crowberto write-scope "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
   (testing "GHY-4146: v1's create/update scopes do not reach the v2 tool, which gates on agent:content:write"
-    (is (re-find #"^Insufficient scope to call tool: metric_write\."
+    (is (re-find #"^Insufficient scope to call tool: \"metric_write\"\."
                  (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
   ;; GHY-4225: the metabot permission wildcards no longer bear on v2. In-app callers reach
@@ -611,7 +611,7 @@
                                           {:method "create" :name "metric-test id on create"
                                            :id existing-id
                                            :definition (count-definition)}))]
-          (is (= "`id` applies to method \"update\" only — remove it from this create call." msg))
+          (is (= "\"id\" applies to method \"update\" only — remove it from this create call." msg))
           (is (= before-name (t2/select-one-fn :name :model/Card :id existing-id))
               "the existing card named by id must be untouched"))))))
 

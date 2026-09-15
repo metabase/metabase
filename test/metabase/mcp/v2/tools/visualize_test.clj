@@ -268,8 +268,8 @@
       (let [message (error-text (call! "visualize_query" (str (random-uuid))
                                        {:query_handle (str (random-uuid))}
                                        {:supports-mcp-ui? false}))]
-        (testing "GHY-4544: as server prose, not quoted"
-          (is (= (str "visualize_query requires a client that supports MCP Apps UI.\n"
+        (testing "GHY-4544: the tool name and extension label are quoted"
+          (is (= (str "\"visualize_query\" requires a client that supports \"MCP Apps UI\".\n"
                       "Reconnect from a client that advertises text/html;profile=mcp-app.")
                  message)))))))
 

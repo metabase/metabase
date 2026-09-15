@@ -1118,7 +1118,7 @@
     ;; The message also names the required scope and the ones the token holds; asserted on the
     ;; prefix here because the held set differs per case below.
     (are [scopes] (str/starts-with? (dispatch-text scopes {:action "list_databases"})
-                                    "Insufficient scope to call tool: browse_data. Requires ")
+                                    "Insufficient scope to call tool: \"browse_data\". Requires ")
       #{metabot.scope/agent-query-run}
       #{metabot.scope/agent-content-write}
       #{}))

@@ -273,7 +273,7 @@
         ;; incompatibility check below, so it must not be widened into this one.
         type-omitted?   (and (empty? types) (not (true? recent)))
         effective-types (if type-omitted? engine-searchable-types types)
-        ;; [{:excluded #{...} :label "..." :because "..."}], one entry per narrowing filter. The
+        ;; [{:excluded #{...} :label "..." :because (raw "...")}], one entry per narrowing filter. The
         ;; message is built after the fold, from the final narrowed set — a message built here would
         ;; name this filter's own subtraction and so advertise types a sibling filter also removed.
         narrowed        (atom [])]
@@ -293,11 +293,11 @@
           (swap! narrowed conj
                  {:excluded (set bad)
                   :label    "created_by"
-                  :because  "don't index a creator"})
+                  :because  (message/raw "don't index a creator")})
           (common/throw-teaching-error
            (message/msg [(str "created_by only applies to types that index a "
                               "creator: %s. Remove %s from type or drop created_by.")]
-                        (message/raw (str/join ", " (sort created-by-types)))
+                        (common/list-message (sort created-by-types))
                         (common/list-message bad))))))
     (when (collection-scoping? args)
       (when-let [bad (seq (sort (filter collectionless-types effective-types)))]
@@ -305,7 +305,7 @@
           (swap! narrowed conj
                  {:excluded (set bad)
                   :label    "collection_id"
-                  :because  "don't live in collections"})
+                  :because  (message/raw "don't live in collections")})
           (common/throw-teaching-error
            (message/msg [(str "collection_id cannot filter %s — these types don't live in "
                               "collections. Remove them from type or drop collection_id.")]
@@ -334,20 +334,20 @@
           (swap! narrowed conj
                  {:excluded #{"transform"}
                   :label    "collection_id"
-                  :because  "isn't recorded with a collection in the search index"}))
+                  :because  (message/raw "isn't recorded with a collection in the search index")}))
         (when (and (contains? effective-types "table")
                    (not (premium-features/has-feature? :library)))
           (swap! narrowed conj
                  {:excluded #{"table"}
                   :label    "collection_id"
-                  :because  "isn't filtered by collection without the Library feature"}))))
+                  :because  (message/raw "isn't filtered by collection without the Library feature")}))))
     (when (true? archived)
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
                  {:excluded (set bad)
                   :label    "archived: true"
-                  :because  "have no archived state"})
+                  :because  (message/raw "have no archived state")})
           (common/throw-teaching-error
            (message/msg [(str "archived: true cannot filter %s — these types have no "
                               "archived state. Remove them from type or drop archived.")]
@@ -356,21 +356,19 @@
       (when-let [bad (seq (sort (remove (set (keys type->rv-model)) types)))]
         (common/throw-teaching-error
          (message/msg ["Recents only track %s — remove %s from type or drop recent: true."]
-                      (message/raw (str/join ", " (sort (keys type->rv-model))))
+                      (common/list-message (sort (keys type->rv-model)))
                       (common/list-message bad))))
       (when (or created_by (collection-scoping? args) (true? archived))
         (common/throw-teaching-error
          (message/msg ["recent: true supports only the type filter — drop collection_id, created_by, and archived."]))))
     (if (seq @narrowed)
-      ;; Narrowing only happens with `type` omitted, so every type named here comes from the server's own type
-      ;; tables, as do each narrowing's label and reason.
       (let [final-types (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
-            type-list   (message/raw (str/join ", " final-types))]
+            type-list   (common/list-message final-types)]
         {:types       final-types
          :disclosures (mapv (fn [{:keys [excluded label because]}]
                               (message/msg ["%s narrowed the search to %s — %s %s."]
-                                           (message/raw label) type-list
-                                           (message/raw (str/join ", " (sort excluded))) (message/raw because)))
+                                           label type-list
+                                           (common/list-message (sort excluded)) because))
                             @narrowed)})
       {:types nil :disclosures []})))
 

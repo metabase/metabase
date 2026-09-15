@@ -148,6 +148,27 @@
                                        :sql "SELECT * FROM orders WHERE {{d}}"
                                        :template_tags {"d" {:type "widget"}}}} nil nil))))))
 
+(deftest ^:parallel template-tag-teaching-error-text-test
+  (testing "GHY-4544: the missing-field_id error quotes the tag type, then embeds the contract's own five lines"
+    (let [e (try
+              (#'v2.question/->lib-template-tag {} {:type "temporal-unit"})
+              nil
+              (catch clojure.lang.ExceptionInfo e e))]
+      (is (= ["A \"temporal-unit\" template tag requires a field_id — the numeric id of the column it binds."
+              "template_tags is a map keyed by {{tag}} name; each entry:"
+              (str "  field filter:  {\"type\": \"dimension\", \"field_id\": <numeric id or entity_id>, "
+                   "\"widget_type\": \"string/=\" | \"number/=\" | \"date/all-options\" | …, "
+                   "\"display_name\"?, \"required\"?, \"default\"?}")
+              (str "  raw variable:  {\"type\": \"text\" | \"number\" | \"date\" | \"boolean\", "
+                   "\"display_name\"?, \"required\"?, \"default\"?}")
+              "  time grouping: {\"type\": \"temporal-unit\", \"field_id\": <numeric id or entity_id>}"
+              (str "Write a field filter BARE in the SQL (WHERE {{tag}}, never col = {{tag}}); "
+                   "a raw variable is a literal you wrap yourself (WHERE total > {{tag}}). "
+                   "get_content's template_tags are accepted back verbatim; "
+                   "snippet/card reference entries are ignored (the SQL configures them). "
+                   "Full doc: learn(\"native-parameters\").")]
+             (str/split-lines (ex-message e)))))))
+
 (deftest native-template-tags-more-kinds-test
   (mt/with-current-user (mt/user->id :rasta)
     (testing "a boolean raw variable is applied"
@@ -330,7 +351,7 @@
     (let [result (call-tool #{"agent:content:write"} nil "question_write"
                             {:method "create" :query {:database (mt/id) :stages [{}]}})]
       (is (:isError result))
-      (is (re-find #"`name` is required" (-> result :content first :text))))))
+      (is (re-find #"\"name\" is required" (-> result :content first :text))))))
 
 (deftest create-question-collection-target-test
   (mt/with-model-cleanup [:model/Card]

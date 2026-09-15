@@ -243,17 +243,15 @@
    `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
    scope a caller can request, so only strings are listed back."
   [tool-name required token-scopes]
-  ;; The tool name and its required scopes are server-declared; the held scopes come from the token, and a client can
-  ;; register any scope string.
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)
-                (message/msg ["one of %s"] (message/raw (str/join ", " (sort required))))
-                (message/raw (str required)))]
+                (message/msg ["one of %s"] (common/list-message (sort required)))
+                required)]
     (if (seq held)
       (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds %s."]
-                   (message/raw tool-name) needs (common/list-message held))
+                   tool-name needs (common/list-message held))
       (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds no scopes."]
-                   (message/raw tool-name) needs))))
+                   tool-name needs))))
 
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]

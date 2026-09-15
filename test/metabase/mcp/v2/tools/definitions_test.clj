@@ -161,7 +161,7 @@
       (testing (str tool " without " (name missing))
         (let [args (dissoc {:method "create" :table_id (mt/id :venues) :name "x" :definition mbql4-fragment}
                            missing)]
-          (is (= (format "`%s` is required when method is \"create\"." (name missing))
+          (is (= (format "\"%s\" is required when method is \"create\"." (name missing))
                  (tool-error (call-tool! :crowberto nil tool args)))))))))
 
 (deftest ^:parallel update-required-args-test
@@ -186,7 +186,7 @@
       (testing "GHY-4137: update-only fields on create are rejected, so a caller never believes an ignored field
                 took effect"
         (doseq [[k v] {:id 1, :archived true, :revision_message "x"}]
-          (is (= (format "`%s` applies to method \"update\" only — remove it from this create call." (name k))
+          (is (= (format "\"%s\" applies to method \"update\" only — remove it from this create call." (name k))
                  (tool-error (call-tool! :crowberto nil tool
                                          {:method "create" :table_id (mt/id :venues) :name "x"
                                           :definition mbql4-fragment
@@ -571,7 +571,7 @@
           :let [args {:method "update" :id 13371337 :revision_message "x"}]]
     (testing tool
       (testing "GHY-4137: a bearer token without the write scope is refused before dispatch"
-        (is (re-find (re-pattern (str "^Insufficient scope to call tool: " tool "\\."))
+        (is (re-find (re-pattern (str "^Insufficient scope to call tool: \"" tool "\"\\."))
                      (tool-error (call-tool! :crowberto #{"agent:content:read"} tool args)))))
       (testing "GHY-4137: the exact scope passes the gate — the identical call reaches the id lookup"
         (is (re-find #"not found" (tool-error (call-tool! :crowberto #{scope} tool args)))))

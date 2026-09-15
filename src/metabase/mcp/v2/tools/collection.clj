@@ -41,10 +41,9 @@
   (case method
     :create (doseq [k [:id :archived]]
               (when (contains? args k)
-                ;; `k` is one of the tool's own argument keys.
                 (common/throw-teaching-error
-                 (message/msg ["`%s` applies to method \"update\" only — remove it from this create call."]
-                              (message/raw (name k))))))
+                 (message/msg ["%s applies to method \"update\" only — remove it from this create call."]
+                              (name k)))))
     :update (do
               (when (contains? args :namespace)
                 (common/throw-teaching-error
