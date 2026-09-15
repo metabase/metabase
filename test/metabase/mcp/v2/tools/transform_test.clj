@@ -607,6 +607,12 @@
                        (tool-error (create! :crowberto {:lib/type "mbql/query"
                                                         :stages   [{:lib/type    "mbql.stage/mbql"
                                                                     :source-card Integer/MAX_VALUE}]})))))
+        (testing "an inactive table is absent, as it is to execute_query"
+          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
+            (is (re-find (re-pattern (str "No table found with id " (mt/id :venues)))
+                         (tool-error (create! :crowberto {:lib/type "mbql/query"
+                                                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                      :source-table (mt/id :venues)}]}))))))
         (testing "a table the caller cannot read is reported exactly like one that does not exist, so the
                   inference lookup does not let the id enumerate tables across hidden databases"
           (mt/with-no-data-perms-for-all-users!

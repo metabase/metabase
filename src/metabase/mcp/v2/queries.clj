@@ -85,6 +85,28 @@
          (format "`definition` could not be resolved: %s %s" (common/ellipsize (ex-message e) 300) hint))
         (throw e)))))
 
+(defn first-stage-database-id
+  "The database a numeric-id query's first stage names — the table's `db_id` for a numeric
+   `:source-table`, the card's `database_id` for a numeric `:source-card` — or nil when the stage
+   names neither by numeric id. The same resolution `execute_query`'s pipeline runs
+   ([[metabot.construct/resolve-database-id-from-first-stage]]), so its read-check policy holds
+   here too: a table or card the caller cannot see, and an inactive table, are reported exactly
+   like an absent one. A miss is a teaching error ending in v2's recovery sentence.
+
+   `stage` is the keyword-keyed stage a tool holds; the resolver reads the pipeline's string-keyed
+   portable form, so only the two keys it consults are handed over."
+  [{:keys [source-table source-card]}]
+  (when (or (pos-int? source-table) (pos-int? source-card))
+    (binding [serdes.resolve/*numeric-ids-allowed?* true]
+      (try
+        (metabot.construct/resolve-database-id-from-first-stage
+         {"stages" [{"source-table" source-table "source-card" source-card}]}
+         {:recovery-hint v2.recovery-hints/recovery-hint})
+        (catch clojure.lang.ExceptionInfo e
+          (if (:agent-error? (ex-data e))
+            (common/throw-teaching-error (ex-message e))
+            (throw e)))))))
+
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
 
 (defn encode-serialized-query
