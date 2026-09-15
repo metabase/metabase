@@ -302,6 +302,7 @@ describe("document comments", () => {
     Comments.getCommentByText("Reply 1")
       .findByRole("textbox")
       .should("have.attr", "contenteditable", "true")
+      .and("be.focused")
       .realType("My ");
     cy.realPress([META_KEY, "Enter"]);
 
