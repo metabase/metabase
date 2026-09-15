@@ -1638,6 +1638,52 @@ describe("SmartScalar > compute", () => {
           },
           {
             description:
+              "should remove year when previous hour and current hour are in different days with differing offsets",
+            rows: [
+              ["2024-03-10T00:00:00-05:00", 100],
+              ["2024-03-11T00:00:00-04:00", 300],
+            ],
+            dateUnit: "hour",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Mar 11, 2024, 12:00–59 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Mar 10, 12:00–59 AM",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description:
+              "should remove year and day when previous hour and current hour are in the same day with differing offsets",
+            rows: [
+              ["2024-11-03T00:00:00-04:00", 100],
+              ["2024-11-03T23:00:00-05:00", 300],
+            ],
+            dateUnit: "hour",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 3, 2024, 11:00–59 PM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "12:00–59 AM",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description:
               "should not remove year when previous minute and current minute are in different years",
             rows: [
               ["2018-10-10T04:00:00", 100],
@@ -2065,6 +2111,30 @@ describe("SmartScalar > compute", () => {
                   ...getComparisonProperties({
                     changeType: "missing",
                     dateStr: "Jan",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description:
+                "should not remove year when comparing months in different years",
+              rows: [
+                ["2019-07-01T00:00:00+10:00", 100],
+                ["2020-01-01T00:00:00+11:00", 300],
+              ],
+              dateUnit: "month",
+              periodsAgo: 6,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Jan 2020",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "Jul 2019",
                     metricValue: 300,
                   }),
                 },
