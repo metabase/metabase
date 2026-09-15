@@ -14,7 +14,6 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.db :as transform-testing.db]
    [metabase.transform-testing.executor :as transform-testing.executor]
@@ -24,17 +23,6 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
-
-(mu/defn- referenced-tables :- [:set [:map [:schema [:maybe :string]] [:name :string]]]
-  "The tables the transform reads, from a pure parse of its compiled source query. Used both to
-  validate input completeness and (by the compiler) to build the temp-table replacements — the
-  reliable oracle where `table-dependencies` resolution can return empty."
-  [driver    :- :keyword
-   transform :- :map]
-  (let [{:keys [query]} (transforms-base.u/compile-source transform nil)]
-    (into #{}
-          (map (fn [{:keys [schema table]}] {:schema schema :name table}))
-          (sql-tools/referenced-tables-raw driver query))))
 
 (mu/defn run-transform-test! :- ::transform-testing.schema/run-result
   "Run the transform test `transform-test` against temp tables and return whether all expectations passed."
@@ -48,9 +36,12 @@
         driver    (keyword (:engine database))
         _         (api/check-400 (driver.u/supports? driver :transforms/testing database)
                                  (tru "The database of this transform does not support transform testing."))
-        ;; --- validate (pure): every read table is faked; runner turns a gap into a 400 ---
+        ;; --- compile source once (pure): SQL + the tables it reads, before any replacement ---
+        compiled-source (transform-testing.compile/compile-source driver transform)
+        ;; --- validate (pure): every read table is faked; runner turns a gap into a 400.
+        ;;     Checks the same referenced-tables the replacement below will remap. ---
         missing   (transform-testing.validator/missing-inputs
-                   driver inputs (referenced-tables driver transform))
+                   driver inputs (:referenced-tables compiled-source))
         _         (api/check-400 (empty? missing)
                                  (tru "The transform reads table(s) with no declared test input: {0}"
                                       (pr-str missing)))
@@ -67,7 +58,7 @@
            (transform-testing.executor/create-temp-table!
             driver conn table (transform-testing.compile/compile-input driver input)))
          (transform-testing.executor/create-temp-table!
-          driver conn output-table (transform-testing.compile/compile-transform driver transform replacements))
+          driver conn output-table (transform-testing.compile/compile-transform driver compiled-source replacements))
          ;; --- check (pure-ish): expectations against the output temp table ---
          (let [context  {:driver driver :conn conn :output-table output-table :replacements replacements}
                statuses (mapv #(transform-testing.expectations/check-expectation context %) expectations)]

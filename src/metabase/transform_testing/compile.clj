@@ -17,6 +17,21 @@
    [:query  :string]
    [:params [:maybe [:sequential :any]]]])
 
+(mr/def ::table
+  "A table by schema and name, as parsed from a query or declared as an input."
+  [:map {:closed true}
+   [:schema [:maybe :string]]
+   [:name   :string]])
+
+(mr/def ::compiled-source
+  "The transform's source compiled to SQL, before any temp-table replacement, plus the tables it
+  reads. Compiled once and threaded to both validation (are all reads faked?) and replacement, so
+  the guard and the rewrite operate on the same tables."
+  [:map {:closed true}
+   [:query             :string]
+   [:params            [:maybe [:sequential :any]]]
+   [:referenced-tables [:set ::table]]])
+
 (mr/def ::table-replacements
   "The `sql-tools/replace-names` `:tables` map from the input and output tables to their temp tables."
   [:map-of
@@ -81,12 +96,25 @@
    input  :- ::transform-testing.schema/input]
   (driver/compile-rows-query driver (:columns input) (:rows input)))
 
-(mu/defn compile-transform :- ::compiled-query
-  "The query of the query transform `transform`, reading from the temp tables of `replacements` instead of its input
-  tables."
-  [driver       :- :keyword
-   transform    :- ::transforms-base.schema/transform
-   replacements :- ::table-replacements]
+(mu/defn compile-source :- ::compiled-source
+  "Compile the transform's source to SQL and parse the tables it reads — *before* any replacement.
+  Compiled once by the runner and fed to both input validation and [[compile-transform]], so the
+  guard checks exactly the tables the rewrite will remap (no second compile, no drift)."
+  [driver    :- :keyword
+   transform :- ::transforms-base.schema/transform]
   (let [{:keys [query params]} (transforms-base.u/compile-source transform nil)]
-    {:query  (replace-tables driver query replacements)
-     :params params}))
+    {:query             query
+     :params            params
+     :referenced-tables (into #{}
+                              (map (fn [{:keys [schema table]}] {:schema schema :name table}))
+                              (sql-tools/referenced-tables-raw driver query))}))
+
+(mu/defn compile-transform :- ::compiled-query
+  "The query transform's `compiled-source` rewritten to read from the temp tables of `replacements`
+  instead of its input tables. Takes the already-compiled source (see [[compile-source]]) rather
+  than recompiling."
+  [driver          :- :keyword
+   compiled-source :- ::compiled-source
+   replacements    :- ::table-replacements]
+  {:query  (replace-tables driver (:query compiled-source) replacements)
+   :params (:params compiled-source)})
