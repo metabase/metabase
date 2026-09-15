@@ -140,6 +140,9 @@
                 step-up scope, and re-authenticating asks for the baseline again"
         (is (re-find #"(?i)if they agree, make the call anyway" instructions))
         (is (re-find #"(?i)the refusal is what makes their client request it" instructions))
+        (testing "and not to send the user to reconnect first: with no refused call, reconnecting asks for the baseline
+                  only, so the permission never appears on the consent screen"
+          (is (re-find #"(?i)reconnecting before a refused call won't offer it" instructions)))
         (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
       (testing "the retry waits until the user has reconnected"
         (is (re-find #"(?i)retry once they have reconnected" instructions)))
@@ -1166,7 +1169,8 @@
        "execution failed\") usually means a missing permission, not an expired login. When a tool needs a permission "
        "this connection lacks (a call failed, or the list below says so), tell the user which one (each tool's "
        "description starts with the permission it requires) and why, and ask whether to grant it. If they agree, make "
-       "the call anyway: the refusal is what makes their client request it. Some clients then open the consent screen "
+       "the call anyway: the refusal is what makes their client request it, and reconnecting before a refused call "
+       "won't offer it. Some clients then open the consent screen "
        "themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; Codex: "
        "`codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; tell them to "
        "tick it. Retry once they have reconnected."))
