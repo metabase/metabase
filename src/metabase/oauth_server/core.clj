@@ -37,11 +37,23 @@
   []
   (vec (into (sorted-set) (mcp/all-scopes))))
 
-(defn unregistered-scopes
-  "The distinct scopes in the space-delimited `scope` string that are not registered via
-  [[metabase.api-scope.core/defscope]], as a sorted set; nil when every scope is registered or `scope` is blank."
+(defn all-scopes-registered?
+  "True when every scope in the space-delimited `scope` string is registered via
+  [[metabase.api-scope.core/defscope]]. A nil or blank `scope` has none that are not."
   [scope]
-  (not-empty (into (sorted-set) (remove api-scope/registered-scope?) (api-scope/parse-scopes scope))))
+  (every? api-scope/registered-scope? (api-scope/parse-scopes scope)))
+
+(defn- authorization-server-metadata-url
+  "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
+  []
+  (str (system/site-url) "/.well-known/oauth-authorization-server"))
+
+(defn unsupported-scopes-description
+  "The `error_description` for a request naming a scope that is not registered. Deliberately does not echo the
+  request's scopes."
+  []
+  (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
 
 (defn mcp-resource-scopes
   "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource

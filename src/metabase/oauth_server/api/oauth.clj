@@ -220,12 +220,11 @@
 
               ;; A client's registered scopes are the ceiling /authorize checks requests against, so a
               ;; self-nominated wildcard such as `*` would later be granted as one.
-              (oauth-server/unregistered-scopes (:scope body))
+              (not (oauth-server/all-scopes-registered? (:scope body)))
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {"error"             "invalid_client_metadata"
-                         "error_description" (str "Unsupported scope: "
-                                                  (str/join " " (oauth-server/unregistered-scopes (:scope body))))}}
+                         "error_description" (oauth-server/unsupported-scopes-description)}}
 
               :else
               (try
@@ -307,6 +306,12 @@
     (or (when-let [provider (oauth-server/get-provider)]
           (try
             (let [parsed       (oidc/parse-authorization-request provider query-params)
+                  ;; Checked on the raw request, before narrowing: narrowing would silently drop an
+                  ;; unregistered scope when `resource` is sent and keep it when it is not.
+                  _            (when-not (oauth-server/all-scopes-registered? (:scope parsed))
+                                 (throw (ex-info "requested scope is not a registered scope"
+                                                 {:oauth-error       "invalid_scope"
+                                                  :error-description (oauth-server/unsupported-scopes-description)})))
                   ;; Narrow before signing: the signature then binds the narrowed scope through the
                   ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
                   requested    (some-> (:scope parsed) str str/trim not-empty)
