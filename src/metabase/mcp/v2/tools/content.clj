@@ -617,8 +617,8 @@
 (defn- content-item-result
   "Build one batch item's result: its projection (with `include` sections or `fields`
    narrowing), or the `{type, id, error}` object that keeps a failing item from sinking the
-   rest of the batch. The `error` text is whatever [[common/->mcp-error-content]] judges safe to
-   return, so incidental exceptions collapse to a generic internal error."
+   rest of the batch. The `error` text is whatever [[common/caller-safe-error-message]] judges safe
+   to return, so incidental exceptions collapse to a generic internal error."
   [{:keys [include] :as args} {:keys [type fields] :as item}]
   ;; `alert` and `subscription` reject a non-numeric id outright, so an id a client serialized as
   ;; a string has to be coerced before the fetch rather than inside it (GHY-4498).
@@ -643,8 +643,10 @@
                 (assoc :type type)))))
       (catch Exception e
         ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
-        ;; judgment and unwrap its text back into the item's `{type, id, error}` shape.
-        {:type type :id id :error (-> (common/->mcp-error-content e) :content first :text)}))))
+        ;; judgment. The text lands in a JSON string, which already delimits it, so a plain string
+        ;; goes in as it is rather than quoted.
+        (let [error (common/caller-safe-error-message e)]
+          {:type type :id id :error (if (message/message? error) (message/render error) error)})))))
 
 (def ^:private get-content-args-schema
   [:map {:closed true}

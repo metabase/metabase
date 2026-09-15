@@ -106,8 +106,13 @@
     (u.cron/schedule-map->cron-string schedule)
     (catch Exception _
       (common/throw-teaching-error
-       (message/msg ["Metabase can't schedule %s — check schedule_type against the other schedule fields."]
-                    schedule)))))
+       (message/msg ["Metabase can't schedule {%s} — check schedule_type against the other schedule fields."]
+                    (common/list-message
+                     ;; The field names are literals; only their values come from the caller.
+                     (for [field [:schedule_type :schedule_hour :schedule_minute :schedule_day :schedule_frame]
+                           :let  [value (get schedule field)]
+                           :when (some? value)]
+                       (message/msg ["%s: %s"] (message/raw (name field)) value))))))))
 
 (defn- cron-subscription
   [schedule]

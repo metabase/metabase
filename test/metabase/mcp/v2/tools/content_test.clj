@@ -584,6 +584,13 @@
               (is (= "Good" (:name good)))
               (is (nil? (:error good))))))))))
 
+(deftest get-content-item-error-text-is-not-quoted-test
+  (testing "GHY-4544: an item's error is a JSON string value, so a caller-facing upstream string sits in it unquoted"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [tools.content/fetch-measure-or-segment
+                                  (fn [& _] (throw (ex-info "Not found." {:status-code 404})))]
+        (is (= "Not found." (:error (content-one {:items [{:type "measure" :id 1}]}))))))))
+
 (deftest get-content-card-type-mismatch-test
   (testing "GHY-4140: asking for a model with type question teaches the actual type"
     (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
