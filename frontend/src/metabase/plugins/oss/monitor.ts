@@ -5,11 +5,15 @@ import { definePluginSlot } from "../slot";
 type MonitorPlugin = {
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
+  isSessionManagementEnabled: boolean;
+  getSessionManagementRoutes: () => ReactNode;
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
+  isSessionManagementEnabled: false,
+  getSessionManagementRoutes: () => null,
 });
 
 export const PLUGIN_MONITOR = definePluginSlot(getDefaultPluginMonitor);
