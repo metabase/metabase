@@ -22,4 +22,6 @@ cleanup_files
 prepare_files
 install_dependencies
 type_check
+type_check_status=$?
 cleanup_files
+exit $type_check_status
