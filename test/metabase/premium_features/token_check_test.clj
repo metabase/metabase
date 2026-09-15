@@ -8,6 +8,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.db :as premium-features.db]
    [metabase.premium-features.task.clear-token-cache]
    [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
@@ -112,7 +113,8 @@
                         {:base            (reify token-check/TokenChecker
                                             (-check-token [_ token]
                                               (token-response token))
-                                            (-clear-cache! [_]))
+                                            (-clear-cache! [_])
+                                            (-clear-local-cache! [_]))
                          :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                            :delay-ms                          50
                                            :success-threshold                 1}
@@ -146,7 +148,8 @@
                           {:base            (reify token-check/TokenChecker
                                               (-check-token [_ token]
                                                 (token-response token))
-                                              (-clear-cache! [_]))
+                                              (-clear-cache! [_])
+                                              (-clear-local-cache! [_]))
                            :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                              :delay-ms                          5000
                                              :success-threshold                 1}
@@ -480,10 +483,54 @@
     (token-check/make-checker
      {:base      (reify token-check/TokenChecker
                    (-check-token [_ token] (token-response-fn token))
-                   (-clear-cache! [_]))
+                   (-clear-cache! [_])
+                   (-clear-local-cache! [_]))
       :local-ttl local-ttl
       :soft-ttl  soft-ttl
       :hard-ttl  hard-ttl})))
+
+(deftest clear-local-cache-test
+  (testing "clear-local-cache! drops in-process memoization but leaves the shared DB row alone"
+    (let [token         (tu/random-token)
+          token-hash    (#'token-check/hash-token token)
+          call-count    (atom 0)
+          deletes       (atom 0)
+          good-response {:valid true :status "OK" :features ["sandboxes"]}
+          local-cache   (atom {})
+          checker       (binding [token-check/*customize-checker* true]
+                          (token-check/make-checker
+                           {:base                (reify token-check/TokenChecker
+                                                   (-check-token [_ _token]
+                                                     (swap! call-count inc)
+                                                     good-response)
+                                                   (-clear-cache! [_])
+                                                   (-clear-local-cache! [_]))
+                            ;; long enough that nothing expires during the test
+                            :local-ttl           (t/hours 1)
+                            :soft-ttl            (t/hours 12)
+                            :hard-ttl            (t/hours 36)
+                            :db-hash-local-cache local-cache}))]
+      (try
+        (is (= good-response (token-check/check-token checker token)))
+        (is (= 1 @call-count))
+        (mt/with-dynamic-fn-redefs [premium-features.db/delete-token-status-cache! (fn [] (swap! deletes inc))]
+          (token-check/-clear-local-cache! checker))
+        (is (zero? @deletes) "the shared DB row is never deleted")
+        (is (some? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash)))
+        (is (contains? @local-cache token-hash) "the DB-hash-validated local entry survives")
+        (testing "the next check re-validates against the DB hash and, since it matches, skips the MetaStore"
+          (is (= good-response (token-check/check-token checker token)))
+          (is (= 1 @call-count)))
+        (testing "but a refresh done by another instance (DB hash changed) is picked up"
+          (t2/update! :model/PremiumFeaturesCache :token_hash token-hash {:token_status_hash "refreshed-elsewhere"})
+          (testing "not while the in-process memo still holds"
+            (is (= good-response (token-check/check-token checker token)))
+            (is (= 1 @call-count)))
+          (token-check/-clear-local-cache! checker)
+          (is (= good-response (token-check/check-token checker token)))
+          (is (= 2 @call-count)))
+        (finally
+          (token-check/-clear-cache! checker))))))
 
 (deftest db-hash-aware-token-checker-fresh-hit-test
   (testing "Fresh cache entry (< soft-ttl) is returned without hitting the underlying checker"
