@@ -161,7 +161,7 @@
     :model/TransformTransformTag
     :model/TransformJob
     :model/TransformJobTransformTag
-    :model/TransformTestSuite
+    :model/TransformTest
     ;; Serialization never exports run history; a whole-instance move keeps it.
     ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
     :model/TransformJobRun

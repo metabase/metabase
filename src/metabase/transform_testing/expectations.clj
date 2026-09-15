@@ -1,5 +1,5 @@
 (ns metabase.transform-testing.expectations
-  "Checks the expectations of a test suite against the output of the transform under test."
+  "Checks the expectations of a transform test against the output of the transform under test."
   (:require
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.executor :as transform-testing.executor]

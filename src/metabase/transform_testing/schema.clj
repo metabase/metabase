@@ -71,15 +71,15 @@
    [:empty  ::expectation.empty]])
 
 (mr/def ::inputs
-  "The `:inputs` column of a TransformTestSuite."
+  "The `:inputs` column of a TransformTest."
   [:sequential ::input])
 
 (mr/def ::expectations
-  "The `:expectations` column of a TransformTestSuite."
+  "The `:expectations` column of a TransformTest."
   [:sequential ::expectation])
 
-(mr/def ::transform-test-suite
-  "A TransformTestSuite as selected from the app DB: every column of `:transform_test_suite`."
+(mr/def ::transform-test
+  "A TransformTest as selected from the app DB: every column of `:transform_test`."
   [:map {:closed true}
    [:id           ms/PositiveInt]
    [:entity_id    :string]
@@ -92,8 +92,8 @@
    [:created_at   ms/TemporalInstant]
    [:updated_at   ms/TemporalInstant]])
 
-(mr/def ::transform-test-suite.create
-  "What a user sends to create a TransformTestSuite."
+(mr/def ::transform-test.create
+  "What a user sends to create a TransformTest."
   [:map {:closed true}
    [:transform_id ::lib.schema.id/transform]
    [:name         ::lib.schema.common/non-blank-string]
@@ -101,8 +101,8 @@
    [:inputs       ::inputs]
    [:expectations ::expectations]])
 
-(mr/def ::transform-test-suite.update
-  "What a user sends to update a TransformTestSuite."
+(mr/def ::transform-test.update
+  "What a user sends to update a TransformTest."
   [:map {:closed true}
    [:transform_id {:optional true} ::lib.schema.id/transform]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
@@ -111,10 +111,10 @@
    [:expectations {:optional true} ::expectations]])
 
 (mr/def ::status
-  "The outcome of a test suite run or of one of its expectations."
+  "The outcome of a transform test run or of one of its expectations."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :passed :failed])
 
 (mr/def ::run-result
-  "The outcome of a test suite run."
+  "The outcome of a transform test run."
   [:map {:closed true}
    [:status ::status]])

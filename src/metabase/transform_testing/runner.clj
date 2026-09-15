@@ -1,5 +1,5 @@
 (ns metabase.transform-testing.runner
-  "Orchestrates a test-suite run over the module's separated concerns:
+  "Orchestrates a transform test run over the module's separated concerns:
 
     db          — app-db reads (transform, database)
     validator   — pure: every read table has a declared input (else reject)
@@ -36,9 +36,9 @@
           (map (fn [{:keys [schema table]}] {:schema schema :name table}))
           (sql-tools/referenced-tables-raw driver query))))
 
-(mu/defn run-test-suite! :- ::transform-testing.schema/run-result
-  "Run the test suite `suite` against temp tables and return whether all expectations passed."
-  [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test-suite]
+(mu/defn run-transform-test! :- ::transform-testing.schema/run-result
+  "Run the transform test `transform-test` against temp tables and return whether all expectations passed."
+  [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
   ;; --- resolve (app-db) ---
   (let [transform (api/check-404 (transform-testing.db/transform transform_id))
         _         (api/check-400 (transforms-base.u/query-transform? transform)

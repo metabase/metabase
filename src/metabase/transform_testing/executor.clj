@@ -1,7 +1,7 @@
 (ns metabase.transform-testing.executor
   "The one place warehouse I/O lives. Given a single test-run connection (from
   `driver/do-with-test-connection`), it creates temp tables from compiled queries, drops them, and
-  runs read-back queries. It knows nothing about suites, expectations, or judgment — it takes
+  runs read-back queries. It knows nothing about transform tests, expectations, or judgment — it takes
   compiled queries and table names and talks to the connection.
 
   Kept separate from the runner (orchestration) and the compiler (pure SQL) so the module's I/O is
@@ -10,6 +10,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.transform-testing.compile :as transform-testing.compile]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (mu/defn create-temp-table!
@@ -21,12 +22,15 @@
   (driver/execute-on-connection! driver conn (driver/compile-create-temp-table driver {:table table :query query})))
 
 (mu/defn drop-temp-table!
-  "Drop the temp table `table` on `conn` if it exists."
+  "Drop the temp table `table` on `conn` if it exists, logging a failure instead of throwing it."
   [driver :- :keyword
    conn   :- :some
    table  :- :string]
-  (let [[sql & params] (driver/compile-drop-table driver table)]
-    (driver/execute-on-connection! driver conn [sql params])))
+  (try
+    (let [[sql & params] (driver/compile-drop-table driver table)]
+      (driver/execute-on-connection! driver conn [sql params]))
+    (catch Exception e
+      (log/warnf "Failed to drop transform test temp table %s: %s" table (ex-message e)))))
 
 (mu/defn run-query
   "Run the compiled `[sql params]` `query` on `conn`, returning at most `max-rows` rows as vectors."

@@ -8,36 +8,36 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn test-suites :- [:sequential ::transform-testing.schema/transform-test-suite]
-  "The TransformTestSuites in name order, only those of the Transform with `:transform-id` when it is given."
+(mu/defn transform-tests :- [:sequential ::transform-testing.schema/transform-test]
+  "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
   [{:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformTestSuite (cond-> {:order-by [[:name :asc] [:id :asc]]}
-                                         transform-id (assoc :where [:= :transform_id transform-id]))))
+  (t2/select :model/TransformTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
+                                    transform-id (assoc :where [:= :transform_id transform-id]))))
 
-(mu/defn test-suite :- [:maybe ::transform-testing.schema/transform-test-suite]
-  "The TransformTestSuite with `suite-id`, or nil."
-  [suite-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTestSuite :id suite-id))
+(mu/defn transform-test :- [:maybe ::transform-testing.schema/transform-test]
+  "The TransformTest with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/TransformTest :id id))
 
-(mu/defn insert-test-suite! :- ::transform-testing.schema/transform-test-suite
-  "Insert the TransformTestSuite `suite` and return the inserted instance."
-  [suite :- [:merge
-             ::transform-testing.schema/transform-test-suite.create
-             [:map {:closed true}
-              [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/TransformTestSuite suite))
+(mu/defn insert-transform-test! :- ::transform-testing.schema/transform-test
+  "Insert the TransformTest `transform-test` and return the inserted instance."
+  [transform-test :- [:merge
+                      ::transform-testing.schema/transform-test.create
+                      [:map {:closed true}
+                       [:creator_id ::lib.schema.id/user]]]]
+  (t2/insert-returning-instance! :model/TransformTest transform-test))
 
-(mu/defn update-test-suite!
-  "Apply `updates` to the TransformTestSuite with `suite-id`."
-  [suite-id :- ms/PositiveInt
-   updates  :- ::transform-testing.schema/transform-test-suite.update]
-  (t2/update! :model/TransformTestSuite suite-id updates))
+(mu/defn update-transform-test!
+  "Apply `updates` to the TransformTest with `id`."
+  [id :- ms/PositiveInt
+   updates :- ::transform-testing.schema/transform-test.update]
+  (t2/update! :model/TransformTest id updates))
 
-(mu/defn delete-test-suite!
-  "Delete the TransformTestSuite with `suite-id`."
-  [suite-id :- ms/PositiveInt]
-  (t2/delete! :model/TransformTestSuite :id suite-id))
+(mu/defn delete-transform-test!
+  "Delete the TransformTest with `id`."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/TransformTest :id id))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

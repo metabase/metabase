@@ -9,9 +9,9 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/TransformTestSuite [_model] :transform_test_suite)
+(methodical/defmethod t2/table-name :model/TransformTest [_model] :transform_test)
 
-(doto :model/TransformTestSuite
+(doto :model/TransformTest
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
@@ -23,42 +23,42 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
-(t2/deftransforms :model/TransformTestSuite
+(t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::transform-testing.schema/inputs)
    :expectations (json-column ::transform-testing.schema/expectations)})
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defmethod mi/can-read? :model/TransformTestSuite
+(defmethod mi/can-read? :model/TransformTest
   ([instance]
    (mi/can-read? :model/Transform (:transform_id instance)))
   ([_model pk]
-   (when-let [suite (transform-testing.db/test-suite pk)]
-     (mi/can-read? suite))))
+   (when-let [transform-test (transform-testing.db/transform-test pk)]
+     (mi/can-read? transform-test))))
 
-(defmethod mi/can-write? :model/TransformTestSuite
+(defmethod mi/can-write? :model/TransformTest
   ([instance]
    (mi/can-write? :model/Transform (:transform_id instance)))
   ([_model pk]
-   (when-let [suite (transform-testing.db/test-suite pk)]
-     (mi/can-write? suite))))
+   (when-let [transform-test (transform-testing.db/transform-test pk)]
+     (mi/can-write? transform-test))))
 
-(defmethod mi/can-create? :model/TransformTestSuite
+(defmethod mi/can-create? :model/TransformTest
   [_model instance]
   (mi/can-write? :model/Transform (:transform_id instance)))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
-(defmethod serdes/make-spec "TransformTestSuite"
+(defmethod serdes/make-spec "TransformTest"
   [_model-name _opts]
   {:copy      [:entity_id :name :description :inputs :expectations]
    :transform {:created_at   (serdes/date)
                :transform_id (serdes/fk :model/Transform)
                :creator_id   (serdes/fk :model/User)}})
 
-(defmethod serdes/deserialization-dependencies "TransformTestSuite"
+(defmethod serdes/deserialization-dependencies "TransformTest"
   [{:keys [transform_id]}]
   #{[{:model "Transform" :id transform_id}]})
 
-(defmethod serdes/storage-path "TransformTestSuite" [suite _ctx]
-  [{:label "transforms"} {:label "tests"} {:label (:name suite) :key (:entity_id suite)}])
+(defmethod serdes/storage-path "TransformTest" [transform-test _ctx]
+  [{:label "transforms"} {:label "tests"} {:label (:name transform-test) :key (:entity_id transform-test)}])

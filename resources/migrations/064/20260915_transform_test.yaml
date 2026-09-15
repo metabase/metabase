@@ -1,15 +1,15 @@
-## Adds transform_test_suite: a test for one transform, replacing some of its input tables with fixture data and
+## Adds transform_test: a test for one transform, replacing some of its input tables with fixture data and
 ## checking its output against expectations. The inputs and expectations are JSON documents validated by
-## metabase.transforms.schema.
+## metabase.transform-testing.schema.
 
 databaseChangeLog:
   - changeSet:
       id: v64.2026-09-15T00:00:00
       author: ranquild
-      comment: Add transform_test_suite
+      comment: Add transform_test
       changes:
         - createTable:
-            tableName: transform_test_suite
+            tableName: transform_test
             remarks: A test for a transform, with fixture inputs and expectations on its output
             columns:
               - column:
@@ -79,11 +79,11 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-15T00:00:01
       author: ranquild
-      comment: Index transform_test_suite.transform_id
+      comment: Index transform_test.transform_id
       changes:
         - createIndex:
-            tableName: transform_test_suite
-            indexName: idx_transform_test_suite_transform_id
+            tableName: transform_test
+            indexName: idx_transform_test_transform_id
             columns:
               - column:
                   name: transform_id
@@ -91,24 +91,24 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-15T00:00:02
       author: ranquild
-      comment: Add FK constraint on transform_test_suite.transform_id
+      comment: Add FK constraint on transform_test.transform_id
       changes:
         - addForeignKeyConstraint:
-            baseTableName: transform_test_suite
+            baseTableName: transform_test
             baseColumnNames: transform_id
             referencedTableName: transform
             referencedColumnNames: id
-            constraintName: fk_transform_test_suite_transform_id
+            constraintName: fk_transform_test_transform_id
             onDelete: CASCADE
 
   - changeSet:
       id: v64.2026-09-15T00:00:03
       author: ranquild
-      comment: Index transform_test_suite.creator_id
+      comment: Index transform_test.creator_id
       changes:
         - createIndex:
-            tableName: transform_test_suite
-            indexName: idx_transform_test_suite_creator_id
+            tableName: transform_test
+            indexName: idx_transform_test_creator_id
             columns:
               - column:
                   name: creator_id
@@ -116,12 +116,12 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-15T00:00:04
       author: ranquild
-      comment: Add FK constraint on transform_test_suite.creator_id
+      comment: Add FK constraint on transform_test.creator_id
       changes:
         - addForeignKeyConstraint:
-            baseTableName: transform_test_suite
+            baseTableName: transform_test
             baseColumnNames: creator_id
             referencedTableName: core_user
             referencedColumnNames: id
-            constraintName: fk_transform_test_suite_creator_id
+            constraintName: fk_transform_test_creator_id
             onDelete: CASCADE

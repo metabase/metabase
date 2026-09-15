@@ -1,5 +1,5 @@
 (ns metabase.transform-testing.validator
-  "Pure validation: is a test suite complete against the transform it tests?
+  "Pure validation: is a transform test complete against the transform it tests?
 
   Every table the transform reads must have a declared input, else running it would leave that
   table pointing at the REAL table (via `replace-names` `:allow-unused?`) — a false-green that
@@ -8,7 +8,7 @@
 
   Pure and HTTP-agnostic: reports *what* is missing as data; the runner decides that missing
   inputs are a 400. The runner passes in the transform's referenced tables (parsed from its
-  compiled query) and the suite's declared inputs; this compares them, driver-aware for schema
+  compiled query) and the transform test's declared inputs; this compares them, driver-aware for schema
   defaulting. No I/O."
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
@@ -32,7 +32,7 @@
 
 (mu/defn missing-inputs :- [:sequential [:map [:schema [:maybe :string]] [:name :string]]]
   "The tables in `referenced-tables` with no covering declared input in `inputs` — the run's
-  uncovered reads. Empty means the suite is complete. `::unused-input` (a declared input the
+  uncovered reads. Empty means the transform test is complete. `::unused-input` (a declared input the
   transform does not read) is a separate, non-blocking concern handled elsewhere."
   [driver            :- :keyword
    inputs            :- ::transform-testing.schema/inputs

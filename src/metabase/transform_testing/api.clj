@@ -6,6 +6,6 @@
 
 (comment metabase.transform-testing.api.transform-test-suite/keep-me)
 
-(def ^{:arglists '([request respond raise])} transform-test-suite-routes
-  "`/api/transform-test-suite` routes."
+(def ^{:arglists '([request respond raise])} transform-test-routes
+  "`/api/transform-test` routes."
   (api.macros/ns-handler 'metabase.transform-testing.api.transform-test-suite +auth))

@@ -148,7 +148,7 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
-    :model/TransformTestSuite                metabase.transform-testing.models.transform-test-suite
+    :model/TransformTest                     metabase.transform-testing.models.transform-test-suite
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily

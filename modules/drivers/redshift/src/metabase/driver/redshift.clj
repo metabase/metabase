@@ -79,6 +79,7 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
+                              :transforms/testing               true
                               :transforms/index-ddl             false
                               :uuid-type                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))

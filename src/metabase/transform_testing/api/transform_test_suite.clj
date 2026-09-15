@@ -10,52 +10,52 @@
 
 (set! *warn-on-reflection* true)
 
-(api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test-suite]
-  "List the transform test suites, optionally only those of one transform."
+(api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test]
+  "List the transform tests, optionally only those of one transform."
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-analyst)
-  (filter mi/can-read? (transform-testing.db/test-suites {:transform-id transform-id})))
+  (filter mi/can-read? (transform-testing.db/transform-tests {:transform-id transform-id})))
 
-(api.macros/defendpoint :get "/:id" :- ::transform-testing.schema/transform-test-suite
-  "Get a transform test suite."
+(api.macros/defendpoint :get "/:id" :- ::transform-testing.schema/transform-test
+  "Get a transform test."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/read-check (transform-testing.db/test-suite id)))
+  (api/read-check (transform-testing.db/transform-test id)))
 
-(api.macros/defendpoint :post "/" :- ::transform-testing.schema/transform-test-suite
-  "Create a transform test suite."
+(api.macros/defendpoint :post "/" :- ::transform-testing.schema/transform-test
+  "Create a transform test."
   [_route-params
    _query-params
-   body :- ::transform-testing.schema/transform-test-suite.create]
+   body :- ::transform-testing.schema/transform-test.create]
   (api/write-check :model/Transform (:transform_id body))
-  (transform-testing.db/insert-test-suite! (assoc body :creator_id api/*current-user-id*)))
+  (transform-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
-(api.macros/defendpoint :put "/:id" :- ::transform-testing.schema/transform-test-suite
-  "Update a transform test suite."
+(api.macros/defendpoint :put "/:id" :- ::transform-testing.schema/transform-test
+  "Update a transform test."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::transform-testing.schema/transform-test-suite.update]
-  (api/write-check (transform-testing.db/test-suite id))
+   body :- ::transform-testing.schema/transform-test.update]
+  (api/write-check (transform-testing.db/transform-test id))
   (when-let [transform-id (:transform_id body)]
     (api/write-check :model/Transform transform-id))
   (when (seq body)
-    (transform-testing.db/update-test-suite! id body))
-  (transform-testing.db/test-suite id))
+    (transform-testing.db/update-transform-test! id body))
+  (transform-testing.db/transform-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a transform test suite."
+  "Delete a transform test."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check (transform-testing.db/test-suite id))
-  (transform-testing.db/delete-test-suite! id)
+  (api/write-check (transform-testing.db/transform-test id))
+  (transform-testing.db/delete-transform-test! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::transform-testing.schema/run-result
-  "Run a transform test suite."
+  "Run a transform test."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [suite (api/write-check (transform-testing.db/test-suite id))]
-    (transform-testing.runner/run-test-suite! suite)))
+  (let [transform-test (api/write-check (transform-testing.db/transform-test id))]
+    (transform-testing.runner/run-transform-test! transform-test)))

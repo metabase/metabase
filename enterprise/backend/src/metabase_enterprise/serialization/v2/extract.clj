@@ -34,7 +34,7 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob" "TransformTestSuite" "PythonLibrary")
+    (conj "Transform" "TransformTag" "TransformJob" "TransformTest" "PythonLibrary")
 
     (not (:no-embedding-themes opts))
     (conj "EmbeddingTheme")

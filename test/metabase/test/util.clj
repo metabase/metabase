@@ -405,11 +405,11 @@
        :schedule        "0 0 * * * ?"
        :ui_display_type :cron/raw}))
 
-   :model/TransformTestSuite
+   :model/TransformTest
    (fn [_]
      (default-timestamped
       {:creator_id   (rasta-id)
-       :name         (str "Test Transform Test Suite " (u/generate-nano-id))
+       :name         (str "Test Transform Test " (u/generate-nano-id))
        :inputs       []
        :expectations []}))
 

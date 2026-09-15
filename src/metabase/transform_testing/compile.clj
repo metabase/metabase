@@ -1,5 +1,5 @@
 (ns metabase.transform-testing.compile
-  "Compiles the inputs and the transform of a test suite to queries over temp tables."
+  "Compiles the inputs and the transform of a transform test to queries over temp tables."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
