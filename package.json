@@ -373,7 +373,7 @@
     "webpack-notifier": "1.15.0",
     "webpack-stats-plugin": "^1.1.3",
     "yaml-lint": "~1.6.0",
-    "zrender": "^6.0.0"
+    "zrender": "6.1.0"
   },
   "resolutions": {
     "@codemirror/autocomplete": "^6.18.6",
