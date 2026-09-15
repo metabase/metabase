@@ -6,6 +6,11 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::session-type
+  "How a session was created: an ordinary login, or a full-app embedding one. Derived from whether the `core_session`
+  row carries an anti-CSRF token, which only full-app-embed sessions do."
+  [:enum "normal" "full-app-embed"])
+
 (mr/def ::session-filters
   "The filters accepted by [[metabase-enterprise.session-management.query/filters->where]]. Temporal values arrive
   already parsed."
@@ -13,7 +18,7 @@
    [:user-id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:ids                {:optional true} [:maybe [:sequential :string]]]
    [:provider           {:optional true} [:maybe :string]]
-   [:type               {:optional true} [:maybe [:enum "normal" "full-app-embed"]]]
+   [:type               {:optional true} [:maybe ::session-type]]
    [:tenancy            {:optional true} [:maybe [:enum :all :internal :external]]]
    [:created-before     {:optional true} [:maybe ms/TemporalInstant]]
    [:created-after      {:optional true} [:maybe ms/TemporalInstant]]
