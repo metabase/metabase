@@ -34,6 +34,12 @@
 (events/derive! :event/transform-tag-update ::transform-tag-event)
 (events/derive! :event/transform-tag-delete ::transform-tag-event)
 
+;; Transform Test events
+(events/derive! ::transform-test-event :metabase/event)
+(events/derive! :event/transform-test-create ::transform-test-event)
+(events/derive! :event/transform-test-update ::transform-test-event)
+(events/derive! :event/transform-test-delete ::transform-test-event)
+
 ;; Transform Run events
 (events/derive! ::transform-run-event :metabase/event)
 (events/derive! :event/transform-run-complete ::transform-run-event)

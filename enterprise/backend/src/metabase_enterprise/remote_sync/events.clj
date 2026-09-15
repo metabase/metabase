@@ -58,21 +58,18 @@
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
 (defn- resolve-status
-  "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
+  "Suppresses a no-op 'update' whose content_hash and stored file_path both still match, otherwise keeps status
+  unchanged."
   [model-type model-id status existing]
-  (cond
-    (not= "update" status)
+  (if (or (not= "update" status)
+          (nil? (:content_hash existing)))
     status
-
-    (nil? (:content_hash existing))
-    status
-
-    (not= (:content_hash existing)
-          (source/row->content-hash {:model_type model-type :model_id model-id}))
-    status
-
-    :else ;; hash has not changed
-    "synced"))
+    (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
+      (if (and (= (:content_hash existing) content-hash)
+               (or (nil? (:file_path existing))
+                   (= (:file_path existing) path)))
+        "synced"
+        status))))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.

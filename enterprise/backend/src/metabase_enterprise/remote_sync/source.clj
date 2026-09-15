@@ -99,12 +99,19 @@
   [^String content]
   (codecs/bytes->hex (buddy-hash/sha256 content)))
 
+(defn row->file-info
+  "The repo `:path` and the SHA-256 (hex) `:content-hash` of the serialized YAML for the entity named by `row`
+  ({:model_type :model_id}), or nil if it can't be extracted."
+  [row]
+  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+    (let [{:keys [path content]} (entity->file-spec (storage-context) entity)]
+      {:path path, :content-hash (content-hash content)})))
+
 (defn row->content-hash
   "SHA-256 (hex) of the serialized YAML for the entity named by `row` ({:model_type :model_id}), or nil if it
   can't be extracted. Hashes the live DB serialization (never on-disk bytes), so it's stable across sync points."
   [row]
-  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (content-hash (:content (entity->file-spec (storage-context) entity)))))
+  (:content-hash (row->file-info row)))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress

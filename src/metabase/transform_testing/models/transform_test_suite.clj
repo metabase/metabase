@@ -1,5 +1,6 @@
 (ns metabase.transform-testing.models.transform-test-suite
   (:require
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -50,6 +51,23 @@
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
   (mi/can-write? :model/Transform (:transform_id instance)))
+
+;;; ---------------------------------------------------- Events ----------------------------------------------------
+
+(t2/define-after-insert :model/TransformTest [transform-test]
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/transform-test-create {:object transform-test}))
+  transform-test)
+
+(t2/define-after-update :model/TransformTest [transform-test]
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/transform-test-update {:object transform-test}))
+  transform-test)
+
+(t2/define-before-delete :model/TransformTest [transform-test]
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/transform-test-delete {:object transform-test}))
+  transform-test)
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

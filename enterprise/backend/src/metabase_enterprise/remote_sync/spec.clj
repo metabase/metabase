@@ -288,6 +288,25 @@
     :export-scope   :all  ; query for all instances
     :enabled?       :remote-sync-transforms}
 
+   :model/TransformTest
+   {:model-type     "TransformTest"
+    :model-key      :model/TransformTest
+    :identity       :entity-id
+    :delete-after   [:model/Transform]  ; has transform_id FK
+    :parent-model   :model/Transform
+    :parent-fk      :transform_id
+    :events         {:prefix :event/transform-test
+                     :types  [:create :update :delete]}
+    :eligibility    {:type    :setting
+                     :setting :remote-sync-transforms}
+    :archived-key   nil  ; no archived field
+    :tracking       {:select-fields  [:name]
+                     :field-mappings {:model_name :name}}
+    :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
+                     :all-on-setting-disable :remote-sync-transforms}
+    :export-scope   :all  ; query for all instances
+    :enabled?       :remote-sync-transforms}
+
    :model/PythonLibrary
    {:model-type     "PythonLibrary"
     :model-key      :model/PythonLibrary

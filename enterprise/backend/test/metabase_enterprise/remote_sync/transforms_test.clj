@@ -1058,3 +1058,41 @@ serdes/meta:
                     "Local transform tag should be deleted after import since it wasn't on remote")
                 (is (t2/exists? :model/TransformTag :entity_id remote-tag-entity-id)
                     "Remote transform tag should be imported")))))))))
+
+(defn- new-export-task! []
+  (t2/delete! :model/RemoteSyncTask)
+  (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)}))
+
+(deftest transform-test-file-moves-with-its-transform-test
+  (testing "A transform test is stored under its transform's path, so renaming the transform moves the test's file"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "ETL" :namespace collection/transforms-ns :location "/"}
+                         :model/Transform {transform-id :id} {:name "Orders Summary" :collection_id coll-id}
+                         :model/TransformTest {test-id :id test-eid :entity_id} {:transform_id transform-id :name "No nulls"}]
+            (testing "creating a transform test tracks it"
+              (is (= "create" (:status (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id)))))
+            (t2/delete! :model/RemoteSyncObject)
+            (doseq [[model-type model-id] [["Collection" coll-id] ["Transform" transform-id] ["TransformTest" test-id]]]
+              (t2/insert! :model/RemoteSyncObject {:model_type        model-type
+                                                   :model_id          model-id
+                                                   :model_name        model-type
+                                                   :status            "create"
+                                                   :status_changed_at (t/offset-date-time)}))
+            (let [mock      (test-helpers/create-mock-source :initial-files {"main" {}})
+                  test-path (fn []
+                              (some (fn [[path content]] (when (str/includes? content test-eid) path))
+                                    (get @(:files-atom mock) "main")))]
+              (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "init"))))
+              (let [old-path (test-path)]
+                (is (str/ends-with? old-path "/etl/orders_summary/no_nulls.yaml"))
+                (t2/update! :model/Transform transform-id {:name "Orders Report"})
+                (events/publish-event! :event/transform-update {:object (t2/select-one :model/Transform transform-id)})
+                (testing "renaming the transform marks its test for update"
+                  (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id)))))
+                (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "rename"))))
+                (is (str/ends-with? (test-path) "/etl/orders_report/no_nulls.yaml"))
+                (is (not (contains? (get @(:files-atom mock) "main") old-path)))))))))))

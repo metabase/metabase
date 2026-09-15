@@ -130,7 +130,8 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 13 (count types))))))
+      (is (contains? types "TransformTest"))
+      (is (= 14 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"

@@ -2785,6 +2785,7 @@
    :api  #{metabase.transform-testing.api}
    :uses #{api
            driver
+           events
            lib
            lib.schema
            models
@@ -2794,7 +2795,8 @@
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Transform
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/TransformTest}}
 
   transforms
   {:team "Graphy"
@@ -4062,6 +4064,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTest
                     :model/User}}
 
   enterprise/search
