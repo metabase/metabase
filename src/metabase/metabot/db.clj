@@ -1038,3 +1038,13 @@
   "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))
+
+(mu/defn measure-entity-ids
+  "A map of Measure ID to entity ID for `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select-pk->fn :entity_id :model/Measure :id [:in ids]))
+
+(mu/defn segment-entity-ids
+  "A map of Segment ID to entity ID for `ids`."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
