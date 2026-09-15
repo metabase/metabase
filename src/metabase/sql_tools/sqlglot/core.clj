@@ -136,7 +136,7 @@
   (sql-tools.common/returned-columns parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
-  [_parser driver sql-str]
+  [_parser driver sql-str opts]
   (try
     (let [dialect (driver->dialect driver)
           ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
@@ -152,7 +152,7 @@
             table-tuples))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (sql-parsing/parse-error? e)
+      (if (and (sql-parsing/parse-error? e) (not (:fail-on-parse-error? opts)))
         []
         (throw e)))))
 

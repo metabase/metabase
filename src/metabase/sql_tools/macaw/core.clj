@@ -141,7 +141,7 @@
   (sql-tools.common/validate-query parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
-  [_parser _driver sql-str]
+  [_parser _driver sql-str _opts]
   (-> sql-str
       (macaw/parsed-query)
       (macaw/query->components {:strip-contexts? true})

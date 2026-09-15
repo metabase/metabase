@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sql-tools.test-util :as sql-tools.tu]
@@ -114,6 +115,16 @@
    (testing "Includes schema when present"
      (is (= [{:schema "public" :table "orders"}]
             (sql-tools/referenced-tables-raw :postgres "SELECT * FROM public.orders"))))))
+
+(deftest ^:parallel referenced-tables-raw-strict-parse-error-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "ordinary callers retain the fail-soft behavior"
+      (is (= [] (sql-tools/referenced-tables-raw :postgres "SELECT !!!"))))
+    (testing "Guard A can distinguish a parse failure from a query with no table reads"
+      (let [e (try
+                (sql-tools/referenced-tables-raw :postgres "SELECT !!!" {:fail-on-parse-error? true})
+                (catch Exception e e))]
+        (is (sql-parsing/parse-error? e))))))
 
 ;;; -------------------------------------------- transpile-sql ---------------------------------------------
 ;; transpile-sql is only implemented for the :sqlglot backend, so these tests bind it directly
