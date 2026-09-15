@@ -80,4 +80,7 @@
             (str/split #"\s*,\s*")
             last
             ;; strip out non-ip-address characters like square brackets which we get sometimes
-            (str/replace #"[^0-9a-fA-F.:]" ""))))
+            (str/replace #"[^0-9a-fA-F.:]" "")
+            ;; no IP address is longer than 45 characters, and the header is attacker-controlled: bound it so an
+            ;; oversized value cannot fail the insert of the varchar(45) columns it lands in
+            (as-> s (subs s 0 (min (count s) 45))))))
