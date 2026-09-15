@@ -123,6 +123,28 @@
               (is (re-find (re-pattern (str "(?i)" orders)) (ex-message ex)))
               (is (not (re-find (re-pattern (str "(?i)" people)) (ex-message ex)))))))))))
 
+(deftest run-transform-test-rejects-duplicate-input-table-test
+  (testing "two inputs targeting the same table (even with different fixture SQL) are rejected 400,"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+      ;; both inputs fixture `people`, differing only in SQL — they would collide on one temp table
+      ;; and silently drop a fixture. Reject on :table, not on the whole (distinct) input map.
+      (let [mp                            (mt/metadata-provider)
+            {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:source {:type  "query"
+                                 :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                        :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
+                       :model/TransformTest transform-test
+                       {:transform_id transform-id
+                        :inputs       [{:table (table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
+                                       {:table (table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
+                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
+          (let [ex (try (transform-testing.runner/run-transform-test! transform-test)
+                        nil
+                        (catch ExceptionInfo e e))]
+            (is (= 400 (:status-code (ex-data ex))))
+            (is (re-find #"(?i)duplicate" (ex-message ex)))))))))
+
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
     (binding [sql-tools.settings/*parser-backend-override* :sqlglot]

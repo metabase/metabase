@@ -74,10 +74,12 @@
         ;; --- compile (pure): temp names + queries over them ---
         ;; The association that matters: each input → the temp table built for it. Everything later
         ;; (seeding, replacements, cleanup, Guard B) is derived from this map, not from any ordering.
-        ;; Inputs are distinct by contract; a duplicate would silently share/collide a temp table, so
-        ;; reject it rather than model it. Order is incidental and deliberately not relied upon.
-        _            (api/check-400 (or (empty? inputs) (apply distinct? inputs))
-                                    (tru "Duplicate test inputs; each input table may be declared only once."))
+        ;; Reject two inputs that target the same TABLE (regardless of differing fixture SQL): they
+        ;; would collide on one temp table, silently dropping a fixture. Check :table, not the whole
+        ;; input. Order is incidental and deliberately not relied upon.
+        _            (let [tables (map :table inputs)]
+                       (api/check-400 (or (empty? tables) (apply distinct? tables))
+                                      (tru "Duplicate test inputs; each input table may be declared only once.")))
         input->temp  (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table (driver/temp-table-name driver)
         replacements (transform-testing.compile/table-replacements driver transform input->temp output-table)
