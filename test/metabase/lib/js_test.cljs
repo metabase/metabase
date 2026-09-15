@@ -18,6 +18,9 @@
 
 (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 
+(deftest ^:parallel format-relative-date-range-defaults-start-of-week-test
+  (is (string? (lib.js/format-relative-date-range 0 "week" nil nil #js {}))))
+
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
           q2 [nil js/undefined]]
