@@ -8,3 +8,8 @@
   "Insert the ApiKeyUsageLog `rows` as one batch."
   [rows]
   (t2/insert! :model/ApiKeyUsageLog rows))
+
+(defn delete-usage-logs-occurred-before!
+  "Delete the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`, returning the number deleted."
+  [cutoff]
+  (t2/delete! :model/ApiKeyUsageLog {:where [:< :occurred_at cutoff]}))
