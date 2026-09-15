@@ -214,7 +214,7 @@ describe("test selection workflow steps", () => {
   it("skips Loki visual tests only for an empty story selection", () => {
     const { jobs } = loadWorkflow("loki.yml");
     expect(jobs["story-selection"].outputs?.selection).toBe(
-      "${{ steps.selection.outputs.selection }}",
+      "${{ steps.loki-selection.outputs.selection }}",
     );
     expect(jobs["visual-test"].if).toContain(
       "needs.story-selection.outputs.selection != 'empty'",

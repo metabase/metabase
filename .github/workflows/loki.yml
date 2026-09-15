@@ -4,10 +4,11 @@ on:
   workflow_call:
     inputs:
       skip:
+        description: "Skip the Loki visual tests."
         type: boolean
         default: false
       test-plan-artifact-id:
-        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
+        description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
         type: string
         default: ""
 
@@ -21,20 +22,23 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      selection: ${{ steps.selection.outputs.selection }}
-      test-plan-artifact-id: ${{ steps.selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
+      selection: ${{ steps.loki-selection.outputs.selection }}
+      test-plan-artifact-id: ${{ steps.loki-selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
+            /.nvmrc
             /package.json
           sparse-checkout-cone-mode: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version-file: "package.json"
+
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+
       - name: Prepare Loki story selection
-        id: selection
+        id: loki-selection
         uses: ./.github/actions/prepare-test-selection
         with:
           suite: loki
@@ -73,7 +77,7 @@ jobs:
         run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Prepare Loki story selection
-        id: selection
+        id: loki-selection
         if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
         uses: ./.github/actions/prepare-test-selection
         with:
@@ -82,12 +86,12 @@ jobs:
 
       - name: Build Storybook
         env:
-          STORYBOOK_STORY_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
+          STORYBOOK_STORY_PATHS_FILE: ${{ steps.loki-selection.outputs.paths-file }}
         run: bun run build-storybook
 
       - name: Run Loki Visual Tests
-        # All selected stories can have parameters.loki.skip set.
-        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ steps.selection.outputs.paths-file && '--passWithNoStories --requireReference' || '' }}
+        # Loki drops stories with parameters.loki.skip, and exits non-zero when that leaves the selection empty.
+        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ steps.loki-selection.outputs.paths-file && '--passWithNoStories --requireReference' || '' }}
 
       - name: Generate Visual Report on Failure
         if: failure()
