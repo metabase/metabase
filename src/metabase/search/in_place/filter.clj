@@ -19,6 +19,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
+   [metabase.search.in-place.search-model :as search-model]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
@@ -94,8 +95,7 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
-                                   (search-columns-fn model search-native-query))
+     (for [column           (->> (search-model/searchable-columns model search-native-query)
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
@@ -287,9 +287,6 @@
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
 ;; We won't need this post-legacy as it defines the joins à la carte.
-(defn- search-model->revision-model [model]
-  ((requiring-resolve 'metabase.search.in-place.legacy/search-model->revision-model) model))
-
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
@@ -298,7 +295,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search-model/search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -313,7 +310,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search-model/search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -382,7 +379,7 @@
   (-> (merge
        ;; models support search-native-query if there are additional columns to search when the `search-native-query`
        ;; argument is true
-       {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
+       {:search-native-query (->> (dissoc (methods search-model/searchable-columns) :default)
                                   (filter (fn [[model f]]
                                             (seq (set/difference (set (f model true)) (set (f model false))))))
                                   (map first)

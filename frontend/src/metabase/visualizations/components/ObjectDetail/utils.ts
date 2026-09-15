@@ -14,7 +14,6 @@ import type {
   Table as ApiTable,
   DatasetColumn,
   DatasetData,
-  NormalizedTable,
   TableId,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -135,7 +134,7 @@ export const getSinglePKIndex = (cols: DatasetColumn[]) => {
 };
 
 export function getApiTable(
-  table: NormalizedTable | undefined | null,
+  table: Table | undefined | null,
 ): ApiTable | undefined {
   if (!table) {
     return undefined;
@@ -143,7 +142,7 @@ export function getApiTable(
 
   // Unjustified type cast. FIXME
   const apiTable: ApiTable = {
-    ...table,
+    ...table.getPlainObject(),
     fields: table.original_fields,
   } as ApiTable;
 

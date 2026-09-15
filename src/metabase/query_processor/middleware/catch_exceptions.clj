@@ -7,9 +7,11 @@
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -151,9 +153,9 @@
       (qp query rff)
       (let [extra-info (delay
                          {:native       (u/ignore-exceptions
-                                          ((requiring-resolve 'metabase.query-processor.compile/compile) query))
+                                          (qp.compile/compile query))
                           :preprocessed (u/ignore-exceptions
-                                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))})]
+                                          (qp.preprocess/preprocess query))})]
         (try
           (qp query rff)
           (catch Throwable e

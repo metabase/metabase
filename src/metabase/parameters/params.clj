@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -479,3 +480,31 @@
   To get these IDs broken out by the Param ID that references them, use [[card->template-tag-param-id->field-ids]]."
   [card :- [:maybe :metabase.queries.schema/card]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tag-field-ids not-empty))
+
+(def ^:private ParamWithMapping
+  [:map {:closed true}
+   [:id ms/NonBlankString]
+   [:name ms/NonBlankString]
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping-with-dashcard]]]])
+
+;; Kept out of [[metabase.dashboards.models.dashboard]] so the query processor can use it without
+;; depending on the Dashboard model.
+(mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+  "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
+  in [[metabase.dashboards.models.dashboard]] for an example). Callers that only need the mappings (e.g. the QP) can
+  pass slim dashcards instead of paying for the full hydration."
+  [dashboard :- [:or
+                 :metabase.dashboards.schema/dashboard
+                 [:map {:closed true}
+                  [:parameters [:maybe [:sequential ::parameters.schema/parameter]]]
+                  [:dashcards [:maybe [:sequential [:or
+                                                    :metabase.dashboards.schema/dashboard-card
+                                                    [:map {:closed true}
+                                                     [:parameter_mappings [:maybe [:sequential ::parameters.schema/parameter-mapping]]]]]]]]]]]
+  (let [param-key->mappings (apply
+                             merge-with set/union
+                             (for [dashcard (:dashcards dashboard)
+                                   param    (:parameter_mappings dashcard)]
+                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
+    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
+               [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))

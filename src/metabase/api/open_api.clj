@@ -5,7 +5,6 @@
   in [[metabase.api.macros.defendpoint.open-api]]. "
   (:require
    [metabase.config.core :as config]
-   [metabase.request.schema :as request.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]

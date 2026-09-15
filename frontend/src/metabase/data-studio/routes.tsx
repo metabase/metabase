@@ -13,7 +13,6 @@ import {
   Route,
   type RouteComponent,
   redirect,
-  useIsNavigating,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
@@ -155,14 +154,13 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
 
 export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
-  const isNavigating = useIsNavigating();
   const { value: hasSeenGuide, isLoading } = useUserKeyValue({
     namespace: "data_studio",
     key: "hasSeenGuide",
     defaultValue: false,
   });
 
-  if (isLoading || isNavigating) {
+  if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 

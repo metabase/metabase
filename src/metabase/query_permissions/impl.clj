@@ -20,9 +20,11 @@
    [metabase.query-permissions.db :as query-permissions.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -187,11 +189,8 @@
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
-  (let [do-as-admin (requiring-resolve 'metabase.request.core/do-as-admin)
-        preprocess  (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
-    (do-as-admin
-     (^:once fn* []
-       (preprocess query)))))
+  (request/as-admin
+    (qp.preprocess/preprocess query)))
 
 (defn- preprocess-without-per-user-lens
   "[[preprocess-query]], minus the preprocess middlewares that resolve the current user's data-access

@@ -14,11 +14,13 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.in-place.search-model :as search-model]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private honeysql-registry
@@ -58,14 +60,6 @@
   ;; The default composition is disjunction with this engine.
   (when (seq terms)
     [(str/join " " terms)]))
-
-(defn search-model->revision-model
-  "Return the appropriate revision model given a search model."
-  [model]
-  (case model
-    "dataset" (recur "card")
-    "metric" (recur "card")
-    (str/capitalize model)))
 
 (mu/defn- ->column-alias :- keyword?
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
@@ -275,7 +269,7 @@
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
                               [:= :r.most_recent true]
-                              [:= :r.model (search-model->revision-model model)]])))
+                              [:= :r.model (search-model/search-model->revision-model model)]])))
 
 (mu/defn- with-moderated-status :- :map
   [query :- HoneySQLQuery
@@ -312,85 +306,6 @@
   with NULL fields to support UNION queries."
   {:arglists '([model search-context])}
   (fn [model _] model))
-
-(defmulti searchable-columns
-  "The columns that can be searched for each model."
-  {:arglists '([model search-native-query])}
-  (fn [model _] model))
-
-(defmethod searchable-columns :default
-  [_ _]
-  [:name])
-
-(defmethod searchable-columns "action"
-  [_ search-native-query]
-  (cond-> [:name
-           :description]
-    search-native-query
-    (conj :dataset_query)))
-
-(defmethod searchable-columns "card"
-  [_ search-native-query]
-  (cond-> [:name
-           :description]
-    search-native-query
-    (conj :dataset_query)))
-
-(defmethod searchable-columns "dataset"
-  [_ search-native-query]
-  (searchable-columns "card" search-native-query))
-
-(defmethod searchable-columns "measure"
-  [_ _]
-  [:name
-   :description])
-
-(defmethod searchable-columns "metric"
-  [_ search-native-query]
-  (searchable-columns "card" search-native-query))
-
-(defmethod searchable-columns "dashboard"
-  [_ _]
-  [:name
-   :description])
-
-(defmethod searchable-columns "page"
-  [_ search-native-query]
-  (searchable-columns "dashboard" search-native-query))
-
-(defmethod searchable-columns "database"
-  [_ _]
-  [:name
-   :description])
-
-(defmethod searchable-columns "table"
-  [_ _]
-  [:name
-   :display_name
-   :description])
-
-(defmethod searchable-columns "transform"
-  [_ search-native-query]
-  (cond-> [:name
-           :description]
-    search-native-query
-    (conj :source)))
-
-(defmethod searchable-columns "indexed-entity"
-  [_ _]
-  [:name])
-
-(defmethod searchable-columns "document"
-  [_ _]
-  [:name
-   :document])
-
-;; mirrors the appdb spec's :search-terms [:name :description] (see
-;; metabase.explorations.models.exploration)
-(defmethod searchable-columns "exploration"
-  [_ _]
-  [:name
-   :description])
 
 (def ^:private default-columns
   "Columns returned for all models."
@@ -686,12 +601,12 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :measure.table_id :table.id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :segment.table_id :table.id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]

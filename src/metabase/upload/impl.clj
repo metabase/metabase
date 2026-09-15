@@ -20,7 +20,6 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -33,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
@@ -221,12 +221,13 @@
       (for [[value parser] (u/map-all vector row parsers)]
         (do
           (when-not parser
-            (throw (ex-info (format "Column count in data (%s) exceeds the number of in the header (%s)"
-                                    (count rows)
-                                    (count parsers))
-                            {:settings settings
-                             :col-upload-types rows
-                             :row row})))
+            (throw (ex-info (tru "Column count in data ({0}) exceeds the number of columns in the header ({1})"
+                                 (count row)
+                                 (count parsers))
+                            {:status-code      422
+                             :settings         settings
+                             :col-upload-types col-upload-types
+                             :row              row})))
           (when-not (str/blank? value)
             (parser value)))))))
 
@@ -320,7 +321,7 @@
         (InputStreamReader. charset))))
 
 (defn- assert-separator-chosen [s]
-  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
+  (or s (throw (ex-info (tru "Unable to determine separator") {:status-code 422}))))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
@@ -341,6 +342,18 @@
          ffirst
          assert-separator-chosen)))
 
+(defn- tag-csv-errors
+  "Rethrows the plain exceptions data.csv uses for malformed input as upload errors, so their message reaches the user."
+  [rows]
+  (lazy-seq
+   (try
+     (when-let [s (seq rows)]
+       (cons (first s) (tag-csv-errors (rest s))))
+     (catch Exception e
+       (if (str/starts-with? (str (ex-message e)) "CSV error")
+         (throw (ex-info (ex-message e) {:status-code 422}))
+         (throw e))))))
+
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
   [filename ^File file]
@@ -348,7 +361,7 @@
             \tab
             (infer-separator file))]
     (fn [stream]
-      (csv/read-csv stream :separator s))))
+      (tag-csv-errors (csv/read-csv stream :separator s)))))
 
 (defn- columns-with-auto-pk [columns]
   (merge (ordered-map/ordered-map auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk) columns))
@@ -370,7 +383,7 @@
   (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv generator-fn
           (for [h header]
-            (humanization/name->human-readable-name
+            (warehouse-schema.humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
@@ -440,7 +453,9 @@
                      :size-mb           (file-size-mb csv-file)}}
           (catch Throwable e
             (driver/drop-table! driver (:id db) table-name)
-            (throw (ex-info (ex-message e) {:status-code 400} e))))))))
+            (throw (if (:status-code (ex-data e))
+                     e
+                     (ex-info (ex-message e) {:status-code 400} e)))))))))
 
 ;;;; +------------------+
 ;;;; |  Create upload
@@ -620,7 +635,7 @@
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
-            humanized-name    (humanization/name->human-readable-name filename-prefix)
+            humanized-name    (warehouse-schema.humanization/name->human-readable-name filename-prefix)
             display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
             card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
             driver            (driver.u/database->driver database)
@@ -776,7 +791,7 @@
       (let [card     (upload.db/card-query-and-metadata id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
-            fix-name #(update % :display_name humanization/name->human-readable-name)
+            fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
         (upload.db/set-card-result-metadata! id metadata)))))
 

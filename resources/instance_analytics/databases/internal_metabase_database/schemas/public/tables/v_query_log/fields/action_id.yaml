@@ -8,7 +8,6 @@ base_type: type/Integer
 effective_type: type/Integer
 dimensions: []
 position: 16
-custom_position: 0
 database_position: 16
 has_field_values: auto-list
 serdes/meta:

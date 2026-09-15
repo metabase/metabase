@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { useQuestionFromOpts } from "metabase/metadata-store";
 import * as Urls from "metabase/urls";
-import type { NormalizedTable } from "metabase-types/api";
+import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -12,23 +11,20 @@ import {
   LabelLink,
 } from "./ConnectedTables.styled";
 
-export type ConnectedTable = Pick<
-  NormalizedTable,
-  "id" | "db_id" | "display_name"
->;
-
 type Props = {
-  tables: ConnectedTable[];
-  onConnectedTableClick?: (table: ConnectedTable) => void;
+  table: Table;
+  onConnectedTableClick?: (table: Table) => void;
 };
 
-export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
-  return tables.length ? (
+export function ConnectedTables({ table, onConnectedTableClick }: Props) {
+  const fkTables = table.connectedTables();
+
+  return fkTables.length ? (
     <Container>
       <LabelContainer color="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
-      {tables.slice(0, 8).map((fkTable) => {
+      {fkTables.slice(0, 8).map((fkTable) => {
         return onConnectedTableClick ? (
           <ConnectedTableButton
             key={fkTable.id}
@@ -47,8 +43,8 @@ function ConnectedTableButton({
   table,
   onClick,
 }: {
-  table: ConnectedTable;
-  onClick: (table: ConnectedTable) => void;
+  table: Table;
+  onClick: (table: Table) => void;
 }) {
   return (
     <LabelButton key={table.id} onClick={() => onClick(table)}>
@@ -57,18 +53,9 @@ function ConnectedTableButton({
   );
 }
 
-function ConnectedTableLink({ table }: { table: ConnectedTable }) {
-  const buildQuestion = useQuestionFromOpts();
-  const question = buildQuestion({
-    dataset_query: {
-      database: table.db_id,
-      type: "query",
-      query: { "source-table": table.id },
-    },
-  }).setDefaultDisplay();
-
+function ConnectedTableLink({ table }: { table: Table }) {
   return (
-    <LabelLink to={Urls.question(question)}>
+    <LabelLink to={Urls.question(table.newQuestion())}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );

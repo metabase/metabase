@@ -162,6 +162,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -328,7 +329,7 @@
   [_model m]
   (if-let [collection-id (:collection_id m)]
     (mi/can-write? (permissions.db/collection collection-id))
-    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
+    (mi/can-write? collection.root/root-collection)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |

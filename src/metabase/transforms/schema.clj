@@ -134,7 +134,7 @@
    [:target_table_id       [:maybe ::lib.schema.id/table]]
    [:table_dependencies    [:maybe [:sequential ::transform.table-dependency]]]
    [:creator               {:optional true} [:maybe user-summary-schema]]
-   [:table                 {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
+   [:table                 {:optional true} [:maybe [:ref :metabase.warehouse-schema.schema/table]]]
    [:last_run              {:optional true} [:maybe ::transform-run]]
    [:collection            {:optional true} [:maybe [:merge
                                                       :metabase.collections.schema/collection

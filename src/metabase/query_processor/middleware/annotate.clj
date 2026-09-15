@@ -11,15 +11,13 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.debug :as qp.debug]
-   [metabase.query-processor.middleware.annotate.legacy-helper-fns]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [every? mapv empty? get-in]]
    [potemkin :as p]))
-
-(comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
 (mr/def ::col
   ::mbql.s/legacy-column-metadata)
@@ -155,6 +153,14 @@
 ;;; convert drivers to MBQL 5.
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
- [metabase.query-processor.middleware.annotate.legacy-helper-fns
-  aggregation-name
-  merged-column-info])
+ [annotate.legacy-helper-fns
+  aggregation-name])
+
+(mu/defn merged-column-info :- ::cols
+  "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
+  metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
+  this namespace."
+  {:deprecated "0.64.0"}
+  [legacy-query                                        :- :metabase.lib.util/legacy-query
+   {initial-cols :cols, :as _initial-metadata} :- [:maybe ::metadata]]
+  (expected-cols (annotate.legacy-helper-fns/legacy-query->mbql5-query legacy-query) initial-cols))

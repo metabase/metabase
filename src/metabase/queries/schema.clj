@@ -206,7 +206,7 @@
 
 (mr/def ::query.query
   "The `:query` column of a Query, decoded."
-  :map)
+  [:ref ::lib-be.schema/maybe-legacy-or-internal-query])
 
 (mr/def ::query
   "A Query as selected from the app DB: every column of `:query`."
