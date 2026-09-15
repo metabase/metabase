@@ -2262,10 +2262,10 @@
 
 ;;; MCP v1 retirement (GHY-4343): `/api/metabase-mcp` now serves the v2 tool surface, which gates every
 ;;; tool on one of six coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the
-;;; per-entity agent scopes instead, and no legacy scope satisfies any v2 scope, so `list-tools` filters
-;;; the whole surface away: HTTP 200, an empty tools list, nothing logged. It does not self-heal — the
-;;; refresh grant copies the original scope forward and can only narrow — so a refreshing client stays
-;;; in the zero-tools state indefinitely.
+;;; per-entity agent scopes instead, and no legacy scope satisfies any v2 scope, so `list-tools` (which,
+;;; when this migration was written, filtered by scope) filtered the whole surface away: HTTP 200, an
+;;; empty tools list, nothing logged. It does not self-heal — the refresh grant copies the original scope
+;;; forward and can only narrow — so a refreshing client stays in the zero-tools state indefinitely.
 ;;;
 ;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.

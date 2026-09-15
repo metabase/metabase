@@ -402,6 +402,21 @@
             (is (and end (<= end 2048))
                 (str "the permission sentence ends at character " end))))))))
 
+(deftest tools-list-descriptions-fit-client-truncation-test
+  (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
+            whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the
+            leading permission sentence counted, must fit within that limit."
+    (let [session-id (initialize-ui-client!)
+          tools      (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                         (get-in [:body :result :tools]))
+          names      (set (map :name tools))]
+      (testing "the check covers the longest descriptions and the MCP Apps tools"
+        (is (every? names ["document_write" "execute_query" "get_content" "refresh_ui_credential"])))
+      (doseq [{tool-name :name :keys [description]} tools]
+        (testing tool-name
+          (is (<= (count description) 2048)
+              (str "the description is " (count description) " characters")))))))
+
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
             tool — the production template carries no `uiCredential` placeholder any more. v1 got the tool;
@@ -657,10 +672,11 @@
     (embedded-credential html)))
 
 (deftest ui-credential-cannot-outrun-its-scopes-test
-  (testing "GHY-4318: the iframe credential is delivered to the CLIENT inside the resource HTML, so a client
-            holding only `agent:query:run` can lift it out and POST straight to /api/dataset. The credential is
-            stamped unrestricted for the endpoint scope middleware, so the only thing standing between it and raw
-            SQL is `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
+  (testing "GHY-4318: the iframe credential is delivered to the CLIENT (by `refresh_ui_credential`; here, by the
+            fallback template's shell HTML), so a client holding only `agent:query:run` can POST it straight to
+            /api/dataset. The credential carries the token's own scopes, and the UI surface charges the whole
+            /api/dataset tree a single `agent:query:run`, so the only thing standing between it and raw SQL is
+            `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
             unit-tested. Without the wiring, `agent:query:run` silently becomes `agent:sql:run`."
     (mcp.ui-resource/with-fallback-template
       ;; Both payloads are hand-rolled legacy MBQL rather than built with Lib, deliberately and

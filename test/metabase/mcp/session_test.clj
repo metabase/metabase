@@ -192,8 +192,8 @@
                    (mcp.session/issue-ui-credential session-id user-id scopes))))))))
 
 (deftest ui-credential-carries-minting-session-scopes-test
-  (testing "GHY-4318: the credential is stamped unrestricted for the endpoint scope middleware, so the minting
-            session's real scopes have to travel on the signed claims for downstream gates to see them"
+  (testing "GHY-4318: the credential authenticates as `::scope/mcp-ui`, which satisfies no endpoint's declared scope,
+            so the minting session's real scopes have to travel on the signed claims for downstream gates to see them"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
           scopes-of  (fn [token-scopes]

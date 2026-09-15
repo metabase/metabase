@@ -121,8 +121,10 @@
 
 (defn- dispatch-method
   "Route a single JSON-RPC `method` to its handler, returning a response map or nil
-  (notifications). `resources/*` serves the MCP Apps iframe shells only; documentation and skill
-  resources land with the skills work. `prompts/*` is still unimplemented and falls through to
+  (notifications). `resources/*` serves the resources in [[metabase.mcp.v2.resources]]: the MCP Apps
+  iframe shells and the fields catalog. `resources/read` of a data resource needs its scope and answers
+  a 403 challenge otherwise; a UI shell is served to any token, carrying a credential only when the
+  token holds the shell's scope. `prompts/*` is still unimplemented and falls through to
   method-not-found. A handler that throws is turned into a JSON-RPC internal error by the
   transport."
   [id method params session-id token-scopes request-context]
