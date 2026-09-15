@@ -181,10 +181,6 @@
   text-overflow: ellipsis;
 }
 
-.label :global(.mb-mantine-Badge-root) {
-  cursor: inherit;
-}
-
 :global(.mb-mantine-ButtonGroup-group[data-orientation="horizontal"]) {
   &:has(> .root[data-variant="default"], > .root[data-variant="filled"]) {
     border-radius: 6px;

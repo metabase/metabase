@@ -73,6 +73,7 @@ export function EditTableDataFilterButton({
               color="neutral"
               bg={isExpanded ? "core-filter-strong" : undefined}
               c={isExpanded ? "text-primary-inverse" : undefined}
+              style={{ cursor: "inherit" }}
             >
               {items.length}
             </Badge>

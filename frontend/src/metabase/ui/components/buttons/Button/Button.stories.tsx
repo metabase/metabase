@@ -468,8 +468,14 @@ const SECTION_KINDS = [
   {
     key: "right-badge",
     title: "Right · badge",
-    jsx: 'rightSection={<Badge variant="light">1</Badge>}',
-    props: () => ({ rightSection: <Badge variant="light">1</Badge> }),
+    jsx: 'rightSection={<Badge variant="light" c="inherit">1</Badge>}',
+    props: () => ({
+      rightSection: (
+        <Badge variant="light" c="inherit">
+          1
+        </Badge>
+      ),
+    }),
   },
 ] as const;
 

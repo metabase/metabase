@@ -89,6 +89,7 @@ export function FilterHeaderButton({
               color="neutral"
               bg={isExpanded ? "core-filter-strong" : undefined}
               c={isExpanded ? "text-primary-inverse" : undefined}
+              style={{ cursor: "inherit" }}
             >
               {items.length}
             </Badge>

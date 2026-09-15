@@ -273,13 +273,7 @@ export const MetabotComponent = memo(
           direction="column"
           mb="lg"
         >
-          <Box
-            pos="absolute"
-            top={0}
-            right={0}
-            opacity="0.5"
-            className={S.closeButton}
-          >
+          <Box pos="absolute" top={0} right={0} className={S.closeButton}>
             {/* TODO: replace with ActionIcon (GDGT-2457) */}
             {editor.options.editable && (
               <Button
