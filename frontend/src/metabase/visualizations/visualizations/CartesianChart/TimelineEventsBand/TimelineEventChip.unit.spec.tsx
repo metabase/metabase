@@ -211,15 +211,59 @@ describe("TimelineEventChip", () => {
     expect(onSelectTimelineEvents).toHaveBeenCalledWith(manyGroup.group.events);
   });
 
-  it("hides 'See all' and does not select in degraded contexts", async () => {
-    setup({ eventsGroup: manyGroup, withCallbacks: false });
+  it("shows every event in a read-only cluster without opening a sidebar or selecting events", async () => {
+    const {
+      onOpenTimelines,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
+    } = setup({ eventsGroup: manyGroup, withCallbacks: false });
 
     await userEvent.click(screen.getByTestId("timeline-event-chip"));
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
     expect(await screen.findByText("Many 1")).toBeInTheDocument();
+    expect(screen.getByText("Many 4")).toBeInTheDocument();
     expect(screen.queryByText("See all")).not.toBeInTheDocument();
+    expect(onOpenTimelines).not.toHaveBeenCalled();
+    expect(onSelectTimelineEvents).not.toHaveBeenCalled();
+    expect(onDeselectTimelineEvents).not.toHaveBeenCalled();
+    expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
+      "data-selected",
+      "false",
+    );
   });
+
+  it.each([singleGroup, manyGroup])(
+    "shows read-only event descriptions without requiring creator metadata ($group.events.length events)",
+    async (eventsGroup) => {
+      setup({
+        withCallbacks: false,
+        eventsGroup: {
+          ...eventsGroup,
+          group: {
+            ...eventsGroup.group,
+            events: eventsGroup.group.events.map((event) => ({
+              ...event,
+              creator: undefined,
+              description: `${event.name} description`,
+            })),
+          },
+        },
+      });
+
+      await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+
+      for (const event of eventsGroup.group.events) {
+        expect(
+          await screen.findByText(`${event.name} description`),
+        ).toBeInTheDocument();
+      }
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /edit|delete|new event/i }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("shows 'See all' handing the cluster to onSeeAllEvents without making the chip clickable", async () => {
     const onSeeAllEvents = jest.fn();

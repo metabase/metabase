@@ -10,6 +10,7 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 import {
   createQuestionAndDashboardWithEvents,
   expectChartWithoutEvents,
+  expectReadOnlyDashboardEvents,
 } from "e2e/test/scenarios/organization/shared/timeline-events";
 
 describe("scenarios > embedding-sdk > timeline events", () => {
@@ -29,11 +30,12 @@ describe("scenarios > embedding-sdk > timeline events", () => {
     getSdkRoot().within(expectChartWithoutEvents);
   });
 
-  it("should not show events on an interactive dashboard", () => {
+  it("should show only saved events read-only on an interactive dashboard", () => {
     cy.get<number>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
-    getSdkRoot().within(expectChartWithoutEvents);
+    cy.wait("@getTimelines");
+    getSdkRoot().within(expectReadOnlyDashboardEvents);
   });
 });
