@@ -15,7 +15,9 @@
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
@@ -76,13 +78,120 @@
   (cond-> result
     (map? (:_meta result)) (update :_meta dissoc mcp-apps-meta-key)))
 
+;;; ------------------------------------------------ Message helpers ----------------------------------------------
+
+(def ^:private Message
+  [:fn {:error/message "a message built by metabase.mcp.v2.message/msg"} message/message?])
+
+(defn- shortened-string
+  [s limit]
+  (if (> (count s) limit)
+    (str (subs s 0 limit) "…")
+    s))
+
+(defn- fits?
+  [x limit]
+  (<= (count (message/render x)) limit))
+
+(defn- message-with-shortened-arg
+  "Message `m` with its `i`th argument, a string, cut to the most characters (and an ellipsis) that let `m` render
+   within `limit`, or to just the ellipsis when none do."
+  [m i limit]
+  (let [^String s (get-in m [:args i])
+        with-at   (fn [n]
+                    ;; Never keep half of a surrogate pair.
+                    (let [n (cond-> n (and (pos? n) (Character/isHighSurrogate (.charAt s (int (dec n))))) dec)]
+                      (assoc-in m [:args i] (str (subs s 0 n) "…"))))]
+    ;; Rendering never shrinks as characters are kept, so binary search for the most that fit.
+    (loop [lo 0, hi (dec (count s))]
+      (if (< lo hi)
+        (let [mid (quot (+ lo hi 1) 2)]
+          (if (fits? (with-at mid) limit)
+            (recur mid hi)
+            (recur lo (dec mid))))
+        (with-at lo)))))
+
+(defn- message-with-shortened-args
+  "Message `m` with its string arguments shortened, longest first, until it renders within `limit`, or nil when even
+   all of them shortened to an ellipsis don't fit."
+  [m limit]
+  (let [longest-first (->> (:args m)
+                           (keep-indexed (fn [i arg] (when (and (string? arg) (> (count arg) 1)) i)))
+                           (sort-by #(- (count (get-in m [:args %])))))
+        shortest      (reduce #(assoc-in %1 [:args %2] "…") m longest-first)]
+    (when (fits? shortest limit)
+      (loop [m m, [i & more] longest-first]
+        (if (fits? m limit)
+          m
+          (recur (message-with-shortened-arg m i limit) more))))))
+
+(mu/defn ellipsize :- [:or :string Message]
+  "`x` shortened to fit `limit`, with `…` marking each cut. A message stays a message, rendering within `limit`
+   characters, or `limit` + 2 when a quoted value is cut; anything else becomes its string, cut to `limit` characters
+   plus `…`."
+  [x     :- :any
+   limit :- nat-int?]
+  (cond
+    (not (message/message? x)) (shortened-string (str x) limit)
+    (fits? x limit)            x
+    :else                      (or (message-with-shortened-args x limit)
+                                   (message/truncate x limit))))
+
+(defn- joined-message
+  "One message of `parts`, each cleaned unless it is a message, joined pairwise by `join-two`."
+  [join-two parts]
+  (let [parts (vec parts)]
+    (case (count parts)
+      0 (message/msg [""])
+      1 (message/msg ["%s"] (first parts))
+      ;; Halving keeps the nesting, and so the rendering's recursion, logarithmic in the number of parts.
+      (let [half (quot (count parts) 2)]
+        (join-two (joined-message join-two (subvec parts 0 half))
+                  (joined-message join-two (subvec parts half)))))))
+
+(mu/defn list-message :- Message
+  "A message of `items` separated by commas, each cleaned unless it is a message."
+  [items :- [:sequential :any]]
+  (joined-message #(message/msg ["%s, %s"] %1 %2) items))
+
+(defn- semicolon-list-message
+  [items]
+  (joined-message #(message/msg ["%s; %s"] %1 %2) items))
+
+(defn humanize-detail
+  "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
+   and expectations cleaned.
+
+   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
+   multi-element collection names which element it is in; a run of plain strings is a single
+   value's alternative messages and joins without positions."
+  [errors]
+  (cond
+    (map? errors)
+    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k) (humanize-detail v)))
+                                 errors))
+
+    (and (sequential? errors) (every? string? errors))
+    (list-message errors)
+
+    (sequential? errors)
+    (semicolon-list-message (keep-indexed (fn [i v]
+                                            (when (some? v)
+                                              (message/msg ["[%d] %s"] i (humanize-detail v))))
+                                          errors))
+
+    :else
+    (message/msg ["%s"] (str errors))))
+
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
-(defn message-ex-info
-  "An `ex-info` whose message is the rendering of message `msg`, with `data` and `msg` itself under `::message` as
-   its `ex-data`, and optional `cause`."
+(mu/defn message-ex-info :- (ms/InstanceOfClass clojure.lang.ExceptionInfo)
+  "An `ex-info` whose exception message is the rendering of `msg`, with `data` plus `msg` under `::message` as its
+   `ex-data`, and optional `cause`."
   ([msg data] (message-ex-info msg data nil))
-  ([msg data cause]
+  ([msg   :- Message
+    data  :- [:maybe :map]
+    cause :- [:maybe (ms/InstanceOfClass Throwable)]]
    (ex-info (message/render msg) (assoc data ::message msg) cause)))
 
 (defn throw-teaching-error
@@ -148,7 +257,7 @@
       (if (= type :metabase.util.malli.fn/invalid-input)
         (message/msg [(str "Server-side schema check failed in `%s`: %s. This is "
                            "a bug in Metabase, not something to retry — report it.")]
-                     (message/raw (str fn-name)) humanized)
+                     (message/raw (str fn-name)) (humanize-detail humanized))
         (message/msg [(str "Server-side schema check failed in `%s` (on its return value). "
                            "This is a bug in Metabase, not something to retry — report it.")]
                      (message/raw (str fn-name)))))))
@@ -156,10 +265,10 @@
 (def ^:private internal-error
   (message/msg ["Internal error"]))
 
-(defn exception-message
-  "The message of exception `e`: the message under `::message` in its `ex-data` unless its exception message differs
-   from that message's rendering (rewrapped with new text), else its exception message string, else nil."
-  [e]
+(mu/defn exception-message :- [:maybe [:or :string Message]]
+  "The message of exception `e`: the message [[message-ex-info]] stored in its `ex-data` while its exception message
+   is still that message's rendering, else its exception message string, or nil when it has neither."
+  [e :- (ms/InstanceOfClass Throwable)]
   (let [stored (::message (ex-data e))
         text   (ex-message e)]
     (if (and stored (or (nil? text) (= text (message/render stored))))
@@ -172,11 +281,9 @@
   (or (exception-message e) internal-error))
 
 (defn caller-safe-error-message
-  "The message of `e` when it is deliberately caller-facing, judged the same way as
-   [[->mcp-error-content]], as an [[exception-message]]. Any other exception is logged server-side and
-   reported as the \"Internal error\" message. This is the
-   sanitizer for response paths that answer with a JSON-RPC error rather than tool content — resource
-   reads, list handlers, and the transport's own catch-all."
+  "The message for `e` in a JSON-RPC error response, sanitized as [[->mcp-error-content]] sanitizes tool content: a
+   deliberately caller-facing `e`'s [[exception-message]], a schema failure's message naming the function, or else
+   the \"Internal error\" message. Logs any `e` that isn't caller-facing."
   [e]
   (cond
     (caller-facing-error-code e) (caller-facing-message e)
@@ -205,109 +312,6 @@
       (do
         (log/error e "Unhandled error dispatching MCP v2 tool call")
         (error-content internal-error error-code-internal)))))
-
-;;; ------------------------------------------------ Message helpers ----------------------------------------------
-
-(defn- cut
-  [s limit]
-  (if (> (count s) limit)
-    (str (subs s 0 limit) "…")
-    s))
-
-(defn- fits?
-  [x limit]
-  (<= (count (message/render x)) limit))
-
-(defn- shorten-string-arg
-  "Message `m` with its `i`th argument, a string, cut to the most characters (and an ellipsis) that let `m` render
-   within `limit`, or to just the ellipsis when none do."
-  [m i limit]
-  (let [^String s (get-in m [:args i])
-        with-at   (fn [n]
-                    ;; Never keep half of a surrogate pair.
-                    (let [n (cond-> n (and (pos? n) (Character/isHighSurrogate (.charAt s (int (dec n))))) dec)]
-                      (assoc-in m [:args i] (str (subs s 0 n) "…"))))]
-    ;; Rendering never shrinks as characters are kept, so binary search for the most that fit.
-    (loop [lo 0, hi (dec (count s))]
-      (if (< lo hi)
-        (let [mid (quot (+ lo hi 1) 2)]
-          (if (fits? (with-at mid) limit)
-            (recur mid hi)
-            (recur lo (dec mid))))
-        (with-at lo)))))
-
-(defn- shorten-string-args
-  "Message `m` with its string arguments shortened, longest first, until it renders within `limit`, or nil when even
-   all of them shortened to an ellipsis don't fit."
-  [m limit]
-  (let [longest-first (->> (:args m)
-                           (keep-indexed (fn [i arg] (when (and (string? arg) (> (count arg) 1)) i)))
-                           (sort-by #(- (count (get-in m [:args %])))))
-        shortest      (reduce #(assoc-in %1 [:args %2] "…") m longest-first)]
-    (when (fits? shortest limit)
-      (loop [m m, [i & more] longest-first]
-        (if (fits? m limit)
-          m
-          (recur (shorten-string-arg m i limit) more))))))
-
-(defn ellipsize
-  "`x` shortened to about `limit` characters, with an ellipsis marking each cut. Anything but a message is cut as a
-   string to `limit` characters plus the ellipsis. A message over the limit first has its string arguments shortened
-   inside their quotes, longest first, which keeps its lines whole and renders within `limit`; when that can't fit, its
-   rendering is cut at `limit` with [[message/truncate]], keeping a cut value's closing quote, so it renders within
-   `limit` + 2 characters."
-  [x limit]
-  (cond
-    (not (message/message? x)) (cut (str x) limit)
-    (fits? x limit)            x
-    :else                      (or (shorten-string-args x limit)
-                                   (message/truncate x limit))))
-
-(defn- join-messages
-  "One message of `parts`, each cleaned unless it is a message, joined pairwise by `join-two`."
-  [join-two parts]
-  (let [parts (vec parts)]
-    (case (count parts)
-      0 (message/msg [""])
-      1 (message/msg ["%s"] (first parts))
-      ;; Halving keeps the nesting, and so the rendering's recursion, logarithmic in the number of parts.
-      (let [half (quot (count parts) 2)]
-        (join-two (join-messages join-two (subvec parts 0 half))
-                  (join-messages join-two (subvec parts half)))))))
-
-(defn list-message
-  "A message of `items` separated by commas, each cleaned unless it is a message."
-  [items]
-  (join-messages #(message/msg ["%s, %s"] %1 %2) items))
-
-(defn- semicolon-list-message
-  [items]
-  (join-messages #(message/msg ["%s; %s"] %1 %2) items))
-
-(defn humanize-detail
-  "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
-   and expectations cleaned.
-
-   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
-   multi-element collection names which element it is in; a run of plain strings is a single
-   value's alternative messages and joins without positions."
-  [errors]
-  (cond
-    (map? errors)
-    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k) (humanize-detail v)))
-                                 errors))
-
-    (and (sequential? errors) (every? string? errors))
-    (list-message errors)
-
-    (sequential? errors)
-    (semicolon-list-message (keep-indexed (fn [i v]
-                                            (when (some? v)
-                                              (message/msg ["[%d] %s"] i (humanize-detail v))))
-                                          errors))
-
-    :else
-    (message/msg ["%s"] (str errors))))
 
 ;;; ------------------------------------------------ Response shaping ----------------------------------------------
 

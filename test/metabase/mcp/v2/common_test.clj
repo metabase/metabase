@@ -204,6 +204,11 @@
             "the function name is what makes this actionable")
         (is (re-find #"dashcard-id" (text content))
             "an invalid-INPUT humanization describes the caller's own argument, so it is safe to echo")))
+    (testing "GHY-4544: the humanization reads as `path: expectation` text, its values cleaned once, not printed data"
+      (is (= (str "Server-side schema check failed in `check-parameter-mapping-permissions`: "
+                  "[0] \"dashcard-id\": \"disallowed key, got: 177\". "
+                  "This is a bug in Metabase, not something to retry — report it.")
+             (text (common/->mcp-error-content invalid-input)))))
     (testing "GHY-4544: the echoed humanization is quoted and escaped, so a caller-supplied key can't forge a line"
       (let [e    (ex-info "Invalid input" {:type      :metabase.util.malli.fn/invalid-input
                                            :fn-name   'check-it
