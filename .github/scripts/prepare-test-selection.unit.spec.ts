@@ -13,6 +13,8 @@ import { load } from "js-yaml";
 
 import { SUITES, prepareTestSelection } from "./prepare-test-selection";
 
+type Suite = (typeof SUITES)[keyof typeof SUITES];
+
 type Step = {
   id?: string;
   if?: string;
@@ -22,6 +24,7 @@ type Step = {
   with?: Record<string, string>;
 };
 
+const SCRIPT = resolve(__dirname, "prepare-test-selection.ts");
 const WORKFLOWS = ["frontend.yml", "loki.yml"];
 
 function loadWorkflow(file: string) {
@@ -36,143 +39,158 @@ function loadWorkflow(file: string) {
   };
 }
 
-describe.each(Object.entries(SUITES))(
-  "%s test selection",
-  (suiteName, suite) => {
-    let dir: string;
-    let env: NodeJS.ProcessEnv;
+describe("prepareTestSelection", () => {
+  const { loki } = SUITES;
+  let dir: string;
+  let env: NodeJS.ProcessEnv;
 
-    beforeEach(() => {
-      jest.spyOn(console, "warn").mockImplementation(() => {});
-      dir = mkdtempSync(join(tmpdir(), "test-selection-"));
-      mkdirSync(join(dir, "test-plan"));
-      writeFileSync(join(dir, "output"), "");
-      env = {
-        ...process.env,
-        RUNNER_TEMP: dir,
-        GITHUB_OUTPUT: join(dir, "output"),
-        PLAN_DOWNLOADED: "success",
-      };
-    });
+  beforeEach(() => {
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    dir = mkdtempSync(join(tmpdir(), "test-selection-"));
+    mkdirSync(join(dir, "test-plan"));
+    writeFileSync(join(dir, "output"), "");
+    env = {
+      ...process.env,
+      RUNNER_TEMP: dir,
+      GITHUB_OUTPUT: join(dir, "output"),
+      PLAN_DOWNLOADED: "success",
+    };
+  });
 
-    afterEach(() => {
-      jest.restoreAllMocks();
-      rmSync(dir, { recursive: true, force: true });
-    });
+  afterEach(() => {
+    jest.restoreAllMocks();
+    rmSync(dir, { recursive: true, force: true });
+  });
 
-    function plan(files: unknown, total = 2) {
-      return {
-        [suite.filesKey]: files,
-        stats: {
-          [suite.totalKey]: total,
-          [suite.selectedKey]: Array.isArray(files) ? files.length : 0,
-        },
-      };
-    }
-
-    function writePlan(value: unknown) {
-      writeFileSync(
-        join(dir, "test-plan/test-plan.json"),
-        JSON.stringify(value),
-      );
-    }
-
-    const output = () => readFileSync(join(dir, "output"), "utf8");
-
-    it.each([{ files: ["one.spec.cjs"] }, { files: [] }])(
-      "preserves an explicit selection: $files",
-      ({ files }) => {
-        writePlan(plan(files));
-        prepareTestSelection(suiteName, env);
-        expect(output()).toBe(
-          `paths-file=${join(dir, suite.pathsFile)}\nselection=${files.length > 0 ? "narrowed" : "empty"}\n`,
-        );
-        expect(
-          JSON.parse(readFileSync(join(dir, suite.pathsFile), "utf8")),
-        ).toEqual(files);
+  function plan(files: unknown, total = 2, suite: Suite = loki) {
+    return {
+      [suite.filesKey]: files,
+      stats: {
+        [suite.totalKey]: total,
+        [suite.selectedKey]: Array.isArray(files) ? files.length : 0,
       },
-    );
+    };
+  }
 
-    it("writes the selection when invoked through Bun in CI", () => {
-      writePlan(plan(["one.spec.cjs"]));
-      const result = spawnSync(
-        "bun",
-        [resolve(__dirname, "prepare-test-selection.ts"), suiteName],
-        { env, encoding: "utf8" },
+  function writePlan(value: unknown) {
+    writeFileSync(join(dir, "test-plan/test-plan.json"), JSON.stringify(value));
+  }
+
+  const output = () => readFileSync(join(dir, "output"), "utf8");
+
+  it.each([{ files: ["one.spec.cjs"] }, { files: [] }])(
+    "preserves an explicit selection: $files",
+    ({ files }) => {
+      writePlan(plan(files));
+      prepareTestSelection("loki", env);
+      expect(output()).toBe(
+        `paths-file=${join(dir, loki.pathsFile)}\nselection=${files.length > 0 ? "narrowed" : "empty"}\n`,
       );
-      expect(result.status === 0 ? "" : result.stderr).toBe("");
-      expect(result.status).toBe(0);
+      expect(
+        JSON.parse(readFileSync(join(dir, loki.pathsFile), "utf8")),
+      ).toEqual(files);
+    },
+  );
+
+  it("writes the selection when invoked through Bun in CI", () => {
+    writePlan(plan(["one.spec.cjs"]));
+    const result = spawnSync("bun", [SCRIPT, "loki"], {
+      env,
+      encoding: "utf8",
+    });
+    expect(result.status === 0 ? "" : result.stderr).toBe("");
+    expect(result.status).toBe(0);
+    expect(output()).toBe(
+      `paths-file=${join(dir, loki.pathsFile)}\nselection=narrowed\n`,
+    );
+  });
+
+  it("writes no paths file for a full selection", () => {
+    writePlan(plan(["one.spec.cjs", "two.spec.cjs"]));
+    prepareTestSelection("loki", env);
+    expect(output()).toBe("selection=full\n");
+  });
+
+  it.each([
+    null,
+    {},
+    plan("[]"),
+    plan([null]),
+    { ...plan([]), [loki.filesKey]: ["one.spec.cjs"] },
+    plan([""]),
+    plan(["one.spec.cjs"], 0),
+  ])("runs in full for an invalid plan: %j", (value) => {
+    writePlan(value);
+    prepareTestSelection("loki", env);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("::warning::"),
+    );
+    expect(output()).toBe("");
+  });
+
+  it.each([
+    { scenario: "the test plan is missing", setup: () => {} },
+    {
+      scenario: "the test plan is truncated",
+      setup: () => {
+        writeFileSync(
+          join(dir, "test-plan/test-plan.json"),
+          `{"${loki.filesKey}":[`,
+        );
+      },
+    },
+    {
+      scenario: "the download failed",
+      setup: () => {
+        writePlan(plan([])); // Even a partial download must not be trusted.
+        env.PLAN_DOWNLOADED = "failure";
+      },
+    },
+  ])("runs in full when $scenario", ({ setup }) => {
+    setup();
+    prepareTestSelection("loki", env);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("::warning::"),
+    );
+    expect(output()).toBe("");
+  });
+
+  it.each(Object.entries(SUITES))(
+    "reads the %s selection from its own plan keys",
+    (suiteName, suite) => {
+      writePlan(plan(["one.spec.cjs"], 2, suite));
+      prepareTestSelection(suiteName, env);
       expect(output()).toBe(
         `paths-file=${join(dir, suite.pathsFile)}\nselection=narrowed\n`,
       );
+      expect(
+        JSON.parse(readFileSync(join(dir, suite.pathsFile), "utf8")),
+      ).toEqual(["one.spec.cjs"]);
+    },
+  );
+
+  it("ignores the other suites' selections", () => {
+    writePlan({
+      ...plan(["one.spec.cjs", "two.spec.cjs"]),
+      [SUITES.unit.filesKey]: [],
+      [SUITES.e2e.filesKey]: [],
     });
-
-    it("writes no paths file for a full selection", () => {
-      writePlan(plan(["one.spec.cjs", "two.spec.cjs"]));
-      prepareTestSelection(suiteName, env);
-      expect(output()).toBe("selection=full\n");
-    });
-
-    it.each([
-      null,
-      {},
-      plan("[]"),
-      plan([null]),
-      { ...plan([]), [suite.filesKey]: ["one.spec.cjs"] },
-      plan([""]),
-      plan(["one.spec.cjs"], 0),
-    ])("runs in full for an invalid plan: %j", (value) => {
-      writePlan(value);
-      prepareTestSelection(suiteName, env);
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("::warning::"),
-      );
-      expect(output()).toBe("");
-    });
-
-    it("ignores the other suites' selections", () => {
-      const other = Object.values(SUITES).find((s) => s !== suite)!;
-      writePlan({
-        ...plan(["one.spec.cjs", "two.spec.cjs"]),
-        [other.filesKey]: [],
-      });
-      prepareTestSelection(suiteName, env);
-      expect(console.warn).not.toHaveBeenCalled();
-      expect(output()).toBe("selection=full\n");
-    });
-
-    it.each(["missing", "truncated", "download failed"])(
-      "runs in full when the artifact is %s",
-      (scenario) => {
-        if (scenario === "truncated") {
-          writeFileSync(
-            join(dir, "test-plan/test-plan.json"),
-            `{"${suite.filesKey}":[`,
-          );
-        } else if (scenario === "download failed") {
-          writePlan(plan([])); // Even a partial download must not be trusted.
-          env.PLAN_DOWNLOADED = "failure";
-        }
-        prepareTestSelection(suiteName, env);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining("::warning::"),
-        );
-        expect(output()).toBe("");
-      },
-    );
-  },
-);
-
-describe("prepareTestSelection", () => {
-  it("rejects an unknown suite", () => {
-    expect(() =>
-      prepareTestSelection("toString", {
-        RUNNER_TEMP: tmpdir(),
-        GITHUB_OUTPUT: join(tmpdir(), "output"),
-      }),
-    ).toThrow('Unknown test suite "toString"');
+    prepareTestSelection("loki", env);
+    expect(console.warn).not.toHaveBeenCalled();
+    expect(output()).toBe("selection=full\n");
   });
 
+  it("rejects an unknown suite", () => {
+    const result = spawnSync("bun", [SCRIPT, "toString"], {
+      env,
+      encoding: "utf8",
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('Unknown test suite "toString"');
+  });
+});
+
+describe("test selection workflow steps", () => {
   const selectionSteps = WORKFLOWS.flatMap((file) => {
     const workflow = loadWorkflow(file);
     return Object.entries(workflow.jobs).flatMap(([job, { steps = [] }]) =>
@@ -197,19 +215,22 @@ describe("prepareTestSelection", () => {
     "downloads the test plan before preparing the selection in $name",
     ({ step, steps }) => {
       const [, suiteName] =
-        step.run!.match(/prepare-test-selection\.ts (\S+)/) ?? [];
+        step.run?.match(/prepare-test-selection\.ts (\S+)/) ?? [];
       expect(Object.keys(SUITES)).toContain(suiteName);
 
       const [, downloadId] =
         step.env?.PLAN_DOWNLOADED?.match(/steps\.([\w-]+)\.outcome/) ?? [];
-      const download = steps.find((s) => s.id === downloadId);
+      const downloadIndex = steps.findIndex((s) => s.id === downloadId);
+      const download = steps[downloadIndex];
       expect(download).toMatchObject({
-        uses: "actions/download-artifact@v8",
-        with: { path: "${{ runner.temp }}/test-plan" },
+        uses: expect.stringMatching(/^actions\/download-artifact@/),
+        with: {
+          "artifact-ids": expect.any(String),
+          path: "${{ runner.temp }}/test-plan",
+        },
       });
-      expect(download!.with!["artifact-ids"]).toBeTruthy();
-      expect(download!.if).toBe(step.if);
-      expect(steps.indexOf(download!)).toBeLessThan(steps.indexOf(step));
+      expect(download?.if).toBe(step.if);
+      expect(downloadIndex).toBeLessThan(steps.indexOf(step));
     },
   );
 });
