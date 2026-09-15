@@ -66,8 +66,10 @@
 
 ;;; ---------------------------------------------- Format Single Date -----------------------------------------------
 (defn- format-week-of-year
-  [time-config t]
-  (let [week (u.time/extract time-config t :week-of-year)]
+  [time-config value t]
+  (let [week (if (number? value)
+               value
+               (u.time/extract time-config t :week-of-year))]
     #?(:clj  (str week)
        :cljs (let [locale          (:locale time-config)
                    ^js t           (cond-> t
@@ -93,7 +95,7 @@
       (format-range-with-unit value options)
 
       (= unit :week-of-year)
-      (format-week-of-year options t)
+      (format-week-of-year options value t)
 
       :else ((formatters/options->formatter options) t))))
 

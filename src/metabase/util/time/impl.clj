@@ -384,8 +384,11 @@
         input))
 
     (number? input)
-    (if (= unit :hour-of-day)
-      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+    (case (keyword unit)
+      :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
+                         " "
+                         (if (<= input 11) "AM" "PM"))
+      :week-of-year (str input)
       (or
        (format-extraction-unit time-config
                                (common/number->timestamp input (assoc time-config :unit unit))
@@ -508,9 +511,10 @@
   "Clojure implementation of [[metabase.util.time/truncate]]; basically the same as [[u.date/truncate]] but also
   handles ISO-8601 strings."
   [time-config t unit]
-  (if (string? t)
-    (str (truncate time-config (u.date/parse t) unit))
-    (u.date/truncate time-config t unit)))
+  (let [unit (keyword unit)]
+    (if (string? t)
+      (str (truncate time-config (u.date/parse t) unit))
+      (u.date/truncate time-config t unit))))
 
 (defn add
   "Clojure implementation of [[metabase.util.time/add]]; basically the same as [[u.date/add]] but also handles

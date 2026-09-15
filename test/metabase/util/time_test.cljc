@@ -217,6 +217,12 @@
     (is (same? (from-zulu exp-from) from) "start dates should be the same")
     (is (same? (from-zulu exp-to)   to)   "end dates should be the same")))
 
+(deftest to-range-string-week-unit-respects-week-config-test
+  (let [[from to] (shared.ut/to-range (shared.ut/coerce-to-timestamp "2022-08-24T00:00:00" nil)
+                                      {:start-of-week :monday, :unit "week"})]
+    (is (same? (from-zulu "2022-08-22T00:00:00Z") from))
+    (is (same? (from-zulu "2022-08-28T23:59:59.999Z") to))))
+
 (deftest quarter-to-range-does-not-require-week-config-test
   (let [[from to] (shared.ut/to-range (shared.ut/coerce-to-timestamp "2022-08-19T00:00:00" nil)
                                       {:unit :quarter})]
@@ -295,6 +301,7 @@
   (is (= "30" (format-unit 30 :minute-of-hour)))
   (is (= "1 PM" (format-unit 13 :hour-of-day)))
   (is (= "12 AM" (format-unit 0 :hour-of-day)))
+  (is (= "1" (format-unit 1 :week-of-year)))
   (testing "week-of-year respects start-of-week"
     (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-02" :week-of-year)))
     (is (= "2" (shared.ut/format-unit {:start-of-week :monday} "2023-01-02" :week-of-year)))))
@@ -406,6 +413,10 @@
     :month       "2024-02-01T00:00"
     :quarter     "2024-01-01T00:00"
     :year        "2024-01-01T00:00"))
+
+(deftest ^:parallel truncate-string-week-unit-respects-week-config-test
+  (is (= "2024-01-29T00:00"
+         (shared.ut/truncate {:start-of-week :monday} "2024-02-02T12:02:12.345" "week"))))
 
 (deftest ^:parallel truncate-date-test
   (are [unit expected] (= expected
