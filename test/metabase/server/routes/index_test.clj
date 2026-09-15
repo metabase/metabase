@@ -18,6 +18,13 @@
   (testing "no locale at all falls back to english"
     (is (= "en" (#'index/catalogue-locale nil)))))
 
+(deftest ^:parallel locale-scripts-test
+  (testing "deferred, so the parser is not blocked and document order still holds"
+    (is (= "<script defer src=\"app/dist/locale-es-json.abc123.js\"></script>"
+           (#'index/locale-scripts ["app/dist/locale-es-json.abc123.js"]))))
+  (testing "english needs none, and neither does a build that has not run"
+    (is (= "" (#'index/locale-scripts [])))))
+
 (deftest template-locales-test
   (testing "the document names the catalogues to load rather than carrying them"
     (binding [i18n/*user-locale* "es"]
