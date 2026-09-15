@@ -6,7 +6,8 @@
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]))
 
 (defn- lint-query-call [form ns-sym & [filename modules]]
-  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}}}
+  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}
+                                                               :metabase/unmarked-sql-value  {:level :warning}}}
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
@@ -71,3 +72,27 @@
               (lint-query-call '(t2/query {:select [:*]}) 'metabase.metabot.llm.models.db nil modules))))
     (testing "enterprise modules resolve through the metabase-enterprise root"
       (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.sandbox.db nil modules))))))
+
+(deftest ^:parallel unmarked-value-in-a-db-namespace-test
+  (testing "a symbol reaching a value slot is flagged"
+    (is (=? [{:type    :metabase/unmarked-sql-value
+              :message #"`locale` reaches a SQL value slot unmarked.*"}]
+            (lint-query-call '(t2/select :model/X {:where [:= :locale locale]}) 'metabase.foo.db))))
+  (testing "a marked value is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})
+                                 'metabase.foo.db))))
+  (testing "a literal cannot carry a request value and is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale "de"]}) 'metabase.foo.db))))
+  (testing "a column reference is not a value"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :a.id :b.id]}) 'metabase.foo.db))))
+  (testing "values nested under a boolean connective are reached"
+    (is (=? [{:message #"`b`.*"}]
+            (lint-query-call '(t2/select :model/X {:where [:and [:= :x [:auto/param a]] [:= :y b]]})
+                             'metabase.foo.db))))
+  (testing "only db namespaces are linted for unmarked values"
+    (is (empty? (filter #(= :metabase/unmarked-sql-value (:type %))
+                        (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
+                                         'metabase.foo.models.thing)))))
+  (testing "a test source tree is exempt"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
+                                 'metabase.foo.db "test/metabase/foo/db_test.clj")))))

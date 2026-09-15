@@ -74,6 +74,11 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/table-or-field-query                             {:level :warning}
+  ;; Off by default and enabled per namespace under `:config-in-ns`. Most values it can see are ids
+  ;; that Malli already constrains to an integer, so a global warning would be noise on values that
+  ;; were never at risk. A namespace opts in once its own values are marked, which is what keeps
+  ;; them marked.
+  :metabase/unmarked-sql-value                               {:level :off}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -923,6 +928,11 @@
 
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}}}
+
+  ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
+  ;; `metabase.app-db.value-guard`.
+  metabase.content-translation.db
+  {:linters {:metabase/unmarked-sql-value {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
