@@ -10,13 +10,11 @@ export type MappingDraft = {
   name: string;
   // MultiSelect values, so group ids as strings
   groupValues: string[];
-  // set while an existing mapping is being edited
   originalName: string | null;
 };
 
 export type MappingEditorState = {
   draft: MappingDraft | null;
-  // what is wrong with the name, whether a duplicate here or a rejection by the backend
   nameError: string | null;
   canSave: boolean;
   startNew: () => void;
@@ -35,7 +33,6 @@ export function useMappingEditor({
   groupLookup: GroupLookup;
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
-  // why the last submit did not go through, kept until the draft changes
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const trimmedName = draft?.name.trim() ?? "";
@@ -55,7 +52,6 @@ export function useMappingEditor({
     nameError = submitError;
   }
 
-  // a fresh or edited draft starts without a stale failure
   const replaceDraft = (nextDraft: MappingDraft | null) => {
     setSubmitError(null);
     setDraft(nextDraft);

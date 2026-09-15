@@ -99,7 +99,6 @@ const withDescription = (
   return setting?.is_env_setting ? fieldProps : { ...fieldProps, description };
 };
 
-// attribute keys show only their default as a placeholder; env-locked ones show the readOnly notice instead
 const getAttributeFieldProps = (setting: SettingDefinition | undefined) =>
   setting?.is_env_setting
     ? getExtraFormFieldProps(setting)
@@ -113,7 +112,6 @@ export const SettingsLdapForm = () => {
   const [updateLdapSettings] = useUpdateLdapMutation();
   const applicationName = useSelector(getApplicationName);
   const isEnabled = settingValues?.["ldap-enabled"];
-  // the cards that save on their own wait until the host and user search base are saved, as on the JWT page
   const isConfigured = settingValues?.["ldap-configured?"] ?? false;
   const isGroupMappingOn = settingValues?.["ldap-group-sync"] ?? false;
   const schema = useMemo(
@@ -144,7 +142,6 @@ export const SettingsLdapForm = () => {
     );
   }
 
-  // the card opens by itself once an attribute was customized, in the app or through an env var
   const hasCustomAttributes = LDAP_ATTRIBUTE_KEYS.some((key) => {
     const setting = settingDetails[key];
     return setting?.value != null || (setting?.is_env_setting ?? false);
@@ -280,7 +277,6 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </CollapsibleSettingsSection>
-              {/* the switch and the mappings save on their own, only the group fields belong to the form */}
               <LdapGroupMappingSection
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
@@ -319,7 +315,7 @@ export const getFormValues = (
   settingDetails: SettingDefinitionMap,
   settingValues: EnterpriseSettings,
 ): LdapFormValues => {
-  // an unset field stays empty so its default can show as the placeholder, while an env-locked one shows what the env var gives it
+  // unset fields stay empty so the default shows as the placeholder; env-locked ones show the env value
   const storedValue = (key: LdapTextKey): string | null => {
     const setting = settingDetails[key];
     if (setting?.is_env_setting) {

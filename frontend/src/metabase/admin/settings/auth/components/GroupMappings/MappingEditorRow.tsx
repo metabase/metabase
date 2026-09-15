@@ -32,7 +32,6 @@ export function MappingEditorRow({
 }: {
   draft: MappingDraft;
   groupOptions: { value: string; label: string }[];
-  // the provider's word for the name field, since the row does not know whose groups these are
   nameLabel: string;
   namePlaceholder: string;
   submitLabel: string;
@@ -99,7 +98,6 @@ export function MappingEditorRow({
               c="text-secondary"
               className={S.editorArrow}
             />
-            {/* the picker shares the line equally with the name field, and only its pills need more room */}
             <MultiSelect
               flex={1}
               miw="14rem"

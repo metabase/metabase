@@ -1,4 +1,3 @@
-/* the title is the switch's label, so it borrows the switch's pointer */
 .titleLabel {
   cursor: pointer;
 }

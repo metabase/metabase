@@ -55,7 +55,6 @@ export function useMappingDeletion({
     if (cascade == null) {
       return { failureCount: 0 };
     }
-    // the group calls are independent, so they run at once
     const results = await Promise.allSettled(
       cascade.groupIds.map((groupId) =>
         cascade.value === "clear"

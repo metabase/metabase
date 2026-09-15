@@ -27,13 +27,10 @@ export function GroupMappingList({
   groupLookup: GroupLookup;
   editor: MappingEditorState;
   deletion: MappingDeletionState;
-  // hides the row actions while something else owns the mappings, such as an env var
   readOnly: boolean;
-  // blocks the row actions while a write or a cascade is in flight
   disabled: boolean;
   nameLabel: string;
   namePlaceholder: string;
-  // shown in place of the rows while there are none to edit
   emptyMessage: string;
 }) {
   const { draft } = editor;

@@ -36,9 +36,7 @@ import S from "./LdapGroupMappingSection.module.css";
 const LDAP_GROUP_DN_EXAMPLE = "cn=people,ou=groups,dc=example,dc=org";
 
 type LdapGroupMappingSectionProps = {
-  // the group fields of the page form, shown only while group mapping is on
   children: React.ReactNode;
-  // greys the card out until LDAP is configured, since there is nothing to map before that
   disabled?: boolean;
 } & BoxProps;
 
@@ -61,13 +59,12 @@ export function LdapGroupMappingSection({
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
-  // the lock is only known once the settings list has loaded, and a write in flight holds the switch until it lands
+  // the env lock is only known once the settings list has loaded
   const isDisabled =
     disabled || envName != null || isLoading || updateSettingResult.isLoading;
   const isChecked = value ?? false;
 
   const handleChange = async (enabled: boolean) => {
-    // the switch shows the new value right away, and a failed write puts the old one back
     const patch = dispatch(
       settingsApi.util.updateQueryData(
         "getSessionProperties",
@@ -102,7 +99,6 @@ export function LdapGroupMappingSection({
       <Flex justify="space-between" align="flex-start" gap="lg">
         <Box>
           <Title {...SETTINGS_CARD_TITLE_PROPS}>
-            {/* the title doubles as the switch's label, so clicking it toggles too */}
             <Text
               component="label"
               htmlFor={inputId}

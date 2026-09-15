@@ -82,7 +82,6 @@ function MappingRowGroups({
       </Text>
     );
   }
-  // sized by content, so the names only drop under the mapping name when they don't fit
   return (
     <Text flex="1 1 auto" miw={0} className={S.wrappableText}>
       {names.join(", ")}

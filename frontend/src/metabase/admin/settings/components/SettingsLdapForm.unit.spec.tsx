@@ -28,7 +28,6 @@ const GROUPS = [
 const DEFAULT_USER_FILTER =
   "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))";
 
-// the admin list carries the backend defaults, which the page shows as placeholders
 const DEFAULT_DEFINITIONS: SettingDefinition[] = [
   { key: "ldap-user-filter", default: DEFAULT_USER_FILTER },
   { key: "ldap-attribute-email", default: "mail" },
@@ -103,7 +102,6 @@ const setup = async ({
   return { store, settingsStore };
 };
 
-// the group mapping card only comes alive once the host and user search base are saved
 const setupConfigured = (options: Parameters<typeof setup>[0] = {}) =>
   setup({
     ...options,
@@ -150,7 +148,6 @@ describe("SettingsLdapForm", () => {
   } satisfies Partial<EnterpriseSettings>;
 
   it("should submit the correct payload", async () => {
-    // the group fields only show while group mapping is on
     await setupConfigured({ settingValues: { "ldap-group-sync": true } });
 
     await userEvent.type(
@@ -622,7 +619,6 @@ describe("SettingsLdapForm", () => {
       expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
       expect(screen.queryByText("Mapping added")).not.toBeInTheDocument();
 
-      // fixing the name clears the reason and lets the mapping through
       await userEvent.clear(nameInput);
       expect(screen.queryByText(reason)).not.toBeInTheDocument();
       expect(nameInput).not.toBeInvalid();
@@ -677,7 +673,6 @@ describe("SettingsLdapForm", () => {
 
       expect(await screen.findByText("Mapping updated")).toBeInTheDocument();
       const [{ body }] = await findRequests("PUT");
-      // the renamed mapping keeps its place in the list
       expect(body).toEqual({
         "ldap-group-mappings": { [RENAMED_DN]: [3, 4], [OPS_DN]: [4] },
       });

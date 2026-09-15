@@ -145,7 +145,6 @@ describe(
         cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
           "clearGroup",
         );
-        // the card stays disabled until LDAP is configured
         H.setupLdap();
         cy.visit("/admin/settings/authentication/ldap");
       });
@@ -180,7 +179,6 @@ describe(
         cy.button("Cancel").click();
 
         cy.log("The same mappings come back after a reload");
-        // the row assertions retry until the reloaded page has rendered, so there is nothing to wait on
         cy.reload();
         mappingRow("cn=People1").should("contain", "Administrators, nosql");
         mappingRow("cn=People3")
@@ -241,7 +239,6 @@ describe(
       cy.findByRole("switch", { name: "User provisioning" }).should(
         "be.checked",
       );
-      // the card title is a label wired to the hidden switch input
       cy.contains("label", "User provisioning").click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
@@ -321,11 +318,10 @@ const newMappingButton = () =>
 
 const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
-// Mantine hides the switch's input, so the card title, a label wired to it, takes the click
+// Mantine hides the switch input, so the click goes to the title label wired to it
 const clickGroupMappingSwitch = () =>
   groupMappingSection().contains("label", "Group mapping").click();
 
-// the switch saves on its own, so wait for that write before adding mappings
 const turnGroupMappingOn = () => {
   groupMappingSwitch().should("not.be.checked");
   clickGroupMappingSwitch();
@@ -334,7 +330,6 @@ const turnGroupMappingOn = () => {
     .should("deep.equal", { value: true });
 };
 
-// adding a mapping saves it right away, so wait for that write before moving on
 const addMapping = (name, groups) => {
   newMappingButton().click();
   cy.findByLabelText("LDAP group name").type(name);

@@ -10,7 +10,6 @@ import {
   useUpdateSettingsMutation,
 } from "metabase/settings";
 
-// the providers whose mappings live in a plain setting
 export type GroupMappingsSettingKey =
   | "jwt-group-mappings"
   | "ldap-group-mappings"
@@ -22,7 +21,6 @@ export type GroupMappingsSaveResult =
 
 type SaveOptions = {
   successMessage?: string;
-  // the row editor shows a failure under its field, everything else toasts it
   showErrorToast?: boolean;
 };
 
@@ -44,7 +42,6 @@ export function useGroupMappings({
 }): GroupMappingsState {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  // the mutation's own loading flag is the busy state, so no extra bookkeeping around the write
   const [updateSettings, { isLoading: isSaving }] = useUpdateSettingsMutation();
   const mappings = useSetting(settingKey) ?? EMPTY_MAPPINGS;
 
@@ -67,7 +64,6 @@ export function useGroupMappings({
       }
       return { ok: false, error };
     }
-    // show the saved state right away instead of waiting for the settings refetch
     dispatch(
       settingsApi.util.updateQueryData(
         "getSessionProperties",
