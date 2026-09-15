@@ -368,8 +368,9 @@
                      :type        :text
                      :show-when   {:field :hosting :value ollama-self-hosted}
                      :placeholder "http://ollama.your.company:11434/v1"
-                     :help        (deferred-tru (str "Your Ollama server''s address, ending in /v1. Add private "
-                                                     "addresses to MB_LLM_ALLOWED_NETWORKS so Metabase can reach them."))}
+                     :help        (deferred-tru (str "Your Ollama server''s address, ending in /v1. To reach a server "
+                                                     "on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; "
+                                                     "for one on this machine, allow-all."))}
                     {:key   :api-key
                      :label (deferred-tru "API key")
                      :type  :password
