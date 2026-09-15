@@ -43,8 +43,8 @@
 
    - what the MCP resource accepts when RFC 8707 narrowing trims a requested scope
      ([[metabase.oauth-server.core/narrow-scope-to-resource]]);
-   - what the OAuth server will actually grant: while dynamic registration is enabled, a dynamic client's
-     ceiling includes [[metabase.mcp.core/all-scopes]], and `validate-scope` checks requests against that ceiling;
+   - what the OAuth server will actually grant: a dynamic client's ceiling always includes these, and
+     `validate-scope` checks requests against that ceiling;
    - what v2 tools and resources may gate on.
 
    When the challenge drifted ahead of the grant, a client that followed it asked for exactly what it was told
