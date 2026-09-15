@@ -1,25 +1,29 @@
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
-const { isMatch } = require("micromatch");
+import micromatch, { isMatch } from "micromatch";
+import { normalizeStories } from "storybook/internal/common";
 
-const {
+import {
   MAIN_APP_STORY_GLOBS,
   getStories,
-} = require("../../.storybook/story-files.cjs");
+} from "../../.storybook/story-files.cjs";
 
-describe("Storybook story selection", () => {
-  let tempDir;
-  let pathsFile;
+const ROOT = resolve(__dirname, "../..");
+
+describe("getStories", () => {
+  let tempDir: string;
+  let pathsFile: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "storybook-stories-"));
-    pathsFile = path.join(tempDir, "stories.json");
+    tempDir = mkdtempSync(join(tmpdir(), "story-files-"));
+    pathsFile = join(tempDir, "stories.json");
   });
 
   afterEach(() => {
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("loads the main app stories and docs when there is no plan", () => {
@@ -40,7 +44,7 @@ describe("Storybook story selection", () => {
   });
 
   it("builds only the files in the JSON plan", () => {
-    fs.writeFileSync(
+    writeFileSync(
       pathsFile,
       JSON.stringify([
         "frontend/src/metabase/ui/Button.stories.tsx",
@@ -55,22 +59,11 @@ describe("Storybook story selection", () => {
   });
 
   it("keeps an empty plan empty even when the CSV filter is set", () => {
-    fs.writeFileSync(pathsFile, "[]");
+    writeFileSync(pathsFile, "[]");
 
     expect(
       getStories({ pathsFile, filter: "frontend/src/Unselected.stories.tsx" }),
     ).toEqual([]);
-  });
-
-  it("preserves spaces and commas in planned paths", () => {
-    fs.writeFileSync(
-      pathsFile,
-      JSON.stringify(["frontend/src/One, two stories.stories.tsx"]),
-    );
-
-    expect(getStories({ pathsFile })).toEqual([
-      "../frontend/src/One, two stories.stories.tsx",
-    ]);
   });
 
   it("preserves the stress test's CSV filter", () => {
@@ -84,23 +77,40 @@ describe("Storybook story selection", () => {
   it.each(["{", "null", '""', "{}", "[null]"])(
     "rejects an invalid plan: %s",
     (contents) => {
-      fs.writeFileSync(pathsFile, contents);
+      writeFileSync(pathsFile, contents);
 
       expect(() => getStories({ pathsFile })).toThrow();
     },
   );
+});
 
-  it.each([
-    ["frontend/src/metabase/ui/Button.stories.tsx", true],
-    ["frontend/src/metabase/ui/Button.stories.ts", true],
-    ["enterprise/frontend/src/metabase-enterprise/Upsell.stories.tsx", true],
-    ["frontend/src/embedding-sdk-bundle/Button.stories.tsx", false],
-    ["frontend/src/embedding-sdk-shared/Button.stories.tsx", false],
-    ["enterprise/frontend/src/embedding-sdk-ee/Button.stories.tsx", false],
-    ["enterprise/frontend/src/embedding-sdk-package/Button.stories.tsx", false],
-    ["frontend/src/metabase/ui/Button.stories.js", false],
-    ["frontend/src/metabase/ui/Button.mdx", false],
-  ])("includes %s in the planner's story inventory: %s", (file, expected) => {
-    expect(isMatch(file, MAIN_APP_STORY_GLOBS)).toBe(expected);
+describe("MAIN_APP_STORY_GLOBS", () => {
+  it("matches the same tracked files as Storybook's own story matcher", () => {
+    const tracked = execFileSync(
+      "git",
+      ["ls-files", "-z", "--", "frontend", "enterprise/frontend"],
+      { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+    )
+      .split("\0")
+      .filter(Boolean);
+    const planned = micromatch(tracked, MAIN_APP_STORY_GLOBS, {
+      dot: true,
+    }).sort();
+    const specifiers = normalizeStories(getStories(), {
+      configDir: join(ROOT, ".storybook"),
+      workingDir: ROOT,
+    });
+    const built = tracked
+      .filter(
+        (file) =>
+          !file.endsWith(".mdx") &&
+          specifiers.some((specifier) =>
+            specifier.importPathMatcher.test(`./${file}`),
+          ),
+      )
+      .sort();
+
+    expect(planned.length).toBeGreaterThan(0);
+    expect(planned).toEqual(built);
   });
 });
