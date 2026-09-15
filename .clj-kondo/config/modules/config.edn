@@ -2791,7 +2791,10 @@
            sql-tools
            transforms.base
            util}
-   :model-imports #{:model/Database :model/Transform :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Transform
+                    :model/User}}
 
   transforms
   {:team "Graphy"
