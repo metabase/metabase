@@ -33,11 +33,22 @@ import {
   filter,
   useMetabaseQuery,
 } from "@metabase/embedding-sdk-react/data-app";
+import { useState } from "react";
 import { OrdersList } from "../../queries/orders.query";
 
-const { data, isLoading, error } = useMetabaseQuery(OrdersList, {
-  filters: status === "all" ? [] : [filter(orders.fields.status, "=", status)],
-});
+export function Overview() {
+  const [status, setStatus] = useState("all");
+
+  // runtime state goes in the second argument, never into the definition
+  const { data, isLoading, error } = useMetabaseQuery(OrdersList, {
+    filters:
+      status === "all"
+        ? []
+        : [filter(OrdersList.source.fields.status, "=", status)],
+  });
+
+  // ...render a status control that calls setStatus, then data
+}
 ```
 
 Rules:

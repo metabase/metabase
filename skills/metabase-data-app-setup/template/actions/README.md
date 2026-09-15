@@ -21,12 +21,32 @@ export const CreateOrder = defineAction({
 ```tsx
 // src/components/CreateOrderForm.tsx
 import { useAction } from "@metabase/embedding-sdk-react/data-app";
+import type { FormEvent } from "react";
 import { CreateOrder } from "../../actions/orders.action";
 
-const { execute, isExecuting, error } = useAction(CreateOrder);
+export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
+  const { execute, isExecuting, error } = useAction(CreateOrder);
 
-// keys and value types come from the action's parameters
-await execute({ status: "paid" });
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      // keys and value types come from the action's parameters
+      await execute({ status: "paid" });
+      onCreated();
+    } catch {
+      // the failure is also in `error`, rendered below
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit}>
+      <button type="submit" disabled={isExecuting}>
+        Create order
+      </button>
+      {error && <p>{error.data.message}</p>}
+    </form>
+  );
+}
 ```
 
 Rules:
