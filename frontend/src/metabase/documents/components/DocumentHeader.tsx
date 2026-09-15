@@ -34,8 +34,8 @@ import type { Document } from "metabase-types/api";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
-import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },

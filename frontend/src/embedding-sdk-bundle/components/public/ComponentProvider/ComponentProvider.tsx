@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
@@ -22,9 +22,9 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import type { MetabaseProviderPropsStoreInternalProps } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/settings";

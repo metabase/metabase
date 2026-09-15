@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { Ellipsified } from "metabase/ui";
 import {
   Box,
   Card,
+  Ellipsified,
   SimpleGrid,
   Stack,
   Text,

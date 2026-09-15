@@ -9,12 +9,12 @@ import {
   useUpdateEmbeddingThemeMutation,
 } from "metabase/api/embedding-theme";
 import { useToast } from "metabase/common/hooks";
-import { useDefaultEmbeddingThemeSettings } from "metabase/embedding/themes/hooks/use-default-embedding-theme-settings";
 import type {
   ChartColor,
   MetabaseColor,
   MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
+import { useDefaultEmbeddingThemeSettings } from "metabase/embedding/themes/hooks/use-default-embedding-theme-settings";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useSetting } from "metabase/settings";

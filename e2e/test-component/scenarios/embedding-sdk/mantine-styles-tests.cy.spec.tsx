@@ -1,11 +1,9 @@
 // To apply cypress-level mantine styles
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-
 // Mimics behavior when an app adds its own styles
 // We need to do it before importing the SDK
 import "e2e/support/helpers/embedding-sdk-helpers/host-app-styles.css";
-
 import { Button, MantineProvider, Title } from "@mantine/core";
 import {
   InteractiveQuestion,

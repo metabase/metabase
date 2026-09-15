@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
 import {
   useCompletedSetupGuideSteps,
   useSetupGuideModals,
@@ -13,7 +14,6 @@ import type {
   SetupGuideModalToTrigger,
   SetupGuideStepId,
 } from "metabase/embedding/setup-guide/types/setup-guide";
-import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";

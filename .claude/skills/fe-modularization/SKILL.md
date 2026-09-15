@@ -39,7 +39,7 @@ what and who may depend on whom.**
 | module elements, tiers, `enforceSharedTiers`, `enforcePublicApi` | `frontend/lint/module-boundaries.mjs` |
 | shared sub-tiers and levels, cluster rules | `frontend/lint/shared-tiers.mjs` |
 | standalone boundaries lint (all violations, incl. grandfathered) | `bun run module-boundaries` (config `eslint.config.module-boundaries.mjs`) |
-| PR lint (only enforced modules fail CI) | `bun run lint-eslint-pure` |
+| PR lint (only enforced modules fail CI) | `bun run lint-oxlint-pure` |
 | side-effect-free directories and their exceptions | `frontend/build/shared/rspack/side-effect-free-modules.js` (`SIDE_EFFECT_FREE_PATHS`, `SIDE_EFFECT_PATHS`) |
 | the lint rules that enforce that promise | `metabase/no-module-side-effects`, `metabase/no-base-api-access` in `frontend/lint/eslint-plugin-metabase/rules/` |
 | public-api enforcement | `metabase/enforce-module-public-api` rule, driven by `getPublicApiModules()` |
@@ -199,7 +199,7 @@ prefix; never generic `-shared` / `-feature` suffixes.
    ```
    grep -rn "<old path>" frontend enterprise/frontend e2e        # must be empty
    bunx eslint --no-warn-ignored <touched files>
-   bun run lint-eslint-pure                                       # enforce-module-public-api included
+   bun run lint-oxlint-pure                                       # enforce-module-public-api included
    bun run type-check-pure
    bun run test-unit-keep-cljs <touched folders' specs>
    bun run module-boundaries 2>&1 | tail -1                       # after; no violation may name the new files

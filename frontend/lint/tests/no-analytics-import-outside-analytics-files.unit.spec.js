@@ -1,14 +1,8 @@
-import { RuleTester } from "eslint";
-import tseslint from "typescript-eslint";
-
 import rule from "../eslint-plugin-metabase/rules/no-analytics-import-outside-analytics-files";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    parser: tseslint.parser,
-    sourceType: "module",
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const errorMessage =
   /is only allowed in files named "analytics" or inside an "analytics\/" directory/;
