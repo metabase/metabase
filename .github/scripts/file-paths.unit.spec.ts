@@ -49,9 +49,9 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
-      expect(
-        matches(name, ".clj-kondo/config/modules/ratchets.edn"),
-      ).toBe(false);
+      expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
+        false,
+      );
       expect(matches(name, ".clj-kondo/config.edn")).toBe(true);
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
     },
