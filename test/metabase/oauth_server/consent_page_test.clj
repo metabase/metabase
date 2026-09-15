@@ -200,6 +200,18 @@
   (testing "no always-granted note when nothing is locked"
     (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))
 
+(deftest consent-page-pre-ticked-checkbox-test
+  (testing "GHY-4555: a `:checked?` scope starts ticked but stays enabled, so the user can untick it"
+    (let [html        (render-with-scopes! [{:scope "agent:content:read" :description "Read content" :locked? true}
+                                            {:scope "agent:content:write" :description "Write content" :checked? true}
+                                            {:scope "agent:sql:run" :description "Run SQL"}])
+          [_ held sql] (checkbox-tags html)]
+      (is (tag-has-attribute? held "checked"))
+      (is (not (tag-has-attribute? held "disabled")))
+      (is (not (tag-has-attribute? sql "checked")))
+      (is (not (re-find #"(?s)value=\"agent:content:write\"(?:(?!</li>).)*Always granted" html))
+          "a pre-ticked scope is not labelled always granted"))))
+
 (deftest consent-page-full-access-warning-placement-test
   (testing "GHY-4555: the full-access warning sits in the full-access scope's own row, next to its checkbox"
     (let [html (render-with-scopes! checkbox-scopes)]

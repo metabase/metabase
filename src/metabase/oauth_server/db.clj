@@ -150,6 +150,27 @@
   [token :- :string]
   (t2/select-one :model/OAuthRefreshToken :token token :revoked_at nil))
 
+(mu/defn live-access-tokens-for-user
+  "The OAuthAccessTokens of the User with `user-id` that are unrevoked and unexpired at `now` (epoch millis)."
+  [user-id :- ::lib.schema.id/user
+   now     :- ms/PositiveInt]
+  (t2/select :model/OAuthAccessToken :user_id user-id :revoked_at nil :expiry [:> now]))
+
+(mu/defn live-refresh-tokens-for-user
+  "The OAuthRefreshTokens of the User with `user-id` that are unrevoked and unexpired at `now` (epoch millis). A token
+  with no expiry never expires."
+  [user-id :- ::lib.schema.id/user
+   now     :- ms/PositiveInt]
+  (t2/select :model/OAuthRefreshToken {:where [:and
+                                               [:= :user_id user-id]
+                                               [:= :revoked_at nil]
+                                               [:or [:= :expiry nil] [:> :expiry now]]]}))
+
+(mu/defn oauth-clients
+  "The OAuthClients whose `client_id` is in the non-empty `client-ids`."
+  [client-ids :- [:sequential {:min 1} :string]]
+  (t2/select :model/OAuthClient :client_id [:in client-ids]))
+
 (mu/defn revoke-access-token!
   "Revoke the OAuthAccessToken `token`, returning the number revoked."
   [token :- :string]

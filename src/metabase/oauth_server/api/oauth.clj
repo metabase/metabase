@@ -10,6 +10,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.held-scopes :as held-scopes]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -116,12 +117,13 @@
   (some-> scope-param str str/trim not-empty (str/split #"\s+")))
 
 (defn- requested-scope-descriptions
-  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?}` maps
-   for the consent page, so the user sees exactly what the client is asking for. Scopes in [[consent-scope-order]]
-   come first in that order, then the rest in request order. `:locked?` marks an MCP baseline scope, which is always
-   granted. Falls back to the raw scope string when a scope has no registered human-readable description. Returns nil
-   when no scope was requested."
-  [scope-param]
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?
+   :checked?}` maps for the consent page, so the user sees exactly what the client is asking for. Scopes in
+   [[consent-scope-order]] come first in that order, then the rest in request order. `:locked?` marks an MCP baseline
+   scope, which is always granted. `:checked?` marks a scope in `held` (a set), which starts ticked. Falls back to the
+   raw scope string when a scope has no registered human-readable description. Returns nil when no scope was
+   requested."
+  [scope-param held]
   (when-let [scopes (some-> (scope-tokens scope-param) distinct seq)]
     (let [rank     (zipmap consent-scope-order (range))
           baseline (set (mcp/v2-baseline-scopes))]
@@ -134,7 +136,8 @@
                     ;; Flag the broad first-party grant so the consent page can warn about it without
                     ;; hardcoding the scope string in the view.
                     :full-access? (= s oauth-server/full-access-scope)
-                    :locked?      (contains? baseline s)}))))))
+                    :locked?      (contains? baseline s)
+                    :checked?     (contains? held s)}))))))
 
 (defn- form-values
   "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."
@@ -363,7 +366,12 @@
                                                             :nonce        (:nonce request)
                                                             :csrf-token   csrf-token
                                                             :params-sig   params-sig
-                                                            :scopes       (requested-scope-descriptions (:scope oauth-params))
+                                                            :scopes       (requested-scope-descriptions
+                                                                           (:scope oauth-params)
+                                                                           (held-scopes/held-scopes
+                                                                            (:metabase-user-id request)
+                                                                            (:client_id parsed)
+                                                                            (:redirect_uri parsed)))
                                                             :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e

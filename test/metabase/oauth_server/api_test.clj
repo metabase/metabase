@@ -1681,3 +1681,131 @@
             (is (seq header-nonce) "the CSP header's script-src carries a nonce")
             (is (seq body-nonce) "the page has a nonce'd script tag")
             (is (= header-nonce body-nonce))))))))
+
+;;; ------------------------------------------ Pre-ticking held scopes -------------------------------------------
+
+(defn- register-app-client!
+  "Register a confidential DCR client named `client-name` whose only redirect is `redirect-uri`. Returns the
+  registration response."
+  [client-name redirect-uri]
+  (register-client! {:redirect_uris              [redirect-uri]
+                     :client_name                client-name
+                     :token_endpoint_auth_method "client_secret_basic"}))
+
+(defn- consent-page-at!
+  "GET `/oauth/authorize` as `user` for `client-id` redirecting to `redirect-uri`, requesting `scope` (every v2 scope by
+  default) against the canonical MCP resource. Returns the full 200 response."
+  ([user client-id redirect-uri]
+   (consent-page-at! user client-id redirect-uri all-v2-scopes))
+  ([user client-id redirect-uri scope]
+   ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
+   (mt/user-http-request user :get 200 "api/user/current")
+   (mt/user-http-request-full-response
+    user :get 200 "oauth/authorize"
+    :client_id     client-id
+    :redirect_uri  redirect-uri
+    :response_type "code"
+    :scope         scope
+    :resource      (mcp-resource-uri)
+    :state         "test-state")))
+
+(defn- insert-token!
+  "Insert a `model` (`:model/OAuthAccessToken` or `:model/OAuthRefreshToken`) row for `user` on `client-id` holding
+  `scopes`, live for an hour unless `overrides` say otherwise."
+  [model user client-id scopes & {:as overrides}]
+  (t2/insert! model (merge {:token     (str (random-uuid))
+                            :user_id   (mt/user->id user)
+                            :client_id client-id
+                            :scope     (vec scopes)
+                            :expiry    (+ (System/currentTimeMillis) (* 60 60 1000))}
+                           overrides)))
+
+(defn- checkbox-states
+  "`scope` -> `[checked? disabled?]` for each scope checkbox on the consent page in `response`."
+  [response]
+  (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes (:body response))))
+
+(def ^:private baseline-locked
+  {"agent:resource:read" [true true]
+   "agent:content:read"  [true true]
+   "agent:query:run"     [true true]})
+
+(deftest consent-page-pre-ticks-scopes-the-client-holds-test
+  (testing (str "GHY-4555: a step-up asks for held plus required scopes. A scope a live token of the same client "
+                "already holds starts ticked but can be unticked, so ticking only the new scope does not silently "
+                "drop the held one. The baseline stays locked and everything else starts unticked.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect            "https://example.com/callback"
+              {:keys [client_id]} (register-app-client! "Step-up Client" redirect)]
+          (insert-token! :model/OAuthAccessToken :crowberto client_id
+                         (conj v2-baseline-scope-set "agent:content:write"))
+          (is (= (merge baseline-locked
+                        {"agent:content:write"  [true false]
+                         "agent:sql:run"        [false false]
+                         "agent:delivery:write" [false false]})
+                 (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
+
+(deftest consent-page-pre-ticks-only-live-tokens-of-this-user-test
+  (testing (str "GHY-4555: only unexpired, unrevoked tokens of the authorizing user count. A live refresh token counts "
+                "even when its access token has expired.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect            "https://example.com/callback"
+              {:keys [client_id]} (register-app-client! "Step-up Client" redirect)
+              an-hour-ago         (.toEpochMilli (.minusSeconds (java.time.Instant/now) 3600))]
+          (insert-token! :model/OAuthAccessToken :crowberto client_id ["agent:content:write"] :expiry an-hour-ago)
+          (insert-token! :model/OAuthRefreshToken :crowberto client_id ["agent:content:write"] :expiry an-hour-ago)
+          (insert-token! :model/OAuthAccessToken :crowberto client_id ["agent:delivery:write"]
+                         :revoked_at (java.time.OffsetDateTime/now))
+          (insert-token! :model/OAuthRefreshToken :crowberto client_id ["agent:delivery:write"]
+                         :revoked_at (java.time.OffsetDateTime/now))
+          (insert-token! :model/OAuthAccessToken :rasta client_id ["agent:delivery:write" "agent:content:write"])
+          (insert-token! :model/OAuthRefreshToken :crowberto client_id ["agent:sql:run"] :expiry nil)
+          (is (= (merge baseline-locked
+                        {"agent:content:write"  [false false]
+                         "agent:sql:run"        [true false]
+                         "agent:delivery:write" [false false]})
+                 (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
+
+(deftest consent-page-pre-ticks-scopes-the-same-app-holds-test
+  (testing (str "GHY-4555: clients that re-register on every step-up still count as the same app. A new client matches "
+                "a token's client on an exact https redirect, or on a loopback redirect's host, path and client name "
+                "with any port. A name alone never matches.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (doseq [{:keys [desc holder requester pre-ticked?]}
+              [{:desc        "the Claude connector: a new client on the same https redirect"
+                :holder      ["Claude" "https://claude.ai/api/mcp/auth_callback"]
+                :requester   ["Claude" "https://claude.ai/api/mcp/auth_callback"]
+                :pre-ticked? true}
+               {:desc        "Claude Code: the same loopback host, path and name on a different port"
+                :holder      ["Claude Code (metabase)" "http://localhost:33418/callback"]
+                :requester   ["Claude Code (metabase)" "http://localhost:51234/callback"]
+                :pre-ticked? true}
+               {:desc        "Codex: the same 127.0.0.1 path and name on a different port"
+                :holder      ["Codex" "http://127.0.0.1:1455/callback/Zm9vYmFy"]
+                :requester   ["Codex" "http://127.0.0.1:61000/callback/Zm9vYmFy"]
+                :pre-ticked? true}
+               {:desc        "the same loopback path under a different client name"
+                :holder      ["Claude Code (metabase)" "http://localhost:33418/callback"]
+                :requester   ["Some Other Tool" "http://localhost:51234/callback"]
+                :pre-ticked? false}
+               {:desc        "a client named Claude on a different redirect"
+                :holder      ["Claude" "https://claude.ai/api/mcp/auth_callback"]
+                :requester   ["Claude" "https://example.com/callback"]
+                :pre-ticked? false}]]
+        (testing desc
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (let [holder-client    (apply register-app-client! holder)
+                  requester-client (apply register-app-client! requester)]
+              (insert-token! :model/OAuthAccessToken :crowberto (:client_id holder-client)
+                             (conj v2-baseline-scope-set "agent:content:write"))
+              (is (= (merge baseline-locked
+                            {"agent:content:write"  [pre-ticked? false]
+                             "agent:sql:run"        [false false]
+                             "agent:delivery:write" [false false]})
+                     (checkbox-states (consent-page-at! :crowberto (:client_id requester-client)
+                                                        (second requester))))))))))))
