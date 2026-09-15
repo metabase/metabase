@@ -54,7 +54,7 @@ export function DateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(timeConfig, value);
-  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
+  const outOfBounds = isOutOfBounds(timeConfig, value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {

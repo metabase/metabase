@@ -3,6 +3,7 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
+import type { TimeConfig } from "metabase-lib";
 
 import { CURRENT_TAB, LAST_TAB, NEXT_TAB } from "./constants";
 import type { Tab } from "./types";
@@ -211,6 +212,7 @@ describe("getAvailableTabs", () => {
 });
 
 describe("isOutOfBounds", () => {
+  const timeConfig: TimeConfig = { "start-of-week": "sunday" };
   const past = (days: number): RelativeDatePickerValue => ({
     type: "relative",
     value: -days,
@@ -228,35 +230,59 @@ describe("isOutOfBounds", () => {
   });
 
   it("is in bounds when no min or max is set", () => {
-    expect(isOutOfBounds(past(365))).toBe(false);
+    expect(isOutOfBounds(timeConfig, past(365))).toBe(false);
   });
 
   it("is out of bounds when a past range starts before minDate", () => {
-    expect(isOutOfBounds(past(365), new Date(2026, 0, 1))).toBe(true);
-  });
-
-  it("is in bounds when a past range starts on or after minDate", () => {
-    expect(isOutOfBounds(past(7), new Date(2026, 0, 1))).toBe(false);
-  });
-
-  it("is out of bounds when a future range ends after maxDate", () => {
-    expect(isOutOfBounds(future(365), undefined, new Date(2026, 1, 1))).toBe(
+    expect(isOutOfBounds(timeConfig, past(365), new Date(2026, 0, 1))).toBe(
       true,
     );
   });
 
-  it("is in bounds when a future range ends on or before maxDate", () => {
-    expect(isOutOfBounds(future(7), undefined, new Date(2026, 2, 1))).toBe(
+  it("is in bounds when a past range starts on or after minDate", () => {
+    expect(isOutOfBounds(timeConfig, past(7), new Date(2026, 0, 1))).toBe(
       false,
     );
+  });
+
+  it("is out of bounds when a future range ends after maxDate", () => {
+    expect(
+      isOutOfBounds(timeConfig, future(365), undefined, new Date(2026, 1, 1)),
+    ).toBe(true);
+  });
+
+  it("is in bounds when a future range ends on or before maxDate", () => {
+    expect(
+      isOutOfBounds(timeConfig, future(7), undefined, new Date(2026, 2, 1)),
+    ).toBe(false);
   });
 
   it("respects offsetValue and offsetUnit when checking minDate", () => {
     expect(
       isOutOfBounds(
+        timeConfig,
         { ...past(7), offsetValue: -365, offsetUnit: "day" },
         new Date(2026, 0, 1),
       ),
     ).toBe(true);
+  });
+
+  it("uses the configured start of week", () => {
+    const currentWeek: RelativeDatePickerValue = {
+      type: "relative",
+      value: 0,
+      unit: "week",
+    };
+
+    expect(
+      isOutOfBounds(
+        { "start-of-week": "monday" },
+        currentWeek,
+        new Date(2026, 0, 26),
+      ),
+    ).toBe(false);
+    expect(isOutOfBounds(timeConfig, currentWeek, new Date(2026, 0, 26))).toBe(
+      true,
+    );
   });
 });

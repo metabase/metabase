@@ -112,6 +112,7 @@
 
 (defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   `time-config` must contain `:start-of-week` as a weekday keyword.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
   ([time-config n unit]
