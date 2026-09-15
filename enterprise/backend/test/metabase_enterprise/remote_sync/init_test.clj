@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.init-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -108,7 +109,7 @@
 (defn- glossary-rso-count []
   (t2/count :model/RemoteSyncObject :model_type "Glossary"))
 
-(defn- do-with-untracked-glossary-entry
+(defn- do-with-untracked-glossary-entry!
   "Runs `f` with one glossary entry and no Glossary ledger rows, under `remote-sync-type` `sync-type`."
   [sync-type f]
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
@@ -124,7 +125,7 @@
 (deftest remote-sync-init-backfills-glossary-tracking-test
   (testing "Read-write with a synced Library tracks every untracked glossary entry as 'create', once"
     (collections.tu/with-library-synced
-      (do-with-untracked-glossary-entry
+      (do-with-untracked-glossary-entry!
        :read-write
        (fn [entry]
          (#'init/remote-sync-init)
@@ -138,12 +139,12 @@
 (deftest remote-sync-init-glossary-backfill-skips-when-already-tracked-test
   (testing "An existing Glossary ledger row means the ledger is authoritative, so nothing is inserted"
     (collections.tu/with-library-synced
-      (do-with-untracked-glossary-entry
+      (do-with-untracked-glossary-entry!
        :read-write
        (fn [entry]
          (mt/with-temp [:model/Glossary tracked {:term "MRR" :definition "Monthly recurring revenue"}]
            (t2/insert! :model/RemoteSyncObject {:model_type "Glossary" :model_id (:id tracked) :model_name "MRR"
-                                                :status "synced" :status_changed_at (java.time.OffsetDateTime/now)})
+                                                :status "synced" :status_changed_at (t/offset-date-time)})
            (#'init/remote-sync-init)
            (is (= 1 (glossary-rso-count)))
            (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry))))))))))
@@ -151,7 +152,7 @@
 (deftest remote-sync-init-glossary-backfill-skips-read-only-test
   (testing "A read-only instance is not backfilled"
     (collections.tu/with-library-synced
-      (do-with-untracked-glossary-entry
+      (do-with-untracked-glossary-entry!
        :read-only
        (fn [_entry]
          (#'init/remote-sync-init)
@@ -160,7 +161,7 @@
 (deftest remote-sync-init-glossary-backfill-skips-unsynced-library-test
   (testing "Glossary entries are only tracked when the Library is synced"
     (collections.tu/with-library-not-synced
-      (do-with-untracked-glossary-entry
+      (do-with-untracked-glossary-entry!
        :read-write
        (fn [_entry]
          (#'init/remote-sync-init)

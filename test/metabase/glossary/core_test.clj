@@ -4,16 +4,30 @@
    [metabase.events.core :as events]
    [metabase.glossary.core :as glossary.core]
    [metabase.test :as mt]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;; `publish-event!` is a methodical multimethod, so capture events with a handler on a test-only parent topic
+;; rather than by redefining the var (see the docstring of [[metabase.events.impl/publish-event!]]).
+
+(def ^:private ^:dynamic *events* nil)
+
+(events/derive! ::glossary-test-event :metabase/event)
+(events/derive! :event/glossary-create ::glossary-test-event)
+(events/derive! :event/glossary-update ::glossary-test-event)
+(events/derive! :event/glossary-delete ::glossary-test-event)
+
+(methodical/defmethod events/publish-event! ::glossary-test-event
+  [topic event]
+  (when *events*
+    (swap! *events* conj {:topic topic :event event})))
+
 (defn- with-captured-events!
-  "Call `f` with event publishing captured. Returns `{:result (f) :events [{:topic :event} ...]}`."
+  "Call `f` with glossary events captured. Returns `{:result (f) :events [{:topic :event} ...]}`."
   [f]
-  (let [events (atom [])]
-    (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                        (swap! events conj {:topic topic :event event}))]
-      {:result (f)
-       :events @events})))
+  (binding [*events* (atom [])]
+    {:result (f)
+     :events @*events*}))
 
 (deftest create-entry-test
   (mt/with-model-cleanup [:model/Glossary]
