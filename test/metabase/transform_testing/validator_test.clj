@@ -46,6 +46,17 @@
     (is (= "PEOPLE" (validator/table-label {:schema nil :name "PEOPLE"})))
     (is (= "PUBLIC.PEOPLE" (validator/table-label {:schema "PUBLIC" :name "PEOPLE"})))))
 
+(deftest missing-inputs-schema-direction-test
+  (testing "a qualified reference matches a declared input in the same explicit schema"
+    (is (= [] (validator/missing-inputs
+               :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "PEOPLE"}}))))
+  (testing "schema defaulting is one-directional and fails closed: a DEFAULT-SCHEMA-qualified
+            reference is NOT covered by a bare-declared input — the author must qualify the input.
+            Safe (errs toward rejection, never a false pass); strict by design for LLM authors."
+    (is (= [{:schema "PUBLIC" :name "PEOPLE"}]
+           (validator/missing-inputs
+            :h2 [(sql-input nil "PEOPLE")] #{{:schema "PUBLIC" :name "PEOPLE"}})))))
+
 (deftest missing-inputs-name-mismatch-test
   (testing "same schema, different name is not a match"
     (is (= [{:schema "PUBLIC" :name "ORDERS"}]
