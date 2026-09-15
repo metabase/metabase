@@ -82,7 +82,6 @@
   "import/export": "import-js/export",
   "import/no-duplicates": "import/no-duplicates",
   "import/no-default-export": "import/no-default-export",
-  "import/order": "import-js/order",
   "sort-imports": "sort-imports",
   "react/display-name": "react/display-name",
   "react/jsx-key": "react/jsx-key",
