@@ -19,6 +19,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]

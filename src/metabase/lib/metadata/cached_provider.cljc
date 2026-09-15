@@ -10,9 +10,14 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [update-keys get-in #?(:clj doseq)]]))
 
 #?(:clj (set! *warn-on-reflection* true))
+
+(mr/def ::cache
+  "An atom used to memoize metadata lookups."
+  [:fn {:error/message "an atom"} #(instance? #?(:clj clojure.lang.IAtom :cljs cljs.core/IAtom) %)])
 
 (defn- get-in-cache [cache ks]
   (when-some [cached-value (get-in @cache ks)]
@@ -26,7 +31,7 @@
       value)))
 
 (mu/defn- store-metadata!
-  [cache
+  [cache         :- ::cache
    metadata-type :- ::lib.schema.metadata/type
    id            :- pos-int?
    metadata      :- [:multi
@@ -126,7 +131,9 @@
     (into [] (mapcat #(get-in-cache cache (cache-key %))) (sort table-ids))))
 
 (mu/defn- metadatas
-  [cache uncached-provider {metadata-type :lib/type, id-set :id, name-set :name, table-ids :table-ids, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  [cache             :- ::cache
+   uncached-provider :- ::lib.metadata.protocols/metadata-provider
+   {metadata-type :lib/type, id-set :id, name-set :name, table-ids :table-ids, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (cond
     (or id-set name-set)
     (metadatas-by-id-or-name cache uncached-provider metadata-spec)

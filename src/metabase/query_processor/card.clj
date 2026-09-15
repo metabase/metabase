@@ -9,8 +9,10 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
@@ -68,7 +70,7 @@
   (mapv (fn [{:keys [target], :as parameter}]
           (cond-> parameter
             (:stage-number (lib/parameter-target-dimension-options target))
-            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -1)))
+            (update :target lib/update-parameter-target-dimension-options #(assoc % :stage-number -1))))
         parameters))
 
 (mu/defn- last-stage-number
@@ -83,7 +85,7 @@
             (and (= param-type :temporal-unit)
                  (lib/parameter-target-is-dimension? target)
                  (nil? (:stage-number (lib/parameter-target-dimension-options target))))
-            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -2)))
+            (update :target lib/update-parameter-target-dimension-options #(assoc % :stage-number -2))))
         parameters))
 
 (mu/defn query-for-card :- [:maybe ::lib.schema/query]
@@ -92,9 +94,11 @@
     card-type     :type
     :as           card} :- ::queries.schema/card
    parameters  :- [:maybe ::parameters.schema/parameters]
-   constraints :- [:maybe :map]
-   middleware  :- [:maybe :map]
-   & [ids]]
+   constraints :- [:maybe ::lib.schema.constraints/constraints]
+   middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
+   & [ids] :- [:* [:maybe [:map {:closed true}
+                           [:dashboard-id {:optional true} [:maybe ::lib.schema.id/dashboard]]
+                           [:dashcard-id  {:optional true} [:maybe ::lib.schema.id/dashcard]]]]]]
   (when (seq dataset-query)
     (let [stage-numbers           (explict-stage-references parameters)
           explicit-stage-numbers? (boolean (seq stage-numbers))
@@ -387,13 +391,24 @@
   `card-transform` is applied after the Card read check and must preserve the Card's identity. Result metadata from a
   transformed query is returned but not persisted to the Card."
   [card :- ::queries.schema/card
-   export-format
+   export-format :- ::qp.schema/export-format
    & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
-             make-run    process-query-for-card-default-run-fn}}]
+             make-run    process-query-for-card-default-run-fn}}
+   :- [:maybe [:map {:closed true}
+               [:parameters     {:optional true} [:maybe ::parameters.schema/parameters-with-optional-types]]
+               [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+               [:context        {:optional true} [:maybe ::lib.schema.info/context]]
+               [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
+               [:dashcard       {:optional true} [:maybe [:ref :metabase.dashboards.schema/dashboard-card]]]
+               [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+               [:qp             {:optional true} [:maybe ifn?]]
+               [:make-run       {:optional true} [:maybe ifn?]]
+               [:ignore-cache   {:optional true} [:maybe :boolean]]
+               [:card-transform {:optional true} [:maybe ifn?]]]]]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
         stored-query (:dataset_query card)
@@ -403,7 +418,7 @@
                       (assoc :skip-result-metadata-persistence? true))
         card-id     (:id card)
         dashcard-id (:id dashcard)
-        parameters  (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
+        parameters  (some->> parameters (lib/normalize ::parameters.schema/parameters-with-optional-types))
         parameters  (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz    (when (and (not= context :question) dashcard)
                       (:visualization_settings dashcard))
@@ -415,6 +430,7 @@
                       (or qp process-query-for-card-default-qp))
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                        api/check-404
                         (assoc :viz-settings merged-viz)
                         (update :middleware (fn [middleware]
                                               (merge

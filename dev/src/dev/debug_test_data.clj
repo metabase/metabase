@@ -22,7 +22,7 @@
 (mu/defn ->dbdef :- [:map [:database-name :string]]
   "Coerce something to a Database Definition. Can resolve string symbols from the current namespace or
   from [[metabase.test.data.dataset-definitions]]."
-  [dbdeffable]
+  [dbdeffable :- [:or :symbol tx/ValidDatabaseDefinition]]
   (if (symbol? dbdeffable)
     (->dbdef (data.impl/resolve-dataset-definition (symbol (ns-name *ns*)) dbdeffable))
     (tx/get-dataset-definition dbdeffable)))
@@ -30,7 +30,8 @@
 (mu/defn ->tabledef :- [:map [:table-name :string]]
   "Coerce something to a Table Definition. You can pass in a string table name to find the matching table from a
   Database Definition."
-  [dbdeffable tabledeffable]
+  [dbdeffable    :- [:or :symbol tx/ValidDatabaseDefinition]
+   tabledeffable :- [:or :string tx/ValidTableDefinition]]
   (cond
     (and (map? tabledeffable)
          (:table-name tabledeffable))

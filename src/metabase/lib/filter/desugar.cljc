@@ -8,6 +8,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.simplify-compound :as lib.filter.simplify-compound]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -299,7 +300,7 @@
 (mu/defn- temporal-case-expression :- :mbql.clause/case
   "Creates a `:case` expression with a condition for each value of the given unit."
   [expr :- ::clause
-   opts :- :map
+   opts :- ::lib.schema.common/options
    unit :- :keyword
    n    :- :int]
   (let [user-locale #?(:clj  (i18n/user-locale)

@@ -7,13 +7,10 @@
 
 (mr/def ::glossary
   "A Glossary as selected from the app DB: every column of `:glossary`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:term       :string]
-   [:definition :string]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:creator_id ::lib.schema.id/user]])
+  [:merge
+   ::glossary.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::glossary.update
   "What an update (or insert) of a Glossary accepts: every column of `:glossary` except `id`, all optional."

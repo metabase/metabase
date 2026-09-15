@@ -1,5 +1,6 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
+   [metabase.dashboards.schema]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

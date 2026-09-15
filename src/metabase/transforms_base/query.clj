@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.db :as transforms-base.db]
@@ -43,7 +44,7 @@
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]
    ;; Declared target indexes. `compile-transform` inlines the ones it can into the CTAS (e.g. Redshift SORTKEY,
    ;; ClickHouse ORDER BY); the rest are created standalone.
-   [:indexes {:optional true} [:sequential :map]]])
+   [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]])
 
 (mr/def ::transform-opts
   [:map

@@ -335,16 +335,10 @@
   [:enum {:decode/normalize keyword} :aggregation :fields :breakout :native])
 
 (mr/def ::column.snapshot
-  "A whole column metadata map stashed on *another* column under one of the internal keys below.
-
-  Deliberately NOT `[:ref ::column]`: [[malli.util/merge]] recurses into the entries that the two schemas being merged
-  share, so a self-referential `::column` entry makes any `[:merge ...]` of two column-bearing maps -- for instance
-  `:metabase.lib.schema.drill-thru/drill-thru.column-filter`, which merges two maps that both have a `:column` --
-  recur until the stack blows. This shallow shape says what the value is without reintroducing the cycle."
-  [:map
-   [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
-   [:name      :string]
-   [:base-type {:optional true} ::lib.schema.common/base-type]])
+  "A whole column metadata map stashed on *another* column under one of the internal keys below: the same shape as
+  [[::column]] minus the `:and`-level constraints, so validating the stashed copy does not re-run those constraints
+  against the column it was copied from."
+  [:ref ::column.map])
 
 (mr/def ::column.timestamp
   "A timestamp column of a `metabase_field` row: a `java.time` value on the JVM, the string it was encoded as elsewhere."
@@ -389,6 +383,301 @@
    [:max-value        {:optional true} [:maybe number?]]
    [:max_value        {:optional true} [:maybe number?]]])
 
+(def ^:private column-map
+  [:map
+   {:closed           true
+    :error/message    "Valid column metadata"
+    :decode/normalize normalize-column
+    :decode/api       lib.schema.common/remove-internal-keys
+    :encode/serialize lib.schema.common/remove-internal-keys}
+   [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
+   ;;
+   ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
+   ;; in [[metabase.legacy-mbql.schema]] so we can generate this documentation from this schema or whatever.
+   ;;
+   ;; column names are allowed to be empty strings in SQL Server :/
+   ;;
+   ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's
+   ;; the `:lib/original-name` or `:lib/deduplicated-name`, and it might be either one depending on where the metadata
+   ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
+   [:name      :string]
+   ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
+   [:base-type {:default :type/*} ::lib.schema.common/base-type]
+   ;; This is nillable because internal remap columns have `:id nil`.
+   [:id             {:optional true} [:maybe ::lib.schema.id/field]]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
+   [:database-type  {:optional true} [:maybe :string]]
+   [:active         {:optional true} :boolean]
+   [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
+   [:data-sensitivity {:optional true} [:maybe ::column.data-sensitivity]]
+   ;; if this is a field from another table (implicit join), this is the field in the current table that should be
+   ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
+   ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
+   ;; `:source-field`.
+   [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
+   ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
+   ;; referenced by a name, normally when it's coming from a card or a previous query stage.
+   [:fk-field-name {:optional true} [:maybe :string]]
+   ;; if this is a field from another table (implicit join), this is the join alias of the source field.
+   [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+   ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
+   ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
+   ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
+   [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
+   ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
+   ;; allowed to join on the results of something else)
+   [:lib/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+   ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
+   ;; from a previous stage.
+   ;;
+   ;; What about when the column comes from join `X`, but inside `X` itself it comes from join `Y`? I think in this
+   ;; case we want the outside world to see `X` since `Y` is not visible outside of `X`.
+   ;;
+   ;;    original join alias = X
+   ;;    column => [join X => join Y]
+   ;;
+   ;; It is not currently well-defined whether this appears when the join was the current stage or not, i.e. if it's
+   ;; equal to `:lib/join-alias` when it is set or if it is only set if the join happened in a previous
+   ;; stage, i.e. if it's `nil` when `:lib/join-alias` is set. It seems like current behavior is the
+   ;; former but you should NOT rely on this behavior.
+   [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+   ;; these should only be present if temporal bucketing or binning is done in the current stage of the query; if
+   ;; this happened in a previous stage they should get propagated as the keys below instead.
+   [:lib/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+   [:lib/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
+   ;; For nested fields (fields with a `:parent-id`, e.g. JSON columns), the pre-computed display name including the
+   ;; full parent chain prefix, e.g. `"Grandparent: Parent: Child"`. Used as the highest-priority initial display
+   ;; name in the display name pipeline, before join alias, binning, and temporal bucketing decorations are added.
+   ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
+   ;; (e.g. `"Child"`) — both may coexist on the same column.
+   [:lib/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:lib/original-effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
+   ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
+   ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
+   ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
+   [:inherited-temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+   [:lib/original-binning    {:optional true} [:maybe ::lib.schema.binning/binning]]
+   ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
+   ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
+   ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
+   [:lib/expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   ;;
+   ;; the name of the expression where this column came from, if the column came from a previous stage of the query
+   [:lib/original-expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   ;; where this column came from. See docstring for `::column.source`.
+   [:lib/source {:optional true} [:maybe [:ref ::column.source]]]
+   ;;
+   ;; if this column metadata was calculated based on MBQL clauses in the query itself, this is the UUID of the
+   ;; clauses in question. Required for aggregations and expressions
+   [:lib/source-uuid {:optional true} [:maybe [:ref ::lib.schema.common/uuid]]]
+   ;;
+   ;; whether this column metadata occurs in the `:breakout`(s) in the CURRENT STAGE or not. Previously this was
+   ;; signified by `:lib/source = :source/breakouts` (which has been removed)
+   ;;
+   ;; this SHOULD NOT get propagated to subsequent stages!
+   [:lib/breakout? {:optional true} [:maybe :boolean]]
+   ;;
+   ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
+   ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
+   [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+   ;;
+   ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
+   ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for
+   ;; example [[metabase.query-processor.model-test/preserve-model-display-names-test]].
+   ;;
+   ;; This key should get propagated indefinitely.
+   [:lib/from-model? {:optional true} [:maybe :boolean]]
+   ;;
+   ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
+   ;; the [[metabase.lib.metadata.calculation/metadata]]
+   ;;
+   ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
+   ;; name of this clause as exported by the previous stage, source table, or join.
+   [:lib/source-column-alias {:optional true} [:maybe ::source-column-alias]]
+   ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
+   ;; guaranteed to be unique in each stage of the query.
+   [:lib/desired-column-alias {:optional true} [:maybe ::desired-column-alias]]
+   ;;
+   ;; see description in schemas above
+   ;;
+   [:lib/original-name     {:optional true} ::original-name]
+   [:lib/deduplicated-name {:optional true} ::deduplicated-name]
+   ;;
+   ;; the original display name of this column before adding join/temporal bucketing/binning stuff to it. `Join ->
+   ;; <whatever>` or `<whatever>: Month` or `<whatever>: Auto-binned`. Should be equal to the very first
+   ;; `:display-name` we see when the column comes out of a metadata provider. Usually this is auto-generated with
+   ;; humanized names from `:name`, but may differ.
+   ;;
+   ;; For model columns, this is set to the clean column name from the model's result_metadata with any
+   ;; join arrow prefix stripped (e.g. "Products → Category" becomes "Category").
+   [:lib/original-display-name {:optional true} [:maybe :string]]
+   ;;
+   ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
+   ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.
+   [:lib/ref-display-name {:optional true} [:maybe :string]]
+   ;;
+   ;; If this metadata was resolved from a ref (e.g. a `:field` ref) and that ref contained a `:name` in the options,
+   ;; this is that name. If specified we should use this as the basis for the desired column alias rather than join
+   ;; alias + source column alias.
+   [:lib/ref-name {:optional true} [:maybe :string]]
+   ;;
+   ;; when column metadata is returned by certain things
+   ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
+   ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
+   ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
+   [:selected? {:optional true} :boolean]
+   ;;
+   ;; REMAPPING & FIELD VALUES
+   ;;
+   ;; See notes above for more info. `:has-field-values` comes from the application database and is used to decide
+   ;; whether to sync FieldValues when running sync, and what certain FE QB widgets should
+   ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
+   ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
+   [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
+   ;;
+   ;; info about stuff like min and max values of the column, used for auto bucketing.
+   [:fingerprint {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+   ;;
+   ;; If this is a nested column, the names of the ancestor columns used to access it. E.g. if the column is
+   ;; `grandparent.parent.child` then `:nfc-path` would be `["grandparent" "parent"]`.
+   ;;
+   ;; This was originally added to power Postgres JSON column support; but is now used for any sort of nested column,
+   ;; including BigQuery `RECORD` columns and MongoDB nested columns. See
+   ;; https://metaboat.slack.com/archives/C0645JP1W81/p1754949404592539 for code archeology
+   [:nfc-path {:optional true} [:maybe [:sequential :string]]]
+   ;; the rest of the `metabase_field` row a metadata provider hands back
+   [:table-id                   {:optional true} [:maybe [:or ::lib.schema.id/table [:re #"^card__\d+$"]]]]
+   [:parent-id                  {:optional true} [:maybe ::lib.schema.id/field]]
+   [:description                {:optional true} [:maybe :string]]
+   [:caveats                    {:optional true} [:maybe :string]]
+   [:points-of-interest         {:optional true} [:maybe :string]]
+   [:coercion-strategy          {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+   [:position                   {:optional true} [:maybe :int]]
+   [:custom-position            {:optional true} [:maybe :int]]
+   [:database-position          {:optional true} [:maybe :int]]
+   [:database-default           {:optional true} [:maybe :string]]
+   [:database-indexed           {:optional true} [:maybe :boolean]]
+   [:database-is-auto-increment {:optional true} [:maybe :boolean]]
+   [:database-is-generated      {:optional true} [:maybe :boolean]]
+   [:database-is-nullable       {:optional true} [:maybe :boolean]]
+   [:database-is-pk             {:optional true} [:maybe :boolean]]
+   [:database-partitioned       {:optional true} [:maybe :boolean]]
+   [:database-required          {:optional true} [:maybe :boolean]]
+   [:json-unfolding             {:optional true} [:maybe :boolean]]
+   [:preview-display            {:optional true} [:maybe :boolean]]
+   [:fingerprint-version        {:optional true} [:maybe :int]]
+   [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
+   [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
+   [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
+   ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
+   ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
+   [:target                     {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
+   [:name-field                 {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
+   ;; the Dimension and FieldValues joined onto a Field by the application database metadata provider
+   [:dimension/id                      {:optional true} [:maybe ::lib.schema.id/dimension]]
+   [:dimension/name                    {:optional true} [:maybe :string]]
+   [:dimension/type                    {:optional true} [:maybe [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external]]]
+   [:dimension/human-readable-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:values/values                     {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
+   [:values/human-readable-values      {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
+   [:field-values                      {:optional true} [:maybe [:sequential ::lib.schema.common/field-value]]]
+   ;; what Lib annotates a column with when it returns it from a query
+   [:breakout-positions  {:optional true} [:maybe [:sequential :int]]]
+   [:filter-positions    {:optional true} [:maybe [:sequential :int]]]
+   [:order-by-position   {:optional true} [:maybe :int]]
+   [:converted-timezone  {:optional true} [:maybe :string]]
+   [:remapped-from       {:optional true} [:maybe :string]]
+   [:remapped-to         {:optional true} [:maybe :string]]
+   [:remapped-from-index {:optional true} [:maybe :int]]
+   [:remapping           {:optional true} [:maybe [:map-of [:ref ::lib.schema.literal/literal] [:ref ::lib.schema.literal/literal]]]]
+   [:dimension-interestingness {:optional true} [:maybe number?]]
+   [:options             {:optional true} [:maybe [:ref ::column.options]]]
+   [:lib/options                 {:optional true} [:maybe [:ref ::column.lib-options]]]
+   [:lib/original-fk-field-id    {:optional true} [:maybe ::lib.schema.id/field]]
+   [:lib/original-fk-field-name  {:optional true} [:maybe :string]]
+   [:lib/original-fk-join-alias  {:optional true} [:maybe ::lib.schema.join/alias]]
+   [:lib/original-join-name      {:optional true} [:maybe :string]]
+   [:lib/source-display-name     {:optional true} [:maybe :string]]
+   [:metabase.lib.join/HACK-from-incomplete-join? {:optional true} [:maybe :boolean]]
+   ;; where the Mongo driver keeps the aliases of a `:field` ref while it compiles the ref as a column
+   [:metabase.driver.mongo.query-processor/source-alias {:optional true} [:maybe :string]]
+   [:metabase.driver.mongo.query-processor/join-field   {:optional true} [:maybe :string]]
+   [:metabase.driver.mongo.query-processor/inherited?   {:optional true} [:maybe :boolean]]
+   ;;
+   ;; `:unit` and `:binning-info` are legacy keys and should not be set on a Lib column; `:lib/temporal-unit` and
+   ;; `:lib/binning` are the keys for that. [[metabase.lib.metadata.result-metadata]] pins these two on a column on its
+   ;; way to becoming legacy result metadata, which is the only reason they are declared.
+   [:unit                {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+   [:binning-info        {:optional true} [:maybe [:ref ::column.binning-info]]]
+   ;;
+   ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
+   ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
+   [:settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   ;;
+   ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
+   ;; legacy viz settings. This should not be used for anything other than that.
+   [:metabase.lib.metadata.result-metadata/field-ref
+    {:optional true}
+    [:maybe #?(:cljs [:or
+                      [:ref :metabase.legacy-mbql.schema/Reference]
+                      [:fn {:error/message "JS array"}
+                       array?]]
+               :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
+   ;;
+   [:metabase.lib.metadata.result-metadata/source {:optional true} [:maybe [:ref ::column.legacy-source]]]
+   ;;
+   ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
+   ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
+   ;; the application database, look at the implementation for fetching a `:metadata/column`
+   ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
+   ;; provider doesn't add these keys.
+   [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
+   [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
+   ;;
+   ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds
+   ;; `:qp/added-implicit-fields?` to stages where it adds implicit fields,
+   ;; then [[metabase.lib.stage/fields-columns]] adds this key to any col from such a
+   ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
+   ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
+   ;; settings that use it as a key.
+   [:qp/implicit-field? {:optional true} [:maybe :boolean]]
+   ;;
+   ;; Coercion strategies (eg. UNIX seconds -> :type/DateTime) are configured on :model/Fields in the Admin UI, and
+   ;; reflected on refs to that field on the *first* stage of an MBQL query or a join, where the column first appears
+   ;; in the query. After the column passes through a stage boundary, it's no longer marked with the coercion strategy
+   ;; to avoid double-coercion.
+   ;;
+   ;; *However*, when a table is sandboxed by a native query, and it has fields which need coercion, the SQL subquery
+   ;; does not do the coercion (it's supposed to be a drop-in replacement for the table) but then the MBQL refs to its
+   ;; columns are not in the first stage anymore! So the sandboxing middleware sets this flag to the
+   ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
+   ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
+   ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
+   [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::lib.schema.common/coercion-strategy]]
+   ;;
+   ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
+   [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]
+   [:metabase.lib.metadata.result-metadata/remove-join-alias? {:optional true} :boolean]
+   [:lib/original-ref-style-for-result-metadata-purposes
+    {:optional true}
+    [:enum :original-ref-style/id :original-ref-style/name]]
+   [:metabase.lib.field.resolution/fallback-metadata? {:optional true} :boolean]
+   [:metabase.lib.join/target {:optional true} [:ref ::column.snapshot]]
+   [:metabase.lib.underlying/original      {:optional true} [:ref ::column.snapshot]]
+   [:metabase.lib.underlying/temporal-unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+   [:metabase.lib.underlying/binning       {:optional true} [:maybe [:ref ::lib.schema.binning/binning]]]
+   [:metabase.query-processor.pivot/idx {:optional true} [:int {:min 0}]]])
+
+(mr/def ::column.map
+  "The map portion of [[::column]], without its constraints."
+  column-map)
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -403,294 +692,7 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:and
-   [:map
-    {:closed           true
-     :error/message    "Valid column metadata"
-     :decode/normalize normalize-column
-     :decode/api       lib.schema.common/remove-internal-keys
-     :encode/serialize lib.schema.common/remove-internal-keys}
-    [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
-    ;;
-    ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
-    ;; in [[metabase.legacy-mbql.schema]] so we can generate this documentation from this schema or whatever.
-    ;;
-    ;; column names are allowed to be empty strings in SQL Server :/
-    ;;
-    ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's
-    ;; the `:lib/original-name` or `:lib/deduplicated-name`, and it might be either one depending on where the metadata
-    ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
-    [:name      :string]
-    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-    [:base-type {:default :type/*} ::lib.schema.common/base-type]
-    ;; This is nillable because internal remap columns have `:id nil`.
-    [:id             {:optional true} [:maybe ::lib.schema.id/field]]
-    [:display-name   {:optional true} [:maybe :string]]
-    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-    [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-    ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
-    [:database-type  {:optional true} [:maybe :string]]
-    [:active         {:optional true} :boolean]
-    [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
-    [:data-sensitivity {:optional true} [:maybe ::column.data-sensitivity]]
-    ;; if this is a field from another table (implicit join), this is the field in the current table that should be
-    ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
-    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
-    ;; `:source-field`.
-    [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
-    ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
-    ;; referenced by a name, normally when it's coming from a card or a previous query stage.
-    [:fk-field-name {:optional true} [:maybe :string]]
-    ;; if this is a field from another table (implicit join), this is the join alias of the source field.
-    [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
-    ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
-    ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
-    ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
-    [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
-    ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
-    ;; allowed to join on the results of something else)
-    [:lib/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
-    ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
-    ;; from a previous stage.
-    ;;
-    ;; What about when the column comes from join `X`, but inside `X` itself it comes from join `Y`? I think in this
-    ;; case we want the outside world to see `X` since `Y` is not visible outside of `X`.
-    ;;
-    ;;    original join alias = X
-    ;;    column => [join X => join Y]
-    ;;
-    ;; It is not currently well-defined whether this appears when the join was the current stage or not, i.e. if it's
-    ;; equal to `:lib/join-alias` when it is set or if it is only set if the join happened in a previous
-    ;; stage, i.e. if it's `nil` when `:lib/join-alias` is set. It seems like current behavior is the
-    ;; former but you should NOT rely on this behavior.
-    [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
-    ;; these should only be present if temporal bucketing or binning is done in the current stage of the query; if
-    ;; this happened in a previous stage they should get propagated as the keys below instead.
-    [:lib/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
-    [:lib/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
-    ;; For nested fields (fields with a `:parent-id`, e.g. JSON columns), the pre-computed display name including the
-    ;; full parent chain prefix, e.g. `"Grandparent: Parent: Child"`. Used as the highest-priority initial display
-    ;; name in the display name pipeline, before join alias, binning, and temporal bucketing decorations are added.
-    ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
-    ;; (e.g. `"Child"`) — both may coexist on the same column.
-    [:lib/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    [:lib/original-effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
-    ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
-    ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
-    ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
-    [:inherited-temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
-    [:lib/original-binning    {:optional true} [:maybe ::lib.schema.binning/binning]]
-    ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
-    ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
-    ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
-    [:lib/expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    ;;
-    ;; the name of the expression where this column came from, if the column came from a previous stage of the query
-    [:lib/original-expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    ;; where this column came from. See docstring for `::column.source`.
-    [:lib/source {:optional true} [:maybe [:ref ::column.source]]]
-    ;;
-    ;; if this column metadata was calculated based on MBQL clauses in the query itself, this is the UUID of the
-    ;; clauses in question. Required for aggregations and expressions
-    [:lib/source-uuid {:optional true} [:maybe [:ref ::lib.schema.common/uuid]]]
-    ;;
-    ;; whether this column metadata occurs in the `:breakout`(s) in the CURRENT STAGE or not. Previously this was
-    ;; signified by `:lib/source = :source/breakouts` (which has been removed)
-    ;;
-    ;; this SHOULD NOT get propagated to subsequent stages!
-    [:lib/breakout? {:optional true} [:maybe :boolean]]
-    ;;
-    ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
-    ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
-    [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
-    ;;
-    ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
-    ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for
-    ;; example [[metabase.query-processor.model-test/preserve-model-display-names-test]].
-    ;;
-    ;; This key should get propagated indefinitely.
-    [:lib/from-model? {:optional true} [:maybe :boolean]]
-    ;;
-    ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
-    ;; the [[metabase.lib.metadata.calculation/metadata]]
-    ;;
-    ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
-    ;; name of this clause as exported by the previous stage, source table, or join.
-    [:lib/source-column-alias {:optional true} [:maybe ::source-column-alias]]
-    ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
-    ;; guaranteed to be unique in each stage of the query.
-    [:lib/desired-column-alias {:optional true} [:maybe ::desired-column-alias]]
-    ;;
-    ;; see description in schemas above
-    ;;
-    [:lib/original-name     {:optional true} ::original-name]
-    [:lib/deduplicated-name {:optional true} ::deduplicated-name]
-    ;;
-    ;; the original display name of this column before adding join/temporal bucketing/binning stuff to it. `Join ->
-    ;; <whatever>` or `<whatever>: Month` or `<whatever>: Auto-binned`. Should be equal to the very first
-    ;; `:display-name` we see when the column comes out of a metadata provider. Usually this is auto-generated with
-    ;; humanized names from `:name`, but may differ.
-    ;;
-    ;; For model columns, this is set to the clean column name from the model's result_metadata with any
-    ;; join arrow prefix stripped (e.g. "Products → Category" becomes "Category").
-    [:lib/original-display-name {:optional true} [:maybe :string]]
-    ;;
-    ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
-    ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.
-    [:lib/ref-display-name {:optional true} [:maybe :string]]
-    ;;
-    ;; If this metadata was resolved from a ref (e.g. a `:field` ref) and that ref contained a `:name` in the options,
-    ;; this is that name. If specified we should use this as the basis for the desired column alias rather than join
-    ;; alias + source column alias.
-    [:lib/ref-name {:optional true} [:maybe :string]]
-    ;;
-    ;; when column metadata is returned by certain things
-    ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
-    ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
-    ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
-    [:selected? {:optional true} :boolean]
-    ;;
-    ;; REMAPPING & FIELD VALUES
-    ;;
-    ;; See notes above for more info. `:has-field-values` comes from the application database and is used to decide
-    ;; whether to sync FieldValues when running sync, and what certain FE QB widgets should
-    ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
-    ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
-    [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
-    ;;
-    ;; info about stuff like min and max values of the column, used for auto bucketing.
-    [:fingerprint {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
-    ;;
-    ;; If this is a nested column, the names of the ancestor columns used to access it. E.g. if the column is
-    ;; `grandparent.parent.child` then `:nfc-path` would be `["grandparent" "parent"]`.
-    ;;
-    ;; This was originally added to power Postgres JSON column support; but is now used for any sort of nested column,
-    ;; including BigQuery `RECORD` columns and MongoDB nested columns. See
-    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1754949404592539 for code archeology
-    [:nfc-path {:optional true} [:maybe [:sequential :string]]]
-    ;; the rest of the `metabase_field` row a metadata provider hands back
-    [:table-id                   {:optional true} [:maybe ::lib.schema.id/table]]
-    [:parent-id                  {:optional true} [:maybe ::lib.schema.id/field]]
-    [:description                {:optional true} [:maybe :string]]
-    [:caveats                    {:optional true} [:maybe :string]]
-    [:points-of-interest         {:optional true} [:maybe :string]]
-    [:coercion-strategy          {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
-    [:position                   {:optional true} [:maybe :int]]
-    [:custom-position            {:optional true} [:maybe :int]]
-    [:database-position          {:optional true} [:maybe :int]]
-    [:database-default           {:optional true} [:maybe :string]]
-    [:database-indexed           {:optional true} [:maybe :boolean]]
-    [:database-is-auto-increment {:optional true} [:maybe :boolean]]
-    [:database-is-generated      {:optional true} [:maybe :boolean]]
-    [:database-is-nullable       {:optional true} [:maybe :boolean]]
-    [:database-is-pk             {:optional true} [:maybe :boolean]]
-    [:database-partitioned       {:optional true} [:maybe :boolean]]
-    [:database-required          {:optional true} [:maybe :boolean]]
-    [:json-unfolding             {:optional true} [:maybe :boolean]]
-    [:preview-display            {:optional true} [:maybe :boolean]]
-    [:fingerprint-version        {:optional true} [:maybe :int]]
-    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
-    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
-    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
-    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
-    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
-    [:target                     {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
-    [:name-field                 {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]
-    ;; the Dimension and FieldValues joined onto a Field by the application database metadata provider
-    [:dimension/id                      {:optional true} [:maybe ::lib.schema.id/dimension]]
-    [:dimension/name                    {:optional true} [:maybe :string]]
-    [:dimension/type                    {:optional true} [:maybe [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external]]]
-    [:dimension/human-readable-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    [:values/values                     {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
-    [:values/human-readable-values      {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/literal]]]]
-    ;; what Lib annotates a column with when it returns it from a query
-    [:breakout-positions  {:optional true} [:maybe [:sequential :int]]]
-    [:filter-positions    {:optional true} [:maybe [:sequential :int]]]
-    [:order-by-position   {:optional true} [:maybe :int]]
-    [:converted-timezone  {:optional true} [:maybe :string]]
-    [:remapped-from       {:optional true} [:maybe :string]]
-    [:remapped-to         {:optional true} [:maybe :string]]
-    [:remapped-from-index {:optional true} [:maybe :int]]
-    [:remapping           {:optional true} [:maybe [:map-of [:ref ::lib.schema.literal/literal] [:ref ::lib.schema.literal/literal]]]]
-    [:dimension-interestingness {:optional true} [:maybe number?]]
-    [:options             {:optional true} [:maybe [:ref ::column.options]]]
-    [:lib/options                 {:optional true} [:maybe [:ref ::column.lib-options]]]
-    [:lib/original-fk-field-id    {:optional true} [:maybe ::lib.schema.id/field]]
-    [:lib/original-fk-field-name  {:optional true} [:maybe :string]]
-    [:lib/original-fk-join-alias  {:optional true} [:maybe ::lib.schema.join/alias]]
-    [:lib/original-join-name      {:optional true} [:maybe :string]]
-    [:lib/source-display-name     {:optional true} [:maybe :string]]
-    [:metabase.lib.join/HACK-from-incomplete-join? {:optional true} [:maybe :boolean]]
-    ;; where the Mongo driver keeps the aliases of a `:field` ref while it compiles the ref as a column
-    [:metabase.driver.mongo.query-processor/source-alias {:optional true} [:maybe :string]]
-    [:metabase.driver.mongo.query-processor/join-field   {:optional true} [:maybe :string]]
-    [:metabase.driver.mongo.query-processor/inherited?   {:optional true} [:maybe :boolean]]
-    ;;
-    ;; `:unit` and `:binning-info` are legacy keys and should not be set on a Lib column; `:lib/temporal-unit` and
-    ;; `:lib/binning` are the keys for that. [[metabase.lib.metadata.result-metadata]] pins these two on a column on its
-    ;; way to becoming legacy result metadata, which is the only reason they are declared.
-    [:unit                {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
-    [:binning-info        {:optional true} [:maybe [:ref ::column.binning-info]]]
-    ;;
-    ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
-    ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
-    [:settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
-    ;;
-    ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
-    ;; legacy viz settings. This should not be used for anything other than that.
-    [:metabase.lib.metadata.result-metadata/field-ref
-     {:optional true}
-     [:maybe #?(:cljs [:or
-                       [:ref :metabase.legacy-mbql.schema/Reference]
-                       [:fn {:error/message "JS array"}
-                        array?]]
-                :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
-    ;;
-    [:metabase.lib.metadata.result-metadata/source {:optional true} [:maybe [:ref ::column.legacy-source]]]
-    ;;
-    ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
-    ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
-    ;; the application database, look at the implementation for fetching a `:metadata/column`
-    ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
-    ;; provider doesn't add these keys.
-    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
-    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
-    ;;
-    ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds
-    ;; `:qp/added-implicit-fields?` to stages where it adds implicit fields,
-    ;; then [[metabase.lib.stage/fields-columns]] adds this key to any col from such a
-    ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
-    ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
-    ;; settings that use it as a key.
-    [:qp/implicit-field? {:optional true} [:maybe :boolean]]
-    ;;
-    ;; Coercion strategies (eg. UNIX seconds -> :type/DateTime) are configured on :model/Fields in the Admin UI, and
-    ;; reflected on refs to that field on the *first* stage of an MBQL query or a join, where the column first appears
-    ;; in the query. After the column passes through a stage boundary, it's no longer marked with the coercion strategy
-    ;; to avoid double-coercion.
-    ;;
-    ;; *However*, when a table is sandboxed by a native query, and it has fields which need coercion, the SQL subquery
-    ;; does not do the coercion (it's supposed to be a drop-in replacement for the table) but then the MBQL refs to its
-    ;; columns are not in the first stage anymore! So the sandboxing middleware sets this flag to the
-    ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
-    ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
-    ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
-    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::lib.schema.common/coercion-strategy]]
-    ;;
-    ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
-    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]
-    [:metabase.lib.metadata.result-metadata/remove-join-alias? {:optional true} :boolean]
-    [:lib/original-ref-style-for-result-metadata-purposes
-     {:optional true}
-     [:enum :original-ref-style/id :original-ref-style/name]]
-    [:metabase.lib.field.resolution/fallback-metadata? {:optional true} :boolean]
-    [:metabase.lib.join/target {:optional true} [:ref ::column.snapshot]]
-    [:metabase.lib.underlying/original      {:optional true} [:ref ::column.snapshot]]
-    [:metabase.lib.underlying/temporal-unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
-    [:metabase.lib.underlying/binning       {:optional true} [:maybe [:ref ::lib.schema.binning/binning]]]
-    [:metabase.query-processor.pivot/idx {:optional true} [:int {:min 0}]]]
+   column-map
    ;;
    ;; Additional constraints
    ;;
@@ -700,6 +702,7 @@
     (into {:binning           ":binning is deprecated; use :lib/binning instead"
            :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
            :ident             ":ident is deprecated and should not be included in column metadata"
+           :lib/model-display-name ":lib/model-display-name is deprecated and should not be included in column metadata"
            :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
            :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
            :source-alias      ":source-alias is deprecated; use :lib/join-alias or :lib/original-join-alias instead"
@@ -710,17 +713,17 @@
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
-  [:map
+  [:map {:closed true}
    [:table-name        ::lib.schema.common/non-blank-string]
    [:field-definitions [:maybe [:sequential
-                                [:map
+                                [:map {:closed true}
                                  [:field-name ::lib.schema.common/non-blank-string]
                                  ;; TODO check (isa? :type/Integer :type/*)
                                  [:base-type  ::lib.schema.common/base-type]]]]]])
 
 (mr/def ::persisted-info
   "Persisted Info = Cached Table (?). See [[metabase.model-persistence.models.persisted-info]]"
-  [:map
+  [:map {:closed true}
    [:active     :boolean]
    [:state      ::lib.schema.common/non-blank-string]
    [:table-name ::lib.schema.common/non-blank-string]
@@ -839,7 +842,7 @@
 
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
   [:map
-   {:decode/normalize normalize-card
+   {:closed true, :decode/normalize normalize-card
     :decode/mock      mock-card
     :error/message    "Valid Card metadata"}
    [:lib/type    [:= :metadata/card]]
@@ -858,6 +861,19 @@
    ;; ID of the collection this Card is saved in. `nil` means it is saved in the "Root Collection". Important for
    ;; perms-checking purposes.
    [:collection-id   {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:entity-id              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:created-at             {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:card-schema            {:optional true} [:maybe :int]]
+   [:visualization-settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:description            {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe [:or :keyword :string]]]
+   [:archived               {:optional true} [:maybe :boolean]]
+   [:source-card-id         {:optional true} [:maybe ::lib.schema.id/card]]
+   [:dashboard-id           {:optional true} [:maybe pos-int?]]
+   [:dimensions             {:optional true} [:maybe [:sequential [:ref ::persisted-dimension]]]]
+   [:dimension-mappings     {:optional true} [:maybe [:sequential [:ref ::dimension-mapping]]]]
+   [:display-name           {:optional true} [:maybe :string]]
+   [:fields                 {:optional true} [:maybe [:ref ::card.result-metadata]]]
    ;;
    ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;
@@ -869,10 +885,21 @@
          (:id segment))
     (assoc :name (str "Segment " (:id segment)))))
 
+(mr/def ::segment.definition
+  "Segment definition: empty, an MBQL 5 query, or a legacy inner query."
+  [:multi {:dispatch (fn [definition]
+                       (cond
+                         (empty? definition)      :empty
+                         (:lib/type definition)   :mbql5
+                         :else                    :legacy))}
+   [:empty  [:= {} {}]]
+   [:mbql5  [:ref :metabase.lib.schema/query]]
+   [:legacy [:ref :metabase.legacy-mbql.schema/MBQLInnerQuery]]])
+
 (mr/def ::segment
   "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
   [:map
-   {:error/message "Valid Segment metadata"
+   {:closed true, :error/message "Valid Segment metadata"
     :decode/mock   mock-segment}
    [:lib/type   [:= :metadata/segment]]
    [:id         ::lib.schema.id/segment]
@@ -880,8 +907,11 @@
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
-   [:definition [:maybe :map]]
-   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:definition [:maybe [:ref ::segment.definition]]]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:entity-id   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:archived    {:optional true} [:maybe :boolean]]
+   [:filter-positions {:optional true} [:maybe [:sequential :int]]]])
 
 (defn- normalize-measure-definition [definition]
   (when definition
@@ -902,10 +932,74 @@
          (:id measure))
     (assoc :name (str "Measure " (:id measure)))))
 
+(mr/def ::dimension-id
+  "UUID string identifying a dimension."
+  ::lib.schema.common/uuid)
+
+(mr/def ::dimension-group
+  "Group descriptor for a dimension, indicating which table it belongs to."
+  [:map {:closed true}
+   [:id :string]
+   [:type [:enum "main" "connection"]]
+   [:display-name :string]])
+
+(mr/def ::dimension-source.type
+  [:enum :field])
+
+(mr/def ::dimension-source
+  [:map {:closed true}
+   [:type     ::dimension-source.type]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:binning  {:optional true} [:maybe :boolean]]])
+
+(mr/def ::dimension-mapping.type
+  "Type of dimension mapping."
+  [:enum :table])
+
+(mr/def ::dimension-mapping.target
+  "Target field reference for a dimension mapping, e.g. [:field {:source-field 1} 2]."
+  [:ref :mbql.clause/field])
+
+(mr/def ::dimension-mapping
+  "Schema for a dimension mapping."
+  [:map {:closed true}
+   [:type         ::dimension-mapping.type]
+   [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
+   [:dimension-id ::dimension-id]
+   [:target       ::dimension-mapping.target]])
+
+(mr/def ::dimension-status
+  "Status of a dimension indicating whether it's active or has issues.
+   - :status/active   - Column exists, dimension is usable
+   - :status/orphaned - Column was removed from schema, dimension preserved for reference"
+  [:enum :status/active :status/orphaned])
+
+(mr/def ::persisted-dimension
+  "Schema for a persisted dimension definition with status tracking.
+   Persisted dimensions include additional metadata about their status
+   and any issues that prevent them from being used.
+   Note: target field references are stored in dimension-mappings, not here."
+  [:map {:closed true}
+   [:id               ::dimension-id]
+   [:name             {:optional true} [:maybe :string]]
+   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
+   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]
+   [:lib/source       {:optional true} [:maybe [:or [:ref ::column.source] :string]]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
+   ;; At most one dimension per entity may be the default.
+   [:default          {:optional true} [:maybe :boolean]]])
+
 (mr/def ::measure
   "More or less the same as a [[metabase.measures.models.measure]], but with kebab-case keys."
   [:map
-   {:error/message "Valid Measure metadata"
+   {:closed true, :error/message "Valid Measure metadata"
     :decode/mock   mock-measure}
    [:lib/type   [:= :metadata/measure]]
    [:id         ::lib.schema.id/measure]
@@ -914,7 +1008,11 @@
    ;; the MBQL snippet defining this Measure, contains an aggregation expression.
    ;; Strict validation via ::lib.schema.measure/definition happens in metabase.measures.models.measure
    [:definition [:maybe [:ref ::measure.definition]]]
-   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:archived    {:optional true} [:maybe :boolean]]
+   [:dimensions         {:optional true} [:maybe [:sequential [:ref ::persisted-dimension]]]]
+   [:dimension-mappings {:optional true} [:maybe [:sequential [:ref ::dimension-mapping]]]]
+   [:aggregation-positions {:optional true} [:maybe [:sequential :int]]]])
 
 (mr/def ::metric
   "A V2 Metric! This a special subtype of a Card. Not convinced we really need this as opposed to just using `::card` --
@@ -924,20 +1022,25 @@
    [:map
     [:lib/type [:= :metadata/metric]]
     [:type     [:= :metric]]
-    [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
+    [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]
+    [:aggregation-position {:optional true} [:maybe [:int {:min 0}]]]]])
 
 (mr/def ::native-query-snippet
-  [:map
+  [:map {:closed true}
    [:lib/type      [:= :metadata/native-query-snippet]]
    [:id            ::lib.schema.id/native-query-snippet]
+   [:name          {:optional true} [:maybe :string]]
+   [:description   {:optional true} [:maybe :string]]
+   [:content       {:optional true} [:maybe :string]]
+   [:archived      {:optional true} [:maybe :boolean]]
+   [:collection-id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
-;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 (mr/def ::table
   "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
   kebab-case keys."
   [:map
-   {:error/message "Valid Table metadata"}
+   {:closed true, :error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
@@ -946,24 +1049,90 @@
    ;; Optional `:db` AST slot for cross-DB references (BigQuery `project.dataset.table`,
    ;; SQL Server / Snowflake `db.schema.table`). Sync doesn't populate it on standard
    ;; reads — only cross-DB rewriters fill it.
-   [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:db-id                   {:optional true} ::lib.schema.id/database]
+   [:active                  {:optional true} [:maybe :boolean]]
+   [:visibility-type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:database-require-filter {:optional true} [:maybe :boolean]]
+   [:description             {:optional true} [:maybe :string]]
+   [:entity-type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points-of-interest      {:optional true} [:maybe :string]]
+   [:field-order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial-sync-status     {:optional true} [:maybe [:or :string :keyword]]]
+   [:show-in-getting-started {:optional true} [:maybe :boolean]]
+   [:is-upload               {:optional true} [:maybe :boolean]]
+   [:entity-id               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:created-at              {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:updated-at              {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:deactivated-at          {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:archived-at             {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:estimated-row-count     {:optional true} [:maybe :int]]
+   [:view-count              {:optional true} [:maybe :int]]
+   [:is-writable             {:optional true} [:maybe :boolean]]
+   [:data-authority          {:optional true} [:maybe [:or :keyword :string]]]
+   [:data-source             {:optional true} [:maybe [:or :keyword :string]]]
+   [:data-layer              {:optional true} [:maybe [:or :keyword :string]]]
+   [:owner-email             {:optional true} [:maybe :string]]
+   [:owner-user-id           {:optional true} [:maybe ::lib.schema.id/user]]
+   [:collection-id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:is-published            {:optional true} [:maybe :boolean]]
+   [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
+   [:transform-target        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
   the frontend Query Builder."
   [:map
-   {:error/message "Valid Database metadata"}
+   {:closed true, :error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; TODO -- this should validate against the driver features list in [[metabase.driver/features]] if we're in
    ;; Clj mode
-   [:dbms-version    {:optional true} [:maybe :map]]
-   [:details         {:optional true} :map]
+   [:dbms-version    {:optional true} [:maybe [:map {:closed true}
+                                               [:flavor           {:optional true} [:maybe :string]]
+                                               [:version          {:optional true} [:maybe :string]]
+                                               [:semantic-version {:optional true} [:maybe [:or
+                                                                                            [:sequential :int]
+                                                                                            [:map {:closed true} [:major :int] [:minor :int]]]]]
+                                               [:cloud            {:optional true} [:maybe :boolean]]]]]
+   [:details         {:optional true} ::lib.schema.common/database-details]
    [:engine          {:optional true} [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]
    [:is-attached-dwh {:optional true} :boolean]
-   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]])
+   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:name                        {:optional true} [:maybe :string]]
+   [:description                 {:optional true} [:maybe :string]]
+   [:timezone                    {:optional true} [:maybe :string]]
+   [:write-data-details          {:optional true} [:maybe ::lib.schema.common/database-details]]
+   [:admin-details               {:optional true} [:maybe ::lib.schema.common/database-details]]
+   [:router-database-id          {:optional true} [:maybe ::lib.schema.id/database]]
+   [:auto-run-queries            {:optional true} [:maybe :boolean]]
+   [:cache-field-values-schedule {:optional true} [:maybe :string]]
+   [:metadata-sync-schedule      {:optional true} [:maybe :string]]
+   [:cache-ttl                   {:optional true} [:maybe :int]]
+   [:caveats                     {:optional true} [:maybe :string]]
+   [:points-of-interest          {:optional true} [:maybe :string]]
+   [:creator-id                  {:optional true} [:maybe pos-int?]]
+   [:initial-sync-status         {:optional true} [:maybe [:or :string :keyword]]]
+   [:is-full-sync                {:optional true} [:maybe :boolean]]
+   [:is-on-demand                {:optional true} [:maybe :boolean]]
+   [:is-sample                   {:optional true} [:maybe :boolean]]
+   [:native-permissions          {:optional true} [:maybe [:or :keyword :string]]]
+   [:options                     {:optional true} [:maybe [:ref ::lib.schema.common/database-settings]]]
+   [:refingerprint               {:optional true} [:maybe :boolean]]
+   [:is-stub                     {:optional true} [:maybe :boolean]]
+   [:provider-name               {:optional true} [:maybe :string]]
+   [:uploads-enabled             {:optional true} [:maybe :boolean]]
+   [:uploads-schema-name         {:optional true} [:maybe :string]]
+   [:uploads-table-prefix        {:optional true} [:maybe :string]]
+   [:can-manage                  {:optional true} [:maybe :boolean]]
+   [:can-upload                  {:optional true} [:maybe :boolean]]
+   [:router-user-attribute       {:optional true} [:maybe :string]]
+   [:transforms-permissions      {:optional true} [:maybe [:or :keyword :string]]]
+   [:created-at                  {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
+   [:updated-at                  {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]])
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
@@ -1007,9 +1176,57 @@
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
 
+(mr/def ::transform.source-incremental-strategy
+  "Incremental strategy of a Transform source, as stored in the app DB."
+  [:map {:closed true}
+   [:type                       [:or :keyword :string]]
+   [:checkpoint-filter-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:lookback                   {:optional true} [:maybe [:map {:closed true}
+                                                          [:value pos-int?]
+                                                          [:unit  :string]]]]])
+
+(mr/def ::transform.target-incremental-strategy
+  "Incremental strategy of a Transform target, as stored in the app DB."
+  [:map {:closed true}
+   [:type       [:or :keyword :string]]
+   [:unique-key {:optional true} [:sequential [:map {:closed true}
+                                               [:name     {:optional true} :string]
+                                               [:field-id {:optional true} [:maybe ::lib.schema.id/field]]]]]])
+
+(mr/def ::transform.source-table
+  "One source table entry of a Python Transform source, as stored in the app DB."
+  [:map {:closed true}
+   [:alias       :string]
+   [:database_id {:optional true} [:maybe :int]]
+   [:schema      {:optional true} [:maybe :string]]
+   [:table       {:optional true} :string]
+   [:table_id    {:optional true} [:maybe :int]]])
+
+(mr/def ::transform.source
+  "The `:source` of a Transform: a query or a Python script."
+  [:map {:closed true}
+   [:type                        {:optional true} [:or :keyword :string]]
+   [:query                       {:optional true} [:ref ::card.query]]
+   [:source-incremental-strategy {:optional true} [:maybe [:ref ::transform.source-incremental-strategy]]]
+   [:source-database             {:optional true} [:maybe :int]]
+   [:source-tables               {:optional true} [:sequential [:ref ::transform.source-table]]]
+   [:body                        {:optional true} :string]])
+
+(mr/def ::transform.target
+  "The `:target` table of a Transform."
+  [:map {:closed true}
+   [:type                        {:optional true} [:or :keyword :string]]
+   [:database                    {:optional true} [:maybe ::lib.schema.id/database]]
+   [:schema                      {:optional true} [:maybe :string]]
+   [:name                        {:optional true} :string]
+   [:target-incremental-strategy {:optional true} [:maybe [:ref ::transform.target-incremental-strategy]]]])
+
 (mr/def ::transform
   "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
-  [:map
+  [:map {:closed true}
+   [:lib/type [:= :metadata/transform]]
    [:id     ::lib.schema.id/transform]
-   [:source {:optional true} [:map
-                              [:query {:optional true} [:ref :metabase.lib.schema/query]]]]])
+   [:name        {:optional true} :string]
+   [:source      {:optional true} [:ref ::transform.source]]
+   [:source-type {:optional true} [:maybe [:enum :python :native :mbql]]]
+   [:target      {:optional true} [:ref ::transform.target]]])

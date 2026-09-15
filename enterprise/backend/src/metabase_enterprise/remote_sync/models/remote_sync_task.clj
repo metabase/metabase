@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -45,8 +46,8 @@
 
   Throws ExceptionInfo if a running task already exists."
   [sync-task-type :- ::remote-sync-task-type
-   user-id :- [:maybe pos-int?] &
-   [additional-fields :- [:map]]]
+   user-id :- [:maybe pos-int?]
+   & [additional-fields] :- [:* ::remote-sync.schema/remote-sync-task.update]]
   (remote-sync.db/insert-task! (merge {:sync_task_type sync-task-type
                                        :initiated_by user-id
                                        :progress 0}

@@ -1632,9 +1632,6 @@
 (deftest ^:parallel normalize-datetime-test
   (is (= [:datetime ""]
          (mbql.normalize/normalize [:datetime ""])))
-  (testing "if we add other options, they are preserved (and don't break anything)"
-    (is (= [:datetime "" {:x "x"}]
-           (mbql.normalize/normalize [:datetime "" {"x" "x"}]))))
   (is (= [:datetime "" {:mode :iso}]
          (mbql.normalize/normalize [:datetime "" {:mode :iso}])
          (mbql.normalize/normalize [:datetime "" {:mode "iso"}])

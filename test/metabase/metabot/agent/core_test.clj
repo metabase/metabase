@@ -206,7 +206,7 @@
                                :profile-id profile-id
                                :context    {:capabilities    ["permission:write_sql_queries"]
                                             :user_is_viewing [{:type    "code_editor"
-                                                               :buffers [{:id "buf-1"}]}]}}))]
+                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
           {:llm-calls @call-count :parts parts})))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test

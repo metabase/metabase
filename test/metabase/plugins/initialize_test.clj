@@ -135,11 +135,11 @@
         plugin         (fn [plugin-name marker]
                          {:metabase-plugin-api-version initialize/plugin-api-version
                           :info                       {:name plugin-name :version "1.0.0"}
-                          :init                       [{:step "test" :marker marker}]})]
+                          :init                       [{:step "load-namespace" :namespace (name marker)}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])
-                                init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
-                                                                   (when (= marker :plugin-a)
+                                init-steps/do-init-steps!        (fn [[{:keys [namespace]}]]
+                                                                   (when (= namespace (name :plugin-a))
                                                                      (deliver plugin-a-start true)
                                                                      @finish-plugin-a))]
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
@@ -164,13 +164,14 @@
         plugin        (fn [plugin-name marker]
                         {:metabase-plugin-api-version initialize/plugin-api-version
                          :info                        {:name plugin-name :version "1.0.0"}
-                         :init                        [{:step "test" :marker marker}]})]
+                         :init                        [{:step "load-namespace" :namespace (name marker)}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])
-                                init-steps/do-init-steps!        (fn [[{:keys [marker]}]]
-                                                                   (swap! calls conj marker)
-                                                                   (when (= marker :plugin-a)
-                                                                     (plugins/load-plugin! plugin-b-name)))]
+                                init-steps/do-init-steps!        (fn [[{:keys [namespace]}]]
+                                                                   (let [marker (keyword namespace)]
+                                                                     (swap! calls conj marker)
+                                                                     (when (= marker :plugin-a)
+                                                                       (plugins/load-plugin! plugin-b-name))))]
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-b-name :plugin-b))))
       (is (= :ok (plugins/load-plugin! plugin-a-name))))
@@ -184,7 +185,7 @@
         plugin        (fn [plugin-name marker]
                         {:metabase-plugin-api-version initialize/plugin-api-version
                          :info                        {:name plugin-name :version "1.0.0"}
-                         :init                        [{:step "test" :marker marker}]})]
+                         :init                        [{:step "load-namespace" :namespace (name marker)}]})]
     (mt/with-dynamic-fn-redefs [deps/all-dependencies-satisfied? (constantly true)
                                 deps/update-unsatisfied-deps!    (constantly [])]
       (is (= :ok (initialize/register-plugin-with-info! (plugin plugin-a-name :plugin-a))))
@@ -195,8 +196,8 @@
                               #"while it is already loading"
                               (plugins/load-plugin! plugin-a-name)))))
     (testing "a cycle through a second plugin"
-      (mt/with-dynamic-fn-redefs [init-steps/do-init-steps! (fn [[{:keys [marker]}]]
-                                                              (plugins/load-plugin! (if (= marker :plugin-b)
+      (mt/with-dynamic-fn-redefs [init-steps/do-init-steps! (fn [[{:keys [namespace]}]]
+                                                              (plugins/load-plugin! (if (= (keyword namespace) :plugin-b)
                                                                                       plugin-a-name
                                                                                       plugin-b-name)))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo

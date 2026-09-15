@@ -5,10 +5,12 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -19,6 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -319,6 +322,12 @@
                 [:type [:= :tab-title]]]]
    [::mc/default :map]])
 
+(def ^:private ExecuteDashboardOpts
+  [:map {:closed true}
+   [:spill-budget      {:optional true} notification.temp-storage/ResidentBudget]
+   [:only-card-ids     {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:attached-card-ids {:optional true} [:maybe [:set ms/PositiveInt]]]])
+
 (mu/defn execute-dashboard :- [:sequential ::Part]
   "Execute a dashboard and return its parts.
 
@@ -330,10 +339,15 @@
     subscriptions that never render the other cards).
   - `:attached-card-ids` cards whose results are exported as file attachments; they run to the attachment row limit
     while the rest get the interactive display limits."
-  ([dashboard-id user-id parameters]
+  ([dashboard-id :- ::lib.schema.id/dashboard
+    user-id      :- ::lib.schema.id/user
+    parameters   :- [:maybe ::parameters.schema/parameters]]
    (execute-dashboard dashboard-id user-id parameters nil))
-  ([dashboard-id user-id parameters {:keys [spill-budget only-card-ids attached-card-ids]
-                                     :or   {spill-budget (new-spill-budget)}}]
+  ([dashboard-id :- ::lib.schema.id/dashboard
+    user-id      :- ::lib.schema.id/user
+    parameters   :- [:maybe ::parameters.schema/parameters]
+    {:keys [spill-budget only-card-ids attached-card-ids]
+     :or   {spill-budget (new-spill-budget)}} :- [:maybe ExecuteDashboardOpts]]
    (let [opts            {:spill-budget      spill-budget
                           :attached-card-ids attached-card-ids}
          keep-dashcards  (fn [dashcards]

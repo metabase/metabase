@@ -547,7 +547,7 @@
   replaced with underscores in order to support languages that don't use the Latin alphabet; see metabase#3818).
 
   Optionally specify `:max-length` which will truncate the slug after that many characters."
-  (^String [^String s]
+  (^String [^String s :- [:maybe :string]]
    (slugify s {}))
   (^String [s :- [:maybe :string]
             {:keys [max-length unicode?]} :- [:maybe

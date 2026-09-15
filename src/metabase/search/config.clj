@@ -171,6 +171,17 @@
         (concat (keys static-default-weights)
                 (mapcat keys (vals static-context-weights)))))
 
+(defn- scorer-key? [k]
+  (and (keyword? k) (contains? known-rankers (if (namespace k) (keyword (namespace k)) k))))
+
+(mr/def ::scorer-key
+  "A weights map key: a scorer name, optionally namespaced with a scorer-specific parameter (e.g.
+  `:model/dashboard`), that collapses to one of [[known-rankers]]."
+  [:fn scorer-key?])
+
+(mr/def ::weights
+  [:map-of ::scorer-key number?])
+
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
   [:map {:closed true}
@@ -193,6 +204,33 @@
    [:required-feature [:maybe :keyword]]
    [:engine           [:maybe :keyword]]])
 
+(def ^:private FilterDefNoKey
+  "[[FilterDef]] without the `:key` entry, which [[build-filters]] fills in from the map key."
+  [:map {:closed true}
+   [:type                              :keyword]
+   [:field            {:optional true} :string]
+   [:context-key      {:optional true} :keyword]
+   [:supported-value? {:optional true} ifn?]
+   [:required-feature {:optional true} :keyword]
+   [:engine           {:optional true} :keyword]])
+
+(def ^:private FilterDefs
+  "The filter-name -> (relaxed) filter-definition map [[build-filters]] accepts, keyed by every filter name in
+  [[filters]]."
+  [:map {:closed true}
+   [:archived       {:optional true} FilterDefNoKey]
+   [:collection-id  {:optional true} FilterDefNoKey]
+   [:created-at     {:optional true} FilterDefNoKey]
+   [:creator-id     {:optional true} FilterDefNoKey]
+   [:database-id    {:optional true} FilterDefNoKey]
+   [:id             {:optional true} FilterDefNoKey]
+   [:last-edited-at {:optional true} FilterDefNoKey]
+   [:last-editor-id {:optional true} FilterDefNoKey]
+   [:native-query   {:optional true} FilterDefNoKey]
+   [:verified       {:optional true} FilterDefNoKey]
+   [:curated        {:optional true} FilterDefNoKey]
+   [:display-type   {:optional true} FilterDefNoKey]])
+
 (mu/defn- build-filter :- Filter
   [{k :key t :type :keys [context-key field supported-value? required-feature engine]} :- FilterDef]
   {:key              k
@@ -204,7 +242,7 @@
    :engine           (or engine :all)})
 
 (mu/defn- build-filters :- [:map-of :keyword Filter]
-  [m]
+  [m :- FilterDefs]
   (-> (reduce #(assoc-in %1 [%2 :key] %2) m (keys m))
       (update-vals build-filter)))
 
@@ -444,7 +482,7 @@
    ;; deliberately not exposed over HTTP)
    [:vector-search-force-index?    {:optional true} [:maybe :boolean]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
-   [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
+   [:weights            {:optional true} [:maybe ::weights]]
    ;;
    ;; optional
    ;;
