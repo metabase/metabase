@@ -18,6 +18,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.recipients :as mcp.recipients]
    [metabase.mcp.v2.redaction :as redaction]
@@ -45,10 +46,12 @@
 
 (def ^:private schedule-field-advice
   "What to do instead, per field a schedule type doesn't read."
-  {:schedule_minute "only an hourly schedule sends at a minute past the hour"
-   :schedule_hour   "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" to send at one hour"
-   :schedule_day    "use \"weekly\", or \"monthly\" with schedule_frame \"first\" or \"last\", to send on a weekday"
-   :schedule_frame  "only a monthly schedule sends on a frame of the month"})
+  {:schedule_minute (message/raw "only an hourly schedule sends at a minute past the hour")
+   :schedule_hour   (message/raw (str "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" "
+                                      "to send at one hour"))
+   :schedule_day    (message/raw (str "use \"weekly\", or \"monthly\" with \"schedule_frame\" \"first\" or \"last\", "
+                                      "to send on a weekday"))
+   :schedule_frame  (message/raw "only a monthly schedule sends on a frame of the month")})
 
 (defn- check-ignored-schedule-fields!
   "Reject a schedule field the caller's `schedule_type` doesn't read. The cron compiler drops such
@@ -65,8 +68,9 @@
                      first)]
     (when ignored
       (common/throw-teaching-error
-       (format "A %s schedule doesn't use %s, so it would be ignored — %s."
-               schedule_type (name ignored) (schedule-field-advice ignored))))))
+       (message/msg ["%s %s schedule doesn't use %s, so it would be ignored — %s."]
+                    (message/raw (if (= "hourly" schedule_type) "An" "A"))
+                    schedule_type (name ignored) (schedule-field-advice ignored))))))
 
 (defn- check-schedule!
   "Reject a schedule the cron compiler would mis-encode: one missing a field its type needs, or one
@@ -78,19 +82,21 @@
   (letfn [(require! [v field explanation]
             (when (nil? v)
               (common/throw-teaching-error
-               (format "A %s schedule needs %s — %s." schedule_type field explanation))))]
+               (message/msg ["A %s schedule needs %s — %s."]
+                            schedule_type field explanation))))]
     (case schedule_type
       "hourly"  nil
-      "daily"   (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-      "weekly"  (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-                    (require! schedule_day "schedule_day" "the day of the week, e.g. \"mon\""))
-      "monthly" (do (require! schedule_hour "schedule_hour" "the hour of the day to send, 0-23")
-                    (require! schedule_frame "schedule_frame" "\"first\", \"mid\", or \"last\"")
+      "daily"   (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+      "weekly"  (do (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+                    (require! schedule_day "schedule_day" (message/raw "the day of the week, e.g. \"mon\"")))
+      "monthly" (do (require! schedule_hour "schedule_hour" (message/raw "the hour of the day to send, 0-23"))
+                    (require! schedule_frame "schedule_frame" (message/raw "\"first\", \"mid\", or \"last\""))
                     (when (and (= "mid" schedule_frame) schedule_day)
                       (common/throw-teaching-error
-                       (str "A monthly schedule with schedule_frame \"mid\" sends on the 15th, so it cannot also "
-                            "take a schedule_day — drop schedule_day, or use frame \"first\" or \"last\" to send "
-                            "on a particular weekday."))))))
+                       (message/msg [(str "A monthly schedule with \"schedule_frame\" \"mid\" sends on the 15th, "
+                                          "so it cannot also take a \"schedule_day\" — drop \"schedule_day\", "
+                                          "or use \"schedule_frame\" \"first\" or \"last\" "
+                                          "to send on a particular weekday.")]))))))
   (check-ignored-schedule-fields! schedule))
 
 (defn- schedule->cron
@@ -102,8 +108,12 @@
     (u.cron/schedule-map->cron-string schedule)
     (catch Exception _
       (common/throw-teaching-error
-       (format "Metabase can't schedule %s — check schedule_type against the other schedule fields."
-               (pr-str schedule))))))
+       (message/msg ["Metabase can't schedule {%s} — check schedule_type against the other schedule fields."]
+                    (common/list-message
+                     (for [field [:schedule_type :schedule_hour :schedule_minute :schedule_day :schedule_frame]
+                           :let  [value (get schedule field)]
+                           :when (some? value)]
+                       (message/msg ["%s: %s"] (name field) value))))))))
 
 (defn- cron-subscription
   [schedule]
@@ -136,27 +146,29 @@
         (nil? (:graph.goal_value viz))
         (common/throw-teaching-error
          (if (:graph.show_goal viz)
-           (format (str "Question %d shows a goal line but has no goal value saved, so alerts can't compare "
-                        "against it — edit the chart's goal line settings and enter a goal number, or use "
-                        "the \"has_result\" condition.")
-                   (:id card))
-           (format (str "Question %d has no goal line, so a \"goal_above\"/\"goal_below\" alert can never fire — "
-                        "set a goal on the chart, or use the \"has_result\" condition.")
-                   (:id card))))
+           (message/msg [(str "Question %d shows a goal line but has no goal value saved, so alerts "
+                              "can't compare against it — edit the chart's goal line settings and "
+                              "enter a goal number, or use the \"has_result\" condition.")]
+                        (:id card))
+           (message/msg [(str "Question %d has no goal line, so a \"goal_above\"/\"goal_below\" alert can "
+                              "never fire — set a goal on the chart, or use the \"has_result\" condition.")]
+                        (:id card))))
 
         (< 1 (count (:graph.metrics viz)))
         (common/throw-teaching-error
-         (format (str "Question %d plots more than one series, so a goal alert has no single value to compare "
-                      "against the goal — use the \"has_result\" condition, or edit the chart down to one series.")
-                 (:id card))))
+         (message/msg [(str "Question %d plots more than one series, so a goal alert has no "
+                            "single value to compare against the goal — use the "
+                            "\"has_result\" condition, or edit the chart down to one series.")]
+                      (:id card))))
 
       :progress
       nil
 
       (common/throw-teaching-error
-       (format (str "Question %d is displayed as a %s, which has no goal line — \"goal_above\"/\"goal_below\" "
-                    "alerts need a line, area, bar, or progress chart. Use the \"has_result\" condition instead.")
-               (:id card) (u/qualified-name (:display card)))))))
+       (message/msg [(str "Question %d is displayed as a %s, which has no goal line — "
+                          "\"goal_above\"/\"goal_below\" alerts need a line, area, bar, "
+                          "or progress chart. Use the \"has_result\" condition instead.")]
+                    (:id card) (u/qualified-name (:display card)))))))
 
 ;;; --------------------------------------------------- handlers ---------------------------------------------------
 
@@ -174,11 +186,12 @@
   [slack-channel]
   (when-not (channel.settings/slack-configured?)
     (common/throw-teaching-error
-     "Slack is not configured — ask an admin to set up Slack in Metabase settings, or use channel \"email\"."))
+     (message/msg [(str "Slack is not configured — ask an admin to set up "
+                        "Slack in Metabase settings, or use channel \"email\".")])))
   (let [channel (or (channel.settings/find-cached-slack-channel-or-username slack-channel)
                     (common/throw-teaching-error
-                     (format "No Slack channel or user named %s — pass a channel name like \"#data-team\"."
-                             (pr-str slack-channel))))]
+                     (message/msg ["No Slack channel or user named %s — pass a channel name like \"#data-team\"."]
+                                  slack-channel)))]
     {:type    :notification-recipient/raw-value
      :details {:value (:display-name channel) :channel_id (:id channel)}}))
 
@@ -198,35 +211,36 @@
     ;; `channel` must not be able to talk its way past this guard by naming a type we do manage.
     (when (and existing-type (not (#{"channel/email" "channel/slack"} existing-type)))
       (common/throw-teaching-error
-       (format (str "This alert delivers over %s, which alert_write doesn't manage — edit it in Metabase, "
-                    "or leave channel, slack_channel, and recipients out to keep it as it is.")
-               existing-type)))
+       (message/msg [(str "This alert delivers over %s, which alert_write doesn't manage — edit it in "
+                          "Metabase, or leave channel, slack_channel, and recipients out to keep it as it is.")]
+                    existing-type)))
     ;; An empty list reads as "clear the recipients", which the cond below would silently answer
     ;; with the caller (at create) or the stored list (at update).
     (when (and recipients (empty? recipients))
       (common/throw-teaching-error
-       (str "`recipients` can't be empty — an alert with nobody to send to would never reach anyone. "
-            "Pass at least one user id or email address, or leave recipients out: a new alert then "
-            "goes to you, and an existing one keeps the recipients it has.")))
+       (message/msg [(str "\"recipients\" can't be empty — an alert with nobody to send to would never reach "
+                          "anyone. Pass at least one user id or email address, or leave recipients out: a "
+                          "new alert then goes to you, and an existing one keeps the recipients it has.")])))
     (case channel-type
       "slack"
       (do
         (when (seq recipients)
           (common/throw-teaching-error
-           "A Slack alert posts to a channel, so it takes slack_channel rather than recipients."))
+           (message/msg ["A Slack alert posts to a channel, so it takes slack_channel rather than recipients."])))
         (assoc base
                :channel_type :channel/slack
                :recipients   (cond
                                slack_channel            [(slack-recipient slack_channel)]
                                (seq (:recipients base)) (:recipients base)
                                :else (common/throw-teaching-error
-                                      "`slack_channel` is required when channel is \"slack\"."))))
+                                      (message/msg ["\"slack_channel\" is required when channel is \"slack\"."])))))
 
       "email"
       (do
         (when slack_channel
           (common/throw-teaching-error
-           "`slack_channel` only applies to a Slack alert — pass channel \"slack\" to post there, or drop slack_channel to keep delivering by email."))
+           (message/msg [(str "\"slack_channel\" only applies to a Slack alert — pass channel \"slack\" "
+                              "to post there, or drop slack_channel to keep delivering by email.")])))
         (assoc base
                :channel_type :channel/email
                :recipients   (cond
@@ -308,7 +322,7 @@
    `creator_id` and never moves the alert to another card."
   [id]
   (when-not (int? id)
-    (common/throw-teaching-error "Alerts take a numeric id — they have no entity_id."))
+    (common/throw-teaching-error (message/msg ["Alerts take a numeric id — they have no entity_id."])))
   (let [notification (mcp.db/notification-by-payload-type id :notification/card)]
     (when-not (and notification (mi/can-read? notification) (mi/can-write? notification))
       (common/throw-not-found :alert id))
@@ -318,7 +332,8 @@
   [id {:keys [condition schedule active] :as args}]
   (when (contains? args :card_id)
     (common/throw-teaching-error
-     "`card_id` can't be changed on an existing alert — create a new alert on the other question instead."))
+     (message/msg [(str "\"card_id\" can't be changed on an existing alert — "
+                        "create a new alert on the other question instead.")])))
   (let [condition   (m/remove-vals nil? condition)
         existing    (fetch-alert id)
         delivery?   (boolean (some #(contains? args %) [:channel :slack_channel :recipients]))
@@ -331,13 +346,13 @@
       (check-goal-line! (resolve-card (:card_id payload))))
     (when (and delivery? (< 1 (count (:handlers existing))))
       (common/throw-teaching-error
-       (str "This alert delivers over more than one channel, and alert_write writes a single one — "
-            "editing its delivery here would silently drop the others. Edit it in Metabase instead.")))
+       (message/msg [(str "This alert delivers over more than one channel, and alert_write writes a single one — "
+                          "editing its delivery here would silently drop the others. Edit it in Metabase instead.")])))
     ;; `:subscriptions` is a `:multi-row?` nested spec, so writing one back deletes the rest.
     (when (and schedule (< 1 (count (:subscriptions existing))))
       (common/throw-teaching-error
-       (str "This alert runs on more than one schedule, and alert_write writes a single one — "
-            "changing its schedule here would silently drop the others. Edit it in Metabase instead.")))
+       (message/msg [(str "This alert runs on more than one schedule, and alert_write writes a single one — "
+                          "changing its schedule here would silently drop the others. Edit it in Metabase instead.")])))
     ;; The permission rejection [[fetch-alert]] has to hide is already spent; any 403 from here on
     ;; is about the edit itself, and says so.
     ;;
@@ -368,10 +383,11 @@
    unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
-    (throw (ex-info (format (str "%s runs its question and delivers the results, which requires the %s scope — "
-                                 "this token can manage alerts but not execute queries.")
-                            action metabot.scope/agent-query-run)
-                    {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
+    (common/throw-teaching-error
+     (message/msg [(str "%s runs its question and delivers the results, which requires the "
+                        "%s scope — this token can manage alerts but not execute queries.")]
+                  action (message/raw metabot.scope/agent-query-run))
+     {:status-code 403 ::common/error-code common/error-code-invalid-request})))
 
 (defn- execute-scope-trigger
   "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update
@@ -385,20 +401,20 @@
   [updates]
   (cond
     (some #(contains? updates %) [:channel :slack_channel :recipients])
-    "Changing where an alert delivers"
+    (message/raw "Changing where an alert delivers")
 
     (true? (:active updates))
-    "Resuming a paused alert"
+    (message/raw "Resuming a paused alert")
 
     (contains? updates :schedule)
-    "Changing an alert's schedule"
+    (message/raw "Changing an alert's schedule")
 
     ;; `send_once` archives the alert after its first send, so clearing it turns one scheduled run
     ;; into an unbounded series — the same commitment a new schedule makes. Only an explicit
     ;; `false` counts: nested nulls survive the boundary's stripping, so `send_once: null` is an
     ;; omission.
     (false? (:send_once (:condition updates)))
-    "Removing an alert's send-once limit"))
+    (message/raw "Removing an alert's send-once limit")))
 
 (def ^:private alert-write-args-schema
   [:map {:closed true}
@@ -447,7 +463,7 @@
      ;; without them the response is the minimal ack, or a no-op update reads the recipients.
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (case op
-                          :create (do (check-query-execute-scope! token-scopes "Creating an alert")
+                          :create (do (check-query-execute-scope! token-scopes (message/raw "Creating an alert"))
                                       (create! a))
                           :update (do (when-let [reason (execute-scope-trigger b)]
                                         (check-query-execute-scope! token-scopes reason))

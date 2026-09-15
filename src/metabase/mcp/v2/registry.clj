@@ -26,6 +26,7 @@
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
@@ -227,14 +228,14 @@
 ;;; ------------------------------------------------ Dispatch ------------------------------------------------------
 
 (defn- validation-error-message
-  "Validate `arguments` against the tool's Malli schema; returns a teaching-style message
-   string on failure, nil when valid."
+  "Validate `arguments` against the tool's Malli schema; returns a teaching-style message on failure, nil when
+   valid."
   [schema arguments]
   (when-let [explanation ((mr/explainer schema) arguments)]
-    (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
+    (message/msg ["Invalid arguments: %s"] (common/humanize-detail (me/humanize explanation)))))
 
 (defn- insufficient-scope-message
-  "The scope-denial error text. Names the scope the tool requires and the ones the token holds — both are
+  "The scope-denial error message. Names the scope the tool requires and the ones the token holds — both are
    in hand here, and a message that names only the tool leaves the caller with nothing to act on, against
    the server's own `initialize` instructions promising that a failed call always names its fix.
 
@@ -244,12 +245,13 @@
   [tool-name required token-scopes]
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)
-                (str "one of " (str/join ", " (sort required)))
-                (str required))]
-    (str "Insufficient scope to call tool: " tool-name ". Requires " needs "; "
-         (if (seq held)
-           (str "your token holds " (str/join ", " held) ".")
-           "your token holds no scopes."))))
+                (message/msg ["one of %s"] (common/list-message (sort required)))
+                required)]
+    (if (seq held)
+      (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds %s."]
+                   tool-name needs (common/list-message held))
+      (message/msg ["Insufficient scope to call tool: %s. Requires %s; your token holds no scopes."]
+                   tool-name needs))))
 
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
@@ -261,10 +263,14 @@
       ;; calling a tool that never existed.
       (or (nil? tool)
           (contains? (disabled-tool-names) tool-name))
-      {:error {:code common/error-code-method-not-found :message (str "Unknown tool: " tool-name)}}
+      {:error {:code    common/error-code-method-not-found
+               :message (if (nil? tool-name)
+                          (message/msg ["The tool call is missing a tool name."])
+                          (message/msg ["Unknown tool: %s"] tool-name))}}
 
       (not (map? (or arguments {})))
-      {:error {:code common/error-code-invalid-params :message "Invalid arguments: expected a JSON object."}}
+      {:error {:code    common/error-code-invalid-params
+               :message (message/msg ["Invalid arguments: expected a JSON object."])}}
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code common/error-code-invalid-request
@@ -273,7 +279,8 @@
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
       (seq missing)
-      {:error {:code common/error-code-invalid-params :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
+      {:error {:code    common/error-code-invalid-params
+               :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
 
       :else
       ;; Strict MCP clients (ChatGPT) send every declared property with `null` for the ones they
@@ -295,9 +302,12 @@
               {:result (common/->mcp-error-content e)})))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}`, with a [[message/msg]] message, when
+   the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an
+   executed handler can produce an MCP result carrying `:isError`.
 
-   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
+   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on
+   error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {}))
   ([token-scopes session-id tool-name arguments options]
@@ -322,7 +332,7 @@
                result-error-code
                (::common/error-code result)]
            (if error
-             (record! "error" (:code error) (:message error))
+             (record! "error" (:code error) (message/render (:message error)))
              (if (:isError result)
                (record! "error"
                         (or result-error-code common/error-code-internal)
