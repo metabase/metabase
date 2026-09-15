@@ -1859,8 +1859,7 @@ describe("documents", () => {
         .and("contain.text", "Document saved");
       // dismiss after asserting so toasts don't stack into later lookups
       H.undoToast().icon("close").click({ force: true });
-      // wait for the dismissal to take effect so later lookups stay unambiguous
-      cy.findAllByTestId("toast-undo").should("have.length", 0);
+      H.undoToastList().should("have.length", 0);
 
       cy.log("Make another change");
       H.documentContent().click();
@@ -1870,7 +1869,7 @@ describe("documents", () => {
         "be.visible",
       );
       H.undoToast().icon("close").click({ force: true });
-      cy.findAllByTestId("toast-undo").should("have.length", 0);
+      H.undoToastList().should("have.length", 0);
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();
