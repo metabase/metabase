@@ -1073,7 +1073,7 @@ LIMIT
       }).as("updateTransformError");
 
       cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
+      getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
 
       cy.log("Wait for the failed request");
       cy.wait("@updateTransformError");
