@@ -120,7 +120,7 @@ jobs:
             --body "$BODY" \
             --label ".CI & Tests" \
             --label "no-backport" \
-            --reviewer metabase/devexp)
+            --reviewer metabase/devex)
 
           PR_NUMBER=${URL##*/}
 
