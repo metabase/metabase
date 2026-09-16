@@ -566,6 +566,29 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_
     return json.dumps(dependencies)
 
 
+def fold_keys(mapping):
+    """
+    Case-insensitive view of a replacement map, for matching an identifier written in another case.
+
+    An identifier names the same thing however it is cased (Metabase treats every database as case-agnostic, see
+    `macaw-options`), so `FROM people` must match a key of `PEOPLE`. Keys that differ only in case have no single
+    answer, so they are dropped rather than resolved arbitrarily: an exact match still finds them.
+    """
+    folded = {}
+    ambiguous = set()
+    for key, value in mapping.items():
+        folded_key = tuple(part.lower() if isinstance(part, str) else part for part in key)
+        if folded_key in folded and folded[folded_key] != value:
+            ambiguous.add(folded_key)
+        folded[folded_key] = value
+    return {key: value for key, value in folded.items() if key not in ambiguous}
+
+
+def fold_lookup(folded, key):
+    """The value `key` maps to in a [[fold_keys]] map, ignoring the case of every part."""
+    return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
+
+
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
@@ -602,6 +625,8 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     # Columns: (schema, table, column) -> new name. `table` is None for a key that matches any table.
     column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
                   for key, new_name in replacements.get("columns") or []}
+    folded_schemas = fold_keys({(name,): new_name for name, new_name in schemas.items()})
+    folded_table_map = fold_keys(table_map)
 
     ast = sqlglot.parse_one(sql, read=dialect)
 
@@ -614,9 +639,12 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     def find_table_replacement(db, schema, table):
         # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
         # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
-        return (table_map.get((db, schema, table)) or
-                table_map.get((None, schema, table)) or
-                table_map.get((None, None, table)))
+        # Each is tried as written before it is tried ignoring case, so an exact key always wins.
+        for key in ((db, schema, table), (None, schema, table), (None, None, table)):
+            replacement = table_map.get(key) or fold_lookup(folded_table_map, key)
+            if replacement:
+                return replacement
+        return None
 
     def set_identifier(node, arg, name):
         # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
@@ -646,8 +674,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             # SQLGlot stores a 3-part name as catalog.db.this: catalog is the BigQuery project or ClickHouse database,
             # db the schema. The replacement is looked up by the original parts, before the schema is renamed.
             db, schema, table = node.catalog or None, node.db, node.name
-            if schema and schema in schemas:
-                set_identifier(node, "db", schemas[schema])
+            new_schema = schemas.get(schema) or fold_lookup(folded_schemas, (schema,)) if schema else None
+            if new_schema:
+                set_identifier(node, "db", new_schema)
             if not db and not schema and table in cte_names:
                 return node
             replacement = find_table_replacement(db, schema, table)
@@ -665,9 +694,13 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                     replace_table(node, replacement, "catalog", "db", "table")
             # A column key matches a column qualified by the key's table, or an unqualified column with any table
             # (the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"}).
+            def column_matches(key_table, key_column):
+                return (key_column.lower() == column.lower()
+                        and (not table or (key_table or "").lower() == table.lower()))
+
             new_column = next((new_name
                                for (_, key_table, key_column), new_name in column_map.items()
-                               if key_column == column and (not table or key_table == table)),
+                               if column_matches(key_table, key_column)),
                               None)
             if new_column:
                 column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted

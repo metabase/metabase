@@ -23,6 +23,14 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
+(defn- same-name?
+  "Do `a` and `b` name the same thing? Case-agnostic, the rule the rewrite matches by."
+  [^String a ^String b]
+  (or (= a b)
+      (and a b (.equalsIgnoreCase a b))))
+
 (mu/defn- table-match? :- :boolean
   "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by
   name, with schema equal, or the reference bare (nil schema) against a declared table in the
@@ -30,11 +38,11 @@
   rewrites (a bare read resolves to the default schema; a bare declaration does not cover a
   qualified read). The single matching rule for both completeness directions."
   [driver :- :keyword
-   {ref-schema :schema ref-name :name}   :- ::transform-testing.schema/table
-   {d-schema :schema d-name :name}       :- ::transform-testing.schema/table]
-  (and (= d-name ref-name)
-       (or (= d-schema ref-schema)
-           (and (nil? ref-schema) (= d-schema (sql.normalize/default-schema driver))))))
+   {ref-schema :schema ref-name :name} :- ::transform-testing.schema/table
+   {d-schema :schema d-name :name}     :- ::transform-testing.schema/table]
+  (and (same-name? d-name ref-name)
+       (or (same-name? d-schema ref-schema)
+           (and (nil? ref-schema) (same-name? d-schema (sql.normalize/default-schema driver))))))
 
 (mu/defn table-label :- :string
   "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is

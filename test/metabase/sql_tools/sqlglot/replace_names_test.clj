@@ -105,18 +105,51 @@
                           "WITH people AS (SELECT 1 AS id) SELECT id FROM public.people"
                           {:tables {{:schema "public" :table "people"} "users"}})))))
 
-(deftest ^:parallel case-sensitive-match-test
-  (testing "Case-sensitive matching - must match exact case"
-    ;; Lower case matches lower case
+(deftest ^:parallel case-agnostic-match-test
+  (testing "a key matches a reference written in any case"
+    ;; Metabase treats every database as case-agnostic (see `macaw-options`): unquoted identifiers are
+    ;; case-insensitive per SQL-92, and where they are not (MySQL, SQL Server) it depends on the file
+    ;; system or collation rather than on the query. A key that only matched one spelling would leave
+    ;; the other pointing at the real table.
     (is (= "SELECT * FROM users"
            (replace-names :postgres
                           "SELECT * FROM people"
                           {:tables {{:table "people"} "users"}})))
-    ;; Upper case needs upper case key
     (is (= "SELECT * FROM users"
            (replace-names :postgres
                           "SELECT * FROM PEOPLE"
-                          {:tables {{:table "PEOPLE"} "users"}})))))
+                          {:tables {{:table "people"} "users"}})))
+    (is (= "SELECT * FROM users"
+           (replace-names :postgres
+                          "SELECT * FROM people"
+                          {:tables {{:table "PEOPLE"} "users"}}))))
+  (testing "the schema may differ in case too"
+    ;; A string replacement renames the table and leaves the schema where it was, whatever its case.
+    (is (= "SELECT * FROM PUBLIC.users"
+           (replace-names :postgres
+                          "SELECT * FROM PUBLIC.PEOPLE"
+                          {:tables {{:schema "public" :table "people"} "users"}})))
+    (is (= "SELECT * FROM public.users"
+           (replace-names :postgres
+                          "SELECT * FROM public.people"
+                          {:tables {{:schema "public" :table "people"} "users"}}))))
+  (testing "a key matching as written wins over one matching only by case"
+    (is (= "SELECT * FROM exact"
+           (replace-names :postgres
+                          "SELECT * FROM people"
+                          {:tables {{:table "people"} "exact"
+                                    {:table "PEOPLE"} "folded"}}))))
+  (testing "keys differing only in case answer nothing, rather than one of them arbitrarily"
+    (is (= "SELECT * FROM People"
+           (replace-names :postgres
+                          "SELECT * FROM People"
+                          {:tables {{:table "people"} "one"
+                                    {:table "PEOPLE"} "two"}}))))
+  (testing "a column key matches its column and qualifier in any case"
+    (is (= "SELECT user_id FROM people"
+           (replace-names :postgres
+                          "SELECT ID FROM people"
+                          {:columns {{:table "PEOPLE" :column "id"} "user_id"}})))))
 
 (deftest ^:parallel table-rename-with-schema-map-value-test
   (testing "Table rename using map value with schema and table (schema relocation pattern)"
