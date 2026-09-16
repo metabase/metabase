@@ -616,3 +616,52 @@
         wrapped (cg/handler-wrappers {"r.clj" (cg/extract "r.clj" 'metabase.x.routes (root src))})]
     (is (= #{"+auth" "+require-premium-feature"} (get wrapped 'metabase.x.api))
         "each step of a threading form wraps the seed, whether a bare symbol or a call")))
+
+(deftest fn-literal-call-site-is-keyed-where-kondo-keys-it-test
+  (testing "the call a `#(f % x)` literal makes is keyed one column past the `#`, where clj-kondo resolves `f`;
+            keyed at the `#` it resolves to clojure.core/fn* and the edge is lost"
+    (let [src "(ns t (:require [metabase.api.macros :as api.macros] [other.ns :as o]))
+(defn- steps [] [(o/step #(o/run! % 1))])
+(api.macros/defendpoint :get \"/a\" \"doc\" [_r _q _b] (steps))
+"
+          tables  {"f.clj" (cg/extract "f.clj" 't (root src))}
+          ;; what clj-kondo reports on line 2: the `#` as fn*, the head one column later
+          resolve {{:filename "f.clj" :row 2 :col 26} 'clojure.core/fn*
+                   {:filename "f.clj" :row 2 :col 27} 'other.ns/run!}
+          reach   (cg/reachable-regions {:tables tables :resolve resolve})]
+      (is (some #(= {:row 2 :col 27 :filename "f.clj"} (:pos %))
+                (filter #(= 'o/run! (:head %)) (:call-sites (get tables "f.clj"))))
+          "the site sits on the open paren, not the `#`")
+      (is (contains? (get (:edges reach) 't/steps) 'other.ns/run!)
+          "steps calls other.ns/run!, not clojure.core/fn*")
+      (is (contains? (cg/entry-closure reach (first (cg/entries reach))) 'other.ns/run!)
+          "the endpoint reaches it"))))
+
+(deftest taint-crosses-a-fn-literal-test
+  (testing "a request value handed to a callee inside a `#(...)` literal reaches the callee's parameter: the
+            call is resolved where clj-kondo keys it, one column past the `#`"
+    (let [src     "(ns t (:require [other.ns :as o]))
+(defn- helper [idp redirect]
+  (str idp redirect))
+(defn handle [request]
+  (let [target (get-in request [:params :redirect])]
+    (o/step #(helper % target))))
+"
+          ;;                        1         2         3
+          ;;               123456789012345678901234567890
+          ;; line 6:       `    (o/step #(helper % target))))` -- `#` at col 13, `(` at col 14
+          locals  [{:id 1 :name 'idp      :filename "f.clj" :row 2 :col 16}
+                   {:id 2 :name 'redirect :filename "f.clj" :row 2 :col 20}
+                   {:id 3 :name 'request  :filename "f.clj" :row 4 :col 15}
+                   {:id 4 :name 'target   :filename "f.clj" :row 5 :col 9}]
+          usages  [{:id 3 :filename "f.clj" :row 5 :col 24}
+                   {:id 4 :filename "f.clj" :row 6 :col 24}
+                   {:id 1 :filename "f.clj" :row 3 :col 8}
+                   {:id 2 :filename "f.clj" :row 3 :col 12}]
+          tables  {"f.clj" (cg/extract "f.clj" 't (root src))}
+          resolve {{:filename "f.clj" :row 6 :col 13} 'clojure.core/fn*
+                   {:filename "f.clj" :row 6 :col 14} 't/helper}
+          tainted (cg/propagate {:tables tables :resolve resolve :locals locals :local-usages usages :sources #{3}})]
+      (is (contains? (get tainted 2) :request) "helper's `redirect` parameter")
+      (is (not (contains? (get tainted 1) :request))
+          "helper's `idp` parameter receives `%`: a value of unknown shape, not the request's"))))

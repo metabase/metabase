@@ -302,12 +302,14 @@ rule with neither triggers nor `:endpoint-rule` throws when the namespace loads.
 ## Reporting
 
 Text output goes to the terminal: findings grouped by rule, then by severity, each with its file:row:col, what
-reaches it, and one shortest call path per kind of entry point that does. A finding nothing reaches shows the
-chain from its outermost caller instead -- `called from apply-transform! -> transform-step! -> insert-card!;
-nothing calls apply-transform!` -- so a reader can tell the linter saw the callers and where the chain ends from
-a chain it never followed (`cg/callers-of`). A function's own self-call is not what calls it, so one arity
-delegating to another is still an outermost caller; when every caller loops back the farthest one is named
-instead, and the line says so.
+reaches it, and one shortest call path per kind of entry point that does. A finding no entry point was found
+for says so as a limit of the analysis, not a fact about the code -- `static analysis could not determine an
+entry point` -- and shows the chain from its outermost caller: `called from apply-transform! ->
+transform-step! -> insert-card!; the analysis cannot follow callers of apply-transform!` (`cg/callers-of`). The
+graph misses calls it does not model (through a var, a protocol, a multimethod outside its vocabulary), and a
+function reached only that way reads exactly like dead code; the wording keeps a reader from concluding it is.
+A function's own self-call is not what calls it, so one arity delegating to another is still an outermost
+caller; when every caller loops back the farthest one is named instead, and the line says so.
 
 SARIF output is what GitHub code scanning ingests, written compact (`jq` reads it). Every rule is described
 whether or not it fired, so a clean run closes resolved alerts; each links to its source on master as the alert's

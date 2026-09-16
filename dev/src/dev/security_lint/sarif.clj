@@ -96,18 +96,25 @@
 
 (defn- reachability-sentence
   "GitHub shows a result's message and nothing of its properties, so the one fact a reviewer wants first -- can a
-  request even get here -- has to be in the text."
+  request even get here -- has to be in the text.
+
+  When no entry point is found the sentence says the *analysis* ran out, not that the code is unreachable: a call
+  the graph cannot follow (through a var, a multimethod it does not model, a protocol, a fn literal it once
+  mis-keyed) reads exactly like dead code, and a reviewer told \"nothing calls this\" stops reading."
   [reachable-from callers]
   (cond
     (seq reachable-from)
     (str "Reachable from " (str/join ", " (sort (map name reachable-from))) ".")
 
     (seq (:path callers))
-    (str "Not reachable from any known entry point; the outermost caller is " (:name (first (:path callers)))
-         (if (:cyclic? callers) ", whose own callers are all on this path." ", which nothing calls."))
+    (str "Static analysis could not determine an entry point; the outermost caller found is "
+         (:name (first (:path callers)))
+         (if (:cyclic? callers)
+           ", whose own callers are all on this path."
+           ", whose callers the analysis cannot follow."))
 
     :else
-    "Not reachable from any known entry point."))
+    "Static analysis could not determine an entry point."))
 
 (defn- origin-phrases
   "The origins by kind, each with its refinements: `app-db (Card, Dashboard)`. A generic helper reached from
@@ -150,8 +157,10 @@
                  ;; nothing reaches it: the chain from the outermost caller, so 'Show paths' still says how the
                  ;; code is used and where the chain ends
                  (when-let [steps (seq (filter :row (:path callers)))]
-                   [(flow (str "No entry point reaches this; called from " (:name (first steps))
-                               (if (:cyclic? callers) ", whose own callers are all on this path" ", which nothing calls"))
+                   [(flow (str "Static analysis could not determine an entry point; called from " (:name (first steps))
+                               (if (:cyclic? callers)
+                                 ", whose own callers are all on this path"
+                                 ", whose callers the analysis cannot follow"))
                           steps)])))))
 
 (defn- fingerprint
@@ -312,14 +321,15 @@
     [(str "    reachable from " (str/join ", " (sort (map name reachable-from))))]
 
     :else
-    (into ["    not reachable from any known entry point"]
+    (into ["    static analysis could not determine an entry point"]
           (when-let [path (seq (:path callers))]
             (wrap "      " "        " 110
                   (str "called from " (str/join " -> " (map :name path))
                        (if (:cyclic? callers)
                          (str "; every caller of " (:name (first path)) " is on this path")
-                         (str "; nothing calls " (:name (first path))
-                              (when (> (:count callers) 1) (str " (one of " (:count callers) " uncalled roots)"))))))))))
+                         (str "; the analysis cannot follow callers of " (:name (first path))
+                              (when (> (:count callers) 1)
+                                (str " (one of " (:count callers) " such roots)"))))))))))
 
 (defn- finding-lines [root show-message? {:keys [file row col message snippet] :as finding}]
   (concat

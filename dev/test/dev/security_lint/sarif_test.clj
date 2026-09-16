@@ -161,7 +161,7 @@
   (testing "GitHub does not display result properties, so what reaches the finding goes in the message text"
     (let [msgs (mapv #(get-in % [:message :text]) (get-in (run-report) [:runs 0 :results]))]
       (is (= "dynamic arg. Reachable from http, job. Least privilege on the path: any signed-in user." (first msgs)))
-      (is (= "dynamic arg. Not reachable from any known entry point; the outermost caller is metabase.b/outer, which nothing calls."
+      (is (= "dynamic arg. Static analysis could not determine an entry point; the outermost caller found is metabase.b/outer, whose callers the analysis cannot follow."
              (second msgs))))))
 
 (deftest text-report-test
@@ -182,9 +182,10 @@
         (is (re-find #"(?m)^src/metabase/b\.clj:2:1\n    other arg\n" out))))
     (testing "a finding starts with file:row:col alone on its line, which IDE terminals make clickable, with the
               details indented under it and a blank line after"
-      (is (re-find #"\n\nsrc/metabase/b\.clj:2:1\n    not reachable from any known entry point" out)))
-    (testing "what nothing reaches still says how it is called, from the outermost caller down"
-      (is (re-find #"(?m)^    not reachable from any known entry point\n      called from metabase\.b/outer -> metabase\.b/inner; nothing calls metabase\.b/outer$" out)))
+      (is (re-find #"\n\nsrc/metabase/b\.clj:2:1\n    static analysis could not determine an entry point" out)))
+    (testing "what no entry point was found for still says how it is called, from the outermost caller down, and that
+              the chain ends where the analysis lost the callers rather than where the code has none"
+      (is (re-find #"(?m)^    static analysis could not determine an entry point\n      called from metabase\.b/outer -> metabase\.b/inner; the analysis cannot follow callers of metabase\.b/outer$" out)))
     (testing "the code is quoted under the message"
       (is (re-find #"\| \(shell/sh \.\.\.\)" out)))
     (testing "a summary closes the report"
@@ -236,7 +237,7 @@
               says how the code is used"
       (let [flow (first (:codeFlows (second (get-in (run-report) [:runs 0 :results]))))
             locs (get-in flow [:threadFlows 0 :locations])]
-        (is (= "No entry point reaches this; called from metabase.b/outer, which nothing calls" (get-in flow [:message :text])))
+        (is (= "Static analysis could not determine an entry point; called from metabase.b/outer, whose callers the analysis cannot follow" (get-in flow [:message :text])))
         (is (= ["metabase.b/outer" "metabase.b/inner" "dynamic arg"] (map #(get-in % [:location :message :text]) locs)))
         (is (= [9 1 2] (map #(get-in % [:location :physicalLocation :region :startLine]) locs)))))
     (testing "and none at all when it is not inside any function"
