@@ -149,7 +149,21 @@
     (is (=? [#".*2 arguments.*1.*"]
             (findings agent-message/lint-msg '(msg ["%s and" "%s"] a))))
     (is (=? [#".*1 argument.*2.*"]
-            (findings agent-message/lint-msg '(msg ["only %s"] a b))))))
+            (findings agent-message/lint-msg '(msg ["only %s"] a b)))))
+  (testing (str "GHY-4544: a reference `String/format` can't resolve is flagged, since the runtime would fall back "
+                "to rendering every part quoted")
+    (testing "`%<` with no specifier before it to repeat, which counts as no argument at all"
+      (is (=? [#".*can't exist.*"]
+              (findings agent-message/lint-msg '(msg ["Value: %<s"]))))
+      (is (=? [#".*can't exist.*"]
+              (findings agent-message/lint-msg '(msg ["100%% done," "then %<d"])))))
+    (testing "an explicit index of zero, which is below the first argument"
+      (is (=? [#".*can't exist.*"]
+              (findings agent-message/lint-msg '(msg ["Value: %0$s"]))))
+      (is (=? [#".*can't exist.*"]
+              (findings agent-message/lint-msg '(msg ["Value: %0$s"] x)))))
+    (testing "a `%<` that repeats the first argument is still accepted"
+      (is (empty? (findings agent-message/lint-msg '(msg ["%s then %<s"] x)))))))
 
 (deftest ^:parallel msg-specifier-test
   (testing "GHY-4544: only `%s` with no flags but `<`, `%d` with flags and width, and `%%` are allowed"

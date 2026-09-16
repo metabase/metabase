@@ -52,7 +52,8 @@
   #"%(?:(\d{1,9})\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([tT]?[a-zA-Z%])")
 
 (defn- consumed-args
-  "`[index conversion]` for each argument-consuming specifier in `fmt`, with zero-based argument indexes."
+  "`[index conversion]` for each argument-consuming specifier in `fmt`, with zero-based argument indexes. An index of
+  -1 marks a reference no argument can satisfy: an explicit `0$`, or a `<` with no specifier before it to repeat."
   [fmt]
   (loop [[[_ explicit flags _width _precision conversion] & more] (re-seq format-specifier fmt)
          next-index                                               0
@@ -64,7 +65,7 @@
             index     (cond
                         (not consumes?)             nil
                         explicit                    (dec (digits->long explicit))
-                        (str/includes? flags "<")   last-index
+                        (str/includes? flags "<")   (or last-index -1)
                         :else                       next-index)
             implicit? (and consumes? (not explicit) (not (str/includes? flags "<")))]
         (recur more
@@ -144,12 +145,19 @@
   (str n " " word (when-not (= 1 n) "s")))
 
 (defn- lint-arg-count!
-  "Flag `msg` call `node` when its `args` don't number the arguments its literal `lines` consume."
+  "Flag `msg` call `node` when a literal line refers to an argument that can't exist, or when its `args` don't number
+  the arguments its literal `lines` consume."
   [node lines args]
   (let [indexes  (map first (consumed-args (str/join "\n" lines)))
         expected (if (seq indexes) (inc (apply max indexes)) 0)
         given    (count args)]
-    (when (not= expected given)
+    (cond
+      ;; `String/format` throws on these, so the message would render with every part quoted instead.
+      (some neg? indexes)
+      (reg-msg-finding! node (str "A `msg` line refers to an argument that can't exist; "
+                                  "argument indexes start at `1$`, and `%<` repeats the specifier before it."))
+
+      (not= expected given)
       (reg-msg-finding! node (format "The `msg` lines take %s but %d %s given."
                                      (plural expected "argument") given (if (= 1 given) "is" "are"))))))
 
