@@ -1,8 +1,12 @@
 import { useElementSize } from "@mantine/hooks";
-import type { SortingState } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import type { RowSelectionState, SortingState } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { msgid, ngettext, t } from "ttag";
 
+import {
+  BulkActionBar,
+  BulkActionButton,
+} from "metabase/common/components/BulkActionBar";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
@@ -11,10 +15,13 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
-import type { AdminSessionId } from "metabase-types/api";
+import type {
+  AdminSessionId,
+  RevokeAdminSessionsRequest,
+} from "metabase-types/api";
 
 import { SIDEBAR_WIDTH, SessionDetailSidebar } from "../SessionDetailSidebar";
 import { SessionsTable } from "../SessionsTable";
@@ -26,6 +33,7 @@ import {
   SORT_COLUMN_VALUES,
 } from "./constants";
 import type { RouteParams } from "./types";
+import { useSessionRevocation } from "./use-session-revocation";
 import { buildListParams, urlStateConfig } from "./utils";
 
 export const SessionsPage = () => {
@@ -36,6 +44,8 @@ export const SessionsPage = () => {
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const clearSelection = useCallback(() => setRowSelection({}), []);
 
   const { data, isLoading, isFetching, error } = useAbortableQuery(
     useLazyListSessionsQuery,
@@ -43,6 +53,20 @@ export const SessionsPage = () => {
   );
   const sessions = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
+  const selectedSessions = useMemo(
+    () => sessions.filter((session) => rowSelection[session.id]),
+    [sessions, rowSelection],
+  );
+  const selectedCount = selectedSessions.length;
+
+  useEffect(() => {
+    clearSelection();
+  }, [
+    clearSelection,
+    urlState.page,
+    urlState.sort_column,
+    urlState.sort_direction,
+  ]);
 
   const sorting: SortingState = [
     {
@@ -114,54 +138,121 @@ export const SessionsPage = () => {
     };
   }, [sessionId, sessions]);
 
+  const handleRevoked = useCallback(
+    (request: RevokeAdminSessionsRequest) => {
+      clearSelection();
+      // The caller's own session survives every revoke, and an id list only removes the sessions it names
+      const isShownSessionKept =
+        sessionFromPage?.current === true ||
+        (request.ids !== undefined &&
+          sessionId !== undefined &&
+          !request.ids.includes(sessionId));
+      if (sessionId !== undefined && !isShownSessionKept) {
+        navigateToSession(undefined);
+      }
+    },
+    [clearSelection, navigateToSession, sessionFromPage, sessionId],
+  );
+
+  const {
+    isRevoking,
+    confirmModal,
+    revokeSelected,
+    revokeSession,
+    revokeUserSessions,
+    revokeAll,
+  } = useSessionRevocation({ onRevoked: handleRevoked });
+
   return (
-    <Flex ref={containerRef} h="100%" wrap="nowrap">
-      <MonitorMain>
-        <MonitorHeaderTitle mb="sm">{t`Session management`}</MonitorHeaderTitle>
-
-        <SessionsTable
-          sessions={sessions}
-          error={error}
-          isFetching={isFetching}
-          isLoading={isLoading}
-          page={urlState.page}
-          selectedSessionId={sessionId}
-          sorting={sorting}
-          onSortingChange={handleSortingChange}
-          onRowClick={navigateToSession}
-        />
-
-        {!isLoading && error === undefined && (
-          <Flex justify="end">
-            <PaginationControls
-              page={urlState.page}
-              pageSize={PAGE_SIZE}
-              itemsLength={sessions.length}
-              total={total}
-              showTotal
-              onPreviousPage={() =>
-                patchUrlState({ page: urlState.page - 1 }, { immediate: true })
-              }
-              onNextPage={() =>
-                patchUrlState({ page: urlState.page + 1 }, { immediate: true })
-              }
-            />
+    <>
+      <Flex ref={containerRef} h="100%" wrap="nowrap">
+        <MonitorMain>
+          <Flex justify="space-between" align="center" mb="sm" pr="4rem">
+            <MonitorHeaderTitle>{t`Session management`}</MonitorHeaderTitle>
+            <Button
+              leftSection={<Icon name="exit" />}
+              disabled={isRevoking || total === 0}
+              onClick={revokeAll}
+            >
+              {t`Revoke all sessions`}
+            </Button>
           </Flex>
-        )}
-      </MonitorMain>
 
-      {sessionId !== undefined && (
-        <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
-          <SessionDetailSidebar
-            sessionId={sessionId}
-            sessionFromPage={sessionFromPage}
-            prevSessionId={prevSessionId}
-            nextSessionId={nextSessionId}
-            onNavigate={navigateToSession}
-            onClose={handleSidebarClose}
+          <SessionsTable
+            sessions={sessions}
+            error={error}
+            isFetching={isFetching}
+            isLoading={isLoading}
+            page={urlState.page}
+            rowSelection={rowSelection}
+            selectedSessionId={sessionId}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
+            onRowSelectionChange={setRowSelection}
+            onRowClick={navigateToSession}
           />
-        </Sidebar>
-      )}
-    </Flex>
+
+          {!isLoading && error === undefined && (
+            <Flex justify="end">
+              <PaginationControls
+                page={urlState.page}
+                pageSize={PAGE_SIZE}
+                itemsLength={sessions.length}
+                total={total}
+                showTotal
+                onPreviousPage={() =>
+                  patchUrlState(
+                    { page: urlState.page - 1 },
+                    { immediate: true },
+                  )
+                }
+                onNextPage={() =>
+                  patchUrlState(
+                    { page: urlState.page + 1 },
+                    { immediate: true },
+                  )
+                }
+              />
+            </Flex>
+          )}
+        </MonitorMain>
+
+        {sessionId !== undefined && (
+          <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
+            <SessionDetailSidebar
+              sessionId={sessionId}
+              sessionFromPage={sessionFromPage}
+              prevSessionId={prevSessionId}
+              nextSessionId={nextSessionId}
+              isRevoking={isRevoking}
+              onNavigate={navigateToSession}
+              onRevokeSession={revokeSession}
+              onRevokeUserSessions={revokeUserSessions}
+              onClose={handleSidebarClose}
+            />
+          </Sidebar>
+        )}
+      </Flex>
+
+      <BulkActionBar
+        opened={selectedCount > 0}
+        message={ngettext(
+          msgid`${selectedCount} session selected`,
+          `${selectedCount} sessions selected`,
+          selectedCount,
+        )}
+      >
+        <BulkActionButton
+          danger
+          disabled={isRevoking}
+          onClick={() => revokeSelected(selectedSessions)}
+        >
+          {t`Revoke`}
+        </BulkActionButton>
+        <BulkActionButton onClick={clearSelection}>{t`Clear`}</BulkActionButton>
+      </BulkActionBar>
+
+      {confirmModal}
+    </>
   );
 };

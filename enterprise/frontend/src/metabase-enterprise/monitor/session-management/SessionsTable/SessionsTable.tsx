@@ -1,4 +1,10 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
@@ -33,13 +39,18 @@ type SessionsTableProps = {
   isFetching: boolean;
   isLoading: boolean;
   page: number;
+  rowSelection: RowSelectionState;
   selectedSessionId: AdminSessionId | undefined;
   sorting: SortingState;
   onSortingChange: (sorting: SortingState) => void;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onRowClick: (sessionId: AdminSessionId) => void;
 };
 
 const getNodeId = (session: AdminSession) => session.id;
+
+// Revoking the caller's own session is done by logging out, not from this page
+const canSelectSession = (row: Row<AdminSession>) => !row.original.current;
 
 const DateCell = ({ value }: { value: string }) => (
   <Ellipsified>
@@ -53,9 +64,11 @@ export const SessionsTable = ({
   isFetching,
   isLoading,
   page,
+  rowSelection,
   selectedSessionId,
   sorting,
   onSortingChange,
+  onRowSelectionChange,
   onRowClick,
 }: SessionsTableProps) => {
   const selectedRowId = selectedSessionId ?? null;
@@ -172,6 +185,9 @@ export const SessionsTable = ({
     getNodeId,
     sorting,
     manualSorting: true,
+    enableRowSelection: canSelectSession,
+    rowSelection,
+    onRowSelectionChange,
     onRowActivate: handleRowActivate,
     onSortingChange: handleSortingChange,
     selectedRowId,
@@ -213,6 +229,7 @@ export const SessionsTable = ({
     <MonitorTableCard aria-busy={isFetching} data-testid="sessions-table">
       {isLoading ? (
         <TreeTableSkeleton
+          showCheckboxes
           columnWidths={[0.2, 0.18, 0.1, 0.1, 0.14, 0.14, 0.14]}
         />
       ) : (
@@ -221,6 +238,9 @@ export const SessionsTable = ({
           <TreeTable
             instance={instance}
             hierarchical={false}
+            showCheckboxes
+            onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+            headerCheckboxAriaLabel={t`Select all`}
             ariaLabel={t`Sessions`}
             onRowClick={handleRowActivate}
             getRowProps={getRowProps}
