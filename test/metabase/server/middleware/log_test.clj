@@ -87,6 +87,17 @@
         (is (= #{:route-template :duration-ms :occurred-at}
                (set (keys (:extra-info recorded)))))))))
 
+(deftest log-api-call-records-api-key-usage-even-when-console-logging-is-suppressed-test
+  (testing "usage recording and console-log suppression are independent eligibility checks"
+    (let [{:keys [recorded response]}
+          (run-log-api-call! (assoc api-key-request :uri "/api/logger/logs")
+                             "/api/logger/logs" {:status 200, :body "ok"})]
+      (testing "/api/logger/logs is always excluded from the console log, but usage still recorded"
+        (is (not= ::not-called recorded))
+        (is (= "/api/logger/logs" (:route-template (:extra-info recorded)))))
+      (testing "the response passes through unaffected"
+        (is (= {:status 200, :body "ok"} response))))))
+
 (deftest log-api-call-records-nothing-for-other-auth-methods-test
   (testing "session-authenticated requests are untouched"
     (let [{:keys [recorded]}

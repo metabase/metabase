@@ -40,6 +40,13 @@
   "Cap on the stored route_template length, matching the `api_key_usage_log.route_template` column width."
   255)
 
+(def ^:private unmatched-route-template
+  "Recorded in `route_template` when a request authenticated with an API key but matched no endpoint —
+  an absent template is a real, valid event (someone probing for routes, a client hitting a typo'd
+  URL), not something to discard. Distinguishable from a real template at a glance: a matched template
+  always starts with `/`."
+  "(unmatched)")
+
 (def ^:private http-method-max-length
   "Cap on the stored http_method length, matching the `api_key_usage_log.http_method` column width."
   10)
@@ -71,10 +78,12 @@
   10)
 
 (def ^:private not-null-columns
-  "The `api_key_usage_log` columns declared NOT NULL. Rows are inserted in batches, so a row missing
-  one of these would fail every row batched with it, not just itself — an incomplete row is dropped
-  before it is queued instead."
-  [:api_key_id :route_template :http_method :status :duration_ms :client_name])
+  "The `api_key_usage_log` columns declared NOT NULL that this namespace can't always fill in from the
+  request alone. Rows are inserted in batches, so a row missing one of these would fail every row
+  batched with it, not just itself — an incomplete row is dropped before it is queued instead.
+  `route_template` isn't here: an unmatched route is a real event, recorded as
+  [[unmatched-route-template]] rather than discarded — see [[record-api-key-usage!]]."
+  [:api_key_id :http_method :status :duration_ms :client_name])
 
 (defonce ^:private pending-usage-logs (atom []))
 
@@ -197,11 +206,12 @@
 
   Takes the raw `request`/`response` and extracts everything itself, plus `extra-info` for the
   handful of values only the caller can supply: `route-template` (read from the carrier the caller
-  installed before routing ran — see `metabase.api.macros/route-template-carrier-key`), `duration-ms`
-  (measured by the caller around the whole request), and `occurred-at` (captured on the request
-  thread rather than left for the DB to fill in at INSERT time — the row lands via a Grouper batch, up
-  to the batch interval later, so a DB-computed default would record when the batch flushed, not when
-  the request happened).
+  installed before routing ran — see `metabase.api.macros/route-template-carrier-key`; nil for a
+  request that matched no endpoint, recorded as [[unmatched-route-template]] rather than dropping the
+  row — an unmatched route is a real event, not an incomplete one), `duration-ms` (measured by the
+  caller around the whole request), and `occurred-at` (captured on the request thread rather than left
+  for the DB to fill in at INSERT time — the row lands via a scheduled flush, up to the flush interval
+  later, so a DB-computed default would record when the flush ran, not when the request happened).
 
   `ip_address` and `user_agent` are PII — stored only when `analytics-pii-retention-enabled` is on.
   `client_name` is classified from `user-agent` via [[metabase.api-keys.usage/detect-client]] and
@@ -210,9 +220,9 @@
   `client_name`. `embedding_hostname` is the hostname parsed from the embed referrer header, non-PII,
   always recorded — only meaningful alongside `embedding_client`. `route_template`, `http_method`,
   `embedding_client`, and `embedding_hostname` are truncated to their column widths; a row missing a
-  NOT NULL value is dropped rather than queued, so it can't sink the batch it would land in — the
-  `last_used_at` event is queued regardless, since `api-key-id` is always present on an
-  API-key-authenticated request."
+  NOT NULL value the caller can't have controlled (see [[not-null-columns]]) is dropped rather than
+  queued, so it can't sink the batch it would land in — the `last_used_at` event is queued regardless,
+  since `api-key-id` is always present on an API-key-authenticated request."
   :feature :none
   [request response {:keys [route-template duration-ms occurred-at]}]
   (let [api-key-id  (:api-key-id request)
@@ -234,7 +244,8 @@
             row (merge {:api_key_id          api-key-id
                         :user_id             (:metabase-user-id request)
                         :tenant_id           (:tenant-id request)
-                        :route_template      (some-> route-template (u/truncate route-template-max-length))
+                        :route_template      (or (some-> route-template (u/truncate route-template-max-length))
+                                                 unmatched-route-template)
                         :http_method         (some-> (:request-method request) name u/upper-case-en
                                                      (u/truncate http-method-max-length))
                         :status              (:status response)
