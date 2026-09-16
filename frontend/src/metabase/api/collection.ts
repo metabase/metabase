@@ -20,6 +20,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { defineRequest } from "./define-request";
 import {
   idTag,
   invalidateTags,
@@ -125,11 +126,13 @@ export const collectionApi = Api.injectEndpoints({
       CollectionPermissionsGraph,
       UpdateCollectionPermissionsGraphRequest
     >({
-      query: (body) => ({
+      query: defineRequest({
         method: "PUT",
-        url: "/api/collection/graph",
-        params: { "skip-graph": true },
-        body,
+        route: "/api/collection/graph",
+        request: (body) => ({
+          query: { "skip-graph": true },
+          body,
+        }),
       }),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({

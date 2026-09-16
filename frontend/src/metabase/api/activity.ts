@@ -11,6 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { defineRequest } from "./define-request";
 import {
   idTag,
   invalidateTags,
@@ -21,13 +22,18 @@ import {
 export const activityApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listRecents: builder.query<RecentItem[], RecentsRequest | void>({
-      query: ({ context, include_metadata } = {}) => ({
+      query: defineRequest({
         method: "GET",
-        url: "/api/activity/recents",
-        params: {
-          context: context ? [...context].sort() : ["views"],
+        route: "/api/activity/recents",
+        request: ({
+          context,
           include_metadata,
-        },
+        }: RecentsRequest | void = {}) => ({
+          query: {
+            context: context ? [...context].sort() : ["views"],
+            include_metadata,
+          },
+        }),
       }),
       transformResponse: (response: RecentsResponse) => response?.recents,
       providesTags: (items) => provideActivityItemListTags(items ?? []),

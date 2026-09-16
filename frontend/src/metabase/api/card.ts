@@ -22,6 +22,7 @@ import type {
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { Api, type RtkCacheKeyed } from "./api";
+import { defineRequest } from "./define-request";
 import {
   idTag,
   invalidateTags,
@@ -189,11 +190,14 @@ export const cardApi = Api.injectEndpoints({
           ]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
-        query: ({ id, delete_old_dashcards, ...body }) => ({
+        query: defineRequest({
           method: "PUT",
-          url: `/api/card/${id}`,
-          params: { delete_old_dashcards },
-          body,
+          route: "/api/card/{id}",
+          request: ({ id, delete_old_dashcards, ...body }) => ({
+            path: { id },
+            query: { delete_old_dashcards },
+            body,
+          }),
         }),
         invalidatesTags: (_, error, payload) => {
           const tags = [

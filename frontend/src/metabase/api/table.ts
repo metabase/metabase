@@ -21,6 +21,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { defineRequest } from "./define-request";
 import {
   idTag,
   invalidateTags,
@@ -35,46 +36,55 @@ import { rollbackOnError } from "./utils/rollback-on-error";
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listTables: builder.query<Table[], TableListQuery | void>({
-      query: (params) => ({
+      query: defineRequest({
         method: "GET",
-        url: "/api/table",
-        params,
+        route: "/api/table",
+        request: (params) => ({ query: params }),
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
     }),
     getTable: builder.query<Table, GetTableRequest>({
-      query: ({ id }) => ({
+      query: defineRequest({
         method: "GET",
-        url: `/api/table/${id}`,
+        route: "/api/table/{id}",
+        request: ({ id }) => ({ path: { id } }),
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
-      query: ({ id, ...params }) => ({
+      query: defineRequest({
         method: "GET",
-        url: `/api/table/${id}/query_metadata`,
-        params,
+        route: "/api/table/{id}/query_metadata",
+        request: ({ id, ...params }) => ({
+          path: { id },
+          query: params,
+        }),
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
     }),
     getTableData: builder.query<TableData, GetTableDataRequest>({
-      query: ({ tableId }) => ({
+      query: defineRequest({
         method: "GET",
-        url: `/api/table/${tableId}/data`,
+        route: "/api/table/{tableId}/data",
+        request: ({ tableId }) => ({ path: { tableId } }),
       }),
     }),
     listTableForeignKeys: builder.query<ForeignKey[], TableId>({
-      query: (id) => ({
+      query: defineRequest({
         method: "GET",
-        url: `/api/table/${id}/fks`,
+        route: "/api/table/{id}/fks",
+        request: (id) => ({ path: { id } }),
       }),
       providesTags: [listTag("field")],
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
-      query: ({ id, ...body }) => ({
+      query: defineRequest({
         method: "PUT",
-        url: `/api/table/${id}`,
-        body,
+        route: "/api/table/{id}",
+        request: ({ id, ...body }) => ({
+          path: { id },
+          body,
+        }),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -104,10 +114,10 @@ export const tableApi = Api.injectEndpoints({
       },
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
-      query: (body) => ({
+      query: defineRequest({
         method: "PUT",
-        url: "/api/table",
-        body,
+        route: "/api/table",
+        request: (body) => ({ body }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
@@ -122,10 +132,13 @@ export const tableApi = Api.injectEndpoints({
       Table,
       UpdateTableFieldsOrderRequest
     >({
-      query: ({ id, field_order }) => ({
+      query: defineRequest({
         method: "PUT",
-        url: `/api/table/${id}/fields/order`,
-        body: { field_order },
+        route: "/api/table/{id}/fields/order",
+        request: ({ id, field_order }) => ({
+          path: { id },
+          body: { field_order },
+        }),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -137,17 +150,19 @@ export const tableApi = Api.injectEndpoints({
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
-      query: (id) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/table/${id}/rescan_values`,
+        route: "/api/table/{id}/rescan_values",
+        request: (id) => ({ path: { id } }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     syncTableSchema: builder.mutation<void, TableId>({
-      query: (id) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/table/${id}/sync_schema`,
+        route: "/api/table/{id}/sync_schema",
+        request: (id) => ({ path: { id } }),
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
@@ -160,9 +175,10 @@ export const tableApi = Api.injectEndpoints({
         ]),
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
-      query: (id) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/table/${id}/discard_values`,
+        route: "/api/table/{id}/discard_values",
+        request: (id) => ({ path: { id } }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
@@ -171,10 +187,13 @@ export const tableApi = Api.injectEndpoints({
       void,
       { tableId: TableId; formData: FormData }
     >({
-      query: ({ tableId, formData }) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/table/${tableId}/append-csv`,
-        body: formData,
+        route: "/api/table/{tableId}/append-csv",
+        request: ({ tableId, formData }) => ({
+          path: { tableId },
+          body: formData,
+        }),
       }),
       invalidatesTags: (_, error, { tableId }) =>
         invalidateTags(error, [
@@ -188,10 +207,13 @@ export const tableApi = Api.injectEndpoints({
       void,
       { tableId: TableId; formData: FormData }
     >({
-      query: ({ tableId, formData }) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/table/${tableId}/replace-csv`,
-        body: formData,
+        route: "/api/table/{tableId}/replace-csv",
+        request: ({ tableId, formData }) => ({
+          path: { tableId },
+          body: formData,
+        }),
       }),
       invalidatesTags: (_, error, { tableId }) =>
         invalidateTags(error, [
@@ -207,37 +229,37 @@ export const tableApi = Api.injectEndpoints({
       BulkTableSelectionInfo,
       BulkTableRequest
     >({
-      query: (body) => ({
+      query: defineRequest({
         method: "POST",
-        url: "/api/data-studio/table/selection",
-        body,
+        route: "/api/data-studio/table/selection",
+        request: (body) => ({ body }),
       }),
       providesTags: (response) =>
         response ? provideBulkTableSelectionInfoTags(response) : [],
     }),
     editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
-      query: (body) => ({
+      query: defineRequest({
         method: "POST",
-        url: "/api/data-studio/table/edit",
-        body,
+        route: "/api/data-studio/table/edit",
+        request: (body) => ({ body }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
     }),
     rescanTablesFieldValues: builder.mutation<void, RescanTablesValuesRequest>({
-      query: (body) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/data-studio/table/rescan-values`,
-        body,
+        route: "/api/data-studio/table/rescan-values",
+        request: (body) => ({ body }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     syncTablesSchemas: builder.mutation<void, SyncTablesSchemaRequest>({
-      query: (body) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/data-studio/table/sync-schema`,
-        body,
+        route: "/api/data-studio/table/sync-schema",
+        request: (body) => ({ body }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
@@ -252,10 +274,10 @@ export const tableApi = Api.injectEndpoints({
       void,
       DiscardTablesValuesRequest
     >({
-      query: (body) => ({
+      query: defineRequest({
         method: "POST",
-        url: `/api/data-studio/table/discard-values`,
-        body,
+        route: "/api/data-studio/table/discard-values",
+        request: (body) => ({ body }),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),

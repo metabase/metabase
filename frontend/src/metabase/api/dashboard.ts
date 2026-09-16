@@ -26,6 +26,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api, type RtkCacheKeyed } from "./api";
+import { defineRequest } from "./define-request";
 import {
   idTag,
   invalidateTags,
@@ -163,9 +164,10 @@ export const dashboardApi = Api.injectEndpoints({
         ListCollectionItemsResponse,
         { id: DashboardId }
       >({
-        query: ({ id }) => ({
+        query: defineRequest({
           method: "GET",
-          url: `/api/dashboard/${id}/items`,
+          route: "/api/dashboard/{id}/items",
+          request: ({ id }) => ({ path: { id } }),
         }),
       }),
       getValidDashboardFilterFields: builder.query<
