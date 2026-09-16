@@ -6,6 +6,7 @@
    [metabase.lib.filter.simplify-compound :as lib.filter.simplify-compound]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
@@ -53,7 +54,7 @@
                                        [:ref ::lib.schema.expression/boolean]
                                        [:ref ::lib.schema.util/unique-uuids]]
   "Logically negate a boolean expression (presumably a filter clause)."
-  [time-config       :- [:map [:start-of-week :keyword]]
+  [time-config       :- ::lib.schema.common/time-config
    boolean-expression :- ::lib.schema.expression/boolean]
   (let [expression' (-> (lib.filter.desugar/desugar-filter-clause time-config boolean-expression)
                         negate*
