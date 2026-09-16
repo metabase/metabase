@@ -3,6 +3,7 @@
    Contains persistence multimethod and orchestration logic."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
@@ -132,21 +133,83 @@
                                         (or (:display-name dimension) (:name dimension))))
     dimension))
 
+(defn- breakout-default-match
+  "Returns `{:dimension-id ..., :breakout ...}` for the first of the `breakouts` that is mapped to a dimension.
+
+  The matching ignores the temporal bucketing or binning of the breakouts, since the dimension mappings don't
+  set those options. **However**, note that the *original* breakout is returned, so it still has its temporal unit
+  and binning attached (if any)."
+  [dimension-mappings breakouts]
+  (let [key->dimension-id (into {} (map (juxt #(-> % :target lib-metric/field-ref->key)
+                                              :dimension-id))
+                                dimension-mappings)]
+    (some (fn [breakout]
+            (when-let [dimension-id (-> breakout
+                                        (lib/with-temporal-bucket nil)
+                                        (lib/with-binning nil)
+                                        lib-metric/field-ref->key
+                                        key->dimension-id)]
+              {:dimension-id dimension-id
+               :breakout     breakout}))
+          breakouts)))
+
+(defn- recover-pre-curation-default-dimension*
+  "Recover the `:default` dimension for a pre-curation metric. The default used to be the dimension mapped to
+  the same column as the first breakout on the query. That breakout is passed as `the-breakout`, and this function
+  works backwards to figure out which dimension is mapped to that breakout column.
+
+  Returns `dimensions` (the seq of dimensions on this metric) with the `:default` marked accordingly. Returns the
+  `dimensions` unchanged if there is no breakout, or the first breakout was not mapped to a dimension.
+
+  **Precondition:** None of the `dimensions` currently has a `:default`."
+  [dimensions dimension-mappings query]
+  (if-let [{:keys [dimension-id breakout]} (breakout-default-match dimension-mappings (lib/breakouts query))]
+    (let [{:keys [effective-type]} (m/find-first #(= dimension-id (:id %)) dimensions)
+          unit                     (lib/raw-temporal-bucket breakout)
+          dimensions               (lib-metric/set-default-dimension dimensions dimension-id)]
+      (if (lib-metric/valid-temporal-unit-for-type? effective-type unit)
+        (:dimensions (lib-metric/update-dimension dimensions dimension-mappings dimension-id
+                                                  {:default-temporal-unit unit}))
+        dimensions))
+    dimensions))
+
 (defn compute-full-dimension-set
-  "Compute the FULL dimension set for a metric's `query` — its own-table columns PLUS every
+  "Compute the FULL dimension set for a pre-curation metric's `query` — its own-table columns PLUS every
    implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
    shape (or `nil` when `query` is blank).
 
-   Unlike the seeded default (own-table and explicitly-joined columns only), this includes every
-   FK-reachable column."
+   **Precondition:** This is only meant to be called on a metric from before `:card_schema` 24 which has no
+   `:dimensions` set at all. This treats the query as SoT and would overwrite any existing `:dimensions`.
+   See [[recover-pre-curation-default-dimension]] in that case.
+
+   A newly created post-curation metric gets its own-table and explicitly joined columns as dimensions.
+   In contrast, this function preserves the pre-curation behaviour, and returns every implicitly joinable
+   column."
   [query]
   (when (seq query)
-    (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+    (let [mp             (lib-metric/metadata-provider)
+          computed-pairs (lib-metric/compute-dimension-pairs mp query)
           {:keys [dimensions dimension-mappings]}
-          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)
-          dimensions (mapv table-prefixed-dimension dimensions)]
-      {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+      {:dimensions         (-> (mapv table-prefixed-dimension dimensions)
+                               lib-metric/extract-persisted-dimensions
+                               (recover-pre-curation-default-dimension* dimension-mappings (lib/query mp query)))
        :dimension-mappings dimension-mappings})))
+
+(defn recover-pre-curation-default-dimension
+  "Prior to the Metric Dimensions project that shipped in 64, the `:dimensions` were automatically populated and
+  could not be edited. The *default* dimension was set implicitly as the single *breakout* on the metric card's
+  `:dataset_query`.
+
+  This function will modernize a metric card from before 64 into the 64+ style.
+
+  **Code Health: Single-use.** This is intended to be called only from the `:card_schema` upgrade to version 24."
+  [dimensions dimension-mappings query]
+  (if (or (empty? query)
+          (some :default dimensions))
+    dimensions
+    (recover-pre-curation-default-dimension* dimensions dimension-mappings
+                                             (lib/query (lib-metric/metadata-provider) query))))
 
 (defn- metric-seed-pairs
   "The computed pairs a v2 metric seeds from: the entity's own columns and explicit query joins,
