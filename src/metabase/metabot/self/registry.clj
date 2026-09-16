@@ -41,7 +41,7 @@
   `ifn?` accepted it because a map is `ifn?` — so it stops at `var?`."
   [:map {:closed true}
    [:stream           {:optional true} [:=> [:cat core/LLMRequestOpts] :any]]
-   [:list-models      {:optional true} [:=> [:cat [:? core/LLMRequestOpts]] adapter/ModelListing]]
+   [:list-models      {:optional true} [:=> [:cat [:? adapter/ListOpts]] adapter/ModelListing]]
    [:supported-models {:optional true} [:fn var?]]
    [:context-window   {:optional true} [:=> [:cat [:maybe :string]] [:maybe :int]]]
    [:reasoning?       {:optional true} [:=> [:cat adapter/ResolvedRef] :boolean]]

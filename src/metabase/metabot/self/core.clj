@@ -141,11 +141,13 @@
    [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
 
 (def ^:private ApiKeyCredentials
-  "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
+  "The `{:api-key ... :base-url ...}` connection shape shared by most providers. `:model-reasoning` and
+  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM)."
   [:map {:closed true}
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
-   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]])
+   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
+   [:probed-model    {:optional true} [:maybe :string]]])
 
 (def ^:private AzureCredentials
   "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
@@ -169,9 +171,13 @@
    [:project-id          {:optional true} [:maybe :string]]
    [:location            {:optional true} [:maybe :string]]
    [:auth-method         {:optional true} [:maybe :string]]
-   [:base-url            {:optional true} [:maybe :string]]])
+   [:base-url            {:optional true} [:maybe :string]]
+   ;; recorded by the connect-time probe, not entered by the admin
+   [:probed-model        {:optional true} [:maybe :string]]])
 
-(def ^:private LLMCredentials
+(def LLMCredentials
+  "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
+  `:credentials` once rather than restating an open map at each schema that carries one."
   [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
 
 (def ^:private ReasoningConfig
