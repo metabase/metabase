@@ -52,31 +52,25 @@ export function QuestionDetails() {
 }
 
 function getTableSection(question?: Question) {
-  return (
-    getAllTables(question)
-      .map((table) => table.displayName())
-      .join(" + ") + "."
-  );
+  return getAllTableNames(question).join(" + ") + ".";
 }
 
-function getAllTables(question?: Question) {
+function getAllTableNames(question?: Question) {
   if (!question) {
     return [];
   }
 
-  const metadata = question.metadata();
   const query = question.query();
-  const table = metadata.table(Lib.sourceTableOrCardId(query));
-  return [
-    table,
-    ...Lib.joins(query, -1)
-      .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-      .map((pickerInfo) => {
-        if (pickerInfo?.tableId != null) {
-          return metadata.table(pickerInfo.tableId);
-        }
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceTable =
+    sourceTableId != null
+      ? Lib.tableOrCardMetadata(query, sourceTableId)
+      : null;
+  const joinedTables = Lib.joins(query, -1).map((join) =>
+    Lib.joinedThing(query, join),
+  );
 
-        return undefined;
-      }),
-  ].filter(isNotNull);
+  return [sourceTable, ...joinedTables]
+    .filter(isNotNull)
+    .map((table) => Lib.displayInfo(query, -1, table).displayName);
 }
