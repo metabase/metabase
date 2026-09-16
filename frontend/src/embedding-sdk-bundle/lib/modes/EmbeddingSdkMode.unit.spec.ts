@@ -59,7 +59,7 @@ function parseAdHocQuestionPath(path: string): Card | null {
 }
 
 describe("getClickBehaviorTarget", () => {
-  it("builds an ad-hoc, filtered question path for a GUI (MBQL) target question", () => {
+  it("builds an ad-hoc question target with the filter for a GUI (MBQL) target question", () => {
     const targetCard = createMockCard({
       id: 5,
       name: "Products (drill target)",
@@ -96,12 +96,12 @@ describe("getClickBehaviorTarget", () => {
 
     const target = getClickBehaviorTarget(clicked, sourceQuestion);
 
-    expect(target?.type).toBe("question");
-    if (target?.type !== "question") {
-      throw new Error("expected a question target");
+    expect(target?.type).toBe("ad-hoc-question");
+    if (target?.type !== "ad-hoc-question") {
+      throw new Error("expected an ad-hoc question target");
     }
 
-    const card = parseAdHocQuestionPath(target.adHocQuestionPath ?? "");
+    const card = parseAdHocQuestionPath(target.adHocQuestionPath);
     expect(card).not.toBeNull();
 
     const query = Lib.fromJsQuery(metadataProvider, card!.dataset_query);
@@ -112,7 +112,7 @@ describe("getClickBehaviorTarget", () => {
     );
   });
 
-  it("does not build an ad-hoc path for a native target question", () => {
+  it("keeps a native target question as a saved-question target", () => {
     const targetCard = createMockCard({
       id: 6,
       name: "Native drill target",
@@ -152,7 +152,7 @@ describe("getClickBehaviorTarget", () => {
       throw new Error("expected a question target");
     }
 
-    expect(target.adHocQuestionPath).toBeUndefined();
+    expect(target.id).toBe(6);
     expect(target.parameters).toEqual({ category: "Gizmo" });
   });
 });

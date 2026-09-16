@@ -31,8 +31,14 @@ export type SdkInternalNavigationEntry =
       name: string;
       virtual?: true;
       parameters?: ParameterValues;
-      /** Set for a GUI target; render this ad-hoc path instead of loading `id` directly. */
-      adHocQuestionPath?: string;
+      onPop?: () => void;
+    })
+  | (BaseEntry & {
+      /** A pre-filtered ad-hoc question, rendered from its serialized path. */
+      type: "ad-hoc-question";
+      name: string;
+      virtual?: true;
+      adHocQuestionPath: string;
       onPop?: () => void;
     })
   | (BaseEntry & {

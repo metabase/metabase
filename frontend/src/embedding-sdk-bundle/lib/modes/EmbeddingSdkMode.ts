@@ -18,7 +18,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { CardId, DashboardId, DashboardTabId } from "metabase-types/api";
 
-export type ClickBehaviorTarget = {
+type ParameterizedTarget = {
   name: string;
   parameters: ParameterValues;
   /**
@@ -27,15 +27,20 @@ export type ClickBehaviorTarget = {
    * setParameterValue actions (mirrors core app DashboardClickAction).
    */
   parameterIdValuePairs: ParameterIdValuePair[];
-} & (
-  | { type: "dashboard"; id: DashboardId; tabId?: DashboardTabId }
-  | {
-      type: "question";
-      id: CardId;
-      /** Ad-hoc filtered path for a non-native target; open this instead of the saved question. */
-      adHocQuestionPath?: string;
-    }
-);
+};
+
+export type ClickBehaviorTarget =
+  | (ParameterizedTarget & {
+      type: "dashboard";
+      id: DashboardId;
+      tabId?: DashboardTabId;
+    })
+  | (ParameterizedTarget & { type: "question"; id: CardId })
+  /**
+   * A non-native target question. The mapped values are already encoded as
+   * filters in the path, so there are no parameters left to carry.
+   */
+  | { type: "ad-hoc-question"; name: string; adHocQuestionPath: string };
 
 export const getClickBehaviorTarget = (
   clicked: ClickObject,
@@ -106,15 +111,22 @@ export const getClickBehaviorTarget = (
     targetQuestion.query(),
   ).isNative;
 
+  // Only a native question's template tags can consume the mapped values, so a
+  // non-native target is opened as an ad-hoc, pre-filtered question instead.
+  if (!isTargetQuestionNative) {
+    return {
+      type: "ad-hoc-question",
+      name: targetCard.name,
+      adHocQuestionPath: getDashboardDrillQuestionUrl(question, clicked),
+    };
+  }
+
   return {
     type: "question",
     id: targetCard.id,
     name: targetCard.name,
     parameters,
     parameterIdValuePairs,
-    adHocQuestionPath: isTargetQuestionNative
-      ? undefined
-      : getDashboardDrillQuestionUrl(question, clicked),
   };
 };
 
