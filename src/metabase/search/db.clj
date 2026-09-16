@@ -166,13 +166,13 @@
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id))
+  (t2/exists? :model/User {:where [:= :id (long user-id)]}))
 
 (mu/defn entity-exists?
   "Whether a `model` row with `id` exists."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/exists? model :id id))
+  (t2/exists? model {:where [:= :id (long id)]}))
 
 (mu/defn index-metadata-for-engine
   "The SearchIndexMetadata rows of `engine`."
@@ -184,7 +184,9 @@
   [table    :- [:or :keyword :string]
    model    :- [:or :keyword :string]
    model-id :- [:or :string ms/PositiveInt]]
-  (t2/select-one table :model model :model_id model-id))
+  (t2/select-one table {:where [:and
+                                [:= :model [:auto/param model]]
+                                [:= :model_id [:auto/param model-id]]]}))
 
 (mu/defn delete-all-rows!
   "Delete every row of the search index `table`."
@@ -196,7 +198,9 @@
   [table      :- [:or :keyword :string]
    model      :- [:or :keyword :string]
    model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
-  (t2/delete! table :model model :model_id [:in model-ids]))
+  (t2/delete! table {:where [:and
+                             [:= :model [:auto/param model]]
+                             [:in :model_id [:auto/param model-ids]]]}))
 
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
@@ -212,7 +216,7 @@
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
-  (t2/exists? :information_schema.tables :table_name table-name))
+  (t2/exists? :information_schema.tables {:where [:= :table_name [:auto/param table-name]]}))
 
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
@@ -254,8 +258,8 @@
   (t2/select-one-fn :created_at
                     :model/SearchIndexMetadata
                     :engine :appdb
-                    :version version
-                    :lang_code lang-code
+                    :version [:auto/param version]
+                    :lang_code [:auto/param lang-code]
                     :status :active
                     {:order-by [[:created_at :desc]]}))
 
@@ -267,13 +271,13 @@
 (mu/defn delete-index-metadata-by-version!
   "Delete the SearchIndexMetadata rows of `version`."
   [version :- :string]
-  (t2/delete! :model/SearchIndexMetadata :version version))
+  (t2/delete! :model/SearchIndexMetadata {:where [:= :version [:auto/param version]]}))
 
 (mu/defn delete-index-metadata-by-name!
   "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
-  (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
+  (t2/delete! :conn conn :model/SearchIndexMetadata {:where [:= :index_name [:auto/param index-name]]}))
 
 (mu/defn delete-non-active-index-metadata!
   "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
@@ -283,9 +287,9 @@
    index-name :- :string]
   (t2/delete! :model/SearchIndexMetadata
               :engine engine
-              :version version
-              :lang_code lang-code
-              :index_name index-name
+              :version [:auto/param version]
+              :lang_code [:auto/param lang-code]
+              :index_name [:auto/param index-name]
               :status [:not= :active]))
 
 (mu/defn index-metadata
@@ -296,8 +300,8 @@
    lang-code :- :string]
   (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
              :engine engine
-             :version version
-             :lang_code lang-code
+             :version [:auto/param version]
+             :lang_code [:auto/param lang-code]
              :status [:in [:active :pending]]))
 
 (mu/defn delete-expired-pending-index-metadata!
@@ -306,16 +310,20 @@
    created-before :- ms/TemporalInstant]
   (t2/delete! :model/SearchIndexMetadata
               {:where [:and
-                       [:= :lang_code lang-code]
+                       [:= :lang_code [:auto/param lang-code]]
                        [:= :status "pending"]
-                       [:< :created_at created-before]]}))
+                       [:< :created_at [:auto/param created-before]]]}))
 
 (mu/defn pending-index-metadata-exists?
   "Whether a pending SearchIndexMetadata row of `engine`, `version`, and `lang-code` exists."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
+  (t2/exists? :model/SearchIndexMetadata
+              :engine engine
+              :version [:auto/param version]
+              :lang_code [:auto/param lang-code]
+              :status :pending))
 
 (mu/defn lock-pending-index-metadata!
   "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
@@ -335,28 +343,46 @@
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :retired))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version [:auto/param version]
+              :lang_code [:auto/param lang-code]
+              :status :retired))
 
 (mu/defn retire-active-index-metadata!
   "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :active} {:status :retired}))
+  (t2/update! :model/SearchIndexMetadata
+              {:engine    engine
+               :version   [:auto/param version]
+               :lang_code [:auto/param lang-code]
+               :status    :active}
+              {:status :retired}))
 
 (mu/defn activate-pending-index-metadata!
   "Activate the pending SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :pending} {:status :active}))
+  (t2/update! :model/SearchIndexMetadata
+              {:engine    engine
+               :version   [:auto/param version]
+               :lang_code [:auto/param lang-code]
+               :status    :pending}
+              {:status :active}))
 
 (mu/defn active-index-name
   "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code`, or nil."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :active))
+  (t2/select-one-fn :index_name :model/SearchIndexMetadata
+                    :engine engine
+                    :version [:auto/param version]
+                    :lang_code [:auto/param lang-code]
+                    :status :active))
 
 (mu/defn recent-index-versions
   "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions."
@@ -377,22 +403,22 @@
    updated-before  :- ms/TemporalInstant]
   (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
                  :where       [:or
-                               [:not-in :version recent-versions]
+                               [:not-in :version [:auto/param recent-versions]]
                                [:and
-                                [:not-in :version keep-versions]
-                                [:< :updated_at updated-before]]]}))
+                                [:not-in :version [:auto/param keep-versions]]
+                                [:< :updated_at [:auto/param updated-before]]]]}))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, or nil."
   []
-  (t2/select-pks-set :model/Database :router_database_id nil))
+  (t2/select-pks-set :model/Database {:where [:= :router_database_id nil]}))
 
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in (mapv long user-ids)]))
 
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))
+  (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in (mapv long card-ids)]))
