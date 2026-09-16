@@ -501,6 +501,61 @@ describe("scenarios > organization > timelines > dashboard", () => {
     });
   });
 
+  it("should not let a user revert a public dashboard to a version with a restricted timeline card", () => {
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    H.createCollection({ name: "Restricted" }).then(({ body: { id } }) => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases", collection_id: id },
+        events: [
+          { name: "Secret bday party", timestamp: "2027-10-20T00:00:00Z" },
+        ],
+      }).then(({ timeline }) => {
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            ...questionDetails,
+            visualization_settings: {
+              "timeline.selected_timeline_ids": [timeline.id],
+            },
+          },
+          dashboardDetails: { name: "Shared dashboard" },
+        }).then(({ body: { dashboard_id } }) => {
+          H.createPublicDashboardLink(dashboard_id);
+          cy.wrap(dashboard_id).as("dashboardId");
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [],
+          });
+        });
+      });
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [id]: "none" },
+        [COLLECTION_GROUP]: { [id]: "none" },
+        [DATA_GROUP]: { [id]: "none" },
+      });
+    });
+
+    cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/revision*").as("revisionHistory");
+    cy.intercept("POST", "/api/revision/revert").as("revertDashboard");
+    H.visitDashboard("@dashboardId");
+    H.openDashboardInfoSidebar().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.wait("@revisionHistory");
+      cy.findAllByTestId("question-revert-button").first().click();
+    });
+
+    cy.wait("@revertDashboard").its("response.statusCode").should("eq", 403);
+    H.undoToast().should(
+      "contain.text",
+      "You don't have permissions to do that.",
+    );
+    cy.get("@dashboardId").then((id) => {
+      cy.signInAsAdmin();
+      cy.request("GET", `/api/dashboard/${id}`)
+        .its("body.dashcards")
+        .should("have.length", 0);
+    });
+  });
+
   describe("analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();
