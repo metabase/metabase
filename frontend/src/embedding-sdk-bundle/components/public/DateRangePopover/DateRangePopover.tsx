@@ -70,7 +70,9 @@ export const DateRangePopover = ({
   const handleChange = (next: DateRangeValue) => {
     onChange?.(next);
 
-    if (closeOnSelect && next[0] && next[1]) {
+    const [start, end] = next;
+
+    if (closeOnSelect && start && end) {
       setOpened(false);
     }
   };

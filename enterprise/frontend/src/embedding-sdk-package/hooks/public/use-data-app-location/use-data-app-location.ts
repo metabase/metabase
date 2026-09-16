@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   getBasename,
@@ -45,7 +45,5 @@ export const useDataAppLocation = (): UseDataAppLocationResult => {
     [basename],
   );
 
-  const handleNavigate = useCallback((to: string) => navigate(to), []);
-
-  return { pathname, navigate: handleNavigate };
+  return { pathname, navigate };
 };
