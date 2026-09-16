@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { checkNotNull } from "metabase/utils/types";
-import type { Series } from "metabase-types/api";
+import type { Series, SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
@@ -12,7 +12,10 @@ import {
 } from "metabase-types/api/mocks";
 
 import { SERIES_SETTING_KEY } from "../../shared/settings/series";
-import type { ComputedVisualizationSettings } from "../../types";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 
 import { getColors, seriesSetting } from "./series";
 
@@ -102,19 +105,27 @@ describe("Series unit settings", () => {
 });
 
 describe("series trend line settings", () => {
+  // the definitions map has a catch-all index signature, so type the nested
+  // widget props at this boundary to keep the guard calls below checked
+  type SeriesSettingsWidgetProps = {
+    getSettingDefinitionsForObject: (
+      series: Series,
+      single: SingleSeries,
+    ) => VisualizationSettingsDefinitions;
+  };
+
   const getSeriesSettingDefinitions = (
     series: Series,
     settings: ComputedVisualizationSettings,
-  ) => {
+  ): VisualizationSettingsDefinitions => {
     const getProps = checkNotNull(
       seriesSetting()[SERIES_SETTING_KEY]?.getProps,
     );
-    const { getSettingDefinitionsForObject } = getProps(
-      series,
-      { [SERIES_SETTING_KEY]: {}, ...settings },
-      _.noop,
-      { series, settings },
-    );
+    const { getSettingDefinitionsForObject }: SeriesSettingsWidgetProps =
+      getProps(series, { [SERIES_SETTING_KEY]: {}, ...settings }, _.noop, {
+        series,
+        settings,
+      });
     return getSettingDefinitionsForObject(series, series[0]);
   };
 
@@ -123,10 +134,11 @@ describe("series trend line settings", () => {
     series: Series,
     settings: ComputedVisualizationSettings,
     seriesSettings: ComputedVisualizationSettings = {},
+    single: SingleSeries = series[0],
   ) => {
     const definitions = getSeriesSettingDefinitions(series, settings);
     const getHidden = checkNotNull(definitions[key]?.getHidden);
-    return getHidden(series[0], seriesSettings, { series, settings });
+    return getHidden(single, seriesSettings, { series, settings });
   };
 
   const insights = [createMockInsight({ col: "count" })];
@@ -251,6 +263,53 @@ describe("series trend line settings", () => {
 
     expect(
       getIsHidden("show_series_trendline", breakoutSeries(), settings),
+    ).toBe(false);
+  });
+
+  it("should check the insights of each series' own card when cards are combined", () => {
+    const settings = {
+      "graph.show_trendline": true,
+      "graph.dimensions": ["CREATED_AT"],
+    };
+    const series: Series = Object.assign(
+      [
+        createMockSingleSeries(
+          { id: 1, name: "Orders" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+        createMockSingleSeries(
+          { id: 2, name: "Revenue" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+      ],
+      {
+        _raw: [
+          createMockSingleSeries(
+            { id: 1, name: "Orders" },
+            { data: createMockDatasetData({ insights: [] }) },
+          ),
+          createMockSingleSeries(
+            { id: 2, name: "Revenue" },
+            { data: createMockDatasetData({ insights }) },
+          ),
+        ],
+      },
+    );
+
+    expect(
+      getIsHidden("show_series_trendline", series, settings, {}, series[0]),
+    ).toBe(true);
+    expect(
+      getIsHidden("show_series_trendline", series, settings, {}, series[1]),
+    ).toBe(false);
+    expect(
+      getIsHidden(
+        "trendline.color",
+        series,
+        settings,
+        trendLineEnabled,
+        series[1],
+      ),
     ).toBe(false);
   });
 });

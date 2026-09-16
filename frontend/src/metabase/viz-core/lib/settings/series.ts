@@ -24,7 +24,7 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesTrendline,
   getSeriesDefaultShowSeriesValues,
-  isTrendLineUnavailable,
+  isSeriesTrendLineUnavailable,
 } from "../../shared/settings/series";
 import type {
   ComputedVisualizationSettings,
@@ -36,13 +36,14 @@ import { getNameForCard } from "../series";
 import { type NestedSettingsOptions, nestedSettings } from "./nested";
 
 const isSeriesTrendLineCustomizationHidden = (
+  single: SingleSeries,
   seriesSettings: ComputedVisualizationSettings,
   extra?: SettingsExtra,
 ) => {
   const { series = [], settings = {} } = extra ?? {};
   return (
     series.length <= 1 || // with one series the trend line is customized in the Display tab
-    isTrendLineUnavailable(series, settings) ||
+    isSeriesTrendLineUnavailable(single, series, settings) ||
     !settings["graph.show_trendline"] ||
     !seriesSettings.show_series_trendline
   );
@@ -256,11 +257,11 @@ export function seriesSetting({
       },
       widget: "toggle",
       inline: true,
-      getHidden: (_single, _seriesSettings, extra) => {
+      getHidden: (single, _seriesSettings, extra) => {
         const { series = [], settings = {} } = extra ?? {};
         return (
           series.length <= 1 || // no need to show series-level control if there's only one series
-          isTrendLineUnavailable(series, settings) ||
+          isSeriesTrendLineUnavailable(single, series, settings) ||
           !settings["graph.show_trendline"] // don't show it unless this chart has a global setting;
         );
       },
@@ -279,8 +280,8 @@ export function seriesSetting({
         // the color dropdown must not escape the series settings popover
         withinPortal: false,
       }),
-      getHidden: (_single, seriesSettings, extra) =>
-        isSeriesTrendLineCustomizationHidden(seriesSettings, extra),
+      getHidden: (single, seriesSettings, extra) =>
+        isSeriesTrendLineCustomizationHidden(single, seriesSettings, extra),
       getDefault: (_single, seriesSettings) =>
         seriesSettings.color != null
           ? deriveChartShadeColor(seriesSettings.color)
@@ -311,8 +312,8 @@ export function seriesSetting({
           },
         ],
       }),
-      getHidden: (_single, seriesSettings, extra) =>
-        isSeriesTrendLineCustomizationHidden(seriesSettings, extra),
+      getHidden: (single, seriesSettings, extra) =>
+        isSeriesTrendLineCustomizationHidden(single, seriesSettings, extra),
       getDefault: () => "solid",
       readDependencies: ["show_series_trendline", "graph.show_trendline"],
     },
