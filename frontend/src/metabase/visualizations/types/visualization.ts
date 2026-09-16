@@ -48,7 +48,6 @@ export type OnBrush = (options: {
 }) => void;
 
 export interface VisualizationProps {
-  isStandaloneQuestion?: boolean;
   series: Series;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;

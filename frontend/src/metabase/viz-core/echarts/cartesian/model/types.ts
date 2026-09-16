@@ -17,7 +17,6 @@ import type {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
-  X_AXIS_POSITION_KEY,
 } from "../constants/dataset";
 
 export type BreakoutValue = Exclude<RowValue, object>;
@@ -96,7 +95,6 @@ export type DimensionModel = {
 export type Datum = Record<DataKey, RowValue> & {
   [X_AXIS_DATA_KEY]: RowValue;
   [INDEX_KEY]?: number;
-  [X_AXIS_POSITION_KEY]?: number | null;
 };
 export type ChartDataset<D extends Datum = Datum> = D[];
 export type SeriesExtents = Record<DataKey, Extent>;
@@ -137,7 +135,6 @@ export type BaseXAxisModel = {
   label?: string;
   axisType: OptionAxisType;
   canBrush?: boolean;
-  isDashboard?: boolean;
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {
@@ -146,12 +143,6 @@ export type CategoryXAxisModel = BaseXAxisModel & {
   histogramInterval?: number;
   formatter: AxisFormatter;
   valuesCount: number;
-  positions?: CategoryXAxisPositions;
-};
-
-export type CategoryXAxisPositions = {
-  values: RowValue[];
-  indexByValue: ReadonlyMap<RowValue, number>;
 };
 
 export type NumericXAxisModel = BaseXAxisModel &

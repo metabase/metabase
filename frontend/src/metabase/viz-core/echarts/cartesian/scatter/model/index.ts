@@ -88,7 +88,6 @@ export function getScatterPlotModel(
   );
   const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
-  /** Scatter keeps native point positions and uses tick labels for edge spacing. */
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -138,11 +137,6 @@ export function getScatterPlotModel(
     renderingContext,
   );
 
-  const bubbleSizeDomain = getBubbleSizeDomain(
-    seriesModels,
-    transformedDataset,
-  );
-
   return {
     stackModels: [],
     dataset: scaledDataset,
@@ -157,7 +151,7 @@ export function getScatterPlotModel(
     rightAxisModel,
     splitPanelYAxisModels,
     trendLinesModel,
-    bubbleSizeDomain,
+    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
     seriesLabelsFormatters: {},
   };
 }

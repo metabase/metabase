@@ -9,6 +9,7 @@ import type {
   RenderingContext,
 } from "../../../../types";
 import type { WaterfallSeriesOption } from "../../../types";
+import { X_AXIS_DATA_KEY } from "../../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
 import type { ChartLayout } from "../../layout/types";
 import { isCategoryAxis } from "../../model/guards";
@@ -20,7 +21,6 @@ import type {
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
 import { applyDashboardYAxisTicks } from "../../option/dashboard-axis";
-import { getXAxisDataKey } from "../../option/dashboard-x-axis";
 import {
   getGoalLineParams,
   getGoalLineSeriesOption,
@@ -80,12 +80,8 @@ const getLabelLayoutFn = (
 
 const computeWaterfallBarWidth = (
   chartModel: WaterfallChartModel,
-  chartLayout: ChartLayout,
+  boundaryWidth: number,
 ) => {
-  const { boundaryWidth } = chartLayout;
-  if (chartLayout.dashboardXAxis) {
-    return chartLayout.dashboardXAxis.step * CHART_STYLE.series.barWidth;
-  }
   if (isCategoryAxis(chartModel.xAxisModel)) {
     return (
       (boundaryWidth / chartModel.dataset.length + 2) *
@@ -97,8 +93,6 @@ const computeWaterfallBarWidth = (
     boundaryWidth,
     1,
     true,
-    undefined,
-    chartLayout,
   );
 };
 
@@ -112,8 +106,10 @@ export const buildEChartsWaterfallSeries = (
 ) => {
   const { seriesModels, transformedDataset: dataset } = chartModel;
   const [seriesModel] = seriesModels;
-  const barWidth = computeWaterfallBarWidth(chartModel, chartLayout);
-  const xDataKey = getXAxisDataKey(chartModel.xAxisModel, chartLayout);
+  const barWidth = computeWaterfallBarWidth(
+    chartModel,
+    chartLayout.boundaryWidth,
+  );
 
   const buildLabelOption = () => ({
     ...buildEChartsLabelOptions(
@@ -141,9 +137,9 @@ export const buildEChartsWaterfallSeries = (
       type: "custom",
       clip: true,
       animationDuration: 0,
-      dimensions: [xDataKey, WATERFALL_START_KEY, WATERFALL_END_KEY],
+      dimensions: [X_AXIS_DATA_KEY, WATERFALL_START_KEY, WATERFALL_END_KEY],
       encode: {
-        x: xDataKey,
+        x: X_AXIS_DATA_KEY,
         y: [WATERFALL_START_KEY, WATERFALL_END_KEY],
       },
       z: Z_INDEXES.series,
@@ -180,12 +176,12 @@ export const buildEChartsWaterfallSeries = (
       type: "scatter",
       z: Z_INDEXES.dataLabels,
       silent: true,
-      dimensions: [xDataKey, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
+      dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       symbolSize: 0,
       labelLayout: getLabelLayoutFn(dataset, chartLayout, settings),
       encode: {
         y: WATERFALL_END_KEY,
-        x: xDataKey,
+        x: X_AXIS_DATA_KEY,
       },
       label: buildLabelOption(),
       animationDuration: 0,
@@ -198,10 +194,10 @@ export const buildEChartsWaterfallSeries = (
       type: "bar",
       barWidth,
       z: Z_INDEXES.series,
-      dimensions: [xDataKey, WATERFALL_TOTAL_KEY],
+      dimensions: [X_AXIS_DATA_KEY, WATERFALL_TOTAL_KEY],
       encode: {
         y: WATERFALL_TOTAL_KEY,
-        x: xDataKey,
+        x: X_AXIS_DATA_KEY,
       },
       itemStyle: {
         color: settings["waterfall.total_color"],

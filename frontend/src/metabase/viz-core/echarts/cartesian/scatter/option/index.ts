@@ -42,6 +42,7 @@ export function getScatterPlotOption(
     (series) => series.visible,
   );
   const panelCount = visibleSeries.length;
+
   const dataSeriesOptions: EChartsSeriesOption[] = visibleSeries.map(
     (seriesModel, index) =>
       buildEChartsScatterSeries(

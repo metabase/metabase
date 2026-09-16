@@ -1,7 +1,5 @@
 import type { LineSize } from "metabase-types/api";
 
-export const HORIZONTAL_TICKS_GAP = 6;
-
 export const LINE_SIZE: Record<LineSize, number> = {
   S: 1,
   M: 2,

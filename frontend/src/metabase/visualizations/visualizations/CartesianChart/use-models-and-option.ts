@@ -37,14 +37,12 @@ export function useModelsAndOption(
     onRender,
     isDashboard,
     isCompact,
-    isStandaloneQuestion,
     gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
   dashboardCardSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
-  const isDashboardCard = gridSize != null && !isStandaloneQuestion;
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
@@ -91,7 +89,6 @@ export function useModelsAndOption(
       renderingContext,
       showWarning,
       gridSize,
-      isDashboardCard,
     );
 
     if (model.dimensionModel.column) {
@@ -108,7 +105,6 @@ export function useModelsAndOption(
     renderingContext,
     showWarning,
     gridSize,
-    isDashboardCard,
     tc,
   ]);
 
