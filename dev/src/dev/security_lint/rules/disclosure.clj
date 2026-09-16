@@ -40,3 +40,30 @@
         hits    (concat rows (when endpoint-reachable? queries))]
     (when (and (seq hits) (ast/map-get data :status-code))
       {:message (str "ex-data returned to the caller carries " (str/join ", " (distinct hits)))})))
+
+(defrule throwable-map-outside-sanitizer
+  {:name        "Exception turned into data outside the response sanitizer"
+   :description (str "`Throwable->map` yields the exception's ex-data and every cause's ex-data in the chain. "
+                     "Metabase keeps two kinds of thing in ex-data -- server-side context (the query, the compiled "
+                     "SQL, the permissions required and held, the object being checked) and the API response "
+                     "contract (`:errors`, `:specific-errors`, `:error-code`) -- and a map built here cannot tell them "
+                     "apart, so whatever it goes into carries the context to the caller: the definition of the very "
+                     "object a permission check just refused, as in SEC-1173 and SEC-1210. Every fix that dropped one "
+                     "key at one sink reopened at the next key.")
+   :remediation (str "Route through `metabase.api.response/throwable->response-map`, which keeps the contract keys "
+                     "and drops the rest; put anything a human needs in a log line.")
+   ;; A pure pattern, so it grades on its own: the invariant is that exception-to-data happens in exactly one
+   ;; namespace. Today the tree has four callers -- the API exception middleware, the streaming response's
+   ;; `format-exception`, the QP's `catch-exceptions` and task-history -- and the first three are the disclosing
+   ;; sinks SEC-1173's fix routes through the sanitizer; when that lands the sanitizer is the one caller left.
+   :severity    :error
+   :precision   :high
+   :cwe         "CWE-209"
+   ;; the sanitizer itself, and the task-history row: a throwable JSON-serialized into storage that admins read
+   ;; back on purpose, never a response body
+   :exempt-files [#"(^|/)src/metabase/api/response\.clj$"
+                  #"(^|/)src/metabase/task_history/models/task_history\.clj$"]
+   :triggers    #{clojure.core/Throwable->map}}
+  [_]
+  {:message (str "Throwable->map carries every ex-data in the cause chain to whatever this map becomes -- use "
+                 "metabase.api.response/throwable->response-map")})
