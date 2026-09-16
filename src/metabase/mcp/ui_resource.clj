@@ -62,8 +62,9 @@
   (cond
     ;; The fallback wins when installed: a developer whose worktree has a frontend build would
     ;; otherwise render the built template, and the credential-embedding tests would fail on their
-    ;; machine and pass on CI.
-    @fallback-template
+    ;; machine and pass on CI. Gated on `is-test?` so no production process can ever prefer an
+    ;; inline template over the built one, whatever leaves the atom set.
+    (and config/is-test? @fallback-template)
     (stencil/render-string @fallback-template vars)
 
     (io/resource embed-mcp-template-path)
