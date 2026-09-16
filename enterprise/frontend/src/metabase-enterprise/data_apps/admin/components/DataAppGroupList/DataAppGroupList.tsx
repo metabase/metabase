@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
@@ -10,6 +11,7 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import Animation from "metabase/css/core/animation.module.css";
 import {
+  Alert,
   Box,
   Collapse,
   Flex,
@@ -18,15 +20,21 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { DataAppGroup } from "metabase-types/api";
+import { useGetDataAppGroupPermissionWarningsQuery } from "metabase-enterprise/api";
+import type {
+  DataAppGroup,
+  DataAppGroupPermissionWarning,
+} from "metabase-types/api";
 
 import { AddDataAppGroups } from "../AddDataAppGroups/AddDataAppGroups";
+import { DataAppDataAccessWarning } from "../DataAppDataAccessWarning/DataAppDataAccessWarning";
 
 import S from "./DataAppGroupList.module.css";
 
 const PAGE_SIZE = 25;
 
 type Props = {
+  appName: string;
   isAdding: boolean;
   groups: DataAppGroup[];
   onAddGroups: (groupIds: number[]) => Promise<boolean>;
@@ -35,6 +43,7 @@ type Props = {
 };
 
 export const DataAppGroupList = ({
+  appName,
   isAdding,
   groups,
   onAddGroups,
@@ -56,8 +65,26 @@ export const DataAppGroupList = ({
     [groups, page],
   );
 
+  const warnings = useGetDataAppGroupPermissionWarningsQuery(
+    groups.length > 0 ? appName : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
+
+  const warningsByGroupId = useMemo(
+    () =>
+      new Map(
+        warnings.currentData?.map((warning) => [warning.group_id, warning]),
+      ),
+    [warnings.currentData],
+  );
+
   return (
     <Stack data-testid="group-management-sections" gap="lg">
+      {groups.length > 0 && warnings.isError && (
+        <Alert color="warning" icon={<Icon name="warning" />}>
+          {t`We couldn't check data access for assigned groups. You can still update access to this data app.`}
+        </Alert>
+      )}
       <Box
         className={cx(
           S.groupListContent,
@@ -83,12 +110,13 @@ export const DataAppGroupList = ({
             {groups.length > 0 && (
               <AdminContentTable
                 className={cx(S.groupTable, Animation.fadeIn)}
-                columnTitles={[t`Group name`, t`Members`, null]}
+                columnTitles={[t`Group name`, t`Members`, t`Data access`, null]}
               >
                 {visibleGroups.map((group) => (
                   <GroupRow
                     key={group.id}
                     group={group}
+                    warning={warningsByGroupId.get(group.id)}
                     onRemove={onRemoveGroup}
                   />
                 ))}
@@ -147,9 +175,11 @@ const DataAppGroupsEmptyState = () => (
 
 const GroupRow = ({
   group,
+  warning,
   onRemove,
 }: {
   group: DataAppGroup;
+  warning?: DataAppGroupPermissionWarning;
   onRemove: (group: DataAppGroup) => void;
 }) => {
   const name = getGroupNameLocalized(group);
@@ -161,6 +191,12 @@ const GroupRow = ({
       </td>
 
       <td>{group.member_count}</td>
+
+      <td>
+        {warning && (
+          <DataAppDataAccessWarning warning={warning} groupName={name} />
+        )}
+      </td>
 
       <Box component="td" w="1%" style={{ whiteSpace: "nowrap" }}>
         <Flex

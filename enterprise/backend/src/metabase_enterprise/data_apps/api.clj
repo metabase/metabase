@@ -284,6 +284,25 @@
     (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
     (data-app-response (data-apps.db/non-blob-data-app (:id app)))))
 
+(def ^:private GroupPermissionWarning
+  [:map
+   [:group_id ms/PositiveInt]
+   [:missing_tables
+    [:sequential
+     [:map
+      [:id ms/PositiveInt]
+      [:name :string]
+      [:schema [:maybe :string]]
+      [:database_id ms/PositiveInt]
+      [:database_name :string]]]]])
+
+(api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
+  :- [:sequential GroupPermissionWarning]
+  "Return missing table access for groups already assigned to this app."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))))
+
 (def ^:private AssignedGroup
   [:map
    [:id ms/PositiveInt]
@@ -448,7 +467,7 @@
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (when-not (and (#{:get :delete} (:request-method request))
-                    (re-matches #"/api/apps/[^/]+/groups(?:/[0-9]+)?" (:uri request)))
+                    (re-matches #"/api/apps/[^/]+/(?:groups(?:/[0-9]+)?|group-permission-warnings)" (:uri request)))
        (premium-features/assert-has-feature :data-apps-preview (tru "Data Apps")))
      (handler request respond raise))
    (fn [prefix] (open-api/open-api-spec handler prefix))))
