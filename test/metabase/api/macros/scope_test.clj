@@ -118,7 +118,8 @@
               (let [response (invoke-handler wrapped {:authenticated-via-oauth? true
                                                       :token-scopes             token-scopes})]
                 (is (= 403 (:status response)))
-                (is (contains? #{"unsupported_scope" "scope_not_permitted"} (get-in response [:body :error])))))
+                (is (= (if (= label "enforce-scope") "unsupported_scope" "scope_not_permitted")
+                       (get-in response [:body :error])))))
             (testing (str "even when already stamped :token-scopes-checked, with token-scopes " (pr-str token-scopes))
               (is (= 403 (:status (invoke-handler wrapped {:authenticated-via-oauth? true
                                                            :token-scopes             token-scopes
@@ -131,14 +132,20 @@
                    (invoke-handler wrapped {:authenticated-via-oauth? true
                                             :token-scopes             #{::scope/unrestricted}})))))))))
 
-(def ^:private rfc-6750-auth-param-value
-  "RFC 6750 section 3: the characters allowed inside the quoted `scope` and `error_description` values."
-  #"[\x20-\x21\x23-\x5B\x5D-\x7E]*")
-
-(defn- challenge-params
-  "The quoted auth-param values of a `Bearer` `WWW-Authenticate` challenge, keyed by name."
-  [challenge]
-  (into {} (map (fn [[_ k v]] [k v])) (re-seq #"([a-z_]+)=\"([^\"]*)\"" challenge)))
+(deftest ^:parallel quoted-string-test
+  (testing "GHY-4542: RFC 6750 section 3 excludes `\"` and `\\` from an auth-param value outright, so neither can be
+            escaped into one, and limits the rest to printable ASCII. A value carrying any of them would produce a
+            challenge header a client cannot parse, so they are replaced rather than emitted."
+    (let [quoted-string #'scope/quoted-string]
+      (is (= "\"plain value\"" (quoted-string "plain value")))
+      (is (= "\"it's 'quoted'\"" (quoted-string "it's \"quoted\"")))
+      (is (= "\"back/slash\"" (quoted-string "back\\slash")))
+      (is (= "\"caf?\"" (quoted-string "café")))
+      (is (= "\"tab?here\"" (quoted-string "tab\there")))
+      (is (= "\"\"" (quoted-string nil)))
+      (testing "so every value it produces stays inside the character set"
+        (doseq [s ["plain value" "it's \"quoted\"" "back\\slash" "café" "tab\there"]]
+          (is (re-matches #"\"[\x20-\x21\x23-\x5B\x5D-\x7E]*\"" (quoted-string s))))))))
 
 (deftest ^:parallel scope-denial-carries-insufficient-scope-challenge-test
   (testing "GHY-4542: RFC 6750 section 3 requires a resource server to answer a bearer token that does not grant
@@ -160,20 +167,20 @@
                      "error_description=\"Insufficient scope for this operation.\"")]
                ["ensure-scopes-checked, scoped token on an endpoint without a scope"
                 unchecked {:token-scopes #{"agent:reports"}}
-                "Bearer error=\"insufficient_scope\", error_description=\"Scoped tokens cannot access this endpoint.\""]
+                (str "Bearer error=\"insufficient_scope\", "
+                     "error_description=\"Scoped tokens cannot access this endpoint.\"")]
                ["ensure-scopes-checked, OAuth request without token-scopes"
                 unchecked {:authenticated-via-oauth? true :token-scopes-checked true}
-                "Bearer error=\"insufficient_scope\", error_description=\"Scoped tokens cannot access this endpoint.\""]]]
+                (str "Bearer error=\"insufficient_scope\", "
+                     "error_description=\"Scoped tokens cannot access this endpoint.\"")]]]
         (testing label
-          (let [response  (invoke-handler wrapped request)
-                challenge (get-in response [:headers "WWW-Authenticate"])]
+          (let [response (invoke-handler wrapped request)]
             (is (= 403 (:status response)))
-            (is (= expected challenge))
-            (is (every? #(re-matches rfc-6750-auth-param-value %) (vals (challenge-params (str challenge))))
-                "every auth-param value stays within the RFC 6750 character set")
+            (is (= expected (get-in response [:headers "WWW-Authenticate"])))
             (testing "the JSON body is unchanged"
               (is (= "application/json" (get-in response [:headers "Content-Type"])))
-              (is (contains? #{"unsupported_scope" "scope_not_permitted"} (get-in response [:body :error]))))))))))
+              (is (= (if (= wrapped enforced) "unsupported_scope" "scope_not_permitted")
+                     (get-in response [:body :error]))))))))))
 
 (deftest ^:parallel ensure-scopes-checked-test
   (let [ok-handler (fn [_request respond _raise]

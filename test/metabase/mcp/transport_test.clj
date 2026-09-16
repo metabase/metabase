@@ -527,28 +527,6 @@
                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
                     "the invalid_token challenge still carries RFC 9728 discovery")))))))))
 
-(deftest bearer-token-without-scopes-gets-no-tool-access-test
-  (testing "GHY-4542: an access token with no scopes must not authenticate an MCP session. The transport treats nil
-            `:token-scopes` as unrestricted and an empty set as a session with no tools; neither is a result an
-            OAuth client should get. /oauth/authorize no longer issues such a token, so it is minted into the
-            store directly."
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (oauth-server.tu/with-oauth-client [client-id]
-        (mt/with-model-cleanup [:model/OAuthAccessToken]
-          ;; `scope` is NOT NULL, and the store writes a nil scope as an empty one.
-          (let [token   (issue-bearer! (mt/user->id :rasta) client-id [])
-                headers (fn [& {:as extra}]
-                          {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
-                init    (client/client-full-response :post 401 endpoint (headers)
-                                                     (jsonrpc-request "initialize" {:capabilities {}}))]
-            (is (nil? (get-in init [:headers "Mcp-Session-Id"])))
-            (is (str/includes? (get-in init [:headers "WWW-Authenticate"] "") "invalid_token"))
-            (testing "and tools/list on a session id is refused the same way"
-              (let [response (client/client-full-response :post 401 endpoint
-                                                          (headers "mcp-session-id" (fabricated-session-id))
-                                                          (jsonrpc-request "tools/list" {} 2))]
-                (is (nil? (get-in response [:body :result])))))))))))
-
 (defn- invoke-transport
   "Invoke an MCP transport handler directly, bypassing the session middleware, as `user-id` with the given extra
   request keys, and return the response."

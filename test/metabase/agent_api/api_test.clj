@@ -83,6 +83,20 @@
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
 
+(deftest agent-api-401-for-an-unusable-bearer-token-carries-invalid-token-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a 401 for a bearer token that does not authenticate to carry an
+            `invalid_token` challenge. The session middleware declines such a token silently, leaving the agent API
+            to answer the request, so the challenge has to come from there."
+    ;; site-url: resolving the bearer token builds the OAuth provider, whose config derives its issuer from it
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (client/client-full-response
+                      :get 401 "agent/v1/ping"
+                      {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+        (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+        ;; which of the JWT failures the body names depends on whether a shared secret is configured; the challenge
+        ;; is the same either way
+        (is (string? (get-in response [:body :message])))))))
+
 (deftest agent-api-401-without-bearer-token-carries-plain-challenge-test
   (testing "GHY-4542: RFC 7235 requires every 401 to carry a `WWW-Authenticate` challenge, and RFC 6750 section 3.1
             says one answering a request with no bearer token SHOULD NOT include an error code. So both 401s the

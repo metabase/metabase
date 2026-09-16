@@ -237,25 +237,19 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (doseq [[scope rejected] [["*" "*"]
-                                  ["agent:*" "agent:*"]
-                                  ["bogus" "bogus"]
-                                  ["agent:content:read *" "*"]
-                                  ["agent:ü\"x\\" "agent:"]]]
+        (doseq [scope ["*" "agent:*" "bogus" "agent:content:read *" "agent:ü\"x\\"]]
           (testing (pr-str scope)
-            (let [before      (t2/count :model/OAuthClient)
-                  response    (register-client! {:redirect_uris ["https://example.com/callback"]
-                                                 :scope         scope}
-                                                :expected-status 400)
-                  description (str (:error_description response))]
-              (is (= "invalid_client_metadata" (:error response)))
-              (is (str/includes? description
-                                 "scopes_supported at http://localhost:3000/.well-known/oauth-authorization-server")
-                  "the description tells the client where the supported scopes are listed")
-              (is (not (str/includes? description rejected))
-                  "the description does not echo the rejected scope")
-              (is (re-matches #"[\x20-\x21\x23-\x5B\x5D-\x7E]*" description)
-                  "the description stays within the RFC 6749 section 5.2 error_description character set")
+            (let [before   (t2/count :model/OAuthClient)
+                  response (register-client! {:redirect_uris ["https://example.com/callback"]
+                                              :scope         scope}
+                                             :expected-status 400)]
+              (is (= {:error             "invalid_client_metadata"
+                      :error_description (str "The request contained unsupported scopes. Request only scopes listed "
+                                              "in scopes_supported at "
+                                              "http://localhost:3000/.well-known/oauth-authorization-server")}
+                     response)
+                  "the description tells the client where the supported scopes are listed, without echoing what it
+                   sent, and stays within the RFC 6749 section 5.2 character set")
               (is (= before (t2/count :model/OAuthClient))
                   "no client is stored"))))))))
 
@@ -376,6 +370,9 @@
 
 (def ^:private invalid-request-description "The authorization request is invalid.")
 
+(def ^:private invalid-target-description
+  "The resource parameter must be an absolute URI without a fragment.")
+
 (deftest authorize-invalid-client-id-test
   (testing "GHY-4542: a missing or unknown client identifier is answered with a 400 in the user's browser, with no
             redirect anywhere, even when the request also carries a second error."
@@ -453,7 +450,10 @@
                                     :state        "test-state"
                                     params)]
                 (is (= {:error             error
-                        :error_description invalid-request-description}
+                        ;; every `invalid_target`, however the indicator is wrong, says what a valid one looks like
+                        :error_description (if (= error "invalid_target")
+                                             invalid-target-description
+                                             invalid-request-description)}
                        (:body response)))
                 (is (nil? (get-in response [:headers "Location"])))))))))))
 
@@ -1361,11 +1361,10 @@
 (deftest authorize-legacy-mcp-client-can-request-v2-scopes-test
   (testing (str "GHY-4343: a client that registered against a shipped v0.60-v0.63 release snapshotted only the "
                 "pre-v2 per-entity agent scopes, and `validate-scope` rejects any requested scope absent from that "
-                "snapshot. Because `/oauth/authorize` validates before narrowing, a user forced to re-authorize was "
-                "answered a 400 `invalid_request` JSON body rendered raw in their browser tab - the manual recovery "
-                "path was broken too. `WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every "
-                "dynamically registered client's snapshot so the request validates and reaches consent. GHY-4542: "
-                "the refusal now names `invalid_scope`, the RFC 6749 code for it.")
+                "snapshot, so a user forced to re-authorize is answered with a 400 `invalid_scope` JSON body "
+                "rendered raw in their browser tab and has no in-product recovery path. "
+                "`WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every dynamically registered "
+                "client's snapshot so the request validates and reaches consent.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [legacy-scopes   ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
@@ -1675,9 +1674,6 @@
    relative or has a fragment."
   ["http://bad uri"
    ["http://localhost:3000/api/mcp" "http://bad uri"]])
-
-(def ^:private invalid-target-description
-  "The resource parameter must be an absolute URI without a fragment.")
 
 (deftest authorize-malformed-resource-is-invalid-target-test
   (testing "GHY-4542: an unparseable `resource` indicator made oidc-provider throw a URISyntaxException that nothing
