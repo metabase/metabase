@@ -74,6 +74,20 @@ def unquote_identifier(name: str, dialect: str = None):
         pass
     return (name, False)
 
+def temp_table_prefix(table):
+    """
+    The T-SQL temp table prefix of a table expression: "##" for a global temp table, "#" for a local one, and "" for
+    any other table. SQLGlot keeps the prefix as a flag on the identifier rather than in its name.
+    """
+    identifier = table.this
+    if not isinstance(identifier, exp.Identifier):
+        return ""
+    if identifier.args.get("global_"):
+        return "##"
+    if identifier.args.get("temporary"):
+        return "#"
+    return ""
+
 def table_parts(table):
     """
     Extract (catalog, schema, table) 3-tuple from a table expression.
@@ -82,13 +96,13 @@ def table_parts(table):
     SQLGlot naming:
     - table.catalog → SQL catalog (e.g., BigQuery project, Snowflake database)
     - table.db      → SQL schema (e.g., BigQuery dataset, Postgres schema)
-    - table.name    → table name
+    - table.name    → table name, to which the T-SQL temp table prefix is added (see `temp_table_prefix`)
     """
     name = table.name
     if not isinstance(name, str) or not name:
         # UDTFs and other function-based sources don't have traditional table names
         return None
-    return (table.catalog or None, table.db or None, name)
+    return (table.catalog or None, table.db or None, temp_table_prefix(table) + name)
 
 def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
@@ -430,7 +444,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     8101. Wrapping each base table in a self-UNION breaks that IDENTITY lineage -- the UNION's second
     branch is always empty and gets elided by SQL Server's contradiction detection, so each table is
     still scanned once -- without touching filters, ORDER BY, TOP, or query params. CTEs, derived
-    tables, and table-valued functions are left untouched.
+    tables, table-valued functions, and T-SQL `#`/`##` temp tables are left untouched.
 
     A table with no explicit alias is wrapped under an alias equal to its bare name, and any column
     in the same scope that referenced it via a schema/catalog-qualified name (e.g. `dbo.products.id`,
@@ -461,6 +475,10 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
                 continue
             table_name_only = source.name
             if not table_name_only or table_name_only in cte_names or alias in cte_names:
+                continue
+            # A T-SQL `#`/`##` temp table has no IDENTITY lineage worth breaking, and its derived-table alias would lose
+            # the prefix that qualified column references keep.
+            if temp_table_prefix(source):
                 continue
             if id(source) in seen_ids:
                 continue
@@ -548,6 +566,29 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_
     return json.dumps(dependencies)
 
 
+def fold_keys(mapping):
+    """
+    Case-insensitive view of a replacement map, for matching an identifier written in another case.
+
+    An identifier names the same thing however it is cased (Metabase treats every database as case-agnostic, see
+    `macaw-options`), so `FROM people` must match a key of `PEOPLE`. Keys that differ only in case have no single
+    answer, so they are dropped rather than resolved arbitrarily: an exact match still finds them.
+    """
+    folded = {}
+    ambiguous = set()
+    for key, value in mapping.items():
+        folded_key = tuple(part.lower() if isinstance(part, str) else part for part in key)
+        if folded_key in folded and folded[folded_key] != value:
+            ambiguous.add(folded_key)
+        folded[folded_key] = value
+    return {key: value for key, value in folded.items() if key not in ambiguous}
+
+
+def fold_lookup(folded, key):
+    """The value `key` maps to in a [[fold_keys]] map, ignoring the case of every part."""
+    return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
+
+
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
@@ -577,128 +618,93 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     replacements = json.loads(replacements_json)
     schemas = replacements.get("schemas") or {}
-    tables = replacements.get("tables") or []  # List of [key, value] pairs
-    columns = replacements.get("columns") or []  # List of [key, value] pairs
-
-    # Convert list-of-pairs to lookup dicts for O(1) matching
-    # Tables: (db, schema, table) -> new_name. `db` is the catalog (BigQuery project,
-    # ClickHouse database, etc). Keys with no :db default to None for back-compat.
-    table_map = {}
-    for item in tables:
-        key, new_name = item
-        db = key.get("db")          # may be None
-        schema = key.get("schema")  # may be None
-        table = key["table"]
-        table_map[(db, schema, table)] = new_name
-
-    # Columns: (schema, table, column) -> new_name
-    column_map = {}
-    for item in columns:
-        key, new_name = item
-        schema = key.get("schema")
-        table = key.get("table")  # may be None for unqualified
-        column = key["column"]
-        column_map[(schema, table, column)] = new_name
+    # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
+    # None when the key doesn't name one.
+    table_map = {(key.get("db"), key.get("schema"), key["table"]): new_name
+                 for key, new_name in replacements.get("tables") or []}
+    # Columns: (schema, table, column) -> new name. `table` is None for a key that matches any table.
+    column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
+                  for key, new_name in replacements.get("columns") or []}
+    folded_schemas = fold_keys({(name,): new_name for name, new_name in schemas.items()})
+    folded_table_map = fold_keys(table_map)
 
     ast = sqlglot.parse_one(sql, read=dialect)
 
+    # Names a bare column qualifier may refer to instead of a table: table and subquery aliases and CTE names.
+    aliases = {node.alias for node in ast.find_all(exp.Table, exp.Subquery, exp.CTE) if node.alias}
+    # A CTE name shadows a real table of the same name, so an unqualified reference to it names the CTE and must be
+    # left alone — renaming it would point the query at the replacement table and silently skip the CTE.
+    cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
+
+    def find_table_replacement(db, schema, table):
+        # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
+        # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
+        # Each is tried as written before it is tried ignoring case, so an exact key always wins.
+        for key in ((db, schema, table), (None, schema, table), (None, None, table)):
+            replacement = table_map.get(key) or fold_lookup(folded_table_map, key)
+            if replacement:
+                return replacement
+        return None
+
+    def set_identifier(node, arg, name):
+        # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
+        # quoted, or if `name` needs quoting. Some nodes hold non-Identifier children (e.g. Anonymous), which count
+        # as unquoted.
+        original = node.args.get(arg)
+        original_quoted = isinstance(original, exp.Identifier) and original.quoted
+        raw_name, was_quoted = unquote_identifier(name, dialect)
+        quoted = original_quoted or was_quoted or needs_quoting(raw_name, dialect)
+        node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
+
+    def replace_table(node, replacement, catalog_arg, schema_arg, table_arg):
+        # Applies a table replacement to the name parts `node` keeps under the given args: a Table node keeps them in
+        # catalog/db/this, a Column node keeps its qualifier in catalog/db/table. A string replacement renames the
+        # table. A {db?, schema?, table?} replacement sets each part it names, and a nil db or schema clears that
+        # qualifier, so {:schema nil :table "x"} turns `public.orders` into `x` (matching Macaw).
+        if isinstance(replacement, str):
+            replacement = {"table": replacement}
+        for key, arg in (("db", catalog_arg), ("schema", schema_arg), ("table", table_arg)):
+            if replacement.get(key):
+                set_identifier(node, arg, replacement[key])
+            elif key != "table" and key in replacement and replacement[key] is None:
+                node.set(arg, None)
+
     def rename_fn(node):
-        # Schema rename (appears in Table.db)
         if isinstance(node, exp.Table):
-            # Capture original values BEFORE any modifications (important for lookup).
-            # SQLGlot stores 3-part identifiers as catalog.db.this -> catalog=BigQuery
-            # project / ClickHouse db, db=schema, this=table.
-            original_db = node.catalog or None
-            original_schema = node.db
-            original_table = node.name
-            # Preserve original quoting status for renamed identifiers.
-            # Some Table nodes have non-Identifier children (e.g., ExplodingGenerateSeries,
-            # Anonymous) that lack a `quoted` attribute — default to False for those.
-            db_node = node.args.get("db")
-            catalog_node = node.args.get("catalog")
-            original_schema_quoted = db_node.quoted if isinstance(db_node, exp.Identifier) else False
-            original_db_quoted = catalog_node.quoted if isinstance(catalog_node, exp.Identifier) else False
-            original_table_quoted = node.this.quoted if isinstance(node.this, exp.Identifier) else False
+            # SQLGlot stores a 3-part name as catalog.db.this: catalog is the BigQuery project or ClickHouse database,
+            # db the schema. The replacement is looked up by the original parts, before the schema is renamed.
+            db, schema, table = node.catalog or None, node.db, node.name
+            new_schema = schemas.get(schema) or fold_lookup(folded_schemas, (schema,)) if schema else None
+            if new_schema:
+                set_identifier(node, "db", new_schema)
+            if not db and not schema and table in cte_names:
+                return node
+            replacement = find_table_replacement(db, schema, table)
+            if replacement:
+                replace_table(node, replacement, "catalog", "db", "this")
 
-            # Rename schema if present
-            if original_schema and original_schema in schemas:
-                raw_schema, was_quoted = unquote_identifier(schemas[original_schema], dialect)
-                schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
-                node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
-
-            # Rename table - try most-specific match first, falling back to less-qualified keys.
-            # Order: (db, schema, table), (None, schema, table), (None, None, table).
-            # This lets a remapping omit :db when it doesn't matter (Postgres-style),
-            # and still match a 3-part SQL reference, while a remapping that does include :db
-            # only matches references that have the matching catalog.
-            new_table = (table_map.get((original_db, original_schema, original_table)) or
-                         table_map.get((None, original_schema, original_table)) or
-                         table_map.get((None, None, original_table)))
-            if new_table:
-                if isinstance(new_table, dict):
-                    # New format: {db?, schema?, table?}
-                    if new_table.get("db"):
-                        raw_db, was_quoted = unquote_identifier(new_table["db"], dialect)
-                        db_quoted = original_db_quoted or was_quoted or needs_quoting(raw_db, dialect)
-                        node.set("catalog", exp.Identifier(this=raw_db, quoted=db_quoted))
-                    elif "db" in new_table and new_table["db"] is None:
-                        # Explicitly clear the catalog (database/project) qualifier.
-                        node.set("catalog", None)
-                    if new_table.get("schema"):
-                        # When injecting a new schema, quote if it contains special characters
-                        raw_schema, was_quoted = unquote_identifier(new_table["schema"], dialect)
-                        schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
-                        node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
-                    elif "schema" in new_table and new_table["schema"] is None:
-                        # Explicitly clear the schema from the AST node. This matches Macaw's
-                        # behavior: {:schema nil :table "x"} means "remove the schema qualifier",
-                        # turning e.g. `FROM public.orders` into `FROM x`.
-                        node.set("db", None)
-                    if new_table.get("table"):
-                        raw_table, was_quoted = unquote_identifier(new_table["table"], dialect)
-                        table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_table, dialect)
-                        node.set("this", exp.Identifier(this=raw_table, quoted=table_quoted))
-                else:
-                    # String: just the table name
-                    raw_name, was_quoted = unquote_identifier(new_table, dialect)
-                    table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_name, dialect)
-                    node.set("this", exp.Identifier(this=raw_name, quoted=table_quoted))
-
-        # Column rename
         elif isinstance(node, exp.Column):
-            col_name = node.name
-            col_table = node.table  # May be None if column is unqualified (e.g., "SELECT id" not "SELECT t.id")
-            # Preserve original quoting status
-            original_col_quoted = node.this.quoted if isinstance(node.this, exp.Identifier) else False
+            # SQLGlot uses "" (not None) for a missing qualifier part.
+            column, table = node.name, node.table
+            # A qualifier naming a replaced table (e.g. `public.orders.id`) follows the table. A qualifier without a
+            # schema may name an alias instead, which is left alone.
+            if table and (node.db or table not in aliases):
+                replacement = find_table_replacement(node.catalog or None, node.db, table)
+                if replacement:
+                    replace_table(node, replacement, "catalog", "db", "table")
+            # A column key matches a column qualified by the key's table, or an unqualified column with any table
+            # (the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"}).
+            def column_matches(key_table, key_column):
+                return (key_column.lower() == column.lower()
+                        and (not table or (key_table or "").lower() == table.lower()))
 
-            # Try to find a matching column rename.
-            # The challenge: replacement key might be {:table "orders" :column "id"}
-            # but the SQL column ref might just be "id" (unqualified).
-            # We need to match flexibly:
-            # - Exact match: (schema, table, column) all match
-            # - Table match: column and table match, schema is None in key
-            # - Column-only match: just column matches (when no table qualifier in SQL)
-            new_col = None
-
-            # Iterate through all column mappings and find best match
-            for (key_schema, key_table, key_col), new_name in column_map.items():
-                if key_col != col_name:
-                    continue
-                # Column name matches, now check table qualifier
-                # Note: SQLGlot uses empty string (not None) for missing table qualifier
-                if col_table:
-                    # SQL has table qualifier - match if tables are equal
-                    if key_table == col_table:
-                        new_col = new_name
-                        break
-                else:
-                    # SQL has no table qualifier - accept any table in key
-                    # (this is the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"})
-                    new_col = new_name
-                    break
-
-            if new_col:
-                node.set("this", exp.Identifier(this=new_col, quoted=original_col_quoted))
+            new_column = next((new_name
+                               for (_, key_table, key_column), new_name in column_map.items()
+                               if column_matches(key_table, key_column)),
+                              None)
+            if new_column:
+                column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted
+                node.set("this", exp.Identifier(this=new_column, quoted=column_quoted))
 
         return node
 

@@ -419,16 +419,52 @@
    [:fn {:error/message "::h2x/typed Honey SQL form"} typed?]
    [:sequential [:or [:ref ::honeysql-expr] ::honeysql-clause-opts]]])
 
-(def ^:private raw-cast-type-name-re
-  #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")
+(defn- ascii-letter?
+  "Whether `c` is an unaccented ASCII letter."
+  [c]
+  (or (<= (int \a) (int c) (int \z))
+      (<= (int \A) (int c) (int \Z))))
+
+(defn- type-name-char-ok?
+  "Whether `c` may appear in a raw type name at parenthesis nesting `depth`."
+  [c depth]
+  (or (ascii-letter? c)
+      (<= (int \0) (int c) (int \9))
+      (contains? #{\_ \space} c)
+      ;; A comma separates a type's arguments, so it belongs inside the parentheses that opened them. At the top
+      ;; level it would end the type and start a second expression, which is exactly what a splice must not allow:
+      ;; Postgres emits `(…)::«type»` in a select list, where `text, (SELECT secret FROM users)` would add a column.
+      (and (= c \,) (pos? depth))))
 
 (defn raw-type-name?
-  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores, and spaces with an optional precision
-  suffix, e.g. `varchar(10)` or `double precision` — and is therefore safe to splice into SQL unquoted. Cast targets
-  that don't match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected
-  instead of being emitted raw."
+  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores and spaces, arguments in balanced
+  parentheses (`varchar(10)`, `Map(String, Nullable(Int32))`) and a trailing `[]` for an array — and is therefore safe
+  to splice into SQL unquoted.
+
+  Nothing here can end the expression the type sits in: no quote, semicolon, dot or comment marker is allowed, no
+  parenthesis closes one this name did not open, and a comma only ever separates arguments. Cast targets that don't
+  match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected instead of
+  being emitted raw."
   [sql-type]
-  (boolean (re-matches raw-cast-type-name-re (name sql-type))))
+  (let [^String s (name sql-type)
+        len       (.length s)]
+    (boolean
+     (and (pos? len)
+          (ascii-letter? (.charAt s 0))
+          ;; `inc`, `dec` and `+` are this namespace's own Honey SQL builders, so the arithmetic here is unchecked
+          (loop [i 0, depth 0]
+            (if (= i len)
+              (zero? depth)
+              (let [c      (.charAt s i)
+                    next-i (unchecked-inc i)]
+                (case c
+                  \( (recur next-i (unchecked-inc depth))
+                  \) (when (pos? depth) (recur next-i (unchecked-dec depth)))
+                  ;; `int[]`, `varchar(50)[]` — an array suffix, never a subscript with something in it
+                  \[ (when (and (zero? depth) (< next-i len) (= \] (.charAt s next-i)))
+                       (recur (unchecked-add i 2) depth))
+                  (when (type-name-char-ok? c depth)
+                    (recur next-i depth))))))))))
 
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."

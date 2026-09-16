@@ -88,18 +88,68 @@
                           "SELECT * FROM (SELECT id FROM people) sub"
                           {:tables {{:table "people"} "users"}})))))
 
-(deftest ^:parallel case-sensitive-match-test
-  (testing "Case-sensitive matching - must match exact case"
-    ;; Lower case matches lower case
+(deftest ^:parallel cte-shadows-a-table-test
+  (testing "a bare reference to a CTE names the CTE, not the table the key renames"
+    (is (= "WITH people AS (SELECT 1 AS id) SELECT id FROM people"
+           (replace-names :postgres
+                          "WITH people AS (SELECT 1 AS id) SELECT id FROM people"
+                          {:tables {{:table "people"} "users"}}))))
+  (testing "a real table of another name is still renamed alongside the CTE"
+    (is (= "WITH other AS (SELECT 1 AS id) SELECT id FROM users"
+           (replace-names :postgres
+                          "WITH other AS (SELECT 1 AS id) SELECT id FROM people"
+                          {:tables {{:table "people"} "users"}}))))
+  (testing "a qualified reference names a real table, which a CTE cannot shadow"
+    (is (= "WITH people AS (SELECT 1 AS id) SELECT id FROM public.users"
+           (replace-names :postgres
+                          "WITH people AS (SELECT 1 AS id) SELECT id FROM public.people"
+                          {:tables {{:schema "public" :table "people"} "users"}})))))
+
+(deftest ^:parallel case-agnostic-match-test
+  (testing "a key matches a reference written in any case"
+    ;; Metabase treats every database as case-agnostic (see `macaw-options`): unquoted identifiers are
+    ;; case-insensitive per SQL-92, and where they are not (MySQL, SQL Server) it depends on the file
+    ;; system or collation rather than on the query. A key that only matched one spelling would leave
+    ;; the other pointing at the real table.
     (is (= "SELECT * FROM users"
            (replace-names :postgres
                           "SELECT * FROM people"
                           {:tables {{:table "people"} "users"}})))
-    ;; Upper case needs upper case key
     (is (= "SELECT * FROM users"
            (replace-names :postgres
                           "SELECT * FROM PEOPLE"
-                          {:tables {{:table "PEOPLE"} "users"}})))))
+                          {:tables {{:table "people"} "users"}})))
+    (is (= "SELECT * FROM users"
+           (replace-names :postgres
+                          "SELECT * FROM people"
+                          {:tables {{:table "PEOPLE"} "users"}}))))
+  (testing "the schema may differ in case too"
+    ;; A string replacement renames the table and leaves the schema where it was, whatever its case.
+    (is (= "SELECT * FROM PUBLIC.users"
+           (replace-names :postgres
+                          "SELECT * FROM PUBLIC.PEOPLE"
+                          {:tables {{:schema "public" :table "people"} "users"}})))
+    (is (= "SELECT * FROM public.users"
+           (replace-names :postgres
+                          "SELECT * FROM public.people"
+                          {:tables {{:schema "public" :table "people"} "users"}}))))
+  (testing "a key matching as written wins over one matching only by case"
+    (is (= "SELECT * FROM exact"
+           (replace-names :postgres
+                          "SELECT * FROM people"
+                          {:tables {{:table "people"} "exact"
+                                    {:table "PEOPLE"} "folded"}}))))
+  (testing "keys differing only in case answer nothing, rather than one of them arbitrarily"
+    (is (= "SELECT * FROM People"
+           (replace-names :postgres
+                          "SELECT * FROM People"
+                          {:tables {{:table "people"} "one"
+                                    {:table "PEOPLE"} "two"}}))))
+  (testing "a column key matches its column and qualifier in any case"
+    (is (= "SELECT user_id FROM people"
+           (replace-names :postgres
+                          "SELECT ID FROM people"
+                          {:columns {{:table "PEOPLE" :column "id"} "user_id"}})))))
 
 (deftest ^:parallel table-rename-with-schema-map-value-test
   (testing "Table rename using map value with schema and table (schema relocation pattern)"
@@ -136,3 +186,37 @@
            (replace-names :clickhouse
                           "SELECT * FROM `zz`.`src` WHERE `id` = {uid: UInt32}"
                           {:tables {{:schema "zz" :table "src"} "iso__src"}})))))
+
+(deftest ^:parallel table-qualified-column-follows-table-rename-test
+  (testing "A column qualified by a replaced table is qualified by its replacement"
+    (is (= "SELECT users.id, users.name FROM users"
+           (replace-names :postgres
+                          "SELECT people.id, people.name FROM people"
+                          {:tables {{:table "people"} "users"}})))))
+
+(deftest ^:parallel schema-qualified-column-follows-table-rename-test
+  (testing "A schema-qualified column loses the schema along with its table"
+    (is (= "SELECT tmp_people.id FROM tmp_people WHERE tmp_people.name IS NULL"
+           (replace-names :postgres
+                          "SELECT public.people.id FROM public.people WHERE public.people.name IS NULL"
+                          {:tables {{:schema "public" :table "people"} {:schema nil :table "tmp_people"}}}))))
+  (testing "Quoted qualifiers stay quoted"
+    (is (= "SELECT \"tmp_people\".\"ID\" FROM \"tmp_people\""
+           (replace-names :postgres
+                          "SELECT \"PUBLIC\".\"PEOPLE\".\"ID\" FROM \"PUBLIC\".\"PEOPLE\""
+                          {:tables {{:schema "PUBLIC" :table "PEOPLE"} {:schema nil :table "tmp_people"}}})))))
+
+(deftest ^:parallel alias-qualified-column-is-not-renamed-test
+  (testing "A qualifier naming an alias is left alone, even when a replaced table has the same name"
+    (is (= "SELECT people.id FROM orders AS people"
+           (replace-names :postgres
+                          "SELECT people.id FROM orders AS people"
+                          {:tables {{:table "people"} "users"}})))))
+
+(deftest ^:parallel qualified-column-rename-with-table-rename-test
+  (testing "A column rename still applies when its table qualifier is renamed"
+    (is (= "SELECT transactions.amount FROM transactions"
+           (replace-names :postgres
+                          "SELECT orders.total FROM orders"
+                          {:tables  {{:table "orders"} "transactions"}
+                           :columns {{:table "orders" :column "total"} "amount"}})))))

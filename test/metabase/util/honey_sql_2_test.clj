@@ -168,7 +168,45 @@
     false "integer); select 1 --"
     false "\"quoted\""
     false "schema.type"
-    false "decimal(10, 2); --"))
+    false "decimal(10, 2); --")
+  (testing "a type whose argument is itself a type, as ClickHouse writes them"
+    (are [sql-type] (h2x/raw-type-name? sql-type)
+      "Nullable(String)"
+      "LowCardinality(Nullable(String))"
+      "Map(String, Nullable(Int32))"))
+  (testing "an array suffix, and a type name that continues after its precision"
+    (are [sql-type] (h2x/raw-type-name? sql-type)
+      "int[]"
+      "varchar(50)[]"
+      "TIMESTAMP(6) WITH TIME ZONE"))
+  (testing "nothing that could end the expression the type is spliced into"
+    (are [sql-type] (not (h2x/raw-type-name? sql-type))
+      ;; Postgres splices `(…)::«type»` into a select list, where a top-level comma would add a column
+      "text, (SELECT secret FROM users)"
+      ;; a parenthesis this name did not open
+      "int) UNION SELECT 1 --"
+      "(int)"
+      "Nullable(String"
+      ;; quotes and comment markers stay out whatever the parentheses do
+      "Nullable('a')"
+      "int/*x*/"
+      "int-1"
+      ;; `[]` is an array suffix, not a subscript
+      "int[1]"
+      "int]"
+      ""
+      "1int")))
+
+(deftest ^:parallel cast-contains-a-hostile-type-name-test
+  (testing "a name made only of type-name characters cannot reach past the CAST it sits in"
+    ;; Type names are words, so words are all a type name can be made of: `bigint` and
+    ;; `UNION SELECT` are the same shape. What keeps that inert is the parentheses it is spliced
+    ;; inside — it can add no parenthesis of its own that closes one it did not open.
+    (are [sql-type] (= [(str "SELECT CAST(\"x\" AS " sql-type ")")]
+                       (sql/format {:select [[(h2x/cast sql-type :x)]]} {:quoted true, :dialect :ansi}))
+      "bigint UNION SELECT secret FROM users"
+      "Map(String, Nullable(Int32))"
+      "int[]")))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))

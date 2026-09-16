@@ -2848,6 +2848,25 @@
            util
            util.config}}
 
+  transform-testing
+  {:team "Graphy"
+   :api  #{metabase.transform-testing.api}
+   :uses #{api
+           driver
+           events
+           lib
+           lib.schema
+           models
+           sql-tools
+           sql-tools.parsing
+           transforms.base
+           util}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Transform
+                    :model/User}
+   :model-exports #{:model/TransformTest}}
+
   transforms
   {:team "Graphy"
    :module-exports #{transforms.base
@@ -4122,6 +4141,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTest
                     :model/User}}
 
   enterprise/search
