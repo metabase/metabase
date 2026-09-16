@@ -2,25 +2,23 @@ import { Route, redirect, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 /**
- * The API key usage pages, in one chunk, so moving between the usage overview and the events
- * table does not cost a fetch each time.
+ * The API key usage pages sit behind one barrel, so a single `import()` reaches all three and
+ * they land in one chunk by construction — no risk of the webpackChunkName comments drifting
+ * apart and silently splitting the bundle.
  */
+const pages = () =>
+  import(/* webpackChunkName: "api-key-usage" */ "./components");
+
 const apiKeyUsageSectionLayout = () =>
-  import(
-    /* webpackChunkName: "api-key-usage" */ "./components/ApiKeyUsageSectionLayout"
-  ).then(({ ApiKeyUsageSectionLayout }) => ({
+  pages().then(({ ApiKeyUsageSectionLayout }) => ({
     Component: ApiKeyUsageSectionLayout,
   }));
 
 const apiKeyUsagePage = () =>
-  import(
-    /* webpackChunkName: "api-key-usage" */ "./components/ApiKeyUsagePage"
-  ).then(({ ApiKeyUsagePage }) => ({ Component: ApiKeyUsagePage }));
+  pages().then(({ ApiKeyUsagePage }) => ({ Component: ApiKeyUsagePage }));
 
 const apiKeyUsageEventsPage = () =>
-  import(
-    /* webpackChunkName: "api-key-usage" */ "./components/ApiKeyUsageEventsPage"
-  ).then(({ ApiKeyUsageEventsPage }) => ({
+  pages().then(({ ApiKeyUsageEventsPage }) => ({
     Component: ApiKeyUsageEventsPage,
   }));
 
