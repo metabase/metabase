@@ -115,13 +115,19 @@
          (fn [existing] (if existing (t/max existing timestamp) timestamp))))
 
 (defn- flush-last-used-at!
-  "Scheduled-task handler: atomically take the current pending map and issue one bulk UPDATE for it."
+  "Scheduled-task handler: atomically take the current pending map and issue one bulk UPDATE for it.
+  Keys skipped because a concurrent writer held the row go back into the pending map for the next
+  flush, merged against whatever arrived for them in the meantime (the newer of the two wins) rather
+  than overwriting it."
   []
   (let [[batch] (reset-vals! pending-last-used-at {})]
     (when (seq batch)
       (log/debugf "Updating last_used_at for %d API keys" (count batch))
       (try
-        (api-keys.db/update-api-keys-last-used-at! batch)
+        (let [skipped (api-keys.db/update-api-keys-last-used-at! batch)]
+          (when (seq skipped)
+            (log/debugf "Retrying last_used_at for %d busy API keys next flush" (count skipped))
+            (swap! pending-last-used-at #(merge-with t/max % skipped))))
         (catch Throwable e
           (log/warn e "Failed to update API key last_used_at"))))))
 

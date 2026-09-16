@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
@@ -100,18 +101,42 @@
    changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
   (t2/update! :model/ApiKey :id id changes))
 
+(defn lock-available-key-ids
+  "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside
+  H2, whose single-connection test usage neither needs nor supports it). Public so tests can simulate a
+  busy row by redefining it, without real cross-connection lock contention."
+  [ids]
+  (map :id (t2/query (cond-> {:select [:id]
+                              :from   [(t2/table-name :model/ApiKey)]
+                              :where  [:in :id ids]}
+                       (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked])))))
+
 (defn update-api-keys-last-used-at!
   "Move `last_used_at` of each ApiKey in `id->timestamp` forward to its timestamp, without touching
-  `updated_at`. A plain UPDATE rather than [[update-api-key!]] on purpose: the model's `before-update`
-  hook hydrates the key and publishes an `:event/api-key-update` audit event, which a usage stamp must
-  not do. Mirrors [[metabase.query-processor.db/update-cards-last-used-at!]]'s bulk `CASE`/`GREATEST`
-  pattern for the same reason: many keys land in one Grouper batch, and this is one UPDATE for all of
-  them rather than one per key."
+  `updated_at`. Returns the subset of `id->timestamp` that was skipped because another writer held the
+  row — the caller should retry those on its next pass rather than wait for them here.
+
+  Locks the rows first with `SELECT ... FOR UPDATE SKIP LOCKED` (outside H2) so a key a concurrent
+  writer is editing (e.g. an admin renaming or rotating it) is skipped rather than blocking this
+  UPDATE — and, by extension, every unrelated key batched alongside it — until that writer's
+  transaction commits.
+
+  A plain UPDATE rather than [[update-api-key!]] on purpose: the model's `before-update` hook hydrates
+  the key and publishes an `:event/api-key-update` audit event, which a usage stamp must not do.
+  Mirrors [[metabase.query-processor.db/update-cards-last-used-at!]]'s bulk `CASE`/`GREATEST` pattern
+  for the same reason: many keys land in one batch, and this is one UPDATE for all of them rather than
+  one per key."
   [id->timestamp]
-  (t2/query {:update [(t2/table-name :model/ApiKey)]
-             :where  [:in :id (keys id->timestamp)]
-             :set    {:last_used_at (into [:case]
-                                          (mapcat (fn [[id timestamp]]
-                                                    [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                  id->timestamp))
-                      :updated_at :updated_at}}))
+  (t2/with-transaction [_conn]
+    (let [available-ids (lock-available-key-ids (keys id->timestamp))]
+      (when (seq available-ids)
+        (t2/query {:update [(t2/table-name :model/ApiKey)]
+                   :where  [:in :id available-ids]
+                   :set    {:last_used_at (into [:case]
+                                                (mapcat (fn [id]
+                                                          [[:= :id id]
+                                                           [:greatest [:coalesce :last_used_at (t/offset-date-time 0)]
+                                                            (get id->timestamp id)]])
+                                                        available-ids))
+                            :updated_at :updated_at}}))
+      (apply dissoc id->timestamp available-ids))))
