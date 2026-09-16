@@ -45,6 +45,7 @@ jobs:
           test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
   visual-test:
+    name: loki-run
     needs: story-selection
     # A missing job output compares equal to '0' in GitHub expressions,
     # so an empty selection is marked with a non-numeric value.
@@ -108,6 +109,7 @@ jobs:
           if-no-files-found: ignore
 
   loki-tests-result:
+    name: visual-test
     needs: [story-selection, visual-test]
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
