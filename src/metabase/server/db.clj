@@ -85,9 +85,12 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       ;; `api-key-id` and `tenant-id` are here for API-key usage analytics: the auth query already has both rows
-       ;; joined, so carrying them on the request costs nothing and spares the response path a second lookup.
+       ;; `api-key-id`, `api-key-creator-id`, and `tenant-id` are here for API-key usage analytics: the auth query
+       ;; already has both rows joined, so carrying them on the request costs nothing and spares the response path a
+       ;; second lookup. `api-key-creator-id` is the real human who created the key — distinct from
+       ;; `metabase-user-id`, which is the key's own synthetic service-account user used for permission checks.
        (cond-> {:select    [[:api_key.id :api-key-id]
+                            [:api_key.creator_id :api-key-creator-id]
                             [:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]

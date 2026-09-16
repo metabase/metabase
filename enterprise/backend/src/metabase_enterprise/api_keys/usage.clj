@@ -213,6 +213,10 @@
   for the DB to fill in at INSERT time — the row lands via a scheduled flush, up to the flush interval
   later, so a DB-computed default would record when the flush ran, not when the request happened).
 
+  `user_id` is the key's own synthetic service-account user (used for permission checks, not a real
+  person); `created_by_id` is the real human who created the key, read off the same auth query — see
+  `metabase.server.db/user-data-for-api-key-prefix-query`. Both non-PII.
+
   `ip_address` and `user_agent` are PII — stored only when `analytics-pii-retention-enabled` is on.
   `client_name` is classified from `user-agent` via [[metabase.api-keys.usage/detect-client]] and
   always recorded — non-PII, mirrors `agent_api_call_log`'s `client_name`. `embedding_client` is the
@@ -243,6 +247,7 @@
                         (update :ip_address #(some-> % (u/truncate ip-address-max-length))))
             row (merge {:api_key_id          api-key-id
                         :user_id             (:metabase-user-id request)
+                        :created_by_id       (:api-key-creator-id request)
                         :route_template      (or (some-> route-template (u/truncate route-template-max-length))
                                                  unmatched-route-template)
                         :http_method         (some-> (:request-method request) name u/upper-case-en

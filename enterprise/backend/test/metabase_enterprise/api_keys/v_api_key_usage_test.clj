@@ -1,8 +1,10 @@
 (ns metabase-enterprise.api-keys.v-api-key-usage-test
   "Tests for the `v_api_key_usage` SQL view. Client identity and PII are stored on each request row;
-  the view derives `client_display_name` / `user_display_name` from it and LEFT JOINs api_key and
-  core_user. Every one of those joins is a LEFT JOIN on purpose — `api_key_usage_log` has no foreign
-  keys, so rows outlive a deleted key or user."
+  the view derives `client_display_name` from it, and its `user_id`/`user_display_name`/`group_name`
+  columns come from `created_by_id` — the real human who created the key — not the row's own `user_id`
+  (the key's synthetic service-account user, used for permission checks, never a real person). The
+  view LEFT JOINs api_key and core_user on purpose — `api_key_usage_log` has no foreign keys, so rows
+  outlive a deleted key or user."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
@@ -39,34 +41,37 @@
          m))
 
 (deftest joins-and-derived-columns-test
-  (testing "the view joins key and user and derives the display columns"
+  (testing "the view joins key and creator (not the row's own user_id) and derives the display columns"
     (mt/with-temp
-      [:model/User              {user-id :id}   {:first_name "Ada" :last_name "Lovelace"}
-       :model/PermissionsGroup  {group-id :id}  {:name "Analysts"}
-       :model/PermissionsGroupMembership _      {:user_id user-id :group_id group-id}
-       :model/ApiKey            {key-id :id}    {::api-keys/unhashed-key "mb_1234567890"
-                                                 :name          "Reporting key"
-                                                 :user_id       user-id
-                                                 :creator_id    user-id
-                                                 :updated_by_id user-id}
-       :model/ApiKeyUsageLog    {log-id :id}    (log-row {:api_key_id       key-id
-                                                          :user_id          user-id
-                                                          :route_template   "/api/card/:id"
-                                                          :http_method      "POST"
-                                                          :status           201
-                                                          :duration_ms      42
-                                                          :client_name      "metabase-cli"
-                                                          :embedding_client "embedding-sdk-react"
-                                                          :embedding_hostname "example.com"
-                                                          :ip_address       "10.0.0.7"
-                                                          :user_agent       "metabase-cli/1.2.3"})]
+      [:model/User              {creator-id :id} {:first_name "Ada" :last_name "Lovelace"}
+       :model/PermissionsGroup  {group-id :id}   {:name "Analysts"}
+       :model/PermissionsGroupMembership _       {:user_id creator-id :group_id group-id}
+       :model/ApiKey            {key-id :id}     {::api-keys/unhashed-key "mb_1234567890"
+                                                  :name          "Reporting key"
+                                                  :user_id       creator-id
+                                                  :creator_id    creator-id
+                                                  :updated_by_id creator-id}
+       :model/ApiKeyUsageLog    {log-id :id}     (log-row {:api_key_id       key-id
+                                                           ;; the synthetic auth-time user_id — deliberately not a
+                                                           ;; real user, to prove the view doesn't join on it
+                                                           :user_id          Integer/MAX_VALUE
+                                                           :created_by_id    creator-id
+                                                           :route_template   "/api/card/:id"
+                                                           :http_method      "POST"
+                                                           :status           201
+                                                           :duration_ms      42
+                                                           :client_name      "metabase-cli"
+                                                           :embedding_client "embedding-sdk-react"
+                                                           :embedding_hostname "example.com"
+                                                           :ip_address       "10.0.0.7"
+                                                           :user_agent       "metabase-cli/1.2.3"})]
       (is (=? {:route_template      "/api/card/:id"
                :http_method         "POST"
                :status              201
                :duration_ms         42
                :api_key_id          key-id
                :api_key_name        "Reporting key"
-               :user_id             user-id
+               :user_id             creator-id
                :user_display_name   "Ada Lovelace"
                :group_name          "Analysts"
                :client_name         "metabase-cli"
@@ -77,11 +82,12 @@
                :user_agent          "metabase-cli/1.2.3"}
               (find-row (query-view [log-id]) log-id))))))
 
-(deftest missing-key-and-user-test
-  (testing "a row whose key/user are gone (or were never set) survives, with null join columns"
+(deftest missing-key-and-creator-test
+  (testing "a row whose key/creator are gone (or were never set) survives, with null join columns"
     (mt/with-temp
-      [:model/ApiKeyUsageLog {orphan-id :id} (log-row {:api_key_id Integer/MAX_VALUE
-                                                       :user_id    nil})]
+      [:model/ApiKeyUsageLog {orphan-id :id} (log-row {:api_key_id    Integer/MAX_VALUE
+                                                       :user_id       Integer/MAX_VALUE
+                                                       :created_by_id nil})]
       (let [row (find-row (query-view [orphan-id]) orphan-id)]
         (is (some? row) "the row is not dropped")
         (is (=? {:route_template    "/api/card/:id"
@@ -100,10 +106,10 @@
               (find-row (query-view [log-id]) log-id))))))
 
 (deftest user-display-name-falls-back-to-email-test
-  (testing "a user with no last name falls back to their email"
+  (testing "a creator with no last name falls back to their email"
     (mt/with-temp
-      [:model/User           {user-id :id, email :email} {:first_name "Ada" :last_name nil}
-       :model/ApiKeyUsageLog {log-id :id}                (log-row {:user_id user-id})]
+      [:model/User           {creator-id :id, email :email} {:first_name "Ada" :last_name nil}
+       :model/ApiKeyUsageLog {log-id :id}                   (log-row {:created_by_id creator-id})]
       (is (=? {:user_display_name email}
               (find-row (query-view [log-id]) log-id))))))
 

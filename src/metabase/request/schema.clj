@@ -23,9 +23,12 @@
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
-   ;; only API-key auth resolves these two: `:api-key-id` identifies the key itself (for per-key usage analytics) and
-   ;; `:tenant-id` is the authenticated user's tenant, read off the same auth query rather than looked up again later.
+   ;; only API-key auth resolves these three: `:api-key-id` identifies the key itself (for per-key usage analytics),
+   ;; `:api-key-creator-id` is the real human who created the key (distinct from `:metabase-user-id`, the key's own
+   ;; synthetic service-account user), and `:tenant-id` is the authenticated user's tenant — all read off the same
+   ;; auth query rather than looked up again later.
    [:api-key-id         {:optional true} pos-int?]
+   [:api-key-creator-id {:optional true} [:maybe pos-int?]]
    [:tenant-id          {:optional true} [:maybe pos-int?]]])
 
 (mr/def ::json-value
@@ -111,8 +114,9 @@
    [:is-group-manager?       {:optional true} :boolean]
    [:user-locale             {:optional true} [:maybe :string]]
    [:embedding/auth-method   {:optional true} [:maybe :string]]
-   ;; only API-key auth resolves these two — see `::current-user-info`.
+   ;; only API-key auth resolves these three — see `::current-user-info`.
    [:api-key-id              {:optional true} [:maybe :int]]
+   [:api-key-creator-id      {:optional true} [:maybe :int]]
    [:tenant-id               {:optional true} [:maybe :int]]
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]

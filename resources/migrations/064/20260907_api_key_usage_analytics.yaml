@@ -5,10 +5,12 @@
 ##   - api_key_usage_log    — one row per API-key-authenticated request, modeled on
 ##                            agent_api_call_log / mcp_tool_call_log.
 ##
-## The log row carries the resolved user so the view needs no join back to api_key, which lets
-## rows outlive a deleted key. `route_template` is the reconstructed Compojure route
-## (e.g. /api/card/:id), never the raw URI or query string — those carry entity ids and filter
-## values. Route reconstruction is EMB-2150; row insertion and PII gating are later tickets.
+## The log row carries the resolved user and the key's real creator so the view needs no join back
+## to api_key, which lets rows outlive a deleted key. `user_id` is the key's own synthetic
+## service-account user (used for permission checks); `created_by_id` is the real human who created
+## the key. `route_template` is the reconstructed Compojure route (e.g. /api/card/:id), never the raw
+## URI or query string — those carry entity ids and filter values. Route reconstruction is EMB-2150;
+## row insertion and PII gating are later tickets.
 
 databaseChangeLog:
   - logicalFilePath: migrations/064_update_migrations.yaml
@@ -35,7 +37,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: api_key_usage_log
-            remarks: One row per API-key-authenticated request; user denormalized on so the view needs no api_key join (modeled on agent_api_call_log)
+            remarks: One row per API-key-authenticated request; user and key creator denormalized on so the view needs no api_key join (modeled on agent_api_call_log)
             columns:
               - column:
                   name: id
@@ -54,7 +56,13 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
-                  remarks: Metabase user resolved from the API key at request time; NULL when the key has no user. Not a foreign key, for the same reason as api_key_id. Non-PII.
+                  remarks: The API key's own synthetic service-account user, resolved at request time; NULL when the key has no user. Used for permission checks, not a real person. Not a foreign key, for the same reason as api_key_id. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_by_id
+                  type: int
+                  remarks: The real human who created the API key, resolved from the same auth query as user_id; NULL when the key has no user. Not a foreign key, for the same reason as api_key_id. Non-PII.
                   constraints:
                     nullable: true
               - column:
@@ -132,14 +140,14 @@ databaseChangeLog:
   - changeSet:
       id: v64.2026-09-07T00:00:03
       author: sfragnaud
-      comment: Index on api_key_usage_log.user_id
+      comment: Index on api_key_usage_log.created_by_id
       changes:
         - createIndex:
-            indexName: idx_api_key_usage_log_user_id
+            indexName: idx_api_key_usage_log_created_by_id
             tableName: api_key_usage_log
             columns:
               - column:
-                  name: user_id
+                  name: created_by_id
       rollback: # dropped with table
 
   - changeSet:
