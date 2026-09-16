@@ -91,6 +91,14 @@
       (is (= :warning (rule/severity-for r false)))
       (is (= :warning (rule/worst-severity r))))))
 
+(deftest possible-severities-test
+  (testing "a rule can grade a finding at its worst severity and at every lower one, since a privilege cap lowers a
+            grade and nothing raises one; most serious first"
+    (is (= [:error :warning :note] (rule/possible-severities {:severity :error})))
+    (is (= [:error :warning :note] (rule/possible-severities {:severity {:tainted :error :otherwise :note}})))
+    (is (= [:warning :note] (rule/possible-severities {:severity {:tainted :warning :otherwise :note}})))
+    (is (= [:note] (rule/possible-severities {:severity :note})))))
+
 (deftest severity-map-validation-test
   (with-clean-registry
     (fn []

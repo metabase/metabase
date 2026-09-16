@@ -67,6 +67,14 @@
       (max-key severity-rank (:tainted s) (:otherwise s))
       s)))
 
+(defn possible-severities
+  "Every severity a rule can grade a finding at, most serious first: its worst and each one below it, since
+  `cap-severity` lowers a grade and nothing raises one. SARIF describes a rule once per grade, because GitHub reads
+  an alert's severity from its rule and a rule here grades each finding on its own."
+  [rule]
+  (let [worst (severity-rank (worst-severity rule))]
+    (filterv #(<= (severity-rank %) worst) [:error :warning :note])))
+
 (def ^:private required-keys
   [:id :name :description :severity :precision :cwe :detect])
 

@@ -60,7 +60,7 @@
       (is (= "https://github.com/metabase/metabase/blob/master/dev/src/dev/security_lint/rules/injection.clj"
              (get-in driver-rules [0 :helpUri]))))
     (testing "one that does not has no link rather than a wrong one"
-      (is (not (contains? (second driver-rules) :helpUri))))))
+      (is (not (contains? (last driver-rules) :helpUri))))))
 
 (deftest message-markdown-test
   (let [result (first (get-in (run-report) [:runs 0 :results]))]
@@ -68,13 +68,22 @@
       (is (str/starts-with? (get-in result [:message :markdown]) (get-in result [:message :text])))
       (is (str/includes? (get-in result [:message :markdown]) "```clojure\n(shell/sh ...)\n```")))))
 
-(deftest rules-deduplicated-test
+(deftest rules-graded-test
   (let [driver-rules (get-in (run-report) [:runs 0 :tool :driver :rules])]
-    (testing "each rule appears once even though one has two findings"
-      (is (= 2 (count driver-rules))))
-    (testing "rule ids are the stable string form of the rule keyword"
-      (is (= ["metabase-security-lint/command-injection" "metabase-security-lint/weak-hash"]
+    (testing "a rule is described once per severity it can grade a finding at -- not once per finding -- because
+              GitHub reads severity from the rule, and a rule here grades each finding on its own"
+      (is (= 4 (count driver-rules))))
+    (testing "rule ids are the stable string form of the rule keyword, with the grade under it, most serious first"
+      (is (= ["metabase-security-lint/command-injection/error"
+              "metabase-security-lint/command-injection/warning"
+              "metabase-security-lint/command-injection/note"
+              "metabase-security-lint/weak-hash/note"]
              (map :id driver-rules))))
+    (testing "the grade sets the variant's default level"
+      (is (= ["error" "warning" "note" "note"] (map #(get-in % [:defaultConfiguration :level]) driver-rules))))
+    (testing "every variant of a rule is the same rule to a reader: one name, one help text"
+      (is (= 1 (count (distinct (map :name (take 3 driver-rules))))))
+      (is (= 1 (count (distinct (map :help (take 3 driver-rules)))))))
     (testing "carries description and remediation for the alert body"
       (is (= "Full desc CI" (get-in driver-rules [0 :fullDescription :text])))
       (is (re-find #"vector of args" (get-in driver-rules [0 :help :text])))
@@ -84,24 +93,31 @@
 (deftest results-reference-rules-by-index-test
   (let [results (get-in (run-report) [:runs 0 :results])]
     (is (= 3 (count results)))
-    (is (= [0 0 1] (map :ruleIndex results)))
-    (is (= ["metabase-security-lint/command-injection"
-            "metabase-security-lint/command-injection"
-            "metabase-security-lint/weak-hash"]
-           (map :ruleId results)))))
+    (is (= [0 0 3] (map :ruleIndex results)))
+    (is (= ["metabase-security-lint/command-injection/error"
+            "metabase-security-lint/command-injection/error"
+            "metabase-security-lint/weak-hash/note"]
+           (map :ruleId results)))
+    (testing "a finding graded below its rule's worst points at the variant of its own grade, so GitHub files it at
+              the severity the finding earned, not the rule's worst case"
+      (let [capped  (assoc (first findings) :severity :warning :min-privilege :elevated)
+            results (get-in (sarif/report [capped] {:rules rules :root "/repo"}) [:runs 0 :results])]
+        (is (= ["metabase-security-lint/command-injection/warning"] (map :ruleId results)))
+        (is (= [1] (map :ruleIndex results)))
+        (is (= ["warning"] (map :level results)))))))
 
 (deftest level-mapping-test
   (let [r (run-report)]
     (testing "clojure severities map onto SARIF levels"
       (is (= ["error" "error" "note"] (map :level (get-in r [:runs 0 :results])))))
-    (testing "a security tag files these as security alerts; no security-severity, so that the alert's severity
-              is the result's level -- graded per finding by taint -- and the merge-blocking threshold can be
-              'errors' without a rule's worst case counting for its warnings"
+    (testing "a security tag files these as security alerts, and each graded variant carries the security-severity
+              of its grade -- an error is high, a warning medium, a note low in GitHub's buckets -- so the severity
+              GitHub shows, filters by and blocks on is the finding's own, machine-readable"
       (let [props (map :properties (get-in r [:runs 0 :tool :driver :rules]))]
-        (is (every? #(not (contains? % :security-severity)) props))
+        (is (= ["8.0" "5.0" "2.0" "2.0"] (map :security-severity props)))
         (is (every? #(contains? (set (:tags %)) "security") props))
         (is (contains? (set (:tags (first props))) "external/cwe/cwe-78"))
-        (is (= ["high" "low"] (map :precision props)))))))
+        (is (= ["high" "high" "high" "low"] (map :precision props)))))))
 
 (deftest locations-relative-to-repo-root-test
   (let [results (get-in (run-report) [:runs 0 :results])
@@ -141,7 +157,7 @@
   (testing "a clean run still emits a valid report so GitHub clears resolved alerts"
     (let [r (sarif/report [] {:rules rules :root "/repo"})]
       (is (= [] (get-in r [:runs 0 :results])))
-      (is (= 2 (count (get-in r [:runs 0 :tool :driver :rules])))))))
+      (is (= 4 (count (get-in r [:runs 0 :tool :driver :rules])))))))
 
 (deftest repeated-form-in-one-file-test
   (testing "two findings with the same rule, file and code get distinct fingerprints, or GitHub merges them into one alert"
@@ -220,7 +236,10 @@
                              [:runs 0 :results 0 :partialFingerprints :primaryLocationLineHash]))
           a  (first findings)]
       (is (= (fp a) (fp (assoc a :snippet "(shell/sh" :row 30))))
-      (is (not= (fp a) (fp (assoc a :form "(shell/sh other)")))))))
+      (is (not= (fp a) (fp (assoc a :form "(shell/sh other)"))))
+      (testing "and the grade, so a finding that becomes more or less serious is a new alert: what was reviewed at
+                one severity is not what is there at another"
+        (is (not= (fp a) (fp (assoc a :severity :warning))))))))
 
 (deftest code-flows-test
   (let [result (first (get-in (run-report) [:runs 0 :results]))
