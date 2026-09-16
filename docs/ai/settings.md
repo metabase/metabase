@@ -30,7 +30,7 @@ You pick which AI providers Metabase can use:
 - If you're **self-hosting Metabase** and want to use Metabot, you'll need to [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials.
 - On **Metabase Cloud**, you can [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials, [use the Metabase AI service](#metabase-ai-service), or both.
 
-The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md#turn-on-the-mcp-server).
 
 ### Metabase AI service
 
