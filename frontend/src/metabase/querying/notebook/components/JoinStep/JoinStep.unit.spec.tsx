@@ -37,6 +37,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -969,6 +970,57 @@ describe("Notebook Editor > Join Step", () => {
 
       const { fields } = getRecentJoin();
       expect(fields).toBe("none");
+    });
+
+    it("should only change the matching columns for an existing join when searching", async () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "table", id: PEOPLE_ID },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: {
+                      type: "column",
+                      sourceName: "ORDERS",
+                      name: "USER_ID",
+                    },
+                    right: { type: "column", sourceName: "PEOPLE", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      const picker = await screen.findByTestId("join-columns-picker");
+      await userEvent.type(
+        within(picker).getByLabelText("Search columns"),
+        "tude",
+      );
+      await userEvent.click(
+        within(picker).getByLabelText("Select all of these"),
+      );
+
+      const { query: nextQuery, fields } = getRecentJoin();
+      if (fields === "all" || fields === "none") {
+        throw new Error(`Expected an explicit column list, got "${fields}"`);
+      }
+      const names = fields.map(
+        (column) => Lib.displayInfo(nextQuery, 0, column).name,
+      );
+      expect(names).toHaveLength(11);
+      expect(names).not.toContain("LONGITUDE");
+      expect(names).not.toContain("LATITUDE");
     });
   });
 

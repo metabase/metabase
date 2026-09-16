@@ -17,6 +17,7 @@ import type { CardType, IconName } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -259,6 +260,77 @@ describe("DataStep", () => {
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
+    });
+
+    describe("when searching", () => {
+      const createPeopleQuery = (columnNames?: string[]) =>
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PEOPLE_ID },
+              fields: columnNames?.map((name) => ({
+                type: "column",
+                sourceName: "PEOPLE",
+                name,
+              })),
+            },
+          ],
+        });
+
+      const getSelectedColumnNames = (query: Lib.Query) =>
+        Lib.fieldableColumns(query, 0)
+          .map((column) => Lib.displayInfo(query, 0, column))
+          .filter((columnInfo) => columnInfo.selected)
+          .map((columnInfo) => columnInfo.name);
+
+      const searchAndToggleAllMatches = async (searchText: string) => {
+        await userEvent.click(screen.getByLabelText("Pick columns"));
+        await userEvent.type(
+          screen.getByLabelText("Search columns"),
+          searchText,
+        );
+        await userEvent.click(screen.getByLabelText("Select all of these"));
+      };
+
+      it("should only select the matching columns", async () => {
+        const query = createPeopleQuery(["ID"]);
+        const { getNextQuery } = await setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await searchAndToggleAllMatches("tude");
+
+        expect(getSelectedColumnNames(getNextQuery())).toEqual([
+          "ID",
+          "LATITUDE",
+          "LONGITUDE",
+        ]);
+      });
+
+      it("should keep the first match selected when deselecting every selected column", async () => {
+        const query = createPeopleQuery(["LONGITUDE", "LATITUDE"]);
+        const { getNextQuery } = await setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await searchAndToggleAllMatches("tude");
+
+        expect(getSelectedColumnNames(getNextQuery())).toEqual(["LATITUDE"]);
+      });
+
+      it("should drop the explicit fields once every column is selected", async () => {
+        const columnNames = getSelectedColumnNames(createPeopleQuery()).filter(
+          (name) => name !== "LATITUDE",
+        );
+        const query = createPeopleQuery(columnNames);
+        const { getNextQuery } = await setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await searchAndToggleAllMatches("tude");
+
+        expect(Lib.fields(getNextQuery(), 0)).toHaveLength(0);
+      });
     });
 
     it("should not display fields picker in read-only mode", async () => {
