@@ -543,8 +543,8 @@
 ;;; Tests for supersede-stale-tasks!
 ;;; ------------------------------------------------------------------------------------------------
 ;;;
-;;; Used by `create-task-with-lock!` (auto-import path) to clean up rows whose owning JVM/thread
-;;; is gone or hung. Must NOT supersede brand-new tasks that haven't reported progress yet.
+;;; Called at boot, by `GET /current-task`, and before a new task is created, to close rows whose owning
+;;; JVM/thread is gone or hung. Must NOT supersede brand-new tasks that haven't reported progress yet.
 
 (defn- insert-task!
   "Helper: insert a RemoteSyncTask row with the given fields, bypassing the create-sync-task!
@@ -647,6 +647,24 @@
         (is (false? (:cancelled after)))
         (is (= (:ended_at before) (:ended_at after))
             "ended_at must not be overwritten")))))
+
+(deftest supersede-stale-tasks!-returns-and-logs-reaped-ids-test
+  (testing "superseding returns the ids of the rows it ended and logs one warning naming them"
+    (let [now      (t/offset-date-time)
+          old-time (t/minus now (t/hours 1))
+          stale    (insert-task! {:started_at old-time :last_progress_report_at old-time})
+          fresh    (insert-task! {:started_at now :last_progress_report_at now})]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.models.remote-sync-task :warn]]
+        (is (= [(:id stale)] (rst/supersede-stale-tasks!)))
+        (is (=? [{:level   :warn
+                  :message (re-pattern (str "Superseded stale remote sync tasks \\[" (:id stale) "\\]: .*"))}]
+                (messages))))
+      (is (nil? (:ended_at (t2/select-one :model/RemoteSyncTask :id (:id fresh)))))
+      (testing "a second pass finds nothing and logs nothing"
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.remote-sync.models.remote-sync-task :warn]]
+          (is (= [] (rst/supersede-stale-tasks!)))
+          (is (= [] (messages)))))
+      (rst/complete-sync-task! (:id fresh)))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for make-progress-reporter

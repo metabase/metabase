@@ -188,7 +188,8 @@
   (remote-sync.db/current-task (liveness-cutoff)))
 
 (defn supersede-stale-tasks!
-  "Marks any genuinely stale task rows as cancelled and terminated.
+  "Marks any genuinely stale task rows as cancelled and terminated, and logs a warning naming each row it ended.
+  Returns the ids of those rows, empty when none were stale.
 
   A task is considered stale if it has `started_at` set, `ended_at` nil, and its last sign of life
   (`last_heartbeat_at`, or `last_progress_report_at` when no beat was ever written) is older than
@@ -196,20 +197,21 @@
   a default of `current_timestamp`, so a brand-new task always has a recent value (set on insert) and is
   not considered stale.
 
-  Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
-  JVM/thread is gone or hung. Returns nothing meaningful.
-
   The error message written names the staleness window, so the UI can show it as the reason the sync stopped.
 
   Combined with `handle-task-result!`'s already-terminated check, this means a stale task's thread
   that eventually wakes up and tries to complete will detect that its row is terminated and exit
   without writing the setting or overwriting bookkeeping."
   []
-  (let [minutes (max 1 (quot (setting/get :remote-sync-task-time-limit-ms) 60000))]
-    (remote-sync.db/supersede-stale-tasks!
-     (liveness-cutoff)
-     (format "Sync was interrupted: the server stopped responding for %d minute%s (it may have restarted)"
-             minutes (if (= 1 minutes) "" "s")))))
+  (let [cutoff  (liveness-cutoff)
+        minutes (max 1 (quot (setting/get :remote-sync-task-time-limit-ms) 60000))
+        ids     (remote-sync.db/supersede-stale-tasks!
+                 cutoff
+                 (format "Sync was interrupted: the server stopped responding for %d minute%s (it may have restarted)"
+                         minutes (if (= 1 minutes) "" "s")))]
+    (when (seq ids)
+      (log/warnf "Superseded stale remote sync tasks %s: their owners were last alive before %s" ids cutoff))
+    ids))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.

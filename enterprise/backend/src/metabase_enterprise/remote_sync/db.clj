@@ -696,19 +696,23 @@
   [task-id :- ms/PositiveInt]
   (t2/update! :model/RemoteSyncTask {:id task-id, :ended_at nil} {:last_heartbeat_at :%now}))
 
-(mu/defn supersede-stale-tasks!
+(mu/defn supersede-stale-tasks! :- [:sequential ms/PositiveInt]
   "Cancel and end now, with `message` as the error message, the started, unfinished RemoteSyncTasks whose owner
-  was last alive before `cutoff`."
+  was last alive before `cutoff`. Returns the ids of the rows ended, empty when none were stale."
   [cutoff  :- ms/TemporalInstant
    message :- :string]
-  (t2/query {:update (t2/table-name :model/RemoteSyncTask)
-             :set    {:cancelled     true
-                      :ended_at      :%now
-                      :error_message message}
-             :where  [:and
-                      [:<> :started_at nil]
-                      [:= :ended_at nil]
-                      [:< last-alive-at cutoff]]}))
+  (let [stale [:and
+               [:<> :started_at nil]
+               [:= :ended_at nil]
+               [:< last-alive-at cutoff]]
+        ids   (vec (t2/select-pks-vec :model/RemoteSyncTask {:where stale}))]
+    (when (seq ids)
+      (t2/query {:update (t2/table-name :model/RemoteSyncTask)
+                 :set    {:cancelled     true
+                          :ended_at      :%now
+                          :error_message message}
+                 :where  [:and stale [:in :id ids]]}))
+    ids))
 
 (mu/defn delete-tasks-started-before!
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
