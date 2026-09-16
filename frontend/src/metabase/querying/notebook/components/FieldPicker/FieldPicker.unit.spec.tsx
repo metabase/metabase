@@ -124,11 +124,11 @@ describe("FieldPicker", () => {
     expect(getOptions()).toHaveLength(SEARCHABLE_COLUMN_COUNT);
   });
 
-  it("should show a focused search box when there are many columns", () => {
+  it("should mark the search box for autofocus when there are many columns", () => {
     const { columns } = setup();
 
     expect(columns.length).toBeGreaterThan(SEARCHABLE_COLUMN_COUNT);
-    expect(getSearchInput()).toHaveFocus();
+    expect(getSearchInput()).toHaveAttribute("data-autofocus");
     expect(screen.getByRole("listbox")).toHaveAttribute(
       "aria-multiselectable",
       "true",
@@ -273,17 +273,6 @@ describe("FieldPicker", () => {
       expect(getOptions()).toHaveLength(columns.length);
       expect(screen.getAllByText("ID")).toHaveLength(1);
     }
-  });
-
-  it("should clear the search on Escape without bubbling to the popover", async () => {
-    setup();
-    const input = getSearchInput();
-
-    await userEvent.type(input, "email");
-    await userEvent.keyboard("{Escape}");
-
-    expect(input).toHaveValue("");
-    expect(screen.getByLabelText("Select all")).toBeInTheDocument();
   });
 
   describe("'Select all'", () => {

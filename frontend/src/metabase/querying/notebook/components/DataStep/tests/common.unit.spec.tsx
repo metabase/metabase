@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { METAKEY } from "metabase/utils/browser";
+import { METAKEY, isTouchDevice } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
@@ -26,6 +26,11 @@ import {
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
+
+jest.mock("metabase/utils/browser", () => ({
+  ...jest.requireActual("metabase/utils/browser"),
+  isTouchDevice: jest.fn(() => false),
+}));
 
 const findAggregationOperator = (
   query: Lib.Query,
@@ -263,6 +268,10 @@ describe("DataStep", () => {
     });
 
     describe("when searching", () => {
+      afterEach(() => {
+        jest.mocked(isTouchDevice).mockReturnValue(false);
+      });
+
       const createPeopleQuery = (columnNames?: string[]) =>
         Lib.createTestQuery(SAMPLE_PROVIDER, {
           stages: [
@@ -291,6 +300,46 @@ describe("DataStep", () => {
         );
         await userEvent.click(screen.getByLabelText("Select all of these"));
       };
+
+      it("should focus the search box when the picker opens", async () => {
+        const query = createPeopleQuery();
+        await setup({ step: createMockNotebookStep({ query }) });
+
+        await userEvent.click(screen.getByLabelText("Pick columns"));
+
+        await waitFor(() =>
+          expect(screen.getByLabelText("Search columns")).toHaveFocus(),
+        );
+      });
+
+      it("should focus 'Select all' instead of the search box on touch devices", async () => {
+        jest.mocked(isTouchDevice).mockReturnValue(true);
+        const query = createPeopleQuery();
+        await setup({ step: createMockNotebookStep({ query }) });
+
+        await userEvent.click(screen.getByLabelText("Pick columns"));
+
+        await waitFor(() =>
+          expect(screen.getByLabelText("Select all")).toHaveFocus(),
+        );
+      });
+
+      it("should close the picker on Escape even with a search query", async () => {
+        const query = createPeopleQuery();
+        await setup({ step: createMockNotebookStep({ query }) });
+        const trigger = screen.getByLabelText("Pick columns");
+
+        await userEvent.click(trigger);
+        await userEvent.type(screen.getByLabelText("Search columns"), "tude");
+        await userEvent.keyboard("{Escape}");
+
+        await waitFor(() =>
+          expect(
+            screen.queryByLabelText("Search columns"),
+          ).not.toBeInTheDocument(),
+        );
+        await waitFor(() => expect(trigger).toHaveFocus());
+      });
 
       it("should only select the matching columns", async () => {
         const query = createPeopleQuery(["ID"]);
