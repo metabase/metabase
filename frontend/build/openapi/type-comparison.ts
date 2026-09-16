@@ -41,8 +41,8 @@ interface Unconstrained {
 
 export interface Verdict {
   status: "compatible" | Problem["status"];
-  message: string;
-  unconstrained?: Unconstrained;
+  diagnostics: (string | Unconstrained)[];
+  notes?: string[];
 }
 
 export interface CompareContext {
@@ -162,14 +162,10 @@ export const LINE_BREAK = "\n  ";
 
 const COMPATIBLE: Verdict = {
   status: "compatible",
-  message: "Compatible",
+  diagnostics: ["Compatible"],
 };
 
 const ROOT: Position = { path: "$", declaration: undefined };
-
-function uniqueLines(lines: string[]): string {
-  return [...new Set(lines)].join(LINE_BREAK);
-}
 
 function problemStatus(problems: Pick<Problem, "status">[]): Problem["status"] {
   return problems.some((problem) => problem.status === "mismatch")
@@ -889,19 +885,25 @@ function positionKey({
 function sortedPositions(
   positions: UnconstrainedPosition[],
 ): UnconstrainedPosition[] {
-  const merged = new Map<string, Set<string>>();
-  const firsts = new Map<string, UnconstrainedPosition>();
+  const merged = new Map<
+    string,
+    { position: UnconstrainedPosition; paths: Set<string> }
+  >();
   for (const position of positions) {
     const key = positionKey(position);
-    const paths = merged.get(key) ?? new Set();
-    position.paths.forEach((path) => paths.add(path));
-    merged.set(key, paths);
-    firsts.set(key, firsts.get(key) ?? position);
+    let entry = merged.get(key);
+    if (!entry) {
+      entry = { position, paths: new Set() };
+      merged.set(key, entry);
+    }
+    for (const path of position.paths) {
+      entry.paths.add(path);
+    }
   }
-  return [...firsts]
-    .map(([key, position]) => ({
+  return [...merged.values()]
+    .map(({ position, paths }) => ({
       ...position,
-      paths: [...(merged.get(key) ?? [])].sort(comparePaths),
+      paths: [...paths].sort(comparePaths),
     }))
     .sort(
       (left, right) =>
@@ -1077,7 +1079,7 @@ function unconstrainedPositions(
       level = next;
     }
   });
-  return sortedPositions(found);
+  return found;
 }
 
 function unconstrainedLines({ location, positions }: Unconstrained): string[] {
@@ -1107,11 +1109,9 @@ export function looseShapeVerdict(
   if (!positions.length) {
     return undefined;
   }
-  const unconstrained = { location, positions };
   return {
     status: "unverified",
-    message: unconstrainedLines(unconstrained).join(LINE_BREAK),
-    unconstrained,
+    diagnostics: [{ location, positions }],
   };
 }
 
@@ -1140,7 +1140,7 @@ export function compareShape(
   }
   return {
     status: problemStatus(problems),
-    message: uniqueLines(problems.map((problem) => problem.message)),
+    diagnostics: problems.map((problem) => problem.message),
   };
 }
 
@@ -1152,30 +1152,38 @@ export function combineVerdicts(verdicts: Verdict[], notes: string[]): Verdict {
     : failing.length
       ? "mismatch"
       : "compatible";
-  const groups = failing.flatMap((verdict) => verdict.unconstrained ?? []);
-  const [first] = groups;
-  const unconstrained = first && {
-    location: first.location,
-    positions: sortedPositions(groups.flatMap((group) => group.positions)),
-  };
-  let listed = false;
-  const lines = failing.length
-    ? failing.flatMap((verdict) => {
-        if (!verdict.unconstrained) {
-          return verdict.message.split(LINE_BREAK);
-        }
-        if (listed || !unconstrained) {
-          return [];
-        }
-        listed = true;
-        return unconstrainedLines(unconstrained);
-      })
-    : [COMPATIBLE.message];
   return {
     status,
+    diagnostics: failing.length
+      ? failing.flatMap((verdict) => verdict.diagnostics)
+      : COMPATIBLE.diagnostics,
+    notes,
+  };
+}
+
+export function renderDiagnostics(
+  diagnostics: Verdict["diagnostics"],
+  notes: string[] = [],
+): { message: string; unconstrained?: UnconstrainedPosition[] } {
+  const positions = sortedPositions(
+    diagnostics.flatMap((diagnostic) =>
+      typeof diagnostic === "string" ? [] : diagnostic.positions,
+    ),
+  );
+  const firstGroup = diagnostics.findIndex(
+    (diagnostic) => typeof diagnostic !== "string",
+  );
+  const lines = diagnostics.flatMap((diagnostic, index) =>
+    typeof diagnostic === "string"
+      ? [diagnostic]
+      : index === firstGroup
+        ? unconstrainedLines({ location: diagnostic.location, positions })
+        : [],
+  );
+  return {
     message: [...new Set(lines), ...notes.map((note) => `note: ${note}`)].join(
       LINE_BREAK,
     ),
-    ...(unconstrained ? { unconstrained } : {}),
+    ...(positions.length ? { unconstrained: positions } : {}),
   };
 }

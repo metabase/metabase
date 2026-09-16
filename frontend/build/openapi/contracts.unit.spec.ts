@@ -736,6 +736,25 @@ describe("type printing order", () => {
 describe("request comparison rules", () => {
   const frontend = "type ErdResponse = { id: number };";
 
+  it("should report a client failure before unresolved URL tags", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        method: "Post",
+        url: "/api/user/{id}",
+        path: "path: { id: number }",
+      }),
+      endpoint: request(
+        "string[]",
+        '(body) => ({ method: "POST", url: "/api/user/:id", body })',
+      ),
+    });
+    expect(resultFor(results, "request")).toMatchObject({
+      status: "mismatch",
+      message: expect.stringContaining("throws before sending an array body"),
+    });
+  });
+
   it.each([
     [
       "undefined params",

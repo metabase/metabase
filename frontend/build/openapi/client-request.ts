@@ -50,14 +50,17 @@ interface SentPathParameter {
 }
 
 export interface ClientRequest {
+  kind: "modelled";
   method: string;
   path: string;
   pathParameters: SentPathParameter[];
   query: SentPart;
   body: SentPart;
-  failure: string | undefined;
-  unverified: string | undefined;
 }
+
+export type ModelResult =
+  | ClientRequest
+  | { kind: "failed" | "unverified"; message: string };
 
 type Payload = Extract<Shape, { kind: "type" | "object" }>;
 
@@ -70,7 +73,7 @@ export function modelClientRequest(
   checker: ts.TypeChecker,
   rtk: RtkRequest,
   at: ts.Node,
-): ClientRequest {
+): ModelResult {
   const context: ModelContext = { checker, at };
   const { method } = rtk;
   const foldsBody = method === "GET" && rtk.body !== undefined;
@@ -145,29 +148,33 @@ export function modelClientRequest(
   }
   const queryVariants = queryPayloads(sources, onUnverified);
 
+  if (body.failure) {
+    return { kind: "failed", message: body.failure };
+  }
+  const unverified = extraOptionsUnverified(rtk) ?? tagUnverified;
+  if (unverified) {
+    return { kind: "unverified", message: unverified };
+  }
   return {
+    kind: "modelled",
     method,
     path: rtk.url.path,
     pathParameters: parameters,
     query: {
-      variants: body.failure
-        ? []
-        : queryVariants.map((payload) =>
-            isEmpty(payload) ? typeShape(checker.getUndefinedType()) : payload,
-          ),
+      variants: queryVariants.map((payload) =>
+        isEmpty(payload) ? typeShape(checker.getUndefinedType()) : payload,
+      ),
       notes: [...new Set(queryNotes)],
       unverified: queryUnverified,
       // A query with no keys is always possible, so nothing about it is certain.
       alwaysSent: false,
     },
     body: {
-      variants: body.failure ? [] : sentBody,
+      variants: sentBody,
       notes: [...new Set(bodyNotes)],
       unverified: foldsBody ? undefined : body.unverified,
       alwaysSent: !foldsBody && body.alwaysSent,
     },
-    failure: body.failure,
-    unverified: extraOptionsUnverified(rtk) ?? tagUnverified,
   };
 }
 

@@ -123,14 +123,14 @@ export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
   });
 }
 
-function jsonOmissionReason(type: ts.Type): string | undefined {
-  if (type.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) {
-    return "undefined";
-  }
-  if (type.flags & ts.TypeFlags.ESSymbolLike) {
-    return "a symbol";
-  }
-  return type.getCallSignatures().length > 0 ? "a function" : undefined;
+function omittedByJson(type: ts.Type): boolean {
+  return (
+    (type.flags &
+      (ts.TypeFlags.Undefined |
+        ts.TypeFlags.Void |
+        ts.TypeFlags.ESSymbolLike)) !==
+      0 || type.getCallSignatures().length > 0
+  );
 }
 
 export function jsonField(
@@ -160,7 +160,7 @@ export function jsonField(
   }
   const { type } = field.shape;
   const parts = unionMembers(checker, type);
-  const kept = parts.filter((part) => !jsonOmissionReason(part));
+  const kept = parts.filter((part) => !omittedByJson(part));
   if (!kept.length) {
     return undefined;
   }
@@ -176,7 +176,7 @@ export function jsonField(
       (field.optional &&
         parts.every(
           (part) =>
-            !jsonOmissionReason(part) ||
+            !omittedByJson(part) ||
             (part.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)) !== 0,
         )));
   return {
@@ -250,7 +250,7 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
       (view, index) => view.kind === "type" && view.type === members[index],
     )
       ? { kind: "type", type }
-      : { kind: "union", from: type, members: views };
+      : unionShape(views);
   }
   if (type.flags & ts.TypeFlags.BigIntLike) {
     return {
@@ -292,30 +292,24 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
     }
     return jsonView(checker, checker.getReturnTypeOfSignature(signature));
   }
-  if (jsonOmissionReason(type)) {
+  if (omittedByJson(type)) {
     return { kind: "type", type };
   }
   if (checker.isArrayType(type) || checker.isTupleType(type)) {
     const parts = elementTypes(checker, type).flatMap((element) =>
       unionMembers(checker, element),
     );
-    const views = parts.map((part): Shape => {
-      const dropped = jsonOmissionReason(part);
-      return dropped
-        ? { kind: "null", from: part, reason: `${dropped} in an array` }
-        : jsonView(checker, part);
-    });
-    const [only, ...more] = views;
-    const element: Shape = only
-      ? more.length
-        ? { kind: "union", from: type, members: views }
-        : only
-      : { kind: "type", type: checker.getNeverType() };
+    const views = parts.map(
+      (part): Shape =>
+        omittedByJson(part)
+          ? { kind: "null", from: part }
+          : jsonView(checker, part),
+    );
     return views.every(
       (view, index) => view.kind === "type" && view.type === parts[index],
     )
       ? { kind: "type", type }
-      : { kind: "array", from: type, element };
+      : { kind: "array", from: type, element: unionShape(views) };
   }
   if (isAugmentedLibType(type)) {
     return {
@@ -329,7 +323,6 @@ function buildShape(checker: ts.TypeChecker, type: ts.Type): Shape {
     return {
       kind: "empty",
       from: type,
-      reason: `a ${typeText(checker, type)} has no own properties to serialise`,
     };
   }
   const indexes = checker.getIndexInfosOfType(type);

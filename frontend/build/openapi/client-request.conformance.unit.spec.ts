@@ -4,7 +4,11 @@ import ts from "typescript";
 
 import { baseQuery } from "metabase/api/api";
 
-import { type ClientRequest, modelClientRequest } from "./client-request";
+import {
+  type ClientRequest,
+  type ModelResult,
+  modelClientRequest,
+} from "./client-request";
 import { resolveRtkRequest } from "./rtk-request";
 import { type Shape, describeShape } from "./shape";
 import {
@@ -35,7 +39,7 @@ interface Fixture {
 }
 
 interface Modelled {
-  request: ClientRequest;
+  request: ModelResult;
   checker: ts.TypeChecker;
 }
 
@@ -169,8 +173,6 @@ interface Projection {
   parameters: (string | string[])[];
   query: string | PayloadProjection[];
   body: string | PayloadProjection[];
-  failure: boolean;
-  unverified: boolean;
 }
 
 function projected(overrides: Partial<Projection>): Projection {
@@ -180,8 +182,6 @@ function projected(overrides: Partial<Projection>): Projection {
     parameters: [],
     query: ["nothing"],
     body: ["nothing"],
-    failure: false,
-    unverified: false,
     ...overrides,
   };
 }
@@ -235,9 +235,12 @@ function partProjection(
   });
 }
 
-function projection({ checker, request }: Modelled): Projection | "unverified" {
-  if (request.unverified) {
-    return "unverified";
+function projection({
+  checker,
+  request,
+}: Modelled): Projection | "failed" | "unverified" {
+  if (request.kind !== "modelled") {
+    return request.kind;
   }
   return {
     method: request.method,
@@ -249,8 +252,6 @@ function projection({ checker, request }: Modelled): Projection | "unverified" {
     ),
     query: partProjection(checker, request.query),
     body: partProjection(checker, request.body),
-    failure: request.failure !== undefined,
-    unverified: request.unverified !== undefined,
   };
 }
 
@@ -269,7 +270,7 @@ function sentRequest(request: Partial<SentRequest>): Outcome {
 
 async function expectConformance(
   fixture: Omit<Fixture, "argument">,
-  expectedModel: Projection | "unverified",
+  expectedModel: ReturnType<typeof projection>,
   examples: [
     { argument: string; expected: Outcome },
     ...{ argument: string; expected: Outcome }[],
@@ -449,7 +450,7 @@ describe("modelClientRequest against the real API client", () => {
     );
   });
 
-  const cases: [string, Fixture, Outcome, Projection | "unverified"][] = [
+  const cases: [string, Fixture, Outcome, ReturnType<typeof projection>][] = [
     [
       "should send GET when the request names no method",
       {
@@ -980,7 +981,17 @@ describe("modelClientRequest against the real API client", () => {
         argument: '["a"]',
       },
       { kind: "thrown" },
-      projected({ method: "POST", failure: true, query: [], body: [] }),
+      "failed",
+    ],
+    [
+      "should retain a client failure when extraOptions makes the request unverified",
+      {
+        endpoint:
+          '{ query: (body: string[]) => ({ method: "POST", url: "/api/x", body }), extraOptions: { url: "/api/y" } }',
+        argument: '["a"]',
+      },
+      { kind: "thrown" },
+      "failed",
     ],
     [
       "should mark a key sent from both GET params and body unverified",

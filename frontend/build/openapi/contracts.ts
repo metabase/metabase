@@ -17,6 +17,7 @@ import {
   compareShape,
   isStackOverflow,
   looseShapeVerdict,
+  renderDiagnostics,
 } from "./type-comparison";
 import {
   hasComputedName,
@@ -46,8 +47,8 @@ export interface ContractResult {
   unconstrained?: UnconstrainedPosition[];
 }
 
-type Check = Pick<ContractResult, "kind" | "part" | "status" | "message"> &
-  Pick<Verdict, "unconstrained">;
+type Check = Pick<ContractResult, "kind" | "part" | "status"> &
+  Omit<Verdict, "status">;
 
 interface Operation {
   path: string;
@@ -114,12 +115,7 @@ export function checkContracts(
         file: endpoint.file,
         line: endpoint.line,
         status: check.status,
-        message: check.message,
-        ...(check.unconstrained
-          ? {
-              unconstrained: check.unconstrained.positions,
-            }
-          : {}),
+        ...renderDiagnostics(check.diagnostics, check.notes),
       }),
     ),
   );
@@ -333,7 +329,7 @@ function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
         {
           kind: "endpoint",
           status: "unverified",
-          message: resolved.unverified,
+          diagnostics: [resolved.unverified],
         },
       ];
     }
@@ -422,8 +418,9 @@ function checkResponse(
       {
         kind: "response",
         status: "unverified",
-        message:
+        diagnostics: [
           "transformResponse needs an explicit raw-response contract; the RTK result type is transformed.",
+        ],
       },
     ];
   }
@@ -432,7 +429,7 @@ function checkResponse(
       {
         kind: "response",
         status: "ignored",
-        message: "Frontend intentionally discards the response.",
+        diagnostics: ["Frontend intentionally discards the response."],
       },
     ];
   }
@@ -445,7 +442,7 @@ function checkResponse(
       {
         kind: "response",
         status: "unverified",
-        message: "Backend does not declare a successful response schema.",
+        diagnostics: ["Backend does not declare a successful response schema."],
       },
     ];
   }
@@ -470,12 +467,13 @@ function checkRequest(
   const { checker, generated } = context;
   const { endpointId, node, request, operation, route } = resolved;
   const client = modelClientRequest(checker, request, node);
-  if (client.failure) {
-    return [{ kind: "request", status: "mismatch", message: client.failure }];
-  }
-  if (client.unverified) {
+  if (client.kind !== "modelled") {
     return [
-      { kind: "request", status: "unverified", message: client.unverified },
+      {
+        kind: "request",
+        status: client.kind === "failed" ? "mismatch" : "unverified",
+        diagnostics: [client.message],
+      },
     ];
   }
   const expected = (part: "query" | "body") =>
@@ -514,7 +512,7 @@ function comparePart(
   if (!part.unverified && !part.variants.length) {
     return {
       status: "unverified",
-      message: "the request model produced no variants",
+      diagnostics: ["the request model produced no variants"],
     };
   }
   if (part.unverified) {
@@ -523,15 +521,13 @@ function comparePart(
       part.alwaysSent &&
       expected.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Never)
     ) {
-      return combineVerdicts(
-        [
-          {
-            status: "mismatch",
-            message: `$: the client always sends this part, and the backend declares none (${part.unverified})`,
-          },
+      return {
+        status: "mismatch",
+        diagnostics: [
+          `$: the client always sends this part, and the backend declares none (${part.unverified})`,
         ],
-        part.notes,
-      );
+        notes: part.notes,
+      };
     }
     const gap = looseShapeVerdict(
       context,
@@ -542,7 +538,7 @@ function comparePart(
     );
     return combineVerdicts(
       [
-        { status: "unverified", message: part.unverified },
+        { status: "unverified", diagnostics: [part.unverified] },
         ...(gap ? [gap] : []),
       ],
       part.notes,
@@ -572,8 +568,9 @@ function checkPathParameters(
         kind: "request",
         part: "path",
         status: "unverified",
-        message:
+        diagnostics: [
           "Path parameters are not represented by URL template expressions.",
+        ],
       },
     ];
   }
@@ -594,7 +591,7 @@ function checkPathParameters(
         kind: "request",
         part,
         status: "unverified",
-        message: "Backend path parameter schema is missing.",
+        diagnostics: ["Backend path parameter schema is missing."],
       };
     }
     const location = `${route} request path parameter ${name}`;
@@ -612,12 +609,14 @@ function pathParameterVerdict(
   node: ts.Node,
 ): Verdict {
   const verdicts: Verdict[] = parameter.unverified
-    ? [{ status: "unverified", message: parameter.unverified }]
+    ? [{ status: "unverified", diagnostics: [parameter.unverified] }]
     : parameter.values.map((value) =>
         value.kind === "text" && value.text === ""
           ? {
               status: "mismatch",
-              message: `$: ${parameter.source} may be replaced with an empty string, which removes the path segment`,
+              diagnostics: [
+                `$: ${parameter.source} may be replaced with an empty string, which removes the path segment`,
+              ],
             }
           : compareShape(context, "request", location, value, expected, node),
       );

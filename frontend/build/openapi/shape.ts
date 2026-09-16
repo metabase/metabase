@@ -6,8 +6,8 @@ import { typeText } from "./typescript-utils";
 export type Shape =
   | { kind: "type"; type: ts.Type }
   | { kind: "text"; text: string }
-  | { kind: "null"; from: ts.Type; reason?: string }
-  | { kind: "empty"; from: ts.Type; reason?: string }
+  | { kind: "null"; from: ts.Type }
+  | { kind: "empty"; from: ts.Type }
   | { kind: "throws"; from: ts.Type; reason: string }
   | { kind: "unverified"; from: ts.Type; reason: string }
   | {
@@ -19,7 +19,7 @@ export type Shape =
   | { kind: "array"; from: ts.Type; element: Shape }
   /** A query array, sent as one value per item. */
   | { kind: "items"; from: ts.Type; item: Shape }
-  | { kind: "union"; from?: ts.Type; members: Shape[] };
+  | { kind: "union"; members: Shape[] };
 
 export interface ShapeField {
   name: string;

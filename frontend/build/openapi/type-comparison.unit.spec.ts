@@ -2,7 +2,7 @@ import ts from "typescript";
 
 import { typeShape } from "./shape";
 import { cleanupFixtures, programFrom } from "./test-fixtures";
-import { compareShape } from "./type-comparison";
+import { compareShape, renderDiagnostics } from "./type-comparison";
 
 afterEach(cleanupFixtures);
 
@@ -36,7 +36,7 @@ function compare({
   };
   const front = typeAt("frontend.ts");
   const back = typeAt("backend.ts");
-  return compareShape(
+  const verdict = compareShape(
     { checker, root },
     kind,
     `example ${kind}`,
@@ -44,6 +44,10 @@ function compare({
     kind === "response" ? front.type : back.type,
     front.declaration,
   );
+  return {
+    status: verdict.status,
+    ...renderDiagnostics(verdict.diagnostics, verdict.notes),
+  };
 }
 
 describe("type comparison", () => {
