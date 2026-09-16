@@ -164,7 +164,6 @@ export function JobRunListPage() {
             menu={!readOnly && <JobMoreMenu job={job} />}
             tabs={<JobTabs jobId={job.id} />}
             readOnly={readOnly}
-            showMetabotButton
             onNameChange={onNameChange}
           />
         )}

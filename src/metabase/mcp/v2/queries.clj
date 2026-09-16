@@ -157,7 +157,17 @@
    re-runs the shape and permission guards, and — unlike the MBQL read path — DOES allow a native
    query through. `execute_sql` mints handles specifically so their SQL can be saved; the
    native-reject guard would otherwise make those handles unsaveable. Returns
-   `{:query <decoded map> :prompt <string-or-nil>}`, or throws a teaching error."
+   `{:query <decoded map> :prompt <string-or-nil>}`, or throws a teaching error.
+
+   Refuses a handle carrying bound `:parameters`. `execute_sql` re-attaches the values it ran
+   with so the handle re-runs and visualizes as what the agent saw, but `:parameters` is
+   runtime-only — [[metabase.lib.schema]]'s serialize-query strips it on the way into
+   `dataset_query`. Saving such a handle would therefore persist the query WITHOUT its filter and
+   without complaining: a card built from `WHERE quantity > 4` falls back to the tag's default and
+   returns rows the agent's own run excluded. That is a disclosure, not just a wrong row count, so
+   the save path fails closed rather than guessing at the card shape the values should have become
+   (a card `:parameters` entry or a template-tag `:default`, which differ between native and MBQL
+   handles)."
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
@@ -166,6 +176,13 @@
         query (decode-stored-query encoded_query)]
     (query-guards/validate-serialized-query! query)
     (query-guards/check-token-query-permissions! query)
+    (when (seq (:parameters query))
+      (common/throw-teaching-error
+       (message/msg [(str "This query_handle carries bound parameter values, which a saved query can't keep — "
+                          "storing it would drop the filter and save a question that returns rows the run you "
+                          "saw excluded. Save it with the filter built in instead: pass `native` with "
+                          "`template_tags` giving each tag a `default`, or re-run the query with the values "
+                          "written into the SQL/MBQL filter itself and save that handle.")])))
     {:query query :prompt prompt}))
 
 ;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------

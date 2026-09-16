@@ -120,22 +120,6 @@
       (is (string? content))
       (is (> (count content) 1000)))))
 
-(deftest ^:parallel build-system-message-content-test-5
-  (testing "renders transform codegen template with literal model syntax"
-    (let [profile {:prompt-template "transform-codegen.selmer"}
-          context {:current_time "2024-01-15 14:30:00"
-                   :sql-dialect "postgresql"}
-          tools {}
-          content (prompts/build-system-message-content profile context tools [])]
-      (is (some? content))
-      (is (string? content))
-      (is (str/includes? content "{{#model_id}}"))
-      (is (str/includes? content "{{#5-user-details}}"))
-      (is (str/includes? content "{{snippet: Snippet Name}}"))
-      (is (str/includes? content "{{snippet: recent orders}}"))
-      (is (not (str/includes? content "{%raw%}")))
-      (is (not (str/includes? content "{% safe %}"))))))
-
 (deftest ^:parallel build-system-message-content-test-6
   (testing "current user info is not in system message (moved to message injection)"
     (let [profile {:prompt-template "internal.selmer"}

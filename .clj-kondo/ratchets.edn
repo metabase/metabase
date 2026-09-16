@@ -14,9 +14,9 @@
                   :consistent-alias                                                    2
                   :def-fn                                                              1
                   :deprecated-namespace                                                95
-                  :deprecated-var                                                      96
+                  :deprecated-var                                                      95
                   :discouraged-java-method                                             4
-                  :discouraged-namespace                                               71
+                  :discouraged-namespace                                               69
                   :discouraged-var                                                     130
                   :duplicate-require                                                   1
                   :equals-true                                                         1
@@ -62,6 +62,7 @@
                   :metabase/prefer-with-dynamic-fn-redefs  4
                   :metabase/t2-query-namespace             2
                   :metabase/table-or-field-query           1
+                  :metabase/unsafe-app-db-query            1
                   :missing-docstring                       1
                   :private-call                            1
                   :redundant-ignore                        1

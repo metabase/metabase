@@ -11,6 +11,7 @@ import {
   buildUsageModuleGraph,
   getAffectedModules,
   getChangedModules,
+  getTransitiveDependencies,
   mapFileToModule,
 } from "./affected-modules";
 
@@ -21,6 +22,7 @@ export type TestPlanStats = {
   be_files_total: number;
   unit_infra_touched: boolean;
   loki_infra_touched: boolean;
+  loki_preview_touched: boolean;
   shared_sources_touched: boolean;
   fe_modules_total: number;
   fe_modules_changed: number;
@@ -52,6 +54,8 @@ export type CreateTestPlanInput = {
   // Null falls back to the rules graph.
   loadFileDependencies: () => FileDependency[] | null;
   testFilesBySuite: { unit: string[]; loki: string[]; e2e: string[] };
+  // Storybook's preview file, whose imports wrap every story.
+  lokiPreviewFile: string;
   e2eSpecFiles: Record<string, string[]> | null;
   unitInfraTouched: boolean;
   lokiInfraTouched: boolean;
@@ -134,6 +138,7 @@ export function createTestPlan({
   changedFiles,
   loadFileDependencies,
   testFilesBySuite,
+  lokiPreviewFile,
   e2eSpecFiles,
   unitInfraTouched,
   lokiInfraTouched,
@@ -158,7 +163,7 @@ export function createTestPlan({
   // cljc/cljs compile into the FE bundle, so they force a full run that module
   // selection can't narrow — same effect as a suite's own infra changing.
   const unitForceAll = unitInfraTouched || sharedSourcesTouched;
-  const lokiForceAll = lokiInfraTouched || sharedSourcesTouched;
+  const lokiInfraForceAll = lokiInfraTouched || sharedSourcesTouched;
   // e2e is integration-level, so anything the FE-coverage manifest can't see
   // forces a full run: cljc/cljs in the bundle (sharedSourcesTouched), a backend
   // change that can break the UI (beFilesChanged), an e2e harness/support change
@@ -171,11 +176,25 @@ export function createTestPlan({
 
   // The cruise takes seconds, so it is skipped when every suite runs in full anyway.
   const edges =
-    unitForceAll && lokiForceAll && e2eForceAll ? null : loadFileDependencies();
+    unitForceAll && lokiInfraForceAll && e2eForceAll
+      ? null
+      : loadFileDependencies();
   const usageGraph = edges
     ? buildUsageModuleGraph(elements, edges)
     : rulesGraph;
   const usageAffected = getAffectedModules(usageGraph, changedFiles);
+
+  // The preview wraps every story, so a change to a file it imports can change any screenshot.
+  const previewDependencies = edges
+    ? getTransitiveDependencies(edges, lokiPreviewFile)
+    : new Set<string>();
+  const lokiPreviewTouched = changedFiles.some((file) =>
+    previewDependencies.has(file),
+  );
+  // Without the cruise, the rules graph cannot account for the preview's
+  // global dependencies, so it cannot safely narrow Loki.
+  const lokiForceAll =
+    lokiInfraForceAll || lokiPreviewTouched || edges === null;
 
   const select = (forceAll: boolean, affected: Set<string>, files: string[]) =>
     forceAll ? files : filterAffectedTests(nodes, affected, files);
@@ -213,6 +232,7 @@ export function createTestPlan({
       be_files_total: beFilesTotal,
       unit_infra_touched: unitInfraTouched,
       loki_infra_touched: lokiInfraTouched,
+      loki_preview_touched: lokiPreviewTouched,
       shared_sources_touched: sharedSourcesTouched,
       fe_modules_total: totalModules,
       fe_modules_changed: changedModules.size,

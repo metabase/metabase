@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
 
-import { getWindow } from "embedding-sdk-shared/lib/get-window";
+export interface DataAppRouterProps {
+  children?: ReactNode;
+}
 
-export const DataAppRouter = ({ children }: { children?: ReactNode }) => {
-  const BundleDataAppRouter =
-    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.DataAppRouter;
-
-  if (!BundleDataAppRouter) {
-    return <>{children}</>;
-  }
-
-  return <BundleDataAppRouter>{children}</BundleDataAppRouter>;
-};
+/**
+ * Wrap your data-app tree once. Inside, use `<DataAppLink to="…">` for
+ * navigation and `useDataAppLocation()` to read the current path.
+ *
+ * No `basename` prop: it is auto-detected from the iframe URL
+ * (`/embed/apps/<name>`). In the dev preview, where there is no prefix, the
+ * basename resolves to `""` and the sub-path is just the raw pathname.
+ */
+export const DataAppRouter = ({ children }: DataAppRouterProps) => (
+  <>{children}</>
+);

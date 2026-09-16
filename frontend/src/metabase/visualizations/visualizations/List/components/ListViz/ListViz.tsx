@@ -1,15 +1,15 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
-import { getShallowTables, useQuestionFromCard } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { skipToken, useGetTableQuery } from "metabase/api";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { Box } from "metabase/ui";
 import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type { DatasetColumn } from "metabase-types/api";
+import { type DatasetColumn, isConcreteTableId } from "metabase-types/api";
 
 import { LIST_DEFINITION } from "../../definition";
 import { ListView } from "../ListView/ListView";
@@ -26,7 +26,6 @@ const ListVizComponent = ({
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
   const buildQuestion = useQuestionFromCard();
-  const tables = useSelector(getShallowTables);
   const question = useMemo(
     () => (card ? buildQuestion(card) : null),
     [card, buildQuestion],
@@ -48,23 +47,25 @@ const ListVizComponent = ({
     return {};
   }, [question]);
 
-  const entityType = useMemo(() => {
+  // A saved question's virtual table has no entity type, so only a real table
+  // is worth asking for.
+  const sourceTableId = useMemo(() => {
     if (!question) {
       return undefined;
     }
-
     try {
-      const query = question.query();
-      const sourceTableId = Lib.sourceTableOrCardId(query);
-      return sourceTableId != null
-        ? (tables[sourceTableId]?.entity_type ?? undefined)
-        : undefined;
+      const id = Lib.sourceTableOrCardId(question.query());
+      return id != null && isConcreteTableId(id) ? id : undefined;
     } catch (error) {
-      // If there's an error getting the entity type, return undefined
-      console.warn("Could not determine entity type:", error);
+      console.warn("Could not determine the source table:", error);
       return undefined;
     }
-  }, [question, tables]);
+  }, [question]);
+
+  const { data: table } = useGetTableQuery(
+    sourceTableId != null ? { id: sourceTableId } : skipToken,
+  );
+  const entityType = table?.entity_type ?? undefined;
 
   const handleSort = (column: DatasetColumn) => {
     onVisualizationClick({ column });

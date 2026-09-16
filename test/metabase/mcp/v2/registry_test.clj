@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
-   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -117,16 +116,6 @@
             (is (:isError result))
             (is (= "Internal error" (-> result :content first :text))
                 "the raw exception message must not reach the client")))))))
-
-(deftest disabled-tools-test
-  (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
-    (testing "a disabled tool is hidden from tools/list"
-      (is (not (some #(= "test_echo" (:name %)) (registry/list-tools nil)))))
-    (testing "and rejected by tools/call as unknown"
-      (let [{:keys [error]} (registry/call-tool nil nil "test_echo" {})]
-        (is (= {:code common/error-code-method-not-found
-                :message "Unknown tool: \"test_echo\""}
-               (update error :message message/render)))))))
 
 (deftest ^:parallel registered-scopes-test
   (testing "registered-scopes reports the scopes of the landed tools. (It does not feed the DCR grant: that reads

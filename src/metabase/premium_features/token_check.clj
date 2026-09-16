@@ -163,9 +163,21 @@
   also being the license server's."
   [:map {:closed false, ::mr/deliberately-open true, :description "license-server meters"}])
 
+(def ^:private StoreUser
+  "A store user of a token status response, whose keys are the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server store user"}
+   [:email :string]])
+
+(def ^:private Quota
+  "A quota of a token status response, whose keys are the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server quota"}
+   [:hosting-feature {:optional true} :string]
+   [:soft-limit      {:optional true} number?]
+   [:usage           {:optional true} number?]])
+
 (def TokenStatus
-  "Schema for a response from the token status API."
-  [:map {:closed true}
+  "Schema for a response from the token status API, whose keys are the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server token status"}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
@@ -176,13 +188,9 @@
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]
-   [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
-                                                          [:email :string]]]]]
+   [:store-users   {:optional true} [:maybe [:sequential StoreUser]]]
    [:meters        {:optional true} Meters]
-   [:quotas        {:optional true} [:sequential [:map {:closed true}
-                                                  [:hosting-feature {:optional true} :string]
-                                                  [:soft-limit      {:optional true} number?]
-                                                  [:usage           {:optional true} number?]]]]])
+   [:quotas        {:optional true} [:sequential Quota]]])
 
 (defn- http-fetch
   [base-url token site-uuid]

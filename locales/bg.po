@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-01 05:46+0000\n"
+"POT-Creation-Date: 2026-09-08 05:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Bulgarian\n"
 "Language: bg_BG\n"
-"PO-Revision-Date: 2026-09-08 05:40\n"
+"PO-Revision-Date: 2026-09-15 05:40\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -80,7 +80,6 @@ msgstr "Групирано по "
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarContainer.tsx
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardToast/MoveCardToast.tsx
 #: metabase/server/middleware/exceptions.clj
@@ -176,7 +175,7 @@ msgstr "Изберете база данни"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 msgid "Select a table"
 msgstr "Изберете таблица"
 
@@ -260,7 +259,7 @@ msgstr "Редактирай връзката"
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/SidebarHeader.tsx
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
 #: frontend/src/metabase/transforms/components/RunInfo/RunInfo.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/SidebarHeader/SidebarHeader.tsx
@@ -703,9 +702,9 @@ msgstr "Премахни достъпа от всички групи"
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/hooks/useCommandPalette.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
 #: frontend/src/metabase/transforms/components/TransformHeader/TransformTabs.tsx
 #: frontend/src/metabase/visualizer/components/Footer/Footer.tsx
 msgid "Settings"
@@ -1340,6 +1339,12 @@ msgid "JWT"
 msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Server settings"
+msgstr "Настройки на сървъра"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
 msgid "JWT Identity Provider URI"
 msgstr "URI на JWT Identity Provider"
@@ -1349,31 +1354,45 @@ msgid "String used by the JWT signing key"
 msgstr "Низ, използван от JWT signing key"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Email attribute"
-msgstr "Атрибут за имейл"
+msgid "User attribute configuration"
+msgstr "Конфигурация на потребителски атрибути"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "You can send additional user attributes to {0} by adding the attributes as key/value pairs to your JWT"
+msgstr "Можете да изпратите допълнителни потребителски атрибути към {0}, като добавите атрибутите като двойки ключ/стойност към вашия JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Email attribute key"
+msgstr "Ключ на атрибут за имейл"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "First name attribute key"
+msgstr "Ключ на атрибут за собствено име"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Last name attribute key"
+msgstr "Ключ на атрибут за фамилия"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Group assignment attribute key"
+msgstr "Ключ на атрибут за присвояване към група"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Tenant assignment attribute key"
+msgstr "Ключ на атрибут за присвояване към тенант"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "First name attribute"
-msgstr "Атрибут за собствено име"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Last name attribute"
-msgstr "Атрибут за фамилия"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Group assignment attribute"
-msgstr "Атрибут за присвояване към група"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tenant assignment attribute"
-msgstr "Атрибут за задаване на тенант"
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Group mapping"
+msgstr "Съпоставяне на групи"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "Lets you assign users to custom {0} groups based on their JWT attributes"
+msgstr "Позволява ви да присвоявате потребители към персонализирани групи в {0} въз основа на техните JWT атрибути"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Group Name"
@@ -1400,6 +1419,7 @@ msgstr "Запази и активирай"
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
 #: frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/EditWebhookModal.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx
@@ -1470,10 +1490,6 @@ msgid "OpenID Connect"
 msgstr "OpenID Connect"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Server settings"
-msgstr "Настройки на сървъра"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributeMappingEditor.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
@@ -1541,10 +1557,6 @@ msgstr "Остави празно, за да запазиш текущата с�
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Synchronize group membership with your SSO"
-msgstr "Синхронизирай членството в групи с вашия SSO"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
 msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
 msgstr "За да активирате това, ще трябва да създадете мапинги, за да кажете на {0} в коя/кои група(и) да добавя потребителите ви според SSO групата, в която са."
@@ -1577,6 +1589,21 @@ msgstr "Мапване на атрибути"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
 msgstr "Мапни OIDC claims към потребителски атрибути. Използвай стандартни имена на OIDC claims или custom claims на твоя provider."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Email attribute"
+msgstr "Атрибут за имейл"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "First name attribute"
+msgstr "Атрибут за собствено име"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Last name attribute"
+msgstr "Атрибут за фамилия"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
@@ -1623,10 +1650,6 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Set up SAML-based SSO"
-msgstr "Настройте SSO на база SAML"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #, javascript-format
 msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
 msgstr "Използвайте настройките по-долу, за да конфигурирате вашия SSO чрез SAML. Ако имате въпроси, вижте нашата {0}."
@@ -1642,8 +1665,9 @@ msgid "Configure your identity provider (IdP)"
 msgstr "Конфигурирайте вашия identity provider (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Your identity provider will need the following info about Metabase."
-msgstr "Вашият identity provider ще се нуждае от следната информация за Metabase."
+#, javascript-format
+msgid "Your identity provider will need the following info about {0}."
+msgstr "Вашият доставчик на идентичност ще има нужда от следната информация за {0}."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1674,12 +1698,18 @@ msgid "User's last name attribute"
 msgstr "Атрибут за фамилия на потребителя"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tell Metabase about your identity provider"
-msgstr "Кажете на Metabase за вашия identity provider"
+msgid "Tenant assignment attribute"
+msgstr "Атрибут за задаване на тенант"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Metabase will need the following info about your provider."
-msgstr "Metabase ще се нуждае от следната информация за вашия provider."
+#, javascript-format
+msgid "Tell {0} about your identity provider"
+msgstr "Кажете на {0} за вашия доставчик на идентичност"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "{0} will need the following info about your provider."
+msgstr "{0} ще има нужда от следната информация за вашия доставчик."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
@@ -1716,12 +1746,6 @@ msgstr "Шшш..."
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore alias"
 msgstr "Alias на SAML хранилище за ключове"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
-"be added to based on the SSO group they're in."
-msgstr "За да активирате това, ще трябва да създадете мапинги, за да кажете на Metabase в коя(и) група(и) трябва\n"
-"да бъдат добавяни потребителите ви според SSO групата, в която са."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]"
@@ -2428,6 +2452,7 @@ msgstr "Задайте URL на dev сървър, за да зареждате �
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
@@ -2560,6 +2585,7 @@ msgstr "Вижте дневника на промените на SDK"
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 msgid "Enabled"
@@ -2593,6 +2619,7 @@ msgid "Add"
 msgstr "Добави"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
 #: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
 #: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
@@ -2628,6 +2655,11 @@ msgstr "Създадено със SDK версия 1.x, но тази верси
 #, javascript-format
 msgid "Requires Metabase {0}, but this instance is on {1}."
 msgstr "Изисква Metabase {0}, но тази инстанция е на {1}."
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/warning-messages.ts
+#, javascript-format
+msgid "The identifier \"{0}\" contains \":\", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without \":\"."
+msgstr "Идентификаторът \"{0}\" съдържа \":\", което вече не е позволено, затова тази визуализация не се предоставя на зрителите. Изтрийте я и качете bundle-а с име без \":\"."
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/custom-viz-plugins.tsx
 msgid "Plugin bundle must have a default export that is a factory function"
@@ -2867,7 +2899,7 @@ msgstr "Данните не можаха да бъдат извлечени ко
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
@@ -3262,14 +3294,12 @@ msgid "Move table to…"
 msgstr "Премести таблицата в…"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table name"
 msgstr "Неуспешно обновяване на името на таблицата"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table name updated"
 msgstr "Името на таблицата е обновено"
 
@@ -3348,14 +3378,12 @@ msgid "New measure"
 msgstr "Нова мярка"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table description"
 msgstr "Неуспешно обновяване на описанието на таблицата"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table description updated"
 msgstr "Описанието на таблицата е обновено"
 
@@ -3753,7 +3781,7 @@ msgid "The following tables will be replicated."
 msgstr "Следните таблици ще бъдат репликирани."
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #, javascript-format
 msgid "{0} rows"
 msgstr "{0} реда"
@@ -4003,7 +4031,7 @@ msgstr "Можете също да добавяте бази данни прог
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 #: frontend/src/metabase/admin/upsells/UpsellRemoteSync.tsx
@@ -4014,8 +4042,8 @@ msgstr "Можете също да добавяте бази данни прог
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
 #: frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/HelpText/HelpText.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 msgid "Learn more"
 msgstr "Научи повече"
 
@@ -4505,8 +4533,8 @@ msgstr "Модел"
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Table"
 msgstr "Таблица"
@@ -5300,7 +5328,7 @@ msgstr "Премахни верификацията"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts
 #: frontend/src/metabase/common/components/RevisionHistoryTimeline/utils.ts
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionItem.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "You"
 msgstr "Ти"
 
@@ -6101,8 +6129,8 @@ msgstr "Профил"
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 msgid "Date"
 msgstr "Дата"
@@ -7192,6 +7220,7 @@ msgid "No collections found"
 msgstr "Не са намерени колекции"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TopLevelCollectionsList/TopLevelCollectionsList.tsx
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 msgid "Failed to load collections"
 msgstr "Неуспешно зареждане на колекциите"
 
@@ -7256,6 +7285,7 @@ msgid "Something went wrong. Please try again."
 msgstr "Нещо се обърка. Моля, опитайте отново."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/collections/constants.ts
 #: frontend/src/metabase/common/collections/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
@@ -7719,6 +7749,7 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Този атрибут се наследява от тенанта, но можете да презапишете стойността му"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
 msgid "Attributes"
@@ -8899,7 +8930,9 @@ msgstr "и"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "таблица"
+msgid_plural "tables"
+msgstr[0] "таблица"
+msgstr[1] "таблици"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9005,6 +9038,7 @@ msgid "Items cannot be saved directly to the tenant root collection. Please sele
 msgstr "Елементите не могат да се запазват директно в основната колекция на тенанта. Моля, изберете подколекция."
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-root-items.ts
 #: frontend/src/metabase/dashboard/components/QuestionPicker/utils/tenant-collections.ts
 #: frontend/src/metabase/reference/databases/DatabaseList.tsx
@@ -10143,7 +10177,7 @@ msgstr "Цветове"
 #: frontend/src/metabase/metadata/components/FieldSection/FieldSection.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStep.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
 #: frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.tsx
 msgid "Preview"
@@ -10589,9 +10623,17 @@ msgid "The analytics server is undergoing maintenance. {0}."
 msgstr "Аналитичният сървър е в режим на поддръжка. {0}."
 
 #: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "All collections"
+msgstr "Всички колекции"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableCollection.tsx
 msgid "You don't have access to this collection"
 msgstr "Нямате достъп до тази колекция"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "There are no collections to show"
+msgstr "Няма колекции за показване"
 
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "Something's gone wrong"
@@ -10610,6 +10652,11 @@ msgstr "Трябва да запазиш промените си, преди д�
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "You can't save questions in Guest Embed mode"
 msgstr "Не можете да запазвате въпроси в режим Guest Embed"
+
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
+#: frontend/src/metabase/common/collections/utils.ts
+msgid "Your personal collection"
+msgstr "Вашата лична колекция"
 
 #: frontend/src/embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token.ts
 msgid "JWT tokens cannot be passed as id. Use the token prop instead."
@@ -11819,7 +11866,7 @@ msgstr "Вътре"
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
 msgid "Number"
 msgstr "Число"
@@ -11911,7 +11958,7 @@ msgstr "Низ"
 #: frontend/src/metabase-lib/v1/parameters/constants.ts
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Boolean"
 msgstr "Булев"
 
@@ -12169,7 +12216,7 @@ msgstr "Това ще изтрие реда завинаги. Няма връщ�
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddHeadingOrTextButton.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Text"
@@ -12281,7 +12328,7 @@ msgstr "Задължително"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Default value"
 msgstr "Стойност по подразбиране"
 
@@ -12435,6 +12482,14 @@ msgstr "Модел по подразбиране"
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Metabot, AI explorations and SQL generation all run on this model."
 msgstr "Metabot, ИИ проучванията и генерирането на SQL работят на този модел."
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Fast mode"
+msgstr "Бърз режим"
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment."
+msgstr "Получавайте по-бързи отговори от модела по подразбиране на по-висока цена на токен. При Anthropic това изисква акаунт, записан в fast mode research preview, и не е налично с ангажимент за Priority Tier."
 
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Mini model"
@@ -12894,7 +12949,7 @@ msgstr "Производителност"
 #: frontend/src/metabase/admin/app/reducers.ts
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Помощ"
 
@@ -15216,10 +15271,10 @@ msgstr "Вероятно трябва да промените тази наст�
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "Няма"
@@ -15359,6 +15414,10 @@ msgid "Password"
 msgstr "Парола"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "User schema"
+msgstr "Потребителска схема"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User search base"
 msgstr "База за търсене на потребители"
 
@@ -15392,6 +15451,12 @@ msgstr "Управлявай визуализации"
 #: frontend/src/metabase/palette/constants.ts
 msgid "General"
 msgstr "Общи"
+
+#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: frontend/src/metabase/palette/constants.ts
+msgid "Domains"
+msgstr "Домейни"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/WebhooksSettingsPage.tsx
@@ -15472,8 +15537,8 @@ msgid "Turn on \"Restrict image domains\" in {0} before enabling custom visualiz
 msgstr "Включете \"Restrict image domains\" в {0}, преди да активирате персонализирани визуализации."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
-msgid "General settings"
-msgstr "Общи настройки"
+msgid "Domains settings"
+msgstr "Настройки за домейни"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Custom chart types"
@@ -15506,6 +15571,56 @@ msgstr "Пълен контрол"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Enable, disable, and manage custom visualization plugins"
 msgstr "Включвайте, изключвайте и управлявайте плъгини за персонализирани визуализации"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for iframes in dashboards"
+msgstr "Разрешени домейни за iframe-и в табла"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
+msgstr "Уверете се, че се доверявате на източниците, които позволявате на потребителите си да вграждат в табла. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict image domains"
+msgstr "Ограничаване на домейните за изображения"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
+msgstr "Изисква се от Custom Visualizations. Изключете {0}, преди да деактивирате тази настройка."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Custom Visualizations"
+msgstr "Персонализирани визуализации"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
+msgstr "Ограничете Content Security Policy на браузъра, така че изображенията да могат да се зареждат само от тази инстанция на Metabase или от домейните, които изброите по-долу. Изисква се за активиране на Custom Visualizations. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
+msgstr "Ограничете Content Security Policy на браузъра, така че изображенията да могат да се зареждат само от тази инстанция на Metabase или от домейните, които изброите по-долу."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for images"
+msgstr "Разрешени домейни за изображения"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "Домейни, от които изображенията могат да се зареждат в текста на таблото, описанията на обектите и персонализираните визуализации. Оставете празно, за да разрешите само изображения, хоствани от тази инстанция на Metabase. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "Домейни, от които изображенията могат да се зареждат в текста на таблото и описанията на обектите. Оставете празно, за да разрешите само изображения, хоствани от тази инстанция на Metabase. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
+msgstr "Включете настройката \"Ограничаване на домейните за изображения\" по-горе, за да се прилага този allowlist."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx
 msgid "From Name"
@@ -15556,8 +15671,8 @@ msgid "Email address for help requests"
 msgstr "Имейл адрес за заявки за помощ"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Tables, X-Rays and domains"
-msgstr "Таблици, X-Ray и домейни"
+msgid "Tables and X-Rays"
+msgstr "Таблици и X-Rays"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Friendly table and field names"
@@ -15570,56 +15685,6 @@ msgstr "Замени долни черти и тирета с интервали
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Enable X-Ray features"
 msgstr "Активирай X-Ray функциите"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for iframes in dashboards"
-msgstr "Разрешени домейни за iframe-и в табла"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
-msgstr "Уверете се, че се доверявате на източниците, които позволявате на потребителите си да вграждат в табла. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict image domains"
-msgstr "Ограничаване на домейните за изображения"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
-msgstr "Изисква се от Custom Visualizations. Изключете {0}, преди да деактивирате тази настройка."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Custom Visualizations"
-msgstr "Персонализирани визуализации"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
-msgstr "Ограничете Content Security Policy на браузъра, така че изображенията да могат да се зареждат само от тази инстанция на Metabase или от домейните, които изброите по-долу. Изисква се за активиране на Custom Visualizations. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
-msgstr "Ограничете Content Security Policy на браузъра, така че изображенията да могат да се зареждат само от тази инстанция на Metabase или от домейните, които изброите по-долу."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for images"
-msgstr "Разрешени домейни за изображения"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "Домейни, от които изображенията могат да се зареждат в текста на таблото, описанията на обектите и персонализираните визуализации. Оставете празно, за да разрешите само изображения, хоствани от тази инстанция на Metabase. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "Домейни, от които изображенията могат да се зареждат в текста на таблото и описанията на обектите. Оставете празно, за да разрешите само изображения, хоствани от тази инстанция на Metabase. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
-msgstr "Включете настройката \"Ограничаване на домейните за изображения\" по-горе, за да се прилага този allowlist."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
@@ -15893,8 +15958,8 @@ msgstr "Примерни стойности:"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Select…"
 msgstr "Изберете…"
 
@@ -16544,12 +16609,12 @@ msgid "Create custom chart types tailored to your data using the Custom visualiz
 msgstr "Създавайте персонализирани типове графики, съобразени с вашите данни, с помощта на SDK за Custom visualizations."
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Build apps on your data"
-msgstr "Създавайте приложения върху вашите данни"
+msgid "Build custom data apps"
+msgstr "Създавайте персонализирани data apps"
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Ship interactive apps powered by your data, served right inside Metabase."
-msgstr "Публикувайте интерактивни приложения, задвижвани от вашите данни, достъпни директно в Metabase."
+msgid "Build custom user interfaces, forms, and other tools that write back to your database. Automate chores, manage back-office work, and set up workflows to act on your data, all built with AI on top of your semantic layer."
+msgstr "Създавайте персонализирани потребителски интерфейси, форми и други инструменти, които записват обратно във вашата база данни. Автоматизирайте рутинни задачи, управлявайте back-office работа и настройвайте workflow-и за действия върху данните ви — всичко, изградено с ИИ върху вашия семантичен слой."
 
 #: frontend/src/metabase/admin/upsells/UpsellDevInstances.tsx
 msgid "Get a development instance"
@@ -17611,10 +17676,6 @@ msgstr "Избери това табло"
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVUpload.tsx
 msgid "Select this collection"
 msgstr "Избери тази колекция"
-
-#: frontend/src/metabase/common/collections/utils.ts
-msgid "Your personal collection"
-msgstr "Вашата лична колекция"
 
 #: frontend/src/metabase/common/components/AccordionList/AccordionListCell.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.tsx
@@ -18877,7 +18938,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "Минута"
 msgstr[1] "{0} минути"
 
@@ -19557,7 +19618,7 @@ msgstr "Проучване"
 #: frontend/src/metabase/common/utils/timelines.ts
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Note"
 msgstr "Забележка"
 
@@ -20812,7 +20873,7 @@ msgid "For Native Questions use {0} to make Linked Filters available here."
 msgstr "За нативни въпроси използвайте {0}, за да направите свързаните филтри налични тук."
 
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
 msgid "Field Filters"
 msgstr "Филтри по поле"
 
@@ -20869,7 +20930,7 @@ msgid "Filter or parameter type"
 msgstr "Тип филтър или параметър"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
 msgid "Time grouping options"
 msgstr "Опции за групиране по време"
 
@@ -20878,24 +20939,24 @@ msgid "How should people filter on this column?"
 msgstr "Как хората да филтрират по тази колона?"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "People can pick"
 msgstr "Хората могат да изберат"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "Multiple values"
 msgstr "Множество стойности"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "A single value"
 msgstr "Една стойност"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/utils/errors/validation.ts
 msgid "required"
 msgstr "задължително"
@@ -20917,7 +20978,7 @@ msgstr "За да изисквате винаги стойност, първо �
 "таблото, след което се върнете на тази страница."
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
@@ -21147,7 +21208,7 @@ msgstr "Период от дати, конкретна дата…"
 
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionTimeGroupingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Time grouping"
 msgstr "Групиране по време"
 
@@ -21597,16 +21658,6 @@ msgstr "Няма данни за показване"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Failed to update field order"
-msgstr "Неуспешно обновяване на реда на полетата"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Field order updated"
-msgstr "Редът на полетата е обновен"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 msgid "Give this table a description"
 msgstr "Добавете описание на тази таблица"
 
@@ -21849,7 +21900,7 @@ msgstr "създаде тази мярка"
 
 #: frontend/src/metabase/data-studio/measures/components/MeasureRevisionHistory/MeasureRevisionHistory.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "reverted to a previous version"
 msgstr "върна към предишна версия"
 
@@ -24131,14 +24182,13 @@ msgid "AI can make mistakes. Double check your plan and modify it as needed."
 msgstr "ИИ може да прави грешки. Прегледай плана си и го коригирай при нужда."
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
 #: frontend/src/metabase/status/components/StatusLarge/StatusLarge.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 msgid "Collapse"
 msgstr "Свий"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
+#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 #: frontend/src/metabase/visualizer/components/DataImporter/ColumnsList/ColumnsList.tsx
 msgid "Expand"
@@ -24303,11 +24353,6 @@ msgstr "Настрой таен ключ"
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Copy to clipboard"
 msgstr "Копирай в клипборда"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
-#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
-msgid "Preview the query"
-msgstr "Прегледай заявката"
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Secret key copied to clipboard"
@@ -25264,6 +25309,11 @@ msgstr "Изпрати"
 msgid "Copy chart"
 msgstr "Копирай графика"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
+msgid "Run query"
+msgstr "Изпълни заявката"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineDashboardLink.tsx
 msgid "Open dashboard"
 msgstr "Отвори табло"
@@ -26052,6 +26102,14 @@ msgstr "Изберете дали да се разгъва JSON"
 #: frontend/src/metabase/metadata/components/UserInput.tsx
 msgid "Pick someone, or type an email"
 msgstr "Избери човек или въведи имейл"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Failed to update field order"
+msgstr "Неуспешно обновяване на реда на полетата"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Field order updated"
+msgstr "Редът на полетата е обновен"
 
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
@@ -27567,6 +27625,15 @@ msgstr "Начало"
 msgid "Other users' personal collections"
 msgstr "Личните колекции на други потребители"
 
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+#, javascript-format
+msgid "You can also {0} when there are some results."
+msgstr "Можеш и да {0}, когато има резултати."
+
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+msgid "get an alert"
+msgstr "получиш известие"
+
 #: frontend/src/metabase/notifications/channels/RecipientPicker.tsx
 msgid "Enter user names or email addresses"
 msgstr "Въведете потребителски имена или имейл адреси"
@@ -28171,9 +28238,9 @@ msgid "Format custom expression or native query"
 msgstr "Форматирай персонализиран израз или нативна заявка"
 
 #: frontend/src/metabase/parameters/components/ParameterDropdownWidget.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.tsx
 #: frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Enter a default value…"
 msgstr "Въведи стойност по подразбиране…"
 
@@ -28184,6 +28251,171 @@ msgstr "Винаги изисквай стойност"
 #: frontend/src/metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.tsx
 msgid "When enabled, people can change the value or reset it, but can't clear it entirely."
 msgstr "Когато е включено, хората могат да променят стойността или да я нулират, но не могат да я изчистят напълно."
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+#, javascript-format
+msgid "{0} active filter"
+msgid_plural "{0} active filters"
+msgstr[0] "{0} активен филтър"
+msgstr[1] "{0} активни филтъра"
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+msgid "Filters"
+msgstr "Филтри"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Example:"
+msgstr "Пример:"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Try it"
+msgstr "Пробвай го"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "What's this for?"
+msgstr "За какво е това?"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
+msgstr "Променливите в нативни заявки ви позволяват динамично да заменяте стойности в заявките си чрез уиджети за филтри или през URL."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
+msgid "Variables"
+msgstr "Променливи"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
+msgstr "{0} създава променлива в този шаблон на заявка, наречена \"variable_name\". На променливите могат да се задават типове в страничния панел, което променя поведението им. Всички типове променливи, различни от \"Field Filter\", автоматично ще доведат до добавяне на уиджет за филтър към този въпрос; при Field Filters това е по избор. Когато този уиджет за филтър бъде попълнен, тази стойност заменя променливата в шаблона на заявката."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
+msgstr "Задаването на тип \"Field Filter\" на променлива ви позволява да свързвате въпроси с уиджети за филтри на табло или да използвате повече типове уиджети за филтри във вашия SQL въпрос. Променлива Field Filter вмъква SQL, подобен на генерирания от GUI конструктора на заявки при добавяне на филтри върху съществуващи колони."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
+msgstr "Когато добавяте променлива Field Filter, ще трябва да я мапнете към конкретно поле. След това можете да изберете да показвате уиджет за филтър във вашия въпрос, но дори и да не го направите, вече можете да мапнете променливата Field Filter към филтър на табло, когато добавяте този въпрос към табло. Field Filters трябва да се използват в клауза \"WHERE\"."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Optional Clauses"
+msgstr "Опционални клаузи"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
+msgstr "Скобите около {0} създават опционална клауза в шаблона. Ако \"variable\" е зададена, тогава цялата клауза се поставя в шаблона. Ако не, тогава цялата клауза се игнорира."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
+msgstr "За да използвате множество опционални клаузи, можете да включите поне една не-опционална WHERE клауза, последвана от опционални клаузи, започващи с \"AND\"."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
+msgstr "Когато използвате Field Filter, името на колоната не трябва да се включва в SQL. Вместо това променливата трябва да бъде мапната към поле в страничния панел."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Read the full documentation"
+msgstr "Прочетете пълната документация"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "Variable name"
+msgstr "Име на променлива"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "How should users filter on this variable?"
+msgstr "Как потребителите да филтрират по тази променлива?"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Select a default value…"
+msgstr "Изберете стойност по подразбиране…"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "This filter is set to disabled in an embedded question."
+msgstr "Този филтър е зададен като деактивиран във вграден въпрос."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "To always require a value, first visit embedding settings,\n"
+"make this filter editable or locked, re-publish the\n"
+"question, then return to this page."
+msgstr "За да изисквате винаги стойност, първо отидете в настройките за вграждане,\n"
+"направете този филтър редактируем или заключен, публикувайте отново\n"
+"въпроса, след което се върнете на тази страница."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default parameter widget value"
+msgstr "Стойност по подразбиране за уиджета на параметъра"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default filter widget value"
+msgstr "Стойност по подразбиране за уиджет за филтър"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+msgid "Table and field alias"
+msgstr "Алиас на таблица и поле"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+#, javascript-format
+msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
+msgstr "Изисква се само ако заявката използва алиас, за да се отнася към таблицата на съпоставеното поле. Например, ако съпоставите променливата към полето {0}, но заявката задава алиас на таблицата {1} като {2}, ще въведете {3}."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+msgid "Field to map to"
+msgstr "Поле за свързване към"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "(required)"
+msgstr "(задължително)"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Parameter widget label"
+msgstr "Етикет на уиджета за параметър"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Filter widget label"
+msgstr "Етикет на филтърния уиджет"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "Filter widget type"
+msgstr "Тип на филтърния уиджет"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "There aren't any filter widgets for this type of field yet."
+msgstr "Все още няма филтърни уиджети за този тип поле."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#, javascript-format
+msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
+msgstr "В повечето случаи ще искате да използвате това с клауза {0}, например {1}"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Table to map to"
+msgstr "Таблица за мапване към"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Use variable name as alias"
+msgstr "Използвай името на променливата като алиас"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "You can refer to this table by the variable name in other parts of the query."
+msgstr "Можете да се обръщате към тази таблица по името на променливата в други части на заявката."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Field Filter"
+msgstr "Филтър по поле"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Variable type"
+msgstr "Тип променлива"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Variables and parameters"
+msgstr "Променливи и параметри"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
+msgstr "Добавете променлива към заявката си, например {{variable_name}}, за да я конфигурирате тук."
 
 #: frontend/src/metabase/parameters/components/UpdateFilterButton/getUpdateButtonProps.ts
 msgid "Set to default"
@@ -29072,6 +29304,31 @@ msgstr "{0} е зареден."
 msgid "Data Reference"
 msgstr "Справочник с данни"
 
+#: frontend/src/metabase/querying/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
+#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
+#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
+msgid "Combine columns"
+msgstr "Комбинирай колони"
+
+#: frontend/src/metabase/querying/click-actions/actions/CopyValueAction/CopyValueAction.tsx
+msgid "Copy value"
+msgstr "Копирай стойност"
+
+#: frontend/src/metabase/querying/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
+msgid "Extract part of column"
+msgstr "Извлечи част от колона"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "Save"
+msgstr "Запази"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+#, javascript-format
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "{0} this question to drill-through."
+msgstr "{0} този въпрос, за да използваш детайлизиране."
+
 #: frontend/src/metabase/querying/common/components/AggregationPicker/AggregationPicker.tsx
 msgid "Basic functions"
 msgstr "Основни функции"
@@ -29375,18 +29632,13 @@ msgid "Run selected text"
 msgstr "Изпълни избрания текст"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
-msgid "Run query"
-msgstr "Изпълни заявката"
-
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
 #, javascript-format
 msgid "({0} + enter)"
 msgstr "({0} + enter)"
 
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables"
-msgstr "Променливи"
+#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+msgid "Preview the query"
+msgstr "Прегледай заявката"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/RightClickPopover/RightClickPopover.tsx
 msgid "Run selection"
@@ -29479,28 +29731,8 @@ msgid "This may be the answer you’re looking for. If not, try removing or chan
 msgstr "Това може да е отговорът, който търсиш. Ако не е, пробвай да премахнеш или промениш филтрите си, за да са по-малко конкретни."
 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-#, javascript-format
-msgid "You can also {0} when there are some results."
-msgstr "Можеш и да {0}, когато има резултати."
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-msgid "get an alert"
-msgstr "получиш известие"
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Назад към предишните резултати"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-#, javascript-format
-msgid "{0} active filter"
-msgid_plural "{0} active filters"
-msgstr[0] "{0} активен филтър"
-msgstr[1] "{0} активни филтъра"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-msgid "Filters"
-msgstr "Филтри"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -29623,12 +29855,6 @@ msgid "{0} to navigate. {1} to select."
 msgstr "{0} за навигация. {1} за избор."
 
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
-#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
-#: frontend/src/metabase/visualizations/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
-msgid "Combine columns"
-msgstr "Комбинирай колони"
-
-#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 msgid "Extract columns"
 msgstr "Извлечи колони"
 
@@ -29692,155 +29918,6 @@ msgstr "Дайте име на филтъра си…"
 #: frontend/src/metabase/querying/components/expressions/NameInput/utils.ts
 msgid "Give your expression a name…"
 msgstr "Дайте име на израза си…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Example:"
-msgstr "Пример:"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Try it"
-msgstr "Пробвай го"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "What's this for?"
-msgstr "За какво е това?"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
-msgstr "Променливите в нативни заявки ви позволяват динамично да заменяте стойности в заявките си чрез уиджети за филтри или през URL."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
-msgstr "{0} създава променлива в този шаблон на заявка, наречена \"variable_name\". На променливите могат да се задават типове в страничния панел, което променя поведението им. Всички типове променливи, различни от \"Field Filter\", автоматично ще доведат до добавяне на уиджет за филтър към този въпрос; при Field Filters това е по избор. Когато този уиджет за филтър бъде попълнен, тази стойност заменя променливата в шаблона на заявката."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "Задаването на тип \"Field Filter\" на променлива ви позволява да свързвате въпроси с уиджети за филтри на табло или да използвате повече типове уиджети за филтри във вашия SQL въпрос. Променлива Field Filter вмъква SQL, подобен на генерирания от GUI конструктора на заявки при добавяне на филтри върху съществуващи колони."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "Когато добавяте променлива Field Filter, ще трябва да я мапнете към конкретно поле. След това можете да изберете да показвате уиджет за филтър във вашия въпрос, но дори и да не го направите, вече можете да мапнете променливата Field Filter към филтър на табло, когато добавяте този въпрос към табло. Field Filters трябва да се използват в клауза \"WHERE\"."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Optional Clauses"
-msgstr "Опционални клаузи"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr "Скобите около {0} създават опционална клауза в шаблона. Ако \"variable\" е зададена, тогава цялата клауза се поставя в шаблона. Ако не, тогава цялата клауза се игнорира."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
-msgstr "За да използвате множество опционални клаузи, можете да включите поне една не-опционална WHERE клауза, последвана от опционални клаузи, започващи с \"AND\"."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr "Когато използвате Field Filter, името на колоната не трябва да се включва в SQL. Вместо това променливата трябва да бъде мапната към поле в страничния панел."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Read the full documentation"
-msgstr "Прочетете пълната документация"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "Variable name"
-msgstr "Име на променлива"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "How should users filter on this variable?"
-msgstr "Как потребителите да филтрират по тази променлива?"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Select a default value…"
-msgstr "Изберете стойност по подразбиране…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "This filter is set to disabled in an embedded question."
-msgstr "Този филтър е зададен като деактивиран във вграден въпрос."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "To always require a value, first visit embedding settings,\n"
-"make this filter editable or locked, re-publish the\n"
-"question, then return to this page."
-msgstr "За да изисквате винаги стойност, първо отидете в настройките за вграждане,\n"
-"направете този филтър редактируем или заключен, публикувайте отново\n"
-"въпроса, след което се върнете на тази страница."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default parameter widget value"
-msgstr "Стойност по подразбиране за уиджета на параметъра"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default filter widget value"
-msgstr "Стойност по подразбиране за уиджет за филтър"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-msgid "Table and field alias"
-msgstr "Алиас на таблица и поле"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-#, javascript-format
-msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
-msgstr "Изисква се само ако заявката използва алиас, за да се отнася към таблицата на съпоставеното поле. Например, ако съпоставите променливата към полето {0}, но заявката задава алиас на таблицата {1} като {2}, ще въведете {3}."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-msgid "Field to map to"
-msgstr "Поле за свързване към"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "(required)"
-msgstr "(задължително)"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Parameter widget label"
-msgstr "Етикет на уиджета за параметър"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Filter widget label"
-msgstr "Етикет на филтърния уиджет"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "Filter widget type"
-msgstr "Тип на филтърния уиджет"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "There aren't any filter widgets for this type of field yet."
-msgstr "Все още няма филтърни уиджети за този тип поле."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
-#, javascript-format
-msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
-msgstr "В повечето случаи ще искате да използвате това с клауза {0}, например {1}"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Table to map to"
-msgstr "Таблица за мапване към"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Use variable name as alias"
-msgstr "Използвай името на променливата като алиас"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "You can refer to this table by the variable name in other parts of the query."
-msgstr "Можете да се обръщате към тази таблица по името на променливата в други части на заявката."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Field Filter"
-msgstr "Филтър по поле"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Variable type"
-msgstr "Тип променлива"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Variables and parameters"
-msgstr "Променливи и параметри"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
-msgstr "Добавете променлива към заявката си, например {{variable_name}}, за да я конфигурирате тук."
 
 #: frontend/src/metabase/querying/drills/utils/automatic-insights-drill.tsx
 msgid "X-ray"
@@ -30212,18 +30289,6 @@ msgstr "Неизвестна колона, агрегиране, мярка ил
 msgid "Unknown column: {0}"
 msgstr "Неизвестна колона: {0}"
 
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Search for a column…"
-msgstr "Търси колона…"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Add all"
-msgstr "Добави всички"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Remove all"
-msgstr "Премахни всички"
-
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterSubmitButton/FilterSubmitButton.tsx
 msgid "Apply filter"
 msgstr "Приложи филтъра"
@@ -30262,8 +30327,8 @@ msgid "Pick columns"
 msgstr "Изберете колони"
 
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+#: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
 msgid "Add filters to narrow your answer"
 msgstr "Добавете филтри, за да стесните отговора си"
 
@@ -30385,34 +30450,6 @@ msgstr "Смени посоката"
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx
 msgid "Formula"
 msgstr "Формула"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Filtered by"
-msgstr "Филтрирано по"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Add filters"
-msgstr "Добави филтри"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "created"
-msgstr "създаде"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the title"
-msgstr "редактира заглавието"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the description"
-msgstr "редактира описанието"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the "
-msgstr "редактира "
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "made some changes"
-msgstr "направи някои промени"
 
 #: frontend/src/metabase/questions/components/ArchiveCardModal/ArchiveCardModal.tsx
 msgid "This question will be removed from its dashboard and any alerts using it."
@@ -30887,6 +30924,34 @@ msgstr " избрани типа"
 #, javascript-format
 msgid "Results for \"{0}\""
 msgstr "Резултати за \"{0}\""
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Filtered by"
+msgstr "Филтрирано по"
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Add filters"
+msgstr "Добави филтри"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "created"
+msgstr "създаде"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the title"
+msgstr "редактира заглавието"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the description"
+msgstr "редактира описанието"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the "
+msgstr "редактира "
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "made some changes"
+msgstr "направи някои промени"
 
 #: frontend/src/metabase/settings/use-admin-setting.ts
 #, javascript-format
@@ -33208,28 +33273,9 @@ msgstr "24-часов формат"
 msgid "Column formatting"
 msgstr "Форматиране на колона"
 
-#: frontend/src/metabase/visualizations/click-actions/actions/CopyValueAction/CopyValueAction.tsx
-msgid "Copy value"
-msgstr "Копирай стойност"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
-msgid "Extract part of column"
-msgstr "Извлечи част от колона"
-
 #: frontend/src/metabase/visualizations/click-actions/actions/HideColumnAction/HideColumnAction.tsx
 msgid "Hide column"
 msgstr "Скрий колоната"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "Save"
-msgstr "Запази"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-#, javascript-format
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "{0} this question to drill-through."
-msgstr "{0} този въпрос, за да използваш детайлизиране."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
@@ -33482,7 +33528,6 @@ msgid "Rows {0}-{1} of first {2}"
 msgstr "Редове {0}-{1} от първите {2}"
 
 #: frontend/src/metabase/visualizations/components/TrendInfo/TrendInfo.tsx
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
 #: metabase/channel/render/body.clj
 msgid "No change"
 msgstr "Без промяна"
@@ -33635,6 +33680,18 @@ msgstr "Добави или премахни колони"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/ChartSettingTableColumns.tsx
 msgid "Done picking columns"
 msgstr "Готово с избора на колони"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Search for a column…"
+msgstr "Търси колона…"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Add all"
+msgstr "Добави всички"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Remove all"
+msgstr "Премахни всички"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleDescription.tsx
 msgid "Cells in this column will be tinted based on their values."
@@ -34382,11 +34439,6 @@ msgstr "Точкова"
 msgid "scatter plot"
 msgstr "точкова диаграма"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/PreviousValueComparison/DetailCandidate.tsx
-#, javascript-format
-msgid "{0}: {1}"
-msgstr "{0}: {1}"
-
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 msgid "Value from another column"
 msgstr "Стойност от друга колона"
@@ -34422,6 +34474,26 @@ msgstr "спр. {0}"
 msgid "N/A"
 msgstr "N/A"
 
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "DoD"
+msgstr "DoD"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "WoW"
+msgstr "WoW"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "MoM"
+msgstr "MoM"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "QoQ"
+msgstr "QoQ"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "YoY"
+msgstr "YoY"
+
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Primary number"
 msgstr "Основно число"
@@ -34437,6 +34509,10 @@ msgstr "Размени цветовете за положително/отриц
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Compact number"
 msgstr "Компактно число"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
+msgid "Show comparison value"
+msgstr "Показвай стойността за сравнение"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Trend"
@@ -36092,8 +36168,8 @@ msgstr "Определя кои типове хостове са разреше�
 "- allow-all (без ограничения, включително localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Невалиден http-channel-host-strategy! Разрешени са само стойностите external-only, allow-private и allow-all."
+msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Невалиден http-channel-allowed-networks! Разрешени са само стойностите external-only, allow-private и allow-all."
 
 #: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
@@ -37475,6 +37551,10 @@ msgstr "Невалидни стойности на параметрите"
 #: metabase/embedding_rest/api/common.clj
 msgid "Invalid query params: could not determine slug for parameter with ID {0}"
 msgstr "Невалидни query params: не можа да се определи slug за параметър с ID {0}"
+
+#: metabase/embedding_rest/api/common.clj
+msgid "The parameter {0} does not exist on this dashboard."
+msgstr "Параметърът {0} не съществува на това табло."
 
 #: metabase/embedding_rest/api/common.clj
 msgid "Cannot search for values: {0} is not an enabled parameter."
@@ -39186,6 +39266,14 @@ msgid "Access key ID"
 msgstr "ID на ключ за достъп"
 
 #: metabase/llm/provider.clj
+msgid "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile)."
+msgstr "Оставете ключовете празни, за да се удостоверите с AWS default credentials chain (IRSA, EKS Pod Identity или instance profile)."
+
+#: metabase/llm/provider.clj
+msgid "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+msgstr "В Metabase Cloud Bedrock винаги се удостоверява с вашите собствени AWS ключове."
+
+#: metabase/llm/provider.clj
 msgid "Secret access key"
 msgstr "Секретен ключ за достъп"
 
@@ -39232,6 +39320,10 @@ msgstr "Невалиден {0} за {1}."
 #: metabase/llm/provider.clj
 msgid "{0} needs one of: {1}."
 msgstr "{0} изисква едно от: {1}."
+
+#: metabase/llm/provider.clj
+msgid "{0} takes {1} only together with {2}."
+msgstr "{0} приема {1} само заедно с {2}."
 
 #: metabase/llm/settings.clj
 msgid "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server."
@@ -39326,12 +39418,12 @@ msgid "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive 
 msgstr "Базовият URL за API на Gemini Enterprise Agent Platform. Оставете го празен, за да се изведе от локацията."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Access Key ID for Amazon Bedrock."
-msgstr "AWS Access Key ID за Amazon Bedrock."
+msgid "The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "AWS Access Key ID за Amazon Bedrock. В самостоятелно хостван Metabase го оставете ненастроен заедно със secret access key, за да се удостоверите с AWS default credentials chain (IRSA, EKS Pod Identity или instance profile); в Metabase Cloud и двата ключа са задължителни."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Secret Access Key for Amazon Bedrock."
-msgstr "AWS Secret Access Key за Amazon Bedrock."
+msgid "The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "AWS Secret Access Key за Amazon Bedrock. В самостоятелно хостван Metabase го оставете ненастроен заедно с access key ID, за да се удостоверите с AWS default credentials chain (IRSA, EKS Pod Identity или instance profile); в Metabase Cloud и двата ключа са задължителни."
 
 #: metabase/llm/settings.clj
 msgid "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials."
@@ -39452,6 +39544,14 @@ msgid "Whether the MCP server is enabled."
 msgstr "Дали MCP сървърът е включен."
 
 #: metabase/mcp/settings.clj
+msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+msgstr "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+
+#: metabase/mcp/settings.clj
+msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
+msgstr "Брой часове, през които се пази съхранен MCP query handle, преди планираната GC задача да го изтрие."
+
+#: metabase/mcp/settings.clj
 msgid "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode)."
 msgstr "Популярни MCP клиенти, активирани за CORS, съхранени като CSV ключове на клиенти (напр. claude, vscode)."
 
@@ -39531,6 +39631,26 @@ msgstr "Конструиране на заявки"
 #: metabase/metabot/scope.clj
 msgid "Execute queries"
 msgstr "Изпълнение на заявки"
+
+#: metabase/metabot/scope.clj
+msgid "See your Metabase content and data structure"
+msgstr "Вижте съдържанието и структурата на данните в Metabase"
+
+#: metabase/metabot/scope.clj
+msgid "Create, edit and trash Metabase content"
+msgstr "Създаване, редактиране и преместване в кошчето на съдържание в Metabase"
+
+#: metabase/metabot/scope.clj
+msgid "Run queries against your connected databases and see the results"
+msgstr "Изпълняване на заявки към свързаните ви бази данни и преглед на резултатите"
+
+#: metabase/metabot/scope.clj
+msgid "Write and run its own raw SQL on your connected databases"
+msgstr "Писане и изпълнение на собствен суров SQL към свързаните ви бази данни"
+
+#: metabase/metabot/scope.clj
+msgid "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"
+msgstr "Настройване на планирано изпращане на вашите данни към имейл адреси и Slack канали по негов избор"
 
 #: metabase/metabot/scope.clj
 msgid "Create saved questions"
@@ -39693,12 +39813,28 @@ msgid "Azure API error (HTTP {0})"
 msgstr "Грешка в Azure API (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
+msgstr "AWS Bedrock не получи credentials от AWS default credentials chain. Вижте логовете на Metabase за това какво е отчел всеки provider."
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported."
+msgstr "AWS Bedrock не успя да обнови AWS credentials. Вижте логовете на Metabase за това какво е отчел AWS."
+
+#: metabase/metabot/self/bedrock.clj
 msgid "Invalid AWS Bedrock region {0}"
 msgstr "Невалиден AWS Bedrock регион {0}"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock credentials are not configured"
-msgstr "Идентификационните данни за AWS Bedrock не са конфигурирани"
+msgid "AWS Bedrock cannot use a session token without its access key pair"
+msgstr "AWS Bedrock не може да използва session token без своята двойка access keys"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock on Metabase Cloud requires an access key pair"
+msgstr "AWS Bedrock в Metabase Cloud изисква двойка access keys"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain"
+msgstr "AWS Bedrock изисква и access key ID, и secret access key, или нито един — за да използва default credentials chain"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AI proxy is not supported for AWS Bedrock"
@@ -40241,6 +40377,10 @@ msgid "The AI provider connection and model used for quick background tasks, suc
 msgstr "Връзката към ИИ доставчик и моделът, използвани за бързи фонови задачи, като именуване на разговори в Metabot, в същия формат connection-key/model-name като `llm-metabot-provider`. По подразбиране е най-бързият модел, предлаган от връзката, на която работи Metabot."
 
 #: metabase/metabot/settings.clj
+msgid "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment."
+msgstr "Изпълнявай Metabot в fast mode на доставчика, когато избраният модел го поддържа. Fast mode отговаря по-бързо на по-висока цена на токен; при Anthropic изисква акаунт, записан в fast-mode research preview, и не е налично с ангажимент за Priority Tier."
+
+#: metabase/metabot/settings.clj
 msgid "Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely."
 msgstr "Брой дни за съхранение на редове в таблиците ai_usage_log, metabot_conversation и metabot_message. Минималната стойност е 30; задай 0, за да се съхраняват данните безсрочно."
 
@@ -40257,7 +40397,6 @@ msgid "Multiple databases share the name `{0}` (ids: {1}). The agent has no way 
 msgstr "Няколко бази данни споделят името `{0}` (ids: {1}). Агентът няма начин да ги различи; помоли потребителя да преименува една от базите данни или да използва по-специфичен идентификатор."
 
 #: metabase/metabot/tools/construct.clj
-#: metabase/models/serialization/resolve/mp.clj
 msgid "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
 msgstr "Не е намерен запазен въпрос или модел с entity_id {0}. Не измисляй и не гадай entity_ids: първо извикай `read_resource` с `metabase://question/<numeric id>` или `metabase://model/<numeric id>`, после копирай точното `portable_entity_id` от отговора в `source-card:`."
 
@@ -40458,24 +40597,24 @@ msgid "To make table and field names more human-friendly, Metabase will replace 
 msgstr "За да направи имената на таблици и полета по-удобни за хората, Metabase ще замени тиретата и долните черти в тях с интервали. Също така ще капитализира всяка дума, така че ‘last_visited_at’ ще стане ‘Last Visited At’."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-msgstr "Не е намерена таблица, съответстваща на portable FK {0}. Извикай `read_resource` с `metabase://database/<numeric id>/tables`, за да изведеш наличните таблици и схеми, после опитай отново с точен portable FK от отговора."
+msgid "No table found matching portable FK {0}."
+msgstr "Не е намерена таблица, съответстваща на portable FK {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable table FK references database {0}, but metadata provider is for {1}."
 msgstr "Преносимият FK за таблица сочи към база данни {0}, но доставчикът на метаданни е за {1}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
-msgstr "Нееднозначен portable table FK {0}: {1} кандидата. Извикай `read_resource` с `metabase://database/<numeric id>/tables`, за да изведеш наличните таблици, и опитай отново с по-специфичен portable FK."
+msgid "Ambiguous portable table FK {0}: {1} candidates."
+msgstr "Нееднозначен portable table FK {0}: {1} кандидата."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable field FK {0} must have at least 4 elements."
 msgstr "Преносимият field FK {0} трябва да има поне 4 елемента."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
-msgstr "Няма колона {0} в таблица {1}.{2}.{3}. Извикай `read_resource` с `metabase://table/<numeric id>/fields`, за да изведеш колоните на тази таблица."
+msgid "No column {0} on table {1}.{2}.{3}."
+msgstr "Няма колона {0} в таблица {1}.{2}.{3}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Ambiguous column {0} on table {1}.{2}.{3}."
@@ -40498,20 +40637,24 @@ msgid "No saved question, model, or metric found with id {0}."
 msgstr "Не е намерен запазен въпрос, модел или метрика с id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-msgstr "Запазен въпрос / модел / метрика с id {0} принадлежи към база данни {1}, но този резолвер е насочен към база данни {2}."
+msgid "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+msgstr "Запазен въпрос / модел / метрика с id {0} принадлежи на база данни {1}, но тази заявка е към база данни {2}. Заявки между бази данни не се поддържат."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "Запазен въпрос, модел или метрика с id {0} няма entity_id, затова не може да бъде експортиран като преносимо представяне."
 
 #: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with entity_id {0}."
+msgstr "Не е намерен запазен въпрос или модел с entity_id {0}."
+
+#: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
 msgstr "Запазеният въпрос / модел {0} принадлежи към база данни {1}, но тази заявка е насочена към база данни {2}. Cross-database заявки не се поддържат."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-msgstr "Не е намерена мярка с entity_id {0}. Не измисляй и не гадай entity_ids: прочети таблицата, която притежава мярката, с `read_resource` (`metabase://table/<numeric id>`) и копирай точното `portable_entity_id` от нейния таг `<measure>`."
+msgid "No measure found with entity_id {0}."
+msgstr "Не е намерена мярка с entity_id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
@@ -40522,8 +40665,8 @@ msgid "No measure found with id {0}."
 msgstr "Не е намерена мярка с id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Measure id {0} belongs to a table outside this metadata provider''s database."
-msgstr "Мярка с id {0} принадлежи към таблица извън базата данни на този доставчик на метаданни."
+msgid "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "Мярка с id {0} принадлежи на таблица в различна база данни от тази заявка. Заявки между бази данни не се поддържат."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
@@ -40534,28 +40677,28 @@ msgid "No segment found with id {0}."
 msgstr "Не е намерен сегмент с id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Segment id {0} belongs to a table outside this metadata provider''s database."
-msgstr "Сегмент с id {0} принадлежи към таблица извън базата данни на този доставчик на метаданни."
+msgid "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "Сегмент с id {0} принадлежи на таблица в различна база данни от тази заявка. Заявки между бази данни не се поддържат."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "Сегмент с id {0} няма entity_id, затова не може да бъде експортиран като преносима репрезентация."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-msgstr "Не е намерен сегмент с entity_id {0}. Не измисляй и не гадай entity_ids: прочети таблицата, която притежава сегмента, с `read_resource` (`metabase://table/<numeric id>`) и копирай точното `portable_entity_id` от нейния таг `<segment>`."
+msgid "No segment found with entity_id {0}."
+msgstr "Не е намерен сегмент с entity_id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
 msgstr "Сегмент {0} принадлежи към таблица в различна база данни от тази заявка (id на целевата база данни {1}). Заявки между бази данни не се поддържат."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table with id {0} in metadata provider."
-msgstr "Няма таблица с id {0} в доставчика на метаданни."
+msgid "No table found with id {0}."
+msgstr "Не е намерена таблица с id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No field with id {0} in metadata provider."
-msgstr "Няма поле с id {0} в доставчика на метаданни."
+msgid "No field found with id {0}."
+msgstr "Не е намерено поле с id {0}."
 
 #: metabase/mq/settings.clj
 msgid "Maximum number of times a failed queue message will be retried before being dropped."
@@ -41017,6 +41160,10 @@ msgid "An error occurred while running the query."
 msgstr "Възникна грешка при изпълнение на заявката."
 
 #: metabase/pulse/api/pulse.clj
+msgid "Invalid :cards: each entry must be a card reference."
+msgstr "Невалидно :cards: всеки елемент трябва да е референция към карта."
+
+#: metabase/pulse/api/pulse.clj
 msgid "Non-admin users without subscription permissions are not allowed to add recipients"
 msgstr "Потребители, които не са администратори и нямат права за абонаменти, нямат право да добавят получатели"
 
@@ -41079,6 +41226,10 @@ msgstr "Нямате права да прегледате този кешира�
 #: metabase/queries/card.clj
 msgid "Card does not have a parameter with the ID {0}"
 msgstr "Картата няма параметър с ID {0}"
+
+#: metabase/queries/card.clj
+msgid "The parameter {0} does not exist on this card."
+msgstr "Параметърът {0} не съществува на тази карта."
 
 #: metabase/queries/models/card.clj
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
@@ -41162,8 +41313,8 @@ msgid "You do not have permissions to view Card {0}."
 msgstr "Нямате права да прегледате карта {0}."
 
 #: metabase/query_permissions/impl.clj
-msgid "You must have data permissions to add a parameter referencing the Table {0}."
-msgstr "Трябва да имате права за данни, за да добавите параметър, който реферира Таблица {0}."
+msgid "You must have data permissions to add a parameter referencing this Field."
+msgstr "Трябва да имате права за достъп до данните, за да добавите параметър, който реферира това Поле."
 
 #: metabase/query_permissions/impl.clj
 msgid "You cannot save this Question because you do not have permissions to run its query."
@@ -41761,7 +41912,7 @@ msgstr "Search debug не се поддържа за модела indexed-entity
 
 #: metabase/search/filter.clj metabase/search/in_place/filter.clj
 #: metabase/task_history/api.clj metabase/transforms/models/util.clj
-#: metabase_enterprise/metabot_analytics/conversations.clj
+#: metabase_enterprise/metabot_analytics/db.clj
 msgid "Failed to parse datetime value: {0}"
 msgstr "Неуспешно парсване на datetime стойност: {0}"
 
@@ -41828,8 +41979,8 @@ msgid "Failed to load template ''{0}''. Did you remember to build the Metabase f
 msgstr "Неуспешно зареждане на шаблон ''{0}''. Помните ли да билднете Metabase frontend-а?"
 
 #: metabase/server/settings.clj
-msgid "Allowed iframe hosts"
-msgstr "Позволени iframe хостове"
+msgid "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list."
+msgstr "Разрешени iframe хостове. По подразбиране включва списък с популярни хостове; задайте '' '' , за да изключите списъка по подразбиране."
 
 #: metabase/server/settings.clj
 msgid "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations."
@@ -42342,8 +42493,16 @@ msgid "Query failed"
 msgstr "Заявката е неуспешна"
 
 #: metabase/tiles/settings.clj
+msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Невалиден map-tile-server-allowed-networks! Разрешени са само стойностите external-only, allow-private и allow-all."
+
+#: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
 msgstr "URL шаблонът на tile сървъра, използван във визуализациите на карти, например от OpenStreetMaps или MapBox."
+
+#: metabase/tiles/settings.clj
+msgid "Invalid map tile server URL: must be a relative path, or an http:// or https:// URL whose host is resolvable and permitted by map-tile-server-allowed-networks."
+msgstr "Невалиден URL на map tile server: трябва да е относителен път или http:// или https:// URL, чийто хост може да бъде резолвнат и е разрешен от map-tile-server-allowed-networks."
 
 #: metabase/timeline/api/timeline_event.clj
 msgid "Timeline with id {0} not found"
@@ -43030,9 +43189,25 @@ msgstr "Не може да се обновяват field_id, type или hash_ke
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ":values трябва да присъства, за да се извлекат :human_readable_values"
 
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out fetching field values."
+msgstr "Изтече времето за извличане на стойностите на полето."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Too many field values fetches are already running. Please try again shortly."
+msgstr "Вече се изпълняват твърде много извличания на стойности на полета. Моля, опитайте отново след малко."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out waiting for field values."
+msgstr "Изтече времето за изчакване на стойностите на полето."
+
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid "Incompatible coercion strategy."
 msgstr "Несъвместима стратегия за преобразуване на тип."
+
+#: metabase/warehouse_schema_rest/api/field.clj
+msgid "Failed to scan field values. Check the server logs for the underlying error."
+msgstr "Неуспешно сканиране на стойностите на полето. Проверете логовете на сървъра за първопричината."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj

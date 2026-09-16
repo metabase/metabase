@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-01 05:46+0000\n"
+"POT-Creation-Date: 2026-09-08 05:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Persian\n"
 "Language: fa_IR\n"
-"PO-Revision-Date: 2026-09-08 05:41\n"
+"PO-Revision-Date: 2026-09-15 05:40\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -80,7 +80,6 @@ msgstr "گروه‌بندی‌شده بر اساس "
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarContainer.tsx
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardToast/MoveCardToast.tsx
 #: metabase/server/middleware/exceptions.clj
@@ -176,7 +175,7 @@ msgstr "یک پایگاه‌داده انتخاب کن"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 msgid "Select a table"
 msgstr "یک جدول انتخاب کنید"
 
@@ -260,7 +259,7 @@ msgstr "ویرایش اتصال"
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/SidebarHeader.tsx
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
 #: frontend/src/metabase/transforms/components/RunInfo/RunInfo.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/SidebarHeader/SidebarHeader.tsx
@@ -703,9 +702,9 @@ msgstr "حذف دسترسی از همهٔ گروه‌ها"
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/hooks/useCommandPalette.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
 #: frontend/src/metabase/transforms/components/TransformHeader/TransformTabs.tsx
 #: frontend/src/metabase/visualizer/components/Footer/Footer.tsx
 msgid "Settings"
@@ -1340,6 +1339,12 @@ msgid "JWT"
 msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Server settings"
+msgstr "تنظیمات سرور"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
 msgid "JWT Identity Provider URI"
 msgstr "آدرس ارائه‌دهنده شناسه JWT"
@@ -1349,31 +1354,45 @@ msgid "String used by the JWT signing key"
 msgstr "رشته‌ای که توسط کلید امضای JWT استفاده می‌شود"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Email attribute"
-msgstr "ویژگی ایمیل"
+msgid "User attribute configuration"
+msgstr "پیکربندی ویژگی‌های کاربر"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "You can send additional user attributes to {0} by adding the attributes as key/value pairs to your JWT"
+msgstr "می‌توانید با افزودن ویژگی‌ها به‌صورت جفت‌های کلید/مقدار به JWT خود، ویژگی‌های اضافی کاربر را به {0} ارسال کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Email attribute key"
+msgstr "کلید ویژگی ایمیل"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "First name attribute key"
+msgstr "کلید ویژگی نام"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Last name attribute key"
+msgstr "کلید ویژگی نام خانوادگی"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Group assignment attribute key"
+msgstr "کلید ویژگی تخصیص گروه"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Tenant assignment attribute key"
+msgstr "کلید ویژگی تخصیص مستأجر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "First name attribute"
-msgstr "ویژگی نام"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Last name attribute"
-msgstr "ویژگی نام خانوادگی"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Group assignment attribute"
-msgstr "attribute انتساب گروه"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tenant assignment attribute"
-msgstr "ویژگی انتساب مستأجر"
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Group mapping"
+msgstr "نگاشت گروه"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "Lets you assign users to custom {0} groups based on their JWT attributes"
+msgstr "به شما امکان می‌دهد بر اساس ویژگی‌های JWT آن‌ها، کاربران را به گروه‌های سفارشی {0} تخصیص دهید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Group Name"
@@ -1400,6 +1419,7 @@ msgstr "ذخیره و فعال کردن"
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
 #: frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/EditWebhookModal.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx
@@ -1470,10 +1490,6 @@ msgid "OpenID Connect"
 msgstr "OpenID Connect"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Server settings"
-msgstr "تنظیمات سرور"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributeMappingEditor.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
@@ -1541,10 +1557,6 @@ msgstr "برای حفظ مقدار فعلی خالی بگذارید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Synchronize group membership with your SSO"
-msgstr "همگام‌سازی عضویت گروه با SSO شما"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
 msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
 msgstr "برای فعال‌کردن این مورد، باید مپینگ‌هایی بسازید تا به {0} بگویید بر اساس گروه SSO که کاربران در آن هستند، آن‌ها باید به کدام گروه(ها) اضافه شوند."
@@ -1577,6 +1589,21 @@ msgstr "مپینگ ویژگی‌ها"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
 msgstr "claimهای OIDC را به ویژگی‌های کاربر مپ کنید. از نام‌های استاندارد claimهای OIDC یا claimهای سفارشی ارائه‌دهندهٔ خود استفاده کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Email attribute"
+msgstr "ویژگی ایمیل"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "First name attribute"
+msgstr "ویژگی نام"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Last name attribute"
+msgstr "ویژگی نام خانوادگی"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
@@ -1623,10 +1650,6 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Set up SAML-based SSO"
-msgstr "پیکربندی SSO بر اساس SAML"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #, javascript-format
 msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
 msgstr "از تنظیمات زیر برای پیکربندی SSO خود از طریق SAML استفاده کنید. اگر سؤالی دارید، به {0} ما مراجعه کنید."
@@ -1642,8 +1665,9 @@ msgid "Configure your identity provider (IdP)"
 msgstr "پیکربندی ارائه دهنده هویت شما (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Your identity provider will need the following info about Metabase."
-msgstr "ارائه دهنده هویت شما به اطلاعات زیر درباره Metabase نیاز دارد."
+#, javascript-format
+msgid "Your identity provider will need the following info about {0}."
+msgstr "ارائه‌دهنده هویت شما به اطلاعات زیر درباره {0} نیاز دارد."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1674,12 +1698,18 @@ msgid "User's last name attribute"
 msgstr "مولفه‌ی نام خانوادگی کاربر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tell Metabase about your identity provider"
-msgstr "به Metabase درباره ارائه‌دهنده هویت خود اطلاع دهید"
+msgid "Tenant assignment attribute"
+msgstr "ویژگی انتساب مستأجر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Metabase will need the following info about your provider."
-msgstr "Metabase به اطلاعات زیر در مورد ارائه‌دهنده شما نیاز دارد."
+#, javascript-format
+msgid "Tell {0} about your identity provider"
+msgstr "ارائه‌دهنده هویت خود را به {0} معرفی کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "{0} will need the following info about your provider."
+msgstr "{0} به اطلاعات زیر درباره ارائه‌دهنده شما نیاز دارد."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
@@ -1716,11 +1746,6 @@ msgstr "ش..."
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore alias"
 msgstr "alias keystore SAML"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
-"be added to based on the SSO group they're in."
-msgstr "برای فعال کردن این مورد، نیاز به ایجاد نگاشت‌ها خواهید داشت تا به Metabase بگویید کدام گروه (ها) باید کاربران شما بر اساس گروه SSO که در آن هستند اضافه شوند."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]"
@@ -2427,6 +2452,7 @@ msgstr "برای بارگذاری کد پلاگین از یک سرور Dev مح�
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
@@ -2559,6 +2585,7 @@ msgstr "گزارش تغییرات SDK را ببینید"
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 msgid "Enabled"
@@ -2592,6 +2619,7 @@ msgid "Add"
 msgstr "اضافه کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
 #: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
 #: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
@@ -2627,6 +2655,11 @@ msgstr "با نسخهٔ SDK 1.x ساخته شده، اما این نسخه از 
 #, javascript-format
 msgid "Requires Metabase {0}, but this instance is on {1}."
 msgstr "به Metabase {0} نیاز دارد، اما این نمونه روی {1} است."
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/warning-messages.ts
+#, javascript-format
+msgid "The identifier \"{0}\" contains \":\", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without \":\"."
+msgstr "شناسه \"{0}\" شامل \":\" است که دیگر مجاز نیست، بنابراین این تجسم به بینندگان ارائه نمی‌شود. آن را حذف کنید و بسته را با نامی بدون \":\" آپلود کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/custom-viz-plugins.tsx
 msgid "Plugin bundle must have a default export that is a factory function"
@@ -2866,7 +2899,7 @@ msgstr "داده‌ها درست واکشی نشدند: {0}"
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
@@ -3261,14 +3294,12 @@ msgid "Move table to…"
 msgstr "انتقال جدول به…"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table name"
 msgstr "به‌روزرسانی نام جدول ناموفق بود"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table name updated"
 msgstr "نام جدول به‌روزرسانی شد"
 
@@ -3347,14 +3378,12 @@ msgid "New measure"
 msgstr "معیار جدید"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table description"
 msgstr "به‌روزرسانی توضیحات جدول ناموفق بود"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table description updated"
 msgstr "توضیحات جدول به‌روزرسانی شد"
 
@@ -3752,7 +3781,7 @@ msgid "The following tables will be replicated."
 msgstr "جدول‌های زیر replicate خواهند شد."
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #, javascript-format
 msgid "{0} rows"
 msgstr "{0} ردیف"
@@ -4002,7 +4031,7 @@ msgstr "می‌توانید پایگاه داده‌ها را به‌صورت ب
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 #: frontend/src/metabase/admin/upsells/UpsellRemoteSync.tsx
@@ -4013,8 +4042,8 @@ msgstr "می‌توانید پایگاه داده‌ها را به‌صورت ب
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
 #: frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/HelpText/HelpText.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 msgid "Learn more"
 msgstr "بیشتر بدانید"
 
@@ -4504,8 +4533,8 @@ msgstr "مدل"
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Table"
 msgstr "جدول"
@@ -5299,7 +5328,7 @@ msgstr "حذف تأیید"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts
 #: frontend/src/metabase/common/components/RevisionHistoryTimeline/utils.ts
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionItem.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "You"
 msgstr "شما"
 
@@ -6100,8 +6129,8 @@ msgstr "پروفایل"
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 msgid "Date"
 msgstr "تاریخ"
@@ -7191,6 +7220,7 @@ msgid "No collections found"
 msgstr "هیچ مجموعه‌ای پیدا نشد"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TopLevelCollectionsList/TopLevelCollectionsList.tsx
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 msgid "Failed to load collections"
 msgstr "بارگذاری مجموعه‌ها ناموفق بود"
 
@@ -7255,6 +7285,7 @@ msgid "Something went wrong. Please try again."
 msgstr "مشکلی پیش آمد. لطفاً دوباره تلاش کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/collections/constants.ts
 #: frontend/src/metabase/common/collections/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
@@ -7718,6 +7749,7 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "این ویژگی از مستأجر به ارث می‌رسد، اما می‌توانید مقدارش را override کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
 msgid "Attributes"
@@ -8898,7 +8930,9 @@ msgstr "و"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "جدول"
+msgid_plural "tables"
+msgstr[0] "جدول"
+msgstr[1] "جدول‌ها"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9004,6 +9038,7 @@ msgid "Items cannot be saved directly to the tenant root collection. Please sele
 msgstr "آیتم‌ها را نمی‌توان مستقیماً در مجموعهٔ ریشهٔ مستأجر ذخیره کرد. لطفاً یک زیرمجموعه انتخاب کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-root-items.ts
 #: frontend/src/metabase/dashboard/components/QuestionPicker/utils/tenant-collections.ts
 #: frontend/src/metabase/reference/databases/DatabaseList.tsx
@@ -10142,7 +10177,7 @@ msgstr "رنگ‌ها"
 #: frontend/src/metabase/metadata/components/FieldSection/FieldSection.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStep.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
 #: frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.tsx
 msgid "Preview"
@@ -10588,9 +10623,17 @@ msgid "The analytics server is undergoing maintenance. {0}."
 msgstr "سرور تحلیل‌ها در حال انجام عملیات نگهداری است. {0}."
 
 #: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "All collections"
+msgstr "همه مجموعه‌ها"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableCollection.tsx
 msgid "You don't have access to this collection"
 msgstr "شما به این مجموعه دسترسی ندارید"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "There are no collections to show"
+msgstr "هیچ مجموعه‌ای برای نمایش وجود ندارد"
 
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "Something's gone wrong"
@@ -10609,6 +10652,11 @@ msgstr "برای ساختن یک سؤال جدید، قبل از خروج بای
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "You can't save questions in Guest Embed mode"
 msgstr "در حالت Guest Embed نمی‌توانید سؤال‌ها را ذخیره کنید"
+
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
+#: frontend/src/metabase/common/collections/utils.ts
+msgid "Your personal collection"
+msgstr "مجموعهٔ شخصی شما"
 
 #: frontend/src/embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token.ts
 msgid "JWT tokens cannot be passed as id. Use the token prop instead."
@@ -11818,7 +11866,7 @@ msgstr "داخل"
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
 msgid "Number"
 msgstr "عدد"
@@ -11910,7 +11958,7 @@ msgstr "رشته"
 #: frontend/src/metabase-lib/v1/parameters/constants.ts
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Boolean"
 msgstr "بولی"
 
@@ -12168,7 +12216,7 @@ msgstr "این کار ردیف را برای همیشه حذف می‌کند. ا
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddHeadingOrTextButton.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Text"
@@ -12280,7 +12328,7 @@ msgstr "ضروری"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Default value"
 msgstr "مقدار پیش‌فرض"
 
@@ -12434,6 +12482,14 @@ msgstr "مدل پیش‌فرض"
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Metabot, AI explorations and SQL generation all run on this model."
 msgstr "Metabot، کاوش‌های هوش مصنوعی و تولید SQL همگی روی این مدل اجرا می‌شوند."
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Fast mode"
+msgstr "حالت سریع"
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment."
+msgstr "پاسخ‌های سریع‌تر از مدل پیش‌فرض با هزینه بالاتر به‌ازای هر توکن دریافت کنید. در Anthropic، این نیازمند حسابی است که در پیش‌نمایش پژوهشی حالت سریع ثبت‌نام کرده باشد و با تعهد Priority Tier در دسترس نیست."
 
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Mini model"
@@ -12893,7 +12949,7 @@ msgstr "عملکرد"
 #: frontend/src/metabase/admin/app/reducers.ts
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Help"
 
@@ -15213,10 +15269,10 @@ msgstr "احتمالاً بهتر است این تنظیم را به {0} تغی�
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "هیچ‌کدام"
@@ -15356,6 +15412,10 @@ msgid "Password"
 msgstr "رمز عبور"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "User schema"
+msgstr "شمای کاربر"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User search base"
 msgstr "پایهٔ جست‌وجوی کاربر"
 
@@ -15389,6 +15449,12 @@ msgstr "مدیریت ویژوالایزیشن‌ها"
 #: frontend/src/metabase/palette/constants.ts
 msgid "General"
 msgstr "عمومی"
+
+#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: frontend/src/metabase/palette/constants.ts
+msgid "Domains"
+msgstr "دامنه‌ها"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/WebhooksSettingsPage.tsx
@@ -15469,8 +15535,8 @@ msgid "Turn on \"Restrict image domains\" in {0} before enabling custom visualiz
 msgstr "قبل از فعال‌کردن ویژوالایزیشن‌های سفارشی، گزینهٔ \"Restrict image domains\" را در {0} روشن کنید."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
-msgid "General settings"
-msgstr "تنظیمات عمومی"
+msgid "Domains settings"
+msgstr "تنظیمات دامنه‌ها"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Custom chart types"
@@ -15503,6 +15569,56 @@ msgstr "کنترل کامل"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Enable, disable, and manage custom visualization plugins"
 msgstr "پلاگین‌های ویژوالایزیشن سفارشی را فعال، غیرفعال و مدیریت کنید"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for iframes in dashboards"
+msgstr "دامنه‌های مجاز برای iframeها در داشبوردها"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
+msgstr "باید مطمئن شوید به منابعی که به کاربران اجازه می‌دهید در داشبوردها embed کنند اعتماد دارید. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict image domains"
+msgstr "محدودکردن دامنه‌های تصویر"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
+msgstr "برای ویژوالایزیشن‌های سفارشی لازم است. قبل از غیرفعال‌کردن این تنظیم، {0} را خاموش کنید."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Custom Visualizations"
+msgstr "ویژوالایزیشن‌های سفارشی"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
+msgstr "Content Security Policy مرورگر را محدود کنید تا تصاویر فقط از این نمونه Metabase یا دامنه‌هایی که پایین فهرست می‌کنید بارگذاری شوند. برای فعال‌کردن ویژوالایزیشن‌های سفارشی لازم است. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
+msgstr "Content Security Policy مرورگر را محدود کنید تا تصاویر فقط از این نمونه Metabase یا دامنه‌هایی که پایین فهرست می‌کنید بارگذاری شوند."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for images"
+msgstr "دامنه‌های مجاز برای تصاویر"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "دامنه‌هایی که تصاویر می‌توانند از آن‌ها در متن داشبورد، توضیحات موجودیت‌ها، و ویژوالایزیشن‌های سفارشی بارگذاری شوند. خالی بگذارید تا فقط تصاویر میزبانی‌شده توسط این نمونه Metabase مجاز باشند. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "دامنه‌هایی که تصاویر می‌توانند از آن‌ها در متن داشبورد و توضیحات موجودیت‌ها بارگذاری شوند. خالی بگذارید تا فقط تصاویر میزبانی‌شده توسط این نمونه Metabase مجاز باشند. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
+msgstr "برای اعمال این allowlist، تنظیم \"Restrict image domains\" بالا را روشن کنید."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx
 msgid "From Name"
@@ -15553,8 +15669,8 @@ msgid "Email address for help requests"
 msgstr "آدرس ایمیل برای درخواست‌های کمک"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Tables, X-Rays and domains"
-msgstr "جدول‌ها، X-Rayها و دامنه‌ها"
+msgid "Tables and X-Rays"
+msgstr "جدول‌ها و X-Rayها"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Friendly table and field names"
@@ -15567,56 +15683,6 @@ msgstr "تبدیل زیرخط و خط تیره به فاصله"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Enable X-Ray features"
 msgstr "فعال‌سازی قابلیت‌های X-Ray"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for iframes in dashboards"
-msgstr "دامنه‌های مجاز برای iframeها در داشبوردها"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
-msgstr "باید مطمئن شوید به منابعی که به کاربران اجازه می‌دهید در داشبوردها embed کنند اعتماد دارید. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict image domains"
-msgstr "محدودکردن دامنه‌های تصویر"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
-msgstr "برای ویژوالایزیشن‌های سفارشی لازم است. قبل از غیرفعال‌کردن این تنظیم، {0} را خاموش کنید."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Custom Visualizations"
-msgstr "ویژوالایزیشن‌های سفارشی"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
-msgstr "Content Security Policy مرورگر را محدود کنید تا تصاویر فقط از این نمونه Metabase یا دامنه‌هایی که پایین فهرست می‌کنید بارگذاری شوند. برای فعال‌کردن ویژوالایزیشن‌های سفارشی لازم است. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
-msgstr "Content Security Policy مرورگر را محدود کنید تا تصاویر فقط از این نمونه Metabase یا دامنه‌هایی که پایین فهرست می‌کنید بارگذاری شوند."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for images"
-msgstr "دامنه‌های مجاز برای تصاویر"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "دامنه‌هایی که تصاویر می‌توانند از آن‌ها در متن داشبورد، توضیحات موجودیت‌ها، و ویژوالایزیشن‌های سفارشی بارگذاری شوند. خالی بگذارید تا فقط تصاویر میزبانی‌شده توسط این نمونه Metabase مجاز باشند. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "دامنه‌هایی که تصاویر می‌توانند از آن‌ها در متن داشبورد و توضیحات موجودیت‌ها بارگذاری شوند. خالی بگذارید تا فقط تصاویر میزبانی‌شده توسط این نمونه Metabase مجاز باشند. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
-msgstr "برای اعمال این allowlist، تنظیم \"Restrict image domains\" بالا را روشن کنید."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
@@ -15890,8 +15956,8 @@ msgstr "مقادیر نمونه:"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Select…"
 msgstr "انتخاب…"
 
@@ -16541,12 +16607,12 @@ msgid "Create custom chart types tailored to your data using the Custom visualiz
 msgstr "با استفاده از SDK ویژوالایزیشن‌های سفارشی، انواع چارت سفارشی متناسب با داده‌هایتان بسازید."
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Build apps on your data"
-msgstr "روی داده‌هایتان اپ بسازید"
+msgid "Build custom data apps"
+msgstr "اپ‌های داده سفارشی بسازید"
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Ship interactive apps powered by your data, served right inside Metabase."
-msgstr "اپ‌های تعاملیِ مبتنی بر داده‌هایتان را ارائه کنید که درست داخل Metabase سرو می‌شوند."
+msgid "Build custom user interfaces, forms, and other tools that write back to your database. Automate chores, manage back-office work, and set up workflows to act on your data, all built with AI on top of your semantic layer."
+msgstr "رابط‌های کاربری سفارشی، فرم‌ها و ابزارهای دیگری بسازید که در دیتابیس شما هم می‌نویسند. کارهای تکراری را اتومات کنید، کارهای بک‌آفیس را مدیریت کنید و ورک‌فلوهایی برای اقدام روی داده‌هایتان راه‌اندازی کنید؛ همه با هوش مصنوعی روی لایه معنایی شما ساخته شده‌اند."
 
 #: frontend/src/metabase/admin/upsells/UpsellDevInstances.tsx
 msgid "Get a development instance"
@@ -17608,10 +17674,6 @@ msgstr "این داشبورد را انتخاب کنید"
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVUpload.tsx
 msgid "Select this collection"
 msgstr "این مجموعه را انتخاب کنید"
-
-#: frontend/src/metabase/common/collections/utils.ts
-msgid "Your personal collection"
-msgstr "مجموعهٔ شخصی شما"
 
 #: frontend/src/metabase/common/components/AccordionList/AccordionListCell.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.tsx
@@ -18874,7 +18936,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "دقیقه"
 msgstr[1] "{0} دقیقه"
 
@@ -19554,7 +19616,7 @@ msgstr "تحقیق"
 #: frontend/src/metabase/common/utils/timelines.ts
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Note"
 msgstr "یادداشت"
 
@@ -20809,7 +20871,7 @@ msgid "For Native Questions use {0} to make Linked Filters available here."
 msgstr "برای سؤال‌های نیتیو از {0} استفاده کنید تا فیلترهای لینک‌شده اینجا در دسترس باشند."
 
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
 msgid "Field Filters"
 msgstr "فیلترهای فیلد"
 
@@ -20866,7 +20928,7 @@ msgid "Filter or parameter type"
 msgstr "نوع فیلتر یا پارامتر"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
 msgid "Time grouping options"
 msgstr "گزینه‌های گروه‌بندی زمانی"
 
@@ -20875,24 +20937,24 @@ msgid "How should people filter on this column?"
 msgstr "افراد چطور باید روی این ستون فیلتر کنند؟"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "People can pick"
 msgstr "افراد می‌توانند انتخاب کنند"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "Multiple values"
 msgstr "مقادیر متعدد"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "A single value"
 msgstr "یک مقدار تک"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/utils/errors/validation.ts
 msgid "required"
 msgstr "الزامی"
@@ -20914,7 +20976,7 @@ msgstr "برای اینکه همیشه یک مقدار لازم باشد، اب�
 "داشبورد را دوباره منتشر کنید، سپس به این صفحه برگردید."
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
@@ -21142,7 +21204,7 @@ msgstr "بازهٔ تاریخ، تاریخ مشخص…"
 
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionTimeGroupingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Time grouping"
 msgstr "گروه‌بندی زمانی"
 
@@ -21592,16 +21654,6 @@ msgstr "داده‌ای برای نمایش وجود ندارد"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Failed to update field order"
-msgstr "به‌روزرسانی ترتیب فیلدها ناموفق بود"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Field order updated"
-msgstr "ترتیب فیلدها به‌روزرسانی شد"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 msgid "Give this table a description"
 msgstr "برای این جدول یک توضیح بنویسید"
 
@@ -21844,7 +21896,7 @@ msgstr "این معیار را ایجاد کرد"
 
 #: frontend/src/metabase/data-studio/measures/components/MeasureRevisionHistory/MeasureRevisionHistory.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "reverted to a previous version"
 msgstr "به نسخهٔ قبلی برگردانده شد"
 
@@ -24126,14 +24178,13 @@ msgid "AI can make mistakes. Double check your plan and modify it as needed."
 msgstr "هوش مصنوعی ممکن است اشتباه کند. پلن‌تان را دوباره بررسی کنید و در صورت نیاز تغییرش دهید."
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
 #: frontend/src/metabase/status/components/StatusLarge/StatusLarge.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 msgid "Collapse"
 msgstr "جمع کردن"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
+#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 #: frontend/src/metabase/visualizer/components/DataImporter/ColumnsList/ColumnsList.tsx
 msgid "Expand"
@@ -24298,11 +24349,6 @@ msgstr "راه‌اندازی secret key"
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Copy to clipboard"
 msgstr "کپی به کلیپ‌بورد"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
-#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
-msgid "Preview the query"
-msgstr "نمایش پیش‌نمایش درخواست"
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Secret key copied to clipboard"
@@ -25259,6 +25305,11 @@ msgstr "ارسال"
 msgid "Copy chart"
 msgstr "کپیِ نمودار"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
+msgid "Run query"
+msgstr "کوئری را اجرا کن"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineDashboardLink.tsx
 msgid "Open dashboard"
 msgstr "داشبورد را باز کن"
@@ -26047,6 +26098,14 @@ msgstr "انتخاب کنید آیا JSON باز شود یا نه"
 #: frontend/src/metabase/metadata/components/UserInput.tsx
 msgid "Pick someone, or type an email"
 msgstr "یک نفر را انتخاب کنید، یا یک ایمیل تایپ کنید"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Failed to update field order"
+msgstr "به‌روزرسانی ترتیب فیلدها ناموفق بود"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Field order updated"
+msgstr "ترتیب فیلدها به‌روزرسانی شد"
 
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
@@ -27562,6 +27621,15 @@ msgstr "خانه"
 msgid "Other users' personal collections"
 msgstr "مجوعه‌های شخصی کاربران دیگر"
 
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+#, javascript-format
+msgid "You can also {0} when there are some results."
+msgstr "وقتی نتیجه‌ای باشد، می‌توانید {0} هم انجام دهید."
+
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+msgid "get an alert"
+msgstr "یک هشدار بگیرید"
+
 #: frontend/src/metabase/notifications/channels/RecipientPicker.tsx
 msgid "Enter user names or email addresses"
 msgstr "نام‌های کاربری یا آدرس‌های ایمیل را وارد کنید"
@@ -28166,9 +28234,9 @@ msgid "Format custom expression or native query"
 msgstr "فرمت کردن عبارت سفارشی یا کوئری نیتیو"
 
 #: frontend/src/metabase/parameters/components/ParameterDropdownWidget.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.tsx
 #: frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Enter a default value…"
 msgstr "یک مقدار پیش‌فرض وارد کنید…"
 
@@ -28179,6 +28247,171 @@ msgstr "همیشه یک مقدار لازم باشد"
 #: frontend/src/metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.tsx
 msgid "When enabled, people can change the value or reset it, but can't clear it entirely."
 msgstr "وقتی فعال باشد، افراد می‌توانند مقدار را تغییر دهند یا ریست کنند، اما نمی‌توانند کاملاً پاکش کنند."
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+#, javascript-format
+msgid "{0} active filter"
+msgid_plural "{0} active filters"
+msgstr[0] "{0} فیلتر فعال"
+msgstr[1] "{0} فیلترهای فعال"
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+msgid "Filters"
+msgstr "فیلترها"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Example:"
+msgstr "مثال:"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Try it"
+msgstr "امتحانش کن"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "What's this for?"
+msgstr "این به چه درد می‌خورد؟"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
+msgstr "متغیرها در کوئری‌های نیتیو به شما اجازه می‌دهند با استفاده از ویجت‌های فیلتر یا از طریق URL، مقادیر را به‌صورت پویا در کوئری‌هایتان جایگزین کنید."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
+msgid "Variables"
+msgstr "متغیرها"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
+msgstr "{0} یک متغیر در این الگوی پرسش ایجاد می‌کند که \"variable_name\" نامیده می‌شود. متغیرها می‌توانند در پانل کناری ویژگی دریافت کنند که رفتار آنها را تغییر می‌دهد. همه انواع متغیرها به جز \"فیلتر فیلد\" به‌صورت خودکار باعث ایجاد یک ابزارک فیلتر بر روی این پرسش خواهند شد؛ با فیلترهای فیلد، این اختیاری است. وقتی این ابزارک فیلتر پر شود، آن مقدار جایگزین متغیر در الگوی پرسش می‌شود."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
+msgstr "دادن نوع \"Field Filter\" به یک متغیر به شما اجازه می‌دهد سؤال‌ها را به ویجت‌های فیلتر داشبورد لینک کنید یا در سؤال SQL خود از انواع بیشتری از ویجت‌های فیلتر استفاده کنید. یک متغیر Field Filter، SQL مشابهِ SQL تولیدشده توسط سازندهٔ کوئری GUI هنگام اضافه‌کردن فیلتر روی ستون‌های موجود را درج می‌کند."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
+msgstr "هنگام افزودن یک متغیر Field Filter، باید آن را به یک فیلد مشخص مپ کنید. سپس می‌توانید انتخاب کنید یک ویجت فیلتر روی سؤال‌تان نمایش داده شود، اما حتی اگر این کار را نکنید هم حالا می‌توانید هنگام افزودن این سؤال به یک داشبورد، متغیر Field Filter خود را به یک فیلتر داشبورد مپ کنید. فیلترهای فیلد باید داخل یک عبارت \"WHERE\" استفاده شوند."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Optional Clauses"
+msgstr "عبارت‌های اختیاری"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
+msgstr "براکت‌ها دورِ {0} یک عبارت اختیاری در قالب ایجاد می‌کنند. اگر \"variable\" تنظیم شده باشد، کل عبارت داخل قالب قرار می‌گیرد. اگر نه، کل عبارت نادیده گرفته می‌شود."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
+msgstr "برای استفاده از چند عبارت اختیاری، می‌توانید حداقل یک عبارت WHERE غیرِاختیاری بگذارید و بعد عبارت‌های اختیاری‌ای را که با \"AND\" شروع می‌شوند اضافه کنید."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
+msgstr "وقتی از یک Field Filter استفاده می‌کنید، نام ستون نباید در SQL آورده شود. در عوض، متغیر باید در پنل کناری به یک فیلد مپ شود."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Read the full documentation"
+msgstr "مستندات کامل را بخوانید"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "Variable name"
+msgstr "نام متغیر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "How should users filter on this variable?"
+msgstr "کاربران باید چگونه روی این متغیر فیلتر کنند؟"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Select a default value…"
+msgstr "یک مقدار پیش‌فرض انتخاب کنید…"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "This filter is set to disabled in an embedded question."
+msgstr "این فیلتر در یک سؤال جاسازی‌شده روی غیرفعال تنظیم شده است."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "To always require a value, first visit embedding settings,\n"
+"make this filter editable or locked, re-publish the\n"
+"question, then return to this page."
+msgstr "برای اینکه همیشه یک مقدار لازم باشد، ابتدا به تنظیمات تعبیه‌سازی بروید،\n"
+"این فیلتر را قابل‌ویرایش یا قفل‌شده کنید،\n"
+"سؤال را دوباره منتشر کنید، سپس به این صفحه برگردید."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default parameter widget value"
+msgstr "مقدار پیش‌فرض ویجت پارامتر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default filter widget value"
+msgstr "مقدار پیش‌فرض ویجت فیلتر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+msgid "Table and field alias"
+msgstr "alias جدول و فیلد"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+#, javascript-format
+msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
+msgstr "فقط وقتی لازم است که کوئری برای اشاره به جدول فیلدِ مپ‌شده از alias استفاده کند. مثلاً اگر متغیر را به فیلد {0} مپ کنید، اما کوئری جدول {1} را با {2} alias کند، باید {3} را وارد کنید."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+msgid "Field to map to"
+msgstr "فیلد برای مپ‌کردن به"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "(required)"
+msgstr "(ضروری)"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Parameter widget label"
+msgstr "لیبل ویجت پارامتر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Filter widget label"
+msgstr "برچسب ویجت فیلتر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "Filter widget type"
+msgstr "نوع ویجت فیلتر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "There aren't any filter widgets for this type of field yet."
+msgstr "هنوز هیچ ویجت فیلتری برای این نوع فیلد وجود ندارد."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#, javascript-format
+msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
+msgstr "بیشتر مواقع می‌خواهید این را با یک clause {0} استفاده کنید، مثل {1}"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Table to map to"
+msgstr "جدولی برای مپ کردن به"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Use variable name as alias"
+msgstr "از نام متغیر به‌عنوان alias استفاده کنید"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "You can refer to this table by the variable name in other parts of the query."
+msgstr "می‌توانید در بخش‌های دیگر کوئری با نام متغیر به این جدول ارجاع دهید."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Field Filter"
+msgstr "فیلتر فیلد"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Variable type"
+msgstr "نوع متغیر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Variables and parameters"
+msgstr "متغیرها و پارامترها"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
+msgstr "برای پیکربندی در اینجا، یک متغیر مثل {{variable_name}} به کوئری‌تان اضافه کنید."
 
 #: frontend/src/metabase/parameters/components/UpdateFilterButton/getUpdateButtonProps.ts
 msgid "Set to default"
@@ -29064,6 +29297,31 @@ msgstr "{0} بارگذاری شد."
 msgid "Data Reference"
 msgstr "مرجع داده"
 
+#: frontend/src/metabase/querying/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
+#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
+#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
+msgid "Combine columns"
+msgstr "ستون‌ها را ترکیب کن"
+
+#: frontend/src/metabase/querying/click-actions/actions/CopyValueAction/CopyValueAction.tsx
+msgid "Copy value"
+msgstr "کپی مقدار"
+
+#: frontend/src/metabase/querying/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
+msgid "Extract part of column"
+msgstr "بخشی از ستون را استخراج کن"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "Save"
+msgstr "ذخیره"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+#, javascript-format
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "{0} this question to drill-through."
+msgstr "برای کاوش عمیق، این سؤال را {0}."
+
 #: frontend/src/metabase/querying/common/components/AggregationPicker/AggregationPicker.tsx
 msgid "Basic functions"
 msgstr "توابع پایه"
@@ -29367,18 +29625,13 @@ msgid "Run selected text"
 msgstr "متن انتخاب‌شده را اجرا کن"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
-msgid "Run query"
-msgstr "کوئری را اجرا کن"
-
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
 #, javascript-format
 msgid "({0} + enter)"
 msgstr "({0} + enter)"
 
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables"
-msgstr "متغیرها"
+#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+msgid "Preview the query"
+msgstr "نمایش پیش‌نمایش درخواست"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/RightClickPopover/RightClickPopover.tsx
 msgid "Run selection"
@@ -29471,28 +29724,8 @@ msgid "This may be the answer you’re looking for. If not, try removing or chan
 msgstr "ممکن است همین پاسخ مورد نظر شما باشد. اگر نه، سعی کنید فیلترهایتان را حذف یا تغییر دهید تا کمتر خاص باشند."
 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-#, javascript-format
-msgid "You can also {0} when there are some results."
-msgstr "وقتی نتیجه‌ای باشد، می‌توانید {0} هم انجام دهید."
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-msgid "get an alert"
-msgstr "یک هشدار بگیرید"
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "بازگشت به نتایج قبلی"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-#, javascript-format
-msgid "{0} active filter"
-msgid_plural "{0} active filters"
-msgstr[0] "{0} فیلتر فعال"
-msgstr[1] "{0} فیلترهای فعال"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-msgid "Filters"
-msgstr "فیلترها"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -29615,12 +29848,6 @@ msgid "{0} to navigate. {1} to select."
 msgstr "{0} برای پیمایش. {1} برای انتخاب."
 
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
-#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
-#: frontend/src/metabase/visualizations/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
-msgid "Combine columns"
-msgstr "ستون‌ها را ترکیب کن"
-
-#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 msgid "Extract columns"
 msgstr "ستون‌ها را استخراج کن"
 
@@ -29684,155 +29911,6 @@ msgstr "برای فیلترتان یک نام بگذارید…"
 #: frontend/src/metabase/querying/components/expressions/NameInput/utils.ts
 msgid "Give your expression a name…"
 msgstr "برای عبارتتان یک نام بگذارید…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Example:"
-msgstr "مثال:"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Try it"
-msgstr "امتحانش کن"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "What's this for?"
-msgstr "این به چه درد می‌خورد؟"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
-msgstr "متغیرها در کوئری‌های نیتیو به شما اجازه می‌دهند با استفاده از ویجت‌های فیلتر یا از طریق URL، مقادیر را به‌صورت پویا در کوئری‌هایتان جایگزین کنید."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
-msgstr "{0} یک متغیر در این الگوی پرسش ایجاد می‌کند که \"variable_name\" نامیده می‌شود. متغیرها می‌توانند در پانل کناری ویژگی دریافت کنند که رفتار آنها را تغییر می‌دهد. همه انواع متغیرها به جز \"فیلتر فیلد\" به‌صورت خودکار باعث ایجاد یک ابزارک فیلتر بر روی این پرسش خواهند شد؛ با فیلترهای فیلد، این اختیاری است. وقتی این ابزارک فیلتر پر شود، آن مقدار جایگزین متغیر در الگوی پرسش می‌شود."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "دادن نوع \"Field Filter\" به یک متغیر به شما اجازه می‌دهد سؤال‌ها را به ویجت‌های فیلتر داشبورد لینک کنید یا در سؤال SQL خود از انواع بیشتری از ویجت‌های فیلتر استفاده کنید. یک متغیر Field Filter، SQL مشابهِ SQL تولیدشده توسط سازندهٔ کوئری GUI هنگام اضافه‌کردن فیلتر روی ستون‌های موجود را درج می‌کند."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "هنگام افزودن یک متغیر Field Filter، باید آن را به یک فیلد مشخص مپ کنید. سپس می‌توانید انتخاب کنید یک ویجت فیلتر روی سؤال‌تان نمایش داده شود، اما حتی اگر این کار را نکنید هم حالا می‌توانید هنگام افزودن این سؤال به یک داشبورد، متغیر Field Filter خود را به یک فیلتر داشبورد مپ کنید. فیلترهای فیلد باید داخل یک عبارت \"WHERE\" استفاده شوند."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Optional Clauses"
-msgstr "عبارت‌های اختیاری"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr "براکت‌ها دورِ {0} یک عبارت اختیاری در قالب ایجاد می‌کنند. اگر \"variable\" تنظیم شده باشد، کل عبارت داخل قالب قرار می‌گیرد. اگر نه، کل عبارت نادیده گرفته می‌شود."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
-msgstr "برای استفاده از چند عبارت اختیاری، می‌توانید حداقل یک عبارت WHERE غیرِاختیاری بگذارید و بعد عبارت‌های اختیاری‌ای را که با \"AND\" شروع می‌شوند اضافه کنید."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr "وقتی از یک Field Filter استفاده می‌کنید، نام ستون نباید در SQL آورده شود. در عوض، متغیر باید در پنل کناری به یک فیلد مپ شود."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Read the full documentation"
-msgstr "مستندات کامل را بخوانید"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "Variable name"
-msgstr "نام متغیر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "How should users filter on this variable?"
-msgstr "کاربران باید چگونه روی این متغیر فیلتر کنند؟"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Select a default value…"
-msgstr "یک مقدار پیش‌فرض انتخاب کنید…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "This filter is set to disabled in an embedded question."
-msgstr "این فیلتر در یک سؤال جاسازی‌شده روی غیرفعال تنظیم شده است."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "To always require a value, first visit embedding settings,\n"
-"make this filter editable or locked, re-publish the\n"
-"question, then return to this page."
-msgstr "برای اینکه همیشه یک مقدار لازم باشد، ابتدا به تنظیمات تعبیه‌سازی بروید،\n"
-"این فیلتر را قابل‌ویرایش یا قفل‌شده کنید،\n"
-"سؤال را دوباره منتشر کنید، سپس به این صفحه برگردید."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default parameter widget value"
-msgstr "مقدار پیش‌فرض ویجت پارامتر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default filter widget value"
-msgstr "مقدار پیش‌فرض ویجت فیلتر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-msgid "Table and field alias"
-msgstr "alias جدول و فیلد"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-#, javascript-format
-msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
-msgstr "فقط وقتی لازم است که کوئری برای اشاره به جدول فیلدِ مپ‌شده از alias استفاده کند. مثلاً اگر متغیر را به فیلد {0} مپ کنید، اما کوئری جدول {1} را با {2} alias کند، باید {3} را وارد کنید."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-msgid "Field to map to"
-msgstr "فیلد برای مپ‌کردن به"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "(required)"
-msgstr "(ضروری)"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Parameter widget label"
-msgstr "لیبل ویجت پارامتر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Filter widget label"
-msgstr "برچسب ویجت فیلتر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "Filter widget type"
-msgstr "نوع ویجت فیلتر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "There aren't any filter widgets for this type of field yet."
-msgstr "هنوز هیچ ویجت فیلتری برای این نوع فیلد وجود ندارد."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
-#, javascript-format
-msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
-msgstr "بیشتر مواقع می‌خواهید این را با یک clause {0} استفاده کنید، مثل {1}"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Table to map to"
-msgstr "جدولی برای مپ کردن به"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Use variable name as alias"
-msgstr "از نام متغیر به‌عنوان alias استفاده کنید"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "You can refer to this table by the variable name in other parts of the query."
-msgstr "می‌توانید در بخش‌های دیگر کوئری با نام متغیر به این جدول ارجاع دهید."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Field Filter"
-msgstr "فیلتر فیلد"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Variable type"
-msgstr "نوع متغیر"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Variables and parameters"
-msgstr "متغیرها و پارامترها"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
-msgstr "برای پیکربندی در اینجا، یک متغیر مثل {{variable_name}} به کوئری‌تان اضافه کنید."
 
 #: frontend/src/metabase/querying/drills/utils/automatic-insights-drill.tsx
 msgid "X-ray"
@@ -30204,18 +30282,6 @@ msgstr "ستون، تجمیع، معیار یا Metric ناشناخته: {0}"
 msgid "Unknown column: {0}"
 msgstr "ستون ناشناخته: {0}"
 
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Search for a column…"
-msgstr "یک ستون را جستجو کنید…"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Add all"
-msgstr "همه را اضافه کنید"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Remove all"
-msgstr "همه را حذف کنید"
-
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterSubmitButton/FilterSubmitButton.tsx
 msgid "Apply filter"
 msgstr "اعمال فیلتر"
@@ -30254,8 +30320,8 @@ msgid "Pick columns"
 msgstr "انتخاب ستون‌ها"
 
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+#: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
 msgid "Add filters to narrow your answer"
 msgstr "برای محدود کردن پاسخ‌تان فیلتر اضافه کنید"
 
@@ -30377,34 +30443,6 @@ msgstr "تغییر جهت"
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx
 msgid "Formula"
 msgstr "فرمول"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Filtered by"
-msgstr "فیلترشده بر اساس"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Add filters"
-msgstr "فیلتر اضافه کن"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "created"
-msgstr "ایجاد کرد"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the title"
-msgstr "عنوان را ویرایش کرد"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the description"
-msgstr "توضیحات را ویرایش کرد"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the "
-msgstr " ویرایش کرد "
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "made some changes"
-msgstr "چندتا تغییر اعمال کرد"
 
 #: frontend/src/metabase/questions/components/ArchiveCardModal/ArchiveCardModal.tsx
 msgid "This question will be removed from its dashboard and any alerts using it."
@@ -30879,6 +30917,34 @@ msgstr " نوع انتخاب شد"
 #, javascript-format
 msgid "Results for \"{0}\""
 msgstr "نتایج برای \"{0}\""
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Filtered by"
+msgstr "فیلترشده بر اساس"
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Add filters"
+msgstr "فیلتر اضافه کن"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "created"
+msgstr "ایجاد کرد"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the title"
+msgstr "عنوان را ویرایش کرد"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the description"
+msgstr "توضیحات را ویرایش کرد"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the "
+msgstr " ویرایش کرد "
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "made some changes"
+msgstr "چندتا تغییر اعمال کرد"
 
 #: frontend/src/metabase/settings/use-admin-setting.ts
 #, javascript-format
@@ -33200,28 +33266,9 @@ msgstr "ساعت 24ساعته"
 msgid "Column formatting"
 msgstr "فرمت‌بندی ستون"
 
-#: frontend/src/metabase/visualizations/click-actions/actions/CopyValueAction/CopyValueAction.tsx
-msgid "Copy value"
-msgstr "کپی مقدار"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
-msgid "Extract part of column"
-msgstr "بخشی از ستون را استخراج کن"
-
 #: frontend/src/metabase/visualizations/click-actions/actions/HideColumnAction/HideColumnAction.tsx
 msgid "Hide column"
 msgstr "پنهان کردن ستون"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "Save"
-msgstr "ذخیره"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-#, javascript-format
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "{0} this question to drill-through."
-msgstr "برای کاوش عمیق، این سؤال را {0}."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
@@ -33474,7 +33521,6 @@ msgid "Rows {0}-{1} of first {2}"
 msgstr "ردیف {0}-{1} از {2} اول"
 
 #: frontend/src/metabase/visualizations/components/TrendInfo/TrendInfo.tsx
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
 #: metabase/channel/render/body.clj
 msgid "No change"
 msgstr "بدون تغییر"
@@ -33627,6 +33673,18 @@ msgstr "افزودن یا حذف ستون‌ها"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/ChartSettingTableColumns.tsx
 msgid "Done picking columns"
 msgstr "انتخاب ستون‌ها تمام شد"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Search for a column…"
+msgstr "یک ستون را جستجو کنید…"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Add all"
+msgstr "همه را اضافه کنید"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Remove all"
+msgstr "همه را حذف کنید"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleDescription.tsx
 msgid "Cells in this column will be tinted based on their values."
@@ -34374,11 +34432,6 @@ msgstr "پراکندگی"
 msgid "scatter plot"
 msgstr "نمودار پراکندگی"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/PreviousValueComparison/DetailCandidate.tsx
-#, javascript-format
-msgid "{0}: {1}"
-msgstr "{0}: {1}"
-
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 msgid "Value from another column"
 msgstr "مقدار از ستون دیگر"
@@ -34414,6 +34467,26 @@ msgstr "در مقایسه با {0}"
 msgid "N/A"
 msgstr "N/A"
 
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "DoD"
+msgstr "روزبه‌روز"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "WoW"
+msgstr "هفته‌به‌هفته"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "MoM"
+msgstr "ماه‌به‌ماه"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "QoQ"
+msgstr "فصل‌به‌فصل"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "YoY"
+msgstr "سال‌به‌سال"
+
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Primary number"
 msgstr "عدد اصلی"
@@ -34429,6 +34502,10 @@ msgstr "رنگ‌های مثبت/منفی جابه‌جا شوند؟"
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Compact number"
 msgstr "عدد فشرده"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
+msgid "Show comparison value"
+msgstr "نمایش مقدار مقایسه"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Trend"
@@ -36084,8 +36161,8 @@ msgstr "کنترل می‌کند چه نوع hostهایی به‌عنوان مق
 "- allow-all (بدون محدودیت شامل localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "http-channel-host-strategy نامعتبر است! فقط مقادیر external-only، allow-private و allow-all مجاز هستند."
+msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Invalid http-channel-allowed-networks! فقط مقادیر external-only، allow-private و allow-all مجاز هستند."
 
 #: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
@@ -37467,6 +37544,10 @@ msgstr "مقادیر پارامتر نامعتبر"
 #: metabase/embedding_rest/api/common.clj
 msgid "Invalid query params: could not determine slug for parameter with ID {0}"
 msgstr "پارامترهای جستجوی نامعتبر: نمی‌توان نام مستعار را برای پارامتری با شناسه {0} تعیین کرد"
+
+#: metabase/embedding_rest/api/common.clj
+msgid "The parameter {0} does not exist on this dashboard."
+msgstr "پارامتر {0} در این داشبورد وجود ندارد."
 
 #: metabase/embedding_rest/api/common.clj
 msgid "Cannot search for values: {0} is not an enabled parameter."
@@ -39178,6 +39259,14 @@ msgid "Access key ID"
 msgstr "شناسه کلید دسترسی"
 
 #: metabase/llm/provider.clj
+msgid "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile)."
+msgstr "برای احراز هویت با زنجیره پیش‌فرض اعتبارنامه‌های AWS (IRSA، EKS Pod Identity یا instance profile)، کلیدها را خالی بگذارید."
+
+#: metabase/llm/provider.clj
+msgid "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+msgstr "در Metabase Cloud، Bedrock همیشه با کلیدهای AWS خودتان احراز هویت می‌کند."
+
+#: metabase/llm/provider.clj
 msgid "Secret access key"
 msgstr "کلید دسترسی محرمانه"
 
@@ -39224,6 +39313,10 @@ msgstr "{0} برای {1} نامعتبر است."
 #: metabase/llm/provider.clj
 msgid "{0} needs one of: {1}."
 msgstr "{0} به یکی از این‌ها نیاز دارد: {1}."
+
+#: metabase/llm/provider.clj
+msgid "{0} takes {1} only together with {2}."
+msgstr "{0}، {1} را فقط همراه با {2} می‌پذیرد."
 
 #: metabase/llm/settings.clj
 msgid "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server."
@@ -39318,12 +39411,12 @@ msgid "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive 
 msgstr "Base URLِ API برای Gemini Enterprise Agent Platform. آن را تنظیم نکنید تا از روی location مشتق شود."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Access Key ID for Amazon Bedrock."
-msgstr "AWS Access Key ID برای Amazon Bedrock."
+msgid "The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "AWS Access Key ID برای Amazon Bedrock. در Metabase نصب‌شده روی سرور خودتان، همراه با secret access key خالی بگذارید تا با زنجیره پیش‌فرض اعتبارنامه‌های AWS (IRSA، EKS Pod Identity یا instance profile) احراز هویت شود؛ در Metabase Cloud هر دو کلید لازم‌اند."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Secret Access Key for Amazon Bedrock."
-msgstr "AWS Secret Access Key برای Amazon Bedrock."
+msgid "The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "AWS Secret Access Key برای Amazon Bedrock. در Metabase نصب‌شده روی سرور خودتان، همراه با access key ID خالی بگذارید تا با زنجیره پیش‌فرض اعتبارنامه‌های AWS (IRSA، EKS Pod Identity یا instance profile) احراز هویت شود؛ در Metabase Cloud هر دو کلید لازم‌اند."
 
 #: metabase/llm/settings.clj
 msgid "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials."
@@ -39444,6 +39537,14 @@ msgid "Whether the MCP server is enabled."
 msgstr "اینکه سرور MCP فعال است یا نه."
 
 #: metabase/mcp/settings.clj
+msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+msgstr "نام ابزارهای v2 MCP برای غیرفعال‌سازی، به‌صورت CSV ذخیره می‌شود. ابزارهای غیرفعال از tools/list مخفی می‌شوند و توسط tools/call رد می‌شوند."
+
+#: metabase/mcp/settings.clj
+msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
+msgstr "تعداد ساعتی که یک query handle ذخیره‌شدهٔ MCP نگه داشته می‌شود، قبل از این‌که تسک GC زمان‌بندی‌شده آن را حذف کند."
+
+#: metabase/mcp/settings.clj
 msgid "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode)."
 msgstr "کلاینت‌های محبوب MCP که برای CORS فعال شده‌اند، به‌صورت کلیدهای کلاینت CSV ذخیره می‌شوند (مثلاً claude، vscode)."
 
@@ -39523,6 +39624,26 @@ msgstr "کوئری‌ها را بسازید"
 #: metabase/metabot/scope.clj
 msgid "Execute queries"
 msgstr "کوئری‌ها را اجرا کنید"
+
+#: metabase/metabot/scope.clj
+msgid "See your Metabase content and data structure"
+msgstr "محتوای Metabase و ساختار داده‌تان را ببینید"
+
+#: metabase/metabot/scope.clj
+msgid "Create, edit and trash Metabase content"
+msgstr "ایجاد، ویرایش و انتقال محتوای Metabase به سطل زباله"
+
+#: metabase/metabot/scope.clj
+msgid "Run queries against your connected databases and see the results"
+msgstr "کوئری‌ها را روی دیتابیس‌های متصل‌تان اجرا کنید و نتایج را ببینید"
+
+#: metabase/metabot/scope.clj
+msgid "Write and run its own raw SQL on your connected databases"
+msgstr "نوشتن و اجرای SQL خامِ خودش روی دیتابیس‌های متصل‌تان"
+
+#: metabase/metabot/scope.clj
+msgid "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"
+msgstr "ارسال زمان‌بندی‌شدهٔ داده‌هایتان را به آدرس‌های ایمیل و کانال‌های Slackی که خودش انتخاب می‌کند تنظیم کند"
 
 #: metabase/metabot/scope.clj
 msgid "Create saved questions"
@@ -39685,12 +39806,28 @@ msgid "Azure API error (HTTP {0})"
 msgstr "خطای API ‏Azure (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
+msgstr "AWS Bedrock از زنجیره پیش‌فرض اعتبارنامه‌های AWS هیچ اعتبارنامه‌ای دریافت نکرد. برای این‌که ببینید هر provider چه گزارشی داده است، لاگ‌های Metabase را ببینید."
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported."
+msgstr "AWS Bedrock نتوانست اعتبارنامه‌های AWS خود را رفرش کند. برای این‌که ببینید AWS چه گزارش داده است، لاگ‌های Metabase را ببینید."
+
+#: metabase/metabot/self/bedrock.clj
 msgid "Invalid AWS Bedrock region {0}"
 msgstr "ریجن AWS Bedrock نامعتبر {0}"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock credentials are not configured"
-msgstr "کرندنشیال‌های AWS Bedrock پیکربندی نشده‌اند"
+msgid "AWS Bedrock cannot use a session token without its access key pair"
+msgstr "AWS Bedrock نمی‌تواند بدون جفت کلید دسترسی‌اش از session token استفاده کند"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock on Metabase Cloud requires an access key pair"
+msgstr "AWS Bedrock در Metabase Cloud به یک جفت کلید دسترسی نیاز دارد"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain"
+msgstr "AWS Bedrock به هر دو موردِ access key ID و secret access key نیاز دارد، یا به هیچ‌کدام تا از زنجیره پیش‌فرض اعتبارنامه‌ها استفاده کند"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AI proxy is not supported for AWS Bedrock"
@@ -40233,6 +40370,10 @@ msgid "The AI provider connection and model used for quick background tasks, suc
 msgstr "اتصال ارائه‌دهنده هوش مصنوعی و مدل مورد استفاده برای کارهای سریعِ پس‌زمینه، مثل نام‌گذاری گفتگوهای Metabot، با همان فرمت connection-key/model-name مانند `llm-metabot-provider`. مقدار پیش‌فرض سریع‌ترین مدلی است که اتصالِ اجراشده توسط Metabot ارائه می‌دهد."
 
 #: metabase/metabot/settings.clj
+msgid "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment."
+msgstr "وقتی مدل انتخاب‌شده پشتیبانی می‌کند، Metabot را در حالت سریعِ provider اجرا کنید. حالت سریع با هزینه بالاتر به‌ازای هر توکن سریع‌تر پاسخ می‌دهد؛ در Anthropic نیازمند حسابی است که در پیش‌نمایش پژوهشی fast-mode ثبت‌نام کرده باشد و با تعهد Priority Tier در دسترس نیست."
+
+#: metabase/metabot/settings.clj
 msgid "Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely."
 msgstr "تعداد روزهایی که ردیف‌ها در جدول‌های ai_usage_log، metabot_conversation و metabot_message نگه‌داری می‌شوند. حداقل مقدار 30 است؛ برای نگه‌داری نامحدود داده‌ها مقدار را 0 بگذارید."
 
@@ -40249,7 +40390,6 @@ msgid "Multiple databases share the name `{0}` (ids: {1}). The agent has no way 
 msgstr "چند پایگاه داده نام `{0}` را دارند (idها: {1}). ایجنت راهی برای رفع ابهام ندارد؛ از کاربر بخواهید نام یکی از پایگاه داده‌ها را تغییر دهد یا از یک شناسهٔ دقیق‌تر استفاده کند."
 
 #: metabase/metabot/tools/construct.clj
-#: metabase/models/serialization/resolve/mp.clj
 msgid "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
 msgstr "هیچ سؤال ذخیره‌شده یا مدلی با entity_id {0} پیدا نشد. entity_idها را ابداع یا حدس نزنید: ابتدا `read_resource` را با `metabase://question/<numeric id>` یا `metabase://model/<numeric id>` فراخوانی کنید، سپس `portable_entity_id` دقیق را از پاسخ در `source-card:` کپی کنید."
 
@@ -40450,24 +40590,24 @@ msgid "To make table and field names more human-friendly, Metabase will replace 
 msgstr "برای اینکه نام جدول‌ها و فیلدها human-friendlyتر شوند، Metabase خط تیره‌ها و underscoreها را با فاصله جایگزین می‌کند. هم‌زمان هر کلمه را Capitalize می‌کنیم، پس ‘last_visited_at’ تبدیل می‌شود به ‘Last Visited At’."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-msgstr "هیچ جدولی مطابق portable FK {0} پیدا نشد. برای فهرست کردن جدول‌ها و schemaهای موجود، `read_resource` را با `metabase://database/<numeric id>/tables` فراخوانی کنید، سپس با یک portable FK دقیق از پاسخ دوباره تلاش کنید."
+msgid "No table found matching portable FK {0}."
+msgstr "هیچ جدولی مطابق portable FK {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable table FK references database {0}, but metadata provider is for {1}."
 msgstr "FK جدول قابل‌حمل به پایگاه دادهٔ {0} ارجاع می‌دهد، اما ارائه‌دهندهٔ متادیتا برای {1} است."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
-msgstr "portable table FK {0} مبهم است: {1} کاندیدا. برای فهرست کردن جدول‌های موجود، `read_resource` را با `metabase://database/<numeric id>/tables` فراخوانی کنید و با یک portable FK مشخص‌تر دوباره تلاش کنید."
+msgid "Ambiguous portable table FK {0}: {1} candidates."
+msgstr "Ambiguous portable table FK {0}: {1} candidate."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable field FK {0} must have at least 4 elements."
 msgstr "FK فیلد قابل‌حمل {0} باید حداقل 4 عنصر داشته باشد."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
-msgstr "ستون {0} روی جدول {1}.{2}.{3} وجود ندارد. برای فهرست کردن ستون‌های این جدول، `read_resource` را با `metabase://table/<numeric id>/fields` فراخوانی کنید."
+msgid "No column {0} on table {1}.{2}.{3}."
+msgstr "ستون {0} روی جدول {1}.{2}.{3} وجود ندارد."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Ambiguous column {0} on table {1}.{2}.{3}."
@@ -40490,20 +40630,24 @@ msgid "No saved question, model, or metric found with id {0}."
 msgstr "هیچ سؤال ذخیره‌شده، مدل یا معیاری با id {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-msgstr "شناسهٔ سؤال ذخیره‌شده / مدل / معیار {0} متعلق به پایگاه دادهٔ {1} است، اما این resolver پایگاه دادهٔ {2} را هدف می‌گیرد."
+msgid "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+msgstr "Saved question / model / metric id {0} متعلق به دیتابیس {1} است، اما این کوئری دیتابیس {2} را هدف می‌گیرد. کوئری‌های بین‌دیتابیسی پشتیبانی نمی‌شوند."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "سؤال ذخیره‌شده، مدل یا معیار با id {0} entity_id ندارد، بنابراین نمی‌تواند به‌عنوان یک نمایش قابل‌حمل export شود."
 
 #: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with entity_id {0}."
+msgstr "هیچ سؤال ذخیره‌شده یا مدلی با entity_id {0} پیدا نشد."
+
+#: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
 msgstr "سؤال/مدل ذخیره‌شدهٔ {0} متعلق به پایگاه دادهٔ {1} است، اما این کوئری پایگاه دادهٔ {2} را هدف گرفته است. کوئری‌های بین‌پایگاه‌داده‌ای پشتیبانی نمی‌شوند."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-msgstr "هیچ معیاری با entity_id {0} پیدا نشد. entity_idها را ابداع یا حدس نزنید: جدولی را که مالک معیار است با `read_resource` (`metabase://table/<numeric id>`) بخوانید و `portable_entity_id` دقیق را از تگ `<measure>` آن کپی کنید."
+msgid "No measure found with entity_id {0}."
+msgstr "هیچ معیاری با entity_id {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
@@ -40514,8 +40658,8 @@ msgid "No measure found with id {0}."
 msgstr "هیچ معیاری با id {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Measure id {0} belongs to a table outside this metadata provider''s database."
-msgstr "معیار با id {0} به جدولی خارج از پایگاه دادهٔ این ارائه‌دهندهٔ متادیتا تعلق دارد."
+msgid "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "Measure id {0} متعلق به جدولی در دیتابیس دیگری غیر از این کوئری است. کوئری‌های بین‌دیتابیسی پشتیبانی نمی‌شوند."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
@@ -40526,28 +40670,28 @@ msgid "No segment found with id {0}."
 msgstr "هیچ بخشی با id {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Segment id {0} belongs to a table outside this metadata provider''s database."
-msgstr "بخش با id {0} به جدولی خارج از پایگاه دادهٔ این ارائه‌دهندهٔ متادیتا تعلق دارد."
+msgid "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "Segment id {0} متعلق به جدولی در دیتابیس دیگری غیر از این کوئری است. کوئری‌های بین‌دیتابیسی پشتیبانی نمی‌شوند."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "بخش با id {0} entity_id ندارد، بنابراین نمی‌توان آن را به‌صورت یک نمایش قابل‌حمل export کرد."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-msgstr "هیچ بخشی با entity_id {0} پیدا نشد. entity_idها را ابداع یا حدس نزنید: جدولی را که مالک بخش است با `read_resource` (`metabase://table/<numeric id>`) بخوانید و `portable_entity_id` دقیق را از تگ `<segment>` آن کپی کنید."
+msgid "No segment found with entity_id {0}."
+msgstr "هیچ بخشی با entity_id {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
 msgstr "بخش {0} به جدولی در پایگاه داده‌ای متفاوت از این کوئری تعلق دارد (id پایگاه دادهٔ مقصد {1}). کوئری‌های بین‌پایگاه‌داده‌ای پشتیبانی نمی‌شوند."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table with id {0} in metadata provider."
-msgstr "هیچ جدولی با id {0} در ارائه‌دهندهٔ متادیتا وجود ندارد."
+msgid "No table found with id {0}."
+msgstr "هیچ جدولی با id {0} پیدا نشد."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No field with id {0} in metadata provider."
-msgstr "هیچ فیلدی با id {0} در ارائه‌دهندهٔ متادیتا وجود ندارد."
+msgid "No field found with id {0}."
+msgstr "هیچ فیلدی با id {0} پیدا نشد."
 
 #: metabase/mq/settings.clj
 msgid "Maximum number of times a failed queue message will be retried before being dropped."
@@ -41009,6 +41153,10 @@ msgid "An error occurred while running the query."
 msgstr "هنگام اجرای کوئری خطایی رخ داد."
 
 #: metabase/pulse/api/pulse.clj
+msgid "Invalid :cards: each entry must be a card reference."
+msgstr "Invalid :cards: هر ورودی باید یک ارجاعِ کارت باشد."
+
+#: metabase/pulse/api/pulse.clj
 msgid "Non-admin users without subscription permissions are not allowed to add recipients"
 msgstr "کاربران غیر مدیر که مجوز اشتراک ندارند نمی‌توانند گیرندگان را اضافه کنند"
 
@@ -41071,6 +41219,10 @@ msgstr "شما مجوز مشاهدهٔ این نتیجهٔ کش‌شده را ن
 #: metabase/queries/card.clj
 msgid "Card does not have a parameter with the ID {0}"
 msgstr "کارت پارامتری با ID {0} ندارد"
+
+#: metabase/queries/card.clj
+msgid "The parameter {0} does not exist on this card."
+msgstr "پارامتر {0} در این کارت وجود ندارد."
 
 #: metabase/queries/models/card.clj
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
@@ -41154,8 +41306,8 @@ msgid "You do not have permissions to view Card {0}."
 msgstr "شما مجوز مشاهدهٔ کارت {0} را ندارید."
 
 #: metabase/query_permissions/impl.clj
-msgid "You must have data permissions to add a parameter referencing the Table {0}."
-msgstr "شما باید دسترسی‌های داده برای افزودن یک پارامتر ارجاع به جدول {0} داشته باشید."
+msgid "You must have data permissions to add a parameter referencing this Field."
+msgstr "برای افزودن پارامتری که به این Field ارجاع می‌دهد، باید مجوزهای داده داشته باشید."
 
 #: metabase/query_permissions/impl.clj
 msgid "You cannot save this Question because you do not have permissions to run its query."
@@ -41753,7 +41905,7 @@ msgstr "دیباگ جستجو برای مدل indexed-entity پشتیبانی ن
 
 #: metabase/search/filter.clj metabase/search/in_place/filter.clj
 #: metabase/task_history/api.clj metabase/transforms/models/util.clj
-#: metabase_enterprise/metabot_analytics/conversations.clj
+#: metabase_enterprise/metabot_analytics/db.clj
 msgid "Failed to parse datetime value: {0}"
 msgstr "تجزیهٔ مقدار datetime ناموفق بود: {0}"
 
@@ -41820,8 +41972,8 @@ msgid "Failed to load template ''{0}''. Did you remember to build the Metabase f
 msgstr "بارگذاری تمپلیت ''{0}'' ناموفق بود. یادتان هست فرانت‌اند Metabase را build کنید؟"
 
 #: metabase/server/settings.clj
-msgid "Allowed iframe hosts"
-msgstr "هاست‌های iframe مجاز"
+msgid "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list."
+msgstr "میزبان‌های iframe مجاز. به‌طور پیش‌فرض شامل فهرستی از میزبان‌های محبوب است؛ برای غیرفعال کردن فهرست پیش‌فرض، مقدار را روی '' '' تنظیم کنید."
 
 #: metabase/server/settings.clj
 msgid "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations."
@@ -42334,8 +42486,16 @@ msgid "Query failed"
 msgstr "کوئری شکست خورد"
 
 #: metabase/tiles/settings.clj
+msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Invalid map-tile-server-allowed-networks! فقط مقادیر external-only، allow-private و allow-all مجاز هستند."
+
+#: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
 msgstr "تمپلیت URL سرور tile نقشه که در ویژوالیزیشن‌های نقشه استفاده می‌شود؛ مثلاً از OpenStreetMaps یا MapBox."
+
+#: metabase/tiles/settings.clj
+msgid "Invalid map tile server URL: must be a relative path, or an http:// or https:// URL whose host is resolvable and permitted by map-tile-server-allowed-networks."
+msgstr "URL سرور کاشیِ نقشه نامعتبر است: باید یک مسیر نسبی باشد، یا یک URL با http:// یا https:// که میزبان آن قابل resolve باشد و توسط map-tile-server-allowed-networks مجاز باشد."
 
 #: metabase/timeline/api/timeline_event.clj
 msgid "Timeline with id {0} not found"
@@ -43022,9 +43182,25 @@ msgstr "نمی‌توان field_id، type یا hash_key را برای یک Field
 msgid ":values must be present to fetch :human_readable_values"
 msgstr "برای دریافت مقادیر قابل‌خواندن، مقادیر باید موجود باشند"
 
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out fetching field values."
+msgstr "واکاوی مقدارهای فیلد به‌دلیل timeout انجام نشد."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Too many field values fetches are already running. Please try again shortly."
+msgstr "در حال حاضر واکاوی‌های مقدارهای فیلدِ زیادی در حال اجراست. لطفاً کمی بعد دوباره تلاش کنید."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out waiting for field values."
+msgstr "انتظار برای مقدارهای فیلد به‌دلیل timeout تمام شد."
+
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid "Incompatible coercion strategy."
 msgstr "استراتژی coercion ناسازگار است."
+
+#: metabase/warehouse_schema_rest/api/field.clj
+msgid "Failed to scan field values. Check the server logs for the underlying error."
+msgstr "اسکن مقدارهای فیلد ناموفق بود. برای خطای اصلی، لاگ‌های سرور را بررسی کنید."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj

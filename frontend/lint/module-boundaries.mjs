@@ -224,7 +224,6 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
@@ -400,6 +399,8 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
+    "frontend/src/metabase/ScrollToTop.tsx",
+    "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
