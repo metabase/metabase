@@ -54,7 +54,7 @@ describe("scenarios > data studio > library", () => {
     cy.log("Create library via inline empty state");
     H.DataStudio.Library.libraryPage().within(() => {
       cy.findByText("A source of truth for analytics").should("be.visible");
-      cy.findByText("Create my Library").click();
+      cy.findByText("Create my semantic layer").click();
     });
 
     cy.wait("@createLibrary");
@@ -417,9 +417,9 @@ describe("scenarios > data studio > library", () => {
       H.modal().findByText("Data").should("be.visible");
       H.modal().button("Publish this table").click();
 
-      cy.log("Navigate back to Library via breadcrumbs");
+      cy.log("Navigate back to Semantic layer via breadcrumbs");
       H.DataStudio.breadcrumbs()
-        .findByRole("link", { name: "Library" })
+        .findByRole("link", { name: "Semantic layer" })
         .click();
 
       cy.log("Verify Data section shows the table (empty state hidden)");

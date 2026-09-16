@@ -93,7 +93,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
         <Stack gap="sm">
           {explanatorySentence && <Text>{explanatorySentence}</Text>}
           <Text>
-            {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+            {t`The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>
           <List spacing="sm">
             <ListItem
@@ -106,7 +106,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
             <ListItem
               title={t`Version control`}
-              description={t`Sync your Library to Git`}
+              description={t`Sync your semantic layer to git`}
             />
             <ListItem
               title={t`High trust`}
@@ -119,7 +119,10 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             <FormErrorMessage />
           </Box>
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-          <FormSubmitButton label={t`Create my Library`} variant="filled" />
+          <FormSubmitButton
+            label={t`Create my semantic layer`}
+            variant="filled"
+          />
         </Group>
       </Form>
     </FormProvider>
