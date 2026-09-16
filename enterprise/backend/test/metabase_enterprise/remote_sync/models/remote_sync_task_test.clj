@@ -455,7 +455,7 @@
 (deftest start-heartbeat!-beats-until-stopped-test
   (testing "the heartbeat writes on every interval and stops writing once the stop fn is called"
     (let [writes (atom 0)]
-      (with-redefs [remote-sync.db/touch-task! (fn [_task-id] (swap! writes inc) 1)]
+      (mt/with-dynamic-fn-redefs [remote-sync.db/touch-task! (fn [_task-id] (swap! writes inc) 1)]
         (let [stop! (rst/start-heartbeat! 1 20)]
           (try
             (is (true? (wait-until #(>= @writes 3) 2000)))
@@ -468,10 +468,10 @@
 (deftest start-heartbeat!-survives-write-failure-test
   (testing "a failing write does not end the heartbeat loop"
     (let [calls (atom 0)]
-      (with-redefs [remote-sync.db/touch-task! (fn [_task-id]
-                                                 (when (= 1 (swap! calls inc))
-                                                   (throw (ex-info "db down" {})))
-                                                 1)]
+      (mt/with-dynamic-fn-redefs [remote-sync.db/touch-task! (fn [_task-id]
+                                                               (when (= 1 (swap! calls inc))
+                                                                 (throw (ex-info "db down" {})))
+                                                               1)]
         (let [stop! (rst/start-heartbeat! 1 20)]
           (try
             (is (true? (wait-until #(>= @calls 3) 2000)))
