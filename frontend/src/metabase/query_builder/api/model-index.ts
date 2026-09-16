@@ -14,10 +14,10 @@ import type {
 export const modelIndexApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listModelIndexes: builder.query<ModelIndex[], ModelIndexesListQuery>({
-      query: (body) => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/model-index",
-        body,
+        params,
       }),
       providesTags: (modelIndexes = []) =>
         provideModelIndexListTags(modelIndexes),

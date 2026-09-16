@@ -163,10 +163,9 @@ export const dashboardApi = Api.injectEndpoints({
         ListCollectionItemsResponse,
         { id: DashboardId }
       >({
-        query: ({ id, ...body }) => ({
+        query: ({ id }) => ({
           method: "GET",
           url: `/api/dashboard/${id}/items`,
-          body,
         }),
       }),
       getValidDashboardFilterFields: builder.query<

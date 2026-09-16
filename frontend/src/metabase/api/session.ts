@@ -97,7 +97,7 @@ export const sessionApi = Api.injectEndpoints({
       query: (token) => ({
         method: "GET",
         url: "/api/session/password_reset_token_valid",
-        body: { token },
+        params: { token },
       }),
     }),
     forgotPassword: builder.mutation<void, string>({

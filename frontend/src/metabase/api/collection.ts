@@ -127,7 +127,8 @@ export const collectionApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "PUT",
-        url: "/api/collection/graph?skip-graph=true",
+        url: "/api/collection/graph",
+        params: { "skip-graph": true },
         body,
       }),
     }),
