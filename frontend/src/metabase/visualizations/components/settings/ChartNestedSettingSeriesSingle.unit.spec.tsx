@@ -88,6 +88,7 @@ function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
         type: "question",
       },
       data: {
+        insights: [{ col: "count" }],
         rows: [
           ["2022-04-01T00:00:00+02:00", 1],
           ["2022-05-01T00:00:00+02:00", 2],
@@ -125,6 +126,7 @@ function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
         type: "question",
       },
       data: {
+        insights: [{ col: "sum" }],
         rows: [
           ["2022-04-01T00:00:00+02:00", 3],
           ["2022-05-01T00:00:00+02:00", 4],
@@ -242,6 +244,41 @@ describe("ChartNestedSettingSeriesSingle", () => {
 
   it("should not render the `Show trend line for this series` switch when graph.show_trendline is falsy", async () => {
     setup({ series: getTrendlineSeries({}) });
+
+    const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
+    fireEvent.click(expandButtons[1]);
+
+    await waitFor(() => {
+      screen.getByTestId("chart-settings-widget-series_settings");
+    });
+
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-series_settings"),
+      ).queryByTestId("chart-settings-widget-show_series_trendline"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render the `Show trend line for this series` switch when the chart has multiple dimensions", async () => {
+    const [breakoutSeries] = getSeries();
+    setup({
+      series: [
+        {
+          ...breakoutSeries,
+          card: {
+            ...breakoutSeries.card,
+            visualization_settings: {
+              ...breakoutSeries.card.visualization_settings,
+              "graph.show_trendline": true,
+            },
+          },
+          data: {
+            ...breakoutSeries.data,
+            insights: [{ col: "count" }],
+          },
+        },
+      ],
+    });
 
     const expandButtons = screen.getAllByRole("img", { name: /ellipsis/i });
     fireEvent.click(expandButtons[1]);

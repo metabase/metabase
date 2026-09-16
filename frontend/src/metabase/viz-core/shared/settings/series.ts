@@ -1,5 +1,6 @@
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 import { getChartColor } from "../../lib/color-name";
 import type { ComputedVisualizationSettings } from "../../types";
@@ -88,6 +89,22 @@ export const getSeriesDefaultLineMissing = (
 export const getSeriesDefaultShowSeriesTrendline = (
   settings: ComputedVisualizationSettings,
 ) => settings["graph.show_trendline"];
+
+/**
+ * Trend lines need server-computed insights, which only exist on the raw
+ * series, and breakout series are grouped on the client, so charts with more
+ * than one dimension cannot draw them.
+ */
+export const isTrendLineUnavailable = (
+  series: Series,
+  settings: ComputedVisualizationSettings,
+) => {
+  const rawSeries =
+    isObjectWithRaw(series) && series._raw ? series._raw : series;
+  const { insights } = rawSeries[0].data;
+  const graphDimensions = settings["graph.dimensions"] ?? [];
+  return !insights || insights.length === 0 || graphDimensions.length > 1;
+};
 
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,

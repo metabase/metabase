@@ -42,7 +42,10 @@ import {
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
 } from "../../shared/settings/cartesian-chart";
-import { SERIES_COLORS_SETTING_KEY } from "../../shared/settings/series";
+import {
+  SERIES_COLORS_SETTING_KEY,
+  isTrendLineUnavailable,
+} from "../../shared/settings/series";
 import type {
   ComputedVisualizationSettings,
   SeriesSettingDefinition,
@@ -442,15 +445,6 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
     }),
     readDependencies: ["graph.metrics", "graph.dimensions"],
   },
-};
-
-const isTrendLineUnavailable = (
-  series: Series,
-  vizSettings: ComputedVisualizationSettings,
-) => {
-  const { insights } = series[0].data;
-  const graphDimensions = vizSettings["graph.dimensions"] ?? [];
-  return !insights || insights.length === 0 || graphDimensions.length > 1;
 };
 
 const isTrendLineDisabled = (

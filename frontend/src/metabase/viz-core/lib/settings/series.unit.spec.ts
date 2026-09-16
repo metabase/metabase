@@ -1,11 +1,20 @@
+import _ from "underscore";
+
+import { checkNotNull } from "metabase/utils/types";
+import type { Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
+  createMockDatasetData,
+  createMockInsight,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { getColors } from "./series";
+import { SERIES_SETTING_KEY } from "../../shared/settings/series";
+import type { ComputedVisualizationSettings } from "../../types";
+
+import { getColors, seriesSetting } from "./series";
 
 describe("Series unit settings", () => {
   describe("getColors", () => {
@@ -89,5 +98,159 @@ describe("Series unit settings", () => {
         COLUMN_2: "#509EE3", // This is the color for "count"
       });
     });
+  });
+});
+
+describe("series trend line settings", () => {
+  const getSeriesSettingDefinitions = (
+    series: Series,
+    settings: ComputedVisualizationSettings,
+  ) => {
+    const getProps = checkNotNull(
+      seriesSetting()[SERIES_SETTING_KEY]?.getProps,
+    );
+    const { getSettingDefinitionsForObject } = getProps(
+      series,
+      { [SERIES_SETTING_KEY]: {}, ...settings },
+      _.noop,
+      { series, settings },
+    );
+    return getSettingDefinitionsForObject(series, series[0]);
+  };
+
+  const getIsHidden = (
+    key: "show_series_trendline" | "trendline.color" | "trendline.style",
+    series: Series,
+    settings: ComputedVisualizationSettings,
+    seriesSettings: ComputedVisualizationSettings = {},
+  ) => {
+    const definitions = getSeriesSettingDefinitions(series, settings);
+    const getHidden = checkNotNull(definitions[key]?.getHidden);
+    return getHidden(series[0], seriesSettings, { series, settings });
+  };
+
+  const insights = [createMockInsight({ col: "count" })];
+
+  const multiMetricSeries = (): Series => [
+    createMockSingleSeries(
+      { name: "count" },
+      { data: createMockDatasetData({ insights }) },
+    ),
+    createMockSingleSeries(
+      { name: "sum" },
+      { data: createMockDatasetData({ insights }) },
+    ),
+  ];
+
+  // series produced by a breakout carry no insights; only the raw card does
+  const breakoutSeries = (): Series =>
+    Object.assign(
+      [
+        createMockSingleSeries(
+          { name: "Gadget" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+        createMockSingleSeries(
+          { name: "Gizmo" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+      ],
+      {
+        _raw: [
+          createMockSingleSeries(
+            {},
+            { data: createMockDatasetData({ insights }) },
+          ),
+        ],
+      },
+    );
+
+  const trendLineEnabled = { show_series_trendline: true };
+
+  it("should show the series trend line settings for multiple metrics with a single dimension", () => {
+    const settings = {
+      "graph.show_trendline": true,
+      "graph.dimensions": ["CREATED_AT"],
+    };
+
+    expect(
+      getIsHidden("show_series_trendline", multiMetricSeries(), settings),
+    ).toBe(false);
+    expect(
+      getIsHidden(
+        "trendline.color",
+        multiMetricSeries(),
+        settings,
+        trendLineEnabled,
+      ),
+    ).toBe(false);
+    expect(
+      getIsHidden(
+        "trendline.style",
+        multiMetricSeries(),
+        settings,
+        trendLineEnabled,
+      ),
+    ).toBe(false);
+  });
+
+  it("should hide the series trend line settings when the chart has multiple dimensions", () => {
+    const settings = {
+      "graph.show_trendline": true,
+      "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+    };
+
+    expect(
+      getIsHidden("show_series_trendline", breakoutSeries(), settings),
+    ).toBe(true);
+    expect(
+      getIsHidden(
+        "trendline.color",
+        breakoutSeries(),
+        settings,
+        trendLineEnabled,
+      ),
+    ).toBe(true);
+    expect(
+      getIsHidden(
+        "trendline.style",
+        breakoutSeries(),
+        settings,
+        trendLineEnabled,
+      ),
+    ).toBe(true);
+  });
+
+  it("should hide the series trend line settings when the series have no insights", () => {
+    const settings = {
+      "graph.show_trendline": true,
+      "graph.dimensions": ["CREATED_AT"],
+    };
+    const series: Series = [
+      createMockSingleSeries(
+        { name: "count" },
+        { data: createMockDatasetData({ insights: [] }) },
+      ),
+      createMockSingleSeries(
+        { name: "sum" },
+        { data: createMockDatasetData({ insights: [] }) },
+      ),
+    ];
+
+    expect(getIsHidden("show_series_trendline", series, settings)).toBe(true);
+    expect(
+      getIsHidden("trendline.color", series, settings, trendLineEnabled),
+    ).toBe(true);
+  });
+
+  it("should read insights from the raw series behind transformed series", () => {
+    const settings = {
+      "graph.show_trendline": true,
+      "graph.dimensions": ["CREATED_AT"],
+    };
+
+    expect(
+      getIsHidden("show_series_trendline", breakoutSeries(), settings),
+    ).toBe(false);
   });
 });

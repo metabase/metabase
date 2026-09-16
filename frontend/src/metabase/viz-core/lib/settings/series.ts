@@ -24,6 +24,7 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesTrendline,
   getSeriesDefaultShowSeriesValues,
+  isTrendLineUnavailable,
 } from "../../shared/settings/series";
 import type {
   ComputedVisualizationSettings,
@@ -41,6 +42,7 @@ const isSeriesTrendLineCustomizationHidden = (
   const { series = [], settings = {} } = extra ?? {};
   return (
     series.length <= 1 || // with one series the trend line is customized in the Display tab
+    isTrendLineUnavailable(series, settings) ||
     !settings["graph.show_trendline"] ||
     !seriesSettings.show_series_trendline
   );
@@ -258,6 +260,7 @@ export function seriesSetting({
         const { series = [], settings = {} } = extra ?? {};
         return (
           series.length <= 1 || // no need to show series-level control if there's only one series
+          isTrendLineUnavailable(series, settings) ||
           !settings["graph.show_trendline"] // don't show it unless this chart has a global setting;
         );
       },

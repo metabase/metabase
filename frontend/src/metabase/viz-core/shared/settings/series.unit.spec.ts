@@ -1,4 +1,10 @@
-import { getSeriesColors } from "./series";
+import {
+  createMockDatasetData,
+  createMockInsight,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
+
+import { getSeriesColors, isTrendLineUnavailable } from "./series";
 
 describe("getSeriesColors", () => {
   const mockSeriesKeys = ["Series A", "Series B", "Series C"];
@@ -160,5 +166,74 @@ describe("getSeriesColors", () => {
     );
 
     expect(result["Display Title"]).toBe("#CUSTOM_COLOR");
+  });
+});
+
+describe("isTrendLineUnavailable", () => {
+  const seriesWithInsights = () => [
+    createMockSingleSeries(
+      {},
+      {
+        data: createMockDatasetData({
+          insights: [createMockInsight({ col: "count" })],
+        }),
+      },
+    ),
+  ];
+
+  it("should be available with insights and a single dimension", () => {
+    expect(
+      isTrendLineUnavailable(seriesWithInsights(), {
+        "graph.dimensions": ["CREATED_AT"],
+      }),
+    ).toBe(false);
+  });
+
+  it("should be unavailable without insights", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: createMockDatasetData({ insights: [] }) },
+      ),
+    ];
+
+    expect(
+      isTrendLineUnavailable(series, { "graph.dimensions": ["CREATED_AT"] }),
+    ).toBe(true);
+  });
+
+  it("should be unavailable with multiple dimensions", () => {
+    expect(
+      isTrendLineUnavailable(seriesWithInsights(), {
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      }),
+    ).toBe(true);
+  });
+
+  it("should read insights from the raw series behind a transformed series", () => {
+    const transformedSeries = Object.assign(
+      [
+        createMockSingleSeries(
+          { name: "Gadget" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+        createMockSingleSeries(
+          { name: "Gizmo" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+      ],
+      { _raw: seriesWithInsights() },
+    );
+
+    expect(
+      isTrendLineUnavailable(transformedSeries, {
+        "graph.dimensions": ["CREATED_AT"],
+      }),
+    ).toBe(false);
+    expect(
+      isTrendLineUnavailable(transformedSeries, {
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      }),
+    ).toBe(true);
   });
 });
