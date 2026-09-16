@@ -283,7 +283,7 @@
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
       (for [{transform-id :id :as transform} transforms]
         (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
-              transform (assoc transform :last_run last-run)]
+              transform (assoc transform :last_run (dissoc last-run :last_heartbeat))]
           (if (and (= status :succeeded) checkpoint_hi_value)
             ;; ensure consistency of last_checkpoint_value with last_run
             (if (:last_checkpoint_value transform)
@@ -484,7 +484,7 @@
                                         ;; the importer skips ref resolution.
                                         (-> source
                                             (assoc :serdes/unresolved true)
-                                            (m/update-existing :query assoc :database nil)
+                                            (m/update-existing :query #(-> % (dissoc :lib/metadata) (assoc :database nil)))
                                             (m/update-existing :source-database (constantly nil))
                                             (m/update-existing :source-tables
                                                                #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %))
@@ -492,7 +492,9 @@
                                     :import
                                     (fn [source]
                                       (if (:serdes/unresolved source)
-                                        (dissoc source :serdes/unresolved)
+                                        (-> source
+                                            (dissoc :serdes/unresolved)
+                                            (m/update-existing :query dissoc :lib/metadata))
                                         (-> source
                                             (m/update-existing :query serdes/import-mbql)
                                             (m/update-existing :source-database import-maybe-int-database-fk)

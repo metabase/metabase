@@ -161,6 +161,22 @@
                   (is (= (when fast? "fast-mode-2026-02-01")
                          (get-in @captured [:headers "anthropic-beta"]))))))))))))
 
+(deftest call-llm-serves-azure-and-google-connections-test
+  (testing "the Azure and Google adapters accept their connection's resolved config, registry defaults included"
+    (llm.tu/with-default-connections
+      (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
+                                    ["azure/anthropic/claude-deployment"         "/v1/messages"]
+                                    ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5@20251001"]]]
+        (testing model-ref
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (reset! captured req)
+                                                                  {:status 200 :body []})]
+              (run! identity (self/call-llm model-ref nil [{:role :user :content "hi"}] {} {:tag "agent"}))
+              (is (str/includes? (str (:url @captured)) url-part)))))))))
+
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
     (let [captured (atom nil)]

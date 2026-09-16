@@ -1270,6 +1270,33 @@
               (is (= 1
                      @called)))))))))
 
+(deftest save-card-metadata-asynchronously-test
+  (testing "POST and PUT /api/card save result metadata that is not ready within the sync wait once it is computed"
+    (let [orig    (mt/original-fn #'card.metadata/legacy-result-metadata-future)
+          release (atom (promise))
+          mp      (mt/metadata-provider)]
+      (mt/with-dynamic-fn-redefs [card.metadata/legacy-result-metadata-future (fn [query]
+                                                                                (let [gate     @release
+                                                                                      metadata (orig query)]
+                                                                                  (future @gate @metadata)))]
+        (mt/with-model-cleanup [:model/Card]
+          (let [saved-names (fn [card-id n]
+                              (map norm (u/poll {:thunk       #(t2/select-one-fn :result_metadata :model/Card :id card-id)
+                                                 :done?       #(= n (count %))
+                                                 :timeout-ms  10000
+                                                 :interval-ms 50})))
+                card        (mt/user-http-request :crowberto :post 200 "card"
+                                                  (card-with-name-and-query (mt/random-name)
+                                                                            (lib/native-query mp "SELECT count(*) AS n FROM venues")))]
+            (is (empty? (:result_metadata card)))
+            (deliver @release true)
+            (is (= ["N"] (saved-names (:id card) 1)))
+            (reset! release (promise))
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:dataset_query (lib/native-query mp "SELECT count(*) AS n, max(price) AS p FROM venues")})
+            (deliver @release true)
+            (is (= ["N" "P"] (saved-names (:id card) 2)))))))))
+
 (deftest ^:parallel updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
     (testing "Patching the card _without_ the query does not clear the metadata"

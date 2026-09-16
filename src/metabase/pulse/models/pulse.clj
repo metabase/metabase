@@ -246,9 +246,8 @@
                                  "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
-  "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, `CardBase`, or a full Card row
-  (as `card->ref` accepts \"a card or id\")."
-  [:or HybridPulseCard CardRef CardBase :metabase.queries.schema/card])
+  "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
+  [:or HybridPulseCard CardRef CardBase])
 
 (def ^:private RecipientInput
   "One entry of `PulseChannelInput`'s `:recipients`: either a Metabase User (by `:id`) or a raw email address."
@@ -544,7 +543,7 @@
 
 (mu/defn card->ref :- CardRef
   "Create a card reference from a card or id"
-  [card :- CoercibleToCardRef]
+  [card :- [:or CoercibleToCardRef :metabase.queries.schema/card]]
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)

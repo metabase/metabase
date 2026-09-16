@@ -1875,6 +1875,36 @@
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
 
+(deftest numeric-parameters-json-query-param-test
+  (testing "Card and dashcard query endpoints accept numeric values in the `parameters` JSON query param"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (-> (lib/native-query (mt/metadata-provider)
+                                                                                                    "SELECT count(*) FROM orders WHERE quantity = {{qty}}")
+                                                                                  (lib/with-template-tags
+                                                                                    {"qty" {:id           "_qty_tag_"
+                                                                                            :name         "qty"
+                                                                                            :display-name "Quantity"
+                                                                                            :type         :number}}))
+                                                            :enable_embedding true
+                                                            :embedding_params {:qty "enabled"}}
+                       :model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_params {:qty "enabled"}
+                                                   :parameters       [{:id "_qty_" :slug "qty" :name "Quantity" :type :number/=}]}
+                       :model/DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
+                                                      :card_id            card-id
+                                                      :parameter_mappings [{:parameter_id "_qty_"
+                                                                            :card_id      card-id
+                                                                            :target       [:variable [:template-tag "qty"]]}]}]
+          (let [expected (mt/rows (client/client :get 202 (card-query-url card "") :qty "1"))]
+            (is (pos? (ffirst expected)))
+            (testing "Card"
+              (is (= expected
+                     (mt/rows (client/client :get 202 (card-query-url card "") :parameters (json/encode {:qty 1}))))))
+            (testing "Dashcard"
+              (is (= expected
+                     (mt/rows (client/client :get 202 (dashcard-url dashcard) :parameters (json/encode {:qty 1}))))))))))))
+
 (deftest biginteger-numeric-param-between-test
   (testing "Embedded numeric params with mixed long and biginteger values in a between filter should be correctly applied"
     (mt/dataset test-data
