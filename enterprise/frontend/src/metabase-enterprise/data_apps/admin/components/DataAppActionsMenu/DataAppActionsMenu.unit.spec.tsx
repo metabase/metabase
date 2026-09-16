@@ -11,19 +11,16 @@ const setup = ({
   enabled = true,
   canRemove = false,
   resourceCollectionId = 9,
-  permissionGroupId = 9,
 }: {
   enabled?: boolean;
   canRemove?: boolean;
   resourceCollectionId?: number | null;
-  permissionGroupId?: number | null;
 } = {}) => {
   const app = createMockDataApp({
     name: "sales",
     display_name: "Sales",
     enabled,
     resource_collection_id: resourceCollectionId,
-    permission_group_id: permissionGroupId,
   });
   renderWithProviders(
     <>
@@ -56,10 +53,10 @@ describe("DataAppActionsMenu", () => {
     expect(menuItems).toHaveLength(3);
     expect(menuItems[0]).toHaveTextContent("View resources");
     expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
-    expect(menuItems[1]).toHaveTextContent("Manage user access");
+    expect(menuItems[1]).toHaveTextContent("Manage group access");
     expect(menuItems[1]).toHaveAttribute(
       "href",
-      "/admin/settings/apps/sales/users",
+      "/admin/settings/apps/sales/groups",
     );
     expect(menuItems[2]).toHaveTextContent("Disable");
   });
@@ -74,14 +71,13 @@ describe("DataAppActionsMenu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not show the group link before an app has a permission group", async () => {
-    setup({ permissionGroupId: null });
-
+  it("shows group management for an app without a collection", async () => {
+    setup({ resourceCollectionId: null });
     await openMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: "Manage user access" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("menuitem", { name: "Manage group access" }),
+    ).toBeInTheDocument();
   });
 
   it("should show a toast when toggling enabled fails", async () => {

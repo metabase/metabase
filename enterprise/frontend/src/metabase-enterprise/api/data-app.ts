@@ -1,8 +1,9 @@
 import type {
+  AddDataAppGroupsRequest,
   DataApp,
+  DataAppGroup,
   DataAppRepoStatus,
-  DataAppUserPermissionWarning,
-  GetDataAppUserPermissionWarningsRequest,
+  RemoveDataAppGroupRequest,
   SetDataAppEnabledRequest,
 } from "metabase-types/api";
 
@@ -42,15 +43,31 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [REPO_STATUS_TAG],
     }),
-    getDataAppUserPermissionWarnings: builder.query<
-      DataAppUserPermissionWarning[],
-      GetDataAppUserPermissionWarningsRequest
-    >({
-      query: ({ name, user_ids }) => ({
-        method: "POST",
-        url: `/api/apps/${encodeURIComponent(name)}/user-permission-warnings`,
-        body: { user_ids },
+    getDataAppGroups: builder.query<DataAppGroup[], string>({
+      query: (name) => ({
+        method: "GET",
+        url: `/api/apps/${encodeURIComponent(name)}/groups`,
       }),
+      providesTags: (_, __, name) => [idTag("data-app", name)],
+    }),
+    addDataAppGroups: builder.mutation<DataAppGroup[], AddDataAppGroupsRequest>(
+      {
+        query: ({ name, group_ids }) => ({
+          method: "POST",
+          url: `/api/apps/${encodeURIComponent(name)}/groups`,
+          body: { group_ids },
+        }),
+        invalidatesTags: (_, error, { name }) =>
+          invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+      },
+    ),
+    removeDataAppGroup: builder.mutation<void, RemoveDataAppGroupRequest>({
+      query: ({ name, group_id }) => ({
+        method: "DELETE",
+        url: `/api/apps/${encodeURIComponent(name)}/groups/${group_id}`,
+      }),
+      invalidatesTags: (_, error, { name }) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
     }),
     setDataAppEnabled: builder.mutation<DataApp, SetDataAppEnabledRequest>({
       query: ({ name, enabled }) => ({
@@ -76,7 +93,9 @@ export const {
   useListDataAppsQuery,
   useGetDataAppQuery,
   useGetDataAppRepoStatusQuery,
-  useGetDataAppUserPermissionWarningsQuery,
+  useGetDataAppGroupsQuery,
+  useAddDataAppGroupsMutation,
+  useRemoveDataAppGroupMutation,
   useSetDataAppEnabledMutation,
   useDeleteDataAppMutation,
 } = dataAppApi;

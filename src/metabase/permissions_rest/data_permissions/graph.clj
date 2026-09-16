@@ -638,12 +638,6 @@
        (assoc-in ks new-value)
        update-data-perms-graph!*)))
 
-(defenterprise reconcile-data-app-permissions!
-  "Update data app groups after ordinary permissions change, within the same permissions transaction."
-  metabase-enterprise.data-apps.permissions
-  [_database-ids]
-  nil)
-
 (mu/defn update-data-perms-graph!
   "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
   impersonations and sandboxes are consistent if necessary."
@@ -655,8 +649,7 @@
          (check-audit-db-permissions group-updates)
          (update-data-perms-graph!* group-updates)
          (delete-impersonations-if-needed-after-permissions-change! group-updates)
-         (delete-gtaps-if-needed-after-permissions-change! group-updates)
-         (reconcile-data-app-permissions! (into #{} (mapcat keys) (vals group-updates)))))))
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks        :- [:vector [:or :int :string :keyword]]
