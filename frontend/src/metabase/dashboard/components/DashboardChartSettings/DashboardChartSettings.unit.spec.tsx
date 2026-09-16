@@ -84,52 +84,50 @@ describe("DashboardChartSettings", () => {
 describe("DashboardChartSettings trend line customization", () => {
   // the card name differs from the metric key so a write under the wrong key
   // would be caught
+  const trendLineCard = createMockCard({
+    name: "Orders over time",
+    display: "line",
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.metrics": ["count"],
+      "graph.show_trendline": true,
+    },
+  });
+
   const getTrendLineSeries = (): Series => [
-    createMockSingleSeries(
-      {
-        name: "Orders over time",
-        display: "line",
-        visualization_settings: {
-          "graph.dimensions": ["CREATED_AT"],
-          "graph.metrics": ["count"],
-          "graph.show_trendline": true,
-        },
-      },
-      {
-        data: createMockDatasetData({
-          rows: [
-            ["2024-01-01T00:00:00Z", 1],
-            ["2024-02-01T00:00:00Z", 2],
-          ],
-          cols: [
-            createMockColumn({
-              name: "CREATED_AT",
-              display_name: "Created At",
-              base_type: "type/DateTime",
-              effective_type: "type/DateTime",
-              unit: "month",
-            }),
-            createMockColumn({
-              name: "count",
-              display_name: "Count",
-              base_type: "type/BigInteger",
-              effective_type: "type/BigInteger",
-              source: "aggregation",
-            }),
-          ],
-          insights: [createMockInsight({ col: "count" })],
-        }),
-      },
-    ),
+    createMockSingleSeries(trendLineCard, {
+      data: createMockDatasetData({
+        rows: [
+          ["2024-01-01T00:00:00Z", 1],
+          ["2024-02-01T00:00:00Z", 2],
+        ],
+        cols: [
+          createMockColumn({
+            name: "CREATED_AT",
+            display_name: "Created At",
+            base_type: "type/DateTime",
+            effective_type: "type/DateTime",
+            unit: "month",
+          }),
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            source: "aggregation",
+          }),
+        ],
+        insights: [createMockInsight({ col: "count" })],
+      }),
+    }),
   ];
 
   it("should save the single series trend line style into the dashcard series settings", async () => {
     const onChange = jest.fn();
-    const series = getTrendLineSeries();
     setup({
-      series,
-      dashcard: createMockDashboardCard({ card: series[0].card }),
-      settings: series[0].card.visualization_settings,
+      series: getTrendLineSeries(),
+      dashcard: createMockDashboardCard({ card: trendLineCard }),
+      settings: trendLineCard.visualization_settings,
       onChange,
     });
 

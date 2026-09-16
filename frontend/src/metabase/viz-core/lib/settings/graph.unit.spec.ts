@@ -327,7 +327,7 @@ describe("GRAPH_TREND_SETTINGS", () => {
       "graph.dimensions": ["FOO"],
       series_settings: seriesSettings,
       series: (key: LegacySeriesSettingsObjectKey) =>
-        seriesSettings[key.card.name] ?? {},
+        seriesSettings[key.card.name ?? ""] ?? {},
     });
 
     describe("graph.trendline_color", () => {

@@ -6,12 +6,12 @@ import { mergeLazily } from "metabase/utils/merge-lazily";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  LineStyle,
   Series,
   SeriesSettings,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isLineStyle } from "metabase-types/guards";
 
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
@@ -547,15 +547,16 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
           icon: "line_style_dotted" as const,
         },
       ],
-      onChange: (value: LineStyle) =>
-        updateSingleSeriesTrendLineSetting(
-          series,
-          vizSettings,
-          onChangeSettings,
-          {
-            "trendline.style": value,
-          },
-        ),
+      onChange: (value: string) => {
+        if (isLineStyle(value)) {
+          updateSingleSeriesTrendLineSetting(
+            series,
+            vizSettings,
+            onChangeSettings,
+            { "trendline.style": value },
+          );
+        }
+      },
     }),
     getHidden: isSingleSeriesTrendLineSettingHidden,
     readDependencies: ["series", "graph.show_trendline"],

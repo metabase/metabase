@@ -4,7 +4,7 @@ import type { PillSize } from "metabase/common/components/ColorPill";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Box } from "metabase/ui";
+import { Box, Title } from "metabase/ui";
 import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
 
@@ -68,7 +68,11 @@ export const ChartSettingColorPicker = ({
         }
         pillSize={pillSize}
       />
-      {title && <h4 className={S.title}>{title}</h4>}
+      {title && (
+        <Title order={4} fz="md" ml={bordered ? "lg" : "sm"}>
+          {title}
+        </Title>
+      )}
     </Box>
   );
 };

@@ -9,6 +9,7 @@ import { QuestionChartSettings } from "metabase/visualizations/components/ChartS
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
+import { createMockInsight } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
@@ -274,7 +275,7 @@ describe("ChartNestedSettingSeriesSingle", () => {
           },
           data: {
             ...breakoutSeries.data,
-            insights: [{ col: "count" }],
+            insights: [createMockInsight({ col: "count" })],
           },
         },
       ],
