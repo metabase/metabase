@@ -27,12 +27,13 @@
 
 (set! *warn-on-reflection* true)
 
-;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
+;; To simplify passing large amounts of arguments around, the logging functions below take an "info" map that
 ;; looks like
 ;;
-;;     {:request ..., :response ..., :start-time ..., :call-count-fn ..., :route-template-carrier ...}
+;;     {:request ..., :response ..., :start-time ..., :call-count-fn ..., :diag-info-fn ..., :log-context ...}
 ;;
-;; This map is created in `log-api-call` at the bottom of this namespace.
+;; This map is built in `log-api-call` at the bottom of this namespace, once a response exists. API-key usage
+;; recording is a separate concern with its own inputs — see [[record-api-key-usage!]] — and never touches it.
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Getting & Formatting Request/Response Info                                   |
@@ -207,8 +208,7 @@
   (= "api-key" (:embedding/auth-method request)))
 
 (defn- record-api-key-usage!
-  "Record API-key usage analytics for a completed request, then return `info` unchanged so this can sit in the
-  `respond` chain next to the logging.
+  "Record API-key usage analytics for a completed request.
 
   Hands the recorder the raw `request`/`response` plus the handful of values only this middleware can supply:
   `route-template` (from the carrier — nil for a request that matched no endpoint and for raw-Compojure handlers that
@@ -222,7 +222,7 @@
 
   Best-effort throughout: the recorders swallow their own failures, and this catches anything else, so usage
   analytics can never fail a request or alter its response."
-  [{:keys [request response start-time route-template-carrier] :as info}]
+  [request response route-template-carrier start-time]
   (when (api-key-request? request)
     (try
       (api-keys.usage/record-api-key-usage!
@@ -231,8 +231,7 @@
         :duration-ms    (long (u/since-ms start-time))
         :occurred-at    (t/offset-date-time)})
       (catch Throwable e
-        (log/warn e "Error recording API key usage"))))
-  info)
+        (log/warn e "Error recording API key usage")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -269,19 +268,19 @@
       (t2/with-call-count [call-count-fn]
         (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
           (let [;; only API-key requests need to know which route matched, and only they pay for finding out
-                carrier        (when (api-key-request? request)
-                                 (volatile! nil))
-                request        (cond-> request
-                                 carrier (assoc api.macros/route-template-carrier-key carrier))
-                info           {:request                request
-                                :route-template-carrier carrier
-                                :start-time             (u/start-timer)
-                                :call-count-fn          call-count-fn
-                                :diag-info-fn           diag-info-fn}
-                response->info (fn [response]
-                                 (assoc info
-                                        :response response
-                                        :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
-                                                                            api/*current-user-id*)}))
-                respond        (comp respond logged-response record-api-key-usage! response->info)]
-            (handler request respond raise)))))))
+                carrier    (when (api-key-request? request)
+                             (volatile! nil))
+                request    (cond-> request
+                             carrier (assoc api.macros/route-template-carrier-key carrier))
+                start-time (u/start-timer)
+                respond*   (fn [response]
+                             (record-api-key-usage! request response carrier start-time)
+                             (logged-response {:request       request
+                                               :response      response
+                                               :start-time    start-time
+                                               :call-count-fn call-count-fn
+                                               :diag-info-fn  diag-info-fn
+                                               :log-context   {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                                     api/*current-user-id*)}})
+                             (respond response))]
+            (handler request respond* raise)))))))
