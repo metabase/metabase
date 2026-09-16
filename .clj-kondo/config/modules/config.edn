@@ -3551,7 +3551,6 @@
    :api  #{metabase-enterprise.api-keys.init}
    :uses #{analytics
            api-keys
-           batch-processing
            metabot
            premium-features
            request

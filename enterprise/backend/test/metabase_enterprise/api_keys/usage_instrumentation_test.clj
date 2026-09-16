@@ -20,10 +20,14 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
-(defn- rows-for [api-key-id]
+(defn- rows-for!
+  "Forces the pending usage-log rows to flush before reading — they coalesce in memory between
+  scheduled flushes, so a row written moments ago may not be on disk yet."
+  [api-key-id]
+  (#'ee-usage/flush-usage-logs!)
   (t2/select :model/ApiKeyUsageLog :api_key_id api-key-id {:order-by [[:id :asc]]}))
 
-(defn- last-used-at
+(defn- last-used-at!
   "Forces the pending `last_used_at` stamps to flush before reading — they coalesce in memory between
   scheduled flushes, so a stamp made moments ago may not be on disk yet."
   [api-key-id]
@@ -35,27 +39,25 @@
 
 (defn- do-with-api-key!
   "Create a real API key over the API, run `f` with its unmasked key and id, then clean up the key and its usage rows.
-  The usage-log row goes through a Grouper queue, so `synchronous-batch-updates` is forced on for the
-  duration — otherwise it would only land a batch interval later, on another thread. The `last_used_at`
-  stamp coalesces in memory instead; see [[last-used-at]]."
+  Both the usage-log row and the `last_used_at` stamp coalesce in memory between scheduled flushes —
+  see [[rows-for!]] and [[last-used-at!]], which force a flush before reading."
   [f]
-  (mt/with-temporary-setting-values [synchronous-batch-updates true]
-    (let [{unmasked-key :unmasked_key, api-key-id :id}
-          (mt/user-http-request :crowberto :post 200 "api-key"
-                                {:group_id (:id (perms/all-users-group))
-                                 :name     (str (random-uuid))})]
-      (try
-        (f unmasked-key api-key-id)
-        (finally
-          (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id)
-          (t2/delete! :model/ApiKey :id api-key-id))))))
+  (let [{unmasked-key :unmasked_key, api-key-id :id}
+        (mt/user-http-request :crowberto :post 200 "api-key"
+                              {:group_id (:id (perms/all-users-group))
+                               :name     (str (random-uuid))})]
+    (try
+      (f unmasked-key api-key-id)
+      (finally
+        (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id)
+        (t2/delete! :model/ApiKey :id api-key-id)))))
 
 (deftest api-key-request-is-recorded-test
   (testing "an API-key-authenticated request to a defendpoint records one row, attributed to the key that made it"
     (do-with-api-key!
      (fn [unmasked-key api-key-id]
        (client/client :get 200 "user/current" (api-key-headers unmasked-key))
-       (let [[row :as rows] (rows-for api-key-id)]
+       (let [[row :as rows] (rows-for! api-key-id)]
          (is (= 1 (count rows)))
          (testing "the route template made it up from the routing tree — this is the whole point of the hook"
            (is (= "/api/user/current" (:route_template row))))
@@ -69,7 +71,7 @@
          (testing "embedding_client is absent — the common case, no X-Metabase-Client header sent"
            (is (nil? (:embedding_client row)))))
        (testing "and last_used_at is stamped"
-         (is (some? (last-used-at api-key-id))))))))
+         (is (some? (last-used-at! api-key-id))))))))
 
 (deftest api-key-request-records-embedding-client-test
   (testing "the X-Metabase-Client header, when present, is recorded alongside client_name"
@@ -78,7 +80,7 @@
        (client/client :get 200 "user/current"
                       (update (api-key-headers unmasked-key) :request-options
                               update :headers assoc "x-metabase-client" "embedding-sdk-react"))
-       (let [[row] (rows-for api-key-id)]
+       (let [[row] (rows-for! api-key-id)]
          (is (= "embedding-sdk-react" (:embedding_client row)))
          (testing "client_name stays the User-Agent classification — unaffected by the header"
            (is (= "metabase-cli" (:client_name row)))))))))
@@ -92,7 +94,7 @@
                               update :headers assoc
                               "x-metabase-client" "embedding-sdk-react"
                               "x-metabase-embed-referrer" "https://example.com/app"))
-       (let [[row] (rows-for api-key-id)]
+       (let [[row] (rows-for! api-key-id)]
          (is (= "embedding-sdk-react" (:embedding_client row)))
          (is (= "example.com" (:embedding_hostname row))))))))
 
@@ -103,7 +105,7 @@
        ;; also the error path: `check-404` *throws*, so this response is built by `catch-api-exceptions` from the
        ;; exception rather than by the endpoint. The route template still has to survive that.
        (client/client :get 404 "card/99999999" (api-key-headers unmasked-key))
-       (let [[row] (rows-for api-key-id)]
+       (let [[row] (rows-for! api-key-id)]
          (is (= "/api/card/:id" (:route_template row)))
          (is (= 404 (:status row))))))))
 
@@ -114,13 +116,13 @@
        (let [rows-before (t2/count :model/ApiKeyUsageLog)]
          (mt/user-http-request :crowberto :get 200 "user/current")
          (is (= rows-before (t2/count :model/ApiKeyUsageLog)))
-         (is (empty? (rows-for api-key-id))))))))
+         (is (empty? (rows-for! api-key-id))))))))
 
 (deftest unmatched-route-is-not-recorded-test
   (testing "a request that matches no endpoint has no route template, so the row is dropped rather than written"
     (do-with-api-key!
      (fn [unmasked-key api-key-id]
        (client/client :get 404 "user/current/not-a-real-route" (api-key-headers unmasked-key))
-       (is (empty? (rows-for api-key-id)))
+       (is (empty? (rows-for! api-key-id)))
        (testing "but the key is still marked as used — the request did authenticate"
-         (is (some? (last-used-at api-key-id))))))))
+         (is (some? (last-used-at! api-key-id))))))))

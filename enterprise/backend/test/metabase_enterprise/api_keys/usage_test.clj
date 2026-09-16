@@ -3,9 +3,10 @@
   API-key-authenticated request, plus the `api_key.last_used_at` stamp. Exercises the `defenterprise`
   dispatch via the OSS entry point in `metabase.api-keys.usage`. Collection runs on every EE instance
   (`:feature :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated).
-  The usage-log row goes through a Grouper queue, so every test that expects to observe one forces
-  `synchronous-batch-updates`. The `last_used_at` stamp coalesces in an in-memory map instead and is
-  only ever written by an explicit call to the private `flush-last-used-at!`."
+  Both writes coalesce in memory between scheduled flushes — [[record!]] forces the usage-log flush on
+  every call; `last_used_at` tests call the private `flush-last-used-at!` explicitly, since some of
+  them specifically check the pre-flush state. `synchronous-batch-updates` no longer applies to either
+  write — it only ever affected Grouper, which neither path uses anymore."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
@@ -50,8 +51,10 @@
 
 (defn- record!
   "Translates a flat [[request-info]] map into the real `(request response extra-info)` shape the
-  recorder now takes and invokes it — keeps the tests below reading like a flat map of inputs rather
-  than hand-building Ring request/response maps at every call site."
+  recorder now takes, invokes it, then forces the usage-log row to flush — it coalesces in memory
+  between scheduled flushes, so a row written moments ago may not be on disk yet. (`last_used_at` is
+  not flushed here — tests that need it call the private `flush-last-used-at!` explicitly, since some
+  of them specifically check the pre-flush state.)"
   [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms occurred-at
            user-agent ip-address embedding-client embedding-hostname]}]
   (usage/record-api-key-usage!
@@ -67,7 +70,8 @@
    {:status status}
    {:route-template route-template
     :duration-ms    duration-ms
-    :occurred-at    occurred-at}))
+    :occurred-at    occurred-at})
+  (#'ee-usage/flush-usage-logs!))
 
 ;;; ------------------------------------------- usage log row --------------------------------------------
 
@@ -264,6 +268,16 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (mt/with-dynamic-fn-redefs [t2/insert! (fn [& _] (throw (ex-info "boom" {})))]
           (is (nil? (record! (request-info (unique-route))))))))))
+
+(deftest offer-usage-log!-drops-rows-once-full-test
+  (testing "a full pending queue drops a new row rather than blocking the request thread for room"
+    (let [pending  (deref #'ee-usage/pending-usage-logs)
+          original @pending]
+      (try
+        (reset! pending (vec (repeat 500 {:dummy true})))
+        (#'ee-usage/offer-usage-log! {:dummy true})
+        (is (= 500 (count @pending)) "the queue was already at capacity, so the new row was dropped")
+        (finally (reset! pending original))))))
 
 ;;; ------------------------------------------ last_used_at --------------------------------------------
 

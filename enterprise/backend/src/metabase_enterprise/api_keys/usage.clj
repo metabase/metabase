@@ -7,12 +7,11 @@
   `analytics-pii-retention-enabled` is on (itself `:audit-app`-gated). The table has no free-text
   error column to gate — see `metabase.api-keys.usage` for why.
 
-  Both writes go through Grouper batches, coalescing many requests into few DB round trips — the same
-  pattern `metabase.query-processor.middleware.update-used-cards` uses for Card `last_used_at`: submit
-  one event per request, dedupe to the max timestamp per key at flush time, then one bulk `CASE`/
-  `GREATEST` UPDATE instead of one UPDATE per request. That dedup is what keeps a hot key cheap, not a
-  throttle: however often a key's events land in the same batch, they collapse to one UPDATE for that
-  key when the batch flushes.
+  Both writes coalesce in memory and flush on a fixed interval via a scheduled task, not Grouper: a
+  Grouper queue falls back to a *blocking* put once full, which would stall the request thread behind
+  a slow DB write. The usage-log write bounds a pending vector and drops (logged) rather than blocks
+  once full; the last_used_at write coalesces to one pending entry per key, so it never needs a
+  capacity bound at all — see the two sections below for each.
 
   Every write is best-effort: a failure is logged and swallowed so logging never fails the API
   request and adds negligible latency. The two writes are independent of each other's success or
@@ -27,7 +26,6 @@
    [metabase.analytics.sdk :as analytics.sdk]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.usage :as api-keys.usage]
-   [metabase.batch-processing.core :as grouper]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.task.core :as task]
@@ -65,34 +63,67 @@
 ;;; ------------------------------------------------- usage log ----------------------------------------------------
 
 (def ^:private usage-log-batch-capacity
-  "How many rows the usage-log queue holds before it flushes early."
+  "How many rows the pending usage-log queue holds before a new row is dropped rather than queued."
   500)
 
-(def ^:private usage-log-batch-interval-ms
-  "How long the usage-log queue coalesces rows before flushing a batch insert."
-  (* 10 1000))
+(def ^:private usage-log-flush-interval-seconds
+  "How often pending usage-log rows flush to the database."
+  10)
 
 (def ^:private not-null-columns
-  "The `api_key_usage_log` columns declared NOT NULL. Rows are inserted in coalesced batches, so a row
-  missing one of these would fail every row batched with it, not just itself — an incomplete row is
-  dropped before it is queued instead."
+  "The `api_key_usage_log` columns declared NOT NULL. Rows are inserted in batches, so a row missing
+  one of these would fail every row batched with it, not just itself — an incomplete row is dropped
+  before it is queued instead."
   [:api_key_id :route_template :http_method :status :duration_ms :client_name])
 
-(defn- insert-usage-logs!*
-  "Grouper batch handler: insert one coalesced batch of `api_key_usage_log` rows."
-  [rows]
-  (log/debugf "Inserting %d api_key_usage_log rows" (count rows))
-  (try
-    (ee.api-keys.db/insert-usage-logs! rows)
-    (catch Throwable e
-      (log/warn e "Failed to insert API key usage log rows"))))
+(defonce ^:private pending-usage-logs (atom []))
 
-(defonce ^:private usage-log-queue
-  (delay
-    (grouper/start!
-     #'insert-usage-logs!*
-     :capacity usage-log-batch-capacity
-     :interval usage-log-batch-interval-ms)))
+(defn- offer-usage-log!
+  "Appends `row` to the pending batch, unless it's already at [[usage-log-batch-capacity]] — a full
+  queue drops the row (logged) rather than blocking the request thread waiting for room. The `swap!`
+  CAS retry is itself non-blocking: contention just means more retries, never a park on I/O."
+  [row]
+  (let [dropped? (volatile! false)]
+    (swap! pending-usage-logs
+           (fn [rows]
+             (if (>= (count rows) usage-log-batch-capacity)
+               (do (vreset! dropped? true) rows)
+               (conj rows row))))
+    (when @dropped?
+      (log/warn "Dropping API key usage log row; the pending queue is full"))))
+
+(defn- flush-usage-logs!
+  "Scheduled-task handler: atomically take the current pending rows and insert them as one batch."
+  []
+  (let [[rows] (reset-vals! pending-usage-logs [])]
+    (when (seq rows)
+      (log/debugf "Inserting %d api_key_usage_log rows" (count rows))
+      (try
+        (ee.api-keys.db/insert-usage-logs! rows)
+        (catch Throwable e
+          (log/warn e "Failed to insert API key usage log rows"))))))
+
+(def ^:private usage-log-flush-job-key (jobs/key "metabase.task.api-keys.usage-log-flush.job"))
+(def ^:private usage-log-flush-trigger-key (triggers/key "metabase.task.api-keys.usage-log-flush.trigger"))
+
+(task/defjob ^{DisallowConcurrentExecution true
+               :doc "Flush pending API key usage log rows"}
+  ApiKeyUsageLogFlush [_ctx]
+  (flush-usage-logs!))
+
+(defmethod task/init! ::ApiKeyUsageLogFlush
+  [_]
+  (let [job     (jobs/build
+                 (jobs/of-type ApiKeyUsageLogFlush)
+                 (jobs/with-identity usage-log-flush-job-key))
+        trigger (triggers/build
+                 (triggers/with-identity usage-log-flush-trigger-key)
+                 (triggers/start-now)
+                 (triggers/with-schedule
+                  (simple/schedule
+                   (simple/with-interval-in-seconds usage-log-flush-interval-seconds)
+                   (simple/repeat-forever))))]
+    (task/schedule-task! job trigger)))
 
 ;;; ---------------------------------------------- last_used_at ----------------------------------------------------
 
@@ -162,7 +193,7 @@
 
 (defenterprise record-api-key-usage!
   "EE: record one completed API-key-authenticated request. Queues one `api_key_usage_log` row and one
-  `last_used_at` event, both via Grouper batches, never synchronously on the request thread.
+  `last_used_at` event, both flushed on a scheduled interval, never synchronously on the request thread.
 
   Takes the raw `request`/`response` and extracts everything itself, plus `extra-info` for the
   handful of values only the caller can supply: `route-template` (read from the carrier the caller
@@ -215,6 +246,6 @@
                        pii)]
         (if-let [missing (not-empty (remove #(some? (get row %)) not-null-columns))]
           (log/warnf "Not recording API key usage log row, missing %s" (pr-str missing))
-          (grouper/submit! @usage-log-queue row)))
+          (offer-usage-log! row)))
       (catch Throwable e
         (log/warn e "Failed to record API key usage")))))
