@@ -30,9 +30,7 @@
   "Check one adapter's `supported-models` value carries a `:display-name` (and optionally a
   `:context-window`). Anything else throws, so an adapter that invents a different shape fails loudly
   instead of quietly documenting a model with no name — [[metabase.cmd.ai-provider-dox]] falls back to the
-  model id in the Model column, which reads as a name rather than as a gap.
-
-  The lookup covers a non-map too, since a keyword reads nil off anything that isn't one."
+  model id in the Model column, which reads as a name rather than as a gap."
   [provider model-id value]
   (if (:display-name value)
     value

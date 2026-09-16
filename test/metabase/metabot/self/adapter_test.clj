@@ -37,9 +37,8 @@
   telemetry."
   {#'azure/provider      :metabot.azure/request
    #'bedrock/provider    :metabot.bedrock/request
-   ;; Anthropic's span follows its slug, not the `claude` namespace the adapter lives in. It read
-   ;; `:metabot.claude/request` until the `:span` override was dropped, while the debug capture and the
-   ;; error translation had always tagged the same requests `anthropic`.
+   ;; Anthropic's span follows its slug, not the `claude` namespace the adapter lives in — the same
+   ;; `anthropic` the debug capture and the error translation tag these requests with.
    #'claude/provider     :metabot.anthropic/request
    #'deepseek/provider   :metabot.deepseek/request
    #'google/provider     :metabot.google/request
@@ -131,7 +130,7 @@
 
   Read back off the debug log rather than the span: `metabase.util.o11y/with-span` passes its map straight
   to clj-otel, which reads only `:name`/`:attributes`/`:parent`/… and silently drops everything else, so
-  these counts never reach a span. That is true on master too and is not this namespace's to fix."
+  these counts never reach a span."
   [opts]
   (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.adapter :debug]]
                (streamed-request!
@@ -245,9 +244,9 @@
 
 (deftest catalog-name-key-matches-each-providers-catalog-test
   (testing "each provider reads the field its own catalog documents"
-    ;; Anthropic sends `display_name`; OpenRouter and Z.AI send `name`. The shared listing used to try
-    ;; `:name` then `:display_name` for all three, which would have flipped Anthropic's preference the
-    ;; day its catalog grew a `name` field.
+    ;; Anthropic sends `display_name`; OpenRouter and Z.AI send `name`. Guessing between them rather
+    ;; than letting each provider name its own field would flip Anthropic's preference the day its
+    ;; catalog grows a `name` field.
     (let [names (fn [list-models-fn body]
                   (with-redefs [http/request (fn [_] {:status 200 :body body})]
                     (mapv :display_name (:models (list-models-fn {:credentials {:api-key "k" :base-url "https://x"}})))))]

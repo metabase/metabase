@@ -90,10 +90,9 @@
 
 (deftest list-models-leaves-the-candidate-model-to-its-caller-test
   (testing "with no model there is no family to pick a surface for, so nothing is probed"
-    ;; this namespace used to re-derive the model from `llm-metabot-provider` for any Azure connection,
-    ;; reaching up to the setting to do it. `metabase.llm.api.provider` already resolves one — from the
-    ;; connection's own `:model-fields`, then from what the setting names for *that* connection — so the
-    ;; fallback was both a duplicate and broader than it should have been.
+    ;; `metabase.llm.api.provider` resolves the model — from the connection's own `:model-fields`, then
+    ;; from what the setting names for *that* connection — so this namespace must not fall back to the
+    ;; setting itself, which would be both a duplicate and broader than that.
     (llm.tu/with-connections [(llm.tu/connection "azure" {:api-key "saved-key" :base-url test-base-url})]
       (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "azure/openai/gpt-4.1-mini"]
         (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]

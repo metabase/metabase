@@ -192,8 +192,7 @@
 
   With no model there is no family to pick a surface for, so the round trip is skipped. The caller
   supplies one: `metabase.llm.api.provider` resolves it from the connection's own `:model-fields`, and
-  falls back to what `llm-metabot-provider` names for *that* connection — which this namespace used to
-  re-derive for any Azure connection, reaching up to the setting to do it."
+  falls back to what `llm-metabot-provider` names for *that* connection."
   ([] (list-models {}))
   ([{:keys [credentials model ai-proxy?]}]
    (when-let [model (not-empty model)]
