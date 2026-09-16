@@ -77,24 +77,35 @@
   (let [f (some-> (first (:children node)) hooks/sexpr)]
     (not (contains? write-fns (some-> f name symbol)))))
 
-(defn- kv-arg-values
-  "The value nodes of the `:column value` pairs a query call takes after its model.
+(defn- kv-arg-pair
+  "The first `:column value` pair a query call passes after its model, if any.
 
-  `(t2/select :model/X :locale locale :archived false)` -- the pairs run to the end of the call, or
-  to a trailing query map."
+  `(t2/select :model/X :locale locale)`. Several of these fns take an argument before the model --
+  `(t2/select-one-fn :value :model/X :key k)` -- so the pairs do not start at a fixed offset; they
+  start after the `:model/...` keyword. A call that does not name a literal model is not checked."
   [args]
-  ;; Several of these fns take an argument before the model -- `(t2/select-one-fn :value :model/X
-  ;; :key k)` -- so the pairs do not start at a fixed offset. They start after the model, which is
-  ;; the `:model/...` keyword.
   (let [after-model (->> args
                          (drop-while #(not (and (hooks/keyword-node? %)
                                                 (= "model" (namespace (hooks/sexpr %))))))
-                         rest)]
-    (->> after-model
-         (partition 2 2 nil)
-         (keep (fn [[k v]]
-                 (when (and v (hooks/keyword-node? k))
-                   v))))))
+                         rest)
+        [k v]       after-model]
+    (when (and k v (hooks/keyword-node? k))
+      k)))
+
+(defn- lint-kv-args!
+  "Register a finding for a query written as `:column value` pairs.
+
+  Toucan builds those into the where clause itself, so the query's shape is not on the page: there
+  is nothing for a reader, this linter, or the `.sql` extraction that follows this project to read.
+  The same call takes a map -- `{:where [:= :locale v]}` for a select, `{:locale v}` for an
+  `update!` -- which is the statement, near enough to read off."
+  [node]
+  (when-let [k (kv-arg-pair (rest (:children node)))]
+    (hooks/reg-finding!
+     (assoc (meta k)
+            :message (format "Pass this query a map rather than `%s ...` pairs, so its shape is on the page."
+                             (hooks/sexpr k))
+            :type :metabase/unsafe-app-db-query))))
 
 (defn- lint-unmarked-values!
   "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
@@ -102,11 +113,7 @@
   Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
   function is out of reach of a check that does not follow it across a call."
   [node]
-  (doseq [value (let [args (rest (:children node))]
-                  (concat (mapcat value-nodes args)
-                          ;; `:column value` pairs after the model, which Toucan builds into the
-                          ;; where clause.
-                          (kv-arg-values args)))
+  (doseq [value (mapcat value-nodes (rest (:children node)))
           :when (and (hooks/token-node? value)
                      (symbol? (hooks/sexpr value))
                      (not (marked? value)))]
@@ -114,7 +121,7 @@
      (assoc (meta value)
             :message (format "`%s` reaches a SQL value slot unmarked. Write it as [:auto/param %s] so it is bound as a parameter."
                              (hooks/sexpr value) (hooks/sexpr value))
-            :type :metabase/unmarked-sql-value))))
+            :type :metabase/unsafe-app-db-query))))
 
 (defn lint-query-call
   "Register a `:metabase/t2-query-namespace` finding when a Toucan 2 query call appears outside a `<module>.db`
@@ -134,5 +141,6 @@
              (db-namespace? (modules/config input) ns)
              (not (test-file? filename))
              (read-call? node))
-    (lint-unmarked-values! node))
+    (lint-unmarked-values! node)
+    (lint-kv-args! node))
   input)
