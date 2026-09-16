@@ -27,9 +27,11 @@ Here's a high-level overview:
 
 ### 1. Enable JWT SSO in your Metabase
 
-1. Configure JWT by going to **Embedding hub** > **Authentication**. It's the same JWT form you'll find in **Admin** > **Settings** > **Authentication** > **JWT**. The hub only shows the JWT form; if you'd rather use SAML, set it up in **Admin** > **Settings** > **Authentication** instead. (If SAML is already set up and JWT isn't, the hub's Authentication page will point you to Admin settings.)
+1. Configure JWT by going to **Embedding hub** > **Authentication**. It's the same JWT form you'll find in **Admin** > **Settings** > **Authentication** > **JWT**.
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
 3. Generate a key and copy it to your clipboard.
+
+The hub only shows the JWT form. If you'd rather use SAML, set it up in **Admin** > **Settings** > **Authentication** instead. If SAML is already set up and JWT isn't, the hub's Authentication page will point you there.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 

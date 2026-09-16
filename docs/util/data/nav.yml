@@ -252,7 +252,7 @@ categories:
       - name: "Overview"
         url: "embedding/introduction"
       - name: "Embedding hub"
-        url: "embedding/introduction#embedding-hub"
+        url: "embedding/embedding-hub"
       - name: "Modular embedding"
         pages:
           - name: "Overview"

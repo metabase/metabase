@@ -7,7 +7,7 @@ summary: Learn about which permissions tooling you should use depending on wheth
 
 You can use a single Metabase to manage permissions for all of your customers. Which Metabase permissions tool you use depends on how you store your customer data.
 
-You can open the permissions editor from **Admin > Permissions** or from **Embedding hub > Permissions**. They're the same permissions; the Embedding hub just gives you another way to get to them.
+You can open the permissions editor from **Admin > Permissions** or from **Embedding hub > Permissions**. They're the same permissions.
 
 - [One database for all customers (commingled setups)](#one-database-for-all-customers-commingled-setups)
 - [One database per customer](#one-database-per-customer)

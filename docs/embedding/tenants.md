@@ -160,7 +160,7 @@ To add tenant users in Metabase:
 
 1. [Create a tenant](#create-new-tenants-in-metabase).
 2. Go to **Embedding hub > Tenancy**.
-3. On the **Tenant users** tab, click **New tenant user**.
+3. On the **Tenant users** tab, click **Create tenant user**.
 4. Fill out the user information, including the tenant and tenant groups.
 
    If your tenant has [tenant attributes](#tenant-attributes), they'll be inherited by the user, but you can override the value in "Attributes".
@@ -300,7 +300,7 @@ Some common auth error messages and what they mean:
 
 _Embedding hub > Permissions_
 
-**Embedding hub > Permissions** is the same permissions editor as **Admin settings > Permissions**. It's just another way to get to the same permissions.
+**Embedding hub > Permissions** is the same permissions editor as **Admin settings > Permissions**.
 
 Data permissions control what data people can see on charts and dashboards, and what they can do with that data. To control _which_ charts people see, you can use [collection permissions](#collection-permissions-for-tenants) instead.
 

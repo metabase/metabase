@@ -12,7 +12,7 @@ You can use Metabase as a BI tool for your own team, or embed Metabase in your a
 
 What is embedding, and how does it work?
 
-### [Embedding hub](./introduction.md#embedding-hub)
+### [Embedding hub](./embedding-hub.md)
 
 Where all the embedding settings live: turning on embedding methods, CORS, the secret key, JWT, tenants, themes, and translations. Admins open it from the **grid** icon in the upper right.
 

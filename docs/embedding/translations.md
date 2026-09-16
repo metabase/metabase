@@ -59,7 +59,7 @@ To add a translation dictionary:
 2. Go to **Localization**.
 3. Under **Translate embedded dashboards and questions**, click **Upload edited translation dictionary**.
 
-If you want a starting point, click **Get translation dictionary template** first. Metabase downloads a CSV with the right columns and the strings from your content already filled in.
+If you want a starting point, click **Get translation dictionary template** first. Metabase downloads a CSV with the right columns. If you've already uploaded a dictionary, the CSV contains it; otherwise it contains a few sample rows.
 
 Uploading a new dictionary will replace the existing dictionary.
 
