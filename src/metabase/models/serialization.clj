@@ -1016,15 +1016,20 @@
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :field-id]
    pos-int?])
 
+(def ^:private mbql-field-ref-schema
+  "MBQL 5 or legacy `:field` clause. Kept in a var so [[lib/normalize]] reuses one cached coercer; an inline literal
+  with a fresh dispatch fn misses the registry cache on every call."
+  [:multi
+   {:dispatch #(and (vector? %)
+                    (map? (second %)))}
+   [true  :mbql.clause/field]
+   [false ::mbql.s/field]])
+
 (defn- normalize-mbql-ref [mbql]
   (let [tag    (mbql-ref? mbql)
         schema (case tag
                  :field-id  ::mbql-3-field-id-ref
-                 :field     [:multi
-                             {:dispatch #(and (vector? %)
-                                              (map? (second %)))}
-                             [true  :mbql.clause/field]
-                             [false ::mbql.s/field]] ; legacy MBQL clause
+                 :field     mbql-field-ref-schema
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
