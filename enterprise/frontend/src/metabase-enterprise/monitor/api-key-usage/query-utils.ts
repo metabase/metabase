@@ -69,7 +69,7 @@ function buildBaseQuery({
   tenantId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
   let query = Lib.queryFromTableOrCardMetadata(provider, table);
-  query = applyDateFilter(query, dateFilter);
+  query = applyDateFilter(query, dateFilter, "occurred_at");
   query = applyScopeFilters(
     query,
     { userId, groupId, tenantId },
