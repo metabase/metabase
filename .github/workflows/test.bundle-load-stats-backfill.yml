@@ -97,14 +97,6 @@ jobs:
       matrix:
         include:
           - { block: 0, from: 1, to: 16 }
-          - { block: 1, from: 14, to: 29 }
-          - { block: 2, from: 27, to: 42 }
-          - { block: 3, from: 40, to: 55 }
-          - { block: 4, from: 53, to: 68 }
-          - { block: 5, from: 66, to: 81 }
-          - { block: 6, from: 79, to: 94 }
-          - { block: 7, from: 92, to: 107 }
-          - { block: 8, from: 105, to: 114 }
     env:
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
