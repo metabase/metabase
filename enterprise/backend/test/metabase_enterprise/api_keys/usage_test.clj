@@ -40,7 +40,6 @@
   [route & {:as overrides}]
   (merge {:api-key-id     1234
           :user-id        (mt/user->id :rasta)
-          :tenant-id      nil
           :route-template route
           :http-method    "GET"
           :status         200
@@ -55,12 +54,11 @@
   between scheduled flushes, so a row written moments ago may not be on disk yet. (`last_used_at` is
   not flushed here — tests that need it call the private `flush-last-used-at!` explicitly, since some
   of them specifically check the pre-flush state.)"
-  [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms occurred-at
+  [{:keys [api-key-id user-id route-template http-method status duration-ms occurred-at
            user-agent ip-address embedding-client embedding-hostname]}]
   (usage/record-api-key-usage!
    {:api-key-id       api-key-id
     :metabase-user-id user-id
-    :tenant-id        tenant-id
     :request-method   (some-> http-method u/lower-case-en keyword)
     :headers          (cond-> {}
                         user-agent         (assoc "user-agent" user-agent)
@@ -82,14 +80,12 @@
       (let [route (unique-route)]
         (try
           (record! (request-info route
-                                 :tenant-id 42
                                  :http-method "POST"
                                  :status 201))
           (let [row (row-for route)]
             (testing "non-PII columns"
               (is (= 1234 (:api_key_id row)))
               (is (= (mt/user->id :rasta) (:user_id row)))
-              (is (= 42 (:tenant_id row)))
               (is (= "POST" (:http_method row)))
               (is (= 201 (:status row)))
               (is (= 12 (:duration_ms row)))
