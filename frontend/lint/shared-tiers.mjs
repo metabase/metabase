@@ -49,8 +49,8 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: the data grid and writeback actions.
-  ["shared/data-grid", "shared/actions"],
+  // P0 — independent peers: the data grid, writeback actions and comments.
+  ["shared/data-grid", "shared/actions", "shared/comments"],
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
   // P2 — independent peers with no edges between them.
@@ -59,7 +59,12 @@ const SHARED_PLATFORM_LEVELS = [
   // DetailViewPage.tsx importing the nav layout constants (#79119 moves them).
   ["shared/querying", "shared/pulse", "shared/detail-view"],
   // P3 — building blocks over querying, mutually independent.
-  ["shared/metadata", "shared/parameters", "shared/questions"],
+  [
+    "shared/metadata",
+    "shared/parameters",
+    "shared/questions",
+    "shared/timelines",
+  ],
   // P4 — the metabot agent, which transforms and nav compose.
   // metabot keeps its enforceSharedTiers flag for one upward edge,
   // Metabot.tsx importing Sidebar from the main navbar.
@@ -67,8 +72,8 @@ const SHARED_PLATFORM_LEVELS = [
 ];
 
 const SHARED_DOMAIN = [
-  "shared/comments",
   "shared/custom-viz",
+  "shared/documents",
   "shared/embedding-ee",
   "shared/metrics-ui",
   "shared/nav",
@@ -77,7 +82,6 @@ const SHARED_DOMAIN = [
   "shared/segments",
   "shared/static-viz",
   "shared/status",
-  "shared/timelines",
   "shared/transforms",
   "shared/visualizer",
 ];
@@ -85,6 +89,68 @@ const SHARED_DOMAIN = [
 const SHARED_UTILS = SHARED_UTILS_LEVELS.flat();
 const SHARED_PLATFORM = SHARED_PLATFORM_LEVELS.flat();
 const TIERED_SHARED = [...SHARED_UTILS, ...SHARED_PLATFORM, ...SHARED_DOMAIN];
+
+// Existing modules awaiting ownership/composition changes before they can be
+// tiered. This list should only shrink: new shared modules need an explicit tier.
+// Remove an entry in the same change that assigns its tier.
+const UNTIERED_SHARED = [
+  "shared/common",
+  "shared/data-studio-ui",
+  "shared/embedding",
+  "shared/embedding-sdk",
+  "shared/embedding-sdk-shared",
+  "shared/embedding-sdk-window-bridge",
+];
+
+function assertSharedTierCoverage(
+  elements,
+  { tiered = TIERED_SHARED, untiered = UNTIERED_SHARED } = {},
+) {
+  // A module can have several element patterns, but only one tier assignment.
+  const sharedTypes = new Set(
+    elements
+      .map(({ type }) => type)
+      .filter((type) => type.startsWith("shared/")),
+  );
+  const assigned = new Set();
+  const problems = [];
+
+  for (const [label, types] of [
+    ["tier lists", tiered],
+    ["untiered allowlist", untiered],
+  ]) {
+    const seen = new Set();
+    for (const type of types) {
+      if (seen.has(type)) {
+        problems.push(`Duplicate ${type} in ${label}`);
+      }
+      if (!sharedTypes.has(type)) {
+        problems.push(`Unknown shared module ${type} in ${label}`);
+      }
+      if (label === "untiered allowlist" && assigned.has(type)) {
+        problems.push(
+          `Tiered module ${type} must be removed from the untiered allowlist`,
+        );
+      }
+      seen.add(type);
+    }
+    for (const type of seen) {
+      assigned.add(type);
+    }
+  }
+
+  for (const type of sharedTypes) {
+    if (!assigned.has(type)) {
+      problems.push(`Shared module ${type} is missing a tier assignment`);
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `Invalid shared tier configuration:\n${problems.join("\n")}`,
+    );
+  }
+}
 
 // Each level may import only strictly lower levels of its sub-tier,
 // plus `base` (the sub-tiers below).
@@ -99,7 +165,7 @@ const levelAllows = (levels, base = []) =>
 
 const sharedRules = [
   // Later rules win, so these must come after the baseline shared/* allow they narrow.
-  // Edges to untiered modules (common, embedding, documents) fall through to that allow.
+  // Edges to UNTIERED_SHARED modules fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,
@@ -134,4 +200,4 @@ const sharedRules = [
   },
 ];
 
-export { sharedRules };
+export { assertSharedTierCoverage, sharedRules };
