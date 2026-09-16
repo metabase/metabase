@@ -149,13 +149,14 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    Replace the template's placeholder with a real sentence about *this* app, or
    delete the line entirely if it adds nothing beyond the name.
 
-   **`version`** — the data app contract version the app is built for, a whole
-   number (`1` today). Leave the template's value as it is and never invent a
-   higher one: Metabase bumps the supported version only on a breaking change to
-   the contract, and an app declaring an older version is marked *Outdated* in
-   the admin list, hidden from every other user, and refuses to open. To bring
-   it back, set `version` to the current one, rebuild against the current SDK,
-   and sync again. A manifest without the field is a version `1` app.
+   **`version`** — the data app contract version this app's code targets, a
+   whole number. The template ships the version this skill targets; do not
+   change it by hand. Metabase bumps the version it serves only on a breaking
+   change to the contract. An app on an older version is marked *Outdated* in
+   the admin list, hidden from every other user, and refuses to open until it
+   is migrated to the current contract, its `version` raised to match, rebuilt,
+   and synced. Migrating an app from one version to the next is a separate,
+   instructed procedure; never do it ad hoc.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an

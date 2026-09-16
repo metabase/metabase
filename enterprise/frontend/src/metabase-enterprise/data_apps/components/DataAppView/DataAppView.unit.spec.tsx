@@ -127,7 +127,7 @@ describe("DataAppView", () => {
     expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This app was built for version 1 of data apps. Update the version in its data_app.yaml, rebuild it with the current SDK, and sync again.",
+        "This app was built for version 1 of data apps. Migrate it to the current version, then rebuild and sync it again.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();

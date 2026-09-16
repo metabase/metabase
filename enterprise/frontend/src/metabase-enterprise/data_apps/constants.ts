@@ -25,4 +25,4 @@ export const DATA_APP_LOAD_TIMEOUT_MS = 20_000;
 export const DATA_APP_OUTDATED_ERROR_CODE = "data-app-outdated";
 
 export const getOutdatedDataAppMessage = (version: number) =>
-  t`This app was built for version ${version} of data apps. Update the version in its data_app.yaml, rebuild it with the current SDK, and sync again.`;
+  t`This app was built for version ${version} of data apps. Migrate it to the current version, then rebuild and sync it again.`;
