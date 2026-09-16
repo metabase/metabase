@@ -76,7 +76,7 @@ describe("scenarios > embedding-sdk > timeline events", () => {
     cy.wait("@getTimelines");
     getSdkRoot().within(() => {
       cy.findByRole("button", { name: "Edit dashboard" }).click();
-      cy.findByRole("button", { name: "Save" }).should("be.visible");
+      cy.findByRole("button", { name: "Add questions" }).should("be.visible");
       H.timelineEventChip("RC1").should("be.visible");
       H.timelineEventChip("Internal release notes").should("not.exist");
       cy.findByTestId("dashboard-events-sidebar").should("not.exist");
