@@ -58,7 +58,6 @@ interface Operation {
 interface CheckContext extends CompareContext {
   generated: ts.SourceFile;
   operations: Map<string, Operation[]>;
-  responsesOnly?: boolean;
 }
 
 interface Endpoint {
@@ -85,9 +84,7 @@ export function checkContracts(
   endpointFiles: string[],
   generatedFile: string,
   root: string,
-  options: Pick<CompareContext, "walkStepBudget" | "walkDepthBudget"> & {
-    responsesOnly?: boolean;
-  } = {},
+  options: Pick<CompareContext, "walkStepBudget" | "walkDepthBudget"> = {},
 ): ContractResult[] {
   assertCheckable(program, [generatedFile, ...endpointFiles], root);
   const checker = program.getTypeChecker();
@@ -342,7 +339,7 @@ function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
     }
     return [
       ...checkResponse(context, resolved),
-      ...(context.responsesOnly ? [] : checkRequest(context, resolved)),
+      ...checkRequest(context, resolved),
     ];
   } catch (error) {
     throw error instanceof TypeWalkError &&

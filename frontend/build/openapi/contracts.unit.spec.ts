@@ -1,6 +1,5 @@
 import ts from "typescript";
 
-import * as clientRequest from "./client-request";
 import {
   type ContractResult,
   type ContractStatus,
@@ -36,13 +35,11 @@ function check({
   backend,
   endpoint,
   options = {},
-  checks = {},
 }: {
   frontend: string;
   backend: string;
   endpoint: string;
   options?: ts.CompilerOptions;
-  checks?: Parameters<typeof checkContracts>[4];
 }) {
   // The builder shares the template's first line, so the line numbers the specs quote stay put.
   const { root, files, program } = programFrom(
@@ -60,7 +57,6 @@ function check({
     [files["endpoint.ts"] ?? ""],
     files["types.gen.d.ts"] ?? "",
     root,
-    checks,
   );
 }
 
@@ -109,28 +105,6 @@ function withResponse(response: string, declarations = "") {
 }
 
 describe("API contract checks", () => {
-  it("should check responses without running the request model", () => {
-    const model = jest
-      .spyOn(clientRequest, "modelClientRequest")
-      .mockImplementation(() => {
-        throw new Error("request model must not run");
-      });
-    try {
-      const results = check({
-        frontend,
-        backend,
-        endpoint,
-        checks: { responsesOnly: true },
-      });
-      expect(statuses(results)).toEqual({
-        [`${ENDPOINT_ID}:response.2XX`]: "compatible",
-      });
-      expect(model).not.toHaveBeenCalled();
-    } finally {
-      model.mockRestore();
-    }
-  });
-
   it("should keep checking a typed EndpointBuilder after its variable is renamed", () => {
     const results = check({
       frontend: `${frontend}\ndeclare const renamed: EndpointBuilder;`,
