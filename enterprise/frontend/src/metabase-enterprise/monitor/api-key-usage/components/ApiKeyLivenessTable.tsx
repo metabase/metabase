@@ -31,29 +31,15 @@ type Props = {
 const TABLE_HEIGHT = 500;
 
 /**
- * Per-key liveness table: name, group, and `last_used_at` for every API key, sorted by most
- * recently used first, so an admin can spot which keys are still active and which have gone
- * quiet. `last_used_at` is a throttled timestamp on the `api_key` table itself (not in
- * `v_api_key_usage`, which only covers request logs), so this queries the regular
- * `/api/api-key` list endpoint rather than the audit database.
+ * Per-key liveness table: name, group, and `last_used_at` for every API key, most recently used
+ * first — `GET /api/api-key` already returns them in that order, so an admin can spot which keys
+ * are still active and which have gone quiet without any client-side sorting. `last_used_at` is a
+ * throttled timestamp on the `api_key` table itself (not in `v_api_key_usage`, which only covers
+ * request logs), so this queries the regular `/api/api-key` list endpoint rather than the audit
+ * database.
  */
 export function ApiKeyLivenessTable({ title, h = TABLE_HEIGHT }: Props) {
   const { data: apiKeys, isLoading, error } = useListApiKeysQuery();
-
-  const sortedApiKeys = useMemo(() => {
-    if (!apiKeys) {
-      return [];
-    }
-    return [...apiKeys].sort((a, b) => {
-      if (!a.last_used_at) {
-        return b.last_used_at ? 1 : 0;
-      }
-      if (!b.last_used_at) {
-        return -1;
-      }
-      return b.last_used_at.localeCompare(a.last_used_at);
-    });
-  }, [apiKeys]);
 
   const columns = useMemo<TreeTableColumnDef<ApiKeyLivenessRow>[]>(
     () => [
@@ -90,7 +76,7 @@ export function ApiKeyLivenessTable({ title, h = TABLE_HEIGHT }: Props) {
   );
 
   const treeTableInstance = useTreeTableInstance<ApiKeyLivenessRow>({
-    data: sortedApiKeys,
+    data: apiKeys ?? [],
     columns,
     getNodeId,
   });
