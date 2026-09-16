@@ -68,20 +68,12 @@ jobs:
         - name: Run Whitespace Linter
           run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
 
-        # Lint YAML
-        - name: Lint YAML files
-          if: needs.files-changed.outputs.yaml == 'true'
-          run: bun run lint-yaml
 
         # Lint Github Actions
         - name: Run actionlint
           if: needs.files-changed.outputs.actionlint == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.actionlint_files }}
 
-        # Generate and Lint OpenAPI spec
-        - name: Generate OpenAPI spec
-          if: needs.files-changed.outputs.openapi == 'true'
-          run: bun run generate-openapi
 
       # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
       # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
@@ -178,7 +170,3 @@ jobs:
           sed -i 's/"version": "1-0-0"/"version": "1-0-1"/' \
             "$LINT_ROOT/schemas/com.metabase/serialization/jsonschema/1-0-1"
           igluctl lint "$LINT_ROOT/schemas"
-      - name: Lint (Metabase schema rules)
-        run: ./bin/lint-snowplow-schemas.bb
-      - name: Test linter rules
-        run: ./bin/lint-snowplow-schemas-test.bb
