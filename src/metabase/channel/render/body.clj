@@ -496,7 +496,8 @@
   every row and, like `render :pivot`, is not cut at the attachment row limit."
   [timezone-id {:keys [cols viz-settings] :as data} {:keys [cell] :as indexes}]
   (pivot->hiccup (simple-pivot-grid timezone-id data indexes)
-                 {:color-data     (select-keys data [:cols :rows])
+                 {:color-data     {:cols (mapv #(select-keys % [:name]) cols)
+                                   :rows (:rows data)}
                   ;; viz-settings carries :table.pivot, which tells the shared color JS to skip row-highlight rules
                   :color-settings viz-settings
                   :left-width     1
