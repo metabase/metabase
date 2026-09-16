@@ -5,8 +5,8 @@
 ##   - api_key_usage_log    — one row per API-key-authenticated request, modeled on
 ##                            agent_api_call_log / mcp_tool_call_log.
 ##
-## The log row carries the resolved user and tenant so the view needs no join back to api_key,
-## which lets rows outlive a deleted key. `route_template` is the reconstructed Compojure route
+## The log row carries the resolved user so the view needs no join back to api_key, which lets
+## rows outlive a deleted key. `route_template` is the reconstructed Compojure route
 ## (e.g. /api/card/:id), never the raw URI or query string — those carry entity ids and filter
 ## values. Route reconstruction is EMB-2150; row insertion and PII gating are later tickets.
 
@@ -35,7 +35,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: api_key_usage_log
-            remarks: One row per API-key-authenticated request; user/tenant denormalized on so the view needs no api_key join (modeled on agent_api_call_log)
+            remarks: One row per API-key-authenticated request; user denormalized on so the view needs no api_key join (modeled on agent_api_call_log)
             columns:
               - column:
                   name: id
@@ -55,12 +55,6 @@ databaseChangeLog:
                   name: user_id
                   type: int
                   remarks: Metabase user resolved from the API key at request time; NULL when the key has no user. Not a foreign key, for the same reason as api_key_id. Non-PII.
-                  constraints:
-                    nullable: true
-              - column:
-                  name: tenant_id
-                  type: int
-                  remarks: Snapshot of the resolved user's tenant at request time; NULL for non-tenant users. Non-PII.
                   constraints:
                     nullable: true
               - column:

@@ -67,7 +67,6 @@
          (is (= 200 (:status row)))
          (is (int? (:duration_ms row)))
          (is (= "metabase-cli" (:client_name row)))
-         (is (nil? (:tenant_id row)))
          (testing "embedding_client is absent — the common case, no X-Metabase-Client header sent"
            (is (nil? (:embedding_client row)))))
        (testing "and last_used_at is stamped"

@@ -19,8 +19,6 @@ SELECT
        AND pg.id != 1
      ORDER BY pg.name
      LIMIT 1)                                                  AS group_name,
-    t.tenant_id                                                AS tenant_id,
-    tn.name                                                    AS tenant_name,
     t.client_name                                              AS client_name,
     -- NOTE: keep these CASE branches in sync with `supported-client-keys` /
     -- `detect-client` in src/metabase/api_keys/usage.clj (the enum-<->-CASE sync footgun).
@@ -42,6 +40,4 @@ FROM api_key_usage_log t
 LEFT JOIN api_key ak
     ON ak.id = t.api_key_id
 LEFT JOIN core_user u
-    ON u.id = t.user_id
-LEFT JOIN tenant tn
-    ON tn.id = t.tenant_id;
+    ON u.id = t.user_id;

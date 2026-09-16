@@ -243,7 +243,6 @@
                         (update :ip_address #(some-> % (u/truncate ip-address-max-length))))
             row (merge {:api_key_id          api-key-id
                         :user_id             (:metabase-user-id request)
-                        :tenant_id           (:tenant-id request)
                         :route_template      (or (some-> route-template (u/truncate route-template-max-length))
                                                  unmatched-route-template)
                         :http_method         (some-> (:request-method request) name u/upper-case-en
