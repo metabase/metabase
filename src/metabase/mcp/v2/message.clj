@@ -59,8 +59,8 @@
    list of known look-alikes, not every character that might pass for a double quote."
   ;; Single quotes are kept: they can't close a double-quoted value, and names carrying them must survive being copied
   ;; back.
-  #{0x00AB 0x00BB 0x02BA 0x05F4 0x201C 0x201D 0x201E 0x201F 0x2033 0x2036 0x275D 0x275E 0x2E42 0x301D 0x301E 0x301F
-    0xFF02})
+  #{0x00AB 0x00BB 0x02BA 0x02DD 0x02EE 0x05F4 0x201C 0x201D 0x201E 0x201F 0x2032 0x2033 0x2034 0x2035 0x2036 0x2037
+    0x2057 0x275D 0x275E 0x2760 0x2E42 0x3003 0x301D 0x301E 0x301F 0xFF02 0x1F676 0x1F677 0x1F678})
 
 (defn- escaped-code-point?
   [code-point]
@@ -132,26 +132,29 @@
   #"%(?:\d+\$)?([-#+ 0,(<]*)(\d*)(\.\d+)?([tT]?[a-zA-Z%])")
 
 (defn- single-line?
-  "Whether format string `line` renders as one line of ordinary text: no line-breaking, control, or private-use
-   characters — truncation markers are built from private-use ones — and no `%n`."
+  "Whether format string `line` is one line of ordinary text: no line-breaking, control, or private-use characters.
+   Private-use characters are excluded because truncation markers are built from them."
   [line]
-  (and (not (re-find #"[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]" line))
-       (not-any? #(= "n" (nth % 4)) (re-seq format-specifier line))))
+  (not (re-find #"[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]" line)))
 
-(defn- reshapes-string?
-  "Whether specifier match `specifier` would cut, pad, or change the case of a string: any `%S`, or a `%s` with
-   flags, width, or precision."
+(defn- allowed-specifier?
+  "Whether specifier match `specifier` is one a message line may use: `%%`, a `%s` with no flags, width, or precision,
+   or a `%d` with flags and width but no precision. An explicit argument index and the `<` flag are allowed on both."
   [[_ flags width precision conversion]]
-  (or (= "S" conversion)
-      (and (= "s" conversion)
-           (boolean (or precision (seq width) (re-find #"[^<]" flags))))))
+  (let [plain? (and (nil? precision) (empty? width) (not (re-find #"[^<]" flags)))]
+    (case conversion
+      "%" plain?
+      "s" plain?
+      "d" (nil? precision)
+      false)))
 
 (defn- well-formed? [{:keys [lines]}]
   (and (vector? lines)
        (every? string? lines)
        (every? single-line? lines)
-       ;; Arguments arrive already quoted and escaped, so cutting or casing one could expose a half-quoted value.
-       (not-any? reshapes-string? (mapcat #(re-seq format-specifier %) lines))))
+       ;; Arguments arrive already quoted and escaped, so any conversion that cuts, cases, or reinterprets one could
+       ;; expose a half-quoted value: only the conversions that pass a cleaned argument through are allowed.
+       (every? allowed-specifier? (mapcat #(re-seq format-specifier %) lines))))
 
 (defn- unwrap-arg
   "The value behind message argument `arg`: a raw argument's value, a nested message's rendering, or any other

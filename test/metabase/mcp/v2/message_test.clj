@@ -48,7 +48,21 @@
       0x05f4 "\\u05f4"    ; Hebrew punctuation gershayim
       0x275d "\\u275d"    ; heavy double turned comma quotation mark ornament
       0x275e "\\u275e"    ; heavy double comma quotation mark ornament
-      0x2e42 "\\u2e42"))) ; double low-reversed-9 quotation mark
+      0x2e42 "\\u2e42")   ; double low-reversed-9 quotation mark
+    (testing "GHY-4544: look-alikes found by sweeping the blocks the set already draws from"
+      (are [code-point escaped] (= (str "\"a" escaped "b\"") (#'message/clean (around code-point)))
+        0x2760  "\\u2760"           ; heavy low double comma quotation mark ornament
+        0x3003  "\\u3003"           ; ditto mark
+        0x02dd  "\\u02dd"           ; double acute accent
+        0x02ee  "\\u02ee"           ; modifier letter double apostrophe
+        0x2032  "\\u2032"           ; prime
+        0x2034  "\\u2034"           ; triple prime
+        0x2035  "\\u2035"           ; reversed prime
+        0x2037  "\\u2037"           ; reversed triple prime
+        0x2057  "\\u2057"           ; quadruple prime
+        0x1f676 "\\ud83d\\ude76"    ; sans-serif heavy double turned comma quotation mark ornament
+        0x1f677 "\\ud83d\\ude77"    ; sans-serif heavy double comma quotation mark ornament
+        0x1f678 "\\ud83d\\ude78")))) ; sans-serif heavy low double comma quotation mark ornament
 
 (deftest ^:parallel clean-ignores-print-bindings-test
   (testing "GHY-4544: quoting and escaping don't depend on the caller's print bindings"
@@ -86,6 +100,18 @@
   (testing "GHY-4544: a keyword built from untrusted text can't smuggle a raw newline"
     (is (not (str/includes? (#'message/clean (keyword "a\nb")) "\n")))))
 
+(deftest ^:parallel clean-prints-boundedly-test
+  (testing "GHY-4544: an unbounded sequence is printed to a bounded length instead of hanging"
+    (let [rendered (message/render (message/msg ["%s"] (range)))]
+      (is (str/includes? rendered "..."))
+      (is (< (count rendered) 1000))))
+  (testing "a huge collection prints bounded, not as megabytes of text"
+    (let [rendered (message/render (message/msg ["%s"] (vec (range 2000000))))]
+      (is (str/includes? rendered "..."))
+      (is (< (count rendered) 1000))))
+  (testing "nesting deeper than the print level prints as #"
+    (is (str/includes? (#'message/clean (nth (iterate vector :x) 20)) "#"))))
+
 (deftest ^:parallel raw-takes-only-strings-test
   (testing "GHY-4544: raw marks server text, so anything but a string fails its schema"
     (are [x] (thrown? Exception (message/raw x))
@@ -102,18 +128,6 @@
           m      (message/msg ["Note: %s"] (message/raw marked))]
       (is (= (str "Note: " marked) (message/render m)))
       (is (= (str "Note: " marked) (message/render (message/truncate m 100)))))))
-
-(deftest ^:parallel clean-prints-boundedly-test
-  (testing "GHY-4544: an unbounded sequence is printed to a bounded length instead of hanging"
-    (let [rendered (message/render (message/msg ["%s"] (range)))]
-      (is (str/includes? rendered "..."))
-      (is (< (count rendered) 1000))))
-  (testing "a huge collection prints bounded, not as megabytes of text"
-    (let [rendered (message/render (message/msg ["%s"] (vec (range 2000000))))]
-      (is (str/includes? rendered "..."))
-      (is (< (count rendered) 1000))))
-  (testing "nesting deeper than the print level prints as #"
-    (is (str/includes? (#'message/clean (nth (iterate vector :x) 20)) "#"))))
 
 (deftest ^:parallel render-message-test
   (testing "GHY-4544: lines are joined with newlines and arguments are cleaned"
@@ -194,6 +208,26 @@
   (testing "numeric conversions with flags and width still format"
     (is (= "Rows: 1,234 of   12" (message/render (message/msg ["Rows: %,d of %4d"] 1234 12))))
     (is (= "Name: \"ab\" and \"ab\"" (message/render (message/msg ["Name: %1$s and %<s"] "ab"))))))
+
+(deftest ^:parallel render-allowlisted-conversions-test
+  (testing "GHY-4544: a conversion outside the allowlist would reformat an already-cleaned argument, so the message
+            renders fully cleaned"
+    (are [line arg] (= (str (#'message/clean line) " " (#'message/clean arg))
+                       (message/render (message/msg [line] arg)))
+      "Name: %b"  "orders"
+      "Name: %h"  "orders"
+      "Char: %c"  65
+      "Hex: %x"   255
+      "Oct: %o"   8
+      "Num: %f"   1.5
+      "Num: %e"   1.5
+      "Num: %.1f" 1.5
+      "Year: %tY" 2024
+      "Num: %.2d" 42))
+  (testing "the allowlisted conversions format"
+    (is (= "Name: \"orders\"" (message/render (message/msg ["Name: %s"] "orders"))))
+    (is (= "\"a\" \"a\"" (message/render (message/msg ["%1$s %<s"] "a"))))
+    (is (= "Rows: 1,234 of   12 (100%)" (message/render (message/msg ["Rows: %,d of %4d (100%%)"] 1234 12))))))
 
 (deftest ^:parallel truncate-test
   (testing "GHY-4544: a rendering within the limit is kept whole"
