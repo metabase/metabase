@@ -532,8 +532,8 @@
   "Hiccup for a Table card as a flat table: the columns in `table.columns` order, the rows cut at the attachment row
   limit with a \"Showing N of M rows\" line when some are cut."
   [timezone-id :- [:maybe :string]
-   card
-   {:keys [rows viz-settings format-rows?] :as unordered-data}]
+   card        :- [:maybe ::card]
+   {:keys [rows viz-settings format-rows?] :as unordered-data} :- ::QPResultData]
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
