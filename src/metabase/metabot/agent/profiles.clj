@@ -270,6 +270,11 @@
   (and (= profile-id :nlq)
        (not (entity-retrieval/entity-retrieval-available?))))
 
+(defn profile-registered?
+  "Whether a profile with `profile-id` is registered."
+  [profile-id]
+  (contains? @*profiles profile-id))
+
 (defn get-profile
   "Get profile configuration by profile-id keyword.
   The `:model` in the returned profile is resolved from the `llm-metabot-provider`

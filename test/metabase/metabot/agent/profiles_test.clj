@@ -69,6 +69,10 @@
         (is (contains? (tool-names profile) "create_dashboard_subscription"))))
     (testing "returns nil for unknown profile"
       (is (nil? (profiles/get-profile :unknown-profile))))
+    (testing "profile-registered? distinguishes registered profiles from unknown ones"
+      (is (true? (profiles/profile-registered? :embedding_next)))
+      (is (true? (profiles/profile-registered? :explorations)))
+      (is (false? (profiles/profile-registered? :unknown-profile))))
     (testing "all profiles have required keys"
       (doseq [profile-id [:embedding_next :internal :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
