@@ -24,7 +24,6 @@ export type { MetadataSelectorOpts, ShallowForeignKey } from "./selectors";
 
 export {
   selectMetadataProvider,
-  selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
   selectQuestionFromCard,
