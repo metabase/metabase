@@ -11,7 +11,7 @@ export const accordionOverrides = {
     defaultProps: {
       variant: "separated",
       radius: "sm",
-      chevron: <Icon name="chevrondown" size={CHEVRON_SIZE} />,
+      chevron: <Icon name="chevrondown" size={CHEVRON_SIZE} aria-hidden />,
       chevronSize: CHEVRON_SIZE,
     },
     classNames: {
