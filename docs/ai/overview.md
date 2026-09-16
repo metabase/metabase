@@ -36,7 +36,7 @@ See [full docs for Metabot](metabot.md) and [embedded AI chat](../embedding/ai-c
 
 Connect your favorite third-party AI tool - like Claude or Codex - to the Metabase MCP server. MCP servers are designed for answering in-the-moment questions like "hey btw what's our q3 revenue?" Metabase's MCP server is also useful when combined with other MCP servers. For example, you can ask Claude a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
 
-Compared to the built-in Metabot, the MCP server has a narrower set of tools (for example, it can't write Python transforms). See [MCP server tools](mcp-tools.md) for what it can do.
+Compared to the built-in Metabot, the MCP server has a narrower set of tools. See [MCP server tools](mcp-tools.md) for what it can do.
 
 **Controls**: People log in to Metabase to use the MCP server, and everything it returns is scoped to their permissions. Admins can [turn the MCP server off](mcp.md#turn-on-the-mcp-server) for everyone.
 
