@@ -743,37 +743,56 @@
                          env-managed? (assoc :env-vars #{(setting/env-var-name :llm-providers)})))]
     (into [] (map annotate) (stored-connections))))
 
-(defonce ^:private warned-captured-base-urls
+(defn- destination-fields
+  "The `:config` fields that decide where a connection's requests are sent — `:base-url` unless the registry says
+  otherwise, as Ollama does: its `:hosting` picks between the stored URL and Cloud's fixed one, so the connection
+  can be moved without `:base-url` changing at all. The registry has to carry this because the adapters that
+  resolve addresses live downstream of this namespace and cannot be asked.
+
+  Compared, never interpreted: this namespace does not resolve addresses, it only needs to know when one moved."
+  [type-name]
+  (:destination-fields (provider-type type-name) [:base-url]))
+
+(defonce ^:private warned-captured-destinations
   (atom #{}))
 
-(defn- drop-captured-base-url
-  "Drop `conn`'s stored base URL when layering `env-config` over it would send an environment-supplied secret to a
-  URL that came from the app DB, leaving the type's default to stand in.
+(defn- drop-captured-destination
+  "Drop `conn`'s stored [[destination-fields]] when layering `env-config` over it would send an environment-supplied
+  secret to an address that came from the app DB, leaving the type's defaults to stand in.
 
   [[assert-destination-change-authorized!]] refuses to point a connection somewhere new while carrying a secret the API
   caller did not freshly supply, and a secret the environment supplies can never be re-supplied through the API at
-  all. That check runs when the base URL is written, so it cannot account for a variable set afterwards.
+  all. That check runs when the destination is written, so it cannot account for a variable set afterwards.
   Deciding it again here makes the rule hold whichever order the two arrived in.
 
-  A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
-  rather than through the API, so its base URL is as trusted as the variable holding the secret. A type whose base
-  URL has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
+  Every destination field, not only `:base-url`: Ollama's `:hosting` moves a connection to Cloud's fixed address
+  without `:base-url` changing at all, so guarding the URL alone would let a stored `cloud` carry an
+  environment-supplied key to `ollama.com`.
 
-  Warned about once per value rather than on every read: it is the only trace an operator gets of a base URL their
-  instance is configured with but is not using."
+  A connection the `MB_LLM_PROVIDERS` JSON supplies is exempt: it is `:source :env`, written by the operator
+  rather than through the API, so its destination is as trusted as the variable holding the secret. A type whose
+  destination has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
+
+  Warned about once per value rather than on every read: it is the only trace an operator gets of a destination
+  their instance is configured with but is not using."
   [{conn-key :key :keys [type source config] :as conn} env-config]
-  (if-not (and (= :db source)
-               (u/trimmed-string (:base-url config))
-               (not (contains? env-config :base-url))
-               (some #(contains? env-config %) (secret-field-keys type)))
-    conn
-    (do
-      (when-not (contains? @warned-captured-base-urls [conn-key (:base-url config)])
-        (swap! warned-captured-base-urls conj [conn-key (:base-url config)])
-        (log/warnf (str "Ignoring the stored base URL of the %s LLM connection: its credentials come from the "
-                        "environment, so its base URL has to as well. Set %s to keep using it.")
-                   conn-key (get (connection-env-vars type) :base-url "the matching base URL variable")))
-      (update conn :config dissoc :base-url))))
+  (let [captured (when (and (= :db source)
+                            (some #(contains? env-config %) (secret-field-keys type)))
+                   (filterv #(and (u/trimmed-string (get config %))
+                                  (not (contains? env-config %)))
+                            (destination-fields type)))]
+    (if (empty? captured)
+      conn
+      (do
+        (doseq [field captured
+                :let  [seen [conn-key field (get config field)]]
+                :when (not (contains? @warned-captured-destinations seen))]
+          (swap! warned-captured-destinations conj seen)
+          (log/warnf (str "Ignoring the stored %s of the %s LLM connection: its credentials come from the "
+                          "environment, so its destination has to as well. Set %s to keep using it.")
+                     (name field) conn-key
+                     (get (connection-env-vars type) field "the matching environment variable")))
+        (update conn :config #(apply dissoc % captured))))))
 
 (defn connections
   "Every connection this instance can use, in admin-facing order.
@@ -786,7 +805,7 @@
   those inputs.
 
   The one field that does not simply stay editable is a stored base URL the environment's secret would travel to:
-  see [[drop-captured-base-url]].
+  see [[drop-captured-destination]].
 
   A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
   what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
@@ -798,7 +817,7 @@
                              ;; only a same-typed overlay applies: the fields describe this provider type's config
                              (if (and overlay (= type (:type overlay)))
                                (-> conn
-                                   (drop-captured-base-url env-config)
+                                   (drop-captured-destination env-config)
                                    (update :config merge env-config)
                                    (update :env-vars (fnil into (sorted-set)) (vals vars))
                                    (assoc :env-fields (set (keys env-config))))
@@ -982,16 +1001,6 @@
       (get (with-field-defaults type config) field)
       (or (u/trimmed-string (setting/env-var-value setting-kw))
           (get (with-field-defaults group-type {}) field)))))
-
-(defn- destination-fields
-  "The `:config` fields that decide where a connection's requests are sent — `:base-url` unless the registry says
-  otherwise, as Ollama does: its `:hosting` picks between the stored URL and Cloud's fixed one, so the connection
-  can be moved without `:base-url` changing at all. The registry has to carry this because the adapters that
-  resolve addresses live downstream of this namespace and cannot be asked.
-
-  Compared, never interpreted: this namespace does not resolve addresses, it only needs to know when one moved."
-  [type-name]
-  (:destination-fields (provider-type type-name) [:base-url]))
 
 (defn- destination-field?
   "Whether writing `field` on a connection of `type-name` can move where its requests are sent."

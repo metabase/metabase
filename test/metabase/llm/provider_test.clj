@@ -532,7 +532,17 @@
                                                                   {:base-url "https://planted.example.com/v1"})]]
       (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "vllm-env-key"]
         (is (= {:api-key "vllm-env-key"} (llm.provider/credentials "vllm")))
-        (is (false? (llm.provider/connection-usable? "vllm")))))))
+        (is (false? (llm.provider/connection-usable? "vllm"))))))
+  (testing (str "every destination field, not only the base URL: Ollama's `:hosting` moves a connection to "
+                "Cloud's fixed address without the URL changing at all, so guarding the URL alone would carry "
+                "an environment-supplied key to ollama.com")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "cloud"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-operator-key"]
+        (is (nil? (:hosting (llm.provider/credentials "ollama")))
+            "the stored `cloud` is dropped, so nothing resolves the key's destination to ollama.com")
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "cloud"
+                 (get-in (first (llm.provider/stored-connections)) [:config :hosting]))))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
