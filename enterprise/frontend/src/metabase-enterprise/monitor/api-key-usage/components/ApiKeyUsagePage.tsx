@@ -10,7 +10,7 @@ import { useApiKeyUsageContext } from "./context";
 export function ApiKeyUsagePage() {
   const {
     dataSources: { provider, table, groupMembersTable },
-    chartFilters: { dateFilter, userId, groupId, tenantId },
+    chartFilters: { dateFilter, userId, groupId },
   } = useApiKeyUsageContext();
 
   return (
@@ -22,7 +22,6 @@ export function ApiKeyUsagePage() {
         dateFilter={dateFilter}
         userId={userId}
         groupId={groupId}
-        tenantId={tenantId}
         title={t`Calls over time`}
       />
       <SimpleGrid cols={2} spacing="xl">
@@ -33,7 +32,6 @@ export function ApiKeyUsagePage() {
           dateFilter={dateFilter}
           userId={userId}
           groupId={groupId}
-          tenantId={tenantId}
           title={t`Calls by client`}
           display="pie"
           breakoutColumn="client_display_name"
@@ -46,7 +44,6 @@ export function ApiKeyUsagePage() {
           dateFilter={dateFilter}
           userId={userId}
           groupId={groupId}
-          tenantId={tenantId}
           title={t`Calls by route`}
           display="row"
           breakoutColumn="route_template"
@@ -61,7 +58,6 @@ export function ApiKeyUsagePage() {
           dateFilter={dateFilter}
           userId={userId}
           groupId={groupId}
-          tenantId={tenantId}
           title={t`Calls by user`}
           display="row"
           breakoutColumn="user_display_name"

@@ -20,7 +20,6 @@ type ApiKeyUsageDataSources = {
 export type ApiKeyUsageContextValue = {
   dataSources: ApiKeyUsageDataSources;
   chartFilters: ApiKeyUsageFilters;
-  hasTenants: boolean;
   hasPii: boolean;
   page: number;
   total: number;
