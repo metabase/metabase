@@ -18,6 +18,9 @@
   request and adds negligible latency. The two writes are independent of each other's success or
   failure, even though callers only see a single [[record-api-key-usage!]] entry point."
   (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.schedule.simple :as simple]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.api-keys.db :as ee.api-keys.db]
    [metabase.analytics.core :as analytics]
@@ -27,8 +30,11 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
+   [metabase.task.core :as task]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
 
@@ -90,31 +96,56 @@
 
 ;;; ---------------------------------------------- last_used_at ----------------------------------------------------
 
-(def ^:private last-used-batch-capacity
-  "How many `{api-key-id, timestamp}` events the last_used_at queue holds before it flushes early."
-  500)
+;; A coalescing map, not a Grouper queue of events: a Grouper queue keeps every event until it flushes, so a hot
+;; key piles up hundreds of entries between flushes only to have all but the newest discarded at flush time. Here,
+;; each request updates its key's entry *in place* — a busy key costs one map entry, not one entry per request — and
+;; a scheduled task flushes the current contents on a fixed interval. `reset-vals!` atomically swaps in a fresh
+;; empty map and returns the one it replaced, so a request arriving mid-flush lands in the new map and is picked up
+;; next interval, never lost and never blocking the flush.
 
-(def ^:private last-used-batch-interval-ms
-  "How long the last_used_at queue coalesces events before flushing a batch UPDATE."
-  (* 10 1000))
+(def ^:private last-used-flush-interval-seconds
+  "How often pending last_used_at stamps flush to the database."
+  10)
 
-(defn- update-last-used-at!*
-  "Grouper batch handler: dedupe `events` to the max timestamp per key, then one bulk UPDATE covering
-  every key in the batch."
-  [events]
-  (let [id->timestamp (update-vals (group-by :id events) (fn [xs] (apply t/max (map :timestamp xs))))]
-    (log/debugf "Updating last_used_at for %d API keys" (count id->timestamp))
-    (try
-      (api-keys.db/update-api-keys-last-used-at! id->timestamp)
-      (catch Throwable e
-        (log/warn e "Failed to update API key last_used_at")))))
+;; api-key-id -> the latest `occurred-at` seen for it since the last flush.
+(defonce ^:private pending-last-used-at (atom {}))
 
-(defonce ^:private last-used-queue
-  (delay
-    (grouper/start!
-     #'update-last-used-at!*
-     :capacity last-used-batch-capacity
-     :interval last-used-batch-interval-ms)))
+(defn- stamp-last-used-at! [api-key-id timestamp]
+  (swap! pending-last-used-at update api-key-id
+         (fn [existing] (if existing (t/max existing timestamp) timestamp))))
+
+(defn- flush-last-used-at!
+  "Scheduled-task handler: atomically take the current pending map and issue one bulk UPDATE for it."
+  []
+  (let [[batch] (reset-vals! pending-last-used-at {})]
+    (when (seq batch)
+      (log/debugf "Updating last_used_at for %d API keys" (count batch))
+      (try
+        (api-keys.db/update-api-keys-last-used-at! batch)
+        (catch Throwable e
+          (log/warn e "Failed to update API key last_used_at"))))))
+
+(def ^:private last-used-flush-job-key (jobs/key "metabase.task.api-keys.last-used-flush.job"))
+(def ^:private last-used-flush-trigger-key (triggers/key "metabase.task.api-keys.last-used-flush.trigger"))
+
+(task/defjob ^{DisallowConcurrentExecution true
+               :doc "Flush pending API key last_used_at stamps"}
+  ApiKeyLastUsedAtFlush [_ctx]
+  (flush-last-used-at!))
+
+(defmethod task/init! ::ApiKeyLastUsedAtFlush
+  [_]
+  (let [job     (jobs/build
+                 (jobs/of-type ApiKeyLastUsedAtFlush)
+                 (jobs/with-identity last-used-flush-job-key))
+        trigger (triggers/build
+                 (triggers/with-identity last-used-flush-trigger-key)
+                 (triggers/start-now)
+                 (triggers/with-schedule
+                  (simple/schedule
+                   (simple/with-interval-in-seconds last-used-flush-interval-seconds)
+                   (simple/repeat-forever))))]
+    (task/schedule-task! job trigger)))
 
 ;;; ------------------------------------------------- entry point ---------------------------------------------------
 
@@ -152,7 +183,7 @@
         occurred-at (or occurred-at (t/offset-date-time))]
     (when api-key-id
       (try
-        (grouper/submit! @last-used-queue {:id api-key-id, :timestamp occurred-at})
+        (stamp-last-used-at! api-key-id occurred-at)
         (catch Throwable e
           (log/warn e "Failed to record API key last_used_at"))))
     (try
