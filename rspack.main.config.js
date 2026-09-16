@@ -28,6 +28,9 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
+  DropStylesEntryScriptPlugin,
+} = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
+const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
@@ -160,53 +163,6 @@ class PreloadAssetTags {
 
             data.html = data.html.replace(PRELOAD_MARKER, hints);
             cb(null, data);
-          },
-        );
-      },
-    );
-  }
-}
-
-const STYLES_ENTRY = "styles";
-
-/**
- * The `styles` entry is a stylesheet, so the JS file emitted beside it holds one
- * empty module and does nothing. Dropping that file, its script tag and its
- * preload hint takes a request off the critical path and leaves the stylesheet
- * alone. Dev keeps the file, where the entry also carries the hot-reload runtime.
- */
-class DropStylesEntryScript {
-  apply(/** @type {import("webpack").Compiler} */ compiler) {
-    compiler.hooks.compilation.tap(
-      "DropStylesEntryScript",
-      (/** @type {import("webpack").Compilation} */ compilation) => {
-        const scripts = () =>
-          [...(compilation.namedChunks.get(STYLES_ENTRY)?.files ?? [])].filter(
-            (file) => file.endsWith(".js"),
-          );
-
-        // Before PreloadAssetTags, which builds its hints from the tags left here.
-        HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
-          "DropStylesEntryScript",
-          (data, cb) => {
-            const files = scripts();
-            data.assetTags.scripts = data.assetTags.scripts.filter(
-              (tag) => !files.some((file) => tag.attributes.src?.endsWith(file)),
-            );
-            cb(null, data);
-          },
-        );
-
-        // Early enough that the compression plugins never see the file.
-        compilation.hooks.processAssets.tap(
-          {
-            name: "DropStylesEntryScript",
-            stage: rspack.Compilation.PROCESS_ASSETS_STAGE_SUMMARIZE,
-          },
-          () => {
-            for (const file of scripts()) {
-              compilation.deleteAsset(file);
-            }
           },
         );
       },
@@ -405,7 +361,7 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
-    ...(isDevMode ? [] : [new DropStylesEntryScript()]),
+    ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
