@@ -69,9 +69,9 @@
   [model]
   (contains? supported-models model))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. DeepSeek answers from the model name."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (defn list-models

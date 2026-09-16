@@ -38,9 +38,9 @@
   {"kimi-k2.6" {:display-name "Kimi K2.6" :context-window 262144}
    "kimi-k3"   {:display-name "Kimi K3"   :context-window 1048576}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (def ^:private thinking-only-models
@@ -60,15 +60,15 @@
 (defn reasoning-model?
   "Whether `model` streams thinking that our chain-of-thought UI renders.
 
-(defn streams-reasoning?
-  "Registry capability. Moonshot answers from the model name."
-  [{:keys [model]}]
-  (reasoning-model? model))
-
   True exactly for the [[reasoning-models]] whitelist; off-whitelist models get thinking disabled in the request,
   so the settings gate and the stream agree by construction."
   [model]
   (contains? reasoning-models (str model)))
+
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. Moonshot answers from the model name."
+  [{:keys [model]} :- adapter/ResolvedRef]
+  (reasoning-model? model))
 
 (defn list-models
   "List the Moonshot models supported by this adapter (see [[supported-models]]).

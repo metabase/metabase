@@ -385,9 +385,9 @@
   [model]
   (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
@@ -430,9 +430,9 @@
   [model]
   (some? (model-thinking-config model)))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. Anthropic answers from the model name: thinking is requested in the request body."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (def ^:private fast-mode-models
@@ -446,9 +446,9 @@
   (and (not ai-proxy?)
        (contains? fast-mode-models (strip-vendor-prefix model))))
 
-(defn supports-fast-mode?
+(mu/defn supports-fast-mode? :- :boolean
   "Registry capability. Fast mode depends on the model and on whether the call is proxied."
-  [{:keys [model ai-proxy?]}]
+  [{:keys [model ai-proxy?]} :- adapter/ResolvedRef]
   (fast-mode-model? model ai-proxy?))
 
 (mu/defn claude-request-body

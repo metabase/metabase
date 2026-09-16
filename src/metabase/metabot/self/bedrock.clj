@@ -236,9 +236,9 @@
    "openai.gpt-5.5"             {:display-name "GPT-5.5"               :context-window 272000}
    "openai.gpt-5.5-2026-04-23"  {:display-name "GPT-5.5 (2026-04-23)"  :context-window 272000}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (defn- available-model?
@@ -284,11 +284,6 @@
 (defn reasoning-model?
   "Whether `model` streams renderable reasoning back to us.
 
-(defn streams-reasoning?
-  "Registry capability. Bedrock answers from the model id, delegating to the family's adapter."
-  [{:keys [model]}]
-  (reasoning-model? model))
-
   False (rather than [[model->family]]'s throw) outside the supported families:
   the settings capability gate asks about whatever model is selected."
   [model]
@@ -303,6 +298,11 @@
     ;; buy encrypted-content replay across tool calls.
     :openai    false
     nil        false))
+
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. Bedrock answers from the model id, delegating to the family's adapter."
+  [{:keys [model]} :- adapter/ResolvedRef]
+  (reasoning-model? model))
 
 (defn ->mantle-anthropic-body
   "Adapt a canonical Anthropic Messages request body for the mantle endpoint.

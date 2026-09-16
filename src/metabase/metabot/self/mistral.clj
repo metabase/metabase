@@ -29,19 +29,14 @@
   `list-models` returns the intersection of this map with the `/models` catalog."
   {"mistral-medium-3-5" {:display-name "Mistral Medium 3.5" :context-window 262144}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know.
   Catalog aliases (e.g. `mistral-medium-latest`) are not resolved."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (defn reasoning-model?
   "Whether `model` streams thinking that our chain-of-thought UI renders.
-
-(defn streams-reasoning?
-  "Registry capability. Mistral answers from the model name."
-  [{:keys [model]}]
-  (reasoning-model? model))
 
   True exactly for the [[supported-models]] whitelist. Off-catalog models — including
   catalog aliases like `mistral-medium-latest`, which are not resolved, as with
@@ -49,6 +44,11 @@
   false for them; the server default sends no thinking either way."
   [model]
   (contains? supported-models (str model)))
+
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. Mistral answers from the model name."
+  [{:keys [model]} :- adapter/ResolvedRef]
+  (reasoning-model? model))
 
 (defn- whitelisted-id
   "The [[supported-models]] id a `/models` catalog entry resolves to, or nil when unsupported.
