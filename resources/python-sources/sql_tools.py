@@ -626,7 +626,6 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
                   for key, new_name in replacements.get("columns") or []}
     folded_schemas = fold_keys({(name,): new_name for name, new_name in schemas.items()})
-    folded_table_map = fold_keys(table_map)
 
     ast = sqlglot.parse_one(sql, read=dialect)
 
@@ -634,35 +633,61 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     # because a reference matches a name whatever its case.
     aliases = {node.alias.lower() for node in ast.find_all(exp.Table, exp.Subquery, exp.CTE) if node.alias}
 
-    def find_table_replacement(db, schema, table, quoted=False):
+    def part_matches(key_part, ref_part, quoted):
+        """Whether one part of a replacement key names the same thing as the reference's."""
+        if key_part is None or ref_part is None:
+            return key_part is None and ref_part is None
+        # A quoted reference is case-significant to the engine — Postgres `"Orders"` is not `orders` — so that part
+        # matches only as written. An unquoted one matches whatever its case.
+        return key_part == ref_part if quoted else key_part.lower() == ref_part.lower()
+
+    def find_table_replacement(db, schema, table, quoted):
         # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
         # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
-        # Each is tried as written before it is tried ignoring case, so an exact key always wins. A quoted reference
-        # is case-significant to the engine — Postgres `"Orders"` is not `orders` — so it only matches as written.
-        for key in ((db, schema, table), (None, schema, table), (None, None, table)):
+        # Each shape is tried as written before it is tried part by part, so an exact key always wins, and keys that
+        # differ only in the case of an unquoted part answer nothing rather than one of them arbitrarily.
+        shapes = ((db, schema, table), (None, schema, table), (None, None, table))
+        for key in shapes:
             replacement = table_map.get(key)
-            if not replacement and not quoted:
-                replacement = fold_lookup(folded_table_map, key)
             if replacement:
                 return replacement
+        for key in shapes:
+            matched = [table_map[map_key]
+                       for map_key in table_map
+                       if all(part_matches(map_part, ref_part, was_quoted)
+                              for map_part, ref_part, was_quoted in zip(map_key, key, quoted))]
+            if matched:
+                # Keys that differ only in the case of an unquoted part are ambiguous unless they all name the same
+                # replacement, and an ambiguous reference is left alone rather than pointed at one of them.
+                first = matched[0]
+                return first if all(other == first for other in matched) else None
         return None
 
-    def is_quoted(node, *args):
-        """Whether any of `args` of `node` is an identifier the query quoted."""
-        return any(isinstance(node.args.get(arg), exp.Identifier) and node.args[arg].quoted for arg in args)
+    def quoted_parts(node, table_arg):
+        """Which parts of a table reference the query quoted, in replacement-key order."""
+        def quoted(arg):
+            value = node.args.get(arg)
+            return isinstance(value, exp.Identifier) and value.quoted
+
+        return (quoted("catalog"), quoted("db"), quoted(table_arg))
 
     def shadowing_cte_names(node):
-        """The CTE names in scope at `node`, folded. A CTE only shadows a table inside the query that declares it."""
+        """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside."""
         names = set()
+        own = set()
         current = node
         while current is not None:
+            # A CTE does not shadow the table its own body reads: `WITH orders AS (SELECT * FROM orders)` selects
+            # from the real table.
+            if isinstance(current, exp.CTE) and current.alias:
+                own.add(current.alias.lower())
             # Found by type rather than by arg name, which sqlglot spells `with_` in some versions and `with` in
             # others.
             for value in current.args.values():
                 if isinstance(value, exp.With):
                     names.update(cte.alias.lower() for cte in value.expressions if cte.alias)
             current = current.parent
-        return names
+        return names - own
 
     def set_identifier(node, arg, name):
         # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
@@ -700,7 +725,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             # replacement table and silently skip the CTE.
             if not db and not schema and table.lower() in shadowing_cte_names(node):
                 return node
-            replacement = find_table_replacement(db, schema, table, is_quoted(node, "this", "db", "catalog"))
+            replacement = find_table_replacement(db, schema, table, quoted_parts(node, "this"))
             if replacement:
                 replace_table(node, replacement, "catalog", "db", "this")
 
@@ -711,7 +736,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             # schema may name an alias instead, which is left alone.
             if table and (node.db or table.lower() not in aliases):
                 replacement = find_table_replacement(
-                    node.catalog or None, node.db, table, is_quoted(node, "table", "db", "catalog")
+                    node.catalog or None, node.db, table, quoted_parts(node, "table")
                 )
                 if replacement:
                     replace_table(node, replacement, "catalog", "db", "table")

@@ -127,6 +127,20 @@
                           "SELECT People.id FROM people PEOPLE"
                           {:tables {{:table "people"} "users"}})))))
 
+(deftest ^:parallel quoting-is-judged-per-part-test
+  (testing "a quoted schema leaves the unquoted table free to match in any case"
+    (is (= "SELECT * FROM \"public\".users"
+           (replace-names :postgres
+                          "SELECT * FROM \"public\".ORDERS"
+                          {:tables {{:schema "public" :table "orders"} "users"}})))))
+
+(deftest ^:parallel cte-does-not-shadow-its-own-body-test
+  (testing "a CTE reading the table it is named after reads the real table"
+    (is (= "WITH orders AS (SELECT * FROM users) SELECT * FROM orders"
+           (replace-names :postgres
+                          "WITH orders AS (SELECT * FROM orders) SELECT * FROM orders"
+                          {:tables {{:table "orders"} "users"}})))))
+
 (deftest ^:parallel quoted-reference-is-case-significant-test
   (testing "a quoted reference matches only a key of the same case: the engine reads it literally"
     (is (= "SELECT * FROM \"Orders\""
