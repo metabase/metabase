@@ -19,13 +19,8 @@ const SHARED_UTILS_LEVELS = [
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
   // U4 — the current user, composed over the plugin registry for application permissions,
-  // the global styles, composed over settings and the store,
-  // and the settings-page rendering primitives, composed over settings.
-  [
-    "shared/current-user",
-    "shared/styled-components",
-    "shared/settings-components",
-  ],
+  // and the global styles, composed over settings and the store.
+  ["shared/current-user", "shared/styled-components"],
   // U5 — app services over the store, registry and current user.
   [
     "shared/metadata-store",

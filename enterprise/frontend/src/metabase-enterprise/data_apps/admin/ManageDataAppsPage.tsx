@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/settings-components";
+} from "metabase/admin/components/SettingsSection";
 import { Badge, Box, Flex, Group, Loader, Stack, Title } from "metabase/ui";
 import {
   useGetDataAppRepoStatusQuery,

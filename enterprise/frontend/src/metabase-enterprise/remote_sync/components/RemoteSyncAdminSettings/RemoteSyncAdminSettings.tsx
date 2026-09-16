@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/settings-components";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 
 import { RemoteSyncSettingsForm } from "./RemoteSyncSettingsForm";
 

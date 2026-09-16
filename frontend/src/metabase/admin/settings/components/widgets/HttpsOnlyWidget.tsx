@@ -3,8 +3,9 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
-import { AdminSettingInput } from "metabase/settings-components";
 import { fetchWithTimeout } from "metabase/utils/fetchWithTimeout";
+
+import { AdminSettingInput } from "./AdminSettingInput";
 
 enum Status {
   VERIFIED = "verified",

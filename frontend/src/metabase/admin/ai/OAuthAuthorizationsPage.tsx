@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -14,7 +15,6 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
 import { useLocation } from "metabase/router";
-import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Badge,
   type BadgeColor,

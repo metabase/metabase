@@ -33,7 +33,7 @@ export const GetCodeStep = () => {
   const handleFrontendSnippetCopied = () => {
     trackSnippetCopied("frontend");
 
-    // Setup guide: track step completion. The settings keep their embedding-hub names.
+    // Embedding Hub: track step completion
     // Test embed = guest or existing user session (for quick testing)
     // Production embed = full SSO setup
     const isTestEmbed = settings.isGuest || settings.useExistingUserSession;

@@ -179,7 +179,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
           listTag("database"),
-          listTag("setup-guide-checklist"),
+          listTag("embedding-hub-checklist"),
         ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({

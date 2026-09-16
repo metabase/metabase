@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -11,7 +12,6 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useNavigate, useParams } from "metabase/router";
-import { SettingsSection } from "metabase/settings-components";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseData } from "metabase-types/api";

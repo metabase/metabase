@@ -20,7 +20,6 @@
    [:entity_id ms/NonBlankString]
    [:name      ms/NonBlankString]
    [:settings ms/OpaqueJSONObject]
-   [:is_default :boolean]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
@@ -91,9 +90,6 @@
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)
-        ;; Marked here because nothing else can identify them afterwards: the
-        ;; names are stored already translated, and seeding is lazy so the ids
-        ;; are not ordered.
-        (embedding-rest.db/insert-embedding-themes! (map #(assoc % :is_default true) themes))
+        (embedding-rest.db/insert-embedding-themes! themes)
         (embedding.settings/default-embedding-themes-seeded! true))))
   nil)

@@ -12,6 +12,7 @@ import {
 import { c, msgid, ngettext, t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
@@ -23,7 +24,6 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { SettingsSection } from "metabase/settings-components";
 import {
   Button,
   Group,

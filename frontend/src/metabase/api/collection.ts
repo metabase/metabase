@@ -147,9 +147,9 @@ export const collectionApi = Api.injectEndpoints({
           idTag("collection", collection.parent_id ?? "root"),
         ];
 
-        // Creating a shared tenant collection affects the setup guide checklist
+        // Creating a shared tenant collection affects the embedding hub checklist
         if (request.namespace === "shared-tenant-collection") {
-          tags.push(listTag("setup-guide-checklist"));
+          tags.push(listTag("embedding-hub-checklist"));
         }
 
         return invalidateTags(error, tags);

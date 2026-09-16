@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { Table } from "metabase/common/components/Table";
@@ -14,7 +15,6 @@ import {
   useRegenerateSuggestedMetabotPromptsMutation,
 } from "metabase/metabot";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import { SettingHeader } from "metabase/settings-components";
 import {
   ActionIcon,
   Box,

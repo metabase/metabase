@@ -2,6 +2,10 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
 import {
   useDisablePersistMutation,
@@ -17,10 +21,6 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/settings-components";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";

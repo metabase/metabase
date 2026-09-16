@@ -1,0 +1,1 @@
+export { EmbeddingHubAdminSettingsPage } from "./EmbeddingHubAdminSettingsPage";

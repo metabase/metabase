@@ -3,18 +3,16 @@ import { t } from "ttag";
 import { useNavigate } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
-// Fallback for callers that did not say where they came from. Inlined here
-// rather than imported so this modal can live at the shared tier and be invoked
-// from anywhere without a cross-feature dependency.
-const DEFAULT_SETUP_GUIDE_PATH = "/embedding/get-started";
+// Path to the admin embedding setup guide. Inlined here (rather than
+// imported from admin/) so this modal can live at the shared tier and be
+// invoked from dashboard/admin/etc. without a cross-feature dependency.
+const EMBEDDING_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 interface ReturnToSetupGuideModalProps {
   opened: boolean;
   onClose: () => void;
   title: string;
   message: string;
-  /** Where to send the user back to. The guide has more than one host. */
-  returnTo?: string;
 }
 
 /**
@@ -26,7 +24,6 @@ export const ReturnToSetupGuideModal = ({
   onClose,
   title,
   message,
-  returnTo = DEFAULT_SETUP_GUIDE_PATH,
 }: ReturnToSetupGuideModalProps) => {
   const navigate = useNavigate();
 
@@ -38,7 +35,10 @@ export const ReturnToSetupGuideModal = ({
           <Button variant="subtle" onClick={onClose}>
             {t`Stay here`}
           </Button>
-          <Button variant="filled" onClick={() => navigate(returnTo)}>
+          <Button
+            variant="filled"
+            onClick={() => navigate(EMBEDDING_SETUP_GUIDE_PATH)}
+          >
             {t`Return to the setup guide`}
           </Button>
         </Group>
