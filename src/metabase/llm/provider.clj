@@ -353,7 +353,6 @@
     ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
     ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
-    :stored-config-fields [:model-reasoning]
     ;; the two deployments need opposite things: Cloud has a known address and needs a key,
     ;; self-hosted has an address only the admin knows and often needs no key
     :required-any  [[:base-url] [:api-key]]

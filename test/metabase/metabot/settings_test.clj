@@ -338,13 +338,6 @@
         (with-connections [(ollama-connection {})]
           (testing "thinking-model" (is (true? (supports-reasoning? "thinking-model"))))
           (testing "chat-model"     (is (false? (supports-reasoning? "chat-model"))))))))
-  (testing "a connection saved before Ollama reported capabilities keeps the probe's answer, but only
-           for the model that probe described"
-    (with-capabilities! {}
-      (fn []
-        (with-connections [(ollama-connection {:model-reasoning "true" :probed-model "probed-model"})]
-          (testing "probed-model" (is (true? (supports-reasoning? "probed-model"))))
-          (testing "other-model"  (is (false? (supports-reasoning? "other-model"))))))))
   (testing "and a model nothing has looked up yet reads as non-reasoning rather than guessing — the
            setting is public, so it answers from what is known and never calls Ollama itself"
     (with-connections [(ollama-connection {})]

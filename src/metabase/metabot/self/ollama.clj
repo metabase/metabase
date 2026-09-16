@@ -174,7 +174,11 @@
 
 (defn- check-tool-calling!
   "Check that the model can call tools; Ollama drives this from the model's own template, so the fix
-  is always a different model. Returns whether it emitted reasoning — the only signal we get."
+  is always a different model.
+
+  Whether it thought along the way is not recorded — `/api/show` answers that per model, for every
+  model rather than only the probed one. Thinking is still read here, to tell \"spent the budget
+  thinking\" apart from \"generated too much\" when nothing came back."
   [auth model]
   (let [{:keys [message finish_reason]} (probe-chat! auth model {:messages probe-messages
                                                                  :tools    [probe-tool]})
@@ -200,8 +204,7 @@
                     (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
                          (str model) (str probe-max-tokens))
                     (tru "{0} returned a tool call whose arguments are not valid JSON. Pull a larger or more capable model — Metabot needs reliable tool calling."
-                         (str model))))))
-        (not (str/blank? reasoning)))
+                         (str model)))))))
 
       (and truncated? (not (str/blank? reasoning)))
       (throw (preflight-ex
@@ -279,7 +282,7 @@
         (throw (no-models-ex)))))
 
 (defn- run-probes!
-  "Run both contract probes and return whether the model streamed reasoning.
+  "Run both contract probes, throwing on the first failure.
 
   Which structured-output probe runs depends on the deployment, because the mechanism does — see
   [[metabase.metabot.self.ollama.forced-calls/probe-body]].
@@ -290,9 +293,8 @@
   off: `future-cancel` interrupts, and a blocking socket read ignores interrupts."
   [auth model cloud?]
   (try
-    (let [reasoning? (check-tool-calling! auth model)]
-      (check-structured-output! auth model cloud?)
-      reasoning?)
+    (check-tool-calling! auth model)
+    (check-structured-output! auth model cloud?)
     (catch SocketTimeoutException _
       (throw (preflight-ex
               (tru "Ollama did not answer the connection test within {0}ms. On a self-hosted server the first request also loads the model into memory — if it is large, retry once it is warm, otherwise it is too slow to drive Metabot."
@@ -301,17 +303,16 @@
       (core/rethrow-api-error! "ollama" ollama-error-msg e))))
 
 (defn- preflight!
-  "Exercise the agent loop's contract against the model that will actually serve it, returning
-  `{:model id :reasoning? bool}`. The connect path must adopt exactly this model rather than
-  re-deriving it from the listing, which agrees only while nothing reorders the catalog.
+  "Exercise the agent loop's contract against the model that will actually serve it, returning that
+  model's id. The connect path must adopt exactly this model rather than re-deriving it from the
+  listing, which agrees only while nothing reorders the catalog.
 
   No context-window check, unlike vLLM's: Ollama's catalog carries no `max_model_len`, so nothing at
   connect time can see the window. Too small a window shows up as truncation in the probes above."
   [auth entries requested-model cloud?]
-  (let [entry (probe-target entries requested-model)
-        model (:id entry)]
-    {:model      model
-     :reasoning? (run-probes! auth model cloud?)}))
+  (let [model (:id (probe-target entries requested-model))]
+    (run-probes! auth model cloud?)
+    model))
 
 (def ^:private capability-lookup-batch
   "How many models to ask about at once. `pmap` is no help on its own: it realizes a chunked seq — and
@@ -362,8 +363,7 @@
                         entries)]
      (merge {:models models}
             (when probed
-              {:learned-config {caps/reasoning-config-key (str (:reasoning? probed))
-                                :probed-model             (:model probed)}})))))
+              {:learned-config {:probed-model probed}})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 

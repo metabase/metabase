@@ -62,14 +62,6 @@
   "A self-hosted Ollama behind a proxy that requires a key."
   (assoc credentials :api-key "proxy-key"))
 
-(def ^:private reasoning-credentials
-  "A connection whose connect-time probe found the pulled model streaming its reasoning. `:probed-model`
-  is what makes that observation mean anything: it describes `good-model` and no other model on the
-  server, which is why nothing reads the flag without it."
-  (assoc credentials
-         ollama.capabilities/reasoning-config-key "true"
-         :probed-model                           "good-model"))
-
 (defn- captured-request
   "Drive `list-models` against a stub and return the request it issued. Credentials go through
   `with-field-defaults` first, as every real caller does — a hand-built map could carry a `:hosting`
@@ -135,21 +127,28 @@
                                                        :tool_choice "required"
                                                        :max-tokens  128})))))))
 
-(deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-model-test
+(deftest request-body-raises-max-tokens-for-a-reasoning-model-test
   (testing "a reasoning model gets the larger floor — thinking, answer and tool call are billed
-           against one budget. Nothing here reaches Ollama: the floor reads the capability cache,
-           which `ollama-raw` fills before it builds a body."
-    (is (= 16384
-           (:max_tokens (ollama/ollama-request-body {:model       "good-model"
-                                                     :input       [{:role :user :content "hi"}]
-                                                     :credentials reasoning-credentials
-                                                     :max-tokens  128})))))
-  (testing "and a model nothing has found reasoning keeps the caller's value"
-    (is (= 128
-           (:max_tokens (ollama/ollama-request-body {:model       "good-model"
-                                                     :input       [{:role :user :content "hi"}]
-                                                     :credentials credentials
-                                                     :max-tokens  128}))))))
+           against one budget"
+    (with-clean-capabilities!
+      (fn []
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200
+                                                          :body   {:capabilities ["completion" "tools" "thinking"]}})]
+          (is (= 16384
+                 (:max_tokens (ollama/ollama-request-body {:model       "thinking-model"
+                                                           :input       [{:role :user :content "hi"}]
+                                                           :credentials credentials
+                                                           :max-tokens  128}))))))))
+  (testing "and a model Ollama does not call a thinking one keeps the caller's value"
+    (with-clean-capabilities!
+      (fn []
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200
+                                                          :body   {:capabilities ["completion" "tools"]}})]
+          (is (= 128
+                 (:max_tokens (ollama/ollama-request-body {:model       "chat-model"
+                                                           :input       [{:role :user :content "hi"}]
+                                                           :credentials credentials
+                                                           :max-tokens  128})))))))))
 
 (deftest ^:parallel request-body-constrains-the-decoder-on-a-self-hosted-schema-test
   (testing "Ollama discards `tool_choice`, so the shared builder's forced-tool framing is only a
@@ -264,11 +263,10 @@
   (testing "renamed to `reasoning`, since Ollama ignores `reasoning_content` on the way in"
     (is (not (contains? (replayed-assistant nil) :reasoning_content)))))
 
-(deftest ^:parallel request-body-replay-is-not-probe-gated-test
-  (testing "replay does not wait on the probe"
-    (doseq [[label creds] {"probed reasoning"     reasoning-credentials
-                           "probed non-reasoning" credentials
-                           "never probed"         nil}]
+(deftest ^:parallel request-body-replay-is-not-capability-gated-test
+  (testing "replay does not wait on knowing whether the model reasons"
+    (doseq [[label creds] {"a connection" credentials
+                           "none at all"  nil}]
       (testing label
         (is (= "I should count them"
                (:reasoning (replayed-assistant {:credentials creds}))))))))
@@ -412,8 +410,7 @@
 (deftest preflight-passes-on-a-model-that-calls-tools-test
   (testing "a model that returns a well-formed tool call passes and is adopted as the one to run on"
     (is (= {:models         [{:id "good-model" :display_name "good-model"}]
-            :learned-config {ollama.capabilities/reasoning-config-key "false"
-                             :probed-model               "good-model"}}
+            :learned-config {:probed-model "good-model"}}
            (probe! [{:id "good-model"}] tool-calling-message)))))
 
 (deftest preflight-skips-models-that-cannot-chat-test
@@ -465,18 +462,6 @@
     (is (= "good-model"
            (get-in (probe! [{:id "good-model" :max_model_len 4096}] tool-calling-message)
                    [:learned-config :probed-model])))))
-
-(deftest preflight-records-a-reasoning-model-test
-  (testing "what the probe saw is still recorded, as the fallback for a server too old to report
-           capabilities — see `metabase.metabot.self.ollama.connection`"
-    (is (= "true"
-           (get-in (probe! [{:id "good-model"}] (assoc tool-calling-message :reasoning "thinking..."))
-                   [:learned-config ollama.capabilities/reasoning-config-key])))
-    (testing "the deprecated spelling some builds still emit counts too"
-      (is (= "true"
-             (get-in (probe! [{:id "good-model"}]
-                             (assoc tool-calling-message :reasoning_content "thinking..."))
-                     [:learned-config ollama.capabilities/reasoning-config-key]))))))
 
 (deftest preflight-rejects-a-model-that-cannot-call-tools-test
   (testing "the fix is always a different model — Ollama drives tool calling from the model's own

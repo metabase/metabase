@@ -85,23 +85,16 @@
         (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b")))
         (is (false? (ollama.capabilities/reasoning-model? credentials "mistral-large-3:675b")))))))
 
-(deftest a-server-that-reports-nothing-falls-back-to-the-probe-test
-  (let [probed (assoc credentials
-                      :probed-model                            "qwen3:8b"
-                      ollama.capabilities/reasoning-config-key "true")]
-    (testing "an Ollama too old to report capabilities keeps answering for the model it was connected
-             on — an existing connection must not lose reasoning to this change"
-      (with-server! {}
-        (fn [_]
-          (is (true? (ollama.capabilities/reasoning-model? probed "qwen3:8b"))))))
-    (testing "but the flag says nothing about any other model on that server, so it is not consulted"
-      (with-server! {}
-        (fn [_]
-          (is (false? (ollama.capabilities/reasoning-model? probed "llama3.2:1b"))))))
-    (testing "and a server that does report wins over the stored flag, which is what goes stale"
-      (with-server! {"qwen3:8b" ["completion" "tools"]}
-        (fn [_]
-          (is (false? (ollama.capabilities/reasoning-model? probed "qwen3:8b"))))))))
+(deftest a-server-that-reports-nothing-rules-nothing-in-test
+  (testing "an Ollama too old to report `capabilities` reads as not reasoning — a smaller token budget
+           rather than a wrong answer, since `reasoning` is forwarded whenever it appears"
+    (with-server! {}
+      (fn [_]
+        (is (false? (ollama.capabilities/reasoning-model? credentials "qwen3:8b"))))))
+  (testing "and rules no model out of the picker either"
+    (with-server! {}
+      (fn [_]
+        (is (true? (ollama.capabilities/chat-capable? credentials "qwen3:8b")))))))
 
 (deftest an-unreachable-server-is-not-an-error-test
   (testing "capabilities sharpen a decision the adapter can still make without them, so a server that

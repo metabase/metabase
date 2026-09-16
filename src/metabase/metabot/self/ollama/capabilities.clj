@@ -9,7 +9,11 @@
 
   A connection serves as many models as the operator has pulled, so every answer here is about one
   *model*, never about the connection. That is the whole point: Metabot and the mini model need not
-  be on the same one.
+  be on the same one, and a flag recorded once against the connection could only ever describe one
+  of them.
+
+  A server that will not answer rules nothing in and nothing out: an unknown model is offered like
+  any other, and reads as not reasoning.
 
   Keeping the answers fresh is this namespace's own business — see [[cached-capabilities]]. Nothing
   outside needs to know a cache exists, or to remember to fill it."
@@ -26,19 +30,6 @@
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------------------------- What a connect-time probe recorded --------------------------------------
-
-(def reasoning-config-key
-  "The `:config` key a connect-time probe records its reasoning observation under. Not admin-entered:
-  only a probe could tell, on a server that reports no capabilities.
-
-  It describes one model — the `:probed-model` stored beside it — which is why nothing reads it
-  without checking that too. See [[reasoning-model*]].
-
-  Stored as a string, because the API round-trips `:config` as strings — a hand-written
-  `llm-providers` can hold a JSON boolean, so [[reasoning-model*]] accepts both."
-  :model-reasoning)
 
 ;;; ---------------------------------------------- Asking the server ----------------------------------------------
 
@@ -57,7 +48,7 @@
   "What a model has to report to be worth offering Metabot. Embedding models report neither."
   #{"completion" "tools"})
 
-(defn- fetch-capabilities!
+(defn- fetch-capabilities
   "What Ollama says `model` can do, as a set of capability names, or nil when it would not say — an
   Ollama too old to report `capabilities`, or one that answered `/api/show` with an error.
 
@@ -119,7 +110,7 @@
   (when-not (str/blank? model)
     (cache.wrapped/lookup-or-miss capabilities-cache
                                   (cache-key credentials model)
-                                  (fn [_] (fetch-capabilities! credentials model)))))
+                                  (fn [_] (fetch-capabilities credentials model)))))
 
 ;; The cache keys a background lookup is already in flight for. Without this, a burst of page loads
 ;; against a cold cache would each start their own: `cache.wrapped/lookup-or-miss` gives every caller
@@ -174,34 +165,23 @@
 
 ;;; --------------------------------------------- What callers ask for --------------------------------------------
 
-(defn- reasoning-model*
-  "Whether `model` streams its reasoning, given `caps` — nil when the server reported none.
-
-  The fallback is the connect-time probe's observation, which only ever described the model it
-  probed. It is for a server too old to report `capabilities` at all: connecting to one still
-  exercises the model, so the model the admin set the connection up on keeps its larger token budget.
-  Any other model on such a server reads as not reasoning, which costs a smaller budget rather than
-  correctness — the `reasoning` field is forwarded whenever it appears, so thinking still renders."
-  [credentials model caps]
-  (if caps
-    (contains? caps thinking-capability)
-    (and (= model (:probed-model credentials))
-         (contains? #{true "true"} (get credentials reasoning-config-key)))))
-
 (mu/defn reasoning-model? :- :boolean
   "Whether the connection's `model` streams its reasoning back to us, asking Ollama if we have not
   asked recently. The ordinary accessor: a caller already making a generation request does not notice
-  one cached metadata lookup."
+  one cached metadata lookup.
+
+  A server that will not say reads as not reasoning. That costs a smaller token budget, not
+  correctness — the `reasoning` field is forwarded whenever it appears, so thinking still renders."
   [credentials :- conn/Credentials
    model       :- [:maybe :string]]
-  (reasoning-model* credentials model (capabilities credentials model)))
+  (contains? (capabilities credentials model) thinking-capability))
 
 (mu/defn cached-reasoning-model? :- :boolean
   "[[reasoning-model?]] for the one caller that cannot make an HTTP call — see [[cached-capabilities]],
   which also arranges for the next such read to be right."
   [credentials :- conn/Credentials
    model       :- [:maybe :string]]
-  (reasoning-model* credentials model (cached-capabilities credentials model)))
+  (contains? (cached-capabilities credentials model) thinking-capability))
 
 (mu/defn chat-capable? :- :boolean
   "Whether `model` is one Metabot could run on. Unknown capabilities count as capable: only a server
