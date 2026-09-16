@@ -74,6 +74,10 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/table-or-field-query                             {:level :warning}
+  ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
+  ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
+  ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
+  :metabase/unsafe-app-db-query                              {:level :off}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -591,6 +595,7 @@
    clojure.core/defprotocol                                                                                                  hooks.clojure.core.def/lint-def
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
+   clojure.core/ex-info                                                                                                      hooks.metabase.agent-message/lint-ex-info
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -606,7 +611,6 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
-   metabase-enterprise.metabot.tools.dependencies-test/with-dependent-transforms!                                            hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -686,6 +690,15 @@
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.mcp.transport/jsonrpc-error                                                                                      hooks.metabase.agent-message/lint-jsonrpc-error
+   metabase.mcp.v2.common/ellipsize                                                                                          hooks.metabase.agent-message/lint-ellipsize
+   metabase.mcp.v2.common/error-content                                                                                      hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.common/list-content                                                                                       hooks.metabase.agent-message/lint-list-content
+   metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.agent-message/lint-success-content
+   metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.dashboard-ops/op-error!                                                                                   hooks.metabase.agent-message/lint-op-error
+   metabase.mcp.v2.message/msg                                                                                               hooks.metabase.agent-message/lint-msg
+   metabase.mcp.v2.tools.browse/paged-list-content                                                                           hooks.metabase.agent-message/lint-list-content
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
@@ -898,7 +911,19 @@
   ;; run Toucan 2 queries anywhere.
   ;;
   {:pattern "^metabase\\.app-db\\..*"
-   :name    app-db-namespaces}]
+   :name    app-db-namespaces}
+  ;;
+  ;; MCP source namespaces, OSS and enterprise, whose prose reaches an LLM agent, excluding test namespaces.
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase(?:-enterprise)?\\.mcp\\..*"
+   :name    agent-message-namespaces}
+  ;;
+  ;; MCP source namespaces whose caller-facing errors are MCP exits: `metabase.mcp.transport` and `metabase.mcp.v2.*`,
+  ;; and their enterprise counterparts. Other MCP namespaces' 4xx `ex-info`s are admin API and middleware errors, not
+  ;; MCP exits.
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase(?:-enterprise)?\\.mcp\\.(?:transport$|v2\\..*)"
+   :name    agent-exit-namespaces}]
 
  :config-in-ns
  {metabase.app-db.custom-migrations
@@ -923,6 +948,17 @@
 
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}}}
+
+  agent-message-namespaces
+  {:linters {:metabase/agent-message-lines {:level :warning}}}
+
+  agent-exit-namespaces
+  {:linters {:metabase/agent-message-exit {:level :warning}}}
+
+  ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
+  ;; `metabase.app-db.value-guard`.
+  metabase.content-translation.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

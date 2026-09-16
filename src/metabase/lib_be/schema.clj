@@ -56,6 +56,7 @@
    [:offset     {:optional true} [:maybe :int]]
    [:middleware {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
    [:info       {:optional true} [:maybe [:ref ::lib.schema.info/info]]]
+   [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:action     {:optional true} [:or :string :keyword]]
    [:database   {:optional true} [:maybe pos-int?]]
    [:scope      {:optional true} ::internal-query.scope]

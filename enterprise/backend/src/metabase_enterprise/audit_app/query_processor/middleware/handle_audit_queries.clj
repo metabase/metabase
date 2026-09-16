@@ -104,7 +104,8 @@
                    [:limit      {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                    [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                    [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
-                   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]]]]
+                   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
+                   [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]]]]
           config/is-test?
           (conj [::mc/default
                  [:map {:closed true}
@@ -114,7 +115,8 @@
                   [:limit      {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                   [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
                   [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
-                  [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]]]))))
+                  [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
+                  [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]]]))))
 
 (defn- validate-internal-query
   [query]

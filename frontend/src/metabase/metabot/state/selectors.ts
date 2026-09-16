@@ -1,16 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { match } from "ts-pattern";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import type { TransformId } from "metabase-types/api";
 
 import {
   CONTEXT_WINDOW_WARNING_PERCENT,
   FIXED_METABOT_IDS,
   METABOT_REQUEST_IDS,
-  type MetabotProfileId,
 } from "../constants";
 import {
   getContextWindowPercentUsage,
@@ -60,33 +57,6 @@ export const getMetabotReactionsState = createSelector(
 export const getNavigateToPath = createSelector(
   getMetabotReactionsState,
   (reactionsState) => reactionsState.navigateToPath,
-);
-
-export const getMetabotSuggestedTransforms = createSelector(
-  getMetabotReactionsState,
-  (reactionsState) => reactionsState.suggestedTransforms,
-);
-
-export const getMetabotSuggestedTransform = createSelector(
-  [
-    getMetabotSuggestedTransforms,
-    (_, transformId?: TransformId) => transformId,
-  ],
-  (suggestedTransforms, transformId) => {
-    return suggestedTransforms.findLast(
-      (t) => t.id === transformId && t.active,
-    );
-  },
-);
-
-export const getIsSuggestedTransformActive = createSelector(
-  [getMetabotSuggestedTransforms, (_, suggestionId: string) => suggestionId],
-  (suggestedTransforms, suggestionId) => {
-    const suggestion = suggestedTransforms.find(
-      (t) => t.suggestionId === suggestionId,
-    );
-    return suggestion?.active ?? false;
-  },
 );
 
 /*
@@ -301,34 +271,13 @@ export const getProfileOverride = createSelector(
   (convo) => convo.profileOverride,
 );
 
-export const getProfile = (
-  state: State,
-  conversationId: string,
-  isTransformsPage: boolean,
-): MetabotProfileId | undefined => {
-  const profileOverride = getProfileOverride(state, conversationId);
-  const debugMode = getDebugMode(state);
-  return match({ debugMode, isTransformsPage })
-    .returnType<MetabotProfileId | undefined>()
-    .with(
-      { debugMode: false, isTransformsPage: true },
-      () => "transforms_codegen",
-    )
-    .with(
-      { debugMode: true, isTransformsPage: true },
-      () => profileOverride ?? "transforms_codegen",
-    )
-    .otherwise(() => profileOverride);
-};
-
 export const getAgentRequestMetadata = createSelector(
   [
     (
       state: State,
       conversationId: string,
       _retryMessageId: string | undefined,
-      isTransformsPage: boolean,
-    ) => getProfile(state, conversationId, isTransformsPage),
+    ) => getProfileOverride(state, conversationId),
     getLastAgentMessageExternalId,
     (
       _state: State,

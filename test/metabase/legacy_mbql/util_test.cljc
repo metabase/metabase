@@ -128,6 +128,15 @@
            (mbql.u/update-field-options [:field 1 {:display-name "Meh"}] #(assoc % :display-name "Wow"))))
   (t/is (= [:field 1 {:name "a", :display-name "b"}]
            (mbql.u/update-field-options [:field 1 {:name "a"}] #(assoc % :display-name "b"))))
+  (t/testing "Should pass extra args to `f`, like `clojure.core/update`"
+    (t/is (= [:field 1 {:name "a", :display-name "b"}]
+             (mbql.u/update-field-options [:field 1 {:name "a"}] assoc :display-name "b")))
+    (t/is (= [:field 1 {:binning {:strategy :num-bins, :num-bins 10}}]
+             (mbql.u/update-field-options [:field 1 nil] assoc-in [:binning] {:strategy :num-bins, :num-bins 10})))
+    (t/is (= [:field 1 {:binning {:strategy :num-bins, :num-bins 20}}]
+             (mbql.u/update-field-options [:field 1 {:binning {:strategy :num-bins, :num-bins 10}}] update-in [:binning :num-bins] * 2)))
+    (t/is (= [:expression "wow"]
+             (mbql.u/update-field-options [:expression "wow" {:display-name "b", :name "a"}] dissoc :display-name :name))))
   (t/testing "Should remove empty options"
     (t/is (= [:field 1 nil]
              (mbql.u/update-field-options [:field 1 {:name "a"}] #(dissoc % :name)))))
