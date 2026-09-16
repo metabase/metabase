@@ -27,6 +27,7 @@
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:description     {:optional true} [:maybe :string]]
+   [:version         {:optional true} [:maybe ms/PositiveInt]]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]

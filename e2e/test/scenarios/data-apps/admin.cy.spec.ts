@@ -2,6 +2,7 @@ import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
 } from "e2e/support/helpers";
+import type { DataApp } from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
@@ -95,6 +96,69 @@ describe("scenarios > data apps > admin management", () => {
     H.main()
       .findByText(/AI-generated React apps/)
       .should("not.exist");
+  });
+
+  describe("outdated apps", () => {
+    // Only a bump of the supported version makes a real app outdated, so the flag
+    // the API computes is patched onto a real app's responses instead.
+    const OUTDATED_APP = "orders-app";
+
+    function markAppOutdated() {
+      cy.request<DataApp>("POST", `/api/apps/${OUTDATED_APP}/draft`)
+        .its("body.display_name")
+        .as("outdatedAppName");
+
+      cy.intercept("GET", "/api/apps", (req) => {
+        req.continue((res) => {
+          res.body = res.body.map((app: DataApp) =>
+            app.name === OUTDATED_APP
+              ? { ...app, version: 1, outdated: true }
+              : app,
+          );
+        });
+      });
+      cy.intercept(
+        { method: "GET", pathname: `/api/apps/${OUTDATED_APP}` },
+        (req) => {
+          req.continue((res) => {
+            res.body = { ...res.body, version: 1, outdated: true };
+          });
+        },
+      );
+    }
+
+    it("badges an outdated app, refuses to open it, and still lets an admin manage its users", () => {
+      markAppOutdated();
+
+      cy.visit("/admin/settings/apps");
+
+      cy.get<string>("@outdatedAppName").then((displayName) => {
+        cy.findByTestId(`data-app-list-item-${OUTDATED_APP}`)
+          .scrollIntoView()
+          .within(() => {
+            cy.findByText("Outdated").should("be.visible");
+            cy.findByText(displayName).should("be.visible");
+            cy.findByRole("link", { name: displayName }).should("not.exist");
+            cy.findByRole("button", {
+              name: `Actions for ${displayName}`,
+            }).click();
+          });
+      });
+
+      H.popover().findByText("Manage user access").click();
+
+      cy.location("pathname").should(
+        "eq",
+        `/admin/settings/apps/${OUTDATED_APP}/users`,
+      );
+      H.main()
+        .findByRole("heading", { name: "Manage access to this app" })
+        .should("be.visible");
+
+      H.openDataApp(OUTDATED_APP);
+      H.main().findByText("This data app is outdated").should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
   });
 });
 

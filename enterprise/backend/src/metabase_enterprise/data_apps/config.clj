@@ -4,6 +4,7 @@
 
      name: Sales dashboard      # display name
      description: Pipeline …    # optional — one line on what the app does
+     version: 1                 # optional — data app contract version, 1 when absent
      path: dist/index.js        # bundle path, relative to this app's directory
      allowed_hosts:             # optional — origins the sandboxed bundle may fetch/XHR
        - https://api.example.com
@@ -26,6 +27,37 @@
 (def apps-dir
   "Directory at the repo root that holds one subdirectory per data app."
   "data_apps")
+
+(def supported-app-version
+  "The data app contract version this Metabase serves. Bumped only on a breaking
+   change to the contract, so an app declaring a lower `version` is outdated: it is
+   listed only to admins, badged, and never opened."
+  1)
+
+(def ^:private default-app-version
+  "The `version` of an app whose manifest declares none: every app predates the field."
+  1)
+
+(defn outdated?
+  "Whether `app` was built for a contract version older than [[supported-app-version]]."
+  [{:keys [version]}]
+  (< version supported-app-version))
+
+(defn- parse-version
+  "Validate the optional `version`: a positive whole number, [[default-app-version]]
+   when absent. Throws a 400 for anything else rather than coercing it, since a
+   string or a decimal here is a typo, not a version."
+  [raw ^String dir]
+  (cond
+    (nil? raw)
+    default-app-version
+
+    (and (integer? raw) (pos? raw))
+    (long raw)
+
+    :else
+    (throw (ex-info (tru "{0}/{1}: \"version\" must be a positive whole number, such as 1." dir config-file-name)
+                    {:status-code 400}))))
 
 (def ^:private slug-pattern
   "Lowercase letters/numbers separated by single dashes. An app *directory* must
@@ -141,10 +173,12 @@
 (defn parse-app-config
   "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
    `data_apps/sales`) into `{:slug ..., :display_name ..., :description ...,
-   :path ..., :allowed_hosts [...]}`. The slug is the directory's name; `path` is
-   relative to the directory; `:description` is an optional one-liner (nil when
-   absent or blank, capped at [[max-description-chars]]); `:allowed_hosts` is a
-   (possibly empty) vector of origins the sandboxed bundle may reach. Throws an
+   :version ..., :path ..., :allowed_hosts [...]}`. The slug is the directory's
+   name; `path` is relative to the directory; `:description` is an optional
+   one-liner (nil when absent or blank, capped at [[max-description-chars]]);
+   `:version` is the contract version the app was built for (1 when absent);
+   `:allowed_hosts` is a (possibly empty) vector of origins the sandboxed bundle
+   may reach. Throws an
    `ex-info` with `:status-code` 400 on malformed or incomplete content — including
    a directory whose name isn't a usable slug, since that app has no URL to be served at."
   [^bytes bytes ^String dir]
@@ -152,6 +186,7 @@
         slug          (dir-slug dir)
         name          (some-> (:name parsed) str str/trim not-empty)
         description   (parse-description (:description parsed) dir)
+        version       (parse-version (:version parsed) dir)
         path          (some-> (:path parsed) normalize-path not-empty)
         allowed-hosts (parse-allowed-hosts parsed dir)]
     (when-not (re-matches slug-pattern slug)
@@ -169,4 +204,9 @@
     (when (path-traversal? path)
       (throw (ex-info (tru "{0}/{1}: \"path\" must not contain \"..\"." dir config-file-name)
                       {:status-code 400})))
-    {:slug slug, :display_name name, :description description, :path path, :allowed_hosts allowed-hosts}))
+    {:slug          slug
+     :display_name  name
+     :description   description
+     :version       version
+     :path          path
+     :allowed_hosts allowed-hosts}))

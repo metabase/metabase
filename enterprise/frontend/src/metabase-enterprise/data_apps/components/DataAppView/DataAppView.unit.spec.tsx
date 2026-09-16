@@ -104,6 +104,35 @@ describe("DataAppView", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the API's outdated message when the app 409s with the outdated error code", () => {
+    setup({
+      error: {
+        status: 409,
+        data: {
+          "error-code": "data-app-outdated",
+          message: "This app was built for version 1 of data apps.",
+        },
+      },
+    });
+
+    expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText("This app was built for version 1 of data apps."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the outdated screen to an admin, who still receives the app's metadata", () => {
+    setup({ data: createMockDataApp({ version: 1, outdated: true }) });
+
+    expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This app was built for version 1 of data apps. Update the version in its data_app.yaml, rebuild it with the current SDK, and sync again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+  });
+
   it("renders the app inside an iframe once metadata resolves", () => {
     setup({ data: createMockDataApp({ display_name: "Sales" }) });
 

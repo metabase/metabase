@@ -1,0 +1,26 @@
+## Record the data app contract version each app was built for.
+##
+## Authored as `version:` in the app's `data_app.yaml`. An app that declares none
+## is a version 1 app, so the column defaults to 1 and is never NULL. Metabase
+## compares it against the version it serves and treats a lower one as outdated.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-15T00:00:00
+      author: timofei
+      comment: Add version column to data_app
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: version
+                  type: integer
+                  defaultValueNumeric: 1
+                  remarks: Data app contract version from the manifest. 1 when the app declares none.
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: data_app
+            columnName: version

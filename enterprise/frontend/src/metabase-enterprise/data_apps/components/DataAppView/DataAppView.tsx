@@ -1,5 +1,14 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -15,8 +24,10 @@ import { useGetDataAppQuery } from "metabase-enterprise/api";
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   DATA_APP_LOAD_TIMEOUT_MS,
+  DATA_APP_OUTDATED_ERROR_CODE,
   DATA_APP_READY_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
+  getOutdatedDataAppMessage,
 } from "../../constants";
 import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
@@ -24,6 +35,21 @@ import { isCrossOriginError } from "../../lib/is-cross-origin-error";
 import { isDataAppMessage } from "../../lib/is-data-app-message";
 
 import S from "./DataAppView.module.css";
+
+const isOutdatedError = isMatching({
+  status: 409,
+  data: { "error-code": DATA_APP_OUTDATED_ERROR_CODE, message: P.string },
+});
+
+const CenteredEmptyState = ({
+  children,
+  ...props
+}: ComponentProps<typeof EmptyState> & { children?: ReactNode }) => (
+  <Flex direction="column" w="100%" h="100%" justify="center" align="center">
+    <EmptyState {...props} />
+    {children}
+  </Flex>
+);
 
 /**
  * /apps/:name(/*) — renders the requested data-app inside an isolated
@@ -228,39 +254,33 @@ export function DataAppView() {
       );
     }
 
+    if (isOutdatedError(metaError)) {
+      return (
+        <CenteredEmptyState
+          title={t`This data app is outdated`}
+          message={metaError.data.message}
+          illustrationElement={<Icon name="warning" size={64} />}
+        />
+      );
+    }
+
     if (status === 409) {
       return (
-        <Flex
-          direction="column"
-          w="100%"
-          h="100%"
-          justify="center"
-          align="center"
-        >
-          <EmptyState
-            title={t`This data app isn’t published yet`}
-            message={t`An administrator needs to publish this data app before it can be opened.`}
-            illustrationElement={<Icon name="hourglass" size={64} />}
-          />
-        </Flex>
+        <CenteredEmptyState
+          title={t`This data app isn’t published yet`}
+          message={t`An administrator needs to publish this data app before it can be opened.`}
+          illustrationElement={<Icon name="hourglass" size={64} />}
+        />
       );
     }
 
     if (status === 403) {
       return (
-        <Flex
-          direction="column"
-          w="100%"
-          h="100%"
-          justify="center"
-          align="center"
-        >
-          <EmptyState
-            title={t`You don’t have access to this data app`}
-            message={t`Ask an administrator for access to this data app.`}
-            illustrationElement={<Icon name="key" size={64} />}
-          />
-        </Flex>
+        <CenteredEmptyState
+          title={t`You don’t have access to this data app`}
+          message={t`Ask an administrator for access to this data app.`}
+          illustrationElement={<Icon name="key" size={64} />}
+        />
       );
     }
 
@@ -269,6 +289,17 @@ export function DataAppView() {
         title={t`Couldn’t load this data app`}
         message={t`We ran into an error loading this data app. Try refreshing the page, or go back.`}
         details={metaError}
+      />
+    );
+  }
+
+  // An admin still gets the metadata, to manage the app; nobody gets its bundle.
+  if (meta.outdated) {
+    return (
+      <CenteredEmptyState
+        title={t`This data app is outdated`}
+        message={getOutdatedDataAppMessage(meta.version)}
+        illustrationElement={<Icon name="warning" size={64} />}
       />
     );
   }
@@ -284,35 +315,27 @@ export function DataAppView() {
     }
 
     return (
-      <Flex
-        direction="column"
-        w="100%"
-        h="100%"
-        justify="center"
-        align="center"
+      <CenteredEmptyState
+        title={t`This data app couldn’t be loaded`}
+        message={
+          bundleError.message ||
+          t`Something went wrong while loading this app. Try refreshing the page.`
+        }
+        illustrationElement={
+          <div
+            className={cx(
+              QueryBuilderS.QueryErrorImage,
+              QueryBuilderS.QueryErrorImageServerError,
+            )}
+          />
+        }
       >
-        <EmptyState
-          title={t`This data app couldn’t be loaded`}
-          message={
-            bundleError.message ||
-            t`Something went wrong while loading this app. Try refreshing the page.`
-          }
-          illustrationElement={
-            <div
-              className={cx(
-                QueryBuilderS.QueryErrorImage,
-                QueryBuilderS.QueryErrorImageServerError,
-              )}
-            />
-          }
-        />
-
         <ErrorDetails
           className={CS.pt2}
           errorBoxClassName={S.stackTrace}
           details={bundleError.stack}
         />
-      </Flex>
+      </CenteredEmptyState>
     );
   }
 

@@ -64,6 +64,8 @@
    [:name            ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:description     [:maybe :string]]
+   [:version         ms/PositiveInt]
+   [:outdated        :boolean]
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
@@ -184,10 +186,11 @@
 ;;; ------------------------------------------------ Apps ------------------------------------------------
 
 (defn- data-app-response
-  "Return full data-app metadata to superusers and only navigational fields to other users."
+  "Return full data-app metadata, with whether the app is outdated, to superusers and only
+   navigational fields to other users."
   [app]
   (if api/*is-superuser?*
-    app
+    (assoc app :outdated (data-app.config/outdated? app))
     (select-keys app [:name :display_name])))
 
 (defn- data-app-list-response
@@ -211,12 +214,28 @@
                     {:status-code 409})))
   app)
 
+(defn- check-not-outdated
+  "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
+   `:error-code \"data-app-outdated\"`, so the client can show what to do. Applied where the
+   contract is served: the bundle for everyone, and the metadata for non-superusers, who have no
+   other use for it. Superusers still read it, to badge the app and manage its users."
+  [app]
+  (when (data-app.config/outdated? app)
+    (throw (ex-info (tru (str "This app was built for version {0} of data apps. Update the version in its "
+                              "data_app.yaml, rebuild it with the current SDK, and sync again.")
+                         (:version app))
+                    {:status-code 409, :error-code "data-app-outdated"})))
+  app)
+
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
   "List the data apps provided by the connected repository. Pass `available=true`
-   to return only enabled apps without sync errors."
+   to return only enabled apps without sync errors. An outdated app is never
+   available, and otherwise listed only to superusers, who see it badged."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
   (let [apps (->> (data-apps.db/non-blob-data-apps available)
+                  (remove #(and (or available (not api/*is-superuser?*))
+                                (data-app.config/outdated? %)))
                   (mapv api/read-check))
         warning-group-ids (when api/*is-superuser?*
                             (data-app.user-access/groups-with-permission-warnings apps))]
@@ -233,7 +252,7 @@
   (api/check-superuser)
   (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
     (data-apps.db/update-data-app! (:id app) {:enabled enabled})
-    (data-apps.db/non-blob-data-app (:id app))))
+    (data-app-response (data-apps.db/non-blob-data-app (:id app)))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
   "Remove a single data app (its row and cached bundle). Intended for clearing out
@@ -260,7 +279,7 @@
                       (data-apps.db/existing-table-ids table-ids))
                    (tru "One or more tables do not exist."))
     (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
-    (data-apps.db/non-blob-data-app (:id app))))
+    (data-app-response (data-apps.db/non-blob-data-app (:id app)))))
 
 (api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
   :- [:sequential PermissionWarning]
@@ -359,12 +378,13 @@
   (api/check-400 (data-app.config/valid-slug? slug)
                  "Data app draft slugs must use lowercase letters, numbers, and dashes.")
   (data-app.sync/ensure-draft! slug)
-  (data-apps.db/non-blob-data-app-by-slug slug))
+  (data-app-response (data-apps.db/non-blob-data-app-by-slug slug)))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (data-app-response (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
+  (let [app (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))]
+    (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -376,7 +396,7 @@
    respond
    raise]
   (try
-    (let [row  (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))
+    (let [row  (check-not-outdated (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug)))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

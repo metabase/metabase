@@ -11,7 +11,7 @@
 
 (def ^:private non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
-  [:model/DataApp :id :name :display_name :description :bundle_path :enabled :allowed_hosts
+  [:model/DataApp :id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
    :resource_collection_id :permission_group_id :table_ids :draft
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
@@ -48,7 +48,8 @@
 (mu/defn data-apps-sync-info
   "The sync-relevant columns of every DataApp."
   []
-  (t2/select [:model/DataApp :name :display_name :description :allowed_hosts :bundle_path :bundle_hash :sync_error]))
+  (t2/select [:model/DataApp :name :display_name :description :version :allowed_hosts :bundle_path
+              :bundle_hash :sync_error]))
 
 (defn table-database-id
   "The database ID for the Table with `table-id`, or nil."
