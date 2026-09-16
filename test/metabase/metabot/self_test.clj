@@ -139,6 +139,44 @@
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
 
+(deftest call-llm-accepts-nested-keyword-keyed-tool-arguments-test
+  (llm.tu/with-default-connections
+    (testing "tool-input arguments keywordized at every depth, and timed tool outputs, pass the request schema"
+      (let [captured  (atom nil)
+            arguments {:title         "Accounts by Country"
+                       :query         {:lib/type "mbql/query"
+                                       :stages   [{:lib/type    "mbql.stage/mbql"
+                                                   :aggregation [["count" {}]]}]}
+                       :visualization {:chart_type "map"}}]
+        (mt/with-premium-features #{:metabase-ai-managed}
+          (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                     (when (:body opts)
+                                                       (reset! captured (json/decode+kw (:body opts))))
+                                                     (throw (ex-info "stop" {::skip true :api-error true})))]
+            (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+              (try
+                (run! identity (self/call-llm "anthropic/test-model"
+                                              nil
+                                              [{:role :user :content "dashboard of accounts"}
+                                               {:type      :tool-input
+                                                :id        "toolu_1"
+                                                :function  "construct_notebook_query"
+                                                :arguments arguments}
+                                               {:type        :tool-output
+                                                :id          "toolu_1"
+                                                :function    "construct_notebook_query"
+                                                :result      {:output "ok"}
+                                                :duration-ms 12.5}]
+                                              {}
+                                              {:tag "agent"}))
+                (catch Exception e
+                  (when-not (::skip (ex-data e))
+                    (throw e))))
+              (is (= arguments
+                     (->> (:messages @captured)
+                          (mapcat :content)
+                          (some #(when (= "tool_use" (:type %)) (:input %)))))))))))))
+
 (deftest call-llm-fast-mode-test
   (llm.tu/with-default-connections
     (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
