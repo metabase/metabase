@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import type { GroupMappingSettingsState } from "./use-group-mapping-settings";
-import type { JWTGroupSyncMode } from "./utils";
+
+export type JWTGroupSyncMode = "automatic" | "manual" | "off";
 
 type GroupMappingModeState = {
   mode: JWTGroupSyncMode;
