@@ -445,6 +445,11 @@
          {:model "card"    :id 2 :name "foo question" :last_viewed_at long-ago}
          {:model "metric"  :id 3 :name "foo metric"   :last_viewed_at long-ago}]
         (is (= [3 2 1] (map second (search-results* "foo" :context :metabot)))))))
+  (testing "with Metabot weights, a table outranks a model even without a data-layer score"
+    (with-index-contents
+      [{:model "dataset" :id 1 :name "foo model"}
+       {:model "table"   :id 2 :name "foo table"}]
+      (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))
   (testing "with Metabot weights, measures and segments rank with metrics, above questions and models"
     (with-index-contents
       [{:model "dataset" :id 1 :name "foo model"}

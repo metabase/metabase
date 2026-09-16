@@ -172,7 +172,8 @@
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
     ;; Favor semantic-layer content over saved questions, and saved questions over models.
-    ;; Tables have no type boost because :data-layer already ranks them. A metric therefore ties an internal table.
+    ;; :data-layer does most of the ranking for tables; the small type boost only keeps a table above a model.
+    ;; A metric therefore ties an internal table.
     ;; List every model Metabot searches; otherwise [[models-search-order]] supplies its fallback boost.
     :model               10
     :model/metric        1     ; ≈ 10
@@ -180,7 +181,7 @@
     :model/segment       1     ; ≈ 10
     :model/dashboard     0.3   ; ≈ 3
     :model/card          0.3   ; ≈ 3
-    :model/table         0
+    :model/table         0.1   ; ≈ 1
     :model/dataset       0
     :model/document      0
     :model/transform     0
