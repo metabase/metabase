@@ -4,6 +4,7 @@
   liveness predicates themselves come from the `session` module, so whatever would not authenticate a request is not
   listed either."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.session-management.schema :as sm.schema]
    [metabase.session.core :as session]
    [metabase.session.schema :as session.schema]
@@ -33,6 +34,18 @@
   [:case [:= :session.anti_csrf_token nil] (h2x/literal "normal")
    :else (h2x/literal "full-app-embed")])
 
+(defn- owner-search-where
+  "The predicate for a free-text search over the session owner. Every whitespace-separated term has to match the
+  first name, last name or email, so a full name matches even though no single column contains it."
+  [search]
+  (into [:and]
+        (for [term (str/split (str/trim search) #"\s+")
+              :let [wildcard (h2x/like-substring term)]]
+          [:or
+           [:like [:lower :user.first_name] wildcard]
+           [:like [:lower :user.last_name] wildcard]
+           [:like [:lower :user.email] wildcard]])))
+
 (mu/defn filters->where :- [:sequential :any]
   "The HoneySQL predicates for `filters` (see `::sm.schema/session-filters`), for a query using
   `metabase.session.core/session-from-and-joins`. Independent of the current request so that listing sessions and
@@ -41,7 +54,7 @@
 
   Date ranges are half-open — `after` is inclusive, `before` exclusive — so adjacent ranges neither overlap nor
   leave a gap."
-  [{:keys [user-id ids provider type tenancy
+  [{:keys [user-id ids provider type tenancy query
            created-before created-after last-active-before last-active-after]}
    :- ::sm.schema/session-filters]
   (cond-> []
@@ -71,6 +84,9 @@
 
     (= tenancy :external)
     (conj [:not= :user.tenant_id nil])
+
+    (not (str/blank? query))
+    (conj (owner-search-where query))
 
     created-after      (conj [:>= :session.created_at created-after])
     created-before     (conj [:< :session.created_at created-before])

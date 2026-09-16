@@ -61,6 +61,7 @@ export type AdminSessionFilters = {
 
 export type AdminSessionListParams = AdminSessionFilters &
   PaginationRequest & {
+    query?: string;
     "sort-column"?: AdminSessionSortColumn;
     "sort-direction"?: SortDirection;
   };
