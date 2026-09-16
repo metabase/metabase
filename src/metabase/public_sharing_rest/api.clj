@@ -464,7 +464,10 @@
           (request/as-admin
             ;; Undo middleware string->keyword coercion. Refuse `:http` actions on the anonymous execute path.
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)
-                                       {:allow-http-actions? false})))))))
+                                       ;; `as-admin` grants perms but leaves the user nil, so the audit row has no
+                                       ;; executor; the context is what says the run came from a public link
+                                       {:allow-http-actions? false
+                                        :context             :public-action-execute})))))))
 
 (defn- iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
@@ -707,7 +710,9 @@
                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion. Refuse `:http` actions on the anonymous execute path.
             (actions/execute-action! action (update-keys parameters name)
-                                     {:allow-http-actions? false})))))))
+                                     ;; see the note on the public dashcard endpoint above
+                                     {:allow-http-actions? false
+                                      :context             :public-action-execute})))))))
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 
