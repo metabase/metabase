@@ -156,7 +156,7 @@ export function RunListPage() {
       data-testid="transforms-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
-        <TransformsHeader showMetabotButton />
+        <TransformsHeader />
         {!data || isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

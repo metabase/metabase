@@ -27,7 +27,7 @@
     :steps-taken    []
     :context        context
     :state          (metabot.schema/normalize-state
-                     (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
+                     (or state {:queries {} :charts {} :todos [] :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
@@ -110,27 +110,6 @@
                       {:agent-error? true
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
-
-;;; Transform Management
-
-(defn set-transform
-  "Store a transform in state by its ID."
-  [memory transform-id transform]
-  (record memory [:transforms (str transform-id)] transform))
-
-(defn find-transform
-  "Retrieve a transform by its ID. Throws if not found."
-  [memory transform-id]
-  (let [transforms (get-in memory [:state :transforms] {})]
-    (if-let [transform (get transforms (str transform-id))]
-      transform
-      (throw (ex-info (str "Transform with ID " transform-id " not found in memory. "
-                           "Available transforms: [" (str/join ", " (keys transforms)) "]")
-                      {:agent-error? true
-                       :transform-id transform-id
-                       :available-transforms (keys transforms)})))))
-
-;;; Todos & link registry (whole-value writes)
 
 (defn set-todos
   "Set the todo list (a vector of todo item maps)."
