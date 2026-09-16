@@ -4,7 +4,7 @@ import { useUpgradeAction } from "metabase/common/components/upsells/components/
 import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
 import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { Stack } from "metabase/ui";
 
 import S from "./BaseUpsellPage.module.css";
@@ -38,7 +38,7 @@ export function BaseUpsellPage({
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">
-      <PaneHeader
+      <DataStudioPaneHeader
         breadcrumbs={<DataStudioBreadcrumbs>{header}</DataStudioBreadcrumbs>}
       />
       <Stack align="center" p={40} className={S.UpsellPageContent}>

@@ -5,6 +5,7 @@ import {
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Flex, Group } from "metabase/ui";
 import type { Card } from "metabase-types/api";
@@ -33,7 +34,7 @@ export function MetricHeader({
   return (
     <PaneHeader
       data-testid="metric-header"
-      showAppSwitcher={showAppSwitcher}
+      controls={showAppSwitcher ? <AppSwitcher /> : undefined}
       title={
         <Flex align="center" gap="sm">
           {card.can_write ? (

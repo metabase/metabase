@@ -14,6 +14,7 @@ import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate } from "metabase/router";
@@ -93,7 +94,7 @@ export function NewMetricPage({
     <>
       <PageContainer pos="relative" data-testid="metric-query-editor">
         <PaneHeader
-          showAppSwitcher={showAppSwitcher}
+          controls={showAppSwitcher ? <AppSwitcher /> : undefined}
           title={
             <PaneHeaderInput
               initialValue={name}

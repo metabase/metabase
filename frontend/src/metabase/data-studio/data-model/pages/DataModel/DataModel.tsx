@@ -11,8 +11,8 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
@@ -181,7 +181,7 @@ function DataModelContent() {
         className={S.column}
         gap={0}
       >
-        <PaneHeader
+        <DataStudioPaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
           }

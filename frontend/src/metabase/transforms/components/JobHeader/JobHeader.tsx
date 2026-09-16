@@ -3,10 +3,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { useSetting } from "metabase/settings";
 import { Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -38,7 +36,7 @@ export function JobHeader({
   const isMeterLocked = useSetting("transforms-meter-locked");
 
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       title={
         <Group align="center" gap="sm" wrap="nowrap">
           <PaneHeaderInput

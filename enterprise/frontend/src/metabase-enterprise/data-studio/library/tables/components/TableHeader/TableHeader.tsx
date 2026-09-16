@@ -1,10 +1,10 @@
 import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import {
-  PaneHeader,
-  type PaneHeaderProps,
-} from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import {
+  DataStudioPaneHeader,
+  type DataStudioPaneHeaderProps,
+} from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -14,14 +14,14 @@ import { TableTabs } from "./TableTabs";
 
 type TableHeaderProps = {
   table: Table;
-} & Omit<PaneHeaderProps, "breadcrumbs">;
+} & Omit<DataStudioPaneHeaderProps, "breadcrumbs">;
 
 export function TableHeader({ table, ...rest }: TableHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection_id,
   });
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       data-testid="table-pane-header"
       title={<TableNameInput table={table} />}
       icon="table"

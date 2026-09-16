@@ -6,7 +6,7 @@ import { useUpgradeAction } from "metabase/common/components/upsells/components/
 import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
 import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
@@ -24,7 +24,7 @@ export function RemoteSyncUpsellPage() {
 
   return (
     <DottedBackground px="3.5rem" pb="2rem">
-      <PaneHeader
+      <DataStudioPaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Remote sync`}</DataStudioBreadcrumbs>
         }

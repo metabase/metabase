@@ -14,7 +14,7 @@ import {
 } from "metabase/common/data-studio/analytics";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Card } from "metabase/ui";
 
@@ -29,7 +29,7 @@ export function GlossaryPage() {
 
   return (
     <PageContainer gap={0}>
-      <PaneHeader
+      <DataStudioPaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs role="heading">{t`Glossary`}</DataStudioBreadcrumbs>
         }

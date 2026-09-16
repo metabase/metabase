@@ -6,7 +6,7 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import * as Urls from "metabase/urls";
 
 import {
@@ -46,7 +46,7 @@ export const TransformsHeader = memo(function TransformsHeader({
   ];
 
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       data-testid="transforms-section-header"
       breadcrumbs={
         <DataStudioBreadcrumbs>{t`Data transformation`}</DataStudioBreadcrumbs>

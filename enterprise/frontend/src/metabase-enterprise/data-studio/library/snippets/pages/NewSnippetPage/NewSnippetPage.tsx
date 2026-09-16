@@ -12,11 +12,11 @@ import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
-  PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -101,7 +101,7 @@ export function NewSnippetPage() {
   return (
     <>
       <PageContainer pos="relative" data-testid="new-snippet-page">
-        <PaneHeader
+        <DataStudioPaneHeader
           title={
             <PaneHeaderInput
               initialValue={name}

@@ -10,10 +10,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
-  PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { loadQueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -70,7 +70,7 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
   if (remoteSyncReadOnly) {
     return (
       <PageContainer pos="relative" data-testid="transform-query-editor">
-        <PaneHeader
+        <DataStudioPaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
@@ -147,7 +147,7 @@ function NewTransformPageBody({
   return (
     <>
       <PageContainer pos="relative" data-testid="transform-query-editor">
-        <PaneHeader
+        <DataStudioPaneHeader
           title={
             <PaneHeaderInput
               initialValue={name}

@@ -66,7 +66,7 @@ const SHARED_PLATFORM_LEVELS = [
     "shared/timelines",
     "shared/data-studio-ui",
   ],
-  // P4 — the metabot agent, which transforms and nav compose.
+  // P4 — the metabot agent, which nav and product features compose.
   // metabot keeps its enforceSharedTiers flag for one upward edge,
   // Metabot.tsx importing Sidebar from the main navbar.
   ["shared/metabot"],
@@ -83,7 +83,6 @@ const SHARED_DOMAIN = [
   "shared/segments",
   "shared/static-viz",
   "shared/status",
-  "shared/transforms",
   "shared/visualizer",
 ];
 

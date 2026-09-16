@@ -1,4 +1,4 @@
-import { type ReactNode, useContext } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
@@ -15,7 +15,6 @@ import {
 import type { IconName } from "metabase-types/api";
 
 import S from "./PaneHeader.module.css";
-import { PaneHeaderControlsContext } from "./PaneHeaderControlsContext";
 
 export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   title?: ReactNode;
@@ -24,8 +23,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs: ReactNode;
-  showMetabotButton?: boolean;
-  showAppSwitcher?: boolean;
+  controls?: ReactNode;
 }
 
 export const PaneHeader = ({
@@ -36,20 +34,16 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showMetabotButton,
-  showAppSwitcher = true,
+  controls,
   ...rest
 }: PaneHeaderProps) => {
-  const { appSwitcher, metabotButton } = useContext(PaneHeaderControlsContext);
-
   return (
     <Stack gap={0} pt="xxs" {...rest}>
       <Flex mb="xl" mt="lg" w="100%" h="xxl">
         {breadcrumbs}
 
         <Group ml="auto" gap="lg" className={S.ButtonGroup}>
-          {showMetabotButton && metabotButton}
-          {showAppSwitcher && appSwitcher}
+          {controls}
         </Group>
       </Flex>
       <Group

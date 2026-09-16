@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Card, Center, Flex, Stack, Switch, Text, Title } from "metabase/ui";
 
@@ -15,7 +15,7 @@ export function SettingsPage() {
 
   return (
     <PageContainer gap={0}>
-      <PaneHeader
+      <DataStudioPaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs role="heading">{t`Settings`}</DataStudioBreadcrumbs>
         }

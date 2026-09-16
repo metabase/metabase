@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { useSelector } from "metabase/redux";
@@ -117,7 +117,7 @@ function LibraryPageContent() {
   return (
     <>
       <SectionLayout>
-        <PaneHeader
+        <DataStudioPaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>{t`Library`}</DataStudioBreadcrumbs>
           }

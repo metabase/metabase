@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 
 import { MeasureMoreMenu } from "../MeasureMoreMenu";
 
@@ -22,7 +22,7 @@ export function NewMeasureHeader({
   actions,
 }: NewMeasureHeaderProps) {
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       data-testid="measure-pane-header"
       title={
         <EditableText
