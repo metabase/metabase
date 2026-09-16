@@ -3438,6 +3438,7 @@
            batch-processing
            metabot
            premium-features
+           request
            task
            util}
    :model-imports #{:model/ApiKeyUsageLog}}

@@ -6,6 +6,7 @@
   `analytics-pii-retention-enabled` (itself `:audit-app`-gated). Both writes go through Grouper
   queues, so every test that expects to observe one forces `synchronous-batch-updates`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.api-keys.core :as-alias api-keys]
@@ -31,7 +32,7 @@
   (t2/select-one-fn :last_used_at :model/ApiKey :id api-key-id))
 
 (defn- request-info
-  "A complete `record-api-key-usage!` input map, overridable per test."
+  "A complete [[record!]] input map, overridable per test."
   [route & {:as overrides}]
   (merge {:api-key-id     1234
           :user-id        (mt/user->id :rasta)
@@ -44,6 +45,27 @@
           :ip-address     "203.0.113.7"}
          overrides))
 
+(defn- record!
+  "Translates a flat [[request-info]] map into the real `(request response extra-info)` shape the
+  recorder now takes and invokes it — keeps the tests below reading like a flat map of inputs rather
+  than hand-building Ring request/response maps at every call site."
+  [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms occurred-at
+           user-agent ip-address embedding-client embedding-hostname]}]
+  (usage/record-api-key-usage!
+   {:api-key-id       api-key-id
+    :metabase-user-id user-id
+    :tenant-id        tenant-id
+    :request-method   (some-> http-method str/lower-case keyword)
+    :headers          (cond-> {}
+                        user-agent         (assoc "user-agent" user-agent)
+                        ip-address         (assoc "x-forwarded-for" ip-address)
+                        embedding-client   (assoc "x-metabase-client" embedding-client)
+                        embedding-hostname (assoc "x-metabase-embed-referrer" (str "https://" embedding-hostname)))}
+   {:status status}
+   {:route-template route-template
+    :duration-ms    duration-ms
+    :occurred-at    occurred-at}))
+
 ;;; ------------------------------------------- usage log row --------------------------------------------
 
 (deftest record-api-key-usage!-writes-row-test
@@ -52,10 +74,10 @@
                                        analytics-pii-retention-enabled true]
       (let [route (unique-route)]
         (try
-          (usage/record-api-key-usage! (request-info route
-                                                     :tenant-id 42
-                                                     :http-method "POST"
-                                                     :status 201))
+          (record! (request-info route
+                                 :tenant-id 42
+                                 :http-method "POST"
+                                 :status 201))
           (let [row (row-for route)]
             (testing "non-PII columns"
               (is (= 1234 (:api_key_id row)))
@@ -80,7 +102,7 @@
               occurred-at (-> (t/instant) (t/minus (t/hours 3)) (t/truncate-to :micros)
                               (t/offset-date-time (t/zone-offset 0)))]
           (try
-            (usage/record-api-key-usage! (request-info route :occurred-at occurred-at))
+            (record! (request-info route :occurred-at occurred-at))
             (is (= occurred-at (:occurred_at (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -92,7 +114,7 @@
                                            analytics-pii-retention-enabled true]
           (let [route (unique-route)]
             (try
-              (usage/record-api-key-usage! (request-info route))
+              (record! (request-info route))
               (let [row (row-for route)]
                 (is (= "curl/8.4.0" (:user_agent row)))
                 (is (= "203.0.113.7" (:ip_address row))))
@@ -102,7 +124,7 @@
                                            analytics-pii-retention-enabled false]
           (let [route (unique-route)]
             (try
-              (usage/record-api-key-usage! (request-info route))
+              (record! (request-info route))
               (let [row (row-for route)]
                 (is (some? row))
                 (is (= 200 (:status row)))
@@ -117,7 +139,7 @@
                                          analytics-pii-retention-enabled false]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route :user-agent "metabase-cli/1.2.3"))
+            (record! (request-info route :user-agent "metabase-cli/1.2.3"))
             (let [row (row-for route)]
               (is (= "metabase-cli" (:client_name row)))
               (testing "but the raw user_agent stays gated"
@@ -131,7 +153,7 @@
                                          analytics-pii-retention-enabled false]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route :embedding-client "embedding-sdk-react"))
+            (record! (request-info route :embedding-client "embedding-sdk-react"))
             (is (= "embedding-sdk-react" (:embedding_client (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
   (testing "absent when not passed — the common case for API-key traffic"
@@ -139,7 +161,7 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route))
+            (record! (request-info route))
             (is (nil? (:embedding_client (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -150,7 +172,7 @@
         (let [route (unique-route)
               long-value (apply str (repeat 300 \x))]
           (try
-            (usage/record-api-key-usage! (request-info route :embedding-client long-value))
+            (record! (request-info route :embedding-client long-value))
             (is (= 255 (count (:embedding_client (row-for route)))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -161,7 +183,7 @@
                                          analytics-pii-retention-enabled false]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route :embedding-hostname "example.com"))
+            (record! (request-info route :embedding-hostname "example.com"))
             (is (= "example.com" (:embedding_hostname (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
   (testing "absent when not passed"
@@ -169,7 +191,7 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route))
+            (record! (request-info route))
             (is (nil? (:embedding_hostname (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -180,7 +202,7 @@
         (let [route (unique-route)
               long-value (apply str (repeat 600 \x))]
           (try
-            (usage/record-api-key-usage! (request-info route :embedding-hostname long-value))
+            (record! (request-info route :embedding-hostname long-value))
             (is (= 512 (count (:embedding_hostname (row-for route)))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -190,7 +212,7 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route :user-agent nil))
+            (record! (request-info route :user-agent nil))
             (is (= "other" (:client_name (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -200,7 +222,7 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (let [route (apply str (unique-route) (repeat 300 \x))]
           (try
-            (usage/record-api-key-usage! (request-info route))
+            (record! (request-info route))
             (is (= 255 (count (:route_template (row-for (subs route 0 255))))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template (subs route 0 255)))))))))
 
@@ -210,10 +232,10 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route :api-key-id nil))
+            (record! (request-info route :api-key-id nil))
             (is (nil? (row-for route)))
             (testing "a complete row still records afterwards"
-              (usage/record-api-key-usage! (request-info route))
+              (record! (request-info route))
               (is (some? (row-for route))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
@@ -223,7 +245,7 @@
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (let [route (unique-route)]
           (try
-            (usage/record-api-key-usage! (request-info route))
+            (record! (request-info route))
             (let [row (row-for route)]
               (testing "non-PII row is written"
                 (is (some? row))
@@ -238,7 +260,7 @@
     (mt/with-premium-features #{:audit-app}
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (mt/with-dynamic-fn-redefs [t2/insert! (fn [& _] (throw (ex-info "boom" {})))]
-          (is (nil? (usage/record-api-key-usage! (request-info (unique-route))))))))))
+          (is (nil? (record! (request-info (unique-route))))))))))
 
 ;;; ------------------------------------------ last_used_at --------------------------------------------
 
@@ -259,7 +281,7 @@
         (mt/with-temporary-setting-values [synchronous-batch-updates true]
           (try
             (is (nil? (last-used-at api-key-id)))
-            (usage/record-api-key-usage! (request-info route :api-key-id api-key-id))
+            (record! (request-info route :api-key-id api-key-id))
             (is (some? (last-used-at api-key-id)))
             (testing "the stamp bypasses the model hooks, so updated_at never moves"
               (is (= updated-at-before
@@ -277,10 +299,10 @@
         (mt/with-temporary-setting-values [synchronous-batch-updates true]
           (let [route (unique-route)]
             (try
-              (usage/record-api-key-usage! (request-info route :api-key-id api-key-id))
+              (record! (request-info route :api-key-id api-key-id))
               (let [stamped-once (last-used-at api-key-id)]
                 (clear-last-used-at! api-key-id)
-                (usage/record-api-key-usage! (request-info route :api-key-id api-key-id))
+                (record! (request-info route :api-key-id api-key-id))
                 (is (some? (last-used-at api-key-id)))
                 (testing "still just one liveness column, not a growing log"
                   (is (some? stamped-once))))
@@ -302,7 +324,7 @@
         (mt/with-temporary-setting-values [synchronous-batch-updates true]
           (let [route (unique-route)]
             (try
-              (usage/record-api-key-usage! (request-info route :api-key-id key-1))
+              (record! (request-info route :api-key-id key-1))
               (is (some? (last-used-at key-1)))
               (is (nil? (last-used-at key-2)))
               (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))))
@@ -311,9 +333,9 @@
   (testing "a failed last_used_at update is swallowed, and a nil id skips the write entirely"
     (mt/with-premium-features #{}
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
-        (is (nil? (usage/record-api-key-usage! (request-info (unique-route) :api-key-id nil))))
+        (is (nil? (record! (request-info (unique-route) :api-key-id nil))))
         (mt/with-dynamic-fn-redefs [t2/query (fn [& _] (throw (ex-info "boom" {})))]
           (let [route (unique-route)]
             (try
-              (is (nil? (usage/record-api-key-usage! (request-info route :api-key-id Integer/MAX_VALUE))))
+              (is (nil? (record! (request-info route :api-key-id Integer/MAX_VALUE))))
               (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))))
