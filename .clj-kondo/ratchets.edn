@@ -28,6 +28,7 @@
                   :metabase/namespace-name                                             4
                   :metabase/prefer-with-dynamic-fn-redefs                              :unlimited
                   :metabase/test-helpers-use-non-thread-safe-functions                 18
+                  :metabase/unsafe-app-db-query                                        1
                   :metabase/validate-defendpoint-has-response-schema                   427
                   :metabase/validate-defendpoint-query-params-use-kebab-case           48
                   :metabase/validate-defendpoint-route-uses-kebab-case                 44
