@@ -1,6 +1,24 @@
-import type { AdminSessionSortColumn, SortDirection } from "metabase-types/api";
+import type {
+  AdminSessionProvider,
+  AdminSessionSortColumn,
+  SortDirection,
+} from "metabase-types/api";
 
 export const PAGE_SIZE = 50;
+
+// The auth methods the endpoint accepts as a filter. `unknown` is the bucket for sessions with no auth identity row,
+// not a provider anyone logs in with; `mcp` is absent because those sessions are never listed.
+export const PROVIDER_VALUES: AdminSessionProvider[] = [
+  "password",
+  "ldap",
+  "google",
+  "slack-connect",
+  "custom-oidc",
+  "jwt",
+  "saml",
+  "support-access-grant",
+  "unknown",
+];
 
 export const DEFAULT_SORT_COLUMN: AdminSessionSortColumn = "created_at";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";

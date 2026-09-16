@@ -34,6 +34,20 @@
   [:case [:= :session.anti_csrf_token nil] (h2x/literal "normal")
    :else (h2x/literal "full-app-embed")])
 
+(defn- provider-where
+  "The predicate for a set of auth methods. `unknown` is the bucket for sessions with no auth identity row rather than
+  a provider anyone can log in with, so it tests the column for NULL while the rest test membership; selecting both
+  asks for either. An empty selection matches nothing."
+  [providers]
+  (let [named (remove #{"unknown"} providers)
+        terms (cond-> []
+                (some #{"unknown"} providers) (conj [:= :auth_identity.provider nil])
+                (seq named)                   (conj [:in :auth_identity.provider named]))]
+    (case (count terms)
+      0 [:inline false]
+      1 (first terms)
+      (into [:or] terms))))
+
 (defn- owner-search-where
   "The predicate for a free-text search over the session owner. Every whitespace-separated term has to match the
   first name, last name or email, so a full name matches even though no single column contains it."
@@ -65,12 +79,9 @@
     (some? ids)
     (conj (if (seq ids) [:in :session.id ids] [:inline false]))
 
-    ;; `unknown` is the bucket for sessions with no auth identity row, not a provider anyone can log in with
-    (= provider "unknown")
-    (conj [:= :auth_identity.provider nil])
-
-    (and provider (not= provider "unknown"))
-    (conj [:= :auth_identity.provider provider])
+    ;; an explicitly empty provider list matches nothing, for the same reason as `ids` above
+    (some? provider)
+    (conj (provider-where provider))
 
     ;; only full-app-embed sessions carry an anti-CSRF token
     (= type "normal")
