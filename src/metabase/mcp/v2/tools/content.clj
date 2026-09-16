@@ -27,6 +27,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
@@ -39,7 +40,6 @@
    [metabase.queries.core :as queries]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -148,7 +148,7 @@
     (when (not= (:type card) tool-type)
       (let [actual (name (:type card))]
         (common/throw-teaching-error
-         (format "Card %s is a %s — request it with type: \"%s\"." (:id card) actual actual))))
+         (message/msg ["Card %s has type %s — request it with type: %s."] (:id card) actual actual))))
     (card-content-row card)))
 
 (defn- card-definition
@@ -400,10 +400,10 @@
 (defn- fetch-notification
   "Fetch + read-check one notification row of `payload-type` by numeric id. Notifications have
    no entity_id column, so entity_id strings are a teaching error for these types."
-  [tool-type payload-type id-or-eid]
+  [tool-type plural payload-type id-or-eid]
   (when-not (int? id-or-eid)
     (common/throw-teaching-error
-     (format "%ss take a numeric id — they have no entity_id." (str/capitalize tool-type))))
+     (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
   (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
@@ -567,7 +567,7 @@
                               "comments" document-comments}}
    "collection"   {:fetch fetch-collection}
    "snippet"      {:fetch fetch-snippet}
-   "alert"        {:fetch #(fetch-notification "alert" :notification/card %)}
+   "alert"        {:fetch #(fetch-notification "alert" (message/raw "Alerts") :notification/card %)}
    "subscription" {:fetch fetch-subscription}
    "transform"    {:fetch fetch-transform
                    :includes {"definition" (definition-include transform-definition)}}})
@@ -597,11 +597,11 @@
     (let [applicable (get include->types inc-name)]
       (when-not (some applicable batch-types)
         (common/throw-teaching-error
-         (format "`include: \"%s\"` does not apply to type%s %s — it is available for: %s."
-                 inc-name
-                 (if (= 1 (count batch-types)) "" "s")
-                 (str/join ", " (sort batch-types))
-                 (str/join ", " (sort applicable))))))))
+         (message/msg ["\"include\" section %s does not apply to type%s %s — it is available for: %s."]
+                      inc-name
+                      (message/raw (if (= 1 (count batch-types)) "" "s"))
+                      (common/list-message (sort batch-types))
+                      (common/list-message (sort applicable))))))))
 
 (defn- build-include
   "Apply the `inc-name` section builder that `type` declares in [[type->spec]] to `row`, or nil
@@ -615,8 +615,8 @@
 (defn- content-item-result
   "Build one batch item's result: its projection (with `include` sections or `fields`
    narrowing), or the `{type, id, error}` object that keeps a failing item from sinking the
-   rest of the batch. The `error` text is whatever [[common/->mcp-error-content]] judges safe to
-   return, so incidental exceptions collapse to a generic internal error."
+   rest of the batch. The `error` text is whatever [[common/caller-safe-error-message]] judges safe
+   to return, so incidental exceptions collapse to a generic internal error."
   [{:keys [include] :as args} {:keys [type fields] :as item}]
   ;; `alert` and `subscription` reject a non-numeric id outright, so an id a client serialized as
   ;; a string has to be coerced before the fetch rather than inside it (GHY-4498).
@@ -641,8 +641,10 @@
                 (assoc :type type)))))
       (catch Exception e
         ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
-        ;; judgment and unwrap its text back into the item's `{type, id, error}` shape.
-        {:type type :id id :error (-> (common/->mcp-error-content e) :content first :text)}))))
+        ;; judgment, then render it. JSON quoting is not cleaning — it escapes control characters
+        ;; and quotes but leaves format characters like a bidi override intact — so a plain string
+        ;; from upstream is rendered too, which cleans it whole.
+        {:type type :id id :error (message/render (common/caller-safe-error-message e))}))))
 
 (def ^:private get-content-args-schema
   [:map {:closed true}
@@ -671,12 +673,12 @@
   [{:keys [items include] :as args} _]
   (when (> (count items) max-items)
     (common/throw-teaching-error
-     (format "`items` accepts at most %d entries per call — you passed %d; split the batch."
-             max-items (count items))))
+     (message/msg ["\"items\" accepts at most %d entries per call — you passed %d; split the batch."]
+                  max-items (count items))))
   ;; Surface an invalid response_format once, before any item work.
   (common/response-format args)
   ;; Reject include sections no item in the batch supports, before any per-item work.
   (when (seq include)
     (check-includes! (into #{} (map :type) items) (distinct include)))
   (common/success-content
-   (json/encode {:results (mapv #(content-item-result args %) items)})))
+   {:results (mapv #(content-item-result args %) items)}))
