@@ -41,8 +41,7 @@ function setup({ selectedColumnNames }: SetupOpts = {}) {
   const query = createQuery(selectedColumnNames);
   const columns = Lib.fieldableColumns(query, STAGE_INDEX);
   const onToggle = jest.fn();
-  const onSelectAll = jest.fn();
-  const onSelectNone = jest.fn();
+  const onToggleColumns = jest.fn();
 
   renderWithProviders(
     <FieldPicker
@@ -52,13 +51,12 @@ function setup({ selectedColumnNames }: SetupOpts = {}) {
       isColumnSelected={isColumnSelected}
       isColumnDisabled={isColumnDisabled}
       onToggle={onToggle}
-      onSelectAll={onSelectAll}
-      onSelectNone={onSelectNone}
+      onToggleColumns={onToggleColumns}
       data-testid="fields-picker"
     />,
   );
 
-  return { query, columns, onToggle, onSelectAll, onSelectNone };
+  return { query, columns, onToggle, onToggleColumns };
 }
 
 function getOptions() {
@@ -77,6 +75,14 @@ function getToggledColumnName(
 ): [string, boolean] {
   const [column, isSelected] = onToggle.mock.calls[0];
   return [Lib.displayInfo(query, STAGE_INDEX, column).name, isSelected];
+}
+
+function getToggledColumnNames(
+  onToggleColumns: jest.Mock,
+  query: Lib.Query,
+): [string[], boolean] {
+  const [columns, isSelected] = onToggleColumns.mock.calls[0];
+  return [getColumnNames(query, columns), isSelected];
 }
 
 describe("FieldPicker", () => {
@@ -144,23 +150,27 @@ describe("FieldPicker", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("should select every column when only some are selected", async () => {
-    const { onSelectAll, onSelectNone } = setup({
+  it("should select the remaining columns and skip disabled ones", async () => {
+    const { onToggleColumns, query, columns } = setup({
       selectedColumnNames: ["ID"],
     });
 
     await userEvent.click(screen.getByLabelText("Select all"));
 
-    expect(onSelectAll).toHaveBeenCalledTimes(1);
-    expect(onSelectNone).not.toHaveBeenCalled();
+    expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
+      getColumnNames(query, columns).filter((name) => name !== "ID"),
+      true,
+    ]);
   });
 
   it("should deselect every column when all of them are selected", async () => {
-    const { onSelectAll, onSelectNone } = setup();
+    const { onToggleColumns, query, columns } = setup();
 
     await userEvent.click(screen.getByLabelText("Select all"));
 
-    expect(onSelectNone).toHaveBeenCalledTimes(1);
-    expect(onSelectAll).not.toHaveBeenCalled();
+    expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
+      getColumnNames(query, columns),
+      false,
+    ]);
   });
 });

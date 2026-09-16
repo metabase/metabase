@@ -1,6 +1,10 @@
 import type * as Lib from "metabase-lib";
 
-import { FieldPicker, type FieldPickerItem } from "../../FieldPicker";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+  getNextSelectedColumns,
+} from "../../FieldPicker";
 
 interface JoinTableColumnPickerDraftProps {
   query: Lib.Query;
@@ -32,12 +36,18 @@ export function JoinTableColumnDraftPicker({
     onChange(newSelectedColumns);
   };
 
-  const handleSelectAll = () => {
-    onChange(columns);
-  };
-
-  const handleSelectNone = () => {
-    onChange([]);
+  const handleToggleColumns = (
+    targetColumns: Lib.ColumnMetadata[],
+    isSelected: boolean,
+  ) => {
+    onChange(
+      getNextSelectedColumns({
+        columns,
+        selectedColumns,
+        targetColumns,
+        isSelected,
+      }),
+    );
   };
 
   return (
@@ -47,8 +57,7 @@ export function JoinTableColumnDraftPicker({
       columns={columns}
       isColumnSelected={isColumnSelected}
       onToggle={handleToggle}
-      onSelectAll={handleSelectAll}
-      onSelectNone={handleSelectNone}
+      onToggleColumns={handleToggleColumns}
       data-testid="join-columns-picker"
     />
   );
