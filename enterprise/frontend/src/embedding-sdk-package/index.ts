@@ -142,6 +142,7 @@ export type {
   MetabotAgentTextMessage,
   MetabotChartProps,
   MetabotErrorMessage,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotUserTextMessage,
   ParameterChangeSource,

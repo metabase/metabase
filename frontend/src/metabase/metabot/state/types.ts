@@ -113,6 +113,25 @@ export type MetabotMessageStatus =
       serverStarted?: boolean;
     };
 
+export type MetabotIncompleteMessageStatus = Extract<
+  MetabotMessageStatus,
+  { type: "incomplete" }
+>;
+
+export type MetabotIncompleteReason =
+  | "step-limit"
+  | "max-length"
+  | "context-window-full"
+  | "content-filter"
+  | "other";
+
+export type MetabotIncompleteTurn = {
+  reason: MetabotIncompleteReason;
+  message: string;
+  /** Prompt that resumes the turn; absent when the turn cannot be continued. */
+  resumePrompt?: string;
+};
+
 export type MetabotMessagePart =
   | MetabotUserTextChatMessage
   | MetabotAgentTextChatMessage
