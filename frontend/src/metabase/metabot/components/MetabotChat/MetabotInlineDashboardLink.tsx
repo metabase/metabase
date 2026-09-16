@@ -54,7 +54,7 @@ export function MetabotInlineDashboardLink({
       >
         {value.title}
       </Anchor>
-      {"tiles" in value && !readonly && (
+      {"dashcards" in value && !readonly && (
         <SaveDashboardAction
           dashboard={value}
           conversationId={conversationId}
@@ -121,7 +121,7 @@ function SaveDashboardAction({
           dashboardId={dashboard.id}
           name={dashboard.title}
           description={dashboard.description}
-          tiles={dashboard.tiles}
+          dashcards={dashboard.dashcards}
           onSaved={handleSaved}
           onClose={closeSaveModal}
         />

@@ -39,7 +39,7 @@ const dashboard: GeneratedAdhocDashboard = {
   id: "dash-1",
   title: "Ops overview",
   description: "Key ops charts.",
-  tiles: [
+  dashcards: [
     {
       title: "Venues by price",
       display: "bar",
@@ -92,7 +92,7 @@ describe("MetabotInlineDashboardLink", () => {
     fetchMock.clearHistory();
   });
 
-  it("links the title to the ad-hoc dashboard built from the tiles", () => {
+  it("links the title to the ad-hoc dashboard built from the dashcards", () => {
     setup();
 
     expect(
@@ -141,11 +141,11 @@ describe("MetabotInlineDashboardLink", () => {
         name: "save-dashboard",
         matchPartialBody: true,
         body: {
-          dashboard_id: "dash-1",
+          generated_dashboard_id: "dash-1",
           dashboard: {
             name: "Ops overview",
             description: "Key ops charts.",
-            tiles: [
+            dashcards: [
               {
                 title: "Venues by price",
                 display: "bar",

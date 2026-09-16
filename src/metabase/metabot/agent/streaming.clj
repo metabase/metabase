@@ -195,12 +195,12 @@
 (defn generated-dashboard-part
   "Return the `generated_entity` data part for a dashboard the agent assembled from
   conversation charts and queries. Embeds the whole definition — `title`, optional
-  `description`, and positioned `tiles` (each carrying its legacy `dataset_query`,
+  `description`, and positioned `dashcards` (each carrying its legacy `dataset_query`,
   `display` and `title`, the same shape the save endpoint accepts) — so the FE can
   render it as an entity or route to it as an ad-hoc dashboard."
-  [{:keys [id title description tiles]}]
+  [{:keys [id title description dashcards]}]
   (generated-entity-part
-   (cond-> {:type "dashboard" :id id :title title :tiles tiles}
+   (cond-> {:type "dashboard" :id id :title title :dashcards dashcards}
      description (assoc :description description))))
 
 ;;; Stream Processing Transducers

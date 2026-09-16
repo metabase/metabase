@@ -254,7 +254,7 @@
                             {:id          dashboard-id
                              :title       dashboard-name
                              :description description
-                             :tiles       (mapv tile->definition positioned)})]})
+                             :dashcards   (mapv tile->definition positioned)})]})
     (catch Exception e
       (log/errorf "Error creating dashboard: %s" (ex-message e))
       (if (:agent-error? (ex-data e))

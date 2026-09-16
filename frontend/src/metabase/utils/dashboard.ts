@@ -49,14 +49,6 @@ export function isTransientId(id: unknown) {
 
 export const ADHOC_DASHBOARD_PATH = "/dashboard";
 
-// An ad-hoc dashboard id is its own url, `/dashboard#<encoded definition>`, like
-// `/question#<hash>`. The definition is the first hash segment; DashboardApp's
-// display options (`fullscreen`, `refresh`, …) append after `&` and round-trip
-// through the hash-option helpers as a bare key.
-export function getAdhocDashboardId(encodedDefinition: string) {
-  return `${ADHOC_DASHBOARD_PATH}#${encodedDefinition}`;
-}
-
 export function getAdhocDashboardEncodedDefinition(hash: string) {
   const [encodedDefinition] = hash.replace(/^#/, "").split("&");
   return encodedDefinition || undefined;

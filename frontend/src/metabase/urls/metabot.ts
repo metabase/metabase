@@ -1,6 +1,6 @@
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type {
-  AdhocDashboardTile,
+  AdhocDashcard,
   CardDisplayType,
   DatasetQuery,
   UnsavedCard,
@@ -29,7 +29,7 @@ type GeneratedAdhocDashboardLink = {
   id: string;
   title: string;
   description?: string;
-  tiles: AdhocDashboardTile[];
+  dashcards: AdhocDashcard[];
 };
 
 type GeneratedDashboardLink =
@@ -58,10 +58,13 @@ export function generatedDashboard(
   return adhocDashboard({
     name: dashboard.title,
     description: dashboard.description,
-    tiles: dashboard.tiles,
+    dashcards: dashboard.dashcards,
     metabot:
       conversationId != null
-        ? { conversation_id: conversationId, dashboard_id: dashboard.id }
+        ? {
+            conversation_id: conversationId,
+            generated_dashboard_id: dashboard.id,
+          }
         : undefined,
   });
 }

@@ -43,7 +43,6 @@ import {
 } from "metabase/utils/browser";
 import {
   getAdhocDashboardEncodedDefinition,
-  getAdhocDashboardId,
   isAdhocDashboardPath,
 } from "metabase/utils/dashboard";
 import type { Dashboard as IDashboard } from "metabase-types/api";
@@ -94,7 +93,7 @@ function getRouteDashboardId(location: Location, slug: string | undefined) {
     return Urls.extractEntityId(slug);
   }
   const encodedDefinition = getAdhocDashboardEncodedDefinition(location.hash);
-  return encodedDefinition ? getAdhocDashboardId(encodedDefinition) : null;
+  return encodedDefinition ? Urls.adhocDashboardId(encodedDefinition) : null;
 }
 
 export const DashboardApp = () => {

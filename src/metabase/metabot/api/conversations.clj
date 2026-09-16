@@ -124,7 +124,7 @@
    [:metabot_conversation_id ms/UUIDString]
    [:metabot_chart_id        ms/NonBlankString]])
 
-(def ^:private SaveDashboardTile
+(def ^:private SaveDashboardDashcard
   [:map {:closed true}
    [:title         ms/NonBlankString]
    [:display       ms/NonBlankString]
@@ -139,12 +139,12 @@
 
 (def ^:private SaveDashboardBody
   [:map {:closed true}
-   [:dashboard_id [:and ms/NonBlankString [:string {:max 36}]]]
+   [:generated_dashboard_id [:and ms/NonBlankString [:string {:max 36}]]]
    [:dashboard    [:map {:closed true}
                    [:name          ms/NonBlankString]
                    [:description   {:optional true} [:maybe :string]]
                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                   [:tiles         [:sequential SaveDashboardTile]]]]])
+                   [:dashcards     [:sequential SaveDashboardDashcard]]]]])
 
 (def ^:private SaveDashboardResponse
   [:map
@@ -288,15 +288,15 @@
   Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams
    _query-params
-   {:keys [dashboard_id dashboard]} :- SaveDashboardBody]
+   {:keys [generated_dashboard_id dashboard]} :- SaveDashboardBody]
   (api/read-check :model/MetabotConversation id)
   (let [{dash :dashboard} (generated-dashboard/materialize!
                            {:name            (:name dashboard)
                             :description     (:description dashboard)
                             :collection-id   (:collection_id dashboard)
                             :conversation-id id
-                            :generated-id    dashboard_id
-                            :tiles           (for [tile (:tiles dashboard)]
+                            :generated-id    generated_dashboard_id
+                            :tiles           (for [tile (:dashcards dashboard)]
                                                {:name                   (:title tile)
                                                 :dataset-query          (:dataset_query tile)
                                                 :display                (keyword (:display tile))
