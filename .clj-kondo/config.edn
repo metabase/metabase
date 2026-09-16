@@ -960,6 +960,8 @@
   ;; `metabase.app-db.value-guard`.
   metabase.content-translation.db
   {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+  metabase-enterprise.remote-sync.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
