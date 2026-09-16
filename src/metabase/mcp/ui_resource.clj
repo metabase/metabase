@@ -58,11 +58,14 @@
    tool — so those two keys only render into the test fallback template."
   [vars]
   (cond
-    (io/resource embed-mcp-template-path)
-    (stencil/render-file embed-mcp-template-path vars)
-
+    ;; The fallback wins when installed: a developer whose worktree has a frontend build would
+    ;; otherwise render the built template, and the credential-embedding tests would fail on their
+    ;; machine and pass on CI.
     @fallback-template
     (stencil/render-string @fallback-template vars)
+
+    (io/resource embed-mcp-template-path)
+    (stencil/render-file embed-mcp-template-path vars)
 
     :else
     (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
