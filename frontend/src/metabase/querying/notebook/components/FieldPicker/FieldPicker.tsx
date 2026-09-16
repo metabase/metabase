@@ -30,8 +30,7 @@ interface FieldPickerProps {
     items: FieldPickerItem[],
   ) => boolean;
   onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
-  onSelectAll: () => void;
-  onSelectNone: () => void;
+  onToggleColumns: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
 }
 
 export const FieldPicker = ({
@@ -39,8 +38,7 @@ export const FieldPicker = ({
   stageIndex,
   columns,
   onToggle,
-  onSelectAll,
-  onSelectNone,
+  onToggleColumns,
   isColumnSelected,
   isColumnDisabled,
   ...props
@@ -68,15 +66,19 @@ export const FieldPicker = ({
     selectFirstOption();
   }, [selectFirstOption]);
 
-  const isAll = items.every((item) => item.isSelected);
-  const isNone = items.every((item) => !item.isSelected);
+  const isAllSelected = items.every((item) => item.isSelected);
+  const isNoneSelected = items.every((item) => !item.isSelected);
+  // When every column is selected the control deselects them; otherwise it
+  // selects the rest.
+  const itemsToToggle = items.filter(
+    (item) => !item.isDisabled && item.isSelected === isAllSelected,
+  );
 
-  const handleLabelToggle = () => {
-    if (isAll) {
-      onSelectNone();
-    } else {
-      onSelectAll();
-    }
+  const handleSelectAllChange = () => {
+    onToggleColumns(
+      itemsToToggle.map((item) => item.column),
+      !isAllSelected,
+    );
   };
 
   const handleOptionSubmit = (id: string) => {
@@ -98,9 +100,10 @@ export const FieldPicker = ({
             <Combobox.EventsTarget withAriaAttributes={false}>
               <Checkbox
                 variant="stacked"
-                checked={isAll}
-                indeterminate={!isAll && !isNone}
-                onChange={handleLabelToggle}
+                checked={isAllSelected}
+                indeterminate={!isAllSelected && !isNoneSelected}
+                disabled={itemsToToggle.length === 0}
+                onChange={handleSelectAllChange}
               />
             </Combobox.EventsTarget>
             <div className={S.ItemTitle}>{t`Select all`}</div>

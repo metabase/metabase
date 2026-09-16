@@ -8,7 +8,11 @@ import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
-import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+  getNextSelectedColumns,
+} from "../FieldPicker";
 import { useNotebookContext } from "../Notebook/context";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { CONTAINER_PADDING } from "../NotebookCell/constants";
@@ -181,14 +185,25 @@ function DataFieldPicker({
     updateQuery(nextQuery);
   };
 
-  const handleSelectAll = () => {
-    const nextQuery = Lib.withFields(query, stageIndex, []);
-    updateQuery(nextQuery);
-  };
-
-  const handleSelectNone = () => {
-    const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
-    updateQuery(nextQuery);
+  const handleToggleColumns = (
+    targetColumns: Lib.ColumnMetadata[],
+    isSelected: boolean,
+  ) => {
+    const selectedColumns = columns.filter(
+      (column) => Lib.displayInfo(query, stageIndex, column).selected,
+    );
+    const nextColumns = getNextSelectedColumns({
+      columns,
+      selectedColumns,
+      targetColumns,
+      isSelected,
+    });
+    // An empty field list means "every column", so a deselect that would
+    // empty it keeps the first target instead, like the last-column rule.
+    const fields =
+      nextColumns.length > 0 ? nextColumns : targetColumns.slice(0, 1);
+    const isEveryColumn = fields.length === columns.length;
+    updateQuery(Lib.withFields(query, stageIndex, isEveryColumn ? [] : fields));
   };
 
   return (
@@ -199,8 +214,7 @@ function DataFieldPicker({
       isColumnSelected={isColumnSelected}
       isColumnDisabled={isColumnDisabled}
       onToggle={handleToggle}
-      onSelectAll={handleSelectAll}
-      onSelectNone={handleSelectNone}
+      onToggleColumns={handleToggleColumns}
     />
   );
 }

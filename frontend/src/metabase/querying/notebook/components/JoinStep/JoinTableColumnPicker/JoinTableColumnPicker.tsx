@@ -2,7 +2,11 @@ import { useMemo } from "react";
 
 import * as Lib from "metabase-lib";
 
-import { FieldPicker, type FieldPickerItem } from "../../FieldPicker";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+  getNextSelectedColumns,
+} from "../../FieldPicker";
 
 interface JoinTableColumnPickerProps {
   query: Lib.Query;
@@ -29,14 +33,23 @@ export function JoinTableColumnPicker({
     onChange(newQuery);
   };
 
-  const handleSelectAll = () => {
-    const newJoin = Lib.withJoinFields(join, "all");
-    const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
-    onChange(newQuery);
-  };
-
-  const handleSelectNone = () => {
-    const newJoin = Lib.withJoinFields(join, "none");
+  const handleToggleColumns = (
+    targetColumns: Lib.ColumnMetadata[],
+    isSelected: boolean,
+  ) => {
+    const selectedColumns = columns.filter(
+      (column) => Lib.displayInfo(query, stageIndex, column).selected,
+    );
+    const nextColumns = getNextSelectedColumns({
+      columns,
+      selectedColumns,
+      targetColumns,
+      isSelected,
+    });
+    const newJoin = Lib.withJoinFields(
+      join,
+      getJoinFields(nextColumns, columns),
+    );
     const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
     onChange(newQuery);
   };
@@ -48,8 +61,7 @@ export function JoinTableColumnPicker({
       columns={columns}
       isColumnSelected={isColumnSelected}
       onToggle={handleToggle}
-      onSelectAll={handleSelectAll}
-      onSelectNone={handleSelectNone}
+      onToggleColumns={handleToggleColumns}
       data-testid="join-columns-picker"
     />
   );
@@ -57,4 +69,17 @@ export function JoinTableColumnPicker({
 
 function isColumnSelected({ columnInfo }: FieldPickerItem) {
   return Boolean(columnInfo.selected);
+}
+
+function getJoinFields(
+  selectedColumns: Lib.ColumnMetadata[],
+  columns: Lib.ColumnMetadata[],
+): Lib.JoinFields {
+  if (selectedColumns.length === 0) {
+    return "none";
+  }
+  if (selectedColumns.length === columns.length) {
+    return "all";
+  }
+  return selectedColumns;
 }
