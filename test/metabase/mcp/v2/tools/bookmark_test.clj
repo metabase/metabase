@@ -4,6 +4,7 @@
    gating, Malli validation, and teaching-error conversion are exercised for free."
   (:require
    [clojure.test :refer :all]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.bookmark :as tools.bookmark]
@@ -25,7 +26,7 @@
 (defn- tool-result
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+    (throw (ex-info (str "tool call rejected: " (message/render (:message error))) {:error error})))
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
@@ -34,7 +35,7 @@
 (defn- tool-error
   [{:keys [result error]}]
   (cond
-    error                (:message error)
+    error                (message/render (:message error))
     (:isError result)    (-> result :content first :text)
     :else                (throw (ex-info "expected a tool error, got success" {:result result}))))
 
@@ -104,7 +105,7 @@
 (deftest card-flavor-mismatch-test
   (testing "GHY-4152: bookmarking a card under the wrong flavor is a teaching error naming the right type"
     (mt/with-temp [:model/Card {card-id :id} {:type :metric}]
-      (is (= (format "Card %d is a metric — bookmark it with type: \"metric\"." card-id)
+      (is (= (format "Card %d is a \"metric\" — bookmark it with type: \"metric\"." card-id)
              (tool-error (call-tool! :rasta {:type "question" :id card-id :bookmarked true}))))
       (is (not (t2/exists? :model/CardBookmark :card_id card-id))))))
 
@@ -144,7 +145,7 @@
 (deftest scope-test
   (testing "GHY-4152: the tool requires agent:content:write"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
-      (is (re-find #"^Insufficient scope to call tool: bookmark_content\."
+      (is (re-find #"^Insufficient scope to call tool: \"bookmark_content\"\."
                    (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
                                            {:type "question" :id card-id :bookmarked true}))))
       ;; Reachability is the point here — without agent:content:read the echo degrades to the

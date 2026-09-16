@@ -63,7 +63,7 @@
                        :error      nil}
                       (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
             (testing "We can invoke the task ourself manually"
-              (model-index/add-values! model-index)
+              (model-index/add-values! (t2/select-one :model/ModelIndex :id (:id model-index)))
               (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
@@ -79,7 +79,7 @@
                                             {:filter [:and
                                                       [:> $id 10]
                                                       [:< $id 20]]})})
-              (model-index/add-values! model-index)
+              (model-index/add-values! (t2/select-one :model/ModelIndex :id (:id model-index)))
               (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]
@@ -210,7 +210,8 @@
           (testing (str "scenario: " scenario)
             (let [[pk-ref value-ref] (or field-refs
                                          (->> model :result_metadata (map :field_ref)))
-                  [error values]  (#'model-index/fetch-values {:model_id  (u/the-id model)
+                  [error values]  (#'model-index/fetch-values {:id        1
+                                                               :model_id  (u/the-id model)
                                                                :pk_ref    pk-ref
                                                                :value_ref value-ref})]
               (is (nil? error))
@@ -240,7 +241,7 @@
                                                :pk_ref    (by-name pk-name)
                                                :value_ref (by-name value-name)})]
         ;; post most likely creates this, but duplicate to be sure
-        (model-index/add-values! model-index)
+        (model-index/add-values! (t2/select-one :model/ModelIndex :id (:id model-index)))
         (is (= "indexed"
                (t2/select-one-fn :state :model/ModelIndex :id (u/the-id model-index))))
         (is (= quantity

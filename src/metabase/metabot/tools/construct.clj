@@ -90,6 +90,13 @@
                                            "joins"        {:type "array" :items {:type "object"}}
                                            "expressions"  {:type "object"}}}}}})
 
+(def LLMExternalQuery
+  "An MBQL 5 external query as the LLM wrote it, before [[execute-representations-query]] repairs and validates it: its
+  keys are the LLM's until then."
+  [:map {:closed                false
+         ::mr/deliberately-open true
+         :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
+
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
 
@@ -108,7 +115,7 @@
    [:reasoning {:optional true} :string]
    ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
    ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
-   [:query [:map {:json-schema construct-notebook-query-json-schema}]]
+   [:query (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema})]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]
    [:description :string]])
@@ -764,11 +771,9 @@
   "Run `external-query` through the representations pipeline. See
   [[execute-representations-query*]] for the pipeline itself.
 
-  `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to the sentence
-  telling *this* caller's agent how to recover — the pipeline states what went wrong, the
-  caller supplies the vocabulary, because only the caller knows which tools its agent has.
-  Surfaces pass [[metabase.metabot.tools.recovery-hints/recovery-hint]] or
-  [[metabase.mcp.v2.recovery-hints/recovery-hint]]; omitting it yields bare statements."
+  `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to a sentence
+  string (or nil) telling the caller's agent how to recover; the sentence is appended to the
+  agent error's message. Omitting it leaves agent errors with the pipeline's bare statement."
   ([external-query]
    (execute-representations-query external-query nil))
   ([external-query {:keys [recovery-hint]}]

@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
    [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -25,33 +26,46 @@
   500)
 
 (defn- with-schema-detail
-  "`e` with its humanized schema explanation folded into the message, or unchanged when it carries
-   none. The representations pipeline computes the explanation and files it under `:humanized` but
-   states only the bare verdict, which leaves an agent nothing to edit; only structural validation
-   failures carry the key, so the dialect steering is always apt where it lands."
+  "`e` rewrapped by [[common/message-ex-info]] with its humanized schema explanation after its message, keeping its
+   data and with `e` as the cause, or unchanged when it carries none."
   [^clojure.lang.ExceptionInfo e]
+  ;; The pipeline files the explanation under `:humanized` but states only the bare verdict, which leaves an agent
+  ;; nothing to edit. Only structural validation failures carry the key, so the dialect steering is always apt.
   (if-let [humanized (:humanized (ex-data e))]
-    (ex-info (str (ex-message e)
-                  " Invalid at " (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length)
-                  ". Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes.")
-             (ex-data e)
-             (ex-cause e))
+    (let [detail (message/msg [(str "Invalid at %s. Fix the named paths, or call "
+                                    "\"learn\" with \"query-dialect\" for the clause shapes.")]
+                              (common/ellipsize (common/humanize-detail humanized) max-schema-detail-length))]
+      (common/message-ex-info (if-let [text (common/exception-message e)]
+                                (message/msg ["%s %s"] text detail)
+                                detail)
+                              (ex-data e)
+                              e))
+    e))
+
+(defn- with-recovery-hint
+  "`e` rewrapped by [[common/message-ex-info]] with v2's recovery message for its `ex-data` on a line after its
+   message, keeping its data and with `e` as the cause, or unchanged when there is none."
+  [^clojure.lang.ExceptionInfo e]
+  (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
+    (common/message-ex-info (if-let [text (common/exception-message e)]
+                              (message/msg ["%s" "%s"] text hint)
+                              hint)
+                            (ex-data e)
+                            e)
     e))
 
 (defn execute-representations-query
   "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
    the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
-   dialect on, and supplies v2's recovery sentences so a resolution failure names `browse_data` /
-   `search` rather than v1's `read_resource` / `metabase://` URIs. A structural failure gains the
-   offending paths ([[with-schema-detail]]), which the pipeline computes but does not state."
+   dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), and an
+   agent error gains v2's recovery message ([[with-recovery-hint]])."
   [external-query]
   (binding [serdes.resolve/*numeric-ids-allowed?* true]
     (try
-      (metabot.construct/execute-representations-query
-       external-query
-       {:recovery-hint v2.recovery-hints/recovery-hint})
+      (metabot.construct/execute-representations-query external-query)
       (catch clojure.lang.ExceptionInfo e
-        (throw (with-schema-detail e))))))
+        (throw (cond-> (with-schema-detail e)
+                 (:agent-error? (ex-data e)) with-recovery-hint))))))
 
 ;;; ------------------------------------------------ Portable queries ----------------------------------------------
 
@@ -70,7 +84,7 @@
    and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
 
    The pipeline's own agent-facing failures become a teaching error about the `definition`
-   argument, ending in `hint` (a sentence naming the shapes the calling tool accepts); permission
+   argument, ending in `hint` (server text naming the shapes the calling tool accepts); permission
    failures and anything unrecognized pass through."
   [external-query hint]
   (try
@@ -82,7 +96,9 @@
     (catch clojure.lang.ExceptionInfo e
       (if (:agent-error? (ex-data e))
         (common/throw-teaching-error
-         (format "`definition` could not be resolved: %s %s" (common/ellipsize (ex-message e) 300) hint))
+         (if-let [text (common/exception-message e)]
+           (message/msg ["\"definition\" could not be resolved: %s %s"] (common/ellipsize text 300) hint)
+           (message/msg ["\"definition\" could not be resolved. %s"] hint)))
         (throw e)))))
 
 ;;; ------------------------------------------------ Query handles -------------------------------------------------
@@ -113,7 +129,8 @@
                   (catch Exception _ ::invalid))]
     (if (map? decoded) ;; catch ::invalid and non-map values
       decoded
-      (common/throw-teaching-error "Query handle contents are invalid — run the query again to get a fresh handle."))))
+      (common/throw-teaching-error (message/msg [(str "Query handle contents are invalid — run "
+                                                      "the query again to get a fresh handle.")])))))
 
 (defn resolve-query-handle!
   "Resolve `handle` for `user-id` and re-run the fresh-query guards on the stored query, so a
@@ -127,7 +144,8 @@
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
-            (common/throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+            (common/throw-teaching-error (message/msg [(str "Query handle not found — it may "
+                                                            "have expired; run the query again.")])))
         query (decode-stored-query encoded_query)]
     (query-guards/reject-native-query! query)
     (query-guards/validate-serialized-query! query)
@@ -139,21 +157,39 @@
    re-runs the shape and permission guards, and — unlike the MBQL read path — DOES allow a native
    query through. `execute_sql` mints handles specifically so their SQL can be saved; the
    native-reject guard would otherwise make those handles unsaveable. Returns
-   `{:query <decoded map> :prompt <string-or-nil>}`, or throws a teaching error."
+   `{:query <decoded map> :prompt <string-or-nil>}`, or throws a teaching error.
+
+   Refuses a handle carrying bound `:parameters`. `execute_sql` re-attaches the values it ran
+   with so the handle re-runs and visualizes as what the agent saw, but `:parameters` is
+   runtime-only — [[metabase.lib.schema]]'s serialize-query strips it on the way into
+   `dataset_query`. Saving such a handle would therefore persist the query WITHOUT its filter and
+   without complaining: a card built from `WHERE quantity > 4` falls back to the tag's default and
+   returns rows the agent's own run excluded. That is a disclosure, not just a wrong row count, so
+   the save path fails closed rather than guessing at the card shape the values should have become
+   (a card `:parameters` entry or a template-tag `:default`, which differ between native and MBQL
+   handles)."
   [mcp-session-id user-id handle]
   (let [{:keys [encoded_query prompt]}
         (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
-            (common/throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+            (common/throw-teaching-error (message/msg [(str "Query handle not found — it may "
+                                                            "have expired; run the query again.")])))
         query (decode-stored-query encoded_query)]
     (query-guards/validate-serialized-query! query)
     (query-guards/check-token-query-permissions! query)
+    (when (seq (:parameters query))
+      (common/throw-teaching-error
+       (message/msg [(str "This query_handle carries bound parameter values, which a saved query can't keep — "
+                          "storing it would drop the filter and save a question that returns rows the run you "
+                          "saw excluded. Save it with the filter built in instead: pass `native` with "
+                          "`template_tags` giving each tag a `default`, or re-run the query with the values "
+                          "written into the SQL/MBQL filter itself and save that handle.")])))
     {:query query :prompt prompt}))
 
 ;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
 
 (defn check-execute-sql-enabled!
-  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`
-   opens the refusal sentence, naming what the instance refused.
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject` opens the
+   refusal sentence, naming what the instance refused.
 
    The gate covers every v2 path on which the AGENT AUTHORS the SQL — `execute_sql` itself, and
    `question_write` / `transform_write` storing agent-authored native SQL — so a switch an admin
@@ -167,7 +203,8 @@
    instance's ability to run questions it already has."
   [subject]
   (when-not (agent-api.settings/mcp-execute-sql-enabled)
-    (throw (ex-info (format (str "%s is disabled on this instance — an admin can re-enable it "
-                                 "with the mcp-execute-sql-enabled setting.")
-                            subject)
-                    {:status-code 403}))))
+    (common/throw-teaching-error
+     (message/msg [(str "%s is disabled on this instance — an admin can "
+                        "re-enable it with the mcp-execute-sql-enabled setting.")]
+                  subject)
+     {:status-code 403})))

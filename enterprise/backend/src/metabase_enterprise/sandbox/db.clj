@@ -94,7 +94,7 @@
                [:table_id             ::lib.schema.id/table]
                [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
                [:group_id             ms/PositiveInt]
-               [:attribute_remappings {:optional true} [:maybe :map]]]]
+               [:attribute_remappings {:optional true} [:maybe ::sandbox.schema/attribute-remappings]]]]
   (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
 
 (mu/defn update-sandbox!
@@ -150,7 +150,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-of-database

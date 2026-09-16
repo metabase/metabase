@@ -404,13 +404,13 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -564,13 +564,13 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:natives {:postgres "BYTEA"
-                                    :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"
-                                    :oracle "BLOB"
-                                    :sqlite "BLOB"}}
+              :base-type {:natives {"postgres" "BYTEA"
+                                    "h2"       "BYTEA"
+                                    "mysql"    "VARBINARY(100)"
+                                    "redshift" "VARBYTE"
+                                    "presto-jdbc" "VARBINARY"
+                                    "oracle" "BLOB"
+                                    "sqlite" "BLOB"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/ISO8601Bytes->Temporal}]
     [["foo" (.getBytes "2019-04-21 16:43:00")]

@@ -22,8 +22,10 @@
    [:channel :string]])
 
 (mr/def ::email-details
-  "The connection `:details` of a `:channel/email` channel: there are none, email is configured by settings."
-  [:map {:closed true}])
+  "The connection `:details` of a `:channel/email` channel: an optional SMTP host and port, as email is otherwise configured by settings."
+  [:map {:closed true}
+   [:host {:optional true} [:maybe :string]]
+   [:port {:optional true} [:maybe :int]]])
 
 (mr/def ::test-details
   "The `:details` of the test-only `:channel/metabase-test` channel, which exists so a test can drive a connection test
@@ -143,13 +145,10 @@
 
 (mr/def ::channel-template
   "A ChannelTemplate as selected from the app DB: every column of `:channel_template`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:name         :string]
-   [:channel_type [:or :keyword :string]]
-   [:details      [:maybe ::channel-template.details]]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]])
+  [:merge
+   ::channel-template.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::channel-template.update
   "What an update (or insert) of a ChannelTemplate accepts: every column of `:channel_template` except `id`, all optional."

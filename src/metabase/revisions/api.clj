@@ -137,7 +137,7 @@
                                         table-id (assoc :table_id table-id))))))
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))
-      (when (api/column-will-change? :dashboard_id instance (:object revision))
+      (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
         (doseq [dashboard-id (keep identity [(:dashboard_id instance)
                                              (:dashboard_id (:object revision))])]
           (api/write-check :model/Dashboard dashboard-id)))

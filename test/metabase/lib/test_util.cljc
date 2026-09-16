@@ -381,9 +381,7 @@
   This is mostly around for historic reasons; consider using [[metabase.lib.core/query]] instead, which is closer to
   real-life usage."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {mbql-query :dataset-query, metadata :result-metadata} :- [:map
-                                                              [:dataset-query :map]
-                                                              [:result-metadata [:sequential {:min 1} :map]]]]
+   {mbql-query :dataset-query, metadata :result-metadata} :- ::lib.schema.metadata/card]
   (let [mbql-query (cond-> (assoc (lib.convert/->mbql5 mbql-query)
                                   :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
                      metadata
@@ -396,7 +394,11 @@
            :stages   [{:lib/type :mbql.stage/native
                        :native   "SELECT * FROM VENUES;"}]}
           (query-with-stage-metadata-from-card meta/metadata-provider
-                                               {:dataset-query   {:database (meta/id)
+                                               {:lib/type        :metadata/card
+                                                :id              1
+                                                :name            "Venues"
+                                                :database-id     (meta/id)
+                                                :dataset-query   {:database (meta/id)
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))

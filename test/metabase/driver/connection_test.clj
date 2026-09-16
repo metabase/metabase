@@ -14,6 +14,7 @@
     (let [details            {:host "read-host" :port 5432}
           write-data-details {:host "write-host" :port 5432}
           database           {:lib/type           :metadata/database
+                              :id                 1
                               :details            details
                               :write-data-details write-data-details}]
       (is (=? details
@@ -27,6 +28,7 @@
        (testing "effective-details returns write_data_details when :write-data and details exist"
          (testing "with kebab-case key (Lib metadata style)"
            (let [database {:lib/type           :metadata/database
+                           :id                 1
                            :details            details
                            :write-data-details write-data-details}]
              (driver.conn/with-write-connection
@@ -46,6 +48,7 @@
     (let [details {:host "read-host" :port 5432}]
       (testing "effective-details falls back to :details when :write-data but no write details"
         (let [database {:lib/type :metadata/database
+                        :id 1
                         :details details
                         :write-data-details nil}]
           (driver.conn/with-write-connection
@@ -53,6 +56,7 @@
                     (driver.conn/effective-details database)))))
         (testing "also when :write_data_details key is missing entirely"
           (let [database {:lib/type :metadata/database
+                          :id 1
                           :details details}]
             (driver.conn/with-write-connection
               (is (=? details
@@ -64,6 +68,7 @@
       (let [details            {:host "read-host" :port 5432}
             write-data-details {:host "write-host" :port 5432}
             database           {:lib/type           :metadata/database
+                                :id                 1
                                 :details            details
                                 :write-data-details write-data-details}]
         (driver.conn/with-write-connection
@@ -92,6 +97,7 @@
     (let [details       {:host "read-host" :port 5432}
           admin-details {:host "admin-host" :port 5432 :user "root"}
           database      {:lib/type      :metadata/database
+                         :id            1
                          :details       details
                          :admin-details admin-details}]
       (is (=? details
@@ -103,6 +109,7 @@
       (let [details       {:host "read-host" :port 5432}
             admin-details {:host "admin-host" :port 5432 :user "root"}
             database      {:lib/type      :metadata/database
+                           :id            1
                            :details       details
                            :admin-details admin-details}]
         (driver.conn/with-admin-connection

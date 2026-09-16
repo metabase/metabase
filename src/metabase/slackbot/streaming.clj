@@ -66,6 +66,17 @@
        (or (= (:text msg) thinking-placeholder)
            (str/blank? (:text msg)))))
 
+(defn- user-msg-content
+  "What a user message contributes to the chat history: its text without the bot mention.
+  A message with no other text names its attachments instead, or contributes nothing."
+  [{:keys [text files]} bot-user-id]
+  ;; The model rejects an empty user message, and a file shared on its own arrives with empty text.
+  (let [content (slackbot.events/strip-bot-mention text bot-user-id)]
+    (if-not (str/blank? content)
+      content
+      (when-let [names (seq (keep :name files))]
+        (str "Attached files: " (str/join ", " names))))))
+
 (defn- thread->bot-msg-ids
   "Slack message ids produced by our bot."
   [thread]
@@ -94,7 +105,8 @@
                      ;; bot messages: merge on tool call info from db
                      (conj (get msg-history ts []) {:role :assistant :content text})
                      ;; user messages: user slack history instead to respect user edits
-                     [{:role :user :content (slackbot.events/strip-bot-mention text bot-user-id)}])))
+                     (when-let [content (user-msg-content msg bot-user-id)]
+                       [{:role :user :content content}]))))
          vec)))
 
 (defn- compute-capabilities

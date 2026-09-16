@@ -5,10 +5,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import {
-  getShallowFields as getFields,
-  selectMetadataProvider,
-} from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
@@ -69,12 +66,10 @@ const mapStateToProps = (
   props: ReferenceRouteProps,
 ) => {
   const entity = getTable(state, props) || {};
-  const fields = getFields(state);
 
   return {
     entity,
     table: getTable(state, props),
-    metadataFields: fields,
     metadataProvider: selectMetadataProvider(
       state,
       getTable(state, props)?.db_id ?? null,

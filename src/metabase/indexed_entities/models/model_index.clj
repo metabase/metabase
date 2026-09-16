@@ -2,22 +2,23 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.indexed-entities.db :as indexed-entities.db]
+   [metabase.indexed-entities.schema :as indexed-entities.schema]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.task.core :as task]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -39,10 +40,22 @@
   {:pk_ref    mi/transform-legacy-field-ref
    :value_ref mi/transform-legacy-field-ref})
 
+(defn trigger-key
+  "Quartz trigger key for the job that refreshes the values of model index `model-index-id`."
+  [model-index-id]
+  (triggers/key (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
+
+(defn remove-indexing-job
+  "Remove the indexing job for `model-index`.
+
+  This and [[trigger-key]] live here rather than with the job itself so that deleting a ModelIndex can cancel its
+  trigger without reaching into [[metabase.indexed-entities.task.index-values]], which reads this namespace."
+  [model-index]
+  (task/delete-trigger! (trigger-key (:id model-index))))
+
 (t2/define-before-delete :model/ModelIndex
   [model-index]
-  (let [remove-refresh-job (requiring-resolve 'metabase.indexed-entities.task.index-values/remove-indexing-job)]
-    (remove-refresh-job model-index)))
+  (remove-indexing-job model-index))
 
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
@@ -73,16 +86,10 @@
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
 
-(mr/def ::model-index
-  [:map
-   [:model_id  ::lib.schema.id/card]
-   [:value_ref some?]
-   [:pk_ref    some?]])
-
 (mu/defn ^:private fetch-values
-  [model-index :- ::model-index]
+  [model-index :- ::indexed-entities.schema/model-index]
   (let [model     (indexed-entities.db/card (:model_id model-index))
-        fix       (mu/fn [field-ref :- some?
+        fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
@@ -118,10 +125,7 @@
 
 (mu/defn add-values!
   "Add indexed values to the model_index_value table."
-  [model-index :- [:merge
-                   ::model-index
-                   [:map
-                    [:id pos-int?]]]]
+  [model-index :- ::indexed-entities.schema/model-index]
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))

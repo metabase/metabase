@@ -23,6 +23,9 @@ interface Condition {
   coldLargestPaintMs: number;
   coldPageReadyMs: number;
   warmPageReadyMs: number;
+  warmLargestPaintMs: number;
+  steadyLargestPaintMs: number;
+  steadyPageReadyMs: number;
   locale: string;
   scripts: number;
   scriptKb: number;
@@ -69,6 +72,9 @@ function buildRows(
     "Cold largest paint ms": condition.coldLargestPaintMs,
     "Cold page ready ms": condition.coldPageReadyMs,
     "Warm page ready ms": condition.warmPageReadyMs,
+    "Warm largest paint ms": condition.warmLargestPaintMs,
+    "Steady largest paint ms": condition.steadyLargestPaintMs,
+    "Steady page ready ms": condition.steadyPageReadyMs,
     Locale: condition.locale,
     Scripts: condition.scripts,
     "Script kb": condition.scriptKb,

@@ -4,10 +4,13 @@
   easy to cache things like `visible-columns`."
   (:refer-clojure :exclude [not-empty])
   (:require
+   [malli.core :as mc]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.metadata.util :as lib.metadata.util]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -16,10 +19,46 @@
    [metabase.util.performance :refer [not-empty]])
   #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
 
+(mr/def ::options
+  "Options accepted as the last positional arg to [[cache-key]]: whatever
+  [[metabase.lib.metadata.calculation/returned-columns]]/[[metabase.lib.metadata.calculation/visible-columns]]
+  accept, plus the extra keys [[metabase.lib.metadata.calculation/cacheable-options]] adds so caching stays correct
+  across the dynamic variables that can affect metadata calculation."
+  [:maybe
+   [:merge
+    [:ref :metabase.lib.metadata.calculation/visible-columns.options]
+    [:map {:closed true}
+     [:metabase.lib.metadata.calculation/display-name-style              {:optional true} :metabase.lib.metadata.calculation/display-name-style]
+     [:metabase.lib.metadata.calculation/propagate-binning-and-bucketing {:optional true} :boolean]
+     [:metabase.lib.metadata.calculation/ref-style                       {:optional true} :keyword]]]])
+
+(defn- query-with-hashed-metadata-schema
+  "`::lib.schema/query`'s shape, but with `:lib/metadata` replaced by its `hash` (an int) instead of an actual
+  metadata provider, as produced by `prepare-map` in [[cache-key-for-other]] and [[cache-key-for-table-or-card]]."
+  []
+  (let [query-map-schema (first (mc/children (mr/resolve-schema ::lib.schema/query)))]
+    (mut/merge query-map-schema [:map {:closed true} [:lib/metadata {:optional true} [:maybe :int]]])))
+
+(mr/def ::query-with-hashed-metadata (query-with-hashed-metadata-schema))
+
+(mr/def ::element
+  "A single element of a [[cache-key]]: any of the pieces of data [[cache-key-for-table-or-card]]
+  and [[cache-key-for-other]] combine to build one."
+  [:or
+   :int
+   :string
+   :keyword
+   :boolean
+   :nil
+   ::lib.schema/query
+   ::query-with-hashed-metadata
+   :metabase.lib.metadata.calculation/displayable
+   ::options])
+
 (mr/def ::cache-key
   [:cat
    qualified-keyword?
-   [:+ :any]])
+   [:+ ::element]])
 
 (defn- cache-key-for-table-or-card
   "Metadata for a Table, Card, or Metric always comes from the metadata provider and is always unaffected by the
@@ -73,15 +112,15 @@
 (mu/defn cache-key :- ::cache-key
   "Calculate a cache key to use with [[with-cached-value]]. Prefer the 5 arity, which ensures unserializable keys
   like `:lib/metadata` are removed."
-  ([unique-key x]
+  ([unique-key :- qualified-keyword?
+    x          :- ::element]
    [unique-key x])
 
   ([unique-key   :- qualified-keyword?
-    query        :- [:map
-                     [:lib/type [:= :mbql/query]]]
+    query        :- ::lib.schema/query
     stage-number :- :int
-    x            :- :any
-    options      :- :any]
+    x            :- [:maybe :metabase.lib.metadata.calculation/displayable]
+    options      :- ::options]
    (if (#{:metadata/table :metadata/card :metadata/metric} (lib.dispatch/dispatch-value x))
      (cache-key-for-table-or-card unique-key query x options)
      (cache-key-for-other unique-key query stage-number x options))))
@@ -92,10 +131,18 @@
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       metadata-provider)))
 
+(mr/def ::cached-value
+  "A value that can be stored in and retrieved from the cache: whatever [[do-with-cached-value]]'s `thunk` can
+  return."
+  [:or
+   :nil
+   :metabase.lib.metadata.calculation/displayable
+   [:sequential :metabase.lib.metadata.calculation/displayable]])
+
 (mu/defn- cached-value
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   not-found]
+   not-found             :- [:= ::not-found]]
   (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cached-value metadata-provider k not-found)
     (do (log/warn "Not a cached-metadata-provider")
@@ -104,7 +151,7 @@
 (mu/defn- cache-value! :- :nil
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   v]
+   v                     :- ::cached-value]
   (if-let [metadata-provider (->cached-metadata-provider metadata-providerable)]
     (lib.metadata.protocols/cache-value! metadata-provider k v)
     (log/warn "Not a cached-metadata-provider"))
@@ -126,7 +173,7 @@
   "Impl for [[with-cached-value]]."
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   thunk                 :- [:=> [:cat] :any]]
+   thunk                 :- [:=> [:cat] ::cached-value]]
   (log/debug (str (u/colorize :cyan "GET: ") (name (first k)) " " (hash (rest k))))
   (let [cached-v (cached-value metadata-providerable k ::not-found)]
     (if-not (= cached-v ::not-found)

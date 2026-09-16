@@ -27,6 +27,7 @@ export function PublishedTableSegmentDetailPage() {
   return (
     <SegmentDetailPage
       segment={segment}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <PublishedTableSegmentBreadcrumbs table={table} segment={segment} />
