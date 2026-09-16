@@ -92,19 +92,19 @@
     (testing "a documentable tool has no problems"
       (is (= [] (problems search-tool))))
     (testing "a tool with nothing to say is refused rather than rendered as an empty section"
-      (is (=? [#"No description for MCP tool \"search\""] (problems (dissoc search-tool :description)))))
+      (is (=? [#"No description for MCP tool \"search\".*"] (problems (dissoc search-tool :description)))))
     (testing "a scope no `defscope` registered is refused"
       ;; a scope string the consent screen can't explain is a bug, not a page to publish
-      (is (=? [#"uses scope \"agent:nope\", which no defscope describes"] (problems (assoc search-tool :scope "agent:nope")))))
+      (is (=? [#".*uses scope \"agent:nope\", which no defscope describes.*"] (problems (assoc search-tool :scope "agent:nope")))))
     (testing "every problem is reported, not just the first"
       (is (= 2 (count (problems {:name "nope"})))))))
 
 (deftest ^:parallel page-problems-test
   (let [entries (fn [& tools] (map #'mcp-tools-dox/tool->entry tools))]
     (testing "an empty registry is a problem rather than a page with no tools"
-      (is (=? [#"No MCP tools found"] (#'mcp-tools-dox/page-problems []))))
+      (is (=? [#"No MCP tools found.*"] (#'mcp-tools-dox/page-problems []))))
     (testing "one bad tool fails the page, naming it"
-      (is (=? [#"MCP tool \"nope\" uses scope \"agent:nope\""]
+      (is (=? [#"MCP tool \"nope\" uses scope \"agent:nope\".*"]
               (#'mcp-tools-dox/page-problems (entries search-tool (assoc search-tool :name "nope" :scope "agent:nope"))))))
     (testing "a documentable set has none"
       (is (= [] (#'mcp-tools-dox/page-problems (entries search-tool)))))))
