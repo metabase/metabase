@@ -499,20 +499,26 @@
   ([ctx node opts]
    (boolean (seq (tainted-leaves ctx node opts)))))
 
+(defn boundary-origins
+  "`labels` as origins: the boundary labels only, the request refinements folded into `:request`."
+  [labels]
+  (into #{} (comp (remove meta-label?)
+                  ;; the shape refinements are for selecting positions, not for saying where a value came from
+                  (map #(if (#{:request/untyped :request/structured} %) :request %)))
+        labels))
+
 (defn origins
   "The labels of every boundary the values in `node` crossed: `#{:request :app-db/Card}` for a node that mixes a
   request value with a card's column. Empty when nothing in it is tainted. Under the `:any-local` policy every
   local carries `:local` and nothing else."
   ([ctx node] (origins ctx node nil))
   ([ctx node opts]
-   (into #{} (comp (mapcat (fn [leaf]
-                             (let [pos ((juxt :row :col) (meta leaf))]
-                               (or (get (:origin-calls ctx) pos)
-                                   (get (:locals ctx) pos #{:local})))))
-                   (remove meta-label?)
-                   ;; the shape refinements are for selecting positions, not for saying where a value came from
-                   (map #(if (#{:request/untyped :request/structured} %) :request %)))
-         (tainted-leaves ctx node opts))))
+   (boundary-origins
+    (into #{} (mapcat (fn [leaf]
+                        (let [pos ((juxt :row :col) (meta leaf))]
+                          (or (get (:origin-calls ctx) pos)
+                              (get (:locals ctx) pos #{:local})))))
+          (tainted-leaves ctx node opts)))))
 
 (defn checks
   "The authorization checks the values in `node` passed through: `#{:checked/Card}` for an id handed to

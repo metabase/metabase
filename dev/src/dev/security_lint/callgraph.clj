@@ -148,7 +148,7 @@
   "Forms whose value is the value of one of their children: the tail positions to look through for what a
   function returns. `let` and friends return their last form; `if` either branch; `when` its last form or nil."
   '#{let let* when when-not when-let when-some if-let if-some do binding with-open locking
-     if if-not cond case try prog1})
+     if if-not cond condp case try prog1})
 
 (defn- tail-forms
   "The forms whose value a body form evaluates to, looking through the [[tail-through]] heads: for
@@ -163,7 +163,13 @@
       (let [args (ast/args node)]
         (case (name head)
           ("if" "if-not") (mapcat tail-forms (rest args))
+          ;; `(if-let [x init] then else)`: both branches, not the binding vector
+          ("if-let" "if-some") (mapcat tail-forms (rest args))
           "cond"          (mapcat tail-forms (take-nth 2 (rest args)))
+          ;; `(condp = x a ra b rb default)`: every result, and the default when the count is odd
+          "condp"         (let [clauses (drop 2 args)]
+                            (mapcat tail-forms (concat (take-nth 2 (rest clauses))
+                                                       (when (odd? (count clauses)) [(last clauses)]))))
           "case"          (let [clauses (rest args)]
                             (mapcat tail-forms (concat (take-nth 2 (rest clauses))
                                                        (when (odd? (count clauses)) [(last clauses)]))))
@@ -276,11 +282,14 @@
       (ast/map-node? a)
       (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)) :keyed :opaque)
 
-      ;; `[{:a 1} {:b 2}]`: a collection of rows, keyed when every row is; any other vector is not a map
+      ;; `[{:a 1} {:b 2}]`: a collection of rows, keyed when every row is. `[:email :name]`: keys the code
+      ;; chose, for the `select-keys` they end up in. Any other vector is not a map.
       (ast/vector-node? a)
-      (if (and (seq (ast/children a)) (every? #(ast/map-node? (ast/unmeta %)) (ast/children a)))
-        (all (ast/children a))
-        :opaque)
+      (cond
+        (empty? (ast/children a))                                              :opaque
+        (every? #(ast/map-node? (ast/unmeta %)) (ast/children a))               (all (ast/children a))
+        (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children a))           :keyed
+        :else                                                                  :opaque)
 
       (ast/symbol-node? a)
       (ref a (n/sexpr a))
@@ -288,16 +297,29 @@
       (ast/call? a)
       (let [head (ast/head-sym a)
             nm   (some-> head name)
-            args (ast/args a)]
+            args (ast/args a)
+            ;; `(:to-insert (build-rows ...))`: what the call returns under the key
+            key-of (let [h (some-> (first (ast/children a)) ast/unmeta)
+                         x (some-> (first args) ast/unmeta)]
+                     (when (and h (ast/keyword-node? h) x (ast/call? x) (ast/head-sym x))
+                       {:key-ref (ref x (ast/head-sym x)) :k (n/sexpr h)}))]
         (cond
+          key-of
+          key-of
+
           (nil? head)
           :opaque
 
+          ;; `(select-keys m [:a :b])` is keyed; `(select-keys m (conj (fields) :x))` is keyed when the list is --
+          ;; the keys were still chosen by code, one function over; `(select-keys m (:fields body))` is not
           (= nm "select-keys")
-          (let [ks (some-> (ast/arg a 1) ast/unmeta)]
-            (if (and ks (ast/vector-node? ks) (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children ks)))
-              :keyed
-              :opaque))
+          (or (term (ast/arg a 1)) :opaque)
+
+          ;; `(conj ks :k)`: the list, with a key the code named
+          (= nm "conj")
+          (if (every? #(ast/keyword-node? (ast/unmeta %)) (rest args))
+            (term (first args))
+            :opaque)
 
           ;; `(-> {...} (assoc :x 1) f)`: the seed's term, until a step merges another map in
           (contains? threading-heads head)
@@ -522,6 +544,247 @@
                          fresh)
                  var))))))
 
+;;; ------------------------------------------------ Key terms ------------------------------------------------
+
+(def ^:private key-setting-heads
+  "Calls whose value is their first argument's map with named keys set: `assoc` replaces, the others set a key
+  from what was there."
+  #{"assoc" "assoc-in" "update" "update-in"})
+
+(defn- literal-keys
+  "The keywords in a vector or set literal of keywords, or nil when it is anything else."
+  [node]
+  (let [node (some-> node ast/unmeta)]
+    (when (and node (or (ast/vector-node? node) (= :set (n/tag node)))
+               (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children node)))
+      (into #{} (map #(n/sexpr (ast/unmeta %))) (ast/children node)))))
+
+(defn- first-key
+  "The first key of an `assoc-in`/`update-in` path, or an `update`/`assoc` key: a keyword, or nil."
+  [node]
+  (let [node (some-> node ast/unmeta)]
+    (cond
+      (nil? node)                 nil
+      (ast/keyword-node? node)    (n/sexpr node)
+      (ast/vector-node? node)     (first-key (first (ast/children node)))
+      :else                       nil)))
+
+(declare key-term)
+
+(defn- apply-key-step
+  "`acc` with one threading step applied: `(assoc :k v)`, `(merge m)`, `(dissoc :k)`, `(select-keys [...])`,
+  `(f a b)`. `conditional?` -- a `cond->` step -- keeps what was there as well."
+  [filename env acc step conditional?]
+  (let [step   (ast/unmeta step)
+        region (assoc (meta step) :filename filename)
+        head   (if (ast/symbol-node? step) (n/sexpr step) (ast/head-sym step))
+        nm     (some-> head name)
+        args   (if (ast/call? step) (ast/args step) [])
+        term   (partial key-term filename env)
+        pos    (assoc (select-keys (meta step) [:row :col]) :filename filename)
+        applied
+        (cond
+          (nil? head)
+          {:any region}
+
+          ;; `(cond-> m ok? (u/prog1 (side-effect!)))`, `(-> m (doto log))`: the value is the threaded map
+          (contains? #{"prog1" "doto"} nm)
+          acc
+
+          (= nm "assoc")
+          (let [pairs (partition 2 args)]
+            (if (every? #(ast/keyword-node? (ast/unmeta (first %))) pairs)
+              ;; under `cond->` the key keeps what it had as well: an `:add`, and no second copy of `acc`
+              {(if conditional? :add :over) acc :keys (into {} (for [[k v] pairs] [(n/sexpr (ast/unmeta k)) (term v)]))}
+              {:merge [acc {:any region}]}))
+
+          (contains? key-setting-heads nm)
+          (if-let [k (first-key (first args))]
+            {:add acc :keys {k {:any region}}}
+            {:merge [acc {:any region}]})
+
+          ;; under `cond->`, what a `dissoc` or a `select-keys` may have removed is still there
+          (= nm "dissoc")
+          (if (and (not conditional?) (every? #(ast/keyword-node? (ast/unmeta %)) args))
+            {:without acc :keys (into #{} (map #(n/sexpr (ast/unmeta %))) args)}
+            acc)
+
+          (= nm "select-keys")
+          (cond conditional?                    acc
+                (literal-keys (first args))     {:only acc :keys (literal-keys (first args))}
+                :else                           {:any region})
+
+          (contains? #{"merge" "merge-with"} nm)
+          {:merge (into [acc] (map term) (if (= nm "merge-with") (rest args) args))}
+
+          :else
+          {:call {:head head :pos pos} :region region :args (into [acc] (map term) args)})]
+    ;; a step that already keeps `acc` is not merged with it again: the term would double at every step
+    (if (and conditional? (:call applied)) {:merge [acc applied]} applied)))
+
+(defn- key-term
+  "What a form holds under each key, as a term [[propagate*]] evaluates once the graph is known:
+
+    {:lit {k term}}             a map literal with keyword keys: each key holds its value, a term of its own
+    {:any region}               a form not understood: every key may hold what the form generates
+    {:local region}             a symbol: what the binding it names holds; a parameter, nothing
+    {:key-of term :key k}       `(:k m)`, `(get m :k)`: what `m` holds under `:k`
+    {:over base :keys {k term}} `(assoc base :k v)`: k holds v, the rest is base's
+    {:add base :keys {k term}}  `(assoc-in base [:k ...] v)`, `(update base :k f)`: k holds v and base's k
+    {:without base :keys #{k}}  `(dissoc base :k)`
+    {:only base :keys #{k}}     `(select-keys base [:k])`
+    {:merge [term ...]}         `(merge a b)`: each key holds what any of them holds
+    {:call c :region r :args}   a call: what the callee returns under the key, plus what it passes through
+                                from its arguments; `:self true` for `next-method`. A callee the graph does
+                                not hold is `{:any}` of the call.
+
+  Threading forms fold their steps; `as->` binds its name in `env`. A `let`, an `if`, a `try` is the union
+  of its tails."
+  [filename env node]
+  (let [a      (ast/unmeta node)
+        region (assoc (meta a) :filename filename)
+        term   (partial key-term filename env)]
+    (cond
+      (nil? a)
+      nil
+
+      (ast/map-node? a)
+      (if (and (seq (ast/map-entries a))
+               (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)))
+        {:lit (into {} (for [[k v] (ast/map-entries a)] [(n/sexpr (ast/unmeta k)) (term v)]))}
+        {:any region})
+
+      (ast/symbol-node? a)
+      (or (get env (n/sexpr a)) {:local region})
+
+      (ast/literal? a)
+      nil
+
+      (not (ast/call? a))
+      {:any region}
+
+      :else
+      (let [head (ast/head-sym a)
+            nm   (some-> head name)
+            args (ast/args a)
+            pos  (assoc (select-keys (meta a) [:row :col]) :filename filename)
+            kw-head (let [h (some-> (first (ast/children a)) ast/unmeta)]
+                      (when (and h (ast/keyword-node? h)) (n/sexpr h)))]
+        (cond
+          ;; `(:k m)`: what `m` holds under `:k`
+          kw-head
+          {:key-of (term (first args)) :key kw-head}
+
+          (nil? head)
+          {:any region}
+
+          ;; `(get m :k)`
+          (and (= nm "get") (some-> (second args) ast/unmeta ast/keyword-node?))
+          {:key-of (term (first args)) :key (n/sexpr (ast/unmeta (second args)))}
+
+          ;; `(-> m (assoc :k v) f)`, `(cond-> m t (assoc :k v))`, `(as-> m $ (f $) (assoc $ :k v))`
+          (contains? '#{-> some-> cond-> some->>  ->>} head)
+          (let [seed  (term (first args))
+                steps (rest args)
+                cond? (contains? '#{cond-> cond->>} head)
+                steps (if cond? (map second (partition 2 steps)) steps)]
+            (if (contains? '#{->> some->>} head)
+              ;; the value lands last: not a map operation the terms know
+              (reduce (fn [acc step] {:merge [acc {:any (assoc (meta (ast/unmeta step)) :filename filename)}]}) seed steps)
+              (reduce (fn [acc step] (apply-key-step filename env acc step cond?)) seed steps)))
+
+          (= nm "as->")
+          (let [seed (term (first args))
+                sym  (some-> (second args) ast/unmeta n/sexpr)]
+            (reduce (fn [acc step] (key-term filename (assoc env sym acc) step)) seed (drop 2 args)))
+
+          ;; the value is one of the tails
+          (or (contains? tail-through (symbol nm)) (str/starts-with? nm "with-"))
+          (let [tails (tail-forms a)]
+            (if (= tails [a])
+              {:any region}
+              {:merge (into [] (keep term) tails)}))
+
+          (= nm "assoc")
+          (apply-key-step filename env (term (first args)) (n/list-node (into [(first (ast/children a))] (rest args))) false)
+
+          (contains? key-setting-heads nm)
+          (if-let [k (first-key (second args))]
+            {:add (term (first args)) :keys {k {:any region}}}
+            {:any region})
+
+          (= nm "dissoc")
+          (if (every? #(ast/keyword-node? (ast/unmeta %)) (rest args))
+            {:without (term (first args)) :keys (into #{} (map #(n/sexpr (ast/unmeta %))) (rest args))}
+            (term (first args)))
+
+          (= nm "select-keys")
+          (if-let [ks (literal-keys (second args))]
+            {:only (term (first args)) :keys ks}
+            {:any region})
+
+          (contains? #{"merge" "merge-with"} nm)
+          {:merge (into [] (keep term) (if (= nm "merge-with") (rest args) args))}
+
+          (= nm "next-method")
+          {:call {:self true} :region region :args (mapv term args)}
+
+          :else
+          {:call {:head head :pos pos} :region region :args (mapv term args)})))))
+
+(def ^:dynamic *trace-keys*
+  "When bound to a function, called with `{:fn fq :key k :term term :labels #{...}}` for every key-term leaf that
+  evaluates to something, so a surprising origin under a key can be traced to the tail and the form it came
+  from. Off by default; a debugging aid."
+  nil)
+
+(defn- term-regions
+  "Every region a key term names."
+  [term]
+  (cond
+    (nil? term)     []
+    (:lit term)     (mapcat term-regions (vals (:lit term)))
+    (:any term)     [(:any term)]
+    (:local term)   [(:local term)]
+    (:over term)    (concat (mapcat term-regions (vals (:keys term))) (term-regions (:over term)))
+    (:add term)     (concat (mapcat term-regions (vals (:keys term))) (term-regions (:add term)))
+    (:without term) (term-regions (:without term))
+    (:only term)    (term-regions (:only term))
+    (:key-of term)  (term-regions (:key-of term))
+    (:merge term)   (mapcat term-regions (:merge term))
+    (:call term)    (cons (:region term) (mapcat term-regions (:args term)))
+    :else           []))
+
+(defn- self-calls-in
+  "Every `next-method` call term inside `term`, with its arguments."
+  [term]
+  (cond
+    (nil? term)     []
+    (:lit term)     (mapcat self-calls-in (vals (:lit term)))
+    (:merge term)   (mapcat self-calls-in (:merge term))
+    (:over term)    (concat (mapcat self-calls-in (vals (:keys term))) (self-calls-in (:over term)))
+    (:add term)     (concat (mapcat self-calls-in (vals (:keys term))) (self-calls-in (:add term)))
+    (:without term) (self-calls-in (:without term))
+    (:only term)    (self-calls-in (:only term))
+    (:key-of term)  (self-calls-in (:key-of term))
+    (:call term)    (cond->> (mapcat self-calls-in (:args term))
+                      (:self (:call term)) (cons term))
+    :else           []))
+
+(def ^:private methodical-aliases
+  "How `methodical.core` is required across the tree: 183 files as `methodical`, 6 as `m`."
+  #{"methodical" "methodical.core" "m"})
+
+(defn- methodical-qualifier
+  "`:before`, `:after` or `:around` when `head` is methodical's `defmethod` and `args` open with the method name
+  and that qualifier; nil for a primary method or clojure's own `defmethod`, whose dispatch value may itself be
+  a keyword like `:after`."
+  [head args]
+  (when (and (symbol? head) (= "defmethod" (name head)) (contains? methodical-aliases (namespace head)))
+    (let [q (some-> (second args) ast/unmeta)]
+      (when (and q (ast/keyword-node? q) (contains? #{:before :after :around} (n/sexpr q)))
+        (n/sexpr q)))))
+
 (defn extract
   "Region tables for one parsed file.
 
@@ -545,7 +808,7 @@
         ns-middleware (volatile! #{}) wraps (volatile! []) handler-defs (volatile! [])
         numeric (volatile! []) strings (volatile! []) registry (volatile! []) keyed (volatile! []) sanitized (volatile! [])
         origin-fns (volatile! []) model-args (volatile! {}) tails (volatile! []) checks (volatile! [])
-        thread-tails (volatile! [])
+        thread-tails (volatile! []) tail-terms (volatile! [])
         ;; `(ns ^:instrument/always foo)`: the one way a `mu/defn` schema is enforced in production, where they
         ;; are otherwise compiled out. Only then does a `:- ms/PositiveInt` on a helper's parameter pin the value.
         enforced-ns? (boolean (some (fn [nd]
@@ -692,12 +955,28 @@
               (vswap! fns conj (cond-> {:fn fq :region (assoc (meta node) :filename filename)}
                                  name-pos (assoc :name-pos name-pos)))
               ;; what the function returns: the regions of its tail forms, so a call to it can carry their taint
-              (doseq [body (bodies args), t (some-> (last body) tail-forms)]
+              (doseq [body (bodies args), t (some-> (last body) tail-forms)
+                      :let [qualifier (methodical-qualifier head args)]]
                 (vswap! tails conj (cond-> {:fn fq :region (assoc (meta t) :filename filename)
-                                            ;; the shape of what it returns, for [[param-shapes]]
-                                            :shape (arg-shape filename t)}
+                                            ;; the shape of what it returns, for [[param-shapes]], and the shape
+                                            ;; under each key when it is a map literal -- what a caller that
+                                            ;; destructures the return, `{:keys [to-insert]}`, gets
+                                            :shape (arg-shape filename t)
+                                            :key-shapes (let [t* (ast/unmeta t)]
+                                                          (when (and (ast/map-node? t*)
+                                                                     (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k)))
+                                                                             (ast/map-entries t*)))
+                                                            (into {} (for [[k v] (ast/map-entries t*)]
+                                                                       [(n/sexpr (ast/unmeta k)) (arg-shape filename v)]))))}
                                      ;; the call the value comes from, for [[sanitizing-fns]]
-                                     (tail-head t) (assoc :head (tail-head t)))))
+                                     (tail-head t) (assoc :head (tail-head t))
+                                     name-pos     (assoc :name-pos name-pos)))
+                ;; what it returns *under each key*, as a term over the tail's structure -- see [[key-term]].
+                ;; A methodical `:around` wraps the rest of the chain: its tails are what a caller sees, and
+                ;; what its `next-method` call hands in is what the primaries and the `:after`s see.
+                (vswap! tail-terms conj (cond-> {:fn fq :term (key-term filename {} t)}
+                                          qualifier (assoc :qualifier qualifier)
+                                          name-pos  (assoc :name-pos name-pos))))
               ;; `(defenterprise f "doc" ee.ns [x] ...)` dispatches to `ee.ns/f` when EE is enabled -- by name, at
               ;; runtime. The namespace symbol sits right there, so that dynamic edge is modelled exactly: the OSS
               ;; function "calls" its EE counterpart. The site is keyed at the namespace symbol's own position,
@@ -719,29 +998,40 @@
                     (vswap! numeric into (:numeric typed))
                     (vswap! strings into (:string typed))
                     (vswap! registry into (:registry typed))))
-                (loop [i 0, slots (ast/children al), rest? false]
-                  (when-let [slot (first slots)]
-                    (cond
-                      (= "&" (ast/->str slot))
-                      (recur i (next slots) true)
+                (let [;; A methodical `:after` method's last parameter is what the primary *returned* -- not an
+                      ;; argument at all: the caller's arguments never reach it, and the primary's return is what
+                      ;; it holds. Fed from those returns in [[propagate*]]. (`:around` and `:before` take the
+                      ;; call's arguments as a primary does; `next-method` is an implicit binding, not a
+                      ;; parameter.)
+                      qualifier (methodical-qualifier head args)
+                      recs      (volatile! [])]
+                  (loop [i 0, slots (ast/children al), rest? false]
+                    (when-let [slot (first slots)]
+                      (cond
+                        (= "&" (ast/->str slot))
+                        (recur i (next slots) true)
 
-                      ;; `[id :- :int]` -- the annotation and its schema are not parameters
-                      (= ":-" (ast/->str slot))
-                      (recur i (nnext slots) rest?)
+                        ;; `[id :- :int]` -- the annotation and its schema are not parameters
+                        (= ":-" (ast/->str slot))
+                        (recur i (nnext slots) rest?)
 
-                      :else
-                      (let [region (assoc (meta slot) :filename filename)
-                            ;; `{:keys [table-id file]}`: what each key of a map argument lands in
-                            keys   (not-empty (into {} (for [[k sym] (ast/destructured-keys slot)]
-                                                         [k (assoc (meta sym) :filename filename)])))]
-                        (vswap! params conj (cond-> {:fn fq :index i :region region}
+                        :else
+                        (let [region (assoc (meta slot) :filename filename)
+                              ;; `{:keys [table-id file]}`: what each key of a map argument lands in
+                              keys   (not-empty (into {} (for [[k sym] (ast/destructured-keys slot)]
+                                                           [k (assoc (meta sym) :filename filename)])))]
+                          (vswap! recs conj (cond-> {:fn fq :index i :region region}
                                               rest?    (assoc :rest? true)
                                               keys     (assoc :keys keys)
                                               name-pos (assoc :name-pos name-pos)))
-                        (when (or (contains? request-param-names (ast/->str slot))
-                                  (request-destructuring? slot))
-                          (vswap! sources conj region))
-                        (recur (inc i) (next slots) false))))))))
+                          (when (or (contains? request-param-names (ast/->str slot))
+                                    (request-destructuring? slot))
+                            (vswap! sources conj region))
+                          (recur (inc i) (next slots) false)))))
+                  (doseq [rec (if (and (= :after qualifier) (seq @recs))
+                                (update @recs (dec (count @recs)) assoc :holds-return? true)
+                                @recs)]
+                    (vswap! params conj rec))))))
 
           ;; An anonymous fn contributes no parameter *slots* -- nothing can call it by name -- but its
           ;; parameters can still be a trust boundary.
@@ -811,14 +1101,25 @@
 
                                     :else
                                     (do
-                                      (vswap! inits conj {:bind   (assoc (meta b) :filename filename)
-                                                          ;; `[cid (:card_id body)]`: a check on `cid` later vouches for
-                                                          ;; `body`'s `:card_id`, not for `body`
-                                                          :key    (second (ast/accessor (ast/unmeta init)))
-                                                          :region (assoc (meta init) :filename filename)
-                                                          ;; `[m {:a 1}]`: the local has the literal's shape; `[m other]`
-                                                          ;; its init's. Only a plain symbol binds the whole value.
-                                                          :shape  (when (ast/symbol-node? b*) (arg-shape filename init))})
+                                      (vswap! inits conj (cond-> {:bind   (assoc (meta b) :filename filename)
+                                                                  ;; `[cid (:card_id body)]`: a check on `cid` later vouches
+                                                                  ;; for `body`'s `:card_id`, not for `body`
+                                                                  :key    (second (ast/accessor (ast/unmeta init)))
+                                                                  :region (assoc (meta init) :filename filename)
+                                                                  ;; `[m {:a 1}]`: the local has the literal's shape; `[m
+                                                                  ;; other]` its init's. Only a plain symbol binds the whole
+                                                                  ;; value.
+                                                                  :shape  (when (ast/symbol-node? b*) (arg-shape filename init))
+                                                                  ;; what the value holds under each key, for [[key-term]]
+                                                                  ;; evaluation of a local named in a tail; an element of a
+                                                                  ;; `for` is not its collection, so only the region
+                                                                  :kterm  (if seq-form?
+                                                                            {:any (assoc (meta init) :filename filename)}
+                                                                            (key-term filename {} init))}
+                                                           ;; `[{:keys [a]} init]`: what each key lands in
+                                                           (ast/map-node? b*)
+                                                           (assoc :keys (into {} (for [[k sym] (ast/destructured-keys b)]
+                                                                                   [k (assoc (meta sym) :filename filename)])))))
                                       ;; `(for [[k v] m] ...)`: `v` is one of `m`'s values. A second record for `v`
                                       ;; alone, so its shape can be followed; the taint the first record carries to
                                       ;; both names is unchanged.
@@ -964,6 +1265,7 @@
       {:ns ns-sym :params @params :inits @inits :calls @calls :sources @sources
        :fns @fns :entries @entries :guards @guards :privilege-guards @privilege-guards :call-sites @sites :ns-middleware @ns-middleware
        :wraps @wraps :handler-defs @handler-defs
+       :tail-terms @tail-terms
        :numeric-regions @numeric :string-regions @strings :registry-regions @registry :keyed-regions @keyed
        :sanitized @sanitized
        :origin-fns @origin-fns :model-args @model-args :tails @tails :checks @checks :thread-tails @thread-tails
@@ -1044,7 +1346,12 @@
                            :when kind]
                        (assoc region :kind kind :name (str "defmethod " fn))))]
     (into {} (for [[f t] tables
-                   :let [t (-> t (update :fns #(mapv fix %)) (update :params #(mapv fix %)))]]
+                   :let [t (-> t
+                               (update :fns #(mapv fix %))
+                               (update :params #(mapv fix %))
+                               ;; what an implementation returns is what a call to the multimethod returns
+                               (update :tails #(mapv fix %))
+                               (update :tail-terms #(mapv fix %)))]]
                [f (update t :entries into (entries-of (:fns t)))]))))
 
 (defn add-value-reference-sites
@@ -1669,25 +1976,55 @@
   Its `:feeders` are the calls that handed a parameter a map of unknown keys, by the parameter they feed, each
   walked out past the calls that only forward what they were given, to the call that built the map."
   [{:keys [calls slot-ids resolve-call params-by-fn param-ids inits bind-ids keyed-ids tails usage-at resolve
-           ns-of]}]
+           ns-of local-idx]}]
   (let [;; request bindings under a closed schema: keyed at the boundary, before any call
         boundary (into {} (for [id keyed-ids] [id #{:shape/keyed}]))
-        ;; a local bound by `let`: its init's term
-        bound    (into {} (for [{:keys [i shape]} inits
-                                :when shape
-                                :let  [ids (bind-ids i)]
-                                :when (= 1 (count ids))]
-                            [(first ids) shape]))
+        ;; the call a binding's init is, or reads a key off: `(f x)`, `(:k (f x))`
+        init-call (fn [{:keys [kterm]}]
+                    (cond
+                      (and (:call kterm) (:head (:call kterm))) [(:call kterm) nil]
+                      (and (:key-of kterm) (:call (:key-of kterm)) (:head (:call (:key-of kterm))))
+                      [(:call (:key-of kterm)) (:key kterm)]))
+        call-ref  (fn [{:keys [head pos]}] {:ref (assoc pos :head head)})
+        ;; a local bound by `let`: its init's term. `[{:keys [a]} (f x)]` and `[a (:a (f x))]` bind `a` to what
+        ;; `f` returns under `:a`.
+        bound    (into {}
+                       (concat
+                        (for [{:keys [i shape] :as init} inits
+                              :let  [ids (bind-ids i)
+                                     [c k] (init-call init)]
+                              :when (= 1 (count ids))
+                              :let  [term (cond
+                                            (and c k) {:key-ref (call-ref c) :k k}
+                                            :else     shape)]
+                              :when term]
+                          [(first ids) term])
+                        (for [{:keys [keys] :as init} inits
+                              :when keys
+                              :let  [[c k] (init-call init)]
+                              :when (and c (nil? k))
+                              [key region] keys
+                              :when (not= key :as)
+                              :let  [ids (vec (binding-ids-in-region local-idx region))]
+                              :when (= 1 (count ids))]
+                          [(first ids) {:key-ref (call-ref c) :k key}])))
         ;; what a function returns: its tails' terms, keyed when every one is
         returns  (into {} (for [[fq ts] (group-by :fn tails)]
                             [fq {:all (vec (keep :shape ts))}]))
-        feeds    (for [{:keys [i shape pos] :as call} calls
+        ;; and under each key: known only when every tail is a map literal; a literal without the key returns
+        ;; nil there, no map
+        key-returns (into {} (for [[fq ts] (group-by :fn tails)
+                                   :when (every? :key-shapes ts)
+                                   k (into #{} (mapcat (comp keys :key-shapes)) ts)]
+                               [[fq k] {:all (vec (keep #(get (:key-shapes %) k) ts))}]))
+        feeds    (for [{:keys [i shape pos region] :as call} calls
                        :when (and shape (not (:key call)) (contains? params-by-fn (resolve-call call)))
                        :let  [to (slot-ids i)]
                        :when (seq to)]
-                   ;; `:pos` is the call itself and `:fq` what it calls: a rule that reports where a map is handed
-                   ;; over, rather than where it is written, needs both
-                   {:to to :term shape :pos pos :fq (resolve-call call)})
+                   ;; `:pos` is the call itself, `:fq` what it calls and `:region` the argument handed over: a
+                   ;; rule that reports where a map is handed over, rather than where it is written, needs the
+                   ;; call, and grades it by what that argument carried
+                   {:to to :term shape :pos pos :fq (resolve-call call) :region region})
         fed      (into #{} (mapcat :to) feeds)
         ;; `#{}` is not yet known -- a fed parameter whose callers are still being resolved, a cycle -- and a
         ;; round that meets it waits; nil is no map. Anything not keyed in a union makes it opaque: `(merge {:a 1}
@@ -1711,6 +2048,14 @@
                           (:all term)      (combine (keep #(eval-term % seen) (:all term)))
                           (:map-vals term) (some-> (eval-term (:map-vals term) seen) wrap-vals)
                           (:vals-of term)  (some-> (eval-term (:vals-of term) seen) unwrap-vals)
+                          ;; what a function returns under a key: its literal tails' entries, else unknown
+                          (:key-ref term)  (let [fq (resolve-fq (:ref (:key-ref term)))
+                                                 mk [:key fq (:k term)]]
+                                             (cond
+                                               (contains? seen mk)              #{}
+                                               (contains? key-returns [fq (:k term)])
+                                               (eval-term (get key-returns [fq (:k term)]) (conj seen mk))
+                                               :else                            #{:shape/opaque}))
                           :else
                           (let [{:keys [filename row col] :as r} (:ref term)]
                             (if-let [id (get usage-at [filename row col])]
@@ -1736,9 +2081,9 @@
                        feeds)]
         (if (= m m')
           (let [;; which calls contributed the opaque half, by the parameter they feed
-                direct  (reduce (fn [acc {:keys [to term pos fq]}]
+                direct  (reduce (fn [acc {:keys [to term pos fq region]}]
                                   (if (opaque-labels? (eval-term term #{}))
-                                    (reduce #(update %1 %2 (fnil conj []) {:pos pos :fq fq :term term}) acc to)
+                                    (reduce #(update %1 %2 (fnil conj []) {:pos pos :fq fq :term term :region region}) acc to)
                                     acc))
                                 {}
                                 feeds)
@@ -1842,6 +2187,12 @@
         all-inits      (number (mapcat :inits (vals tables)))
         all-calls      (number (mapcat :calls (vals tables)))
         all-tails      (number (mapcat :tails (vals tables)))
+        all-tail-terms (mapcat :tail-terms (vals tables))
+        ;; every region a key term names -- a literal's value, a symbol, a call, a form not understood --
+        ;; analyzed once like a tail is, so evaluating a term is lookups
+        leaf-recs      (number (for [r (into #{} (concat (mapcat #(term-regions (:term %)) all-tail-terms)
+                                                         (mapcat #(term-regions (:kterm %)) all-inits)))]
+                                 {:region r}))
         origin-idx     (origin-idx origins)
         ;; sanitizing calls by (file, row), so a usage inside one is skipped when its enclosing region is judged
         sanitized-idx  (reduce (fn [acc {:keys [filename row end-row] :as r}]
@@ -1851,9 +2202,12 @@
                                {}
                                (concat (mapcat :sanitized (vals tables)) extra-sanitized))
         all-params     (mapcat :params (vals tables))
-        params-by-key  (group-by (juxt :fn :index) all-params)
+        ;; a methodical `:after` method's last parameter holds what the primary returned: no argument reaches it
+        holders        (filter :holds-return? all-params)
+        fed-params     (remove :holds-return? all-params)
+        params-by-key  (group-by (juxt :fn :index) fed-params)
         params-by-fn   (group-by :fn all-params)
-        rest-by-fn     (into {} (for [[f ps] params-by-fn
+        rest-by-fn     (into {} (for [[f ps] (group-by :fn fed-params)
                                       :let [r (filter :rest? ps)]
                                       :when (seq r)]
                                   [f r]))
@@ -1908,6 +2262,8 @@
         inits*         (analyze-recs all-inits)
         calls*         (analyze-recs all-calls)
         tails*         (analyze-recs all-tails)
+        leaves*        (analyze-recs leaf-recs)
+        leaf-static    (into {} (map-indexed (fn [i {:keys [region]}] [region ((:static leaves*) i)]) leaf-recs))
         touched        (fn [m ks] (into #{} (mapcat #(get m %)) ks))
         ;; the bindings an init record binds, and the callee parameters a call record feeds -- each resolved once
         bind-ids       (mapv (fn [{:keys [bind]}] (vec (binding-ids-in-region local-idx bind))) all-inits)
@@ -1963,6 +2319,188 @@
                                  :let  [ls (generative returns ((:static tails*) i) #{})]
                                  :when (seq ls)]
                              [(:fn (all-tails i)) ls])))
+        ;; ---- what a function returns under each key: the key terms of its tails, evaluated ----
+        usage-at       (into {} (for [{:keys [id filename row col]} local-usages] [[filename row col] id]))
+        ;; a function's tails by how a reader reaches them: `:outer` is what a call to it returns -- its
+        ;; `:around` methods' tails when it has any, else every method's -- and `:inner` what the chain under an
+        ;; `:around` returns: primaries and `:after`s. A `:before` returns nothing anyone sees.
+        terms-by-fn    (let [by-fn (group-by :fn (remove #(= :before (:qualifier %)) all-tail-terms))]
+                         (into {} (for [[fq ts] by-fn
+                                        :let [around (filter #(= :around (:qualifier %)) ts)
+                                              inner  (remove #(= :around (:qualifier %)) ts)]]
+                                    [fq {:outer (if (seq around) around inner) :inner inner}])))
+        ;; an `:after` method's last parameter: the multimethod's return, by the ids each key lands in
+        holder-ids     (fn [{:keys [region keys]}]
+                         (if keys
+                           {:all (some->> (get keys :as) (binding-ids-in-region local-idx))
+                            :by-key (into {} (for [[k r] keys :when (not= k :as)]
+                                               [k (binding-ids-in-region local-idx r)]))}
+                           {:all (binding-ids-in-region local-idx region)}))
+        holder-slots   (for [h holders] (assoc (holder-ids h) :fn (:fn h)))
+        ;; a holder's id named in a term is the return itself: `result` in `(assoc result :x 1)`, or one key
+        ;; of it: `auth-identity` in `(f auth-identity)` when destructured as `{:keys [auth-identity]}`
+        holder-of-id   (into {} (concat (for [{:keys [fn all]} holder-slots, id all] [id [fn :all]])
+                                        (for [{:keys [fn by-key]} holder-slots, [k ids] by-key, id ids] [id [fn k]])))
+        ;; the key a destructured local was taken from its init under: `a` in `[{:keys [a]} (f)]`
+        key-of-id      (into {} (for [{:keys [keys]} all-inits, [k r] keys, :when (not= k :as)
+                                      id (binding-ids-in-region local-idx r)]
+                                  [id k]))
+        ;; which parameter of which function a local id is, for what a function passes through
+        param-of-id    (into {} (for [{:keys [fn index region keys]} all-params
+                                      id (if keys
+                                           (some->> (get keys :as) (binding-ids-in-region local-idx))
+                                           (binding-ids-in-region local-idx region))]
+                                  [id [fn index]]))
+        ;; `{fq #{i}}`: the argument positions a function's return may be, or contain, as they were: `(defn
+        ;; gate [_ result] result)` passes its second; a call to it passes on what its second argument was.
+        ;; A fixpoint over every function, so a helper that hands to a helper is followed.
+        passes         (let [struct (fn struct [passes fq term seen]
+                                      (cond
+                                        (nil? term) #{}
+                                        (:local term) (let [id (get usage-at ((juxt :filename :row :col) (:local term)))
+                                                            [f i] (get param-of-id id)]
+                                                        (if (= f fq) #{i} #{}))
+                                        (:merge term) (into #{} (mapcat #(struct passes fq % seen)) (:merge term))
+                                        (:over term) (struct passes fq (:over term) seen)
+                                        (:add term) (struct passes fq (:add term) seen)
+                                        (:without term) (struct passes fq (:without term) seen)
+                                        (:only term) (struct passes fq (:only term) seen)
+                                        (:call term) (let [self?  (:self (:call term))
+                                                           callee (if self? fq (resolve-call (:call term)))
+                                                           mk     [callee (if self? :inner :outer)]]
+                                                       (if (contains? seen mk)
+                                                         #{}
+                                                         (into #{} (for [i (get passes mk #{})
+                                                                         :let [a (nth (:args term) i nil)]
+                                                                         :when a
+                                                                         j (struct passes fq a (conj seen mk))]
+                                                                     j))))
+                                        :else #{}))]
+                         ;; `{[fq mode] #{i}}`
+                         (loop [passes {} n 0]
+                           (let [passes' (into {} (for [[fq modes] terms-by-fn
+                                                        [mode ts] modes
+                                                        :let [ps (into #{} (mapcat #(struct passes fq (:term %) #{[fq mode]})) ts)]
+                                                        :when (seq ps)]
+                                                    [[fq mode] ps]))]
+                             (if (or (= passes passes') (>= n 8)) passes' (recur passes' (inc n))))))
+        gen-leaf       (fn [returns region] (generative returns (get leaf-static region) #{}))
+        ;; `(kr fq k)`: what `fq` returns under key `k` -- `:all` for the whole -- from the terms of its tails
+        ;; (every implementation's, for a multimethod). Memoized for a round; a cycle contributes nothing.
+        kr-memo        (atom {})
+        ev-memo        (atom {})
+        eval-key       (fn eval-key [returns fq term k seen]
+                         (letfn [(memo [mk f]
+                                   (cond
+                                     (contains? seen mk)     #{}
+                                     (contains? @kr-memo mk) (get @kr-memo mk)
+                                     :else
+                                     (let [ls (f (conj seen mk))]
+                                       (swap! kr-memo assoc mk ls)
+                                       ls)))
+                                 (kr [callee k mode]
+                                   (memo [callee k mode]
+                                         (fn [seen]
+                                           (into #{} (mapcat #(eval-key returns callee (:term %) k seen))
+                                                 (get-in terms-by-fn [callee mode])))))
+                                 ;; what an `:after` method's parameter holds under `k`: the chain under the
+                                 ;; `:around`s, as each `next-method` call in them invokes it -- with what that
+                                 ;; call hands in -- or, with no `:around`, the chain called bare
+                                 (held [hfn k]
+                                   (memo [hfn k :held]
+                                         (fn [seen]
+                                           (let [around (filter #(= :around (:qualifier %)) (get-in terms-by-fn [hfn :outer]))
+                                                 calls  (mapcat #(self-calls-in (:term %)) around)]
+                                             (if (seq calls)
+                                               (into #{} (mapcat #(eval-key returns hfn % k seen)) calls)
+                                               (eval-key returns hfn {:call {:self true} :args []} k seen))))))
+                                 (leaf [region]
+                                   (let [ls (gen-leaf returns region)]
+                                     (when *trace-keys*
+                                       (*trace-keys* {:fn fq :key k :region region :labels ls}))
+                                     ls))
+                                 ;; a subterm shared by several branches of a threading form is evaluated once
+                                 (ev [term k]
+                                   (if (or (:local term) (:any term) (nil? term))
+                                     (eval-key returns fq term k seen)
+                                     (let [mk [fq term k]]
+                                       (if (contains? @ev-memo mk)
+                                         (get @ev-memo mk)
+                                         (let [ls (eval-key returns fq term k seen)]
+                                           (swap! ev-memo assoc mk ls)
+                                           ls)))))]
+                           (cond
+                             (nil? term) #{}
+                             (:lit term) (let [m (:lit term)]
+                                           (if (= k :all)
+                                             (into #{} (mapcat #(ev % :all)) (vals m))
+                                             (some-> (get m k) (ev :all))))
+                             (:any term) (leaf (:any term))
+                             (:local term) (let [id (get usage-at ((juxt :filename :row :col) (:local term)))]
+                                             (cond
+                                               ;; the return of the chain under the `:around`s (or one key of it),
+                                               ;; whatever key is asked
+                                               (contains? holder-of-id id)
+                                               (let [[hfn hk] (get holder-of-id id)] (held hfn (if (= hk :all) k hk)))
+
+                                               ;; a local bound in this function: its init's term, under the key it
+                                               ;; was destructured from when it was
+                                               (contains? init-i-of-id id)
+                                               (let [i     (get init-i-of-id id)
+                                                     kterm (:kterm (all-inits i))
+                                                     k'    (get key-of-id id k)]
+                                                 (if kterm
+                                                   (memo [:init i k'] (fn [seen] (eval-key returns fq kterm k' seen)))
+                                                   (leaf (:local term))))
+
+                                               :else
+                                               (leaf (:local term))))
+                             (:key-of term) (ev (:key-of term) (:key term))
+                             (:over term) (let [{:keys [over keys]} term]
+                                            (cond (= k :all)          (into (ev over :all) (mapcat #(ev % :all)) (vals keys))
+                                                  (contains? keys k)  (ev (get keys k) :all)
+                                                  :else               (ev over k)))
+                             (:add term) (let [{:keys [add keys]} term]
+                                           (cond (= k :all)          (into (ev add :all) (mapcat #(ev % :all)) (vals keys))
+                                                 (contains? keys k)  (into (ev (get keys k) :all) (ev add k))
+                                                 :else               (ev add k)))
+                             (:without term) (let [{:keys [without keys]} term]
+                                               (if (contains? keys k) #{} (ev without k)))
+                             (:only term) (let [{:keys [only keys]} term]
+                                            (cond (= k :all)         (into #{} (mapcat #(ev only %)) keys)
+                                                  (contains? keys k) (ev only k)
+                                                  :else              #{}))
+                             (:merge term) (into #{} (mapcat #(ev % k)) (:merge term))
+                             (:held term) (held fq (:held term))
+                             (:call term) (let [self?  (:self (:call term))
+                                                callee (if self? fq (resolve-call (:call term)))
+                                                mode   (if self? :inner :outer)]
+                                            (if (or (contains? terms-by-fn callee) (contains? params-by-fn callee))
+                                              (into (kr callee k mode)
+                                                    (mapcat (fn [i] (some-> (nth (:args term) i nil) (ev k))))
+                                                    (get passes [callee mode]))
+                                              ;; a callee the graph does not hold: what the call generates
+                                              (leaf (:region term))))
+                             :else #{})))
+        ;; What an `:after` method's parameter holds under `k`: the chain under the `:around`s, as each
+        ;; `next-method` call in them invokes it -- with what that call hands in -- or, with no `:around`, the
+        ;; chain called bare.
+        held           (fn [returns fq k] (eval-key returns fq {:held k} :all #{}))
+        from-holders   (fn [returns]
+                         (reset! kr-memo {})
+                         (reset! ev-memo {})
+                         (concat
+                          (for [{:keys [fn all]} holder-slots
+                                id all
+                                :let [ls (held returns fn :all)]
+                                :when (seq ls)]
+                            [id ls])
+                          (for [{:keys [fn by-key]} holder-slots
+                                [k ids] by-key
+                                :let [ls (held returns fn k)]
+                                :when (seq ls)
+                                id ids]
+                            [id ls])))
         ;; `pairs` are `[k #{label}]`; returns the grown map and what grew, `{k #{new label}}`
         grow           (fn [m pairs]
                          (reduce (fn [[m fresh :as acc] [k ls]]
@@ -1979,7 +2517,10 @@
                                                 (for [i (with-origins calls*), id (slot-ids i)] [id (:olabels ((:static calls*) i))])))
         ;; every source binding is fresh with all it carries
         fresh0            (into {} (for [id (into (set (keys sources)) (keys fresh0))] [id (get seeded id)]))
-        [returns0 fresh-fns0] (grow {} (from-tails {} (into (set (with-origins tails*)) (touched (:by-usage tails*) (keys fresh0)))))]
+        [returns0 fresh-fns0] (grow {} (from-tails {} (into (set (with-origins tails*)) (touched (:by-usage tails*) (keys fresh0)))))
+        ;; the returns known before the loop reach their holders before it
+        [seeded fresh-held] (grow seeded (from-holders returns0))
+        fresh0            (merge-with into fresh0 fresh-held)]
     (loop [tainted seeded, returns returns0, fresh fresh0, fresh-fns fresh-fns0]
       (if (and (empty? fresh) (empty? fresh-fns))
         ;; `(api/write-check card)` names no model, so its mark is a bare `:checked`; but `card` was read from the
@@ -1999,7 +2540,7 @@
                                        [id (if (contains? ls :checked)
                                              (into ls (filter #(= :checked (taint/label-kind %))) (get tainted id))
                                              ls)]))
-              shapes*       (param-shapes {:calls all-calls :slot-ids slot-ids
+              shapes*       (param-shapes {:calls all-calls :slot-ids slot-ids :local-idx local-idx
                                            :inits all-inits :bind-ids bind-ids :tails all-tails
                                            :keyed-ids (into #{} (mapcat #(binding-ids-in-region local-idx %))
                                                             (mapcat :keyed-regions (vals tables)))
@@ -2018,7 +2559,11 @@
                                                        :inits all-inits :params all-params}))
            :return-sites (vec (for [[fq ls] returns, site (get sites-by-fq fq)]
                                 (assoc (dissoc site :fq) :labels ls)))})
-        (let [[tainted' fresh'] (grow tainted (concat (from-inits fresh fresh-fns) (from-calls fresh fresh-fns)))
+        (let [[tainted' fresh'] (grow tainted (concat (from-inits fresh fresh-fns)
+                                                      (from-calls fresh fresh-fns)
+                                                      ;; holders re-evaluated each round: few, and what they
+                                                      ;; hold depends on returns that grow anywhere
+                                                      (from-holders returns)))
               tails   (into (touched (:by-usage tails*) (keys fresh')) (touched (:by-fq tails*) (keys fresh-fns)))
               [returns' fresh-fns'] (grow returns (from-tails returns tails))]
           (recur tainted' returns' fresh' fresh-fns'))))))

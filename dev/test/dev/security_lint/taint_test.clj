@@ -503,6 +503,45 @@
     (testing "a `:let` inside the `for` binding vector is followed"
       (is (= "(:shape/keyed)" (get by-row 10))))))
 
+(deftest shape-of-chosen-keys-and-returned-keys-test
+  (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+              :triggers '#{t/sink}
+              :detect (fn [{:keys [node] :as ctx}]
+                        {:message (pr-str (sort (taint/shape ctx (ast/arg node 0))))})}
+        by-row (into {} (map (juxt :row :message))
+                     (engine/analyze {:paths [(temp! "(ns t (:require [metabase.api.macros :as api.macros]))
+(defn sink [x] x)
+(defn- fields [] [:email :first_name])
+(defn- build [xs] {:to-delete (map :id xs) :to-insert (for [x xs] {:table_id (:id x) :value 1})})
+(defn- unknown [x] x)
+(defn- chosen! [m] (sink m))
+(defn- computed! [m] (sink m))
+(defn- destructured! [rows] (sink rows))
+(defn- accessed! [rows] (sink rows))
+(defn- other-key! [rows] (sink rows))
+(defn- not-literal! [rows] (sink rows))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body]
+  (chosen! (select-keys body (conj (fields) :is_active)))
+  (computed! (select-keys body (:fields body)))
+  (let [{:keys [to-insert]} (build [{:id id}])]
+    (destructured! to-insert))
+  (accessed! (:to-insert (build [{:id id}])))
+  (let [{:keys [to-delete]} (build [{:id id}])]
+    (other-key! to-delete))
+  (let [{:keys [to-insert]} (unknown body)]
+    (not-literal! to-insert)))")] :rules [rule]}))]
+    (testing "`select-keys` with keys a function chose -- a literal keyword vector, one more conj'd on -- is keyed;
+              with keys the request chose it is opaque"
+      (is (= "(:shape/keyed)" (get by-row 6)))
+      (is (= "(:shape/opaque)" (get by-row 7))))
+    (testing "a key destructured or read off a function's return has the shape the function put under that key"
+      (is (= "(:shape/keyed)" (get by-row 8)))
+      (is (= "(:shape/keyed)" (get by-row 9))))
+    (testing "another key of it has its own: a sequence of ids is no map"
+      (is (= "(:shape/opaque)" (get by-row 10))))
+    (testing "and a function whose tails are not literals says nothing about its keys"
+      (is (= "(:shape/opaque)" (get by-row 11))))))
+
 (deftest schema-shape-test
   (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
               :triggers '#{t/sink}
@@ -704,3 +743,97 @@
     (testing "a check on one key of a map vouches for that key, not the map"
       (is (= "(:checked.card_id/Card)" (get by-row 3)))
       (is (= "(:checked.card_id/Card)" (get by-row 7)) "through a let binding"))))
+
+(deftest after-method-holds-the-return-test
+  (let [by-row (origins-of! "(ns t (:require [toucan2.core :as t2] [methodical.core :as methodical] [metabase.api.macros :as api.macros]))
+(defn sink [x] x)
+(methodical/defmulti login! (fn [provider _creds] provider))
+(methodical/defmethod login! :password [_ {:keys [password]}]
+  (let [user (t2/select-one :model/User :password password)]
+    {:success? true :user user}))
+(methodical/defmethod login! :token [_ {:keys [token]}]
+  (let [ai (t2/select-one :model/AuthIdentity :token token)]
+    {:success? true :auth-identity ai :token token}))
+(methodical/defmethod login! :after :token [_ {:keys [user auth-identity] :as result}]
+  (sink auth-identity)
+  (sink user)
+  (sink result)
+  result)
+(methodical/defmethod login! :around :token [provider creds]
+  (sink creds)
+  (next-method provider creds))
+(api.macros/defendpoint :post \"/login\" \"doc\" [_r _q {:keys [provider creds]}]
+  (let [{:keys [auth-identity]} (login! provider creds)]
+    (sink auth-identity))
+  (sink (:user (login! provider creds)))
+  (sink (login! provider creds)))")
+        ;; the same, with the implementations in another namespace than the multimethod: `:fn` on a defmethod's
+        ;; tails must be the multimethod for its return to reach a caller
+        across (let [rule {:id :test/origins :name "n" :description "d" :severity :error :precision :high :cwe "C"
+                           :triggers '#{t/sink}
+                           :detect (fn [{:keys [node] :as ctx}]
+                                     {:message (pr-str (sort (taint/origins ctx (ast/arg node 0))))})}]
+                 (into {} (map (juxt :row :message))
+                       (engine/analyze {:paths [(temp! "(ns t)
+(defn sink [x] x)
+(defmulti login! (fn [provider _creds] provider))
+(defn caller [provider creds] (sink (login! provider creds)))")
+                                                (temp! "(ns t.impl (:require [t] [toucan2.core :as t2] [methodical.core :as methodical]))
+(methodical/defmethod t/login! :token [_ _creds]
+  (t2/select-one :model/AuthIdentity :token 1))
+(methodical/defmethod t/login! :after :token [_ result]
+  (t/sink result)
+  result)")]
+                                        :rules [rule]})))]
+    (testing "an `:after` method's last parameter is what the primary returned, not what the caller passed:
+              a key of it carries what the primary put under that key, and nothing of the request"
+      (is (= "(:app-db/AuthIdentity)" (get by-row 11)) "auth-identity: read by the :token primary")
+      (is (= "(:app-db/User)" (get by-row 12)) "user: read by the :password primary, which returns under :user")
+      (is (= "(:app-db/AuthIdentity :app-db/User)" (get by-row 13)) "the whole result: every primary's return"))
+    (testing "an `:around` method's parameters are the call's arguments, as a primary's; `next-method` is implicit"
+      (is (= "(:request)" (get by-row 16))))
+    (testing "a caller of the multimethod sees every primary's return"
+      (is (= "(:app-db/AuthIdentity :app-db/User)" (get by-row 22))))
+    (testing "and across namespaces, where the implementation's name is written through an alias"
+      (is (= "(:app-db/AuthIdentity)" (get across 4)) "the caller")
+      (is (= "(:app-db/AuthIdentity)" (get across 5)) "the :after method"))))
+
+(deftest key-terms-through-around-method-test
+  (let [by-row (origins-of! "(ns t (:require [toucan2.core :as t2] [methodical.core :as methodical] [metabase.api.macros :as api.macros]))
+(defn sink [x] x)
+(methodical/defmulti authenticate (fn [provider _request] provider))
+(methodical/defmethod authenticate :token [_ {:keys [token]}]
+  (let [ai (t2/select-one :model/AuthIdentity :token token)]
+    {:success? true :user-id (:user_id ai) :auth-identity ai}))
+(methodical/defmethod authenticate :password [_ {:keys [password]}]
+  {:success? true :user-data (t2/select-one :model/User :password password)})
+(methodical/defmethod authenticate :after :default [_ result]
+  (if (:expired? result) (assoc result :success? false) result))
+(defn gate [_provider login-result] login-result)
+(defn- fetch-user [id] (t2/select-one :model/User id))
+(methodical/defmulti login! (fn [provider _request] provider))
+(methodical/defmethod login! :default [provider request]
+  (if (:success? request) (assoc request :redirect-url \"/\") request))
+(methodical/defmethod login! :around :default [provider request]
+  (as-> (merge (dissoc request :user :auth-identity) (authenticate provider request)) $
+    (cond-> $ (:user-id $) (assoc :user (fetch-user (:user-id $))))
+    (next-method provider $)
+    (gate provider $)
+    (select-keys $ [:success? :user])))
+(methodical/defmethod login! :after :token [_ {:keys [user auth-identity user-data] :as result}]
+  (sink auth-identity)
+  (sink user)
+  (sink user-data)
+  (sink result)
+  result)
+(api.macros/defendpoint :post \"/login\" \"doc\" [_r _q {:keys [provider creds]}]
+  (login! provider creds))")]
+    (testing "an `:after` method holds what the chain under the `:around` returns, as the `:around`'s `next-method`
+              call invoked it: a key is followed through `as->`, `merge`, `dissoc`, `cond->`/`assoc` and a function
+              that returns its argument to the implementation that put it there -- and the `select-keys` the
+              `:around` applies afterwards, which a caller sees, does not apply here"
+      (is (= "(:app-db/AuthIdentity)" (get by-row 23)) "auth-identity: the :token authenticate's literal")
+      (is (= "(:app-db/User)" (get by-row 24)) "user: the assoc in the :around, from fetch-user")
+      (is (= "(:app-db/User)" (get by-row 25)) "user-data: the :password authenticate's literal"))
+    (testing "the whole return holds all of it"
+      (is (= "(:app-db/AuthIdentity :app-db/User)" (get by-row 26))))))
