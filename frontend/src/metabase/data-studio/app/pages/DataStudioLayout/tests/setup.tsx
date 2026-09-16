@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
@@ -160,6 +162,7 @@ const createStoreState = ({
 };
 
 interface SetupOpts {
+  content?: ReactElement;
   remoteSyncEnabled?: boolean;
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
@@ -175,6 +178,7 @@ interface SetupOpts {
 }
 
 export const setup = ({
+  content = <div data-testid="content">{"Content"}</div>,
   remoteSyncEnabled = true,
   remoteSyncBranch = null,
   isAdmin = true,
@@ -243,7 +247,7 @@ export const setup = ({
 
   renderWithProviders(
     <Route path="/" element={<DataStudioLayout />}>
-      <Route index element={<div data-testid="content">{"Content"}</div>} />
+      <Route index element={content} />
     </Route>,
     {
       storeInitialState: state,

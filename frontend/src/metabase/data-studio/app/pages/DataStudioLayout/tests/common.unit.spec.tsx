@@ -1,9 +1,18 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import * as Urls from "metabase/urls";
 
 import { setup } from "./setup";
+
+jest.mock("metabase/nav/components/AppSwitcher", () => ({
+  AppSwitcher: () => <button>Switch apps</button>,
+}));
+
+jest.mock("metabase/metabot/components/MetabotDataStudioButton", () => ({
+  MetabotDataStudioButton: () => <button>Open Metabot</button>,
+}));
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -14,6 +23,66 @@ describe("DataStudioLayout", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe("pane header controls", () => {
+    it("supplies the app switcher to headers in nested routes by default", async () => {
+      setup({ content: <PaneHeader breadcrumbs="Breadcrumbs" /> });
+
+      expect(
+        await screen.findByRole("button", { name: "Switch apps" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Open Metabot" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("lets pages opt into Metabot", async () => {
+      setup({
+        content: <PaneHeader breadcrumbs="Breadcrumbs" showMetabotButton />,
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Open Metabot" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Switch apps" }),
+      ).toBeInTheDocument();
+    });
+
+    it("lets pages hide both controls", async () => {
+      setup({
+        content: (
+          <PaneHeader
+            breadcrumbs="Breadcrumbs"
+            showAppSwitcher={false}
+            showMetabotButton={false}
+          />
+        ),
+      });
+
+      expect(await screen.findByText("Breadcrumbs")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Switch apps" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Open Metabot" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("supports metric headers outside Data Studio without application controls", () => {
+      renderWithProviders(
+        <PaneHeader breadcrumbs="Metric breadcrumbs" showAppSwitcher={false} />,
+      );
+
+      expect(screen.getByText("Metric breadcrumbs")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Switch apps" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Open Metabot" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("sidebar rendering", () => {

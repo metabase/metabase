@@ -64,6 +64,7 @@ const SHARED_PLATFORM_LEVELS = [
     "shared/parameters",
     "shared/questions",
     "shared/timelines",
+    "shared/data-studio-ui",
   ],
   // P4 — the metabot agent, which transforms and nav compose.
   // metabot keeps its enforceSharedTiers flag for one upward edge,
@@ -95,7 +96,6 @@ const TIERED_SHARED = [...SHARED_UTILS, ...SHARED_PLATFORM, ...SHARED_DOMAIN];
 // Remove an entry in the same change that assigns its tier.
 const UNTIERED_SHARED = [
   "shared/common",
-  "shared/data-studio-ui",
   "shared/embedding",
   "shared/embedding-sdk",
   "shared/embedding-sdk-shared",

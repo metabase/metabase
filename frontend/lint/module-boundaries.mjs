@@ -94,12 +94,10 @@ const elements = [
     createElement({ type: "shared", name: "metrics-ui", pattern }),
   ),
   // Data-studio UI shared by the metrics and data-studio features and consumed
-  // by shared/transforms. Only the components are carved out: they import
-  // querying/nav/metabot/upsells, which must not become edges of shared/common.
+  // by shared/transforms. The components compose querying from platform P3;
+  // DataStudioLayout supplies PaneHeader's metabot button and app switcher.
   // The sibling analytics and collection utils stay in common (common files
-  // import them). Untiered for now: it cannot take a sub-tier level until the
-  // metabot button and the AppSwitcher are slotted out of PaneHeader, and a
-  // pattern element cannot take enforcePublicApi.
+  // import them). A pattern element cannot take enforcePublicApi.
   createElement({
     type: "shared",
     name: "data-studio-ui",
