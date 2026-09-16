@@ -7,6 +7,7 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
+import { DebouncedSearchInput } from "metabase/common/components/DebouncedSearchInput";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
@@ -64,6 +65,7 @@ export const SessionsPage = () => {
   }, [
     clearSelection,
     urlState.page,
+    urlState.query,
     urlState.sort_column,
     urlState.sort_direction,
   ]);
@@ -99,7 +101,12 @@ export const SessionsPage = () => {
     [patchUrlState],
   );
 
-  // Keep page and sort in the URL while the sidebar opens, closes, and steps between sessions
+  const handleSearchChange = useCallback(
+    (query: string) => patchUrlState({ query, page: 0 }),
+    [patchUrlState],
+  );
+
+  // Keep page, search and sort in the URL while the sidebar opens, closes, and steps between sessions
   const navigateToSession = useCallback(
     (id: AdminSessionId | undefined) => {
       navigate({
@@ -177,6 +184,14 @@ export const SessionsPage = () => {
               {t`Revoke all sessions`}
             </Button>
           </Flex>
+
+          <DebouncedSearchInput
+            value={urlState.query}
+            placeholder={t`Search by name or email…`}
+            aria-label={t`Search sessions`}
+            onChange={handleSearchChange}
+            flex={0}
+          />
 
           <SessionsTable
             sessions={sessions}

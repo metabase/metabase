@@ -43,6 +43,15 @@
    [:sort-column    {:default :created_at} ::sm.schema/session-sort-column]
    [:sort-direction {:default :desc}       [:enum :asc :desc]]])
 
+(mr/def ::ListParams
+  ;; `query` lives here rather than in ::FilterParams because the revoke endpoint merges those filters, and revoking
+  ;; everyone whose name happens to match a substring is far easier to get wrong than revoking by explicit criteria.
+  [:merge
+   ::FilterParams
+   ::SortParams
+   [:map {:closed true}
+    [:query {:optional true} ms/NonBlankString]]])
+
 (mr/def ::Session
   [:map {:closed true}
    [:id                 :string]
@@ -67,7 +76,13 @@
    [:map {:closed true}
     ;; in a JSON body `ids` arrives as a real array, so it needs none of the single-value coercion a query string does
     [:ids             {:optional true} [:sequential {:max 1000} :string]]
-    [:exclude-current {:default true}  :boolean]]])
+    [:exclude-current {:default true}  :boolean]
+    ;; Declared purely to refuse it: an undeclared key would be stripped rather than rejected
+    ;; ([[metabase.api.macros]]'s `strip-extra-keys-transformer`), so a caller who meant to narrow the revoke by name
+    ;; would instead revoke every live session.
+    [:query           {:optional true}
+     [:fn {:error/message "not supported when revoking; list the sessions first, then revoke them by `ids`"}
+      (constantly false)]]]])
 
 (mr/def ::RevokeByCriteriaResult
   [:map {:closed true}
@@ -96,13 +111,15 @@
 (defn- params->filters
   "Turn the query params into the filter map `metabase-enterprise.session-management.query/filters->where` takes,
   parsing the date strings into instants."
-  [{:keys [user-id ids provider type tenancy
+  [{:keys [user-id ids provider type tenancy query
            created-before created-after last-active-before last-active-after]}]
   {:user-id            user-id
    :ids                ids
    :provider           provider
    :type               type
    :tenancy            (or tenancy :all)
+   ;; only the list endpoint can send this; the revoke endpoint's schema rejects it, so it arrives nil there
+   :query              query
    :created-before     (some-> created-before u.date/parse)
    :created-after      (some-> created-after u.date/parse)
    :last-active-before (some-> last-active-before u.date/parse)
@@ -156,7 +173,7 @@
 
   Superuser only."
   [_route-params
-   {:keys [sort-column sort-direction] :as params} :- [:maybe [:merge ::FilterParams ::SortParams]]
+   {:keys [sort-column sort-direction] :as params} :- [:maybe ::ListParams]
    _body
    {authed-session-key-hash :metabase/authed-session-key-hash, :as _request}]
   (api/check-superuser)

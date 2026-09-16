@@ -1,5 +1,9 @@
-import type { UrlStateConfig } from "metabase/common/hooks/use-url-state";
+import type {
+  QueryParam,
+  UrlStateConfig,
+} from "metabase/common/hooks/use-url-state";
 import {
+  getFirstParamValue,
   parsePage,
   parseSortColumn,
   parseSortDirection,
@@ -13,9 +17,15 @@ import {
 } from "./constants";
 import type { SessionsUrlState } from "./types";
 
+const parseQuery = (param: QueryParam): string => {
+  const value = getFirstParamValue(param);
+  return typeof value === "string" ? value.trim() : "";
+};
+
 export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
+    query: parseQuery(query.query),
     sort_column: parseSortColumn(
       query.sort_column,
       SORT_COLUMN_VALUES,
@@ -28,6 +38,7 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
   }),
   serialize: (state) => ({
     page: state.page === 0 ? undefined : String(state.page),
+    query: state.query || undefined,
     sort_column:
       state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
     sort_direction:
@@ -43,6 +54,8 @@ export const buildListParams = (
 ): AdminSessionListParams => ({
   limit: pageSize,
   offset: state.page * pageSize,
+  // the endpoint rejects a blank query, so send it only when there is something to search for
+  query: state.query || undefined,
   "sort-column": state.sort_column,
   "sort-direction": state.sort_direction,
 });
