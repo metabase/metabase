@@ -1937,6 +1937,23 @@
             (testing "and its refresh token still mints it"
               (is (= held (token-scope-set (refresh! window-a token-a)))))))))))
 
+(deftest decision-stores-a-repeated-scope-once-test
+  (testing (str "GHY-4555: a client may repeat a scope in its `scope` parameter. The consent page lists it once, and "
+                "the grant is filtered from the offered list, so a duplicate left there is stored twice in the token.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client  (register-app-client! "Claude" claude-redirect)
+              scope   "agent:content:write agent:query:run agent:content:write"
+              consent (consent-page-at! :crowberto (:client_id client) claude-redirect scope)
+              _       (authorize-at! client claude-redirect scope ["agent:content:write"])
+              row     (t2/select-one :model/OAuthAccessToken :client_id (:client_id client))]
+          (is (= ["agent:query:run" "agent:content:write"]
+                 (map :scope (consent-checkboxes (:body consent))))
+              "the page lists the repeated scope once")
+          (is (= ["agent:content:write" "agent:query:run"] (vec (:scope row)))
+              "the stored token holds it once"))))))
+
 (deftest registration-disabled-baseline-client-can-step-up-test
   (testing (str "GHY-4543: Claude Code registers with the baseline scopes and steps up on the same client_id. Turning "
                 "dynamic registration off blocks new clients, but must not turn that step-up into a raw 400 for a "

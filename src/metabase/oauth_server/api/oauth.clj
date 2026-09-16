@@ -112,9 +112,13 @@
    "agent:delivery:write"])
 
 (defn- scope-tokens
-  "Split a space-separated OAuth `scope` value into its scope strings, in order. Returns nil when blank."
+  "Split a space-separated OAuth `scope` value into its distinct scope strings, in first-seen order. Returns nil when
+   blank.
+
+   Deduplicating here is what keeps a repeated scope out of the granted token: the decision filters the grant from this
+   list, so a duplicate left in it is stored twice."
   [scope-param]
-  (some-> scope-param str str/trim not-empty (str/split #"\s+")))
+  (some-> scope-param str str/trim not-empty (str/split #"\s+") distinct vec))
 
 (defn- requested-scope-descriptions
   "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?
@@ -124,7 +128,7 @@
    raw scope string when a scope has no registered human-readable description. Returns nil when no scope was
    requested."
   [scope-param held]
-  (when-let [scopes (some-> (scope-tokens scope-param) distinct seq)]
+  (when-let [scopes (scope-tokens scope-param)]
     (let [rank     (zipmap consent-scope-order (range))
           baseline (set (mcp/v2-baseline-scopes))]
       (->> scopes
