@@ -813,12 +813,12 @@
         table-name     (t2/table-name model)
         id-field       (keyword (name table-name) "id")
         table-wildcard (keyword (name table-name) "*")]
+    ;; `id-field` is a column keyword, not a value (rubric 2): marking it would bind the generated key as an
+    ;; identifier and drop the join condition. The lint flags it anyway; it cannot tell the two apart.
+    #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
     (t2/select model
                {:select    [table-wildcard]
                 :from      table-name
-                ;; `id-field` is a column keyword, not a value (rubric 2): marking it would bind the generated key
-                ;; as an identifier and drop the join condition. The lint flags it anyway; it cannot tell the two
-                ;; apart.
                 :left-join [:dependency_status [:and
                                                 [:= :dependency_status.entity_id id-field]
                                                 [:= :dependency_status.entity_type (name entity-type)]]]
@@ -868,6 +868,10 @@
   "Mark the AnalysisFindings of the entities `entity-type` `entity-ids` as stale, returning the number updated."
   [entity-type :- EntityType
    entity-ids  :- [:sequential ms/PositiveInt]]
+  ;; Kept as kv-args: `:analyzed_entity_type` is a `mi/transform-keyword` column, and Toucan applies a model's
+  ;; `:in` transform only via `apply-kv-arg`. A conditions map bypasses it, so an `EntityType` keyword would
+  ;; reach the statement unconverted. The value itself is already marked.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/update! :model/AnalysisFinding
               :analyzed_entity_type [:auto/param entity-type]
               :analyzed_entity_id [:in (mapv long entity-ids)]
@@ -893,12 +897,12 @@
         table-name     (t2/table-name model)
         id-field       (keyword (name table-name) "id")
         table-wildcard (keyword (name table-name) "*")]
+    ;; `id-field` is a column keyword, not a value (rubric 2): marking it would bind the generated key as an
+    ;; identifier and drop the join condition. The lint flags it anyway; it cannot tell the two apart.
+    #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
     (t2/select model
                {:select    [table-wildcard]
                 :from      table-name
-                ;; `id-field` is a column keyword, not a value (rubric 2): marking it would bind the generated key
-                ;; as an identifier and drop the join condition. The lint flags it anyway; it cannot tell the two
-                ;; apart.
                 :left-join [:analysis_finding [:and
                                                [:= :analysis_finding.analyzed_entity_id id-field]
                                                [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
@@ -972,6 +976,7 @@
   ;; `source-type` is also `[:maybe ...]`: the kv-arg form compiles a nil to `IS NULL`, whereas
   ;; `[:= :source_entity_type nil]` never matches, so a nil `source-type` would stop selecting the rows with no
   ;; source. The value itself needs no marker -- it is the closed `[:enum :table :card :transform]` (rubric 3).
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id (long source-id)))
 
 (mu/defn insert-finding-errors!
