@@ -133,6 +133,12 @@ export function getSdkUsageProblem(
     })
       // MCP Apps uses temporary sessions created by MCP backend.
       .with({ isMcpApp: true }, () => null)
+      // The iframe embed renders with the React shipped by Metabase, so the
+      // host app's React version is not the customer's to upgrade there.
+      .with(
+        { hostReactMajorVersion: 18, isDevelopmentHost: true, isEajs: false },
+        () => toWarning("REACT_18_DEPRECATED"),
+      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
@@ -159,12 +165,6 @@ export function getSdkUsageProblem(
         toError("API_KEYS_WITH_LICENSE"),
       )
       .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
-      // The iframe embed renders with the React shipped by Metabase, so the
-      // host app's React version is not the customer's to upgrade there.
-      .with(
-        { hostReactMajorVersion: 18, isDevelopmentHost: true, isEajs: false },
-        () => toWarning("REACT_18_DEPRECATED"),
-      )
       .otherwise(() => null)
   );
 }

@@ -423,7 +423,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the API key warning over the React 18 warning on localhost", async () => {
+  it("shows the React 18 warning over the API key warning on localhost", async () => {
     setup({ authConfig: createMockApiKeyConfig(), hostReactMajorVersion: 18 });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
@@ -432,12 +432,14 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(card).getByText(
-        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+        "This application uses React 18. The Metabase modular embedding SDK will require React 19 in a future release, and this embed will stop working once your Metabase instance is upgraded to it. Please upgrade your application to React 19.",
       ),
     ).toBeInTheDocument();
 
     expect(
-      within(card).queryByText(/This application uses React 18/),
+      within(card).queryByText(
+        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+      ),
     ).not.toBeInTheDocument();
   });
 
