@@ -141,25 +141,26 @@
   Takes a throwable exception and returns a string message that categorizes the error (network, authentication,
   repository not found, branch, or generic) based on the exception type and message content."
   [e]
-  (let [missing-db (cause-with-error e :metabase.models.serialization.resolve.db/database-not-found)]
+  (let [missing-db (cause-with-error e :metabase.models.serialization.resolve.db/database-not-found)
+        message    (or (ex-message e) "")]
     (cond
       (or (instance? java.net.UnknownHostException e)
           (instance? java.net.UnknownHostException (ex-cause e)))
       "Network error: Unable to reach git repository host"
 
-      (str/includes? (ex-message e) "Authentication failed")
+      (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
 
-      (str/includes? (ex-message e) "Repository not found")
+      (str/includes? message "Repository not found")
       "Repository not found: Please check the repository URL"
 
-      (str/includes? (ex-message e) "branch")
+      (str/includes? message "branch")
       "Branch error: Please check the specified branch exists"
 
       (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
       "This repository contains tenant collections, but the tenants feature is disabled on your instance."
 
-      (str/includes? (ex-message e) "Missing commit")
+      (str/includes? message "Missing commit")
       "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
       (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
@@ -188,7 +189,7 @@
                                    reason (str ": " reason))))))
 
       :else
-      (format "Failed to reload from git repository: %s" (ex-message e)))))
+      (format "Failed to reload from git repository: %s" (or (ex-message e) (.getName (class e)))))))
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
@@ -1418,13 +1419,66 @@
                             :details details
                             :user-id user-id})))
 
+(defonce ^:private running-tasks
+  (atom #{}))
+
+(defn running-task-ids
+  "The IDs of the RemoteSyncTasks whose worker is running in this JVM. Multi-node safe by construction: another
+  node's tasks are never in here."
+  []
+  @running-tasks)
+
+(defn- ensure-task-ended!
+  "Close the RemoteSyncTask `task-id` as failed if it is still open after its worker exited. Goes through
+  `handle-task-result!` so a concurrent cancel, or a result that did land, wins. Never throws: the reason the row
+  is still open may be that the app DB is unreachable."
+  [task-id]
+  (try
+    (when (some-> (remote-sync.db/task task-id) remote-sync.task/running?)
+      (log/warnf "Remote sync task %d ended without recording a result; failing it" task-id)
+      (handle-task-result! {:status :error :message "Task ended without recording a result"} task-id))
+    (catch Throwable t
+      (log/errorf t "Failed to close remote sync task %d" task-id))))
+
+(defn run-task-body!
+  "Run `sync-fn` (a fn of task-id returning a result map) for the already-created RemoteSyncTask `task-id` on the
+  current thread, recording the outcome on the row. `branch` is written to the remote-sync-branch setting on
+  success when non-nil; `:on-success` receives [task-id result] after a successful result is recorded.
+
+  Guarantees, whatever `sync-fn` or the bookkeeping does: a heartbeat runs on the row for the duration, the task
+  is registered in [[running-task-ids]] for the duration, and the row is ended on exit. Any `Throwable` from
+  `sync-fn` becomes an `:error` result; an `Error` must not escape the worker thread, where nothing would log it
+  and the row would stay open."
+  [task-id branch sync-fn & {:keys [on-success]}]
+  (let [stop-heartbeat! (remote-sync.task/start-heartbeat! task-id)]
+    (swap! running-tasks conj task-id)
+    (try
+      (let [result (try
+                     (sync-fn task-id)
+                     (catch Throwable t
+                       (log/error t "Remote sync task failed")
+                       {:status  :error
+                        :message (source-error-message t)}))]
+        (handle-task-result! result task-id branch)
+        (when (and on-success (= :success (:status result)))
+          (try
+            (on-success task-id result)
+            (catch Exception e
+              (log/errorf "Remote sync task :on-success function failed: %s" (ex-message e))))))
+      (catch Throwable t
+        (log/errorf t "Remote sync task %d bookkeeping failed" task-id))
+      (finally
+        (stop-heartbeat!)
+        (swap! running-tasks disj task-id)
+        (ensure-task-ended! task-id)))))
+
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
 
   Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, a
   sync-fn function that takes a task-id and performs the sync operation, and an optional :on-success callback
   that receives [task-id result] after a successful sync. Creates a new task (or errors if one is already
-  running), then executes the sync function in a virtual thread with a timeout.
+  running), then runs [[run-task-body!]] in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
   [task-type branch sync-fn & {:keys [on-success]}]
@@ -1433,18 +1487,7 @@
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (let [result (try
-                      (sync-fn task-id)
-                      (catch Exception e
-                        (log/errorf "Remote sync task failed: %s" (ex-message e))
-                        {:status :error
-                         :message (source-error-message e)}))]
-         (handle-task-result! result task-id branch)
-         (when (and on-success (= :success (:status result)))
-           (try
-             (on-success task-id result)
-             (catch Exception e
-               (log/errorf "Remote sync task :on-success function failed: %s" (ex-message e))))))))
+       (run-task-body! task-id branch sync-fn :on-success on-success)))
     task))
 
 (defn async-import!

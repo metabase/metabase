@@ -2212,3 +2212,87 @@ serdes/meta:
                 "F1's edited description is present")
             (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id))
                 "F2's stale local row, absent from the imported file's :fields, is gone")))))))
+
+;; ---------- run-task-body!: the row is always closed, whatever the worker does ----------------
+
+(defn- new-task-id []
+  (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)}))
+
+(deftest run-task-body!-records-a-successful-result-test
+  (testing "a :success result completes the row, runs :on-success, and unregisters the task"
+    (let [task-id     (new-task-id)
+          on-success  (atom nil)
+          seen-running (atom nil)]
+      (impl/run-task-body! task-id nil
+                           (fn [id]
+                             (reset! seen-running (contains? (impl/running-task-ids) id))
+                             {:status :success :outcome {:kind "pull-skipped"}})
+                           :on-success (fn [id result] (reset! on-success [id (:status result)])))
+      (is (true? @seen-running) "the task is registered while its body runs")
+      (is (not (contains? (impl/running-task-ids) task-id)))
+      (is (= [task-id :success] @on-success))
+      (is (=? {:ended_at some? :cancelled false :error_message nil :outcome {:kind "pull-skipped"}}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-fails-the-row-when-sync-fn-throws-an-error-test
+  (testing "an Error (not an Exception) from sync-fn still ends the row with a message"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil (fn [_] (throw (Error. "boom"))))
+      (is (=? {:ended_at some? :cancelled false :error_message #".*boom"}
+              (t2/select-one :model/RemoteSyncTask :id task-id)))
+      (is (not (contains? (impl/running-task-ids) task-id))))))
+
+(deftest run-task-body!-fails-the-row-when-the-throwable-has-no-message-test
+  (testing "a throwable with a nil message still produces a non-empty error_message"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil (fn [_] (throw (StackOverflowError.))))
+      (is (=? {:ended_at some? :error_message #".*StackOverflowError"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-closes-the-row-when-bookkeeping-throws-test
+  (testing "when handle-task-result! itself throws, the row is still ended by the exit path"
+    (let [task-id (new-task-id)
+          calls   (atom 0)]
+      (mt/with-dynamic-fn-redefs [impl/handle-task-result! (let [orig (mt/original-fn #'impl/handle-task-result!)]
+                                                             (fn [& args]
+                                                               (if (= 1 (swap! calls inc))
+                                                                 (throw (ex-info "pool exhausted" {}))
+                                                                 (apply orig args))))]
+        (impl/run-task-body! task-id nil (fn [_] {:status :success})))
+      (is (= 2 @calls))
+      (is (=? {:ended_at some? :cancelled false :error_message "Task ended without recording a result"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-does-not-clobber-a-concurrent-cancel-test
+  (testing "a cancel that lands while sync-fn runs is preserved: neither the result nor the exit path overwrites it"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil
+                           (fn [id]
+                             (remote-sync.task/cancel-sync-task! id)
+                             {:status :success}))
+      (is (=? {:ended_at some? :cancelled true :error_message "Task cancelled"}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-stops-the-heartbeat-on-exit-test
+  (testing "the heartbeat started for the task is stopped when the body exits, including on failure"
+    (let [task-id  (new-task-id)
+          stopped? (atom false)]
+      (mt/with-dynamic-fn-redefs [remote-sync.task/start-heartbeat! (fn [_id] (fn [] (reset! stopped? true)))]
+        (impl/run-task-body! task-id nil (fn [_] (throw (Error. "boom")))))
+      (is (true? @stopped?)))))
+
+(deftest run-task-body!-on-success-failure-does-not-fail-the-row-test
+  (testing "an exception from :on-success is logged and the row stays successful"
+    (let [task-id (new-task-id)]
+      (impl/run-task-body! task-id nil (fn [_] {:status :success})
+                           :on-success (fn [_ _] (throw (ex-info "audit log down" {}))))
+      (is (=? {:ended_at some? :cancelled false :error_message nil}
+              (t2/select-one :model/RemoteSyncTask :id task-id))))))
+
+(deftest run-task-body!-writes-the-branch-on-success-test
+  (testing "a non-nil branch is written to the setting on success and left alone on error"
+    (mt/with-temporary-setting-values [remote-sync-branch "main"]
+      (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :error :message "nope"}))
+      (is (= "main" (remote-sync.settings/remote-sync-branch)))
+      (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
+      (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
