@@ -37,14 +37,23 @@
     (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db)))))
   (testing "metabase.driver.<driver>.db is allowed for driver modules"
     (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db)))))
-  (testing "metabase.<module>.queries is allowed -- the HugSQL equivalent of .db"
+  (testing "a SQL-in-files `.queries` namespace on the opt-in list is allowed"
     ;; map form, not `:id 1`: the kv-arg style trips `unsafe-app-db-query`, which is a different
     ;; linter than the one under test here.
-    (is (empty? (lint-query-call '(t2/select-one :model/Card {:where [:= :id 1]})
-                                 'metabase.queries.queries))))
+    (is (empty? (confinement-findings
+                 (lint-query-call '(t2/select-one :model/AuthIdentity {:where [:= :id 1]})
+                                  'metabase.sso.queries)))))
+  (testing "a `.queries` namespace NOT on the list is still confined -- the suffix is not a
+            reserved word, and `metabase-enterprise.metabot-analytics.queries` is an MBQL namespace
+            with no app-db access that would otherwise get a free exemption"
+    (is (=? [{:type :metabase/t2-query-namespace}]
+            (confinement-findings
+             (lint-query-call '(t2/query {:select [:*]})
+                              'metabase-enterprise.metabot-analytics.queries)))))
   (testing "a nested queries namespace is not a module data-access namespace"
     (is (=? [{:type :metabase/t2-query-namespace}]
-            (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.queries))))
+            (confinement-findings
+             (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.queries)))))
   (testing "a nested db namespace is not a module db namespace"
     (is (=? [{:type :metabase/t2-query-namespace}]
             (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db))))

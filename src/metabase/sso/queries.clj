@@ -1,24 +1,10 @@
 (ns metabase.sso.queries
-  "App-db queries for the SSO module. Reads are HugSQL statements in sso.sql executed through
-  [[metabase.app-db.hugsql]]; writes stay on Toucan 2, deliberately.
+  "App-db access for the SSO module, and the only namespace in it that queries the app-db.
 
-  This ns replaces `metabase.sso.db`. The reads needed no `[:auto/param]` markers afterwards --
-  the statement is fixed text in a file and every input is a `?` placeholder, so there is no value
-  slot to mark.
+  Reads are named statements in sso.sql, executed through [[metabase.app-db.hugsql]]. Writes are
+  Toucan 2 calls whose values carry `[:auto/param]` markers.
 
-  ## Why the two AuthIdentity writes are still Toucan calls
-
-  `:model/AuthIdentity` declares `t2/define-before-insert` and `t2/define-before-update`, which
-  hash `password` credentials and run `provider/validate`. [[metabase.app-db.hugsql/execute!]]
-  applies a model's `:in` transforms but does NOT re-run those hooks -- a bare sqlvec never enters
-  Toucan's write pipeline. Porting these writes would mean duplicating the hashing and validation
-  at the call site, which is how the task_history PoC handled its `before-update` (with a \"keep
-  the two in sync\" comment). That trade is fine for a status assertion and not fine for password
-  hashing: a drift between the two copies writes an unhashed credential.
-
-  So the module splits by hook, not by read/write: queries whose model has no write hooks port
-  cleanly, and the rest wait for the write path the design doc describes (a schema-validated flat
-  map that still runs hooks). Recorded as a finding rather than worked around."
+  Replaces `metabase.sso.db`."
   (:require
    [hugsql.core :as hugsql]
    [metabase.app-db.hugsql :as app-db.hugsql]
@@ -78,9 +64,11 @@
   (some? (app-db.hugsql/scalar auth-identity-model auth-identity-exists-sqlvec
                                {:user-id user-id :provider provider})))
 
-;;; Writes: still Toucan 2. See the ns docstring -- :model/AuthIdentity's before-insert/before-update
-;;; hash password credentials and validate the provider, and app-db.hugsql/execute! does not re-run
-;;; them. These keep their `(long ...)` coercions from the value-parameterization work.
+;;; Writes stay on Toucan 2. A bare sqlvec never enters Toucan's write pipeline, so it would skip
+;;; both `:model/AuthIdentity`'s before-insert/before-update (which hash password credentials and
+;;; run `provider/validate`) and the `metabase.app-db.dml-capture` seam that feeds search-index
+;;; change capture. Neither is recoverable by re-implementing it at the call site: a second copy of
+;;; password hashing that drifts writes an unhashed credential.
 
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."

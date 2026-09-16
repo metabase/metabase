@@ -43,7 +43,9 @@
   `--~ (...)` / `/*~ ... ~*/` in a `.sql` file are worse than any of the above: `hugsql.core/def-expr`
   builds a string of Clojure source and `load-string`s it, so an expression is arbitrary code
   execution at query-build time whose return value is also spliced into the SQL text. It is not a
-  param type, so it cannot be disarmed here; `dev.raw-splice` scans for it instead."
+  param type, so it cannot be disarmed from here -- it needs a static scan of the `.sql` files, which
+  this branch does not yet carry. Until that lands, no `.sql` file here uses one and review is the
+  only thing stopping the first."
   (:require
    [hugsql.parameters :as hugsql.params]
    [toucan2.core :as t2]
@@ -110,22 +112,25 @@
   [col->fn m]
   (reduce-kv (fn [m col f] (cond-> m (some? (get m col)) (update col f))) m col->fn))
 
-;;; The registry is populated when the *model* ns loads, which is after this ns; so each stage
-;;; resolves its transform map on first call (via `delay`), never at wrap time.
+;;; The `deftransforms` registry is populated when the *model* ns loads, which is after this ns, so
+;;; a stage cannot resolve its transform map at wrap time. It resolves per call instead of caching
+;;; the first resolution: a `delay` here would memoize the `{}` seen by any executor built before
+;;; its model ns loaded, and then silently skip that model's transforms forever -- a decrypted
+;;; column served as its raw stored string. `direction-fns` is a walk over a handful of declared
+;;; columns, which is nothing beside the database round-trip it accompanies.
 
 (defn wrap-in-transforms
   "Middleware: apply `model`'s `:in` transforms to the param map before `handler` sees it."
   [handler model]
-  (let [ins (delay (direction-fns model :in))]
-    (fn [params] (handler (apply-transforms @ins params)))))
+  (fn [params] (handler (apply-transforms (direction-fns model :in) params))))
 
 (defn wrap-out-transforms
   "Middleware: apply `model`'s `:out` transforms to each row `handler` returns, and tag it as a
   Toucan instance of `model` (so `t2/hydrate` and instance-based logic compose downstream)."
   [handler model]
-  (let [outs (delay (direction-fns model :out))]
-    (fn [params]
-      (map #(t2.instance/instance model (apply-transforms @outs %)) (handler params)))))
+  (fn [params]
+    (let [outs (direction-fns model :out)]
+      (map #(t2.instance/instance model (apply-transforms outs %)) (handler params)))))
 
 (defn reducible-executor
   "Innermost handler: build a sqlvec from `params` and execute it, returning raw rows. Bare
@@ -141,14 +146,6 @@
   (-> (reducible-executor builder)
       (wrap-in-transforms model)
       (wrap-out-transforms model)))
-
-(defn execute!
-  "Run a write/DML `builder` with `params`: in-transforms applied, then a single `t2/query-one`.
-  Returns whatever the statement returns (an update count for UPDATE/DELETE). No out-transform --
-  DML returns counts, not rows."
-  [model builder params]
-  (let [ins (direction-fns model :in)]
-    (t2/query-one (builder (apply-transforms ins params)))))
 
 (defn scalar
   "Run a read `builder` returning a single aggregate/value row (`:? :1`), out-transforming it and
@@ -167,11 +164,3 @@
   [model builder params]
   (let [ins (direction-fns model :in)]
     (t2/query (builder (apply-transforms ins params)))))
-
-(defn insert-returning-pk!
-  "Insert one `row` (in-transformed) via a `builder`, returning the generated primary key. Uses
-  the `insert.pks` query type so generated-key handling stays cross-db."
-  [model builder row]
-  (let [ins (direction-fns model :in)]
-    (first (t2/query nil :toucan.query-type/insert.pks model
-                     (builder (apply-transforms ins row))))))
