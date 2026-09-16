@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -55,6 +55,10 @@ export const FieldPicker = ({
 }: FieldPickerProps) => {
   const tc = useTranslateContent();
   const matchCountId = useId();
+  // The popover's focus trap places focus. Plain autoFocus would fire before
+  // the popover records where to return focus on close. On a touch device,
+  // focusing the search box would open the on-screen keyboard over the list.
+  const shouldFocusSearch = !isTouchDevice();
   const [searchText, setSearchText] = useState("");
 
   const combobox = useCombobox({ opened: true });
@@ -116,15 +120,6 @@ export const FieldPicker = ({
     }
   };
 
-  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape" && searchText.length > 0) {
-      // Clear the query first; a second Escape reaches the popover and closes it.
-      event.preventDefault();
-      event.stopPropagation();
-      setSearchText("");
-    }
-  };
-
   return (
     <div data-testid={props["data-testid"]}>
       <Combobox
@@ -143,7 +138,7 @@ export const FieldPicker = ({
               aria-label={t`Search columns`}
               placeholder={t`Search columns…`}
               value={searchText}
-              autoFocus={!isTouchDevice()}
+              data-autofocus={shouldFocusSearch || undefined}
               leftSection={<Icon name="search" />}
               rightSectionPointerEvents="all"
               rightSection={
@@ -156,7 +151,6 @@ export const FieldPicker = ({
                 ) : null
               }
               onChange={(event) => setSearchText(event.currentTarget.value)}
-              onKeyDown={handleSearchKeyDown}
             />
             <div
               id={matchCountId}
@@ -244,9 +238,12 @@ function SelectAllRow({
   withKeyboardNavigation,
   ...checkboxProps
 }: SelectAllRowProps) {
+  // The popover's focus trap focuses the first [data-autofocus] element, so
+  // this only takes focus when the search box isn't autofocusable.
   const checkbox = (
     <Checkbox
       variant="stacked"
+      data-autofocus
       aria-describedby={descriptionId}
       {...checkboxProps}
     />
