@@ -496,7 +496,8 @@
   every row and, like `render :pivot`, is not cut at the attachment row limit."
   [timezone-id {:keys [cols viz-settings] :as data} {:keys [cell] :as indexes}]
   (pivot->hiccup (simple-pivot-grid timezone-id data indexes)
-                 {:color-data     (select-keys data [:cols :rows])
+                 {:color-data     {:cols (mapv #(select-keys % [:name]) cols)
+                                   :rows (:rows data)}
                   ;; viz-settings carries :table.pivot, which tells the shared color JS to skip row-highlight rules
                   :color-settings viz-settings
                   :left-width     1
@@ -532,8 +533,8 @@
   "Hiccup for a Table card as a flat table: the columns in `table.columns` order, the rows cut at the attachment row
   limit with a \"Showing N of M rows\" line when some are cut."
   [timezone-id :- [:maybe :string]
-   card
-   {:keys [rows viz-settings format-rows?] :as unordered-data}]
+   card        :- [:maybe ::card]
+   {:keys [rows viz-settings format-rows?] :as unordered-data} :- ::QPResultData]
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
