@@ -39,6 +39,7 @@ export * from "./insight";
 export * from "./llm";
 export * from "./logger";
 export * from "./measure";
+export * from "./mcp-client";
 export * from "./metabot";
 export * from "./metric";
 export * from "./modelIndexes";

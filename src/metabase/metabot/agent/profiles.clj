@@ -71,6 +71,8 @@
     feature-specific system-prompt template vars (e.g. the explorations profile's formatted draft
     Research plan). Keeps feature context out of the generic agent — only the profiles that need it
     opt in.
+  - :external-mcp-tools? - Optional boolean (default false). When true, the tools of the external MCP
+    servers the current user is connected to are added to the profile's tools for each run.
 
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
@@ -92,7 +94,8 @@
                ;; message array is rebuilt, so long tasks don't blow the context.
                [:max-output-tokens {:optional true} [:maybe :int]]
                [:compact-history? {:optional true} :boolean]
-               [:system-prompt-context {:optional true} [:fn ifn?]]]]
+               [:system-prompt-context {:optional true} [:fn ifn?]]
+               [:external-mcp-tools? {:optional true} :boolean]]]
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
         tool-names    (set tool-name-seq)]
@@ -150,6 +153,7 @@
   :compact-history?      true
   ;; A successful ask_user is this turn's answer — stop and wait for the user's reply.
   :terminal-tools        #{"ask_user"}
+  :external-mcp-tools?   true
   ;; The primed app-db map, the instance snapshot and the note catalog, so a conversation doesn't start
   ;; by rediscovering the schema. `internal.selmer` renders these around its cache breakpoint.
   :system-prompt-context #'megabot-context/megabot-system-context

@@ -170,6 +170,10 @@ export const TOOL_MESSAGES = {
   },
   list_api_endpoints: { active: () => undefined, done: () => undefined },
   list_available_fields: { active: () => undefined, done: () => undefined },
+  load_mcp_tools: {
+    active: () => t`Loading external tools`,
+    done: () => t`Loaded external tools`,
+  },
   load_skill: { active: () => undefined, done: () => undefined },
   query_app_db: {
     active: () => t`Reading app metadata`,

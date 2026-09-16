@@ -1,0 +1,238 @@
+## External MCP servers that admins register for Metabot, and each user's connection (OAuth tokens) to them.
+## Servers hold the shared pieces: the URL, the authentication strategy, a shared credential for servers that use
+## one, and the OAuth client registration Metabase made with the server's authorization server. Connections hold
+## what is personal: one user's tokens for one server, plus the state of an OAuth flow that is still in progress.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-15T12:00:00
+      author: sloansparger
+      comment: Create mcp_server table
+      changes:
+        - createTable:
+            tableName: mcp_server
+            remarks: Remote MCP servers that Metabase may call tools on
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Display name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  remarks: The server's Streamable HTTP endpoint
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider
+                  remarks: Preset the server was created from (notion, linear, custom)
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: auth_strategy
+                  remarks: How requests authenticate (oauth, header, none)
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enabled
+                  remarks: Whether users may connect to the server
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: credentials
+                  remarks: Encrypted JSON of the shared credential header used by the header strategy
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: oauth_client
+                  remarks: Encrypted JSON of the OAuth client registration, bound to the issuer and redirect URI it was made with
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: When the server was registered
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: When the server was last changed
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-09-15T12:00:01
+      author: sloansparger
+      comment: Create mcp_connection table
+      changes:
+        - createTable:
+            tableName: mcp_connection
+            remarks: One user's connection to one external MCP server
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: mcp_server_id
+                  remarks: The server this connection is to
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: The user who owns the connection
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  remarks: pending while an OAuth flow is in progress, then connected or error
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: access_token
+                  remarks: Encrypted OAuth access token
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: refresh_token
+                  remarks: Encrypted OAuth refresh token
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: expires_at
+                  remarks: When the access token expires
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: scopes
+                  remarks: JSON array of the granted OAuth scopes
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: account
+                  remarks: JSON of non-secret account details the authorization server returned with the tokens
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error
+                  remarks: Why the last authorization attempt failed
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: oauth_state
+                  remarks: The state parameter of an OAuth flow in progress, used to find this row when the browser returns
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: oauth_pending
+                  remarks: Encrypted JSON of the OAuth flow in progress (PKCE verifier, redirect URI, resource, issuer)
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: When the connection was first attempted
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: When the connection last changed
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-09-15T12:00:02
+      author: sloansparger
+      comment: Add index on mcp_connection.user_id
+      changes:
+        - createIndex:
+            tableName: mcp_connection
+            indexName: idx_mcp_connection_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v64.2026-09-15T12:00:03
+      author: sloansparger
+      comment: Add index on mcp_connection.oauth_state
+      changes:
+        - createIndex:
+            tableName: mcp_connection
+            indexName: idx_mcp_connection_oauth_state
+            columns:
+              - column:
+                  name: oauth_state
+
+  - changeSet:
+      id: v64.2026-09-15T12:00:04
+      author: sloansparger
+      comment: Add foreign key constraint for mcp_connection.mcp_server_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_connection
+            baseColumnNames: mcp_server_id
+            referencedTableName: mcp_server
+            referencedColumnNames: id
+            constraintName: fk_mcp_connection_mcp_server_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-09-15T12:00:05
+      author: sloansparger
+      comment: Add foreign key constraint for mcp_connection.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_connection
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_mcp_connection_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.2026-09-15T12:00:06
+      author: sloansparger
+      comment: Add unique constraint for mcp_connection server and user
+      changes:
+        - addUniqueConstraint:
+            tableName: mcp_connection
+            columnNames: mcp_server_id, user_id
+            constraintName: idx_mcp_connection_server_user_unique

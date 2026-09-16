@@ -19,6 +19,8 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.external-mcp :as external-mcp]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -181,6 +183,46 @@
                     :profile-id profile-id
                     :context    {:capabilities capabilities}}))))
      @captured)))
+
+(deftest deferred-external-tools-are-declared-after-loading-test
+  (let [deferred  {"fake__echo" {:tool-name  "fake__echo"
+                                 :doc        "Echoes text."
+                                 :schema     [:=> [:cat [:map-of :keyword :any]] :any]
+                                 :parameters {:type "object" :properties {:text {:type "string"}}}
+                                 :deferred   {:group "Fake" :summary "Echoes text."}
+                                 :fn         (fn [{:keys [text]}] {:output text})}}
+        captured! (fn [messages]
+                    (let [captured (atom [])]
+                      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                         llm-metabot-provider test-provider]
+                        (mt/with-dynamic-fn-redefs
+                          [tools/with-external-mcp-tools (fn [tools _user-id]
+                                                           (assoc (merge tools deferred)
+                                                                  external-mcp/load-tool-name
+                                                                  (external-mcp/load-tool-entry deferred)))
+                           self/call-llm (fn [_model system _parts tools _tracking-opts _llm-opts]
+                                           (swap! captured conj {:system system :tools (set (keys tools))})
+                                           (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+                          (mt/with-current-user (mt/user->id :crowberto)
+                            (into [] (agent/run-agent-loop {:messages   messages
+                                                            :state      {}
+                                                            :profile-id :internal
+                                                            :context    {:capabilities []}})))))
+                      (first @captured)))
+        load-call {:role :assistant :content "" :tool_calls [{:id        "c1"
+                                                              :name      external-mcp/load-tool-name
+                                                              :arguments "{\"names\":[\"fake__echo\"]}"}]}]
+    (testing "a fresh conversation advertises the deferred tool in the prompt but declares only the load tool"
+      (let [{:keys [system tools]} (captured! [{:role :user :content "hi"}])]
+        (is (contains? tools external-mcp/load-tool-name))
+        (is (not (contains? tools "fake__echo")))
+        (is (str/includes? system "- **fake__echo** — Echoes text."))))
+    (testing "once the conversation has loaded the tool it is declared on later requests"
+      (let [{:keys [tools]} (captured! [{:role :user :content "hi"}
+                                        load-call
+                                        {:role :tool :tool_call_id "c1" :content "## fake__echo"}
+                                        {:role :user :content "now use it"}])]
+        (is (contains? tools "fake__echo"))))))
 
 (deftest client-claimed-sql-capability-is-clamped-to-actual-permissions-test
   (mt/with-no-data-perms-for-all-users!

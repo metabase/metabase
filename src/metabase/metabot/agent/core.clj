@@ -348,6 +348,7 @@
                                  (invert-links @link-registry-atom))
                        (:compact-history? profile)
                        compact-tool-outputs)
+        tools        (tools/declared-tools tools input-parts)
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required")
                        (:max-output-tokens profile)   (assoc :max-tokens (:max-output-tokens profile)))]
@@ -569,7 +570,9 @@
                          (assoc :conversation-id conversation-id)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+        tools        (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+                       (and (:external-mcp-tools? profile) api/*current-user-id*)
+                       (tools/with-external-mcp-tools api/*current-user-id*))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
