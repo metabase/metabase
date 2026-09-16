@@ -49,6 +49,14 @@ To create a pivot table, you'll need to use the query builder. Currently, you ca
 
 Currently, all the dimensions and metrics in your query must appear as either rows, columns, or measures in the pivot table (although you can [collapse rows to their totals](#totals-and-grand-totals)). If you don't want to display a breakout or metric in the pivot table, you'll need to remove it from the query - you can't hide it from the pivot table.
 
+## Automatically adjust table height on a dashboard
+
+In the pivot table's visualization settings, open **Display** and enable **Automatically adjust dashboard height**. Save the question or dashboard settings.
+
+When viewing a dashboard, the card grows or shrinks to fit its visible rows, including headers and totals. Its height updates when filters change the results or when you expand or collapse row groups. Cards below it move to make room. Height is rounded up to dashboard grid rows, so a small amount of empty space can remain.
+
+The option is off by default. Dashboard edit mode uses the saved card size; automatic sizing resumes when you leave edit mode. Disable the option to return to the saved size. Large pivot tables can produce tall dashboard cards.
+
 ## Totals and grand totals
 
 Where it makes sense, Metabase will automatically include subtotals for grouped rows.
