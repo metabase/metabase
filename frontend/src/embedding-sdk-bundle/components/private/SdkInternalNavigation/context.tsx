@@ -34,6 +34,14 @@ export type SdkInternalNavigationEntry =
       onPop?: () => void;
     })
   | (BaseEntry & {
+      /** A pre-filtered ad-hoc question, rendered from its serialized path. */
+      type: "ad-hoc-question";
+      name: string;
+      virtual?: true;
+      adHocQuestionPath: string;
+      onPop?: () => void;
+    })
+  | (BaseEntry & {
       type: "metabase-browser";
       virtual: false;
       onPop?: () => void;
