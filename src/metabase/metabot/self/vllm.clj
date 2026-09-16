@@ -139,10 +139,9 @@
   whose base URL the admin types."
   [auth]
   (try
-    (let [res (core/request auth (merge {:method  :get
-                                         :url     "/models"
-                                         :as      :json
-                                         :headers {"Content-Type" "application/json"}}
+    (let [res (core/request auth (merge {:method :get
+                                         :url    "/models"
+                                         :as     :json}
                                         (control-timeouts)))]
       ;; The URL off `auth`, not the setting: a connect verifies request credentials before saving them.
       (chat-completions/models-catalog
