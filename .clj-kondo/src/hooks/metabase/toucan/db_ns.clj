@@ -18,9 +18,15 @@
 (defn- db-namespace? [config ns-sym]
   (let [ns-str (name ns-sym)]
     (boolean
-     ;; Resolve ownership first: a nested `.db` name alone does not make a module.
+     ;; Resolve ownership first: a nested `.db`/`.queries` name alone does not make a module.
      (or (when-let [module (modules/module config ns-sym)]
-           (= ns-str (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")))
+           (let [prefix (str (modules/module-ns-prefix (:metabase/modules config) module))]
+             ;; `.queries` is the SQL-in-files equivalent of `.db`: same one-namespace-per-module
+             ;; confinement, reads as statements in a co-located `.sql` file instead of HoneySQL.
+             ;; Writes stay on `t2/*` there (Toucan's hooks and the dml-capture seam need the
+             ;; pipeline), so both names are data-access namespaces and get the same treatment,
+             ;; including the unmarked-value lint.
+             (contains? #{(str prefix ".db") (str prefix ".queries")} ns-str)))
          (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?

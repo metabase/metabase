@@ -912,19 +912,24 @@
   ;; set (the `*.queries` nses, metabase.app-db.hugsql, migrations, audit-db, QP). Then "where can
   ;; app-db SQL run?" is that list rather than a per-ns opt-in.
   metabase.glossary.queries
-  {:linters {:discouraged-var
-             {next.jdbc/execute!            {:message "no dropping to raw JDBC; app-db SQL is a statement in glossary.sql"}
-              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; app-db SQL is a statement in glossary.sql"}
-              next.jdbc/plan                {:message "no dropping to raw JDBC; app-db SQL is a statement in glossary.sql"}
+  ;; Reads are banned from every sink -- they are statements in glossary.sql. Writes are NOT banned:
+  ;; they stay on `t2/*` so Toucan's hooks (`:hook/timestamped?`, before-insert/before-update) and
+  ;; the `metabase.app-db.dml-capture` seam that feeds search-index change capture keep running. The
+  ;; marker lint below covers their value slots.
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}
+             :discouraged-var
+             {next.jdbc/execute!            {:message "no dropping to raw JDBC; a read is a statement in glossary.sql"}
+              next.jdbc/execute-one!        {:message "no dropping to raw JDBC; a read is a statement in glossary.sql"}
+              next.jdbc/plan                {:message "no dropping to raw JDBC; a read is a statement in glossary.sql"}
               toucan2.core/query            {:message "raw SQL does not belong in a queries ns; add a statement to glossary.sql"}
               toucan2.core/query-one        {:message "raw SQL does not belong in a queries ns; add a statement to glossary.sql"}
-              toucan2.core/select           {:message "glossary is fully ported; add a statement to glossary.sql"}
-              toucan2.core/select-one       {:message "glossary is fully ported; add a statement to glossary.sql"}
-              toucan2.core/insert!          {:message "glossary is fully ported; add a statement to glossary.sql"}
-              toucan2.core/update!          {:message "glossary is fully ported; add a statement to glossary.sql"}
-              toucan2.core/delete!          {:message "glossary is fully ported; add a statement to glossary.sql"}
-              metabase.app-db.query/query   {:message "app-db SQL is a statement in glossary.sql"}
-              metabase.app-db.query/compile {:message "app-db SQL is a statement in glossary.sql"}}}}
+              toucan2.core/select           {:message "reads go through glossary.sql; add a statement there"}
+              toucan2.core/select-one       {:message "reads go through glossary.sql; add a statement there"}
+              toucan2.core/select-fn-set    {:message "reads go through glossary.sql; add a statement there"}
+              toucan2.core/select-pk->fn    {:message "reads go through glossary.sql; add a statement there"}
+              toucan2.core/exists?          {:message "reads go through glossary.sql; add a statement there"}
+              metabase.app-db.query/query   {:message "a read is a statement in glossary.sql"}
+              metabase.app-db.query/compile {:message "a read is a statement in glossary.sql"}}}}
 
   ;; The module's consumers: every app-db access goes through glossary.queries. `t2/hydrate` is not
   ;; a sink and stays -- api.clj hydrates :creator on the rows the queries ns returns.

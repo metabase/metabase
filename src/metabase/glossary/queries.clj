@@ -17,7 +17,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,6 @@
 ;; Private sqlvec builders (`<name>-sqlvec`), one per `-- :name-` in glossary.sql. The declare
 ;; doubles as the file's table of contents (clj-kondo can't see vars interned by def-sqlvec-fns).
 (declare glossary-entries-sqlvec glossary-entry-sqlvec glossary-entry-by-term-sqlvec
-         insert-glossary-entry-sqlvec update-glossary-entry-sqlvec delete-glossary-entry-sqlvec
          users-by-id-sqlvec)
 
 (hugsql/def-sqlvec-fns "metabase/glossary/glossary.sql")
@@ -63,28 +63,44 @@
   [term :- :string]
   (first ((app-db.hugsql/select-executor model glossary-entry-by-term-sqlvec) {:term term})))
 
+;;;; Writes stay on Toucan 2, by design.
+;;;;
+;;;; SQL-in-files covers reads. A write has to stay in Toucan's pipeline because that is where the
+;;;; things that make a write correct live, and none of them are re-run by a bare sqlvec:
+;;;;
+;;;; - `:hook/timestamped?` stamps created_at/updated_at (this model), and `define-before-insert` /
+;;;;   `define-before-update` do the model-specific work on others -- hashing a password, validating
+;;;;   a provider.
+;;;; - `metabase.app-db.dml-capture` (#78287) hooks `pipeline/transduce-query` for `insert.*`,
+;;;;   `update.*` and `delete.*` to feed search-index change capture. Reads are untouched by it --
+;;;;   there is no select method -- but a write that left the pipeline would silently stop
+;;;;   enqueueing re-indexing, and `search/spec.clj` derives `:hook/search-index` for every
+;;;;   registered search spec, so the blast radius is not a short list of models.
+;;;;
+;;;; The design doc's write story is separate and not built yet: a flat map validated against a
+;;;; generated column schema, with `views = views + 1`-style computed writes becoming named
+;;;; statements. Until that exists, `t2/*` is the write path and its values carry `[:auto/param]`
+;;;; markers, which is what the marker lint on this namespace enforces.
+
 (mu/defn insert-glossary-entry! :- ::glossary.schema/glossary
-  "Insert the Glossary `row` and return the inserted instance. The entry is read back by term
-  because the insert statement returns a count, not a row."
+  "Insert the Glossary `row` and return the inserted instance."
   [row :- ::glossary.schema/glossary.update]
-  (app-db.hugsql/execute! model insert-glossary-entry-sqlvec
-                          {:term       (:term row)
-                           :definition (:definition row)
-                           :creator-id (:creator_id row)})
-  (glossary-entry-by-term (:term row)))
+  (t2/insert-returning-instance! :model/Glossary row))
 
 (mu/defn update-glossary-entry! :- :any
   "Set the term and definition of the Glossary entry with `id`."
   [id         :- ms/PositiveInt
    term       :- :string
    definition :- :string]
-  (app-db.hugsql/execute! model update-glossary-entry-sqlvec
-                          {:id id :term term :definition definition}))
+  ;; `term` and `definition` come from a request body, so they are bound as parameters rather than
+  ;; compiled into the statement.
+  (t2/update! :model/Glossary id {:term       [:auto/param term]
+                                  :definition [:auto/param definition]}))
 
 (mu/defn delete-glossary-entry! :- :any
   "Delete the Glossary entry with `id`."
   [id :- ms/PositiveInt]
-  (app-db.hugsql/execute! model delete-glossary-entry-sqlvec {:id id}))
+  (t2/delete! :model/Glossary :id (long id)))
 
 (mu/defn users-by-id :- [:map-of ::lib.schema.id/user :map]
   "A map of User id to the id, email, and name of the Users with `user-ids`.

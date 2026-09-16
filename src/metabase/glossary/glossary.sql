@@ -33,26 +33,6 @@ SELECT *
 FROM glossary
 WHERE term = :value:term
 
--- :name- insert-glossary-entry :! :n
--- Insert a Glossary entry. The timestamps are CURRENT_TIMESTAMP in the statement rather than
--- values: a bare sqlvec does not enter Toucan's insert pipeline, so :hook/timestamped? never runs,
--- and `mi/now` returns a HoneySQL form that has no meaning here. This is the design doc's tier-2
--- computed write -- SQL that genuinely needs to be SQL, written once in a reviewed file.
-INSERT INTO glossary (term, definition, creator_id, created_at, updated_at)
-VALUES (:value:term, :value:definition, :value:creator-id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-
--- :name- update-glossary-entry :! :n
--- Set the term and definition of the Glossary entry with :id. updated_at is stamped in the
--- statement for the same reason as the insert above.
-UPDATE glossary
-SET term = :value:term, definition = :value:definition, updated_at = CURRENT_TIMESTAMP
-WHERE id = :value:id
-
--- :name- delete-glossary-entry :! :n
--- Delete the Glossary entry with :id.
-DELETE FROM glossary
-WHERE id = :value:id
-
 -- :name- users-by-id :? :*
 -- The id, email, and name of the Users with :ids. Callers guard against an empty id set; see
 -- metabase.app-db.hugsql/non-empty-in for the case where an empty list must still run.
