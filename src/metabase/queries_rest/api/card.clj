@@ -531,6 +531,8 @@
     ;; Strip :query-permissions/perms first -- it is populated internally by the QP
     ;; middleware, so any value already on the incoming query is dropped here.
     (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+    ;; a goal reference picks a query the server will run, so it needs the same gate
+    (query-perms/check-goal-reference-permissions (:visualization_settings card))
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
@@ -571,7 +573,9 @@
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
+    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms)))
+  (when (api/column-will-change? :visualization_settings card-before-updates card-updates)
+    (query-perms/check-goal-reference-permissions (:visualization_settings card-updates))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be

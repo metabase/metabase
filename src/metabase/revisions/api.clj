@@ -123,7 +123,8 @@
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
-      (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)))
+      (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms))
+      (query-perms/check-goal-reference-permissions (get-in revision [:object :visualization_settings])))
     (when (= model :model/Transform)
       (api/check-403 (mi/can-write? (merge instance (:object revision)))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition

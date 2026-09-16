@@ -1972,8 +1972,12 @@
            permissions
            query-processor
            request
-           util}
-   :model-imports #{:model/Card :model/Field :model/Table}}
+           util
+           visualization-settings}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
 
   query-processor
   {:team    "Querying Platform"
