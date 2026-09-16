@@ -176,9 +176,9 @@ export const ChartSettingSeriesOrder = ({
             </Group>
             {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              variant="transparent"
+              variant="subtle"
               color="neutral"
-              size="compact-md"
+              size="sm"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}

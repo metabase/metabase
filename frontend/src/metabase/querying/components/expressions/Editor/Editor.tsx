@@ -211,9 +211,9 @@ export function Editor(props: EditorProps) {
             <ButtonTooltip label={t`Auto-format`}>
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
-                variant="transparent"
+                variant="subtle"
                 color="neutral"
-                size="compact-md"
+                size="sm"
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}

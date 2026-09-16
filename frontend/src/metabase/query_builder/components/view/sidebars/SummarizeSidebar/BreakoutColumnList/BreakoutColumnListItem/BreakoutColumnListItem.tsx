@@ -149,9 +149,9 @@ export function BreakoutColumnListItem({
         <Tooltip label={t`Add grouping`}>
           {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            variant="transparent"
+            variant="subtle"
             color="neutral"
-            size="compact-md"
+            size="sm"
             className={BreakoutColumnListItemS.AddButton}
             leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}

@@ -111,9 +111,9 @@ export function TableFieldsPage() {
               <Text fw="bold">{t`Field Details`}</Text>
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
-                variant="transparent"
+                variant="subtle"
                 color="neutral"
-                size="compact-md"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}

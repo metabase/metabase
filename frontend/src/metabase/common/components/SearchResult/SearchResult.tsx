@@ -247,9 +247,9 @@ export function SearchResult({
         <Box className={S.xraySection} pos="relative">
           {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            variant="transparent"
+            variant="subtle"
             color="neutral"
-            size="compact-md"
+            size="sm"
             leftSection={<Icon name="bolt" />}
             onClick={onXRayClick}
           />

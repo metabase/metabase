@@ -256,9 +256,9 @@ const ValueInput = ({
       {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canDelete && (
         <Button
-          variant="transparent"
+          variant="subtle"
           color="neutral"
-          size="compact-md"
+          size="sm"
           leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"
@@ -270,9 +270,9 @@ const ValueInput = ({
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
           <Button
-            variant="transparent"
+            variant="subtle"
             color="neutral"
-            size="compact-md"
+            size="sm"
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"

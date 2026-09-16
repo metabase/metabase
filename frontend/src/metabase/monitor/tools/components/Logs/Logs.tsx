@@ -87,9 +87,9 @@ export const Logs = ({
                       <Button
                         aria-label={t`Clear`}
                         leftSection={<Icon name="close" />}
-                        variant="transparent"
+                        variant="subtle"
                         color="neutral"
-                        size="compact-md"
+                        size="sm"
                         onClick={() => {
                           patchUrlState({ query: "" });
                           refollow();

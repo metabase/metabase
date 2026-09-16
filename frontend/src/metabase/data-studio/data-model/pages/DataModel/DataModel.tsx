@@ -250,9 +250,9 @@ function DataModelContent() {
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
-                variant="transparent"
+                variant="subtle"
                 color="neutral"
-                size="compact-md"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
@@ -317,9 +317,9 @@ function DataModelContent() {
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
-                variant="transparent"
+                variant="subtle"
                 color="neutral"
-                size="compact-md"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,

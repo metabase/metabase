@@ -211,9 +211,9 @@ const UploadTableRow = ({
           {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
             onClick={() => onTrash(item)}
-            variant="transparent"
+            variant="subtle"
             color="neutral"
-            size="compact-md"
+            size="sm"
             leftSection={<Icon name="trash" />}
           />
         </Flex>

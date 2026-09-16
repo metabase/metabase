@@ -62,10 +62,10 @@ export const ColumnAndSeparatorRow = ({
       {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {showRemove && (
         <Button
-          variant="transparent"
+          variant="subtle"
           color="neutral"
-          size="compact-md"
-          mb="md"
+          size="sm"
+          mb="sm"
           aria-label={t`Remove column`}
           leftSection={<Icon name="close" />}
           onClick={() => {

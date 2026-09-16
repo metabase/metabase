@@ -208,9 +208,9 @@ export const QuestionDownloadWidget = ({
             {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
               aria-label={t`Close hint`}
-              variant="transparent"
+              variant="subtle"
               color="neutral"
-              size="compact-md"
+              size="sm"
               style={{ flexShrink: 0 }}
               leftSection={
                 <Icon name="close" tooltip={t`Don't show me this again.`} />

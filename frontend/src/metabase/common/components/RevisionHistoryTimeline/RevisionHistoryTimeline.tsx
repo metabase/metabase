@@ -99,9 +99,9 @@ export function RevisionHistoryTimeline({
                     {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       className={S.revertButton}
-                      variant="transparent"
+                      variant="subtle"
                       color="neutral"
-                      size="compact-md"
+                      size="sm"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}

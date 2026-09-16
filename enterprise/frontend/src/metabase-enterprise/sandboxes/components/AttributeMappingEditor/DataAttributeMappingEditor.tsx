@@ -132,9 +132,9 @@ export const DataAttributeMappingEditor = ({
                 {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 <Button
                   leftSection={<Icon name="close" />}
-                  variant="transparent"
+                  variant="subtle"
                   color="neutral"
-                  size="compact-md"
+                  size="sm"
                   onClick={() =>
                     handleChange(removeEntry<ValueType>(entries, index))
                   }

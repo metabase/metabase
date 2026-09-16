@@ -107,9 +107,9 @@ export function EditorPanel({
                 <Tooltip label={t`Reset main colors to defaults`}>
                   {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    variant="transparent"
+                    variant="subtle"
                     color="neutral"
-                    size="compact-md"
+                    size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
                     leftSection={<Icon name="revert" />}
@@ -152,9 +152,9 @@ export function EditorPanel({
                 >
                   {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    variant="transparent"
+                    variant="subtle"
                     color="neutral"
-                    size="compact-md"
+                    size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
                     leftSection={<Icon name="revert" />}

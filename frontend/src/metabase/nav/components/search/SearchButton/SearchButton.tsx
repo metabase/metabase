@@ -26,9 +26,9 @@ export const SearchButton = (props: ButtonProps) => {
     // TODO: replace with ActionIcon (GDGT-2457)
     return (
       <Button
-        variant="transparent"
+        variant="subtle"
         color="neutral"
-        size="compact-md"
+        size="sm"
         leftSection={<Icon name="search" />}
         onClick={handleClick}
         aria-label="Search"

@@ -44,9 +44,9 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
         // Unjustified type cast. FIXME
         {...(props as ButtonProps)}
         aria-label={t`Copy link`}
-        variant="transparent"
+        variant="subtle"
         color="neutral"
-        size="compact-md"
+        size="sm"
         leftSection={<Icon name="link" />}
         onClick={handleCopy}
         onKeyDown={handleKeyDown}

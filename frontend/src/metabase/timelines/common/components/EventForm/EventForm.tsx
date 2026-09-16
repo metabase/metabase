@@ -151,10 +151,11 @@ const EventForm = ({
                   />
                   {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
-                    size="compact-md"
+                    size="sm"
+                    mb="sm"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
-                    variant="transparent"
+                    variant="subtle"
                     color="neutral"
                     leftSection={<Icon name="close" />}
                   />

@@ -248,8 +248,8 @@ export function DetailViewSidesheet({
                     aria-label={t`Previous row`}
                     disabled={!onPreviousClick}
                     leftSection={<Icon name="chevronup" />}
-                    size="compact-md"
-                    variant="transparent"
+                    size="sm"
+                    variant="subtle"
                     color="neutral"
                     style={{
                       opacity: onPreviousClick ? undefined : 0.5,
@@ -264,8 +264,8 @@ export function DetailViewSidesheet({
                     aria-label={t`Next row`}
                     disabled={!onNextClick}
                     leftSection={<Icon name="chevrondown" />}
-                    size="compact-md"
-                    variant="transparent"
+                    size="sm"
+                    variant="subtle"
                     color="neutral"
                     style={{
                       opacity: onNextClick ? undefined : 0.5,
@@ -291,8 +291,8 @@ export function DetailViewSidesheet({
                       aria-label={t`Actions`}
                       data-testid="actions-menu"
                       leftSection={<Icon name="ellipsis" />}
-                      size="compact-md"
-                      variant="transparent"
+                      size="sm"
+                      variant="subtle"
                       color="neutral"
                     />
                   </Tooltip>
@@ -322,8 +322,8 @@ export function DetailViewSidesheet({
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
                     leftSection={<Icon name="link" />}
-                    size="compact-md"
-                    variant="transparent"
+                    size="sm"
+                    variant="subtle"
                     color="neutral"
                     onClick={handleCopyLink}
                   />
@@ -336,8 +336,8 @@ export function DetailViewSidesheet({
                       aria-label={t`Open in full page`}
                       component={Link}
                       leftSection={<Icon name="expand" />}
-                      size="compact-md"
-                      variant="transparent"
+                      size="sm"
+                      variant="subtle"
                       color="neutral"
                       to={url}
                     />

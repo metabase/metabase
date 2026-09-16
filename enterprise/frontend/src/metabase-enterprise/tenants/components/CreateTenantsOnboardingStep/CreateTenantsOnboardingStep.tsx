@@ -142,9 +142,9 @@ export const CreateTenantsOnboardingStep = ({
                 {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {tenants.length > 1 && (
                   <Button
-                    variant="transparent"
+                    variant="subtle"
                     color="neutral"
-                    size="compact-md"
+                    size="sm"
                     leftSection={<Icon name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}

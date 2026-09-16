@@ -135,9 +135,9 @@ export function ImageUploadWidget({
                 {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {!isDefaultImage && (
                   <Button
-                    variant="transparent"
+                    variant="subtle"
                     color="neutral"
-                    size="compact-md"
+                    size="sm"
                     leftSection={<Icon name="close" />}
                     ml="lg"
                     onClick={handleRemove}
