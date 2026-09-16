@@ -4,7 +4,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v64.2026-09-11T12:00:00
+      id: v65.2026-09-11T12:00:00
       author: tplude
       comment: Add entity_id column to glossary table
       changes:
@@ -23,7 +23,7 @@ databaseChangeLog:
             columnName: entity_id
 
   - changeSet:
-      id: v64.2026-09-11T12:00:01
+      id: v65.2026-09-11T12:00:01
       author: tplude
       comment: Backfill NULL glossary.entity_id values
       changes:
@@ -39,7 +39,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.2026-09-11T12:00:02
+      id: v65.2026-09-11T12:00:02
       author: tplude
       comment: entity_id is NOT NULL on glossary
       changes:
@@ -49,7 +49,7 @@ databaseChangeLog:
             columnDataType: char(21)
 
   - changeSet:
-      id: v64.2026-09-11T12:00:03
+      id: v65.2026-09-11T12:00:03
       author: tplude
       comment: entity_id is unique on glossary
       changes:

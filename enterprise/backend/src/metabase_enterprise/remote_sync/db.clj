@@ -59,6 +59,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn entity-id-where :- [:maybe :string]
+  "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
+  [model-key :- :keyword
+   column    :- [:enum :name :term]
+   value     :- :string]
+  (t2/select-one-fn :entity_id model-key column value))
+
 (mu/defn count-where
   "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
@@ -128,7 +135,7 @@
   "Up to `limit` values of `name-col` from the rows [[unsynced-instance-count]] counts."
   [model-key    :- :keyword
    model-type   :- :string
-   name-col     :- :keyword
+   name-col     :- [:enum :name :term]
    removal-opts :- RemovalOpts
    limit        :- ms/PositiveInt]
   (t2/select-fn-vec name-col model-key {:where (unsynced-instance-expr model-key model-type removal-opts)

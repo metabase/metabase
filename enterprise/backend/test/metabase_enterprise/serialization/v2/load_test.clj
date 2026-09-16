@@ -3030,12 +3030,12 @@
           (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file "ARR" nil)]))
           (is (=? [{:term "ARR" :definition "Annual recurring revenue (imported)" :entity_id local-eid}]
                   (t2/select :model/Glossary))))))
-    (testing "a file whose term exists locally under another entity_id updates that row and adopts the file's entity_id"
+    (testing "a file whose term exists locally under another entity_id updates that row in place and adopts the file's entity_id"
       (mt/with-empty-h2-app-db!
-        (let [file-eid "glossaryfileeid000001"]
-          (ts/create! :model/Glossary :term "ARR" :definition "local")
+        (let [file-eid       "glossaryfileeid000001"
+              {local-id :id} (ts/create! :model/Glossary :term "ARR" :definition "local")]
           (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
-          (is (=? [{:term "ARR" :definition "Annual recurring revenue (imported)" :entity_id file-eid}]
+          (is (=? [{:id local-id :term "ARR" :definition "Annual recurring revenue (imported)" :entity_id file-eid}]
                   (t2/select :model/Glossary))))))
     (testing "a file whose entity_id and term are both new inserts a row"
       (mt/with-empty-h2-app-db!

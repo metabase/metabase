@@ -3364,8 +3364,8 @@
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))
 
 (deftest glossary-entity-id-backfill-test
-  (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
-    (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
+  (testing "v65.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
+    (impl/test-migrations ["v65.2026-09-11T12:00:00" "v65.2026-09-11T12:00:03"] [migrate!]
       (let [row      (fn [term] {:term       term
                                  :definition (str term " definition")
                                  :creator_id 13371338

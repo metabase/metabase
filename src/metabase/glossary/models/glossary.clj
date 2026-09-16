@@ -43,9 +43,11 @@
 
 (defmethod serdes/load-one! "Glossary"
   [ingested maybe-local]
-  ;; `term` is unique, so match on it before inserting: two instances can each create the same term under
-  ;; different entity_ids. The loader generates a throwaway entity_id for a term-keyed file, so keep the local
-  ;; row's identity in that case.
+  ;; `term` is unique, so a file whose entity_id matches no local row is matched on its term instead: two instances
+  ;; can each create the same term under different entity_ids. That local row is updated in place (same primary
+  ;; key) and adopts the file's entity_id and definition; its own entity_id is discarded, nothing references it.
+  ;; A term-keyed file (exported before entity_id existed) gets a throwaway entity_id from the loader, so the local
+  ;; row keeps its identity in that case.
   (let [local       (or maybe-local (glossary.db/glossary-entry-by-term (:term ingested)))
         term-keyed? (not= (-> ingested serdes/path last :id) (:entity_id ingested))]
     (serdes/default-load-one! (cond-> ingested

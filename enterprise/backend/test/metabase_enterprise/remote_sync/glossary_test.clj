@@ -378,7 +378,17 @@
       (testing "a term that is itself 21 nano-id characters still resolves by term"
         (is (= #{(:entity_id shaped)} (resolve "CustomerLifetimeValue"))))
       (testing "a path matching no local row keeps its raw id"
-        (is (= #{"No such term"} (resolve "No such term")))))))
+        (is (= #{"No such term"} (resolve "No such term"))))
+      (testing "with ingest-one, an entity_id path matching no row resolves to the row matching the entity's term"
+        (is (= #{(:entity_id entry)}
+               (get-in (spec/extract-imported-entities [[{:model "Glossary" :id "glossaryfileeidAAAA01"}]]
+                                                       (constantly {:term "ARR" :definition "from the repo"}))
+                       [:by-entity-id "Glossary"]))))
+      (testing "with ingest-one, an entity_id path matching neither a row nor a term keeps its raw id"
+        (is (= #{"glossaryfileeidAAAA02"}
+               (get-in (spec/extract-imported-entities [[{:model "Glossary" :id "glossaryfileeidAAAA02"}]]
+                                                       (constantly {:term "No such term" :definition "x"}))
+                       [:by-entity-id "Glossary"])))))))
 
 (def ^:private base-tree
   "A snapshot with the synced Library and one plain collection, and no glossary files."
@@ -462,3 +472,21 @@
              (t2/delete! :model/Glossary :term term)
              (is (true? (import-v0-then-v1! base-tree files)))
              (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term)))))))))))
+
+(deftest entity-id-keyed-file-matching-local-term-is-not-a-deletion-conflict-test
+  (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
+      (do-with-synced-library!
+       (fn []
+         (let [file-eid "glossaryfileeidAAAA01"
+               path     "glossary/arr.yaml"
+               files    (assoc base-tree path (test-helpers/generate-glossary-yaml file-eid "ARR" "from the repo"))
+               mock     (test-helpers/create-mock-source :initial-files {"main" files})]
+           (testing "an unsynced local row holding the file's term under another entity_id is updated in place"
+             (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "local"}]
+               (with-rso! entry "create")
+               (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
+                 (is (= :success (:status result)) (str "import should succeed: " result))
+                 (is (= [(:id entry)] (t2/select-fn-vec :id :model/Glossary :term "ARR")))
+                 (is (=? {:entity_id file-eid :definition "from the repo"} (t2/select-one :model/Glossary :id (:id entry))))
+                 (is (=? {:status "synced" :file_path path} (rso entry))))))))))))

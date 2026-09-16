@@ -912,24 +912,36 @@
    and hybrid models, returns the entity_id string from the last path element. For path-based models
    like Table and Field, returns a map with database, schema, and table/field names that can be used
    to look up the entity. A spec with `:natural-key-paths?` may also be keyed on a natural key (files
-   exported before the model had an entity_id); its paths are resolved through `serdes/load-find-local`."
-  {:arglists '([spec serdes-path])}
-  (fn [spec _path] (:identity spec))
+   exported before the model had an entity_id); its paths are resolved through `serdes/load-find-local`, and
+   through the entity's natural key when `ingest-one` (path -> ingested entity, or nil) is given."
+  {:arglists '([spec serdes-path ingest-one])}
+  (fn [spec _path _ingest-one] (:identity spec))
   :hierarchy #'serdes-path-identity-hierarchy)
 
+(defn- natural-key-entity-id
+  "The entity_id of the local row whose natural-key column (the spec's tracked name column) equals `ingested`'s,
+  or nil."
+  [{:keys [model-key] :as spec} ingested]
+  (let [column (get-in spec [:tracking :field-mappings :model_name])]
+    (when-some [value (get ingested column)]
+      (remote-sync.db/entity-id-where model-key column value))))
+
 (defmethod extract-identity-from-serdes-path ::entity-id-extractor
-  [{:keys [natural-key-paths?]} serdes-path]
+  [{:keys [natural-key-paths?] :as spec} serdes-path ingest-one]
   (let [id (:id (last serdes-path))]
     (if natural-key-paths?
       ;; The path id may be a natural key (a glossary term, before `entity_id` existed) naming whichever local row
-      ;; the loader matches it to, so use that row's entity_id. Before the load there may be no such row yet; the
-      ;; raw id is kept then, since it matches no local row (harmless to the removal anti-join) and still counts
-      ;; as an imported entity.
-      (or (:entity_id (serdes/load-find-local serdes-path)) id)
+      ;; the loader matches it to, so use that row's entity_id. Before the load there may be no row with that id
+      ;; yet; the loader then matches the entity on its natural key, so resolve the same way when the entity can
+      ;; be read. Failing both, the raw id is kept, since it matches no local row (harmless to the removal
+      ;; anti-join) and still counts as an imported entity.
+      (or (:entity_id (serdes/load-find-local serdes-path))
+          (when ingest-one (natural-key-entity-id spec (ingest-one serdes-path)))
+          id)
       id)))
 
 (defmethod extract-identity-from-serdes-path :path
-  [_ serdes-path]
+  [_ serdes-path _ingest-one]
   (let [path-map (into {} (map (fn [elem] [(keyword (u/lower-case-en (:model elem))) (:id elem)]) serdes-path))]
     (cond-> {}
       (contains? path-map :database) (assoc :db_name (:database path-map))
@@ -938,34 +950,39 @@
       (contains? path-map :field)    (assoc :field_name (:field path-map)))))
 
 (defmethod extract-identity-from-serdes-path :default
-  [_ _]
+  [_ _ _]
   nil)
 
 (defn extract-imported-entities
   "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
    Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
-   path lookup maps for models like Table and Field that use path-based identity."
-  [seen-paths]
-  (reduce
-   (fn [acc path]
-     (let [model-type (-> path last :model)]
-       (if-let [spec (spec-for-model-type model-type)]
-         (let [identity-type (:identity spec)
-               identity-data (extract-identity-from-serdes-path spec path)]
-           (if identity-data
-             (case identity-type
-               (:entity-id :hybrid)
-               (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
+   path lookup maps for models like Table and Field that use path-based identity.
 
-               :path
-               (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+   `ingest-one` (path -> ingested entity) is for the pre-load conflict check: a `:natural-key-paths?` path whose
+   id matches no local row yet resolves to the row the loader will match on the entity's natural key."
+  ([seen-paths]
+   (extract-imported-entities seen-paths nil))
+  ([seen-paths ingest-one]
+   (reduce
+    (fn [acc path]
+      (let [model-type (-> path last :model)]
+        (if-let [spec (spec-for-model-type model-type)]
+          (let [identity-type (:identity spec)
+                identity-data (extract-identity-from-serdes-path spec path ingest-one)]
+            (if identity-data
+              (case identity-type
+                (:entity-id :hybrid)
+                (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
 
-               acc)
-             acc))
-         acc)))
-   {:by-entity-id {}
-    :by-path {}}
-   seen-paths))
+                :path
+                (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+
+                acc)
+              acc))
+          acc)))
+    {:by-entity-id {}
+     :by-path {}}
+    seen-paths)))
 
 ;;; -------------------------------------------- Event Helper Functions ------------------------------------------------
 
