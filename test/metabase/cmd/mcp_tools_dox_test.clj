@@ -14,7 +14,7 @@
 (deftest ^:parallel tool-title-test
   (testing "a tool's own title wins, lowered to the sentence case a heading wants"
     (is (= "Search Metabase content" (#'mcp-tools-dox/tool-title {:name "search" :title "Search Metabase Content"}))))
-  (testing "no v2 deftool sets a title, so the slug is title-cased then sentence-cased"
+  (testing "without a title, the snake_case name is spaced out and sentence-cased"
     ;; heading a section `render_drill_through` would read as a slug rather than a name
     (is (= "Render drill through" (#'mcp-tools-dox/tool-title {:name "render_drill_through"})))
     (is (= "Get parameter values" (#'mcp-tools-dox/tool-title {:name "get_parameter_values"}))))
@@ -37,11 +37,7 @@
     ;; `execute_sql` and `document_write` spell out `{{tag}}` and `{% card … %}` in exactly Liquid's syntax
     (is (= "Put values behind {% raw %}{{tag}}{% endraw %} or a {% raw %}{% card id=1 %}{% endraw %} embed."
            (#'mcp-tools-dox/tool-description {:name "execute_sql"
-                                              :description "Put values behind {{tag}} or a\n  {% card id=1 %} embed."}))))
-  (testing "a tool with nothing to say fails loudly rather than rendering an empty section"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"No description for MCP tool \"nope\""
-                          (#'mcp-tools-dox/tool-description {:name "nope"})))))
+                                              :description "Put values behind {{tag}} or a\n  {% card id=1 %} embed."})))))
 
 ;;;; Scopes
 
@@ -49,45 +45,76 @@
   (testing "the scope is published with the wording the consent screen uses"
     (is (= "Permission scope: `agent:content:read` — See your Metabase content and data structure"
            (#'mcp-tools-dox/scope-bullet {:name "search" :scope "agent:content:read"}))))
-  (testing "a tool with no scope contributes no bullet"
-    ;; `register-tool!` refuses one, so this is only reachable from a hand-built map
-    (is (nil? (#'mcp-tools-dox/scope-bullet {:name "whatever"}))))
-  (testing "a scope no `defscope` registered fails loudly"
+  (testing "a tool with no scope, or one no `defscope` registered, contributes no bullet"
+    ;; neither reaches the page: `register-tool!` refuses the first and `assert-documentable` the second
+    (is (nil? (#'mcp-tools-dox/scope-bullet {:name "whatever"})))
+    (is (nil? (#'mcp-tools-dox/scope-bullet {:name "nope" :scope "agent:nope"})))))
+
+;;;; What the page requires of a tool
+
+(deftest ^:parallel tool-problems-test
+  (testing "a documentable tool has no problems"
+    (is (= [] (#'mcp-tools-dox/tool-problems {:name "search" :description "Search." :scope "agent:content:read"}))))
+  (testing "a tool with nothing to say is refused rather than rendered as an empty section"
+    (let [problems (#'mcp-tools-dox/tool-problems {:name "nope" :scope "agent:content:read"})]
+      (is (= 1 (count problems)))
+      (is (re-find #"No description for MCP tool \"nope\"" (first problems)))))
+  (testing "a scope no `defscope` registered is refused"
     ;; a scope string the consent screen can't explain is a bug, not a page to publish
+    (let [problems (#'mcp-tools-dox/tool-problems {:name "nope" :description "Nope." :scope "agent:nope"})]
+      (is (= 1 (count problems)))
+      (is (re-find #"uses unregistered scope \"agent:nope\"" (first problems)))))
+  (testing "every problem is reported, not just the first"
+    (is (= 2 (count (#'mcp-tools-dox/tool-problems {:name "nope"}))))))
+
+(deftest ^:parallel assert-documentable-test
+  (testing "an empty registry fails loudly rather than writing a page with no tools"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"uses unregistered scope \"agent:nope\""
-                          (#'mcp-tools-dox/scope-bullet {:name "nope" :scope "agent:nope"})))))
+                          #"No MCP tools found"
+                          (#'mcp-tools-dox/assert-documentable []))))
+  (testing "one bad tool fails the page, naming it"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"unregistered scope \"agent:nope\""
+                          (#'mcp-tools-dox/assert-documentable
+                           [{:name "search" :description "Search." :scope "agent:content:read"}
+                            {:name "nope" :description "Nope." :scope "agent:nope"}]))))
+  (testing "a documentable set passes"
+    (is (nil? (#'mcp-tools-dox/assert-documentable
+               [{:name "search" :description "Search." :scope "agent:content:read"}])))))
 
 ;;;; Effects
 
-(deftest ^:parallel effect-bullets-test
-  (testing "a read-only tool says so, and doesn't stutter about being repeatable"
-    (is (= ["Read-only."]
-           (remove nil? (#'mcp-tools-dox/effect-bullets
-                         {:annotations {:readOnlyHint true :idempotentHint true}})))))
-  (testing "a non-destructive writer says it writes, and promises nothing about what it won't touch"
-    ;; `destructiveHint false` is a hint: `document_write` carries it and rewrites whole bodies
-    (is (= ["Creates or changes content."]
-           (remove nil? (#'mcp-tools-dox/effect-bullets {:annotations {:destructiveHint false}})))))
-  (testing "a destructive tool is called out, and idempotence is worth saying about a writer"
-    (is (= ["Can overwrite or delete existing data or content."
-            "Running it again with the same arguments has the same effect as running it once."]
-           (remove nil? (#'mcp-tools-dox/effect-bullets
-                         {:annotations {:destructiveHint true :idempotentHint true}}))))))
+(deftest ^:parallel effect-bullet-test
+  (are [expected annotations] (= expected (#'mcp-tools-dox/effect-bullet {:annotations annotations}))
+    "Read-only."                                          {:readOnlyHint true}
+    ;; `destructiveHint false` is a hint: `document_write` carries it and rewrites whole bodies, so the page
+    ;; promises nothing about what a writer won't touch
+    "Creates or changes content."                         {:destructiveHint false}
+    "Can overwrite or delete existing data or content."   {:destructiveHint true}
+    ;; the registry always merges both hints in; a hand-built map without them says nothing
+    nil                                                   {}))
 
-(deftest ^:parallel interactive-bullet-test
+(deftest ^:parallel idempotence-bullet-test
+  (testing "idempotence is worth saying about a writer"
+    (is (string? (#'mcp-tools-dox/idempotence-bullet {:annotations {:destructiveHint true :idempotentHint true}}))))
+  (testing "but a read-only tool doesn't stutter about being repeatable"
+    (is (nil? (#'mcp-tools-dox/idempotence-bullet {:annotations {:readOnlyHint true :idempotentHint true}}))))
+  (testing "and a writer that doesn't claim it gets no line"
+    (is (nil? (#'mcp-tools-dox/idempotence-bullet {:annotations {:destructiveHint false}})))))
+
+(deftest ^:parallel inline-ui-bullet-test
   (testing "a tool publishing a :_meta :ui block is flagged as interactive"
-    ;; the page used to say this by grouping; now each such tool says it for itself
-    (is (str/starts-with? (#'mcp-tools-dox/interactive-bullet
+    ;; the page has no section grouping such tools, so each one says it for itself
+    (is (str/starts-with? (#'mcp-tools-dox/inline-ui-bullet
                            {:name "visualize_query" :_meta {:ui {:resourceUri "ui://metabase/visualize-query.html"}}})
                           "Interactive:")))
   (testing "any other tool contributes no bullet"
-    (is (nil? (#'mcp-tools-dox/interactive-bullet {:name "search" :annotations {:readOnlyHint true}})))))
+    (is (nil? (#'mcp-tools-dox/inline-ui-bullet {:name "search" :annotations {:readOnlyHint true}})))))
 
 ;;;; Argument types
 
-(deftest ^:parallel property-type-label-test
-  (are [expected property] (= expected (#'mcp-tools-dox/property-type-label property))
+(deftest ^:parallel type-cell-test
+  (are [expected property] (= expected (#'mcp-tools-dox/type-cell property))
     "string"           {:type "string"}
     ;; the strict-tool transform spells "optional" as nullable; `null` isn't a value a caller passes
     "string"           {:type ["string" "null"]}
@@ -136,8 +163,8 @@
     ["a" "b"]           {:type "array" :items {:type "string" :enum ["a" "b"]}}
     []                  {:type "string"}))
 
-(deftest ^:parallel int-range-test
-  (are [expected property] (= expected (#'mcp-tools-dox/int-range property))
+(deftest ^:parallel numeric-range-test
+  (are [expected property] (= expected (#'mcp-tools-dox/numeric-range property))
     {:minimum 1 :maximum 10} {:type "integer" :minimum 1 :maximum 10}
     ;; `[:maybe [:int {:min 1 :max 10}]]` — the shape of every optional v2 argument
     {:minimum 1 :maximum 10} {:oneOf [{:type "integer" :minimum 1 :maximum 10} {:type "null"}]}
@@ -147,6 +174,26 @@
     ;; a bounded string publishes `minLength`, which is not a range
     nil                      {:type "string" :minLength 1 :maxLength 21}
     nil                      {:type "integer"}))
+
+(deftest ^:parallel description-cell-test
+  (are [expected property] (= expected (#'mcp-tools-dox/description-cell property))
+    ;; an enum publishes what it accepts ahead of its prose: the v2 surface dispatches on these, so the
+    ;; members are the argument's real documentation
+    "One of: `create`, `update`. What to do."  {:type "string" :enum ["create" "update"] :description "What to do."}
+    ;; a bounded integer publishes its range after any enum and ahead of its prose — `depth`'s prose says
+    ;; "default 2" and stops, and the ceiling is only in the schema
+    "Range: 1 to 10. Levels (default 2)."      {:oneOf [{:type "integer" :minimum 1 :maximum 10
+                                                         :description "Levels (default 2)."}
+                                                        {:type "null"}]}
+    ;; a description buried in a nullable branch is found rather than dashed out: the shape of every optional
+    ;; v2 argument
+    "Max rows."                                {:oneOf [{:type "integer" :description "Max rows."} {:type "null"}]}
+    ;; and one on an array's items
+    "A keyword query."                         {:type "array" :items {:type "string" :description "A keyword query."}}
+    ;; prose is flattened and Liquid-fenced
+    "Use {% raw %}{{tag}}{% endraw %}."        {:type "string" :description "Use\n  {{tag}}."}
+    ;; nothing at all is an em dash, not an empty cell
+    "—"                                        {:type "string"}))
 
 (deftest ^:parallel arguments-markdown-test
   (testing "a tool with no properties says so rather than rendering an empty table"
@@ -162,34 +209,6 @@
         ;; `strict-tool-input-schema` lists every property there so strict clients can send an explicit null,
         ;; so it can't tell a required argument from an optional one
         (is (not (str/includes? markdown "Required"))))))
-  (testing "a description buried in a nullable branch is found rather than dashed out"
-    ;; the shape of every optional v2 argument; would have been an em dash before `property-descriptions`
-    (is (str/includes? (#'mcp-tools-dox/arguments-markdown
-                        {:inputSchema {:properties {:limit {:oneOf [{:type "integer" :description "Max rows."}
-                                                                    {:type "null"}]}}}})
-                       "Max rows.")))
-  (testing "a description on an array's items is found too"
-    (is (str/includes? (#'mcp-tools-dox/arguments-markdown
-                        {:inputSchema {:properties {:term_queries {:type  "array"
-                                                                   :items {:type "string"
-                                                                           :description "A keyword query."}}}}})
-                       "A keyword query.")))
-  (testing "an enum publishes what it accepts, ahead of its own prose"
-    ;; the v2 surface dispatches on these, so the members are the argument's real documentation
-    (is (str/includes? (#'mcp-tools-dox/arguments-markdown
-                        {:inputSchema {:properties {:method {:type "string"
-                                                             :enum ["create" "update"]
-                                                             :description "What to do."}}}})
-                       "One of: `create`, `update`. What to do.")))
-  (testing "a bounded integer publishes its range, after any enum and ahead of its prose"
-    ;; `depth`'s prose says "default 2" and stops — the ceiling is only in the schema
-    (is (str/includes? (#'mcp-tools-dox/arguments-markdown
-                        {:inputSchema {:properties {:depth {:oneOf [{:type        "integer"
-                                                                     :minimum     1
-                                                                     :maximum     10
-                                                                     :description "Levels (default 2)."}
-                                                                    {:type "null"}]}}}})
-                       "Range: 1 to 10. Levels (default 2).")))
   (testing "a pipe in a description doesn't split the row"
     (is (str/includes? (#'mcp-tools-dox/arguments-markdown
                         {:inputSchema {:properties {:q {:type "string" :description "a | b"}}}})
@@ -204,14 +223,14 @@
 
 ;;;; Which tools land on the page
 
-(deftest all-tools-test
-  (let [tools (#'mcp-tools-dox/all-tools)]
+(deftest documented-tools-test
+  (let [tools (#'mcp-tools-dox/documented-tools)]
     (is (seq tools))
     (testing "a tool the MCP App calls for itself is left off the page"
       ;; the model never calls `refresh_ui_credential`; it takes no arguments and returns a credential
       (is (not (some #(= "refresh_ui_credential" (:name %)) tools)))
       (is (some #(= "refresh_ui_credential" (:name %)) (v2.registry/all-tool-entries))
-          "the tool this test guards against listing no longer exists; pick another app-only tool"))
+          "no registered tool is named refresh_ui_credential; pick another app-only tool to guard against"))
     (testing "every tool carries a scope some defscope can explain"
       ;; `register-tool!` pins it to a non-blank string; this pins it to one the consent screen has wording for
       (doseq [{:keys [name scope]} tools]
@@ -223,7 +242,7 @@
                        (remove #'mcp-tools-dox/app-only?)
                        (map :name)))))
     (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page flags them"
-      ;; `interactive?` keys off `:_meta`; keep it in step with the extension the tool actually requires
+      ;; `renders-inline-ui?` keys off `:_meta`; keep it in step with the extension the tool actually requires
       (doseq [{:keys [name _meta required-extensions]} tools]
         (is (= (contains? (set required-extensions) :mcp-app-ui) (some? (:ui _meta)))
             (str name " disagrees about being an MCP Apps tool"))))))
@@ -231,18 +250,21 @@
 (deftest all-arguments-described-test
   (testing "every top-level argument of every tool carries a description the page can show"
     ;; `description-cell` renders an em dash when a schema says nothing. Prose on the keys of a nested object is
-    ;; unreachable by design (see `item-descriptions`), so an array of objects needs it on the `:sequential`
+    ;; unreachable by design (see `element-descriptions`), so an array of objects needs it on the `:sequential`
     ;; wrapper and a nested map on the `:map` itself; anything else wants it on the innermost schema.
-    (doseq [{tool-name :name :keys [inputSchema]} (#'mcp-tools-dox/all-tools)
+    (doseq [{tool-name :name :keys [inputSchema]} (#'mcp-tools-dox/documented-tools)
             [k property]                          (:properties inputSchema)]
       (is (not= "—" (#'mcp-tools-dox/description-cell property))
           (str tool-name " argument " (name k) " has no description")))))
 
 (deftest ^:parallel document-markdown-test
-  (testing "an empty registry fails loudly rather than writing a page with no tools"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"No MCP tools found"
-                          (#'mcp-tools-dox/document-markdown "intro" [])))))
+  (testing "the page is the intro, then a section per tool, ending in one newline"
+    (let [markdown (#'mcp-tools-dox/document-markdown
+                    "intro"
+                    [{:name "search" :description "Search." :scope "agent:content:read"
+                      :annotations {:readOnlyHint true} :inputSchema {}}])]
+      (is (str/starts-with? markdown "intro\n\n## Search\n"))
+      (is (str/ends-with? markdown "This tool takes no arguments.\n")))))
 
 ;;;; End to end
 
@@ -250,7 +272,7 @@
   (mt/with-temp-file [path]
     (let [{:keys [tools]} (mcp-tools-dox/generate-dox! path)
           markdown        (slurp path)
-          documented      (#'mcp-tools-dox/all-tools)]
+          documented      (#'mcp-tools-dox/documented-tools)]
       (testing "reports what it wrote"
         (is (= (count documented) tools))
         (is (pos? tools)))
@@ -263,9 +285,10 @@
               (str "no section for " (:name t)))
           (is (str/includes? markdown (str "Tool name: `" (:name t) "`"))
               (str "no tool name for " (:name t)))))
-      (testing "tools are not grouped: no heading but the tools' own"
-        (doseq [stale ["## Interactive tools" "## Read-only tools" "## Write and delete tools"]]
-          (is (not (str/includes? markdown stale))))
+      (testing "tools are not grouped: every heading is a tool's own, and nothing nests beneath one"
+        (let [titles (set (map #'mcp-tools-dox/tool-title documented))]
+          (doseq [heading (map second (re-seq #"(?m)^## (.*)$" markdown))]
+            (is (contains? titles heading) (str "heading is not a tool: " heading))))
         (is (not (str/includes? markdown "\n### "))))
       (testing "tools run in name order"
         ;; `all-tool-entries` name-sorts; the page keeps that rather than imposing an order of its own
@@ -287,12 +310,12 @@
       (testing "scopes are published with the consent screen's wording"
         (is (str/includes? markdown "Permission scope: `agent:content:read`")))
       (testing "arguments are listed without claiming which are required"
-        ;; would regress if the table read `:required` off the strict-transformed schema, which lists them all.
-        ;; Checks the header rows, not the whole page — a description may legitimately open with "Required on
-        ;; create", and `collection_write`'s `name` does.
+        ;; the strict-transformed schema lists every property in `:required`, so a column read from it would mark
+        ;; them all. Checks the header rows, not the whole page — a description may legitimately open with
+        ;; "Required on create", and `collection_write`'s `name` does.
         (is (not (re-find #"(?m)^\| Argument .*\bRequired\b.*\|$" markdown))))
       (testing "argument prose survives the nullable wrapper every v2 argument has"
-        ;; the whole table would be em dashes if `property-descriptions` stopped at the property
+        ;; an optional v2 argument carries its prose on the nullable branch, not on the property
         (let [section (second (str/split markdown #"\n## Search\n"))]
           (is (str/includes? section "| `limit`"))
           (is (not (re-find #"\| `limit`\s+\| integer\s+\| —" section)))))
@@ -300,7 +323,7 @@
         (let [section (second (str/split markdown #"\n## Browse data\n"))]
           (is (str/includes? section "`list_databases`"))))
       (testing "an array-of-objects argument carries only its own prose, not every element's"
-        ;; `ops` is a union of two dozen op objects; before `item-descriptions` their sentences ran together
+        ;; `ops` is a union of two dozen op objects, each with a sentence; only the array's own belongs in the cell
         (let [section (second (str/split markdown #"\n## Dashboard write\n"))
               ops-row (re-find #"(?m)^\| `ops` .*$" section)]
           (is (some? ops-row))

@@ -3,15 +3,14 @@
 
     clojure -M:ee:doc mcp-tools-documentation
 
-  The page is written from [[all-tools]] — the same manifest a client receives from `tools/list`, plus the
+  The page is written from [[documented-tools]] — the same manifest a client receives from `tools/list`, plus the
   `:scope` that answer strips."
   (:require
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.cmd.common :as cmd.common]
    [metabase.cmd.markdown :as md]
-   ;; Tools self-register with `deftool` when their namespace loads, and `metabase.mcp.v2.api` is the one
-   ;; place that requires all of them. Required for that side effect: without it the registry is empty.
+   ;; Required for its side effect: loading it loads every tool namespace, which registers itself.
    [metabase.mcp.v2.api]
    [metabase.mcp.v2.registry :as v2.registry]))
 
@@ -21,40 +20,50 @@
 
 (def ^:private intro-resource "metabase/cmd/resources/mcp-tools-intro.md")
 
-(defn- interactive?
-  "Does `tool` render an inline chart in the AI client? Recognized by the `:_meta` `:ui` block it publishes rather
-  than by its `:required-extensions`, because `:_meta` is the half a client actually sees.
-  `metabase.cmd.mcp-tools-dox-test/all-tools-test` pins the two to the same set."
+;;;; Which tools belong on the page
+
+(defn- renders-inline-ui?
+  "Does `tool` render an inline chart in the AI client?"
   [tool]
   (some? (get-in tool [:_meta :ui])))
 
-;;;; Which tools belong on the page
-
 (defn- app-only?
-  "Is `tool` one the MCP App calls for itself rather than one the model chooses? `refresh_ui_credential` marks
-  itself so with the `:_meta` `:ui` `:visibility` hint. It takes no arguments and returns a credential, so a
-  section for it would document nothing a reader can act on."
+  "Don't document app-only tools."
   [tool]
   (boolean (some #{"app"} (get-in tool [:_meta :ui :visibility]))))
 
-(defn- all-tools
-  "Every tool the MCP server publishes for a model to call, name-sorted, each with its `:scope`.
-
-  Reads [[v2.registry/all-tool-entries]] rather than [[v2.registry/list-tools]]. The two agree on which tools
-  exist and on the `:inputSchema` and `:annotations` each publishes, but `list-tools` answers for one session:
-  it strips `:scope`, which is half of what this page is for, and it hides the MCP Apps tools from a client
-  that can't render them. Neither is a reason for a tool to be missing from the reference. Being
-  [[app-only?]] is."
+(defn- documented-tools
+  "Every tool the MCP server publishes for a model to call, name-sorted, each with its `:scope`."
   []
   (remove app-only? (v2.registry/all-tool-entries)))
 
+;;;; What the page requires of a tool
+
+(defn- tool-problems
+  "Why `tool` can't be documented, as messages."
+  [{tool-name :name :keys [description scope]}]
+  (cond-> []
+    (str/blank? description)
+    (conj (str "No description for MCP tool " (pr-str tool-name) ". Give its deftool a docstring."))
+
+    (not (api-scope/registered-scope? scope))
+    (conj (str "MCP tool " (pr-str tool-name) " uses unregistered scope " (pr-str scope)
+               ". Declare it with metabase.api-scope.core/defscope."))))
+
+(defn- assert-documentable
+  "Throw when `tools` is empty or any tool has [[tool-problems]]."
+  [tools]
+  (when (empty? tools)
+    (throw (ex-info (str "No MCP tools found; the v2 registry is empty, so metabase.mcp.v2.api either no longer "
+                         "requires the tool namespaces or no longer loads")
+                    {})))
+  (when-let [problems (seq (mapcat tool-problems tools))]
+    (throw (ex-info (str/join "\n" problems) {:problems (vec problems)}))))
+
 ;;;; Facts about one tool
 
-(def ^:private preserved-words
-  "Words that keep their own capitalization when a title is lowered to sentence case, keyed by their lowercase form.
-  Two kinds: acronyms, which the Title Case conventions upstream of this page get wrong anyway — the fallback in
-  [[tool-title]] capitalizes a tool name word by word, turning `execute_sql` into `Execute Sql` — and the proper
-  nouns an explicit `:title` spells out."
+(def ^:private fixed-case-words
+  "Words that keep their capitalization in a sentence-cased title, keyed by lowercase form."
   {"sql"      "SQL"
    "url"      "URL"
    "uri"      "URI"
@@ -65,250 +74,213 @@
    "metabase" "Metabase"})
 
 (defn- sentence-case
-  "`title` in the sentence case the docs style guide asks of a heading: the first word capitalized, the rest lowered,
-  except for the [[preserved-words]]. Whole words only, so a `Validate Idea` keeps its `idea`."
+  "`title` with the first word capitalized and the rest lowered, except for [[fixed-case-words]]."
   [title]
   (->> (str/split title #" ")
        (map-indexed (fn [i word]
                       (let [lowered (str/lower-case word)]
-                        (or (get preserved-words lowered)
+                        (or (get fixed-case-words lowered)
                             (if (zero? i)
                               (str/capitalize lowered)
                               lowered)))))
        (str/join " ")))
 
 (defn- tool-title
-  "The heading a tool's section gets. No v2 `deftool` spells out a `:title` today, so in practice this always
-  title-cases the tool's snake_case name rather than heading a section with a bare slug; the `:title` branch is
-  there because `tools/list` publishes the key and a tool may yet set it. Either way the result goes through
-  [[sentence-case]]: Title Case is not what the docs style guide wants in a heading, and the word-by-word
-  fallback doesn't know `sql` is an acronym. Correcting it here keeps the fix to the page — a `:title` is also
-  what MCP clients list, where Title Case is the norm."
+  "The section heading: the tool's `:title`, else its name with underscores spaced out; sentence-cased either way."
   [{:keys [title] :as tool}]
-  (sentence-case
-   (or title
-       (->> (str/split (:name tool) #"_")
-            (map str/capitalize)
-            (str/join " ")))))
+  (sentence-case (or title (str/replace (:name tool) "_" " "))))
 
-(defn- prose
-  "Registry prose readied for the page: flattened to one line, then Liquid-escaped. Only text that came from a
-  `deftool` or `defscope` goes through here — the intro resource is hand-written docs and may use Liquid on
-  purpose."
+(defn- page-prose
+  "Registry prose flattened to one line and Liquid-escaped. Not for the intro resource, which may use Liquid."
   [s]
   (some-> (md/flatten-prose s) md/escape-liquid))
 
 (defn- tool-description
-  "The tool's description, as one line of prose. Throws when there is none: a tool section without one is an empty
-  entry on a reference page. `register-tool!` already rejects a `deftool` with no docstring, so this is a
-  belt-and-braces check on the page rather than the first line of defence."
+  "The tool's description, as one line of prose."
   [tool]
-  (or (prose (:description tool))
-      (throw (ex-info (str "No description for MCP tool " (pr-str (:name tool))
-                           ". Give its deftool a docstring.")
-                      {:tool (:name tool)}))))
+  (page-prose (:description tool)))
 
-(defn- registered-scope-description
-  "The description [[metabase.api-scope.core/defscope]] registered for `scope`. Throws when the scope isn't
-  registered — a tool pointing at a scope that no consent screen can explain is a bug, not a page to publish."
-  [tool scope]
-  (or (prose (api-scope/scope-description scope))
-      (throw (ex-info (str "MCP tool " (pr-str (:name tool)) " uses unregistered scope " (pr-str scope)
-                           ". Declare it with metabase.api-scope.core/defscope.")
-                      {:tool (:name tool) :scope scope}))))
+(defn- name-bullet
+  "How to call the tool."
+  [tool]
+  (str "Tool name: " (md/code (:name tool))))
 
 (defn- scope-bullet
-  "The permission a client has to be granted before it can call the tool, with the wording the consent screen uses.
-  Always one scope: `register-tool!` refuses a tool whose `:scope` is not a non-blank string."
-  [{:keys [scope] :as tool}]
-  (when scope
-    (str "Permission scope: " (md/code scope) " — " (registered-scope-description tool scope))))
+  "The scope the tool needs, with the consent screen's wording. Nil for an unregistered scope."
+  [{:keys [scope]}]
+  (when-let [description (page-prose (api-scope/scope-description scope))]
+    (str "Permission scope: " (md/code scope) " — " description)))
 
-(defn- effect-bullets
-  "What the tool's MCP annotations promise about its effects. Every tool has `readOnlyHint` and `destructiveHint` —
-  the registry merges its `default-annotations` over whatever a `deftool` declares — so there is always at least
-  one of these to say."
-  [{:keys [annotations]}]
-  (let [{:keys [readOnlyHint destructiveHint idempotentHint]} annotations]
-    [(cond
-       readOnlyHint             "Read-only."
-       destructiveHint          "Can overwrite or delete existing data or content."
-       ;; `destructiveHint false` is the tool's claim to make additive changes. It's a hint, not a contract:
-       ;; `document_write` carries it while its description explains a full-body rewrite, so the page promises
-       ;; nothing about what the tool won't touch and leaves that to the description.
-       (false? destructiveHint) "Creates or changes content.")
-     ;; only worth saying about a tool that changes something; that a read is repeatable goes without saying
-     (when (and idempotentHint (not readOnlyHint))
-       "Running it again with the same arguments has the same effect as running it once.")]))
+(defn- effect-bullet
+  "What the tool's annotations promise about its effects. The registry always sets both hints."
+  [{{:keys [readOnlyHint destructiveHint]} :annotations}]
+  (cond
+    readOnlyHint             "Read-only."
+    destructiveHint          "Can overwrite or delete existing data or content."
+    ;; a hint, not a contract: `document_write` carries it and rewrites whole bodies
+    (false? destructiveHint) "Creates or changes content."))
 
-(defn- interactive-bullet
-  "That the tool renders inline, for the ones that do. Worth its own line because a reader won't find such a tool
-  in every client: the registry hides it from clients that can't render an iframe."
+(defn- idempotence-bullet
+  "Idempotence, for tools that write. A read is trivially repeatable."
+  [{{:keys [readOnlyHint idempotentHint]} :annotations}]
+  (when (and idempotentHint (not readOnlyHint))
+    "Running it again with the same arguments has the same effect as running it once."))
+
+(defn- inline-ui-bullet
+  "Flags a tool that renders inline. Clients that can't render an iframe never list such a tool."
   [tool]
-  (when (interactive? tool)
+  (when (renders-inline-ui? tool)
     (str "Interactive: renders a chart inline in your AI client. Only available in clients that support inline "
          "visualizations.")))
 
-;;;; Arguments
+(defn- tool-facts
+  "The bullets under a tool's heading; nils are dropped."
+  [tool]
+  (md/bullets [(name-bullet tool)
+               (scope-bullet tool)
+               (effect-bullet tool)
+               (idempotence-bullet tool)
+               (inline-ui-bullet tool)]))
 
-(defn- json-schema-types
-  "The JSON Schema types a property accepts, distinct and in order, with `null` dropped. Nullability is how the
-  strict-tool transform spells \"optional\" — it's the schema's way of letting a client omit the argument, not a
-  type anyone passes, so listing it would read as though `null` were a meaningful value."
-  [{:keys [type oneOf anyOf]}]
-  (into []
-        (comp (remove #{"null"}) (distinct))
-        (concat (cond
-                  (string? type) [type]
-                  (coll? type)   type)
-                (mapcat json-schema-types (concat oneOf anyOf)))))
+;;;; Reading a property's JSON Schema
+;;;;
+;;;; Malli puts an argument's description, enum and bounds on the wrapped schema, not the property:
+;;;; `[:maybe [:int {:description ...}]]` publishes `{:oneOf [{:type "integer" :description ...} {:type "null"}]}`.
+;;;; Everything below reads through those alternatives.
 
-(defn- array-item-types
-  "The types an array property's elements accept. Looks through `oneOf`/`anyOf` branches, because a nullable array
-  keeps its `:items` inside the non-null branch rather than at the top level."
-  [{:keys [items oneOf anyOf]}]
-  (into []
-        (comp (remove #{"null"}) (distinct))
-        (concat (json-schema-types items)
-                (mapcat array-item-types (concat oneOf anyOf)))))
+(defn- union-branches
+  "The `oneOf`/`anyOf` alternatives of `schema`."
+  [{:keys [oneOf anyOf]}]
+  (concat oneOf anyOf))
 
-(defn- property-type-label
-  "How to name a property's type in the arguments table. An array names what it holds — `array of string` reads
-  better than a bare `array` when the argument is a list of search terms. Anything the schema doesn't pin down is
-  `any`."
+(defn- alternatives
+  "`schema` and every schema its unions reach, preorder. Does not descend into `:items`."
+  [schema]
+  (tree-seq map? union-branches schema))
+
+(defn- own-types
+  "A schema's own `:type` members, minus `null`, which marks an optional argument rather than a value."
+  [{:keys [type]}]
+  ;; a set used as a predicate can't reject nil
+  (when type
+    (remove #{"null"} (if (coll? type) type [type]))))
+
+(defn- object-typed?
+  "Does the schema's own `:type` include `object`?"
+  [schema]
+  (boolean (some #{"object"} (own-types schema))))
+
+(defn- property-types
+  "The JSON Schema types a property accepts, distinct and in order."
   [property]
-  (let [types (json-schema-types property)]
+  (into [] (comp (mapcat own-types) (distinct)) (alternatives property)))
+
+(defn- element-types
+  "The types an array's elements accept. A nullable array keeps `:items` in its non-null branch."
+  [property]
+  (into [] (comp (keep :items) (mapcat property-types) (distinct)) (alternatives property)))
+
+(defn- element-descriptions
+  "Descriptions of an array's elements. Object elements contribute nothing: the table can't show their shape, and
+  `dashboard_write`'s `ops` would otherwise put two dozen op sentences in one cell."
+  [items]
+  (keep :description (remove object-typed? (alternatives items))))
+
+(defn- property-descriptions
+  "Every description on a property, its alternatives, and its elements, in order and deduped."
+  [property]
+  (let [own (alternatives property)]
+    (into []
+          (comp cat (remove str/blank?) (distinct))
+          [(keep :description own)
+           (mapcat element-descriptions (keep :items own))])))
+
+(defn- enum-values
+  "The enum members of a property, its alternatives, and its elements, deduped. For an action hub like
+  `browse_data`, the enum is the argument's real documentation."
+  [property]
+  (let [own (alternatives property)]
+    (into []
+          (comp cat (distinct))
+          [(mapcat :enum own)
+           (mapcat enum-values (keep :items own))])))
+
+(defn- own-bounds
+  "A schema's own `{:minimum :maximum}`, when it has both. A lone minimum, as on every positive-int id, isn't worth showing."
+  [{:keys [minimum maximum]}]
+  (when (and minimum maximum)
+    {:minimum minimum :maximum maximum}))
+
+(defn- numeric-range
+  "The first [[own-bounds]] among a property's alternatives."
+  [property]
+  (some own-bounds (alternatives property)))
+
+;;;; The arguments table
+
+(defn- type-cell
+  "The Type column: `any` when unconstrained, `array of X` for a homogeneous array, else the types joined by `or`."
+  [property]
+  (let [types (property-types property)]
     (cond
       (empty? types)      "any"
-      (= ["array"] types) (let [item-types (array-item-types property)]
+      (= ["array"] types) (let [item-types (element-types property)]
                             (if (= 1 (count item-types))
                               (str "array of " (first item-types))
                               "array"))
       :else               (str/join " or " types))))
 
-(defn- object-typed?
-  "Does the schema describe an object? Looks only at its own `:type`, not through wrappers."
-  [{:keys [type]}]
-  (boolean (some #{"object"} (if (coll? type) type [type]))))
-
-(declare property-descriptions)
-
-(defn- item-descriptions
-  "The descriptions an array's `:items` schema contributes. An element that is itself an object contributes
-  nothing, nor does an object branch of a union of elements: the table renders the argument as `array of object`
-  and points at the client for the nested shape, so its prose describes something the reader can't see here.
-  `dashboard_write`'s `ops` is a union of two dozen op objects, each with a sentence — collected, they ran
-  together into one cell."
-  [{:keys [oneOf anyOf] :as items}]
-  (if (object-typed? items)
-    []
-    (property-descriptions (assoc items
-                                  :oneOf (remove object-typed? oneOf)
-                                  :anyOf (remove object-typed? anyOf)))))
-
-(defn- property-descriptions
-  "Every description reachable from a property, in order, deduped.
-
-  A `deftool` writes its argument prose on the schema it wraps rather than on the property itself, and Malli
-  leaves it there: `[:maybe [:int {:description ...}]]` publishes `{:oneOf [{:type \"integer\" :description ...}
-  {:type \"null\"}]}`, so reading `(:description property)` alone would find nothing on almost every v2 argument.
-  Three shapes reach one: the property, a `oneOf`/`anyOf` branch (`[:maybe ...]`, `[:or ...]`), and an array's
-  `:items` (`[:sequential [:string {:description ...}]]`, subject to [[item-descriptions]]' object rule).
-  `[:or [:int {...}] [:string {...}]]` carries one per branch, so this collects rather than taking the first."
-  [{:keys [description items oneOf anyOf]}]
-  (into []
-        (comp cat (remove str/blank?) (distinct))
-        [[description]
-         (some-> items item-descriptions)
-         (mapcat property-descriptions (concat oneOf anyOf))]))
-
-(defn- enum-values
-  "The values a property is restricted to, deduped, looking through `oneOf`/`anyOf` and `:items` the same way
-  [[property-descriptions]] does. Worth publishing because the v2 surface is built on action-dispatch hubs: the
-  enum on `browse_data`'s `action` or a write tool's `method` is the argument's real documentation, and a JSON
-  Schema `enum` carries no `:type` distinction to show it."
-  [{:keys [enum items oneOf anyOf]}]
-  (into []
-        (comp cat (distinct))
-        [(or enum [])
-         (some-> items enum-values)
-         (mapcat enum-values (concat oneOf anyOf))]))
-
-(defn- int-range
-  "The `minimum` and `maximum` a numeric property is held to, when it has both, looking through `oneOf`/`anyOf`
-  the same way [[enum-values]] does: `[:maybe [:int {:min 1 :max 10}]]` publishes them on the nullable branch.
-  Worth publishing because the prose tends to say \"default 2\" and stop — the schema is the only place the
-  ceiling is written. A lone `minimum` is not: it's on every positive-int id, where \"Minimum: 1\" tells the
-  reader nothing. Strings and arrays bound `minLength`/`minItems` instead, so they never match here."
-  [{:keys [minimum maximum oneOf anyOf]}]
-  (if (and minimum maximum)
-    {:minimum minimum :maximum maximum}
-    (some int-range (concat oneOf anyOf))))
+(defn- enum-sentence
+  "\"One of: `a`, `b`.\" — or nil for a property with no enum."
+  [property]
+  (when-let [values (seq (enum-values property))]
+    (str "One of: " (str/join ", " (map md/code values)) ".")))
 
 (defn- range-sentence
-  "\"Range: 1 to 10.\""
-  [{:keys [minimum maximum]}]
-  (format "Range: %s to %s." minimum maximum))
+  "\"Range: 1 to 10.\" — or nil for a property without both bounds."
+  [property]
+  (when-let [{:keys [minimum maximum]} (numeric-range property)]
+    (format "Range: %s to %s." minimum maximum)))
 
 (defn- description-cell
-  "The Description column for one argument: what values it accepts, its numeric bounds, then the schema's own
-  prose. An em dash where the schema says nothing at all — escaping the pipes is [[md/table]]'s business, not
-  this function's."
+  "The Description column: enum, then range, then prose. An em dash when the schema says nothing."
   [property]
-  (let [values (enum-values property)
-        bounds (some-> (int-range property) range-sentence)
-        parts  (cond->> (map prose (property-descriptions property))
-                 bounds       (cons bounds)
-                 (seq values) (cons (str "One of: " (str/join ", " (map md/code values)) ".")))]
-    (if (seq parts)
-      (str/join " " parts)
-      "—")))
+  (or (not-empty (md/sentences [(enum-sentence property)
+                                (range-sentence property)
+                                (md/sentences (map page-prose (property-descriptions property)))]))
+      "—"))
+
+(defn- argument-row
+  "One table row from a `[name property]` entry."
+  [[k property]]
+  [(md/code (name k))
+   (type-cell property)
+   (description-cell property)])
 
 (defn- arguments-markdown
-  "A tool's top-level arguments as a table. Only the top level: a nested object renders as `object`, and the
-  intro points at the client for the full schema.
-
-  Deliberately no `Required` column. The published `:inputSchema` can't answer that question:
-  `strict-tool-input-schema` lists *every* property in `:required` so that strict MCP clients can send an explicit
-  null for the ones they're leaving out, so reading it would mark every argument required. Which arguments are
-  genuinely needed is what the tool's description is for, and most of them say so."
+  "The top-level arguments as a table, alphabetical so the page doesn't churn with map order. No `Required`
+  column: the strict schema lists every property as required so clients can send explicit nulls."
   [{:keys [inputSchema]}]
   (let [properties (:properties inputSchema)]
     (if (empty? properties)
       "This tool takes no arguments."
       (md/table ["Argument" "Type" "Description"]
-                ;; alphabetical rather than schema order: a JSON Schema's properties are a plain map, so schema
-                ;; order isn't stable, and an unstable order churns the page's diff on unrelated edits
-                (for [[k property] (sort-by (comp name key) properties)]
-                  [(md/code (name k))
-                   (property-type-label property)
-                   (description-cell property)])))))
+                (map argument-row (sort-by (comp name key) properties))))))
 
 ;;;; Sections
 
 (defn- tool-section
-  "One tool's section of the page: heading, facts, description, then arguments. Everything on it comes from the
-  tool registry — the page carries no hand-written prose per tool, so anything a reader needs to know about a
-  tool belongs in its `deftool` docstring, where the agent reads it too."
+  "One tool's section: heading, facts, description, arguments. All of it comes from the registry."
   [tool]
   (md/paragraphs
    [(md/heading 2 (tool-title tool))
-    (md/bullets (-> [(str "Tool name: " (md/code (:name tool)))
-                     (scope-bullet tool)]
-                    (into (effect-bullets tool))
-                    (conj (interactive-bullet tool))))
+    (tool-facts tool)
     (md/sentence (tool-description tool))
     (md/labeled-block "Arguments:" (arguments-markdown tool))]))
 
 (defn- document-markdown
-  "The whole page: the `intro` resource, then a section per tool. No grouping between them — the tools arrive
-  name-sorted from the registry, and a flat alphabetical list is the easiest to scan and to link into. What a
-  section used to say by its placement (read-only, interactive) each tool now says in its own bullets."
+  "The intro, then a section per tool in name order."
   [intro tools]
-  (when (empty? tools)
-    (throw (ex-info (str "No MCP tools found; the v2 registry is empty, so metabase.mcp.v2.api either no longer "
-                         "requires the tool namespaces or no longer loads")
-                    {})))
   (md/document (cons intro (map tool-section tools))))
 
 ;;;; Entry point
@@ -319,8 +291,9 @@
    (generate-dox! output-path))
   ([path]
    (printf "Generating MCP tool documentation in %s\n" path)
-   (let [tools (all-tools)
+   (let [tools (documented-tools)
          n     (count tools)]
+     (assert-documentable tools)
      (cmd.common/write-doc-file! path (document-markdown (cmd.common/load-resource! intro-resource) tools))
      (printf "Wrote %s (%d tools)\n" path n)
      (println "Done.")
