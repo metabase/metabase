@@ -42,7 +42,6 @@ import type {
   PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -77,6 +76,7 @@ import {
   getHighlightedTableCells,
 } from "../../visualizations/Table/get-highlighted-table-cells";
 
+import { withMantineTheme } from "./MantineTheme";
 import S from "./TableInteractive.module.css";
 import { TableInteractiveContextProvider } from "./TableInteractiveContext";
 import {
