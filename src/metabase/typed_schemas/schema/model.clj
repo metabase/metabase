@@ -181,11 +181,7 @@
   "Returns action details from the actions module, preserving lookup error context."
   [model]
   (try
-    (actions/select-actions
-     nil
-     :model_id (:id model)
-     :archived false
-     :type [:not= "http"])
+    (actions/select-actions-non-http-for-models nil #{(:id model)})
     (catch Exception exception
       (throw (ex-info (model-action-error-message model (ex-message exception))
                       (error-data-with-cause-message
