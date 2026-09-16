@@ -380,3 +380,14 @@
           by-row   (into {} (map (juxt :row :severity)) findings)]
       (is (= {2 :note 4 :error} by-row)
           "every local counts under the rule's policy; :boundary-locals still tells request taint apart"))))
+
+(deftest re-exported-var-resolves-to-its-facade-test
+  (testing "clj-kondo resolves `t2/select-one` to `toucan2.select/select-one` when its dependency cache holds
+            toucan2 and to `toucan2.core/select-one` when it does not; the vocabulary names the facade, so a
+            usage is put back there whichever the cache said"
+    (is (= 'toucan2.core (:to (#'engine/refacade {:to 'toucan2.select :name 'select-one}))))
+    (is (= 'toucan2.core (:to (#'engine/refacade {:to 'toucan2.insert :name 'insert!}))))
+    (is (= 'toucan2.core (:to (#'engine/refacade {:to 'toucan2.core :name 'update!}))) "already there"))
+  (testing "a var the facade does not export stays where it was defined"
+    (is (= 'toucan2.select (:to (#'engine/refacade {:to 'toucan2.select :name 'select-reducible-with-pks}))))
+    (is (= 'metabase.util (:to (#'engine/refacade {:to 'metabase.util :name 'for-map}))))))
