@@ -31,10 +31,10 @@
 (def ^:private messages-path "/anthropic/v1/messages")
 
 (def ^:private provider
-  "`metabase.metabot.api`'s `provider-client-error?` renders any 4xx `:api-error` under the admin API-key
-  field, so the request-rejected statuses (400, 422) need messages that do not send admins hunting a key
-  problem that does not exist. 402 is an exhausted account balance, which DeepSeek reports separately from
-  rate limiting."
+  "`metabase.llm.api.provider`'s `provider-client-error?` surfaces any 4xx `:api-error` verbatim on the
+  connection form, so the request-rejected statuses (400, 422) need messages that do not send admins hunting
+  a key problem that does not exist. 402 is an exhausted account balance, which DeepSeek reports separately
+  from rate limiting."
   (adapter/provider
    {:slug         "deepseek"
     :display-name "DeepSeek"

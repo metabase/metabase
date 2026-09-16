@@ -369,9 +369,11 @@
   never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
 
   `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
-  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and carries
-  no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
-  renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
+  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and
+  `:status-code 400` so it reaches the admin as their misconfiguration. Without it `metabase.llm.api.provider`'s
+  `provider-client-error?` does not recognise it, and the Connect path rethrows it as an unhandled 500:
+  the admin still sees the sentence, but it bumps the unhandled-error counter and collapses to \"Something
+  went wrong\" under `MB_HIDE_STACKTRACES=true`, losing the diagnostic for the operators who enabled that.
 
   A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
 
@@ -382,6 +384,7 @@
      (when-not (sequential? data)
        (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
                          detail (str ". " detail))
-                       {:api-error  true
-                        :error-code :malformed-model-catalog})))
+                       {:api-error   true
+                        :status-code 400
+                        :error-code  :malformed-model-catalog})))
      data)))

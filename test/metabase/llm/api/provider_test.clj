@@ -341,6 +341,18 @@
                                                 :config {:base-url "http://vllm.internal:8000/v1"}}))))
         (is (= [] (llm.provider/connections)))))))
 
+(deftest create-rejects-a-malformed-model-catalog-test
+  (testing (str "a 2xx whose body is not a model list means the base URL reached something that is not the API. "
+                "Failing closed is only useful if the admin sees why, so it comes back as the adapter's message "
+                "on the form — not as the 500 an untagged error would produce, which `MB_HIDE_STACKTRACES=true` "
+                "would collapse to \"Something went wrong\".")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (is (= "Anthropic returned an unexpected model list response"
+               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                               {:type "anthropic" :config {:api-key "sk-ant-nope"}}))))
+        (is (= [] (llm.provider/connections)))))))
+
 (deftest models-listing-does-not-probe-test
   (testing "listing models is a page load; only a write may spend a generation on the operator's server"
     (let [opts (atom nil)]
