@@ -55,6 +55,7 @@ interface Run {
   lastScriptEnd: number;
   scriptCount: number;
   scriptBytes: number;
+  styleBytes: number;
   totalBytes: number;
 }
 
@@ -139,6 +140,10 @@ const READ_METRICS = `JSON.stringify((() => {
     lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
     scriptCount: scripts.length,
     scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
+    styleBytes: performance
+      .getEntriesByType("resource")
+      .filter((entry) => entry.name.endsWith(".css"))
+      .reduce((total, entry) => total + entry.encodedBodySize, 0),
     // Every byte the page fetched so far, compressed as it arrived: the document
     // itself, then each script, stylesheet, font, image and API response.
     totalBytes: (nav ? nav.encodedBodySize : 0) + performance
@@ -342,6 +347,7 @@ function timings(run: Run) {
         locale: results[0].language,
         scripts: results[0].scriptCount,
         scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
+        cssKb: Number((results[0].styleBytes / 1024).toFixed(1)),
         // Read at the same moment as `scriptKb`, so the difference between the
         // two is everything the page loaded that is not script.
         totalKb: Number((results[0].totalBytes / 1024).toFixed(1)),
