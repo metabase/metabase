@@ -353,7 +353,7 @@
   If unit is not supported, returns nil."
   [{:keys [locale] :as time-config} t unit]
   (if (= unit :week-of-year)
-    (str (u.date/extract time-config t unit))
+    (str (u.date/extract (select-keys time-config [:start-of-week]) t unit))
     (when-let [^DateTimeFormatter formatter (some-> unit
                                                     unit-formats
                                                     t/formatter
