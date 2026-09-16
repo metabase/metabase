@@ -250,8 +250,9 @@ export function IllustrationWidget({
                   {customIllustrationSource && (
                     <Button
                       variant="transparent"
+                      color="neutral"
                       size="compact-md"
-                      leftSection={<Icon c="icon-primary" name="close" />}
+                      leftSection={<Icon name="close" />}
                       ml="lg"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}

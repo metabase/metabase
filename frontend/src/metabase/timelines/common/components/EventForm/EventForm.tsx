@@ -155,7 +155,8 @@ const EventForm = ({
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="transparent"
-                    leftSection={<Icon name="close" c="icon-primary" />}
+                    color="neutral"
+                    leftSection={<Icon name="close" />}
                   />
                 </Flex>
               ) : (

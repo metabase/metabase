@@ -100,8 +100,9 @@ export const ChartSettingSegmentsEditor = ({
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
                       variant="transparent"
+                      color="neutral"
                       size="compact-md"
-                      leftSection={<Icon name="trash" c="icon-primary" />}
+                      leftSection={<Icon name="trash" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }

@@ -112,11 +112,12 @@ export function TableFieldsPage() {
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
+                color="neutral"
                 size="compact-md"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
-                leftSection={<Icon name="close" c="icon-primary" />}
+                leftSection={<Icon name="close" />}
               />
             </Group>
             <FieldSection

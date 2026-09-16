@@ -45,8 +45,9 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
         {...(props as ButtonProps)}
         aria-label={t`Copy link`}
         variant="transparent"
+        color="neutral"
         size="compact-md"
-        leftSection={<Icon c="icon-primary" name="link" />}
+        leftSection={<Icon name="link" />}
         onClick={handleCopy}
         onKeyDown={handleKeyDown}
       />

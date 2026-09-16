@@ -17,9 +17,10 @@ export const AlertListItemActionButton = ({
     {/* TODO: replace with ActionIcon (GDGT-2457) */}
     <Button
       variant="transparent"
+      color="neutral"
       size="compact-md"
       aria-label={label}
-      leftSection={<Icon c="icon-primary" name={iconName} />}
+      leftSection={<Icon name={iconName} />}
       onClick={onClick}
     />
   </Tooltip>

@@ -143,8 +143,9 @@ export const CreateTenantsOnboardingStep = ({
                 {tenants.length > 1 && (
                   <Button
                     variant="transparent"
+                    color="neutral"
                     size="compact-md"
-                    leftSection={<Icon c="icon-primary" name="close" />}
+                    leftSection={<Icon name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
                   />

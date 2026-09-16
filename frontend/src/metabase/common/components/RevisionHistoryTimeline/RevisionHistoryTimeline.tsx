@@ -100,11 +100,12 @@ export function RevisionHistoryTimeline({
                     <Button
                       className={S.revertButton}
                       variant="transparent"
+                      color="neutral"
                       size="compact-md"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
-                      leftSection={<Icon name="revert" c="icon-primary" />}
+                      leftSection={<Icon name="revert" />}
                     />
                   </Tooltip>
                 )}

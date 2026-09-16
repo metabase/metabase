@@ -248,8 +248,9 @@ export function SearchResult({
           {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
             variant="transparent"
+            color="neutral"
             size="compact-md"
-            leftSection={<Icon name="bolt" c="icon-primary" />}
+            leftSection={<Icon name="bolt" />}
             onClick={onXRayClick}
           />
         </Box>

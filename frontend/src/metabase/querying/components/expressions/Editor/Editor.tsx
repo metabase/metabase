@@ -212,12 +212,13 @@ export function Editor(props: EditorProps) {
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
+                color="neutral"
                 size="compact-md"
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}
                 disabled={isFormatting || error != null}
-                leftSection={<Icon c="icon-primary" name="format_code" />}
+                leftSection={<Icon name="format_code" />}
               />
             </ButtonTooltip>
           )}

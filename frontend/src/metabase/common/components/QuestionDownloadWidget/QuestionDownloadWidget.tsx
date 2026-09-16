@@ -209,14 +209,11 @@ export const QuestionDownloadWidget = ({
             <Button
               aria-label={t`Close hint`}
               variant="transparent"
+              color="neutral"
               size="compact-md"
               style={{ flexShrink: 0 }}
               leftSection={
-                <Icon
-                  name="close"
-                  c="icon-primary"
-                  tooltip={t`Don't show me this again.`}
-                />
+                <Icon name="close" tooltip={t`Don't show me this again.`} />
               }
               onClick={() => setDismissedExcelPivotExportsBanner(true)}
             />

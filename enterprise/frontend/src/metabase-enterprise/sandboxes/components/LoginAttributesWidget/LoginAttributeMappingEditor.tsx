@@ -257,8 +257,9 @@ const ValueInput = ({
       {canDelete && (
         <Button
           variant="transparent"
+          color="neutral"
           size="compact-md"
-          leftSection={<Icon name="close" c="icon-primary" />}
+          leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"
         />
@@ -270,8 +271,9 @@ const ValueInput = ({
         >
           <Button
             variant="transparent"
+            color="neutral"
             size="compact-md"
-            leftSection={<Icon name="refresh" c="icon-primary" />}
+            leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"
           />

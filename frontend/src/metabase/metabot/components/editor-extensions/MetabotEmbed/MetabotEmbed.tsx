@@ -278,11 +278,10 @@ export const MetabotComponent = memo(
             {editor.options.editable && (
               <Button
                 variant="transparent"
+                color="neutral"
                 size="compact-md"
                 m="sm"
-                leftSection={
-                  <Icon c="icon-primary" name="close" data-hide-on-print />
-                }
+                leftSection={<Icon name="close" data-hide-on-print />}
                 onClick={() => deleteNode()}
               />
             )}

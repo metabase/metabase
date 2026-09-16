@@ -247,9 +247,10 @@ export function DetailViewSidesheet({
                   <Button
                     aria-label={t`Previous row`}
                     disabled={!onPreviousClick}
-                    leftSection={<Icon c="icon-primary" name="chevronup" />}
+                    leftSection={<Icon name="chevronup" />}
                     size="compact-md"
                     variant="transparent"
+                    color="neutral"
                     style={{
                       opacity: onPreviousClick ? undefined : 0.5,
                     }}
@@ -262,9 +263,10 @@ export function DetailViewSidesheet({
                   <Button
                     aria-label={t`Next row`}
                     disabled={!onNextClick}
-                    leftSection={<Icon c="icon-primary" name="chevrondown" />}
+                    leftSection={<Icon name="chevrondown" />}
                     size="compact-md"
                     variant="transparent"
+                    color="neutral"
                     style={{
                       opacity: onNextClick ? undefined : 0.5,
                     }}
@@ -288,9 +290,10 @@ export function DetailViewSidesheet({
                     <Button
                       aria-label={t`Actions`}
                       data-testid="actions-menu"
-                      leftSection={<Icon c="icon-primary" name="ellipsis" />}
+                      leftSection={<Icon name="ellipsis" />}
                       size="compact-md"
                       variant="transparent"
+                      color="neutral"
                     />
                   </Tooltip>
                 </Menu.Target>
@@ -318,9 +321,10 @@ export function DetailViewSidesheet({
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    leftSection={<Icon c="icon-primary" name="link" />}
+                    leftSection={<Icon name="link" />}
                     size="compact-md"
                     variant="transparent"
+                    color="neutral"
                     onClick={handleCopyLink}
                   />
                 </Tooltip>
@@ -331,9 +335,10 @@ export function DetailViewSidesheet({
                     <Button
                       aria-label={t`Open in full page`}
                       component={Link}
-                      leftSection={<Icon c="icon-primary" name="expand" />}
+                      leftSection={<Icon name="expand" />}
                       size="compact-md"
                       variant="transparent"
+                      color="neutral"
                       to={url}
                     />
                   </Box>

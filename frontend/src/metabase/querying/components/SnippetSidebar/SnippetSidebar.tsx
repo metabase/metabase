@@ -195,9 +195,10 @@ class SnippetSidebarInner extends Component<
                   {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     variant="transparent"
+                    color="neutral"
                     size="compact-md"
                     onClick={this.hideSearch}
-                    leftSection={<Icon name="close" c="icon-primary" />}
+                    leftSection={<Icon name="close" />}
                   />
                 </>
               ) : (
@@ -225,9 +226,10 @@ class SnippetSidebarInner extends Component<
                       // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
                         variant="transparent"
+                        color="neutral"
                         size="compact-md"
                         onClick={this.showSearch}
-                        leftSection={<Icon name="search" c="icon-primary" />}
+                        leftSection={<Icon name="search" />}
                       />
                     )}
 
@@ -237,8 +239,9 @@ class SnippetSidebarInner extends Component<
                           {/* TODO: replace with ActionIcon (GDGT-2457) */}
                           <Button
                             variant="transparent"
+                            color="neutral"
                             size="compact-md"
-                            leftSection={<Icon name="add" c="icon-primary" />}
+                            leftSection={<Icon name="add" />}
                           />
                         </Menu.Target>
                         <Menu.Dropdown>

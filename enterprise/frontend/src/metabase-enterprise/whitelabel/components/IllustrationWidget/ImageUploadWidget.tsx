@@ -136,8 +136,9 @@ export function ImageUploadWidget({
                 {!isDefaultImage && (
                   <Button
                     variant="transparent"
+                    color="neutral"
                     size="compact-md"
-                    leftSection={<Icon c="icon-primary" name="close" />}
+                    leftSection={<Icon name="close" />}
                     ml="lg"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}

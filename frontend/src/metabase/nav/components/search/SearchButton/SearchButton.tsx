@@ -27,8 +27,9 @@ export const SearchButton = (props: ButtonProps) => {
     return (
       <Button
         variant="transparent"
+        color="neutral"
         size="compact-md"
-        leftSection={<Icon c="icon-primary" name="search" />}
+        leftSection={<Icon name="search" />}
         onClick={handleClick}
         aria-label="Search"
       />

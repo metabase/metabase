@@ -251,13 +251,14 @@ function DataModelContent() {
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
+                color="neutral"
                 size="compact-md"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="icon-primary" />}
+                leftSection={<Icon name="close" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
@@ -317,6 +318,7 @@ function DataModelContent() {
               {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 variant="transparent"
+                color="neutral"
                 size="compact-md"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
@@ -324,7 +326,7 @@ function DataModelContent() {
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="icon-primary" />}
+                leftSection={<Icon name="close" />}
                 onClick={closePreview}
               />
             </Group>

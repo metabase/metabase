@@ -150,9 +150,10 @@ export function BreakoutColumnListItem({
           {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
             variant="transparent"
+            color="neutral"
             size="compact-md"
             className={BreakoutColumnListItemS.AddButton}
-            leftSection={<Icon c="icon-primary" name="add" />}
+            leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}
           />

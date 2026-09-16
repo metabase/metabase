@@ -81,9 +81,10 @@ function _PulsesListSidebar({
             {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
               variant="transparent"
+              color="neutral"
               size="compact-md"
               aria-label={createSubscriptionLabel}
-              leftSection={<Icon c="icon-primary" name="add" />}
+              leftSection={<Icon name="add" />}
               mr="1rem"
               onClick={createSubscription}
             />
@@ -93,9 +94,10 @@ function _PulsesListSidebar({
             {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
               variant="transparent"
+              color="neutral"
               size="compact-md"
               aria-label={closeSidebarLabel}
-              leftSection={<Icon c="icon-primary" name="close" />}
+              leftSection={<Icon name="close" />}
               onClick={onCancel}
             />
           </Tooltip>

@@ -86,8 +86,9 @@ export const Logs = ({
                       // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
                         aria-label={t`Clear`}
-                        leftSection={<Icon name="close" c="icon-primary" />}
+                        leftSection={<Icon name="close" />}
                         variant="transparent"
+                        color="neutral"
                         size="compact-md"
                         onClick={() => {
                           patchUrlState({ query: "" });

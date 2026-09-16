@@ -212,8 +212,9 @@ const UploadTableRow = ({
           <Button
             onClick={() => onTrash(item)}
             variant="transparent"
+            color="neutral"
             size="compact-md"
-            leftSection={<Icon c="icon-primary" name="trash" />}
+            leftSection={<Icon name="trash" />}
           />
         </Flex>
       </td>
