@@ -109,7 +109,9 @@
   "Throw when a caller asks for a proxied request to a provider the proxy cannot serve.
 
   [[request!]] applies this, so the check lands on every request to a provider — an adapter's own
-  request paths included, since those go through [[request!]] too."
+  listing and probe paths included, since those go through [[request!]] too. An adapter has to call it
+  itself only on a path that can answer without reaching the provider, which would otherwise accept a
+  proxied call by making no request to refuse."
   [{:keys [display-name supports-ai-proxy?]} :- Provider
    requested-proxy?                          :- [:maybe :boolean]]
   (when (and requested-proxy? (not supports-ai-proxy?))
@@ -135,10 +137,14 @@
   "Perform one HTTP request to `p` and return the response.
 
   The single door every provider request goes through, so what is true of all of them lives here rather
-  than in each adapter: a proxied request `p` cannot serve is refused, and the descriptor's `:auth`
-  authenticates whatever is left. `req` carries the caller's `:credentials` and `:ai-proxy?` alongside
-  the wire details (`:method`, `:path`, `:as`, `:headers`, and an already-encoded `:body`); `extra` is
-  merged into the [[core/request]] opts, for per-provider timeouts and the like."
+  than in each adapter: a proxied request `p` cannot serve is refused, and the descriptor's
+  `:auth` authenticates whatever is left. That the `:auth` fn runs per request is deliberate: it keeps
+  the door single, and an adapter that finds resolution expensive caches it rather than hoisting it out
+  — the one that does, parsing a Google service-account key, memoizes in the adapter.
+
+  `req` carries the caller's `:credentials` and `:ai-proxy?` alongside the wire details (`:method`,
+  `:path`, `:as`, `:headers`, and an already-encoded `:body`); `extra` is merged into the
+  [[core/request]] opts, for per-provider timeouts and the like."
   ([p req]
    (request! p req nil))
   ([{:keys [auth] :as p}                                    :- Provider
