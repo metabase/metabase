@@ -85,16 +85,12 @@
         (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b")))
         (is (false? (ollama.capabilities/reasoning-model? credentials "mistral-large-3:675b")))))))
 
-(deftest a-server-that-reports-nothing-rules-nothing-in-test
+(deftest a-server-that-reports-nothing-reads-as-not-reasoning-test
   (testing "an Ollama too old to report `capabilities` reads as not reasoning — a smaller token budget
            rather than a wrong answer, since `reasoning` is forwarded whenever it appears"
     (with-server! {}
       (fn [_]
-        (is (false? (ollama.capabilities/reasoning-model? credentials "qwen3:8b"))))))
-  (testing "and rules no model out of the picker either"
-    (with-server! {}
-      (fn [_]
-        (is (true? (ollama.capabilities/chat-capable? credentials "qwen3:8b")))))))
+        (is (false? (ollama.capabilities/reasoning-model? credentials "qwen3:8b")))))))
 
 (deftest an-unreachable-server-is-not-an-error-test
   (testing "capabilities sharpen a decision the adapter can still make without them, so a server that
@@ -143,12 +139,6 @@
 ;;; The cache-only read
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defmacro ^:private eventually
-  "Poll `body` until it is truthy, for the background lookup a cold read starts. Throws on timeout
-  naming the form, rather than returning nil for an assertion to report as a plain false."
-  [& body]
-  `(tu/poll-until 5000 ~@body))
-
 (deftest the-public-setting-never-calls-ollama-on-the-callers-thread-test
   (testing "`llm-metabot-supports-reasoning?` is public, so every client's page load reaches this — it
            has to answer without the caller waiting on the operator's Ollama"
@@ -158,7 +148,7 @@
           (testing "a cold read answers immediately, from what it has"
             (is (false? answer)))
           (testing "and heals itself, so the next read is right without anyone asking it to"
-            (is (true? (eventually (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b")))))
+            (is (true? (tu/poll-until 5000 (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b")))))
           (testing "with the lookup on some other thread — never the one that asked"
             (is (seq @seen))
             (is (not-any? #(= (Thread/currentThread) (::thread %)) @seen))))))))
@@ -178,7 +168,7 @@
     (with-server! {"gpt-oss:20b" ["completion" "tools" "thinking"]}
       (fn [seen]
         (dotimes [_ 20] (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))
-        (is (true? (eventually (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))))
+        (is (true? (tu/poll-until 5000 (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))))
         (is (= 1 (count @seen)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────

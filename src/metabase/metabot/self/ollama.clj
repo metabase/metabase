@@ -259,10 +259,9 @@
   from this catalog.
 
   That fallback takes the first *chat-capable* entry rather than the first entry. Ollama lists models
-  newest-first and its OpenAI-compatible listing does not filter out embedding models, so the newest
-  pull being an embedding model was enough to fail a connect against a server with a perfectly good
-  chat model on it — with no way out, since the form hides the model picker for a type whose catalog
-  is not fixed.
+  newest-first, so the newest pull being an embedding model was enough to fail a connect against a
+  server with a perfectly good chat model on it — with no way out, since the form hides the model
+  picker for a type whose catalog is not fixed.
 
   `entries` is the whole catalog as [[tag-chat-capable]] left it, not the subset [[list-models]]
   offers, so that a model requested by name is answered about rather than reported missing."
@@ -314,36 +313,19 @@
     (run-probes! auth model cloud?)
     model))
 
-(def ^:private capability-lookup-batch
-  "How many models to ask about at once. `pmap` is no help on its own: it realizes a chunked seq — and
-  a JSON catalog is a vector — 32 elements at a time, so its look-ahead never binds and a 40-model
-  catalog opens 32 sockets at once. Against Cloud that is 32 simultaneous TLS handshakes to one host,
-  which is how an instance earns a 429 — and a 429 is cached as \"would not say\" for the whole TTL,
-  so one burst would cost reasoning detection for every model on the connection."
-  8)
-
 (defn- tag-chat-capable
   "`entries` with `::chat?` on each, saying whether Ollama offers that model for chat at all.
 
-  The catalog is the OpenAI-compatible one, which lists embedding models alongside chat models and
-  marks neither, so [[caps/chat-capable?]] is the only thing that tells them apart. Tagged rather
-  than filtered because both readers want a different view of the same answer: the picker wants the
-  chat models, [[probe-target]] wants the whole catalog so it can say *why* a named model is no good.
-  Asking once is also what keeps this from being three passes over the same models.
-
-  A server that reports nothing tags everything chat-capable: see [[caps/chat-capable?]]."
+  Tagged rather than filtered because the two readers want different views of the same answer: the
+  picker wants only the chat models, [[probe-target]] wants the whole catalog so it can say *why* a
+  model named by hand is no good. Asking once is what keeps this from being two passes."
   [credentials entries]
-  (into []
-        (comp (partition-all capability-lookup-batch)
-              (mapcat (fn [batch]
-                        (doall (pmap #(assoc % ::chat? (caps/chat-capable? credentials (:id %)))
-                                     batch)))))
-        entries))
+  (let [capable (caps/chat-capable-ids credentials (map :id entries))]
+    (mapv #(assoc % ::chat? (contains? capable (:id %))) entries)))
 
 (defn list-models
-  "The models the server has pulled that Metabot could run on — the embedding models Ollama's
-  OpenAI-compatible catalog lists alongside them are dropped, so the admin's picker only offers
-  models a connection can actually be saved against.
+  "The models the server has pulled that Metabot could run on, so the admin's picker only offers
+  models a connection can actually be saved against — see [[tag-chat-capable]].
 
   `:probe?` also runs [[preflight!]] and returns what it learned as `:learned-config` for the connect
   path to store. Reserved for connect and edit: probing on every listing would stall the model picker
@@ -355,7 +337,6 @@
          entries  (filterv ::chat? catalog)
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
-         ;; the whole catalog, so a model requested by name is diagnosed rather than reported missing
          probed   (when probe?
                     (preflight! auth catalog (or model proposed) (conn/cloud? credentials)))
          models   (mapv (fn [{:keys [id] :as entry}]

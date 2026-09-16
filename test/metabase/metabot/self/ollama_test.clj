@@ -365,7 +365,7 @@
 
       (re-find #"/api/show$" (str url))
       (let [model (:model (json/decode+kw (str body)))
-            entry (first (filter #(= model (:id %)) models))]
+            entry (m/find-first #(= model (:id %)) models)]
         {:status 200 :body (cond-> {:model model}
                              (:capabilities entry) (assoc :capabilities (:capabilities entry)))})
 

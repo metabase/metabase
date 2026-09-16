@@ -12,9 +12,6 @@
   be on the same one, and a flag recorded once against the connection could only ever describe one
   of them.
 
-  A server that will not answer rules nothing in and nothing out: an unknown model is offered like
-  any other, and reads as not reasoning.
-
   Keeping the answers fresh is this namespace's own business — see [[cached-capabilities]]. Nothing
   outside needs to know a cache exists, or to remember to fill it."
   (:require
@@ -22,10 +19,12 @@
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.set :as set]
    [clojure.string :as str]
+   [com.climate.claypoole :as cp]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.ollama.connection :as conn]
    [metabase.util.json :as json]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -98,7 +97,7 @@
   back onto the very config it probed with. Repointing at another address or rotating the key retires
   it, since the same tag on another server is another model."
   [credentials model]
-  [(hash ((juxt :hosting :base-url :api-key) credentials)) model])
+  [(hash (select-keys credentials [:hosting :base-url :api-key])) model])
 
 (defn- capabilities
   "`model`'s capability set, fetching and caching it when it is not already known. Nil when the server
@@ -121,18 +120,17 @@
 (defn- refresh-in-background!
   "Fill the cache for `model` on another thread, unless a lookup for it is already in flight.
 
-  Returns the future doing the work, or nil when another thread got there first. Nothing needs the
-  return value: a caller that could wait for it would not have come here."
+  Returns nothing useful: a caller that could wait for the answer would not have come here."
   [credentials model]
   (let [k          (cache-key credentials model)
         [claimed?] (swap-vals! refreshing conj k)]
     ;; `swap-vals!` hands back the set as it was, so exactly one thread sees `k` missing from it
     (when-not (contains? claimed? k)
-      (future
-        (try
-          (capabilities credentials model)
-          (finally
-            (swap! refreshing disj k)))))))
+      (u.jvm/in-virtual-thread*
+       (try
+         (capabilities credentials model)
+         (finally
+           (swap! refreshing disj k)))))))
 
 (defn- cached-capabilities
   "`model`'s capability set if a lookup already has it, and nil otherwise — including when the server
@@ -150,12 +148,14 @@
   ;; the same guard [[capabilities]] has, and here it is load-bearing: a model reference with no model
   ;; segment would never fill the cache, so every page load would hand a future the same nothing to do
   (when-not (str/blank? model)
-    (let [k (cache-key credentials model)
-          c @capabilities-cache]
-      (if (cache/has? c k)
-        (cache/lookup c k)
+    ;; one `lookup` with a sentinel rather than `has?` then `lookup`, which would run the expiry
+    ;; check twice. The sentinel is what keeps a cached nil — "asked, would not say" — distinct from
+    ;; never having asked, which is the whole difference between answering and starting a lookup.
+    (let [v (cache/lookup @capabilities-cache (cache-key credentials model) ::missing)]
+      (if (= ::missing v)
         (do (refresh-in-background! credentials model)
-            nil)))))
+            nil)
+        v))))
 
 (defn clear-cache!
   "Forget every lookup. For tests, which must not inherit each other's servers."
@@ -190,3 +190,21 @@
    model       :- [:maybe :string]]
   (let [caps (capabilities credentials model)]
     (or (nil? caps) (set/subset? chat-capabilities caps))))
+
+(def ^:private lookup-concurrency
+  "How many models to ask about at once. A catalog listing asks about every model it offers, and
+  `/api/show` opens a fresh connection per call — against Cloud that is a TLS handshake each, to one
+  host. Unbounded, a 40-model catalog is how an instance earns a 429, and a 429 is cached as \"would
+  not say\" for the whole TTL, so one burst would cost reasoning detection for every model on the
+  connection."
+  8)
+
+(mu/defn chat-capable-ids :- [:set :string]
+  "Which of `model-ids` Ollama offers for chat at all, asked [[lookup-concurrency]] at a time."
+  [credentials :- conn/Credentials
+   model-ids   :- [:sequential :string]]
+  (into #{}
+        (filter some?)
+        (cp/pmap lookup-concurrency
+                 #(when (chat-capable? credentials %) %)
+                 model-ids)))

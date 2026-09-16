@@ -291,9 +291,8 @@
 (def ^:private ollama-credentials
   {:hosting "self-hosted" :base-url "http://ollama.internal:11434/v1"})
 
-(defn- ollama-connection
-  [config]
-  (connection "ollama" "ollama" (merge ollama-credentials config)))
+(def ^:private ollama-connection
+  (connection "ollama" "ollama" ollama-credentials))
 
 (defn- showing-capabilities
   "Stub `http/request` so `/api/show` reports `capabilities-by-model`, and a model absent from it comes
@@ -335,12 +334,12 @@
     (with-capabilities! {"thinking-model" ["completion" "tools" "thinking"]
                          "chat-model"     ["completion" "tools"]}
       (fn []
-        (with-connections [(ollama-connection {})]
+        (with-connections [ollama-connection]
           (testing "thinking-model" (is (true? (supports-reasoning? "thinking-model"))))
           (testing "chat-model"     (is (false? (supports-reasoning? "chat-model"))))))))
   (testing "and a model nothing has looked up yet reads as non-reasoning rather than guessing — the
            setting is public, so it answers from what is known and never calls Ollama itself"
-    (with-connections [(ollama-connection {})]
+    (with-connections [ollama-connection]
       (with-selected-model "ollama/ollama-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
