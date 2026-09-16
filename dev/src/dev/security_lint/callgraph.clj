@@ -245,7 +245,8 @@
 (defn- arg-shape
   "How the *keys* of an argument were chosen, as a term [[param-shapes]] resolves once the graph is known:
 
-    :keyed              a map literal with keyword keys; `(select-keys x [:a :b])`
+    :keyed              `(select-keys x [:a :b])`, a vector of keywords
+    {:literal {k term}} a map literal with keyword keys, each value's term kept for what it holds under the key
     :opaque             `{k v}`, whose key is a value; anything not understood
     nil                 a scalar literal: no map at all
     {:ref {...}}        a local, or a call to a function -- the local's shape, or the function's return shape
@@ -274,22 +275,53 @@
                (let [body (some-> body ast/unmeta)]
                  (if (and body (ast/vector-node? body) (= 2 (count (ast/children body))))
                    {:map-vals (term (second (ast/children body)))}
-                   :opaque)))]
+                   :opaque)))
+        ;; what the function `map`, `keep` or `mapcat` applies returns: the element of the result
+        element (fn [f]
+                  (let [f (some-> f ast/unmeta)]
+                    (cond
+                      ;; `(fn [x] {...})`: its body's tails
+                      (and (ast/call? f) (= "fn" (some-> (ast/head-sym f) name)))
+                      (all (some-> (last (ast/args f)) tail-forms))
+                      ;; `#(row %)`: the fn literal reads as a call to `row`, which is the element
+                      (and f (= :fn (n/tag f)))
+                      (term f)
+                      ;; `row`: the function by name -- its return shape; a local holding a function is opaque
+                      (and f (ast/symbol-node? f))
+                      (ref f (n/sexpr f))
+                      :else :opaque)))
+        ;; one `->>` step applied to what came before it: `(map f)` is `f`'s element, `(filter p)` keeps the
+        ;; rows, `(concat more)` adds rows, anything else is not understood
+        thread-last (fn [acc step]
+                      (let [step (some-> step ast/unmeta)
+                            head (cond (ast/symbol-node? step) (n/sexpr step) (ast/call? step) (ast/head-sym step))
+                            nm   (some-> head name)
+                            args (if (ast/call? step) (ast/args step) [])]
+                        (cond
+                          (nil? nm)                                     :opaque
+                          (contains? element-mapping-heads nm)          (element (first args))
+                          (contains? collection-keeping-heads nm)       acc
+                          (= nm "into")                                 acc
+                          (= nm "concat")                               (all (cons acc (map term args)))
+                          :else                                         :opaque)))]
     (cond
       (ast/literal? a)
       nil
 
+      ;; a map literal with keyword keys is keyed, and keeps its entries: what it holds under a key, and that it
+      ;; holds nothing under the others
       (ast/map-node? a)
-      (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)) :keyed :opaque)
+      (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a))
+        {:literal (into {} (for [[k v] (ast/map-entries a)] [(n/sexpr (ast/unmeta k)) (term v)]))}
+        :opaque)
 
       ;; `[{:a 1} {:b 2}]`: a collection of rows, keyed when every row is. `[:email :name]`: keys the code
       ;; chose, for the `select-keys` they end up in. Any other vector is not a map.
+      ;; `[]` and `[1 2]` are no map; `[a (f x)]` is a collection of whatever those are.
       (ast/vector-node? a)
-      (cond
-        (empty? (ast/children a))                                              :opaque
-        (every? #(ast/map-node? (ast/unmeta %)) (ast/children a))               (all (ast/children a))
-        (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children a))           :keyed
-        :else                                                                  :opaque)
+      (if (and (seq (ast/children a)) (every? #(ast/keyword-node? (ast/unmeta %)) (ast/children a)))
+        :keyed
+        (all (ast/children a)))
 
       (ast/symbol-node? a)
       (ref a (n/sexpr a))
@@ -321,10 +353,24 @@
             (term (first args))
             :opaque)
 
+          ;; `(->> rows (filter p) (map f))`: the last step's rows
+          (contains? '#{->> some->>} head)
+          (reduce thread-last (term (first args)) (rest args))
+
           ;; `(-> {...} (assoc :x 1) f)`: the seed's term, until a step merges another map in
           (contains? threading-heads head)
           (when-let [t (term (first args))]
             (if (some #(contains? vocab/merging-heads (some-> (thread-target %) name)) (rest args)) :opaque t))
+
+          ;; `(apply merge-with f maps)`, `(apply merge maps)`: the merge over the elements; `(apply f xs)`:
+          ;; what `f` returns
+          (= nm "apply")
+          (let [f (some-> (first args) ast/unmeta)]
+            (cond
+              (and f (ast/symbol-node? f) (= "merge-with" (name (n/sexpr f)))) (all (drop 2 args))
+              (and f (ast/symbol-node? f) (= "merge" (name (n/sexpr f))))      (all (rest args))
+              (and f (ast/symbol-node? f))                                    (ref f (n/sexpr f))
+              :else                                                           :opaque))
 
           (contains? shape-keeping-heads nm)
           (term (first args))
@@ -354,18 +400,7 @@
           {:vals-of (term (first args))}
 
           (contains? element-mapping-heads nm)
-          (let [f (some-> (first args) ast/unmeta)]
-            (cond
-              ;; `(fn [x] {...})`: its body's tails
-              (and (ast/call? f) (= "fn" (some-> (ast/head-sym f) name)))
-              (all (some-> (last (ast/args f)) tail-forms))
-              ;; `#(row %)`: the fn literal reads as a call to `row`, which is the element
-              (and f (= :fn (n/tag f)))
-              (term f)
-              ;; `row`: the function by name -- its return shape; a local holding a function is opaque
-              (and f (ast/symbol-node? f))
-              (ref f (n/sexpr f))
-              :else :opaque))
+          (element (first args))
 
           (= nm "concat")
           (all args)
@@ -2009,14 +2044,24 @@
                               :when (= 1 (count ids))]
                           [(first ids) {:key-ref (call-ref c) :k key}])))
         ;; what a function returns: its tails' terms, keyed when every one is
-        returns  (into {} (for [[fq ts] (group-by :fn tails)]
+        tails-by-fn (group-by :fn tails)
+        returns  (into {} (for [[fq ts] tails-by-fn]
                             [fq {:all (vec (keep :shape ts))}]))
-        ;; and under each key: known only when every tail is a map literal; a literal without the key returns
-        ;; nil there, no map
-        key-returns (into {} (for [[fq ts] (group-by :fn tails)
-                                   :when (every? :key-shapes ts)
-                                   k (into #{} (mapcat (comp keys :key-shapes)) ts)]
-                               [[fq k] {:all (vec (keep #(get (:key-shapes %) k) ts))}]))
+        ;; what a term holds under a key: a literal's entry, what a called function returns under it, one of
+        ;; the branches'; a keyed or opaque map says nothing about its values
+        key-of-term (fn key-of-term [term k]
+                      (cond
+                        (nil? term)     nil
+                        (:literal term) (get (:literal term) k)
+                        (:ref term)     {:key-ref term :k k}
+                        (:all term)     {:all (vec (keep #(key-of-term % k) (:all term)))}
+                        :else           :opaque))
+        ;; and under each key of a function's return: each tail's entry when it is a literal -- none when the
+        ;; literal lacks the key: nil there, no map -- else what the tail's own term holds under it
+        key-returns (fn [fq k]
+                      {:all (vec (keep (fn [{:keys [key-shapes shape]}]
+                                         (if key-shapes (get key-shapes k) (key-of-term shape k)))
+                                       (get tails-by-fn fq)))})
         feeds    (for [{:keys [i shape pos region] :as call} calls
                        :when (and shape (not (:key call)) (contains? params-by-fn (resolve-call call)))
                        :let  [to (slot-ids i)]
@@ -2026,6 +2071,8 @@
                    ;; call, and grades it by what that argument carried
                    {:to to :term shape :pos pos :fq (resolve-call call) :region region})
         fed      (into #{} (mapcat :to) feeds)
+        ;; what each parameter was handed, as terms, for what it holds under a key
+        feeds-by-id (reduce (fn [acc {:keys [to term]}] (reduce #(update %1 %2 (fnil conj []) term) acc to)) {} feeds)
         ;; `#{}` is not yet known -- a fed parameter whose callers are still being resolved, a cycle -- and a
         ;; round that meets it waits; nil is no map. Anything not keyed in a union makes it opaque: `(merge {:a 1}
         ;; body)` has body's keys too, and so does a merge with a map whose keys are values.
@@ -2041,21 +2088,47 @@
                              (symbol (str nsym) (str head))))
                          head))]
     (loop [m {}]
-      (let [eval-term (fn eval-term [term seen]
+      (let [;; what a function or a binding holds under a key, once per round: the walk through feeds and tails
+            ;; fans out, and without this a parameter fed by hundreds of calls was walked once per path
+            key-memo  (atom {})
+            eval-term (fn eval-term [term seen]
                         (cond
                           (nil? term)      nil
                           (keyword? term)  #{(keyword "shape" (name term))}
+                          (:literal term)  #{:shape/keyed}
                           (:all term)      (combine (keep #(eval-term % seen) (:all term)))
                           (:map-vals term) (some-> (eval-term (:map-vals term) seen) wrap-vals)
                           (:vals-of term)  (some-> (eval-term (:vals-of term) seen) unwrap-vals)
-                          ;; what a function returns under a key: its literal tails' entries, else unknown
-                          (:key-ref term)  (let [fq (resolve-fq (:ref (:key-ref term)))
-                                                 mk [:key fq (:k term)]]
+                          ;; what a function returns under a key, or what a local holds under it
+                          (:key-ref term)  (let [{:keys [filename row col] :as r} (:ref (:key-ref term))
+                                                 k    (:k term)
+                                                 id   (get usage-at [filename row col])
+                                                 fq   (when-not id (resolve-fq r))
+                                                 mk   (if id [:id id k] [:key fq k])
+                                                 memo (fn [f]
+                                                        (cond
+                                                          (contains? seen mk)      #{}
+                                                          (contains? @key-memo mk) (get @key-memo mk)
+                                                          :else
+                                                          (let [ls (f (conj seen mk))]
+                                                            (swap! key-memo assoc mk ls)
+                                                            ls)))]
                                              (cond
-                                               (contains? seen mk)              #{}
-                                               (contains? key-returns [fq (:k term)])
-                                               (eval-term (get key-returns [fq (:k term)]) (conj seen mk))
-                                               :else                            #{:shape/opaque}))
+                                               (and id (contains? bound id))
+                                               (memo #(eval-term (key-of-term (get bound id) k) %))
+
+                                               ;; a parameter: under the key, what each call handed it holds there
+                                               (and id (contains? feeds-by-id id))
+                                               (memo #(eval-term {:all (mapv (fn [t] (key-of-term t k)) (get feeds-by-id id))} %))
+
+                                               id
+                                               #{:shape/opaque}
+
+                                               (contains? tails-by-fn fq)
+                                               (memo #(eval-term (key-returns fq k) %))
+
+                                               :else
+                                               #{:shape/opaque}))
                           :else
                           (let [{:keys [filename row col] :as r} (:ref term)]
                             (if-let [id (get usage-at [filename row col])]
