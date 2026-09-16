@@ -254,9 +254,8 @@
 
 (deftest mcp-app-ui-extension-gating-test
   (testing "GHY-4157: MCP Apps tools are hidden from clients that cannot render an iframe.
-            Asserted per-tool rather than by set equality: the UI tools share `agent:query:run`
-            with the execute tools, so the granting scope lists more than these two."
-    (let [visible (fn [options] (set (map :name (registry/list-tools viz-scopes options))))
+            Asserted per-tool rather than by set equality: the list holds every other tool too."
+    (let [visible (fn [options] (set (map :name (registry/list-tools options))))
           with-ui (visible {:supports-mcp-ui? true})
           no-ui   (visible {:supports-mcp-ui? false})]
       (doseq [tool-name ["visualize_query" "render_drill_through"]]
@@ -291,7 +290,7 @@
 
 (deftest ui-tool-manifest-test
   (let [by-name (into {} (map (juxt :name identity))
-                      (registry/list-tools viz-scopes mcp-ui-client))]
+                      (registry/list-tools mcp-ui-client))]
     (testing "GHY-4157: each UI tool points the host at the iframe shell it renders into"
       (is (= v2.resources/visualize-query-uri
              (get-in by-name ["visualize_query" :_meta :ui :resourceUri])))
@@ -312,9 +311,6 @@
         (let [scope     (v2.resources/resource-scope uri)
               only-this #{scope}]
           (is (some? scope) (str uri " is registered with a scope"))
-          (testing (str tool-name " is listed to a token holding only its resource scope")
-            (is (contains? (set (map :name (registry/list-tools only-this mcp-ui-client)))
-                           tool-name)))
           (testing (str tool-name " is callable by that same token")
             ;; An unknown handle: the call gets past scope and extension gating to the handle
             ;; lookup, which is the point — a scope rejection would read "Insufficient scope".
@@ -323,32 +319,70 @@
                                                             mcp-ui-client)
                                         response-text)
                                     "Insufficient scope"))))
-          (testing (str tool-name " can read the shell it points at")
-            (is (= :ok (:status (mcp.ui-resource/with-fallback-template
-                                  (v2.resources/read-resource uri only-this {})))))))))))
+          (testing (str tool-name " gets a credential in the shell it points at")
+            ;; Any token reads a shell, so `:ok` alone proves nothing: the scope is what earns the credential.
+            (let [credential (delay "test-ui-credential")
+                  result     (mcp.ui-resource/with-fallback-template
+                               (v2.resources/read-resource uri only-this {:ui-credential credential}))]
+              (is (= :ok (:status result)))
+              (is (realized? credential))
+              (is (str/includes? (-> result :contents first :text) "test-ui-credential")))))))))
 
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
 
 (deftest resource-scopes-are-advertised-test
-  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a shell it could never read"
+  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a data resource it
+            could never read, or a shell that never gets a credential"
     (let [advertised (set (mcp.core/all-scopes))]
+      (testing "GHY-4543: data resources count, not just UI shells"
+        (is (contains? (v2.resources/resource-scopes) "agent:resource:read")))
       (doseq [scope (v2.resources/resource-scopes)]
         (is (contains? advertised scope) scope)))))
 
 (deftest resources-scope-gating-test
-  (testing "GHY-4157: resources/list only shows shells the token can read"
-    (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
-           (set (map :uri (:resources (v2.resources/list-resources viz-scopes))))))
-    (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
-              still-live token carrying one unlocks nothing — a bare grant matches only itself"
-      (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:query"}))))
-      (is (empty? (:resources (v2.resources/list-resources #{"agent:viz:mcp-ui:drill-through"})))))
-    (is (empty? (:resources (v2.resources/list-resources #{"agent:content:read"})))))
-  (testing "GHY-4157: reading a shell without its scope is denied, not served"
-    (is (= :scope-denied (:status (v2.resources/read-resource v2.resources/visualize-query-uri
-                                                              #{"agent:content:read"} {}))))
-    (is (= :not-found (:status (v2.resources/read-resource "ui://metabase/nope.html"
-                                                           viz-scopes {}))))))
+  (testing "GHY-4543: resources/list lists every resource regardless of scope"
+    (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+             v2.resources/fields-catalog-uri}
+           (set (map :uri (:resources (v2.resources/list-resources)))))))
+  (mcp.ui-resource/with-fallback-template
+    (let [read-with (fn [uri token-scopes]
+                      (let [credential (delay "test-ui-credential")
+                            result     (v2.resources/read-resource uri token-scopes {:ui-credential credential})]
+                        {:status  (:status result)
+                         :text    (-> result :contents first :text)
+                         :minted? (realized? credential)}))]
+      (testing "GHY-4543: a shell reads without its scope, but its credential is neither embedded nor forced"
+        (doseq [uri [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+          (let [{:keys [status text minted?]} (read-with uri #{"agent:content:read"})]
+            (is (= :ok status) uri)
+            (is (not (str/includes? text "test-ui-credential")) uri)
+            (is (false? minted?) uri))))
+      (testing "GHY-4250: the v0.62 per-shell leaves went out with the v1 resources they gated, so a
+                still-live token carrying one earns no credential — a bare grant matches only itself"
+        (doseq [grant ["agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+                uri   [v2.resources/visualize-query-uri v2.resources/render-drill-through-uri]]
+          (is (false? (:minted? (read-with uri #{grant}))) (str grant " -> " uri))))
+      (testing "a token holding the shell's scope gets the credential embedded"
+        (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
+          (is (str/includes? text "test-ui-credential"))
+          (is (true? minted?))))
+      (testing "GHY-4543: a scope covering the shell's scope earns the credential too: wildcards, and the unrestricted
+                sentinel a cookie session binds"
+        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"} #{:metabase.api.macros.scope/unrestricted}]]
+          (testing (pr-str token-scopes)
+            (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
+              (is (str/includes? text "test-ui-credential"))
+              (is (true? minted?))))))
+      (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
+                challenge for it"
+        (is (= {:status :scope-denied :required-scope "agent:resource:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:content:read"} {}))))
+      (testing "the fields catalog reads with agent:resource:read, and a data resource mints no credential"
+        (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:resource:read"})]
+          (is (= :ok status))
+          (is (false? minted?))))
+      (testing "GHY-4157: an unknown URI is not found"
+        (is (= :not-found (:status (read-with "ui://metabase/nope.html" viz-scopes))))))))
 
 (deftest resource-read-renders-iframe-shell-test
   (mcp.ui-resource/with-fallback-template
