@@ -2,82 +2,82 @@
   display: flex;
   flex-direction: column;
   gap: var(--mantine-spacing-xxs);
+}
 
-  /* Undo the styling of Mantine's separated variant (item border, active background, 12px spacing) */
-  .item {
+/* Undo the styling of Mantine's separated variant (item border, active background, 12px spacing) */
+.item {
+  background-color: transparent;
+  border: 0;
+
+  &[data-active] {
     background-color: transparent;
-    border: 0;
-
-    &[data-active] {
-      background-color: transparent;
-    }
-
-    & + & {
-      margin-top: 0;
-    }
   }
 
-  .control {
-    padding-block: var(--mantine-spacing-md);
-    padding-inline: var(--mantine-spacing-lg);
-    border-radius: var(--mantine-radius-sm);
-    background-color: var(--mb-color-background_surface-secondary);
-    color: var(--mb-color-text-primary);
-    transition: background-color 150ms ease;
+  & + & {
+    margin-top: 0;
+  }
+}
 
-    &:not(:disabled):hover {
-      background-color: var(--mb-color-background_surface-secondary-hover);
-    }
+.control {
+  padding-block: var(--mantine-spacing-md);
+  padding-inline: var(--mantine-spacing-lg);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  transition: background-color 150ms ease;
 
-    &:not(:disabled):active {
-      background-color: var(--mb-color-background_surface-secondary-pressed);
-    }
-
-    &:disabled,
-    &[data-disabled] {
-      background-color: var(--mb-color-background_surface-disabled);
-      color: var(--mb-color-text-disabled);
-      opacity: 1;
-    }
+  &:hover {
+    background-color: var(--mb-color-background_surface-secondary-hover);
   }
 
-  .label {
-    padding-block: 0;
-    font-size: var(--mantine-font-size-md);
-    line-height: rem(20px);
-    font-weight: 500;
+  &:active {
+    background-color: var(--mb-color-background_surface-secondary-pressed);
   }
 
-  .chevron {
-    margin-inline-start: var(--mantine-spacing-xl);
-
-    &[data-position="left"] {
-      margin-inline-start: 0;
-      margin-inline-end: var(--mantine-spacing-sm);
-    }
+  &:disabled,
+  &[data-disabled] {
+    background-color: var(--mb-color-background_surface-disabled);
+    color: var(--mb-color-text-disabled);
+    opacity: 1;
   }
+}
 
-  .icon {
-    /* from Figma: icon can be shown only if the chevron is on the right */
-    &[data-chevron-position="left"] {
-      display: none;
-    }
-  }
+.label {
+  padding-block: 0;
+  font-size: var(--mantine-font-size-md);
+  line-height: rem(20px);
+  font-weight: 500;
+}
 
-  .control:not(:disabled):hover .icon,
-  .control:not(:disabled):active .icon {
-    color: var(--mb-color-text-hover);
-  }
+.chevron {
+  margin-inline-start: var(--mantine-spacing-xl);
 
-  .content {
-    padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg)
-      var(--mantine-spacing-lg);
-    color: var(--mb-color-text-secondary);
-    font-size: var(--mantine-font-size-md);
-    line-height: rem(20px);
+  &[data-position="left"] {
+    margin-inline-start: 0;
+    margin-inline-end: var(--mantine-spacing-sm);
   }
+}
 
-  .panel {
-    word-break: break-word;
+.icon {
+  /* from Figma: icon can be shown only if the chevron is on the right */
+  &[data-chevron-position="left"] {
+    display: none;
   }
+}
+
+.control:hover .icon,
+.control:active .icon {
+  color: var(--mb-color-text-hover);
+}
+
+.content {
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg)
+    var(--mantine-spacing-lg);
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-md);
+  line-height: rem(20px);
+}
+
+.panel {
+  word-break: break-word;
 }
