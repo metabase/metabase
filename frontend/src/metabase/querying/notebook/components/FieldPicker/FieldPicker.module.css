@@ -1,3 +1,38 @@
+/* The popover dropdown is the scroll container, so pin the search box to its top. */
+.SearchContainer {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5em 0.5em 0;
+  background: var(--mb-color-background_surface-primary);
+
+  /* Mantine styles Combobox.Search as a dropdown header (negative margins, no
+     side borders, raw palette colors); restore the regular input look. */
+  .Search {
+    margin: 0;
+    width: 100%;
+    border: 1px solid var(--mb-color-border-neutral);
+    border-radius: var(--default-border-radius);
+    background-color: var(--mb-color-background_surface-primary);
+
+    &:focus {
+      border-color: var(--mb-color-core-brand);
+    }
+  }
+}
+
+.VisuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .List {
   padding: 0.5em;
 
@@ -19,6 +54,10 @@
     &[data-combobox-disabled="true"] {
       cursor: default;
     }
+  }
+
+  .Empty {
+    padding: 0.5em;
   }
 }
 
