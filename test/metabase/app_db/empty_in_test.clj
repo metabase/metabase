@@ -14,8 +14,10 @@
 
 (deftest an-unmarked-empty-in-is-still-rewritten-test
   (testing "leaving it unmarked keeps Toucan's rewrite, which turns IN () into FALSE"
-    (is (= ["SELECT * FROM \"CONTENT_TRANSLATION\" WHERE FALSE"]
-           (t2/compile (t2/select :model/ContentTranslation {:where [:in :id []]}))))))
+    ;; Match the clause rather than the whole statement: each app DB quotes identifiers its own way.
+    (let [[sql] (t2/compile (t2/select :model/ContentTranslation {:where [:in :id []]}))]
+      (is (re-find #"(?i)WHERE FALSE" sql))
+      (is (not (re-find #"IN \(\)" sql))))))
 
 (deftest a-non-empty-collection-still-binds-test
   (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}
