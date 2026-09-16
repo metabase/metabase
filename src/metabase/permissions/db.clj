@@ -377,7 +377,8 @@
 (mu/defn group-tenant-flags
   "A map of group ID to `:is_tenant_group` for `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in (mapv long group-ids)]))
+  (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group]
+                    {:where [:in :id (mapv long group-ids)]}))
 
 (mu/defn group-names-like
   "The set of PermissionsGroup names matching the SQL `pattern`."
@@ -742,7 +743,8 @@
 (mu/defn user-tenant-ids
   "A map of User ID to `:tenant_id` for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in (mapv long user-ids)]))
+  (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id]
+                    {:where [:in :id (mapv long user-ids)]}))
 
 (mu/defn earliest-user-join-date
   "The earliest `date_joined` of any User, or nil."
@@ -782,7 +784,7 @@
 (mu/defn non-destination-database-ids
   "The IDs of the Databases that are not routing destinations."
   []
-  (t2/select-pks-vec :model/Database :router_database_id nil))
+  (t2/select-pks-vec :model/Database {:where [:= :router_database_id nil]}))
 
 (mu/defn destination-database?
   "Whether the Database with `database-id` is a routing destination."
