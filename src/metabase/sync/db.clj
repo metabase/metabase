@@ -420,7 +420,9 @@
                      [:= :table_id (long table-id)]
                      [:= :active true]
                      [:not-in :visibility_type ["sensitive" "retired"]]
-                     [:= :semantic_type :type/Name]]}))
+                     ;; `:model/Field`'s `:semantic_type` transform runs on kv-args but not inside a
+                     ;; `:where` map, so the post-transform string is written out explicitly here.
+                     [:= :semantic_type [:auto/param "type/Name"]]]}))
 
 (mu/defn unscored-fields-for-database-reducible
   "Reducible active, visible Fields of the Database with `database-id` without a dimension interestingness score."
