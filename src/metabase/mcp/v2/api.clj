@@ -12,6 +12,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
@@ -95,14 +96,14 @@
     (transport/jsonrpc-error
      id
      common/error-code-invalid-request
-     (registry/insufficient-scope-message (str "read resource: " uri) required-scope token-scopes))
+     (registry/insufficient-scope-message (message/msg ["read resource: %s"] uri) required-scope token-scopes))
     token-scopes
     (registry/insufficient-scope-detail uri required-scope)))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
-      (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
+      (transport/jsonrpc-error id -32602 (message/msg ["Missing required parameter: uri"]))
       ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
       ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
       ;; templates that embed it (the test fallback), and the production template discards it.
@@ -116,10 +117,10 @@
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
-          :not-found    (transport/jsonrpc-error id -32602 "Resource not found")
+          :not-found    (transport/jsonrpc-error id -32602 (message/msg ["Resource not found"]))
           :scope-denied (resource-scope-denial id uri token-scopes (:required-scope result))
           :ok           (transport/jsonrpc-response id {:contents (:contents result)})
-          (transport/jsonrpc-error id -32603 (str "Unexpected resource status: " (:status result))))))))
+          (transport/jsonrpc-error id -32603 (message/msg ["Unexpected resource status: %s"] (:status result))))))))
 
 (defn- handle-ping [id _params]
   (transport/jsonrpc-response id {}))
@@ -141,7 +142,7 @@
     "resources/read"            (handle-resources-read id params session-id token-scopes)
     "ping"                      (handle-ping id params)
     (if id
-      (transport/jsonrpc-error id -32601 (str "Method not found: " method))
+      (transport/jsonrpc-error id -32601 (message/msg ["Method not found: %s"] method))
       nil)))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------

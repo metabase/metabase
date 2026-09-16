@@ -19,6 +19,7 @@
    [metabase.mcp.core :as mcp.core]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
@@ -55,7 +56,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (:message error) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text)))
 
 (defn- payload
   "The `structuredContent` of a successful response. Throws if the tool errored, so a
@@ -206,11 +207,16 @@
 (deftest render-drill-through-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid    (str (random-uuid))
-            handle (mint-mbql-handle! sid (mt/user->id :rasta))
-            body   (payload (call! "render_drill_through" sid {:query_handle handle}))]
+      (let [sid     (str (random-uuid))
+            handle  (mint-mbql-handle! sid (mt/user->id :rasta))
+            outcome (call! "render_drill_through" sid {:query_handle handle})
+            body    (payload outcome)]
         (testing "GHY-4157: the drill handle the iframe minted is echoed for the iframe to resolve"
-          (is (= {:query_handle handle} body)))))))
+          (is (= {:query_handle handle} body)))
+        (testing "GHY-4544: the text mirrors the payload as JSON, then the steering line"
+          (is (= (str (json/encode {:query_handle handle})
+                      "\nRendering the visualization in the interactive UI. This is the final answer — do not call an execute tool afterwards, and do not tell the user to switch display types or open a Metabase panel or sidebar.")
+                 (response-text outcome))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest render-drill-through-accepts-iframe-minted-handle-test
@@ -261,8 +267,10 @@
       (let [message (error-text (call! "visualize_query" (str (random-uuid))
                                        {:query_handle (str (random-uuid))}
                                        {:supports-mcp-ui? false}))]
-        (is (str/includes? message "MCP Apps UI"))
-        (is (str/includes? message "text/html;profile=mcp-app"))))))
+        (testing "GHY-4544: the tool name and extension label are quoted"
+          (is (= (str "\"visualize_query\" requires a client that supports \"MCP Apps UI\".\n"
+                      "Reconnect from a client that advertises text/html;profile=mcp-app.")
+                 message)))))))
 
 (deftest scope-gating-test
   (mt/with-current-user (mt/user->id :rasta)
