@@ -3009,6 +3009,9 @@
       (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id (:entity_id entry)}])))))
     (testing "a term-keyed path from a pre-entity_id export finds the row"
       (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id "ARR"}])))))
+    (testing "a term that is itself 21 nano-id characters still finds the row by term"
+      (mt/with-temp [:model/Glossary shaped {:term "CustomerLifetimeValue" :definition "x"}]
+        (is (= (:id shaped) (:id (serdes/load-find-local [{:model "Glossary" :id "CustomerLifetimeValue"}]))))))
     (testing "an unknown term finds nothing"
       (is (nil? (serdes/load-find-local [{:model "Glossary" :id "No such term"}]))))))
 

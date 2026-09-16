@@ -158,7 +158,9 @@
                      :field-mappings {:model_name :term}}
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
     :export-scope   :all  ; export all glossary entries
-    :enabled?       :library-synced}
+    :enabled?       :library-synced
+    ;; files exported before `entity_id` existed are keyed by term; resolve those paths through load-find-local
+    :natural-key-paths? true}
 
    :model/Timeline
    {:model-type     "Timeline"
@@ -909,19 +911,22 @@
   "Extracts identity data from a serdes path based on the spec's identity strategy. For entity-id
    and hybrid models, returns the entity_id string from the last path element. For path-based models
    like Table and Field, returns a map with database, schema, and table/field names that can be used
-   to look up the entity."
+   to look up the entity. A spec with `:natural-key-paths?` may also be keyed on a natural key (files
+   exported before the model had an entity_id); its paths are resolved through `serdes/load-find-local`."
   {:arglists '([spec serdes-path])}
   (fn [spec _path] (:identity spec))
   :hierarchy #'serdes-path-identity-hierarchy)
 
 (defmethod extract-identity-from-serdes-path ::entity-id-extractor
-  [_ serdes-path]
+  [{:keys [natural-key-paths?]} serdes-path]
   (let [id (:id (last serdes-path))]
-    (if (serdes/entity-id? id)
-      id
-      ;; A path keyed on a natural key (a glossary term, before `entity_id` existed) names whichever local row
-      ;; the loader matches it to, so resolve it to that row's entity_id; nil when no such row exists yet.
-      (:entity_id (serdes/load-find-local serdes-path)))))
+    (if natural-key-paths?
+      ;; The path id may be a natural key (a glossary term, before `entity_id` existed) naming whichever local row
+      ;; the loader matches it to, so use that row's entity_id. Before the load there may be no such row yet; the
+      ;; raw id is kept then, since it matches no local row (harmless to the removal anti-join) and still counts
+      ;; as an imported entity.
+      (or (:entity_id (serdes/load-find-local serdes-path)) id)
+      id)))
 
 (defmethod extract-identity-from-serdes-path :path
   [_ serdes-path]

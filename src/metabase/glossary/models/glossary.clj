@@ -35,11 +35,11 @@
 
 (defmethod serdes/load-find-local "Glossary"
   [path]
-  ;; Files exported before `entity_id` existed are keyed by term.
+  ;; Files exported before `entity_id` existed are keyed by term, and a term can itself be 21 nano-id characters,
+  ;; so try both lookups rather than discriminating on shape.
   (let [{:keys [id]} (last path)]
-    (if (serdes/entity-id? id)
-      (serdes/lookup-by-id :model/Glossary id)
-      (glossary.db/glossary-entry-by-term id))))
+    (or (serdes/lookup-by-id :model/Glossary id)
+        (glossary.db/glossary-entry-by-term id))))
 
 (defmethod serdes/load-one! "Glossary"
   [ingested maybe-local]

@@ -366,12 +366,19 @@
                  (is (= "from the repo" (t2/select-one-fn :definition :model/Glossary :id (:id entry)))))))))))))
 
 (deftest extract-imported-entities-resolves-term-keyed-paths-test
-  (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
-    (let [paths [[{:model "Glossary" :id (:entity_id entry)}]
-                 [{:model "Glossary" :id "ARR"}]
-                 [{:model "Glossary" :id "No such term"}]]]
-      (is (= #{(:entity_id entry)}
-             (get-in (spec/extract-imported-entities paths) [:by-entity-id "Glossary"]))))))
+  (mt/with-temp [:model/Glossary entry  {:term "ARR" :definition "Annual recurring revenue"}
+                 :model/Glossary shaped {:term "CustomerLifetimeValue" :definition "21 nano-id characters"}]
+    (let [resolve (fn [id]
+                    (get-in (spec/extract-imported-entities [[{:model "Glossary" :id id}]])
+                            [:by-entity-id "Glossary"]))]
+      (testing "an entity_id path is passed through"
+        (is (= #{(:entity_id entry)} (resolve (:entity_id entry)))))
+      (testing "a term-keyed path resolves to the matching row's entity_id"
+        (is (= #{(:entity_id entry)} (resolve "ARR"))))
+      (testing "a term that is itself 21 nano-id characters still resolves by term"
+        (is (= #{(:entity_id shaped)} (resolve "CustomerLifetimeValue"))))
+      (testing "a path matching no local row keeps its raw id"
+        (is (= #{"No such term"} (resolve "No such term")))))))
 
 (def ^:private base-tree
   "A snapshot with the synced Library and one plain collection, and no glossary files."
@@ -430,3 +437,28 @@
            (is (true? (import-v0-then-v1! v0 base-tree)) "a deleted glossary file takes the incremental import fast path")
            (is (nil? (t2/select-one :model/Glossary :entity_id eid)) "the entry is deleted")
            (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :file_path path)) "its ledger row is removed")))))))
+
+(deftest nano-id-shaped-term-keyed-file-survives-import-test
+  (mt/with-temporary-setting-values [remote-sync-enabled true]
+    (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
+      (do-with-synced-library!
+       (fn []
+         (let [term  "CustomerLifetimeValue"
+               path  (str "glossary/" (u/lower-case-en term) ".yaml")
+               files (assoc base-tree path (test-helpers/generate-legacy-glossary-yaml term "from the repo"))]
+           (testing "a synced local row matched by a 21-character term survives a full import"
+             (mt/with-temp [:model/Glossary entry {:term term :definition "local"}]
+               (with-rso! entry "synced")
+               (let [mock (test-helpers/create-mock-source :initial-files {"main" files})]
+                 (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
+                 (is (=? {:id (:id entry) :entity_id (:entity_id entry) :definition "from the repo"}
+                         (t2/select-one :model/Glossary :term term)))
+                 (is (=? {:status "synced" :file_path path} (rso entry))))))
+           (testing "with no local row the term lands on a full import and gets a ledger row"
+             (let [mock (test-helpers/create-mock-source :initial-files {"main" files})]
+               (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true :force-deletion? false))))
+               (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term))))))
+           (testing "the term lands with a ledger row on an incremental import"
+             (t2/delete! :model/Glossary :term term)
+             (is (true? (import-v0-then-v1! base-tree files)))
+             (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term)))))))))))
