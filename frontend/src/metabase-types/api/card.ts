@@ -393,12 +393,6 @@ export type VisualizationSettings = {
   /** Add a trend line, best for time-based trends without extra groupings. */
   "graph.show_trendline"?: boolean;
 
-  /** Color of trend lines. Defaults to the darker variant of each series color. */
-  "graph.trendline_color"?: string;
-
-  /** Style of trend lines: solid, dashed, or dotted. */
-  "graph.trendline_style"?: LineStyle;
-
   /** Render compatible series in separate panels instead of one chart. */
   "graph.split_panels"?: boolean;
 

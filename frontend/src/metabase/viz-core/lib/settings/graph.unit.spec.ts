@@ -1,6 +1,7 @@
-import { deriveChartShadeColor } from "metabase/ui/colors/accents";
+import _ from "underscore";
+
 import { checkNotNull } from "metabase/utils/types";
-import type { VisualizationDisplay } from "metabase-types/api";
+import type { SeriesSettings, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -9,6 +10,9 @@ import {
   createMockInsight,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
+import type { ComputedVisualizationSettings } from "../../types";
 
 import {
   GRAPH_AXIS_SETTINGS,
@@ -301,146 +305,161 @@ describe("GRAPH_TREND_SETTINGS", () => {
     });
   });
 
-  describe("graph.trendline_color", () => {
-    const getDefault = checkNotNull(
-      GRAPH_TREND_SETTINGS["graph.trendline_color"]?.getDefault,
-    );
-    const getHidden = checkNotNull(
-      GRAPH_TREND_SETTINGS["graph.trendline_color"]?.getHidden,
-    );
+  describe("single series trend line customization", () => {
+    const CUSTOM_COLOR = "#ED6E6E";
 
-    it("should default to the shade of the first series color", () => {
-      const value = getDefault([createMockSingleSeries({})], {
-        "series_settings.colors": {
-          count: "#509EE3",
-          avg: "#88BF4D",
-        },
+    const seriesWithInsights = (names: string[]) =>
+      names.map((name) =>
+        createMockSingleSeries(
+          { name },
+          {
+            data: createMockDatasetData({
+              insights: [createMockInsight({ col: name })],
+            }),
+          },
+        ),
+      );
+
+    const getSettings = (
+      seriesSettings: Record<string, SeriesSettings>,
+    ): ComputedVisualizationSettings => ({
+      "graph.show_trendline": true,
+      "graph.dimensions": ["FOO"],
+      series_settings: seriesSettings,
+      series: (key: LegacySeriesSettingsObjectKey) =>
+        seriesSettings[key.card.name] ?? {},
+    });
+
+    describe("graph.trendline_color", () => {
+      const definition = checkNotNull(
+        GRAPH_TREND_SETTINGS["graph.trendline_color"],
+      );
+      const getValue = checkNotNull(definition.getValue);
+      const getHidden = checkNotNull(definition.getHidden);
+      const getProps = checkNotNull(definition.getProps);
+
+      it("should read the color of the single series", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.color": CUSTOM_COLOR },
+        });
+
+        expect(getValue(series, settings)).toBe(CUSTOM_COLOR);
       });
 
-      expect(value).toBe(deriveChartShadeColor("#509EE3"));
-    });
+      it("should write the color into the single series settings and keep the rest", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.style": "dotted" },
+          avg: { color: "#88BF4D" },
+        });
+        const onChangeSettings = jest.fn();
+        const { onChange } = getProps(
+          series,
+          settings,
+          _.noop,
+          undefined,
+          onChangeSettings,
+        );
 
-    it("should be hidden when the trend line is disabled", () => {
-      const series = [
-        createMockSingleSeries(
-          {},
-          {
-            data: createMockDatasetData({
-              insights: [createMockInsight({ col: "FOO" })],
-            }),
+        expect(typeof onChange).toBe("function");
+        if (typeof onChange === "function") {
+          onChange(CUSTOM_COLOR);
+        }
+
+        expect(onChangeSettings).toHaveBeenCalledWith({
+          series_settings: {
+            count: {
+              "trendline.style": "dotted",
+              "trendline.color": CUSTOM_COLOR,
+            },
+            avg: { color: "#88BF4D" },
           },
-        ),
-      ];
+        });
+      });
 
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": false,
-          "graph.dimensions": ["FOO"],
-        }),
-      ).toBe(true);
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": true,
-          "graph.dimensions": ["FOO"],
-        }),
-      ).toBe(false);
+      it("should be hidden when the trend line is disabled", () => {
+        const series = seriesWithInsights(["count"]);
+
+        expect(
+          getHidden(series, {
+            ...getSettings({}),
+            "graph.show_trendline": false,
+          }),
+        ).toBe(true);
+        expect(getHidden(series, getSettings({}))).toBe(false);
+      });
+
+      it("should be hidden with multiple series, which are customized per series", () => {
+        expect(
+          getHidden(seriesWithInsights(["count", "avg"]), getSettings({})),
+        ).toBe(true);
+      });
     });
 
-    it("should be hidden when the trend line is unavailable", () => {
-      const series = [
-        createMockSingleSeries(
-          {},
-          { data: createMockDatasetData({ insights: [] }) },
-        ),
-      ];
+    describe("graph.trendline_style", () => {
+      const definition = checkNotNull(
+        GRAPH_TREND_SETTINGS["graph.trendline_style"],
+      );
+      const getValue = checkNotNull(definition.getValue);
+      const getHidden = checkNotNull(definition.getHidden);
+      const getProps = checkNotNull(definition.getProps);
 
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": true,
-          "graph.dimensions": ["FOO"],
-        }),
-      ).toBe(true);
-    });
+      it("should read the style of the single series", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.style": "dashed" },
+        });
 
-    it("should be hidden with multiple series, which are customized per series", () => {
-      const series = [
-        createMockSingleSeries(
-          {},
-          {
-            data: createMockDatasetData({
-              insights: [createMockInsight({ col: "FOO" })],
-            }),
+        expect(getValue(series, settings)).toBe("dashed");
+      });
+
+      it("should write the style into the single series settings and keep the rest", () => {
+        const series = seriesWithInsights(["count"]);
+        const settings = getSettings({
+          count: { "trendline.color": CUSTOM_COLOR },
+        });
+        const onChangeSettings = jest.fn();
+        const { onChange } = getProps(
+          series,
+          settings,
+          _.noop,
+          undefined,
+          onChangeSettings,
+        );
+
+        expect(typeof onChange).toBe("function");
+        if (typeof onChange === "function") {
+          onChange("dotted");
+        }
+
+        expect(onChangeSettings).toHaveBeenCalledWith({
+          series_settings: {
+            count: {
+              "trendline.color": CUSTOM_COLOR,
+              "trendline.style": "dotted",
+            },
           },
-        ),
-      ];
+        });
+      });
 
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": true,
-          "graph.dimensions": ["FOO"],
-          "series_settings.colors": { count: "#509EE3", avg: "#88BF4D" },
-        }),
-      ).toBe(true);
-    });
-  });
+      it("should be hidden when the trend line is disabled", () => {
+        const series = seriesWithInsights(["count"]);
 
-  describe("graph.trendline_style", () => {
-    const getDefault = checkNotNull(
-      GRAPH_TREND_SETTINGS["graph.trendline_style"]?.getDefault,
-    );
-    const getHidden = checkNotNull(
-      GRAPH_TREND_SETTINGS["graph.trendline_style"]?.getHidden,
-    );
+        expect(
+          getHidden(series, {
+            ...getSettings({}),
+            "graph.show_trendline": false,
+          }),
+        ).toBe(true);
+        expect(getHidden(series, getSettings({}))).toBe(false);
+      });
 
-    it("should default to a solid line", () => {
-      expect(getDefault([createMockSingleSeries({})], {})).toBe("solid");
-    });
-
-    it("should be hidden when the trend line is disabled", () => {
-      const series = [
-        createMockSingleSeries(
-          {},
-          {
-            data: createMockDatasetData({
-              insights: [createMockInsight({ col: "FOO" })],
-            }),
-          },
-        ),
-      ];
-
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": false,
-          "graph.dimensions": ["FOO"],
-        }),
-      ).toBe(true);
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": true,
-          "graph.dimensions": ["FOO"],
-        }),
-      ).toBe(false);
-    });
-
-    it("should be hidden with multiple series, which are customized per series", () => {
-      const series = [
-        createMockSingleSeries(
-          {},
-          {
-            data: createMockDatasetData({
-              insights: [createMockInsight({ col: "FOO" })],
-            }),
-          },
-        ),
-      ];
-
-      expect(
-        getHidden(series, {
-          "graph.show_trendline": true,
-          "graph.dimensions": ["FOO"],
-          "series_settings.colors": { count: "#509EE3", avg: "#88BF4D" },
-        }),
-      ).toBe(true);
+      it("should be hidden with multiple series, which are customized per series", () => {
+        expect(
+          getHidden(seriesWithInsights(["count", "avg"]), getSettings({})),
+        ).toBe(true);
+      });
     });
   });
 });

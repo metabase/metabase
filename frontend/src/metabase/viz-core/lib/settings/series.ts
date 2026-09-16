@@ -313,8 +313,7 @@ export function seriesSetting({
       }),
       getHidden: (_single, seriesSettings, extra) =>
         isSeriesTrendLineCustomizationHidden(seriesSettings, extra),
-      getDefault: (_single, _seriesSettings, extra) =>
-        extra?.settings?.["graph.trendline_style"] ?? "solid",
+      getDefault: () => "solid",
       readDependencies: ["show_series_trendline", "graph.show_trendline"],
     },
     show_series_values: {

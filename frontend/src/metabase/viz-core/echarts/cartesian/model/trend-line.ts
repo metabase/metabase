@@ -49,34 +49,16 @@ const getTrendLineColor = (
   );
 };
 
-/**
- * With a single series, trend lines are customized with the global settings in
- * the Display tab; with multiple series, per series in the series settings
- * popover. The global color is read from the stored settings because the
- * computed one always has a series-based default.
- */
 const getTrendLineCustomization = (
-  rawSeries: RawSeries,
   seriesModel: SeriesModel,
-  hasMultipleSeries: boolean,
   settings: ComputedVisualizationSettings,
 ) => {
-  const globalStyle = settings["graph.trendline_style"] ?? "solid";
-
-  if (!hasMultipleSeries) {
-    return {
-      customColor:
-        rawSeries[0].card.visualization_settings?.["graph.trendline_color"],
-      style: globalStyle,
-    };
-  }
-
   const seriesSettings = settings.series?.(
     seriesModel.legacySeriesSettingsObjectKey,
   );
   return {
     customColor: seriesSettings?.["trendline.color"],
-    style: seriesSettings?.["trendline.style"] ?? globalStyle,
+    style: seriesSettings?.["trendline.style"] ?? "solid",
   };
 };
 
@@ -212,14 +194,10 @@ export const getTrendLines = (
     return trendDatum;
   });
 
-  const hasMultipleSeries = seriesModels.length > 1;
-
   const trendSeriesModels: TrendLineSeriesModel[] = seriesModelsWithTrends.map(
     ([seriesModel]) => {
       const { customColor, style } = getTrendLineCustomization(
-        rawSeries,
         seriesModel,
-        hasMultipleSeries,
         settings,
       );
 

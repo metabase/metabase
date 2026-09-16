@@ -2,11 +2,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
-import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { mergeLazily } from "metabase/utils/merge-lazily";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { Series, VisualizationDisplay } from "metabase-types/api";
+import type {
+  LineStyle,
+  Series,
+  SeriesSettings,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
@@ -43,7 +48,7 @@ import {
   isYAxisUnpinFromZeroValid,
 } from "../../shared/settings/cartesian-chart";
 import {
-  SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
   isTrendLineUnavailable,
 } from "../../shared/settings/series";
 import type {
@@ -62,7 +67,7 @@ import { MAX_SERIES, columnsAreValid } from "../utils";
 
 import { trackStackedSeriesEnabled } from "./analytics";
 import { columnSettings } from "./column";
-import { seriesSetting } from "./series";
+import { keyForSingleSeries, seriesSetting } from "./series";
 import { getOptionFromColumn } from "./utils";
 import { getBreakoutCardinality } from "./validation";
 
@@ -454,12 +459,35 @@ const isTrendLineDisabled = (
   isTrendLineUnavailable(series, vizSettings) ||
   !vizSettings["graph.show_trendline"];
 
-// With multiple series, trend lines are customized per series in the series
-// settings popover instead of the Display tab
-const hasMultipleSeries = (vizSettings: ComputedVisualizationSettings) => {
-  const seriesColors: Record<string, string> =
-    vizSettings[SERIES_COLORS_SETTING_KEY] ?? {};
-  return Object.keys(seriesColors).length > 1;
+/**
+ * Trend line color and style are stored per series. With a single series the
+ * Display tab edits that series' settings directly, so the customization keeps
+ * applying when the chart later gains series and moves to the series popover.
+ */
+const getSingleSeriesTrendLineSetting =
+  (key: "trendline.color" | "trendline.style") =>
+  (series: Series, vizSettings: ComputedVisualizationSettings) =>
+    vizSettings.series?.(series[0])?.[key];
+
+const isSingleSeriesTrendLineSettingHidden = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+) => isTrendLineDisabled(series, vizSettings) || series.length > 1;
+
+const updateSingleSeriesTrendLineSetting = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+  onChangeSettings: (settings: Partial<VisualizationSettings>) => void,
+  changes: SeriesSettings,
+) => {
+  const seriesKey = keyForSingleSeries(series[0]);
+  const seriesSettings = vizSettings[SERIES_SETTING_KEY] ?? {};
+  onChangeSettings({
+    [SERIES_SETTING_KEY]: {
+      ...seriesSettings,
+      [seriesKey]: { ...seriesSettings[seriesKey], ...changes },
+    },
+  });
 };
 
 export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
@@ -480,24 +508,23 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.trendline_color": {
     getSection: () => t`Display`,
     widget: "color",
-    getProps: () => ({
+    getValue: getSingleSeriesTrendLineSetting("trendline.color"),
+    getProps: (series, vizSettings, _onChange, _extra, onChangeSettings) => ({
       title: t`Trend line color`,
       bordered: true,
       pillSize: "small" as const,
+      onChange: (value: string) =>
+        updateSingleSeriesTrendLineSetting(
+          series,
+          vizSettings,
+          onChangeSettings,
+          {
+            "trendline.color": value,
+          },
+        ),
     }),
-    getDefault: (_series, vizSettings) => {
-      const seriesColors: Record<string, string> =
-        vizSettings[SERIES_COLORS_SETTING_KEY] ?? {};
-      const firstSeriesColor = Object.values(seriesColors)[0];
-      return firstSeriesColor != null
-        ? deriveChartShadeColor(firstSeriesColor)
-        : color("brand");
-    },
-    getHidden: (series, vizSettings) =>
-      isTrendLineDisabled(series, vizSettings) ||
-      hasMultipleSeries(vizSettings),
-    useRawSeries: true,
-    readDependencies: ["graph.show_trendline", SERIES_COLORS_SETTING_KEY],
+    getHidden: isSingleSeriesTrendLineSettingHidden,
+    readDependencies: ["series", "graph.show_trendline"],
   },
   "graph.trendline_style": {
     getSection: () => t`Display`,
@@ -505,7 +532,8 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Trend line style`;
     },
     widget: "segmentedControl",
-    getProps: () => ({
+    getValue: getSingleSeriesTrendLineSetting("trendline.style"),
+    getProps: (series, vizSettings, _onChange, _extra, onChangeSettings) => ({
       options: [
         { name: t`Solid`, value: "solid", icon: "line_style_solid" as const },
         {
@@ -519,13 +547,18 @@ export const GRAPH_TREND_SETTINGS: VisualizationSettingsDefinitions = {
           icon: "line_style_dotted" as const,
         },
       ],
+      onChange: (value: LineStyle) =>
+        updateSingleSeriesTrendLineSetting(
+          series,
+          vizSettings,
+          onChangeSettings,
+          {
+            "trendline.style": value,
+          },
+        ),
     }),
-    getDefault: () => "solid",
-    getHidden: (series, vizSettings) =>
-      isTrendLineDisabled(series, vizSettings) ||
-      hasMultipleSeries(vizSettings),
-    useRawSeries: true,
-    readDependencies: ["graph.show_trendline", SERIES_COLORS_SETTING_KEY],
+    getHidden: isSingleSeriesTrendLineSettingHidden,
+    readDependencies: ["series", "graph.show_trendline"],
   },
 };
 

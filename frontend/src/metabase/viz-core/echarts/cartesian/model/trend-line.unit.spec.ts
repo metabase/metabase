@@ -37,13 +37,9 @@ const SERIES_COLORS: Record<string, string> = {
 };
 
 const setup = ({
-  trendlineColor,
-  trendlineStyle,
   seriesSettings = {},
   metrics = ["count", "avg"],
 }: {
-  trendlineColor?: string;
-  trendlineStyle?: "solid" | "dashed" | "dotted";
   seriesSettings?: Record<string, SeriesSettings>;
   metrics?: string[];
 } = {}) => {
@@ -52,7 +48,6 @@ const setup = ({
       {
         visualization_settings: {
           "graph.show_trendline": true,
-          "graph.trendline_color": trendlineColor,
         },
       },
       {
@@ -85,8 +80,6 @@ const setup = ({
 
   const settings: ComputedVisualizationSettings = {
     "graph.show_trendline": true,
-    "graph.trendline_color": trendlineColor,
-    "graph.trendline_style": trendlineStyle,
     "graph.y_axis.auto_range": true,
     series: (key) => seriesSettings[key.card._seriesKey ?? ""] ?? {},
   };
@@ -104,6 +97,8 @@ const setup = ({
 };
 
 describe("getTrendLines", () => {
+  const CUSTOM_COLOR = "#ED6E6E";
+
   it("should use the darker variant of each series color by default", () => {
     const trendLinesModel = setup();
 
@@ -112,61 +107,62 @@ describe("getTrendLines", () => {
     );
   });
 
-  it("should use the explicitly selected color for a single trend line", () => {
-    const trendLinesModel = setup({
-      trendlineColor: "#ED6E6E",
-      metrics: ["count"],
-    });
-
-    expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
-      ["#ED6E6E"],
-    );
-  });
-
-  it("should ignore the selected color and keep per-series shades with multiple trend lines", () => {
-    const trendLinesModel = setup({ trendlineColor: "#ED6E6E" });
-
-    expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
-      [deriveChartShadeColor("#509EE3"), deriveChartShadeColor("#88BF4D")],
-    );
-  });
-
-  it("should use the global style for a single series and default to solid", () => {
+  it("should default to a solid line", () => {
     expect(
       setup({ metrics: ["count"] })?.seriesModels.map((series) => series.style),
     ).toEqual(["solid"]);
-    expect(
-      setup({ metrics: ["count"], trendlineStyle: "dashed" })?.seriesModels.map(
-        (series) => series.style,
-      ),
-    ).toEqual(["dashed"]);
+    expect(setup()?.seriesModels.map((series) => series.style)).toEqual([
+      "solid",
+      "solid",
+    ]);
+  });
+
+  it("should use the series color and style for a single series", () => {
+    const trendLinesModel = setup({
+      metrics: ["count"],
+      seriesSettings: {
+        count: { "trendline.color": CUSTOM_COLOR, "trendline.style": "dashed" },
+      },
+    });
+
+    expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
+      [CUSTOM_COLOR],
+    );
+    expect(trendLinesModel?.seriesModels.map((series) => series.style)).toEqual(
+      ["dashed"],
+    );
   });
 
   it("should use per-series color and style with multiple series", () => {
     const trendLinesModel = setup({
       seriesSettings: {
-        count: { "trendline.color": "#ED6E6E", "trendline.style": "dotted" },
+        count: { "trendline.color": CUSTOM_COLOR, "trendline.style": "dotted" },
       },
     });
 
     expect(trendLinesModel?.seriesModels.map((series) => series.color)).toEqual(
-      ["#ED6E6E", deriveChartShadeColor("#88BF4D")],
+      [CUSTOM_COLOR, deriveChartShadeColor("#88BF4D")],
     );
     expect(trendLinesModel?.seriesModels.map((series) => series.style)).toEqual(
       ["dotted", "solid"],
     );
   });
 
-  it("should fall back to the global style with multiple series", () => {
-    const trendLinesModel = setup({
-      trendlineStyle: "dashed",
-      seriesSettings: {
-        count: { "trendline.style": "dotted" },
-      },
-    });
+  it("should keep a series customization when the chart gains or loses series", () => {
+    const seriesSettings = {
+      count: { "trendline.color": CUSTOM_COLOR, "trendline.style": "dotted" },
+    } as const;
 
-    expect(trendLinesModel?.seriesModels.map((series) => series.style)).toEqual(
-      ["dotted", "dashed"],
-    );
+    const single = setup({ metrics: ["count"], seriesSettings });
+    const multiple = setup({ metrics: ["count", "avg"], seriesSettings });
+
+    expect(single?.seriesModels[0]).toMatchObject({
+      color: CUSTOM_COLOR,
+      style: "dotted",
+    });
+    expect(multiple?.seriesModels[0]).toMatchObject({
+      color: CUSTOM_COLOR,
+      style: "dotted",
+    });
   });
 });
