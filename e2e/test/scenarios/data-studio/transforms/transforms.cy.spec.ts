@@ -2695,6 +2695,11 @@ LIMIT
         visitTransform: true,
       });
 
+      cy.log("Wait for the transform to finish loading before editing");
+      H.DataStudio.Transforms.header()
+        .findByPlaceholderText("Name")
+        .should("have.value", "Revision Test Transform");
+
       cy.log("Make changes to create a revision");
       H.DataStudio.Transforms.header()
         .findByPlaceholderText("Name")
@@ -2770,7 +2775,9 @@ LIMIT
         .click();
       cy.wait("@failedRevert");
 
-      H.undoToast().should("contain.text", "Cannot revert: missing transform");
+      H.undoToastList()
+        .filter(':contains("Cannot revert: missing transform")')
+        .should("be.visible");
     });
   });
 
