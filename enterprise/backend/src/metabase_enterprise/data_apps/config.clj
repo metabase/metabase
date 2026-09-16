@@ -34,8 +34,9 @@
    listed only to admins, badged, and never opened."
   1)
 
-(def ^:private default-app-version
-  "The `version` of an app whose manifest declares none: every app predates the field."
+(def ^:private initial-app-version
+  "The `version` of an app whose manifest declares none: every such app predates the
+   field, so this stays 1 while [[supported-app-version]] moves on."
   1)
 
 (defn outdated?
@@ -44,13 +45,13 @@
   (< version supported-app-version))
 
 (defn- parse-version
-  "Validate the optional `version`: a positive whole number, [[default-app-version]]
+  "Validate the optional `version`: a positive whole number, [[initial-app-version]]
    when absent. Throws a 400 for anything else rather than coercing it, since a
    string or a decimal here is a typo, not a version."
   [raw ^String dir]
   (cond
     (nil? raw)
-    default-app-version
+    initial-app-version
 
     (and (integer? raw) (pos? raw))
     (long raw)

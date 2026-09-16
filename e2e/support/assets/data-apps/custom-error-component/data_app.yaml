@@ -1,2 +1,3 @@
 name: Custom Error Component
+version: 1
 path: ./dist/index.js
