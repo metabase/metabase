@@ -62,7 +62,7 @@
 
 (deftest ^:parallel effect-bullets-test
   (testing "a read-only tool says so, and doesn't stutter about being repeatable"
-    (is (= ["Read-only. It doesn't create, change, or delete anything in your Metabase."]
+    (is (= ["Read-only."]
            (remove nil? (#'mcp-tools-dox/effect-bullets
                          {:annotations {:readOnlyHint true :idempotentHint true}})))))
   (testing "a non-destructive writer says it writes, and promises nothing about what it won't touch"

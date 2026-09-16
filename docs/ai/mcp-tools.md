@@ -17,23 +17,23 @@ Some clients (like Claude Desktop) ask you to approve or block each tool the fir
 
 The descriptions and argument notes here are exactly what your agent sees (which is why they sound robotic). Your agent can also call the `learn` tool for longer guides on the things a tool description can't fit.
 
-The argument tables don't mark anything as required, and a nested object (an item in a list, say) shows only as `object`. The description says which arguments a call needs, and the argument's own note describes the nested shape. If your client shows every argument as required, that's the strict-schema convention some clients use: any argument the description doesn't call for can be sent as `null`.
+The tables don't mark arguments as required; each tool's description says what a call needs. Nested objects show up as `object`, and the argument's note describes their shape. If your client marks every argument as required, that's the strict-schema convention: send `null` for anything the description doesn't call for.
 
 Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. By default, handles expire after 24 hours.
 
-Your agent should reach for `execute_query` for anything it can say in Metabase's structured query language: counts, sums, averages, grouping, filtering, sorting, and joins. `execute_sql` is for what that language can't express (window functions, CTEs, set operations, engine-specific functions) or for when you ask for SQL outright.
+Your agent will use `execute_query` for anything Metabase's query language can express (counts, sums, grouping, filtering, joins) and `execute_sql` for the rest (window functions, CTEs, engine-specific functions), or when you ask for SQL outright.
 
-The query tools take a `row_limit`. That's the page size for one call, not a cap on the result: a longer result comes back marked truncated, and `execute_query` also returns a cursor for the next page. To get the top or first N rows, the query itself needs a `limit` (with an `order-by`) in its stage.
+The query tools take a `row_limit`. That's the page size, not a cap: longer results come back marked truncated, and `execute_query` returns a cursor for the next page.
 
 ## Interactive tools
 
-These render inline charts in your AI client. They only work in clients that support inline visualizations. Such a client may also list a helper tool the chart calls for itself; it isn't documented here because the model never calls it.
+These render inline charts in your AI client. They only work in clients that support inline visualizations. Your client may also list a helper tool that charts call for themselves; it isn't documented here.
 
 ### Render drill through
 
 - Tool name: `render_drill_through`
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Render the drill-through visualization the user just navigated into. Use this — not an execute tool — when the user asks to show a result and their message carries a handle UUID; it is the exact follow-up for the phrase `Show me the result`. Pass that UUID through as query_handle without running the query yourself. Like visualize_query, this renders a lightweight inline visualization and is the final answer: do not restate the numbers with an execute tool, and do not tell the user to change display types or open a Metabase panel or sidebar.
 
@@ -47,7 +47,7 @@ Arguments:
 
 - Tool name: `visualize_query`
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). The chart type is inferred from the result shape. Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI.
 
@@ -67,7 +67,7 @@ These read from your Metabase. They don't create, change, or delete anything.
 
 - Tool name: `browse_collection`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Browse collections structurally. Two modes: items (default) answers "what's in this one collection" — a paged, mixed-type listing you can filter and sort; tree answers "how is the hierarchy laid out" — collections only, depth-limited and budgeted so a whole instance fits in one response, with truncation markers naming the call that expands a branch. One uniform id over every partition: a numeric id, a 21-char entity_id, "root" (re-rooted per namespace), or "trash" (archived content, items mode only). items mode lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging (limit default 50, max 500) in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2, max 10) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under "Finance" — browse_collection(id: 45, mode: "tree"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool.
 
@@ -93,7 +93,7 @@ Arguments:
 
 - Tool name: `browse_data`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Browse the data hierarchy: databases → schemas → tables → fields. Actions: list_databases — databases you can see; list_schemas — schema names in a database; list_tables — tables in a database, scoped to `schema` (omit it for databases without schemas) and optionally narrowed with `search`; list_models — models built on a database; get_fields — field metadata for up to 20 tables in one call, each table carrying its measures, segments, metrics, and related tables (FK targets with column names) for query construction. list_* actions return the {data, returned, total} envelope paged with limit/offset. get_fields returns whole tables within a response byte budget and names any tables it had to omit; a single table too large for the budget comes back as a position-ordered field slice with a continuation offset.
 
@@ -116,7 +116,7 @@ Arguments:
 
 - Tool name: `execute_query`
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 The default way to answer a question from data: validate and execute a structured (MBQL) query over a table, model, metric, or saved question, returning rows plus a query_handle. Use it first for any count, sum, average, group-by, filter, sort, or join — including one-liners like "how many X do we have" — and fall back to execute_sql only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Only this route validates against database metadata and names what did not resolve, pages with a cursor, and saves as a question that wires to dashboard filters as-is — so any card bound for a filtered dashboard starts here; a raw-SQL card needs template tags first. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — it holds the query that ran without the cursor's paging position, so saving or visualizing from any page gives the whole question rather than that one page. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size) until truncated is false, otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000). row_limit is the page size, not the bound on the result: "the first N / top N rows" is a stage limit: N with an order-by (example below), served row_limit rows per call, whose last page arrives truncated: false with no next_cursor — never count pages by hand to stop at N. Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess ids, never base64, never a schema-qualified name. A bare row count needs only the table id browse_data list_tables (or search) already returned; browse_data get_fields gives field ids when the query filters, groups, or aggregates over a column. Top level: {"lib/type": "mbql/query", "stages": [...]}; each stage "lib/type": "mbql.stage/mbql" plus source-table: <numeric table id> or source-card: <numeric card id> on the FIRST stage only — later stages read the previous stage's output. Every clause is ["op", {}, ...args], options map mandatory at position 1. Field refs: ["field", {}, <numeric field id>], or a bare column-name string against a previous stage (["field", {}, "count"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Simplest aggregate (row count of one table — the whole query for "how many rows"): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]]}]}. Example (row count by month): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]], "breakout": [["field", {"temporal-unit": "month"}, <FIELD_ID>]]}]}. First N rows (e.g. the first 400 ids, ascending) is a stage with only "source-table", "fields": [["field", {}, <FIELD_ID>]], "order-by": [["asc", {}, ["field", {}, <FIELD_ID>]]], "limit": 400. <TABLE_ID> and <FIELD_ID> are placeholders — ids differ per instance, so resolve yours with browse_data before calling. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn("query-dialect") before authoring a non-trivial query (joins, expressions, multi-stage); learn("query-dialect", "operators") lists every operator. Native SQL is rejected at any depth — it belongs in execute_sql.
 
@@ -135,7 +135,7 @@ Arguments:
 
 - Tool name: `get_content`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown.
 
@@ -151,7 +151,7 @@ Arguments:
 
 - Tool name: `get_parameter_values`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target ("dashboard" or "question" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: "date", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in ("YYYY-MM-DD", "YYYY-MM-DD~YYYY-MM-DD", "past30days", "thisyear") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`.
 
@@ -171,7 +171,7 @@ Arguments:
 
 - Tool name: `learn`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference "operators" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference "settings" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context.
 
@@ -186,7 +186,7 @@ Arguments:
 
 - Tool name: `run_saved_question`
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({% raw %}{{variable}}{% endraw %} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000).
 
@@ -202,7 +202,7 @@ Arguments:
 
 - Tool name: `search`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only. It doesn't create, change, or delete anything in your Metabase.
+- Read-only.
 
 Find content across the Metabase instance by relevance. Two modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by type, collection_id (scopes to the collection subtree), created_by: "me", archived: true; (2) recent: true — your recently viewed items. A query is required for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a collection), use browse_collection or browse_data instead — this tool redirects query-less listings there. type: ["snippet"] searches SQL snippets you can read by name and must be requested on its own, not alongside other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace: "transforms"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking limit — so a large total is a floor (the response says "at least N"). An empty {data: [], total: 0} means no match against the search index, which on a freshly started instance can still be building — if content you can reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent.
 

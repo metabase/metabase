@@ -17,10 +17,10 @@ Some clients (like Claude Desktop) ask you to approve or block each tool the fir
 
 The descriptions and argument notes here are exactly what your agent sees (which is why they sound robotic). Your agent can also call the `learn` tool for longer guides on the things a tool description can't fit.
 
-The argument tables don't mark anything as required, and a nested object (an item in a list, say) shows only as `object`. The description says which arguments a call needs, and the argument's own note describes the nested shape. If your client shows every argument as required, that's the strict-schema convention some clients use: any argument the description doesn't call for can be sent as `null`.
+The tables don't mark arguments as required; each tool's description says what a call needs. Nested objects show up as `object`, and the argument's note describes their shape. If your client marks every argument as required, that's the strict-schema convention: send `null` for anything the description doesn't call for.
 
 Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. By default, handles expire after 24 hours.
 
-Your agent should reach for `execute_query` for anything it can say in Metabase's structured query language: counts, sums, averages, grouping, filtering, sorting, and joins. `execute_sql` is for what that language can't express (window functions, CTEs, set operations, engine-specific functions) or for when you ask for SQL outright.
+Your agent will use `execute_query` for anything Metabase's query language can express (counts, sums, grouping, filtering, joins) and `execute_sql` for the rest (window functions, CTEs, engine-specific functions), or when you ask for SQL outright.
 
-The query tools take a `row_limit`. That's the page size for one call, not a cap on the result: a longer result comes back marked truncated, and `execute_query` also returns a cursor for the next page. To get the top or first N rows, the query itself needs a `limit` (with an `order-by`) in its stage.
+The query tools take a `row_limit`. That's the page size, not a cap: longer results come back marked truncated, and `execute_query` returns a cursor for the next page.

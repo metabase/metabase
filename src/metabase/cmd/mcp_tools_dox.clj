@@ -26,8 +26,8 @@
   section whose `:claims?` says yes."
   [{:heading "Interactive tools"
     :blurb   (str "These render inline charts in your AI client. They only work in clients that support inline "
-                  "visualizations. Such a client may also list a helper tool the chart calls for itself; it "
-                  "isn't documented here because the model never calls it.")
+                  "visualizations. Your client may also list a helper tool that charts call for themselves; it "
+                  "isn't documented here.")
     ;; A UI tool is recognized by the `:_meta` `:ui` block it publishes rather than by its
     ;; `:required-extensions`, because `:_meta` is the half a client actually sees.
     ;; `metabase.cmd.mcp-tools-dox-test/all-tools-test` pins the two to the same set.
@@ -143,7 +143,7 @@
   [{:keys [annotations]}]
   (let [{:keys [readOnlyHint destructiveHint idempotentHint]} annotations]
     [(cond
-       readOnlyHint             "Read-only. It doesn't create, change, or delete anything in your Metabase."
+       readOnlyHint             "Read-only."
        destructiveHint          "Can overwrite or delete existing data or content."
        ;; `destructiveHint false` is the tool's claim to make additive changes. It's a hint, not a contract:
        ;; `document_write` carries it while its description explains a full-body rewrite, so the page promises

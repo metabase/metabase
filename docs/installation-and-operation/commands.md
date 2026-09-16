@@ -91,7 +91,7 @@ Transfer data from existing H2 database to the newly created MySQL or Postgres D
 
 ## `mcp-tools-documentation`
 
-Generates a markdown file listing the tools Metabase's MCP server exposes to AI clients, the permission scope each one needs, and the arguments each one takes. This is written to a file called `docs/ai/mcp-tools.md`.
+Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients.
 
 ## `migrate direction`
 
