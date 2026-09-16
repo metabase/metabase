@@ -13,6 +13,7 @@ import {
   programFrom,
 } from "./test-fixtures";
 import { TypeWalkError } from "./type-comparison";
+import * as valueConversion from "./value-conversion";
 
 const ENDPOINT_ID = "endpoints:example";
 
@@ -736,24 +737,50 @@ describe("type printing order", () => {
 describe("request comparison rules", () => {
   const frontend = "type ErdResponse = { id: number };";
 
-  it("should report a client failure before unresolved URL tags", () => {
-    const results = check({
-      frontend,
-      backend: operation({
-        method: "Post",
-        url: "/api/user/{id}",
-        path: "path: { id: number }",
-      }),
-      endpoint: request(
-        "string[]",
-        '(body) => ({ method: "POST", url: "/api/user/:id", body })',
-      ),
-    });
-    expect(resultFor(results, "request")).toMatchObject({
-      status: "mismatch",
-      message: expect.stringContaining("throws before sending an array body"),
-    });
-  });
+  it.each([
+    ["mismatch", '["a"]', "throws before sending an array body"],
+    [
+      "unverified",
+      '{ name: "n" }',
+      "may be supplied by runtime keys or the body",
+    ],
+  ])(
+    "should skip discarded serialization walks after establishing a %s",
+    (status, body, reason) => {
+      const unexpectedWalk = () => {
+        throw new TypeWalkError(
+          "This serialization result would be discarded.",
+        );
+      };
+      const queryWalk = jest
+        .spyOn(valueConversion, "stringShapes")
+        .mockImplementation(unexpectedWalk);
+      const bodyWalk = jest
+        .spyOn(valueConversion, "jsonField")
+        .mockImplementation(unexpectedWalk);
+      try {
+        const results = check({
+          frontend,
+          backend: operation({
+            method: "Post",
+            url: "/api/user/{id}",
+            path: "path: { id: number }",
+          }),
+          endpoint: request(
+            "void",
+            `() => ({ method: "POST", url: "/api/user/:id", params: { q: 1 }, body: ${body} })`,
+          ),
+        });
+        expect(resultFor(results, "request")).toMatchObject({
+          status,
+          message: expect.stringContaining(reason),
+        });
+      } finally {
+        queryWalk.mockRestore();
+        bodyWalk.mockRestore();
+      }
+    },
+  );
 
   it.each([
     [

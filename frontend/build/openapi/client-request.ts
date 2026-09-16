@@ -78,8 +78,11 @@ export function modelClientRequest(
   const { method } = rtk;
   const foldsBody = method === "GET" && rtk.body !== undefined;
 
-  const params = paramsPayloads(context, rtk.params);
   const body = bodyPayloads(context, rtk.body, method);
+  if (body.failure) {
+    return { kind: "failed", message: body.failure };
+  }
+  const params = paramsPayloads(context, rtk.params);
   const queryNotes = [...params.notes];
   const bodyNotes = [...body.notes];
   const paramsVariants = params.payloads.map((payload) =>
@@ -96,6 +99,10 @@ export function modelClientRequest(
       paramsVariants,
       bodyVariants.some((payload) => !isEmpty(payload)),
     );
+  const unverified = extraOptionsUnverified(rtk) ?? tagUnverified;
+  if (unverified) {
+    return { kind: "unverified", message: unverified };
+  }
   const parameters = pathParameters(context, pathSlots, tagParameters);
 
   const inline = inlineQuery(query);
@@ -148,13 +155,6 @@ export function modelClientRequest(
   }
   const queryVariants = queryPayloads(sources, onUnverified);
 
-  if (body.failure) {
-    return { kind: "failed", message: body.failure };
-  }
-  const unverified = extraOptionsUnverified(rtk) ?? tagUnverified;
-  if (unverified) {
-    return { kind: "unverified", message: unverified };
-  }
   return {
     kind: "modelled",
     method,
