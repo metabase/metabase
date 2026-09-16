@@ -346,18 +346,18 @@
     :google    (stream-generate-content/reasoning-model? model)
     false))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. Google answers from the model name, per wire family."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for a publisher-qualified `model`, or nil when it isn't one we know.
 
   Gemini windows come from the [[models/catalog]], the same rows that drive the reasoning gate.
   Answers nil for a model this adapter cannot serve rather than throwing the way [[model->family]] does, for the
   same reason [[reasoning-model?]] does."
-  [model]
+  [model :- [:maybe :string]]
   (case (model-families (model-publisher model))
     :anthropic (raw-predict/context-window-tokens (model-id model))
     :google    (get-in models/catalog [model :context-window])

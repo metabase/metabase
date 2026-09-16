@@ -96,9 +96,9 @@
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (defn- reasoning-class
@@ -115,9 +115,9 @@
   [model]
   (contains? #{:renderable :renderable-default} (reasoning-class model)))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. OpenRouter answers from the model name."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (defn- reasoning-mandatory?

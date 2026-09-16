@@ -67,9 +67,9 @@
     :openai    (openai/reasoning-model? (model->deployment model))
     nil        false))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. Azure answers from the deployment name, delegating to the family's adapter."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (def ^:private model-context-windows
@@ -98,12 +98,12 @@
    "gpt-5.4-nano"       272000
    "gpt-5.4"            922000})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for a `{family}/{deployment}` model string. Deployment names
   default to the model id at deploy time, so the longest model id prefixing the deployment
   name decides (tolerating date/custom suffixes like `gpt-5.4-2026-03-05`); nil when the
   deployment name matches no known model."
-  [model]
+  [model :- [:maybe :string]]
   (let [deployment (u/lower-case-en (str (model->deployment model)))]
     (some->> (keys model-context-windows)
              (filter #(str/starts-with? deployment %))

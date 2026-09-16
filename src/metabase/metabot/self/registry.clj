@@ -5,9 +5,11 @@
   `optional` returns nil."
   (:require
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.core :as core]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
@@ -31,14 +33,19 @@
 
 (def AdapterRow
   "One provider's row. Closed for the same reason [[Capability]] is: a mistyped key in the table below would
-  otherwise silently mean the provider lacks that capability."
+  otherwise silently mean the provider lacks that capability.
+
+  The `:=>` schemas say what each capability is applied to and answers with. Malli checks one no further
+  than `ifn?`, so they are the contract an implementation is held to by its own `mu/defn`, and by
+  `self-test/registry-test` comparing the two. `:supported-models` holds a map rather than a function —
+  `ifn?` accepted it because a map is `ifn?` — so it stops at `var?`."
   [:map {:closed true}
-   [:stream           {:optional true} [:maybe ifn?]]
-   [:list-models      {:optional true} [:maybe ifn?]]
-   [:supported-models {:optional true} [:maybe ifn?]]
-   [:context-window   {:optional true} [:maybe ifn?]]
-   [:reasoning?       {:optional true} [:maybe ifn?]]
-   [:fast-mode?       {:optional true} [:maybe ifn?]]])
+   [:stream           {:optional true} [:=> [:cat core/LLMRequestOpts] :any]]
+   [:list-models      {:optional true} [:=> [:cat [:? core/LLMRequestOpts]] adapter/ModelListing]]
+   [:supported-models {:optional true} [:fn var?]]
+   [:context-window   {:optional true} [:=> [:cat [:maybe :string]] [:maybe :int]]]
+   [:reasoning?       {:optional true} [:=> [:cat adapter/ResolvedRef] :boolean]]
+   [:fast-mode?       {:optional true} [:=> [:cat adapter/ResolvedRef] :boolean]]])
 
 (def ^:private adapters
   "Every provider Metabot serves, by `llm-providers` type.

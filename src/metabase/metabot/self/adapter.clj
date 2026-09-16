@@ -69,6 +69,18 @@
                     [:display-name                   :string]
                     [:context-window {:optional true} [:maybe :int]]]])
 
+(def ResolvedRef
+  "What [[metabase.llm.provider/resolve-model-ref]] turns a `connection-key/model` string into.
+
+  Lives here rather than in the registry: the registry requires the adapters, not the other way round, so
+  this is where both ends can name it."
+  [:map
+   [:connection-key {:optional true} [:maybe :string]]
+   [:type           {:optional true} [:maybe :string]]
+   [:model          {:optional true} [:maybe :string]]
+   [:credentials    {:optional true} [:maybe :map]]
+   [:ai-proxy?      {:optional true} [:maybe :boolean]]])
+
 (def ModelListing
   "The model-listing response the admin picker consumes."
   [:map

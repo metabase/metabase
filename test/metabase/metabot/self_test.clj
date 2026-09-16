@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
@@ -28,7 +29,6 @@
    [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
-   [malli.core :as mc]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
@@ -112,6 +112,20 @@
   (testing "every row conforms to the schema, so a mistyped capability key cannot read as an absent one"
     (doseq [[provider row] @#'registry/adapters]
       (is (nil? (mr/explain registry/AdapterRow row)) provider)))
+  (testing "an adapter's own schema and the schema its row declares are the same contract, so a change to
+            one without the other fails here rather than at a call site"
+    ;; compared rather than exercised: the row's `:=>` forms are documentation — Malli checks one no further
+    ;; than `ifn?` — and `mu/defn` already validates each implementation against its own schema on every
+    ;; call. What nothing else covers is the two declarations drifting apart.
+    ;; Skipped: `:stream` and `:list-models` are registered as plain `defn`s and carry no schema to compare,
+    ;; and `:supported-models` is a var holding a map rather than a function.
+    (let [declared (into {} (map (fn [[capability _props schema]] [capability (mc/form schema)]))
+                         (mc/children (mc/schema registry/AdapterRow)))]
+      (doseq [[provider row]              @#'registry/adapters
+              [capability implementation] (dissoc row :stream :list-models :supported-models)]
+        (is (= (declared capability)
+               (some-> (:schema (meta implementation)) mc/form))
+            (str provider " " capability)))))
   (testing "the capability enum and the row schema name the same capabilities, so the two hand-written
             lists cannot drift apart — a capability in one but not the other would either be unlookupable
             or unstorable"

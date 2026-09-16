@@ -29,10 +29,10 @@
   `list-models` returns the intersection of this map with the `/models` catalog."
   {"mistral-medium-3-5" {:display-name "Mistral Medium 3.5" :context-window 262144}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know.
   Catalog aliases (e.g. `mistral-medium-latest`) are not resolved."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (defn reasoning-model?
@@ -45,9 +45,9 @@
   [model]
   (contains? supported-models (str model)))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. Mistral answers from the model name."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (defn- whitelisted-id

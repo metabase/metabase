@@ -257,9 +257,9 @@
    "gpt-5.4-pro"   {:display-name "GPT-5.4 Pro"   :context-window 922000}
    "gpt-5.4-mini"  {:display-name "GPT-5.4 Mini"  :context-window 272000}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (defn list-models
@@ -295,9 +295,9 @@
   [model]
   (not (model-supports-temperature? model)))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. OpenAI answers from the model name."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (mu/defn openai-request-body

@@ -33,9 +33,9 @@
   {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576 :thinking-only? true}
    "glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
 
-(defn context-window-tokens
+(mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
-  [model]
+  [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
 (defn reasoning-model?
@@ -46,9 +46,9 @@
   [model]
   (contains? supported-models (str model)))
 
-(defn streams-reasoning?
+(mu/defn streams-reasoning? :- :boolean
   "Registry capability. Z.AI answers from the model name."
-  [{:keys [model]}]
+  [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
 (defn- thinking-only-model?
