@@ -1,16 +1,8 @@
 (ns metabase.metabot.self.registry
-  "The registry of LLM providers Metabot can serve, and the lookups over it.
+  "Registry and capability lookups for the LLM providers Metabot can serve.
 
-  One table keyed by the `llm-providers` type string, replacing the four parallel `case` forms
-  [[metabase.metabot.self]] used to carry. Adding a provider is a row; a provider without a capability
-  simply has no entry for it, rather than each lookup carrying its own default — one of those four
-  defaulted to nil silently, so a provider missing from it read as \"no context window\" rather than
-  failing.
-
-  This is the whole of it: the four dispatches [[metabase.metabot.self]] carried and the two capability
-  dispatches that used to live in a `metabase.metabot.self.catalog` namespace of their own. That namespace
-  could not read this table while `metabase.metabot.self.azure` still required `metabase.metabot.settings`,
-  which required it back; with that dependency gone the two merge."
+  A provider without a capability omits it from its row. `required` throws when the capability is absent;
+  `optional` returns nil."
   (:require
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self.azure :as azure]
