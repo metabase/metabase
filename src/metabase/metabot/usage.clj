@@ -71,9 +71,17 @@
         default-key (default-metabase-meter-key)]
     (meter-value meters default-key)))
 
+(defn managed-usage-locked?
+  "Whether the managed provider's free tier is locked, regardless of which connection is selected. What the fallback
+  asks before routing a request to the managed connection."
+  []
+  (boolean (some-> (premium-features/token-status) (#(:is-locked (meter-entry %))))))
+
 (defn managed-free-limit-reached?
-  "True when the configured managed Metabase provider is locked for free-tier usage."
-  ([] (and (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+  "True when the managed Metabase provider is locked and is the one about to serve requests — after the fallback has
+  had its say, so a locked managed selection that fell back to BYOK is not rejected, and a BYOK selection that fell
+  back to the managed provider is checked."
+  ([] (and (llm.provider/managed-model-ref? (:model-ref (metabot.settings/metabot-model-selection)))
            (some-> (premium-features/token-status) managed-free-limit-reached?)))
   ([token-status]
    (some-> (meter-entry token-status)

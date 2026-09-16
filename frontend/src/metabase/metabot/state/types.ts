@@ -31,6 +31,26 @@ export type MetabotDataPartMetadata = {
   suggestionId?: string;
 };
 
+// Errors where re-sending the same turn cannot end differently: the conversation needs a refresh, the
+// subscription an upgrade, the quota a reset, the user a permission.
+export const UNRETRIABLE_METABOT_TURN_ERROR_CODES = [
+  "conversation_out_of_sync",
+  "metabase_ai_managed_locked",
+  "ai_usage_limit_reached",
+  "permission_denied",
+] as const;
+
+// Errors a Retry can end differently — a provider failure resolves to the fallback provider on retry,
+// because the failure was recorded when the turn died.
+export const RETRIABLE_METABOT_TURN_ERROR_CODES = ["provider_error"] as const;
+
+/** Error codes the backend stamps on a failed turn's finish metadata. The wire stays open — `type` on the
+ * turn error is any string — but client behavior keyed on a code should name it in one of the arrays above,
+ * which decide whether the turn gets a Retry. */
+export type MetabotKnownTurnErrorCode =
+  | (typeof UNRETRIABLE_METABOT_TURN_ERROR_CODES)[number]
+  | (typeof RETRIABLE_METABOT_TURN_ERROR_CODES)[number];
+
 export type MetabotAgentTurnError = {
   message?: string;
   type?: string;
