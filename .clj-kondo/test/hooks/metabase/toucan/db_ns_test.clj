@@ -5,9 +5,15 @@
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]))
 
+(defn- confinement-findings
+  "Only the `t2-query-namespace` findings, so these tests are not affected by the query-hygiene
+  linter that shares this hook."
+  [findings]
+  (filter #(= :metabase/t2-query-namespace (:type %)) findings))
+
 (defn- lint-query-call [form ns-sym & [filename modules]]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}
-                                                               :metabase/unmarked-sql-value  {:level :warning}}}
+                                                               :metabase/unsafe-app-db-query  {:level :warning}}}
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
@@ -26,13 +32,16 @@
               :message #".*`t2/select-one`.*"}]
             (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.models.card))))
   (testing "metabase.<module>.db is allowed"
-    (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.db))))
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.db)))))
   (testing "metabase-enterprise.<module>.db is allowed"
-    (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db))))
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db)))))
   (testing "metabase.driver.<driver>.db is allowed for driver modules"
-    (is (empty? (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db))))
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db)))))
   (testing "metabase.<module>.queries is allowed -- the HugSQL equivalent of .db"
-    (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.queries))))
+    ;; map form, not `:id 1`: the kv-arg style trips `unsafe-app-db-query`, which is a different
+    ;; linter than the one under test here.
+    (is (empty? (lint-query-call '(t2/select-one :model/Card {:where [:= :id 1]})
+                                 'metabase.queries.queries))))
   (testing "a nested queries namespace is not a module data-access namespace"
     (is (=? [{:type :metabase/t2-query-namespace}]
             (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.queries))))
@@ -80,7 +89,7 @@
 
 (deftest ^:parallel unmarked-value-in-a-db-namespace-test
   (testing "a symbol reaching a value slot is flagged"
-    (is (=? [{:type    :metabase/unmarked-sql-value
+    (is (=? [{:type    :metabase/unsafe-app-db-query
               :message #"`locale` reaches a SQL value slot unmarked.*"}]
             (lint-query-call '(t2/select :model/X {:where [:= :locale locale]}) 'metabase.foo.db))))
   (testing "a marked value is not flagged"
@@ -95,32 +104,43 @@
             (lint-query-call '(t2/select :model/X {:where [:and [:= :x [:auto/param a]] [:= :y b]]})
                              'metabase.foo.db))))
   (testing "only db namespaces are linted for unmarked values"
-    (is (empty? (filter #(= :metabase/unmarked-sql-value (:type %))
+    (is (empty? (filter #(= :metabase/unsafe-app-db-query (:type %))
                         (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
                                          'metabase.foo.models.thing)))))
   (testing "a test source tree is exempt"
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
                                  'metabase.foo.db "test/metabase/foo/db_test.clj")))))
 
-(deftest ^:parallel unmarked-value-in-a-queries-namespace-test
-  (testing "a .queries namespace is held to the marker rule too, so a partially ported module's
-            surviving Toucan writes are still checked"
-    (is (=? [{:type    :metabase/unmarked-sql-value
-              :message #".*`provider`.*"}]
-            (lint-query-call '(t2/select-one :model/AuthIdentity {:where [:= :provider provider]})
-                             'metabase.sso.queries)))))
+(deftest ^:parallel kv-arg-style-test
+  (testing "a query written as :column value pairs is flagged whatever the values are"
+    (are [form] (=? [{:type :metabase/unsafe-app-db-query, :message #"Pass this query a map.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X :locale locale)
+      '(t2/select :model/X :archived false)
+      '(t2/select :model/X :locale [:auto/param locale])
+      '(t2/select-one :model/X :id (long id))))
+  (testing "one finding per call, not one per pair"
+    (is (= 1 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
+                                     'metabase.foo.db)))))
+  (testing "a fn with an argument before the model is still recognised"
+    (is (=? [{:message #"Pass this query a map.*"}]
+            (lint-query-call '(t2/select-one-fn :value :model/Setting :key k) 'metabase.foo.db))))
+  (testing "a map query is not flagged"
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})
+      '(t2/update! :model/X {:locale [:auto/param locale]} {:msgstr "x"}))))
 
-(deftest ^:parallel unmarked-kv-arg-value-test
-  (testing "a symbol passed as a kv-arg value is flagged"
-    (is (=? [{:type    :metabase/unmarked-sql-value
-              :message #"`locale` reaches a SQL value slot unmarked.*"}]
-            (lint-query-call '(t2/select :model/X :locale locale) 'metabase.foo.db))))
-  (testing "a marked kv-arg is not flagged"
-    (is (empty? (lint-query-call '(t2/select :model/X :locale [:auto/param locale]) 'metabase.foo.db))))
-  (testing "a coerced kv-arg is not flagged"
-    (is (empty? (lint-query-call '(t2/select-one :model/X :id (long id)) 'metabase.foo.db))))
-  (testing "a literal kv-arg is not flagged"
-    (is (empty? (lint-query-call '(t2/select :model/X :archived false) 'metabase.foo.db))))
-  (testing "each unmarked pair is reported"
-    (is (= 2 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
-                                     'metabase.foo.db))))))
+(deftest ^:parallel write-calls-are-not-linted-for-values-test
+  (testing "an insert's values are written, not filtered on, so they are not flagged"
+    (are [form] (empty? (filter #(= :metabase/unsafe-app-db-query (:type %))
+                                (lint-query-call form 'metabase.foo.db)))
+      '(t2/insert! :model/X :key k :value v)
+      '(t2/insert-returning-instances! :model/X :key k :value v)))
+  (testing "a select's values are still flagged"
+    (is (=? [{:type :metabase/unsafe-app-db-query}]
+            (lint-query-call '(t2/select :model/X :key k) 'metabase.foo.db)))))
+
+(deftest ^:parallel operator-arity-test
+  (testing "a value operator with an unexpected arity still has its args examined"
+    (is (seq (lint-query-call '(t2/select :model/X {:where [:= :a b c]}) 'metabase.foo.db)))
+    (is (seq (lint-query-call '(t2/select :model/X {:where [:between :a lo hi]}) 'metabase.foo.db)))))

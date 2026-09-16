@@ -27,6 +27,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
@@ -239,7 +240,9 @@
   table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
   them with the appropriate 4xx status code instead of a 500."
   [body]
-  (-> (metabot-construct/execute-representations-query (:query body))
+  (-> (metabot-construct/execute-representations-query
+       (:query body)
+       {:recovery-hint recovery-hints/recovery-hint})
       (get-in [:structured-output :query])))
 
 (defn- evaluate-external-query-for-execution
@@ -859,7 +862,7 @@
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
-    (when (api/column-will-change? :dataset_query card-before-update card-updates)
+    (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
       ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
       ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
@@ -1393,13 +1396,13 @@
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
           (let [existing (api/check-404

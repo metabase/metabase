@@ -74,13 +74,15 @@
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
   refer to tools the profile actually exposes."
-  [profile :- [:map
+  [profile :- [:map {:closed true}
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
-               [:tools [:vector :any]]
+               [:temperature {:optional true} [:maybe number?]]
+               [:tools [:vector tool-var-schema]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:skills? {:optional true} :boolean]
+               [:required-tool-call? {:optional true} :boolean]
                [:terminal-tools {:optional true} [:set :string]]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)
@@ -130,22 +132,6 @@
                     #'tools/create-dashboard-subscription-tool
                     #'tools/analyze-chart-tool
                     #'tools/save-entity-tool]})
-
-(register-profile!
- {:name            :transforms_codegen
-  :prompt-template "transform-codegen.selmer"
-  :max-iterations  30
-  :tools           [#'tools/transform-search-tool
-                    #'tools/get-transform-details-tool
-                    #'tools/get-transform-python-library-details-tool
-                    #'tools/write-transform-sql-tool
-                    #'tools/write-transform-python-tool
-                    #'tools/list-snippets-tool
-                    #'tools/get-snippet-details-tool
-                    #'tools/list-available-fields-tool
-                    #'tools/get-field-values-tool
-                    #'tools/todo-write-tool
-                    #'tools/todo-read-tool]})
 
 ;; SQL responses are rendered from tool results in the native port, so this
 ;; profile must always end with a tool call rather than free-form assistant text.
@@ -228,23 +214,26 @@
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})
 
-(register-profile!
- {:name            :explorations
-  :prompt-template "explorations.selmer"
-  :max-iterations  15
-  :temperature     0.3
-  :system-prompt-context #'tools.explorations/research-plan-system-context
-  :skills?         false
-  :tools           [#'tools/search-tool
-                    #'tools/read-resource-tool
-                    #'tools/list-research-metrics-tool
-                    #'tools/get-research-candidates-tool
-                    #'tools/add-research-groups-tool
-                    #'tools/remove-from-research-plan-tool
-                    #'tools/set-exploration-name-tool
-                    #'tools/list-timelines-tool
-                    #'tools/get-timeline-details-tool
-                    #'tools/select-exploration-timelines-tool]})
+(def explorations-profile
+  "The `:explorations` (Research mode) profile. Explorations are intentionally disabled on the v64 release branch,
+  so this profile is defined but not registered; do not register it here. Tests that exercise it register it with
+  [[metabase.metabot.test-util/do-with-registered-profile!]]."
+  {:name            :explorations
+   :prompt-template "explorations.selmer"
+   :max-iterations  15
+   :temperature     0.3
+   :system-prompt-context #'tools.explorations/research-plan-system-context
+   :skills?         false
+   :tools           [#'tools/search-tool
+                     #'tools/read-resource-tool
+                     #'tools/list-research-metrics-tool
+                     #'tools/get-research-candidates-tool
+                     #'tools/add-research-groups-tool
+                     #'tools/remove-from-research-plan-tool
+                     #'tools/set-exploration-name-tool
+                     #'tools/list-timelines-tool
+                     #'tools/get-timeline-details-tool
+                     #'tools/select-exploration-timelines-tool]})
 
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
@@ -283,6 +272,11 @@
   [profile-id]
   (and (= profile-id :nlq)
        (not (entity-retrieval/entity-retrieval-available?))))
+
+(defn profile-registered?
+  "Whether a profile with `profile-id` is registered."
+  [profile-id]
+  (contains? @*profiles profile-id))
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.

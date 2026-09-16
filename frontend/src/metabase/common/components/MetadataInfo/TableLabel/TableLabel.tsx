@@ -1,4 +1,4 @@
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { NormalizedTable } from "metabase-types/api";
 
 import { Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -9,12 +9,12 @@ export function TableLabel({
   table,
 }: {
   className?: string;
-  table: Table;
+  table: Pick<NormalizedTable, "display_name">;
 }) {
   return (
     <LabelContainer className={className}>
       <TableIcon name="table" />
-      <Label>{table.displayName()}</Label>
+      <Label>{table.display_name}</Label>
     </LabelContainer>
   );
 }

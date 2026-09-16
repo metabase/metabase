@@ -250,7 +250,7 @@
   Returns:
    - [{:model_type :model_id :path :content_hash}] (entities that fail to serialize are omitted)"
   [rows repo-paths]
-  (let [storage-opts (serdes/storage-base-context)
+  (let [storage-opts (source/storage-context)
         repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)
         serialize    (fn [model-type opts id->eid instance]
                        (try
@@ -271,9 +271,9 @@
           (mapcat (fn [[model-type model-rows]]
                     (let [spec      (spec/spec-for-model-type model-type)
                           model-key (:model-key spec)
-                          opts      {:filter-column :id
-                                     :filter-ids    (mapv :model_id model-rows)
-                                     :skip-archived true}
+                          opts      (merge spec/git-sync-extract-opts
+                                           {:filter-column :id
+                                            :filter-ids    (mapv :model_id model-rows)})
                           ;; entity-id models: map local id -> entity_id so we can look up the repo path
                           id->eid   (when (and model-key (= :entity-id (:identity spec)))
                                       (remote-sync.db/entity-ids-by-id model-key (mapv :model_id model-rows)))]
@@ -469,11 +469,12 @@
                             :let [model-key (:model-key (spec/spec-for-model-type model_type))
                                   eid (when model-key (remote-sync.db/entity-id model-key model_id))]
                             :when (not (loaded-eid? model_type eid))]
-                        {:model_type model_type :model_id model_id :model-key model-key})
+                        {:model_type model_type :model_id model_id})
+        model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
         sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
     (remote-sync.task/update-progress! task-id 0.8)
     (t2/with-transaction [_conn]
-      (doseq [[model-key ds] (group-by :model-key deletes)]
+      (doseq [[model-key ds] (group-by model-key-of deletes)]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
         (remote-sync.db/delete-rsos-of-keys! deletes))
@@ -485,7 +486,7 @@
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
     ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
-    (doseq [[model-key ds] (group-by :model-key deletes)]
+    (doseq [[model-key ds] (group-by model-key-of deletes)]
       (search/delete! model-key (mapv :model_id ds)))
     (remote-sync.task/update-progress! task-id 0.95)
     (log/info "Successfully reloaded entities from git repository")
@@ -839,11 +840,11 @@
   Return:
     - [[row entity]] (if no entity, then omit)"
   [{:keys [model_type rows]}]
-  (let [pk-col  (spec/pk-col model_type)
+  (let [pk-col  (serdes/primary-key model_type)
         id->row (u/index-by :model_id rows)
-        opts    {:filter-column pk-col
-                 :filter-ids    (mapv :model_id rows)
-                 :skip-archived true}]
+        opts    (merge spec/git-sync-extract-opts
+                       {:filter-column pk-col
+                        :filter-ids    (mapv :model_id rows)})]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
                      (when-let [row (id->row (get instance pk-col))]
@@ -989,7 +990,7 @@
    - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
    - :remote-sync/incremental-not-possible when any row can't go incrementally"
   [snapshot rows]
-  (let [opts          (serdes/storage-base-context)
+  (let [opts          (source/storage-context)
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
         {cu-rows true other-rows false} (group-by #(boolean (and (#{"create" "update"} (:status %))
@@ -1104,7 +1105,7 @@
           total  (count export-rows)
           span   (- export-progress-serialize export-progress-plan-done)]
       (report export-progress-plan-done {:force? true})
-      (let [opts             (serdes/storage-base-context)
+      (let [opts             (source/storage-context)
             [synced version] (commit-staged! snapshot message
                                              (fn [commit]
                                                (source.p/replace-all! commit) ; replace the managed dirs wholesale
@@ -1136,7 +1137,7 @@
         total        (max 1 (count writes))
         span         (- export-progress-serialize export-progress-plan-done)]
     (report export-progress-plan-done {:force? true})
-    (let [opts             (serdes/storage-base-context)
+    (let [opts             (source/storage-context)
           [synced version] (commit-staged! snapshot message
                                            (fn [commit]
                                              (let [synced (stage-writes commit opts writes

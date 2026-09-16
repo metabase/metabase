@@ -87,23 +87,29 @@
     (is (= :metabase.lib-metric.schema/dimension-id
            (entry-form ::metrics.dimension/dimension-mapping :dimension-id)))))
 
+(defn- dim-id
+  "A dimension UUID ending in `n`."
+  [n]
+  (format "00000000-0000-0000-0000-%012d" n))
+
 (defn- metric
-  "A metric-shaped map with one dimension per `[dim-id field-id]` pair."
+  "A metric Card with one dimension per `[dim-id field-id]` pair."
   [& dim-id+field-id]
   {:dimensions         (for [[dim-id _] dim-id+field-id]
                          {:id dim-id})
    :dimension_mappings (for [[dim-id field-id] dim-id+field-id]
-                         {:dimension-id dim-id
-                          :target       [:field {} field-id]})})
+                         {:type         :table
+                          :dimension-id dim-id
+                          :target       [:field {:lib/uuid (str (random-uuid))} field-id]})})
 
 (deftest annotate-dimensions-resolves-each-dimension-once-test
   (testing "annotate-dimensions-with-field-data resolves each dimension's field-id exactly once"
     ;; It used to resolve once to collect the field-ids to batch-select, then again per dimension
     ;; while merging the rows back on — double the work, and `resolve-dimension-to-field-id` walks
     ;; the mapping list for every call.
-    (let [metrics    [(metric ["d1" (mt/id :venues :price)]
-                              ["d2" (mt/id :venues :name)])
-                      (metric ["d3" (mt/id :orders :total)])]
+    (let [metrics    [(metric [(dim-id 1) (mt/id :venues :price)]
+                              [(dim-id 2) (mt/id :venues :name)])
+                      (metric [(dim-id 3) (mt/id :orders :total)])]
           calls      (atom 0)
           real-resolve lib-metric/resolve-dimension-to-field-id]
       (with-redefs [lib-metric/resolve-dimension-to-field-id
@@ -122,18 +128,17 @@
                                      :id [:in [price-id name-id]])
           [m]      (metrics.dimension/annotate-dimensions-with-field-data
                     [:description]
-                    [(metric ["d1" price-id] ["d2" name-id])])]
+                    [(metric [(dim-id 1) price-id] [(dim-id 2) name-id])])]
       (is (= [(get expected price-id) (get expected name-id)]
              (map :description (:dimensions m))))
-      (is (= ["d1" "d2"] (map :id (:dimensions m)))
+      (is (= [(dim-id 1) (dim-id 2)] (map :id (:dimensions m)))
           "dimension order and identity are preserved"))))
 
 (deftest annotate-dimensions-nils-unresolvable-dimensions-test
   (testing "a dimension whose field-id can't be resolved still gets the columns, as nil"
     (let [[m] (metrics.dimension/annotate-dimensions-with-field-data
                [:description]
-               ;; no mapping for d1 → resolve throws
-               [{:dimensions [{:id "d1"}] :dimension_mappings []}])]
+               [{:dimensions [{:id (dim-id 1)}] :dimension_mappings []}])]
       (is (= [nil] (map :description (:dimensions m))))
       (is (contains? (first (:dimensions m)) :description)
           "the column key is present even when unresolvable"))))
@@ -144,9 +149,9 @@
                  [msgs [metabase.metrics.dimension :debug]]
                  (metrics.dimension/annotate-dimensions-with-field-data
                   [:description]
-                  [{:dimensions [{:id "d1"}] :dimension_mappings []}])
+                  [{:dimensions [{:id (dim-id 1)}] :dimension_mappings []}])
                  (msgs))]
-      (is (some #(str/includes? (str (:message %)) "d1") msgs)
+      (is (some #(str/includes? (str (:message %)) (dim-id 1)) msgs)
           "the failing dimension id should appear in the log"))))
 
 (deftest annotate-dimensions-passes-through-metrics-without-dimensions-test

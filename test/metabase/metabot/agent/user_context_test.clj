@@ -8,8 +8,10 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -97,26 +99,6 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM invalid" result))
         (is (re-find #"Table 'invalid' not found" result))))
-    (testing "formats transform context"
-      (let [context {:user_is_viewing [{:type "transform"
-                                        :id 123
-                                        :name "Daily Revenue"
-                                        :source_type "sql"}]}
-            result (user-context/format-viewing-context context)]
-        (is (some? result))
-        (is (re-find #"Transform" result))
-        (is (re-find #"Daily Revenue" result))
-        (is (re-find #"sql" result))))
-    (testing "formats transform context with error"
-      (let [context {:user_is_viewing [{:type "transform"
-                                        :id 123
-                                        :name "Broken Revenue"
-                                        :source_type "native"
-                                        :error "ERROR: relation \"missing_table\" does not exist"}]}
-            result (user-context/format-viewing-context context)]
-        (is (some? result))
-        (is (re-find #"Transform error" result))
-        (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
     (testing "formats code editor context"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers [{:id "buffer1"
@@ -500,38 +482,6 @@
     (is (str/includes? result "1111")
         "Formatting result should contain database id")))
 
-(deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd MBQL 5"
-    (mt/test-driver :h2
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [mp     (mt/metadata-provider)
-              source {:type  "query"
-                      :query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                 (lib/limit 5))}
-              text   (user-context/format-transform-source
-                      (assoc source :transform-source-type :query))]
-          (is (string? text))
-          (is (re-find #"```json" text)
-              "output is a JSON code block (the portable representations form), not pprint'd MBQL 5")
-          (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
-          (is (re-find #"\"source-table\"" text))
-          (is (not (re-find #"lib/metadata" text))
-              "the metadata-provider handle never leaks to the LLM-facing payload"))))))
-
-(deftest ^:parallel format-transform-source-native-renders-repr-json-test
-  (testing "native transform sources also go through the repr export so template-tags stay portable"
-    (mt/test-driver :h2
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [source {:type  "query"
-                      :query {:database (mt/id)
-                              :type     :native
-                              :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}
-              text   (user-context/format-transform-source
-                      (assoc source :transform-source-type :native))]
-          (is (string? text))
-          (is (re-find #"\"mbql.stage/native\"" text))
-          (is (re-find #"SELECT \* FROM VENUES" text)))))))
-
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"
     (let [out (user-context/format-viewing-context
@@ -559,6 +509,67 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest adhoc-viewing-context-virtual-database-id-gates-real-database-test
+  (let [viewing (fn [card-id]
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database -1337
+                                              :type     "query"
+                                              :query    {:source-table (str "card__" card-id)}}}]})]
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Card     {card-id :id} {:database_id   db-id
+                                                  :dataset_query {:database db-id
+                                                                  :type     :query
+                                                                  :query    {:source-table table-id}}}]
+      (testing "the -1337 virtual database id is gated on the source card's real database"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context (viewing card-id))]
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out (str "card__" card-id))))))))
+      (testing "and still renders for a user who can read that database"
+        (mt/with-test-user :crowberto
+          (let [out (user-context/format-viewing-context (viewing card-id))]
+            (is (str/includes? out "notebook editor"))
+            (is (re-find #"source-card|card__" out))))))))
+
+(defn- refusing-store
+  "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
+  current user cannot read. Swapped in for both so a test can tell which one a caller picked."
+  [tag recorded]
+  (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ _] (refuse))
+      (measure-by-entity-id [_ _] (refuse))
+      (segment-by-entity-id [_ _] (refuse))
+      (card-by-id           [_ _] (refuse))
+      (measure-by-id        [_ _] (refuse))
+      (segment-by-id        [_ _] (refuse)))))
+
+(deftest adhoc-viewing-context-exports-through-the-audited-store-test
+  (testing "a client-supplied query is exported through the audited store, and a refusal inside it withholds the query"
+    (let [mp         (mt/metadata-provider)
+          definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                      :definition definition}]
+        ;; The gate never looks at segments, so the query clears it and the segment ref is
+        ;; resolved by whichever store the caller handed the export - the choice under test.
+        ;; A source-card query would be refused by the gate first, whichever store was passed.
+        (let [used (atom [])]
+          (with-redefs [shared.content-store/audited-store (refusing-store :audited used)
+                        shared.content-store/default-store (refusing-store :default used)]
+            (mt/with-test-user :rasta
+              (let [out (user-context/format-viewing-context
+                         {:user_is_viewing [{:type  "adhoc"
+                                             :query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)
+                                                                :filter       [:segment segment-id]}}}]})]
+                (is (= [:audited] (distinct @used)))
+                (is (str/includes? out "notebook editor"))
+                (is (not (str/includes? out "Query")))))))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not

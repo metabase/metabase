@@ -5,19 +5,18 @@
   "Schema model types"
   ["Database"
    "Field"
-   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
+   "TableUserSettings"
    "Channel"])
 
 (def data-model-in-collection
-  "Data model types that can be found in collections (via published tables).
-   These are extracted by ID when discovered via descendants, even if no-data-model is set.
-   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
+  "Data model types that can be found in collections (via published tables), extracted by ID when discovered via
+   descendants even if no-data-model is set."
   ["Table"
+   "TableUserSettings"
    "Field"
-   "FieldUserSettings"
    "Segment"])
 
 (def content
@@ -53,6 +52,7 @@
   ["DashboardCard"
    "DashboardTab"
    "Dimension"
+   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"

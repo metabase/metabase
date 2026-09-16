@@ -6,6 +6,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.schema]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

@@ -199,7 +199,7 @@
 (deftest content-metadata-matches-row-hash-test
   (testing "a full export writes a content_hash matching per-row row->content-hash for every identity flavor —
             including the extract-query overrides (Collection, NativeQuerySnippet), hybrids (Measure), and path
-            models (Field) that have no entity_id (GHY-3933)"
+            models (TableUserSettings, keyed by table_id) that have no entity_id (GHY-3933)"
     (with-library-synced
       (mt/with-temporary-setting-values [remote-sync-type :read-write]
         (mt/with-temp [:model/Database db {:name "DB"}
@@ -209,14 +209,14 @@
                        :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
                        :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
                        :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
-                       :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
-                       :model/FieldUserSettings _ {:field_id (:id field) :description "curated"}
+                       :model/Field _field {:name "F" :table_id (:id table) :base_type :type/Integer}
+                       :model/TableUserSettings _ {:table_id (:id table) :display_name "curated"}
                        :model/Measure measure {:name "M" :table_id (:id table)}]
           (mt/with-model-cleanup [:model/RemoteSyncTask]
             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                   rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
                                 [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                                 ["FieldUserSettings" (:id field)] ["Measure" (:id measure)]])]
+                                 ["TableUserSettings" (:id table)] ["Measure" (:id measure)]])]
               (t2/delete! :model/RemoteSyncObject)
               (doseq [row rows]
                 (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"

@@ -819,15 +819,14 @@
 ;;; ---------------------------------------------------- Hydration -----------------------------------------------------
 
 (defn hydrate-model-details
-  "Hydrates model details for RemoteSyncObject based on spec.
-   Returns a map with the fields needed to populate the sync object."
+  "Returns a map with the fields (always including :id) needed to populate a RemoteSyncObject for `spec`."
   [{:keys [model-key tracking]} model-id]
   (if (:hydrate-query? tracking)
     ;; Use the tracking-join query for models needing a Table join (Field, Segment, Measure)
     (remote-sync.db/tracking-details-by-id model-key model-id)
     ;; Simple select using select-fields
     (when-let [fields (:select-fields tracking)]
-      (remote-sync.db/instance-with-columns model-key fields model-id))))
+      (remote-sync.db/instance-with-columns model-key (into [:id] fields) model-id))))
 
 (defn build-sync-object-fields
   "Builds the fields map for RemoteSyncObject from hydrated model details.
@@ -1136,14 +1135,17 @@
 
 (defmethod query-export-roots :default [_] nil)
 
-(def ^:private git-sync-extract-opts
-  "Serdes extraction opts for git sync. :user-edits-only restricts field-level export to
-   FieldUserSettings (user-curated metadata only), omitting the full Field YAML for every column."
+(def git-sync-extract-opts
+  "Serdes extraction opts for git sync."
   {:include-field-values     false
    :include-database-secrets false
    :continue-on-error        false
    :skip-archived            true
-   :user-edits-only          true})
+   :inline-user-settings     true})
+
+(def ^:private models-traversed-but-not-stored
+  "Models git sync walks through but never writes."
+  #{"Table" "Field"})
 
 (defn exportable-entities
   "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
@@ -1155,12 +1157,7 @@
         targets (-> #{}
                     (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (u/group-by first second targets)))
-
-(defn pk-col
-  "Returns the PK column keyword for `model`. FieldUserSettings uses :field_id; all others use :id."
-  [model]
-  (if (= model "FieldUserSettings") :field_id :id))
+    (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
@@ -1173,9 +1170,9 @@
    3. Are in one of the provided collections (or descendants)"
   []
   (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model {:filter-column (pk-col model)
-                                              :filter-ids    (vec ids)
-                                              :skip-archived true})))
+                   (serdes/extract-all model (merge git-sync-extract-opts
+                                                    {:filter-column (serdes/primary-key model)
+                                                     :filter-ids    (vec ids)}))))
             cat
             (exportable-entities)))
 
@@ -1186,8 +1183,8 @@
   [rows]
   (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:filter-column (pk-col model)
-                                                :filter-ids    (vec ids)
-                                                :skip-archived true})))
+                     (serdes/extract-all model (merge git-sync-extract-opts
+                                                      {:filter-column (serdes/primary-key model)
+                                                       :filter-ids    (vec ids)}))))
               cat
               by-model)))

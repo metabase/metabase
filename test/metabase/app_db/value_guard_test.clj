@@ -15,7 +15,10 @@
          (formatted {:where [:= :a [:auto/param 5]]}))))
 
 (deftest ^:parallel binds-a-value-that-would-otherwise-compile-as-sql-test
-  (testing "a marked map is bound as a parameter rather than compiled into the statement"
+  (testing "the lift binds a map rather than letting HoneySQL compile it"
+    ;; Note this exercises the lift alone. Through the pipeline a `{:raw ...}` never reaches it:
+    ;; `honeysql-guard` runs `:before` this `:around` and rejects the payload while it is still
+    ;; inline. See `metabase.app-db.params-test` for what a query actually does with one.
     (let [payload {:raw "(SELECT password FROM core_user)"}]
       (is (= ["WHERE a = ?" payload]
              (formatted {:where [:= :a [:auto/param payload]]}))))))

@@ -8,11 +8,17 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(def ^:private ConditionKey
+  "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
+  spec (see `metabase-enterprise.remote-sync.spec`)."
+  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
-  [:maybe [:map-of :keyword [:maybe [:or :string :int :boolean :keyword sequential?]]]])
+  [:maybe [:map-of ConditionKey [:maybe [:or :string :int :boolean :keyword sequential?]]]])
 
 (def ^:private RemovalOpts
   "The `:scope-key`, `:synced-collection-ids`, `:entity-ids`, and `:removal-conditions` describing which rows an
@@ -27,11 +33,11 @@
   "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
   (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
   Collection."
-  [:or ms/PositiveInt [:= -1]])
+  [:maybe [:or ms/PositiveInt [:= -1]]])
 
 (def ^:private Path
   "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."
-  [:map
+  [:map {:closed true}
    [:db_name    :string]
    [:schema     {:optional true} [:maybe :string]]
    [:table_name :string]
@@ -134,11 +140,15 @@
   (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil."
+  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
-  (t2/select-one (into [model] columns) :id id))
+  (t2/select-one (into [model] columns)
+                 :id id
+                 (if (= model :model/Table)
+                   {:from [(warehouse-schema-overlay/table-query)]}
+                   {})))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -178,15 +188,15 @@
     :model/Field   {:alias  "f"
                     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:metabase_field :f]]
-                    :join   [[:metabase_table :t] [:= :f.table_id :t.id]]}
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
-                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
-                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}))
+                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
   "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
@@ -265,14 +275,19 @@
              :where  (path-expr paths true)}))
 
 (mu/defn card-types
-  "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
+  "The `:id`, `:type`, :display, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
-(mu/defn field-user-settings-exist?
-  "Whether the Field with `field-id` has FieldUserSettings."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings :field_id field-id))
+(mu/defn user-settings-exist-for-table?
+  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
+  [table-id :- ::lib.schema.id/table]
+  (or (t2/exists? :model/TableUserSettings :table_id table-id)
+      (t2/exists? :model/FieldUserSettings
+                  {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
+                           [:= :f.id :u.field_id]]
+                   :where [:= :f.table_id table-id]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
@@ -294,7 +309,7 @@
 (mu/defn collections-by-id
   "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in collection-ids]))
+  (t2/select-pk->fn identity [:model/Collection :id :name :type :location :personal_owner_id] :id [:in collection-ids]))
 
 (mu/defn collection-sync-states
   "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."
@@ -587,8 +602,8 @@
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn delete-rsos-of-keys!
-  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows` (other keys are ignored)."
-  [rows :- [:sequential [:map [:model_type :string] [:model_id ms/PositiveInt]]]]
+  "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`."
+  [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
 (mu/defn delete-all-rsos!

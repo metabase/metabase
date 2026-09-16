@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.sql.replace
   "Tool for replacing SQL query content entirely while preserving metadata."
   (:require
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
@@ -25,7 +26,14 @@
   - :query-id - The ID of the updated query
   - :query-content - The new SQL content
   - :database - Database ID"
-  [{:keys [query-id sql queries-state]}]
+  [{:keys [query-id sql queries-state]}
+   :- [:map {:closed true}
+       [:query-id [:or :string :int]]
+       [:sql :string]
+       [:checklist {:optional true} [:maybe :string]]
+       [:name {:optional true} [:maybe :string]]
+       [:description {:optional true} [:maybe :string]]
+       [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Replacing SQL query" {:query-id query-id :sql-length (count sql)})
 
   ;; Look up query from in-memory state

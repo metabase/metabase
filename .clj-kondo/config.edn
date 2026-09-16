@@ -73,11 +73,11 @@
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
-  ;; Off by default and enabled per namespace under `:config-in-ns`. Most values it can see are ids
-  ;; that Malli already constrains to an integer, so a global warning would be noise on values that
-  ;; were never at risk. A namespace opts in once its own values are marked, which is what keeps
-  ;; them marked.
-  :metabase/unmarked-sql-value                               {:level :off}
+  :metabase/table-or-field-query                             {:level :warning}
+  ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
+  ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
+  ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
+  :metabase/unsafe-app-db-query                              {:level :off}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -188,8 +188,17 @@
      clojure.core.async/to-chan!!
      ;; writes the ratchet files from a :once fixture that finishes before the parallel tests
      dev.kondo-ratchet/fix!
+     ;; builds Babashka's classpath cache from a :once fixture, before the parallel tests start, so that
+     ;; they don't each race to create it; the side effect is process-external and idempotent
+     metabase.core.modules-consistency-test/warm-babashka-classpath!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
+     ;; MCP v2 tool tests: call-tool! dispatches a tool with no shared mutable state across tests
+     metabase.mcp.v2.tools.alert-test/call-tool!
+     metabase.mcp.v2.tools.definitions-test/call-tool!
+     metabase.mcp.v2.tools.metric-test/call-tool!
+     ;; the `!` is for the throw (a teaching error), not a mutation; no shared mutable state
+     metabase.mcp.v2.tools.browse/validate-args-for-action!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!
@@ -223,7 +232,9 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!}}
+     next.jdbc/execute!
+     ;; pure validator: parses a keyword and throws on a bad one, touches no state
+     metabase.mcp.v2.tools.question/check-semantic-type!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
@@ -286,10 +297,6 @@
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-    (metabase.util.match/match-one)
-    (metabase.util.match/match-many)
-    (metabase.util.match/replace-in)
-    (metabase.util.match/replace)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
@@ -500,6 +507,7 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
@@ -602,7 +610,6 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
-   metabase-enterprise.metabot.tools.dependencies-test/with-dependent-transforms!                                            hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -682,6 +689,7 @@
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
@@ -781,6 +789,7 @@
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
+   metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
    metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
    metabase.util.match/replace-in                                                                                            hooks.metabase.util.match/replace-in
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
@@ -895,7 +904,12 @@
    :name    app-db-namespaces}]
 
  :config-in-ns
- {;; direct-jdbc-access-forbidden (from the HugSQL PoC): a converted module runs app-db SQL only
+ {metabase.app-db.custom-migrations
+  {:linters
+   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
+   {:metabase/table-or-field-query {:level :off}}}
+
+  ;; direct-jdbc-access-forbidden (from the HugSQL PoC): a converted module runs app-db SQL only
   ;; through its `queries` ns -> metabase.app-db.hugsql, never a direct execution sink. This bans
   ;; the sink *name*, not the query *value*, so `(str ...)` / `(let [q (str ...)] ...)` laundering
   ;; has nowhere to land -- kondo enforces it with certainty, no dataflow analysis needed. Toucan
@@ -915,7 +929,7 @@
   metabase.sso.queries
   ;; The module's writes still have value slots (the two hooked AuthIdentity writes), so this ns
   ;; stays on the marker lint even though its HugSQL reads have nothing to mark.
-  {:linters {:metabase/unmarked-sql-value {:level :warning}
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}
              :discouraged-var
              {next.jdbc/execute!            {:message "no dropping to raw JDBC; app-db SQL is a statement in sso.sql"}
               next.jdbc/execute-one!        {:message "no dropping to raw JDBC; app-db SQL is a statement in sso.sql"}
@@ -971,13 +985,15 @@
   ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
   ;; `metabase.app-db.value-guard`.
   metabase.content-translation.db
-  {:linters {:metabase/unmarked-sql-value {:level :warning}}}
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
   metabase.lib.aggregation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+  metabase.lib.metadata.calculation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
   ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating

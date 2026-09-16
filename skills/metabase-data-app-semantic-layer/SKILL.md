@@ -23,9 +23,10 @@ Keep the semantic layer and presentation layer separate.
 - Do not hardcode categorical filter option values. A generated schema field only proves the field exists, not which values exist; query options from Metabase at runtime using the same generated schema field that the filter applies.
 - Dashboard-level filters should visibly affect every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI; do not show duplicate or no-op date controls.
 - Entity filters, where the stored value is an id/key and the UI shows a label, must use a single searchable combobox. Click/focus must open the option list immediately, before typing. Query options at runtime, search labels, and store the raw value. Never render entity filters as `<select>`; plain selects are only for short closed enums explicitly provided by the user.
-- Do not use native `<input type="date">` for data-app filter bars. Its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed. If the repo already has a date picker component or component library, use that. Otherwise install `react-datepicker` for custom date selection.
-- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
-- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control. Date pickers must receive `Date | null`, never `new Date("")` or another invalid date for incomplete ranges; type strict callback parameters explicitly, such as `onChange={(date: Date | null) => ...}`.
+- Use `DateRangePopover` from `@metabase/embedding-sdk-react/data-app` for custom date ranges: it wraps the app's own trigger element and opens a Metabase-styled range calendar under it. The trigger stays the app's — style it like the other filter controls — and `useDateFormatter()` from the same entry produces its label. It ships with the SDK and needs no dependency and no CSS import. `DateRangeCalendar` is the same calendar inline, for when the app already has a container. Do not install a date picker library for a range — not `react-datepicker`, `react-day-picker`, `flatpickr`, or a UI suite's picker (`@mui/x-date-pickers`, `antd`, `rsuite`, …). Do not use native `<input type="date">` either: its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed.
+- Never build a date label with `new Date("YYYY-MM-DD")` — a date-only string parses as UTC and shows the previous day west of Greenwich. Use `formatDateRange` / `formatDate` from `useDateFormatter()`, which parse in local time and format in the instance's locale.
+- Reach for a third-party date picker only for what the SDK calendar does not cover, such as single-date or date-time selection; `react-datepicker` is the default pick. Then import its stylesheet (`react-datepicker/dist/react-datepicker.css`), add small CSS overrides for the app's visual style if needed, and pass `Date | null` — never `new Date("")` or another invalid date for incomplete ranges; type strict callback parameters explicitly, such as `onChange={(date: Date | null) => ...}`.
+- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Use generated table measures or exported aggregation helpers.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Do not custom-render ambiguous business fields such as `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`. Do not add `%`, multiply by 100, color-code, or render stars unless semantic-layer units explicitly support it; use an SDK table/chart, omit the field, or ask for curation.
@@ -45,19 +46,25 @@ Keep the semantic layer and presentation layer separate.
 
 If the schema file already exists, use it. If it is missing or stale, treat schema generation as semantic-layer curation for this data app, not a mechanical export.
 
-Before generating, make sure the user has explicitly chosen the library scope the app needs:
+Choose the export scope before generating:
+
+1. Honor an explicit scope. Otherwise infer the required content types from the app's purpose: tables, curated metrics, or actions. For example, "show orders" needs tables; row counts and sums can also use table aggregations.
+2. Choose the narrowest supported scope that covers those needs, using collection IDs and database names or IDs from the request or project context. When the library type is clear but a narrower collection is unknown, use that library's whole tree.
+3. Ask only for context needed to select a scope, such as which database to use when the request requires a database scope but does not identify one. Once the scope is determined, state it briefly and generate without waiting for confirmation.
+
+Scope parameters:
 
 - `include-data-library=true` for the whole `Library / Data` tree.
 - `include-metric-library=true` for the whole `Library / metrics` tree.
 - `library-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
 - `include-models=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
-- `database=<name-or-id>` when the app should use tables from one database.
+- `database=<name-or-id>` when the app should use tables from one database. Use it separately from library scopes; the API rejects that combination.
+
+Combine library scopes when the app needs both tables and curated metrics.
 
 Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; it includes all readable models with executable actions, unless `database` scopes them to one database. Models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
 
 If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-models=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
-
-If the user did not already choose a library scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
@@ -73,7 +80,8 @@ or handle the credentials yourself.
 > the user to add real values themselves, then continue.
 
 Source the credentials from the repo-root `.env.local` and generate the scoped
-schema:
+schema. The example below exports table data from the Data library; replace its
+query parameters with the scope chosen above:
 
 ```bash
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -94,11 +102,11 @@ fi
     -o src/metabase.data.ts \
     -H "x-api-key: $DATA_APP_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true&include-metric-library=true"
+    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true"
 )
 ```
 
-When the app needs models or actions, include `include-models=true`.
+After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, revise the scope using available context or ask for the missing context before building the UI.
 
 If schema generation fails while building a selected model or model action, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing `card-id` / `card-name` / `card-type`, `model-id` / `model-name`, dropped action ids, and message when present.
 
@@ -568,12 +576,11 @@ For the common memoized date/category filter shape:
 type DatePreset = "30d" | "90d" | "custom" | "all";
 
 const [datePreset, setDatePreset] = useState<DatePreset>("all");
-const [customStart, setCustomStart] = useState<Date | null>(null);
-const [customEnd, setCustomEnd] = useState<Date | null>(null);
+const [customRange, setCustomRange] = useState<[string | null, string | null]>([
+  null,
+  null,
+]);
 const [status, setStatus] = useState("all");
-
-const toLocalDateString = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 const dateRange = useMemo((): readonly [string, string] | null => {
   if (datePreset === "all") {
@@ -581,13 +588,12 @@ const dateRange = useMemo((): readonly [string, string] | null => {
   }
 
   if (datePreset === "custom") {
-    return customStart && customEnd
-      ? [toLocalDateString(customStart), toLocalDateString(customEnd)]
-      : null;
+    const [start, end] = customRange;
+    return start && end ? [start, end] : null;
   }
 
   return getPresetDateRange(datePreset);
-}, [datePreset, customStart, customEnd]);
+}, [datePreset, customRange]);
 
 const orderFilters = useMemo(
   () => [
@@ -602,7 +608,7 @@ const orderFilters = useMemo(
 );
 ```
 
-When date picker state uses `Date | null`, convert selected dates with a local `YYYY-MM-DD` formatter before passing them to `filter(..., "between", range)`. Do not use `date.toISOString().split("T")[0]` for local date filters.
+`customRange` above is what `<DateRangePopover value={customRange} onChange={setCustomRange}>` stores, so there is nothing to convert. When a fallback picker's state uses `Date | null`, convert selected dates with a local `YYYY-MM-DD` formatter before passing them to `filter(..., "between", range)`. Do not use `date.toISOString().split("T")[0]` for local date filters.
 
 ## Result Shape And Charts
 
@@ -679,7 +685,8 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Shipping a date preset bar with no Custom range option, or Custom before All time.
 - Charting opaque IDs such as `franchise_id` when a user-facing name is available.
 - Rendering an entity filter in a plain `<select>`, even if the current runtime option list is short.
-- Using native `<input type="date">` and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
+- Reaching for native `<input type="date">` or any date picker dependency (`react-datepicker`, `react-day-picker`, a UI suite's picker) for a date range instead of `DateRangePopover`, and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
+- Labelling a date trigger with `new Date("YYYY-MM-DD").toLocaleDateString()` instead of `useDateFormatter()`, so the label is a day early for users west of Greenwich.
 - Assuming `filter(...)` fully validates value types.
 - Letting a `null` bucket become the latest time-series point.
 - Hardcoding business values, labels, timestamps, or rankings.

@@ -1421,8 +1421,10 @@
 (def ^:private pivot-test-data
   "A `:pivot` query result: rows R, cols C, single measure m, plus the pivot-grouping column the QP emits.
   `:pivot-export-options` carries the row/col/measure column indexes in the pivot-grouping-free space (R=0, C=1, m=2)."
-  {:cols                 [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
-                          {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
+  {:cols                 [{:name "R" :display_name "R" :base_type :type/Text}
+                          {:name "C" :display_name "C" :base_type :type/Text}
+                          {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                          {:name "m" :display_name "m" :base_type :type/Integer}]
    :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
    :format-rows?         true
    :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}})
@@ -1447,7 +1449,8 @@
     (testing "a pivot card with no column split degrades to a flat table without erroring"
       (let [part (body/render :pivot :inline "UTC"
                               {:display :pivot :visualization_settings {}} nil
-                              {:cols [{:name "a" :base_type :type/Text} {:name "b" :base_type :type/Number}]
+                              {:cols [{:name "a" :display_name "a" :base_type :type/Text}
+                                      {:name "b" :display_name "b" :base_type :type/Number}]
                                :rows [["x" 1]]})]
         (is (some? (:content part)))))
     (testing "the card's conditional formatting colors the measure value cells"
@@ -1492,9 +1495,11 @@
     ;; uncolored) and the m1 cells labeled m2 (11-44, not > 50 -> uncolored) -- so the m2 cells being the colored
     ;; ones confirms the measure mapping. Totals are off so only the data cells remain.
     (let [split    {:rows ["R"] :columns ["C"] :values ["m1" "m2"]}
-          cols     [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
-                    {:name "pivot-grouping" :base_type :type/Integer}
-                    {:name "m1" :base_type :type/Integer} {:name "m2" :base_type :type/Integer}]
+          cols     [{:name "R" :display_name "R" :base_type :type/Text}
+                    {:name "C" :display_name "C" :base_type :type/Text}
+                    {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                    {:name "m1" :display_name "m1" :base_type :type/Integer}
+                    {:name "m2" :display_name "m2" :base_type :type/Integer}]
           data     {:cols                 cols
                     :rows                 [["a" "x" 0 11 100] ["a" "y" 0 22 200]
                                            ["b" "x" 0 33 300] ["b" "y" 0 44 400]]

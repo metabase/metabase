@@ -8,6 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.native-query-snippets.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]

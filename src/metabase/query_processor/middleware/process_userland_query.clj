@@ -83,7 +83,12 @@
         ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
         ;; the `before-insert` hook as a safety net for any code path that inserts QueryExecution directly (where
         ;; dynamic vars would still be bound).
-        execution-info' (add-running-time (analytics.core/include-sdk-info execution-info))]
+        json-query      (:json_query execution-info)
+        execution-info' (-> execution-info
+                            (dissoc :json_query)
+                            analytics.core/include-sdk-info
+                            add-running-time
+                            (cond-> json-query (assoc :json_query json-query)))]
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
@@ -153,7 +158,9 @@
   postprocessing middleware (`is_impersonated`, `is_db_routed`, the routed `database_id`) are NOT computed here —
   they're added later by [[enrich-with-execution-context]] from inside the postprocessing rff, where the bindings
   are still in effect. See PR #71386 — reading those values from the query map at the top of the around middleware
-  was a timing bug because pre-processing hadn't yet run."
+  was a timing bug because pre-processing hadn't yet run.
+
+  Mirrored by `execution-row` in `metabase.actions.audit`; keep the two in step."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
@@ -227,6 +234,18 @@
     (when *execution-context-ref*
       (reset! *execution-context-ref* (snapshot-execution-context)))
     (qp query rff)))
+
+(defn do-with-captured-execution-context
+  "Run `f` with [[*execution-context-ref*]] bound, then hand `on-snapshot` whatever
+  [[capture-execution-context-middleware]] recorded (nil if it never ran), whether `f` returned or threw. For QP
+  entry points that write their own execution row, such as the writeback QP."
+  [f on-snapshot]
+  (let [context-ref (atom nil)]
+    (try
+      (binding [*execution-context-ref* context-ref]
+        (f))
+      (finally
+        (on-snapshot @context-ref)))))
 
 (defn- enrich-with-execution-context
   "Merges the snapshotted execution context (from [[*execution-context-ref*]]) into `execution-info`. Always

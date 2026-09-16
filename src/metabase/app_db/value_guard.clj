@@ -12,11 +12,19 @@
   the inline marker into that pair at the compile step, so a caller writes the value where it
   belongs and never keeps the two in sync.
 
-  Put a marker in a value slot. Written anywhere else -- a table or column position, say -- it is
-  rewritten into a `[:param :k]` that HoneySQL formats as an identifier and never binds, so the
-  value is dropped and the generated key appears in the SQL. Nothing here catches that: HoneySQL
-  gives no signal for a param it did not consume, and which positions bind is a decision it makes
-  per operator, so it cannot be inferred from the query alone."
+  A marker is not what stops a hostile non-scalar. `honeysql-guard` runs `:before` this `:around`,
+  so it sees the payload still inline and rejects a `{:raw ...}` or a bare subquery there whether or
+  not it was marked. What the marker adds is that an ordinary value -- a string, a locale, a token --
+  is bound rather than left for HoneySQL to interpret.
+
+  Put a marker in a value slot. Written anywhere else it is rewritten into a `[:param :k]` that
+  HoneySQL formats as an identifier rather than binding, so the value is dropped and the generated
+  key lands in the statement:
+
+    {:from [[:auto/param \"core_user\"]]}   ;; => [\"SELECT * FROM param AS p33yf8xpiqaxw\"]
+
+  Nothing here catches that: HoneySQL gives no signal for a param it did not consume, and which
+  positions bind is a decision it makes per operator, so it cannot be inferred from the query."
   (:require
    [clojure.walk :as walk]
    [methodical.core :as methodical]
@@ -50,6 +58,17 @@
   (and (marker-form? x)
        (vector? x)
        (contains? #{2 3} (count x))))
+
+(defn- operator-form?
+  "Whether `v` looks like a HoneySQL operator form -- `[:in [...]]`, `[:not-between lo hi]`.
+
+  Any keyword heads an operator as far as Toucan is concerned, so this asks whether the payload is
+  keyword-headed rather than checking against a list of known operators. Listing them would let an
+  unlisted one through to be bound as a value, which changes the comparison rather than failing."
+  [v]
+  (and (sequential? v)
+       (keyword? (first v))
+       (not= :auto/param (first v))))
 
 (defn- kv-arg-marker?
   "Whether `x` is the `[:auto/param column v]` form Toucan builds from a marked kv-arg."
@@ -85,10 +104,7 @@
   `[rewritten-query params-map]`.
 
   Does not descend into a marker's payload: whatever a caller marked is the value, even when that
-  value is itself shaped like a marker.
-
-  Keys are gensymed rather than sequential so that a `[:param :k]` arriving from request data
-  cannot name a slot this query minted."
+  value is itself shaped like a marker."
   [query]
   (let [params (volatile! {})
         walked (walk/prewalk
@@ -100,13 +116,33 @@
                       (check-well-formed! x)
                       (let [kv? (kv-arg-marker? x)
                             v   (if kv? (nth x 2) (second x))
+                            _   (when (operator-form? v)
+                                  ;; Binding an operator form would make it the value of a
+                                  ;; comparison rather than the comparison itself, turning
+                                  ;; `IN (?, ?)` into `= ?` against a list. The marker goes inside.
+                                  (throw (ex-info (str "Marked a whole operator form: " (pr-str x)
+                                                       ". Put the marker on the value instead, e.g. "
+                                                       "[" (first v) " [:auto/param ...]].")
+                                                  {:type ::marked-operator-form, :form x})))
                             ;; A marked kv-arg has to come back out as a comparison, since Toucan
                             ;; folded the column into the marker rather than building one.
                             wrap (if kv? #(vector := (second x) %) identity)]
+                        (when (and (coll? v) (empty? v) (not (map? v)))
+                          ;; Toucan rewrites `[:in col []]` to `false`, because `IN ()` is invalid
+                          ;; SQL, and that rewrite runs inside the compile step this wraps -- so a
+                          ;; lifted empty collection would hide it and leave `IN ()`, which Postgres
+                          ;; rejects and H2 quietly accepts. Whether the rewrite applies depends on
+                          ;; the enclosing operator, which is not visible here, so refuse rather
+                          ;; than guess.
+                          (throw (ex-info (str "Marked an empty collection: " (pr-str x)
+                                               ". Leave it unmarked -- an empty collection is not a"
+                                               " value that needs binding, and Toucan rewrites an"
+                                               " empty `:in` that it can see.")
+                                          {:type ::marked-empty-collection, :form x})))
                         (if (nil? v)
-                          ;; HoneySQL turns a literal nil in a comparison into `IS NULL`; a bound
-                          ;; parameter gets `= ?`, which no row satisfies. Leave nil to HoneySQL.
-                          (wrap nil)
+                          ;; HoneySQL turns a literal nil in a comparison into `IS NULL`, where a
+                          ;; bound parameter would get `= ?` and match nothing. Leave it to HoneySQL.
+                          (wrap v)
                           (let [k (param-key)]
                             (vswap! params assoc k v)
                             (wrap [:param k])))))))

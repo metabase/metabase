@@ -27,7 +27,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-static true
+  `(mt/with-temporary-setting-values [~'enable-embedding-modular true
                                       ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))
