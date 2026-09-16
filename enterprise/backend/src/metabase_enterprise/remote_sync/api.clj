@@ -177,16 +177,23 @@
      :force_push_casualties  force-push-casualties
      :reason                 (some-> reason name)}))
 
+(defn- present-task
+  "Hydrate `task` for the API: its status and the initiating user trimmed to what the UI shows."
+  [task]
+  (-> task
+      (t2/hydrate :status :initiated_by_user)
+      (update :initiated_by_user #(some-> % (select-keys [:id :first_name :last_name :email])))))
+
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
   (api/check-superuser)
-  (when-let [task (some-> (remote-sync.task/most-recent-task) (t2/hydrate :status))]
+  (when-let [task (some-> (remote-sync.task/most-recent-task) present-task)]
     (if (= :timed-out (:status task))
       ;; The owning worker is gone (its heartbeat stopped), so close the row now rather than leaving it to the
       ;; next task creation. Idempotent and safe to race across nodes and polling tabs.
       (do (remote-sync.task/supersede-stale-tasks!)
-          (t2/hydrate (remote-sync.task/most-recent-task) :status))
+          (present-task (remote-sync.task/most-recent-task)))
       task)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
@@ -196,7 +203,7 @@
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (present-task (remote-sync.task/most-recent-task))))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.

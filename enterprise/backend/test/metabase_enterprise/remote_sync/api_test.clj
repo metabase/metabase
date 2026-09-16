@@ -781,7 +781,40 @@
       (is (=? {:id id :status "running" :ended_at nil}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-carries-the-trimmed-initiating-user-test
+  (testing "GET /api/ee/remote-sync/current-task carries the initiating user as id, first_name, last_name, email only"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [user (:initiated_by_user (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))]
+        (is (= {:id         (mt/user->id :rasta)
+                :first_name "Rasta"
+                :last_name  "Toucan"
+                :email      "rasta@metabase.com"}
+               user))))))
+
+(deftest current-task-initiating-user-is-nil-for-system-tasks-test
+  (testing "GET /api/ee/remote-sync/current-task carries a nil initiating user for a task with no initiator (auto-import)"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by nil
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+        (is (contains? response :initiated_by_user))
+        (is (nil? (:initiated_by_user response)))))))
+
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
+
+(deftest cancel-task-carries-the-trimmed-initiating-user-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel returns the cancelled task with its trimmed initiating user"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (is (=? {:status            "cancelled"
+               :initiated_by_user {:id (mt/user->id :rasta) :email "rasta@metabase.com"}}
+              (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"))))))
 
 (deftest cancel-task-requires-superuser-test
   (testing "POST /api/ee/remote-sync/current-task/cancel requires superuser permissions (GHY-3804)"

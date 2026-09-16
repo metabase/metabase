@@ -21,6 +21,11 @@
    [:id pos-int?]
    [:sync_task_type TaskType]
    [:initiated_by {:optional true} [:maybe pos-int?]]
+   [:initiated_by_user {:optional true} [:maybe [:map
+                                                 [:id pos-int?]
+                                                 [:first_name [:maybe :string]]
+                                                 [:last_name [:maybe :string]]
+                                                 [:email :string]]]]
    [:progress [:maybe [:float {:min 0.0 :max 1.0}]]]
    [:started_at :any]
    [:ended_at {:optional true} [:maybe :any]]
