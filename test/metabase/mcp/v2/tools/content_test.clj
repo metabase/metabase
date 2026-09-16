@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as tools.content]
@@ -30,7 +31,7 @@
    ;; refusal text as a value, so a wrapper that threw would turn those into errors.
    (let [{:keys [result error]} (registry/call-tool token-scopes "test-session" "get_content" args)]
      (if error
-       {:isError true :content [{:type "text" :text (:message error)}]}
+       {:isError true :content [{:type "text" :text (message/render (:message error))}]}
        result))))
 
 (defn- content-results
@@ -149,10 +150,11 @@
                                                        :dashboard_tab_id   tab-id
                                                        :row                0
                                                        :col                0
-                                                       :parameter_mappings [{:parameter_id "_CAT_"
-                                                                             :card_id      card-id
-                                                                             :target       [:dimension
-                                                                                            [:field (mt/id :venues :name) nil]]}]}]
+                                                       :parameter_mappings
+                                                       [{:parameter_id "_CAT_"
+                                                         :card_id      card-id
+                                                         :target       [:dimension
+                                                                        [:field (mt/id :venues :name) nil]]}]}]
       (mt/with-test-user :crowberto
         (let [row (content-one {:items [{:type "dashboard" :id dash-id}]})]
           (is (nil? (:error row)))
@@ -424,7 +426,8 @@
                                                                    :type     "query"
                                                                    :query    {:source-table (mt/id :venues)}}}
                                                   :target {:type   :table
-                                                           :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                           :schema (t2/select-one-fn :schema :model/Table
+                                                                                     :id (mt/id :venues))
                                                            :name   "t1_out"}}]
           (mt/with-test-user :crowberto
             (let [row (content-one {:items [{:type "transform" :id id}]})]
@@ -466,9 +469,9 @@
                      :handlers     []}]
       (mt/with-test-user :crowberto
         (testing "alerts are numeric-only"
-          (is (re-find #"numeric id"
-                       (:error (content-one {:items [{:type "alert"
-                                                      :id   "abcdefghijklmnopqrstu"}]})))))
+          (is (= "Alerts take a numeric id — they have no entity_id."
+                 (:error (content-one {:items [{:type "alert"
+                                                :id   "abcdefghijklmnopqrstu"}]})))))
         (testing "and the alert still reads by its numeric id"
           (is (nil? (:error (content-one {:items [{:type "alert" :id (:id notification)}]})))))
         (testing "a string that is neither a numeric id nor an entity_id"
@@ -583,13 +586,26 @@
               (is (= "Good" (:name good)))
               (is (nil? (:error good))))))))))
 
+(deftest get-content-item-error-text-is-cleaned-test
+  (testing "GHY-4544: a caller-facing upstream string in an item's error is cleaned whole — JSON escapes control
+            characters and quotes but not format characters like a bidi override or a zero-width space, so
+            those must arrive as literal escapes rather than raw"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [tools.content/fetch-measure-or-segment
+                                  (fn [& _]
+                                    (throw (ex-info (str "Not found" (char 0x202E) "x" (char 0x200B))
+                                                    {:status-code 404})))]
+        (let [error (:error (content-one {:items [{:type "measure" :id 1}]}))]
+          (is (= "\"Not found\\u202ex\\u200b\"" error))
+          (is (not (re-find #"[‮​]" error))))))))
+
 (deftest get-content-card-type-mismatch-test
   (testing "GHY-4140: asking for a model with type question teaches the actual type"
     (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (:error (content-one {:items [{:type "question" :id card-id}]}))]
           (is (some? error))
-          (is (re-find #"is a model" error))
+          (is (re-find #"has type \"model\"" error))
           (is (re-find #"type: \"model\"" error)))))))
 
 (deftest get-content-batch-cap-test
@@ -636,7 +652,8 @@
                                                                      :type     "query"
                                                                      :query    {:source-table (mt/id :venues)}}}
                                                     :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :schema (t2/select-one-fn :schema :model/Table
+                                                                                       :id (mt/id :venues))
                                                              :name   "t1_out"}}]
             (mt/with-test-user :crowberto
               (let [row (content-one #{"agent:content:read"} {:items [{:type "transform" :id id}]})]
@@ -994,7 +1011,8 @@
                                                                      :type     "query"
                                                                      :query    {:source-table (mt/id :venues)}}}
                                                     :target {:type   :table
-                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :schema (t2/select-one-fn :schema :model/Table
+                                                                                       :id (mt/id :venues))
                                                              :name   "t1_out"}}]
             (mt/with-test-user :crowberto
               (let [row (content-one {:items [{:type "transform" :id id}] :include ["definition"]})]
@@ -1009,8 +1027,8 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
-          (is (re-find #"does not apply to type question" error))
-          (is (re-find #"available for: dashboard, document" error)))))))
+          (is (re-find #"does not apply to type \"question\"" error))
+          (is (re-find #"available for: \"dashboard\", \"document\"" error)))))))
 
 (deftest get-content-settings-include-test
   (testing "GHY-4511: a question's stored visualization_settings read back — through the
@@ -1278,7 +1296,8 @@
       (testing "the SQL itself, collapsed onto one line"
         (mt/with-temp [:model/Card {card-id :id}
                        {:query_type    :native
-                        :dataset_query (native-card-query "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
+                        :dataset_query (native-card-query
+                                        "select date_trunc('month', placed_at)\n  from orders\n group by 1")}]
           (is (= "SQL: select date_trunc('month', placed_at) from orders group by 1"
                  (:query_summary (content-one {:items [{:type "question" :id card-id}]}))))))
       (testing "a long query is truncated to a bounded head, marked with an ellipsis"
