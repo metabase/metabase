@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
+   [metabase-enterprise.api-keys.usage :as ee-usage]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.usage :as usage]
    [metabase.test :as mt]
@@ -264,11 +265,6 @@
 
 ;;; ------------------------------------------ last_used_at --------------------------------------------
 
-(defn- clear-last-used-at! [api-key-id]
-  (t2/query {:update :api_key
-             :where  [:= :id api-key-id]
-             :set    {:last_used_at nil}}))
-
 (deftest record-api-key-usage!-stamps-last-used-at-test
   (mt/with-premium-features #{}
     (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_1234567890"
@@ -278,35 +274,38 @@
                                                    :updated_by_id          (mt/user->id :crowberto)}]
       (let [updated-at-before (t2/select-one-fn :updated_at :model/ApiKey :id api-key-id)
             route             (unique-route)]
-        (mt/with-temporary-setting-values [synchronous-batch-updates true]
-          (try
-            (is (nil? (last-used-at api-key-id)))
-            (record! (request-info route :api-key-id api-key-id))
-            (is (some? (last-used-at api-key-id)))
-            (testing "the stamp bypasses the model hooks, so updated_at never moves"
-              (is (= updated-at-before
-                     (t2/select-one-fn :updated_at :model/ApiKey :id api-key-id))))
-            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+        (try
+          (is (nil? (last-used-at api-key-id)))
+          (record! (request-info route :api-key-id api-key-id))
+          (testing "not written until the next flush — coalesced in memory, not a synchronous write"
+            (is (nil? (last-used-at api-key-id))))
+          (#'ee-usage/flush-last-used-at!)
+          (is (some? (last-used-at api-key-id)))
+          (testing "the stamp bypasses the model hooks, so updated_at never moves"
+            (is (= updated-at-before
+                   (t2/select-one-fn :updated_at :model/ApiKey :id api-key-id))))
+          (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
 
-(deftest record-api-key-usage!-dedupes-last-used-at-within-a-batch-test
-  (testing "multiple events for the same key in one batch collapse to the max timestamp, one UPDATE"
+(deftest record-api-key-usage!-coalesces-last-used-at-before-flush-test
+  (testing "multiple events for the same key before a flush collapse to the max timestamp, one UPDATE"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_3333333333"
                                                      :name                   (mt/random-name)
                                                      :user_id                (mt/user->id :crowberto)
                                                      :creator_id             (mt/user->id :crowberto)
                                                      :updated_by_id          (mt/user->id :crowberto)}]
-        (mt/with-temporary-setting-values [synchronous-batch-updates true]
-          (let [route (unique-route)]
-            (try
-              (record! (request-info route :api-key-id api-key-id))
-              (let [stamped-once (last-used-at api-key-id)]
-                (clear-last-used-at! api-key-id)
-                (record! (request-info route :api-key-id api-key-id))
-                (is (some? (last-used-at api-key-id)))
-                (testing "still just one liveness column, not a growing log"
-                  (is (some? stamped-once))))
-              (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))))
+        ;; truncated to microseconds to match real DB storage precision; H2 alone preserves nanoseconds.
+        (let [now     #(-> (t/instant) (t/truncate-to :micros) (t/offset-date-time (t/zone-offset 0)))
+              earlier (t/minus (now) (t/minutes 5))
+              later   (now)
+              route   (unique-route)]
+          (try
+            ;; out of order on purpose — the later timestamp must win regardless of arrival order
+            (record! (request-info route :api-key-id api-key-id :occurred-at later))
+            (record! (request-info route :api-key-id api-key-id :occurred-at earlier))
+            (#'ee-usage/flush-last-used-at!)
+            (is (= later (last-used-at api-key-id)))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
 (deftest record-api-key-usage!-last-used-at-independent-per-key-test
   (testing "one key's event does not affect another key's last_used_at"
@@ -321,21 +320,23 @@
                                                 :user_id                (mt/user->id :crowberto)
                                                 :creator_id             (mt/user->id :crowberto)
                                                 :updated_by_id          (mt/user->id :crowberto)}]
-        (mt/with-temporary-setting-values [synchronous-batch-updates true]
-          (let [route (unique-route)]
-            (try
-              (record! (request-info route :api-key-id key-1))
-              (is (some? (last-used-at key-1)))
-              (is (nil? (last-used-at key-2)))
-              (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))))
+        (let [route (unique-route)]
+          (try
+            (record! (request-info route :api-key-id key-1))
+            (#'ee-usage/flush-last-used-at!)
+            (is (some? (last-used-at key-1)))
+            (is (nil? (last-used-at key-2)))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
 
 (deftest record-api-key-usage!-last-used-at-is-best-effort-test
-  (testing "a failed last_used_at update is swallowed, and a nil id skips the write entirely"
+  (testing "a nil id skips the write entirely"
     (mt/with-premium-features #{}
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
-        (is (nil? (record! (request-info (unique-route) :api-key-id nil))))
-        (mt/with-dynamic-fn-redefs [t2/query (fn [& _] (throw (ex-info "boom" {})))]
-          (let [route (unique-route)]
-            (try
-              (is (nil? (record! (request-info route :api-key-id Integer/MAX_VALUE))))
-              (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))))
+      (is (nil? (record! (request-info (unique-route) :api-key-id nil))))))
+  (testing "a failed flush is swallowed rather than thrown"
+    (mt/with-premium-features #{}
+      (let [route (unique-route)]
+        (try
+          (record! (request-info route :api-key-id Integer/MAX_VALUE))
+          (mt/with-dynamic-fn-redefs [t2/query (fn [& _] (throw (ex-info "boom" {})))]
+            (is (nil? (#'ee-usage/flush-last-used-at!))))
+          (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))

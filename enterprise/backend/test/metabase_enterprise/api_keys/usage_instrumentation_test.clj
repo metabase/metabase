@@ -9,6 +9,7 @@
   pre-routing request."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.api-keys.usage :as ee-usage]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -22,7 +23,11 @@
 (defn- rows-for [api-key-id]
   (t2/select :model/ApiKeyUsageLog :api_key_id api-key-id {:order-by [[:id :asc]]}))
 
-(defn- last-used-at [api-key-id]
+(defn- last-used-at
+  "Forces the pending `last_used_at` stamps to flush before reading — they coalesce in memory between
+  scheduled flushes, so a stamp made moments ago may not be on disk yet."
+  [api-key-id]
+  (#'ee-usage/flush-last-used-at!)
   (t2/select-one-fn :last_used_at :model/ApiKey :id api-key-id))
 
 (defn- api-key-headers [unmasked-key]
@@ -30,9 +35,9 @@
 
 (defn- do-with-api-key!
   "Create a real API key over the API, run `f` with its unmasked key and id, then clean up the key and its usage rows.
-  Both the usage-log row and the last_used_at stamp go through Grouper queues, so
-  `synchronous-batch-updates` is forced on for the duration — otherwise they'd only land a batch
-  interval later, on another thread."
+  The usage-log row goes through a Grouper queue, so `synchronous-batch-updates` is forced on for the
+  duration — otherwise it would only land a batch interval later, on another thread. The `last_used_at`
+  stamp coalesces in memory instead; see [[last-used-at]]."
   [f]
   (mt/with-temporary-setting-values [synchronous-batch-updates true]
     (let [{unmasked-key :unmasked_key, api-key-id :id}
