@@ -12,12 +12,39 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.ollama :as ollama]
+   [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
    (java.net SocketTimeoutException)))
 
 (set! *warn-on-reflection* true)
+
+(defn- no-unstubbed-http
+  "Refuse any HTTP request a test did not stub. Building a request body looks a model's capabilities
+  up, so without this every `ollama-request-body` test below would resolve `ollama.internal` for real
+  — on a resolver that wildcards, waiting out the socket timeout to do it. A refused lookup reads as
+  a server that would not answer, which is what the adapter degrades to anyway."
+  [thunk]
+  (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (java.net.UnknownHostException. "unstubbed")))]
+    (thunk)))
+
+(use-fixtures :each no-unstubbed-http)
+
+(defn- with-clean-capabilities!
+  "Call `f` against an empty capability cache, emptied again afterwards so a failed assertion cannot
+  leave one test's models behind for the next.
+
+  Deliberately not a fixture: the cache is process-wide, and emptying shared state from an `:each`
+  fixture would run against this namespace's `^:parallel` tests. `metabase/validate-deftest` rejects
+  that, and is right to — only the few tests that assert on what Ollama said about a model need it,
+  and none of those are parallel."
+  [f]
+  (ollama.capabilities/clear-cache!)
+  (try
+    (f)
+    (finally
+      (ollama.capabilities/clear-cache!))))
 
 ;; not localhost: Metabase is a server, so a realistic self-hosted address is another host
 (def ^:private base-url "http://ollama.internal:11434/v1")
@@ -36,8 +63,12 @@
   (assoc credentials :api-key "proxy-key"))
 
 (def ^:private reasoning-credentials
-  "A connection whose connect-time probe found the pulled model streaming its reasoning."
-  (assoc credentials ollama/reasoning-config-key "true"))
+  "A connection whose connect-time probe found the pulled model streaming its reasoning. `:probed-model`
+  is what makes that observation mean anything: it describes `good-model` and no other model on the
+  server, which is why nothing reads the flag without it."
+  (assoc credentials
+         ollama.capabilities/reasoning-config-key "true"
+         :probed-model                           "good-model"))
 
 (defn- captured-request
   "Drive `list-models` against a stub and return the request it issued. Credentials go through
@@ -104,15 +135,16 @@
                                                        :tool_choice "required"
                                                        :max-tokens  128})))))))
 
-(deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-connection-test
-  (testing "a connection the probe found reasoning gets the larger floor — thinking, answer and tool
-           call are billed against one budget"
+(deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-model-test
+  (testing "a reasoning model gets the larger floor — thinking, answer and tool call are billed
+           against one budget. Nothing here reaches Ollama: the floor reads the capability cache,
+           which `ollama-raw` fills before it builds a body."
     (is (= 16384
            (:max_tokens (ollama/ollama-request-body {:model       "good-model"
                                                      :input       [{:role :user :content "hi"}]
                                                      :credentials reasoning-credentials
                                                      :max-tokens  128})))))
-  (testing "and a model the probe found does not reason keeps the caller's value"
+  (testing "and a model nothing has found reasoning keeps the caller's value"
     (is (= 128
            (:max_tokens (ollama/ollama-request-body {:model       "good-model"
                                                      :input       [{:role :user :content "hi"}]
@@ -323,13 +355,23 @@
     :tools))
 
 (defn- probing-server
-  "Stub `http/request` for the preflight path: `GET /models` returns `models`, and each
-  `POST /chat/completions` returns whatever `choice-by-probe` holds for the probe it was sent, so the
-  two probes can disagree."
+  "Stub `http/request` for the preflight path: `GET /models` returns `models`, `POST /api/show` reports
+  each model's `:capabilities` from the catalog entry (absent where the entry has none, as an Ollama
+  too old to report them answers), and each `POST /chat/completions` returns whatever
+  `choice-by-probe` holds for the probe it was sent, so the two probes can disagree."
   [models choice-by-probe]
   (fn [{:keys [url body]}]
-    (if (re-find #"/models$" (str url))
+    (cond
+      (re-find #"/models$" (str url))
       {:status 200 :body {:data models}}
+
+      (re-find #"/api/show$" (str url))
+      (let [model (:model (json/decode+kw (str body)))
+            entry (first (filter #(= model (:id %)) models))]
+        {:status 200 :body (cond-> {:model model}
+                             (:capabilities entry) (assoc :capabilities (:capabilities entry)))})
+
+      :else
       {:status 200 :body {:choices [(get choice-by-probe (probe-kind (json/decode+kw (str body))))]}})))
 
 (def ^:private tool-calling-message
@@ -370,9 +412,52 @@
 (deftest preflight-passes-on-a-model-that-calls-tools-test
   (testing "a model that returns a well-formed tool call passes and is adopted as the one to run on"
     (is (= {:models         [{:id "good-model" :display_name "good-model"}]
-            :learned-config {ollama/reasoning-config-key "false"
+            :learned-config {ollama.capabilities/reasoning-config-key "false"
                              :probed-model               "good-model"}}
            (probe! [{:id "good-model"}] tool-calling-message)))))
+
+(deftest preflight-skips-models-that-cannot-chat-test
+  (testing "Ollama lists models newest-first and its OpenAI-compatible listing does not filter out
+           embedding models, so the newest pull being one used to fail the connect outright — with no
+           way out, since the form hides the model picker for a type whose catalog is not fixed"
+    (with-clean-capabilities!
+      (fn []
+        (is (= "thinking-model"
+               (get-in (probe! [{:id "embedding-model" :capabilities ["embedding"]}
+                                {:id "thinking-model"  :capabilities ["completion" "tools" "thinking"]}]
+                               tool-calling-message)
+                       [:learned-config :probed-model]))))))
+  (testing "a server that reports no capabilities rules nothing out, and keeps taking the first entry"
+    (with-clean-capabilities!
+      (fn []
+        (is (= "first-model"
+               (get-in (probe! [{:id "first-model"} {:id "second-model"}] tool-calling-message)
+                       [:learned-config :probed-model])))))))
+
+(deftest preflight-diagnoses-a-model-that-was-asked-for-by-name-test
+  (testing "an API client can name an embedding model, which the picker no longer offers. Saying so
+           beats Ollama's own 400, and beats reporting a model the server plainly has as missing."
+    (with-clean-capabilities!
+      (fn []
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"embedding-model is not a chat model"
+             (mt/with-dynamic-fn-redefs [http/request (probing-server
+                                                       [{:id "embedding-model" :capabilities ["embedding"]}]
+                                                       {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
+                                                        :structured structured-success})]
+               (ollama/list-models {:credentials credentials :model "embedding-model" :probe? true}))))))))
+
+(deftest listing-offers-only-models-metabot-could-run-on-test
+  (testing "the admin's picker is the catalog minus what Ollama says cannot chat"
+    (with-clean-capabilities!
+      (fn []
+        (is (= [{:id "thinking-model" :display_name "thinking-model"}]
+               (:models (mt/with-dynamic-fn-redefs
+                          [http/request (probing-server [{:id "embedding-model" :capabilities ["embedding"]}
+                                                         {:id "thinking-model"  :capabilities ["completion" "tools" "thinking"]}]
+                                                        {})]
+                          (ollama/list-models {:credentials credentials})))))))))
 
 (deftest preflight-does-not-gate-on-a-context-window-test
   (testing "Ollama's catalog carries no `max_model_len`, so unlike vLLM nothing gates on the window
@@ -382,15 +467,16 @@
                    [:learned-config :probed-model])))))
 
 (deftest preflight-records-a-reasoning-model-test
-  (testing "reasoning is observable only from the probe, and drives which renderer the frontend picks"
+  (testing "what the probe saw is still recorded, as the fallback for a server too old to report
+           capabilities — see `metabase.metabot.self.ollama.connection`"
     (is (= "true"
            (get-in (probe! [{:id "good-model"}] (assoc tool-calling-message :reasoning "thinking..."))
-                   [:learned-config ollama/reasoning-config-key])))
+                   [:learned-config ollama.capabilities/reasoning-config-key])))
     (testing "the deprecated spelling some builds still emit counts too"
       (is (= "true"
              (get-in (probe! [{:id "good-model"}]
                              (assoc tool-calling-message :reasoning_content "thinking..."))
-                     [:learned-config ollama/reasoning-config-key]))))))
+                     [:learned-config ollama.capabilities/reasoning-config-key]))))))
 
 (deftest preflight-rejects-a-model-that-cannot-call-tools-test
   (testing "the fix is always a different model — Ollama drives tool calling from the model's own
@@ -580,11 +666,16 @@
         calls     (atom 0)]
     (with-redefs [self.core/sse-reducible identity
                   debug/capture-stream    (fn [r _] r)
-                  http/request            (fn [_]
-                                            (swap! calls inc)
-                                            (let [[head & tail] @remaining]
-                                              (reset! remaining (vec tail))
-                                              {:body head}))]
+                  ;; `/api/show` is capability metadata, not a generation: answered without
+                  ;; capabilities, and not counted, so `:calls` stays a count of real requests
+                  http/request            (fn [{:keys [url]}]
+                                            (if (re-find #"/api/show$" (str url))
+                                              {:status 200 :body {}}
+                                              (do
+                                                (swap! calls inc)
+                                                (let [[head & tail] @remaining]
+                                                  (reset! remaining (vec tail))
+                                                  {:body head}))))]
       {:parts (into [] (self.core/aisdk-xf) (ollama/ollama opts))
        :calls @calls})))
 

@@ -8,10 +8,11 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.ollama.capabilities :as caps]
+   [metabase.metabot.self.ollama.connection :as conn]
    [metabase.metabot.self.ollama.forced-calls :as forced]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util :as u]
@@ -25,20 +26,6 @@
    (java.net SocketTimeoutException)))
 
 (set! *warn-on-reflection* true)
-
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for Ollama")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
-(defn- missing-base-url-ex []
-  ;; `provider-client-error?` needs a numeric status to render this under the field; without one the
-  ;; admin gets a 500. The base URL is only conditionally required, so the adapter owns this error.
-  (ex-info (tru "No Ollama base URL is set. Give the address of your server, or switch this connection to Ollama Cloud.")
-           {:api-error   true
-            :status-code 400
-            :field       :base-url
-            :error-code  :base-url-missing}))
 
 (defn- missing-model-ex []
   (ex-info (tru "No Ollama model is set")
@@ -56,45 +43,6 @@
       429 (tru "Ollama is rate limiting this instance — wait and retry, or reduce concurrent Metabot use")
       500 (tru "Ollama returned an internal server error")
       (tru "Ollama API error (HTTP {0})" status))))
-
-(def reasoning-config-key
-  "The `:config` key [[preflight!]] records its reasoning observation under. Not admin-entered: only
-  the probe can tell whether a model reasons."
-  :model-reasoning)
-
-(defn reasoning-connection?
-  "Whether the probe found this connection's model streaming reasoning. Accepts both spellings: the
-  API stores the string it round-trips, a hand-written `llm-providers` can hold a JSON boolean."
-  [credentials]
-  (let [recorded (get credentials reasoning-config-key)]
-    (or (true? recorded) (= "true" recorded))))
-
-(def ^:private cloud-base-url
-  "Ollama Cloud's OpenAI-compatible API — the one Ollama address that is not configurable."
-  "https://ollama.com/v1")
-
-(defn- cloud?
-  "Whether a connection is Ollama Cloud."
-  [credentials]
-  (= llm.provider/ollama-cloud (:hosting credentials)))
-
-(defn- resolve-base-url
-  "The address to call. A self-hosted connection with no address throws rather than falling through
-  to Cloud, which would send the operator's data somewhere they did not choose."
-  [credentials]
-  (if (cloud? credentials)
-    cloud-base-url
-    (or (not-empty (:base-url credentials)) (throw (missing-base-url-ex)))))
-
-(defn- ollama-auth
-  "Auth map for an Ollama request. Never nil, so `core/resolve-auth`'s missing-key branch is
-  unreachable: a keyless self-hosted server is the normal configuration, not a broken one."
-  [credentials ai-proxy?]
-  (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
-  (let [token (not-empty (:api-key credentials))
-        auth  (merge {:url (resolve-base-url credentials)}
-                     (when token {:headers {"Authorization" (str "Bearer " token)}}))]
-    (core/resolve-auth "ollama" "Ollama" auth ai-proxy?)))
 
 (defn- inference-timeouts
   "Timeouts for a generation request."
@@ -192,8 +140,8 @@
   probe-max-tokens)
 
 (def ^:private reasoning-model-token-floor
-  "Smallest `max_tokens` any request gets once [[preflight!]] has observed the pulled model reasoning.
-  Chat Completions bills thinking, answer, and tool call against one budget."
+  "Smallest `max_tokens` a request on a reasoning model gets. Chat Completions bills thinking, answer,
+  and tool call against one budget."
   16384)
 
 (def ^:private default-temperature
@@ -305,15 +253,29 @@
   A requested model is the only acceptable target: falling back to another pulled model would pass
   every check and then persist a provider string naming a model the server does not have. The
   fallback is for the connect path, which supplies no model because the pulled name is knowable only
-  from this catalog."
+  from this catalog.
+
+  That fallback takes the first *chat-capable* entry rather than the first entry. Ollama lists models
+  newest-first and its OpenAI-compatible listing does not filter out embedding models, so the newest
+  pull being an embedding model was enough to fail a connect against a server with a perfectly good
+  chat model on it — with no way out, since the form hides the model picker for a type whose catalog
+  is not fixed.
+
+  `entries` is the whole catalog as [[tag-chat-capable]] left it, not the subset [[list-models]]
+  offers, so that a model requested by name is answered about rather than reported missing."
   [entries requested-model]
   (if requested-model
-    (or (u/seek #(= requested-model (:id %)) entries)
-        (throw (if (seq entries)
-                 (preflight-ex (tru "{0} is not available. Models on offer: {1}."
-                                    (str requested-model) (str/join ", " (map :id entries))))
-                 (no-models-ex))))
-    (or (first entries)
+    (let [entry (or (u/seek #(= requested-model (:id %)) entries)
+                    (throw (if (seq entries)
+                             (preflight-ex (tru "{0} is not available. Models on offer: {1}."
+                                                (str requested-model) (str/join ", " (map :id entries))))
+                             (no-models-ex))))]
+      (when-not (::chat? entry)
+        (throw (preflight-ex (tru "{0} is not a chat model — Ollama offers it for embedding only. Pick a model that supports tool calling."
+                                  (str requested-model)))))
+      entry)
+    (or (u/seek ::chat? entries)
+        (first entries)
         (throw (no-models-ex)))))
 
 (defn- run-probes!
@@ -351,27 +313,57 @@
     {:model      model
      :reasoning? (run-probes! auth model cloud?)}))
 
+(def ^:private capability-lookup-batch
+  "How many models to ask about at once. `pmap` is no help on its own: it realizes a chunked seq — and
+  a JSON catalog is a vector — 32 elements at a time, so its look-ahead never binds and a 40-model
+  catalog opens 32 sockets at once. Against Cloud that is 32 simultaneous TLS handshakes to one host,
+  which is how an instance earns a 429 — and a 429 is cached as \"would not say\" for the whole TTL,
+  so one burst would cost reasoning detection for every model on the connection."
+  8)
+
+(defn- tag-chat-capable
+  "`entries` with `::chat?` on each, saying whether Ollama offers that model for chat at all.
+
+  The catalog is the OpenAI-compatible one, which lists embedding models alongside chat models and
+  marks neither, so [[caps/chat-capable?]] is the only thing that tells them apart. Tagged rather
+  than filtered because both readers want a different view of the same answer: the picker wants the
+  chat models, [[probe-target]] wants the whole catalog so it can say *why* a named model is no good.
+  Asking once is also what keeps this from being three passes over the same models.
+
+  A server that reports nothing tags everything chat-capable: see [[caps/chat-capable?]]."
+  [credentials entries]
+  (into []
+        (comp (partition-all capability-lookup-batch)
+              (mapcat (fn [batch]
+                        (doall (pmap #(assoc % ::chat? (caps/chat-capable? credentials (:id %)))
+                                     batch)))))
+        entries))
+
 (defn list-models
-  "The models the server has pulled. Pass-through — there is nothing to whitelist.
+  "The models the server has pulled that Metabot could run on — the embedding models Ollama's
+  OpenAI-compatible catalog lists alongside them are dropped, so the admin's picker only offers
+  models a connection can actually be saved against.
 
   `:probe?` also runs [[preflight!]] and returns what it learned as `:learned-config` for the connect
   path to store. Reserved for connect and edit: probing on every listing would stall the model picker
   behind a full model load. A `:proposed-model` is re-probed only while the server still has it."
   ([] (list-models {}))
   ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
-   (let [auth     (ollama-auth credentials ai-proxy?)
-         entries  (list-all-models auth)
+   (let [auth     (conn/auth credentials ai-proxy?)
+         catalog  (tag-chat-capable credentials (list-all-models auth))
+         entries  (filterv ::chat? catalog)
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
+         ;; the whole catalog, so a model requested by name is diagnosed rather than reported missing
          probed   (when probe?
-                    (preflight! auth entries (or model proposed) (cloud? credentials)))
+                    (preflight! auth catalog (or model proposed) (conn/cloud? credentials)))
          models   (mapv (fn [{:keys [id] :as entry}]
                           {:id id :display_name (or (:name entry) id)})
                         entries)]
      (merge {:models models}
             (when probed
-              {:learned-config {reasoning-config-key (str (:reasoning? probed))
-                                :probed-model        (:model probed)}})))))
+              {:learned-config {caps/reasoning-config-key (str (:reasoning? probed))
+                                :probed-model             (:model probed)}})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
@@ -413,14 +405,19 @@
   which server is being talked to. `plan` may be supplied by a caller that already has one — the
   streaming path does — so that a request derives it once.
 
+  The reasoning floor is looked up rather than read off the connection, because one connection serves
+  as many models as the operator has pulled — see
+  [[metabase.metabot.self.ollama.capabilities/reasoning-model?]]. It is answered from cache after the
+  first request on a model.
+
   We never tell Ollama whether to think, just as vLLM does not. Both run whatever model the operator
   installed, so we take that model's own default and leave room for it with the floors above.
   Ollama does have a `reasoning_effort` switch, but turning thinking off would only save tokens on
   the operator's own hardware, and it errors on models that cannot think at all."
   ([opts :- core/LLMRequestOpts]
-   (ollama-request-body opts (forced/plan opts (cloud? (:credentials opts)))))
+   (ollama-request-body opts (forced/plan opts (conn/cloud? (:credentials opts)))))
 
-  ([{:keys [max-tokens temperature credentials reasoning?] :as opts
+  ([{:keys [max-tokens model temperature credentials reasoning?] :as opts
      :or   {reasoning? true}} :- core/LLMRequestOpts
     plan                      :- [:maybe :map]]
    (forced/body-for
@@ -431,8 +428,11 @@
                (nil? temperature) (assoc :temperature default-temperature))
              (when reasoning? {:reasoning-part->message reasoning-message})))
            :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
-                         (some? plan)                        (max forced-tool-call-token-floor)
-                         (reasoning-connection? credentials) (max reasoning-model-token-floor))))))
+                         (some? plan)
+                         (max forced-tool-call-token-floor)
+
+                         (caps/reasoning-model? credentials model)
+                         (max reasoning-model-token-floor))))))
 
 (defn- stream-io-ex
   "Transport failure while *consuming* a stream. `:retryable? false` is required, not decorative:
@@ -486,17 +486,16 @@
   `:ai-proxy?` is unsupported and throws. `plan` may be supplied by a caller that already has one, so
   that a request derives it once."
   ([opts :- core/LLMRequestOpts]
-   (ollama-raw opts (forced/plan opts (cloud? (:credentials opts)))))
+   (ollama-raw opts (forced/plan opts (conn/cloud? (:credentials opts)))))
 
   ([{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts
     plan                                                 :- [:maybe :map]]
-   (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
    (when (str/blank? model) (throw (missing-model-ex)))
    (let [req        (ollama-request-body opts plan)
          timeout-ms (llm/llm-ollama-request-timeout-ms)
          ;; before the `try`, so the IO handler can name the address actually called — a Cloud
          ;; connection carries no `:base-url` of its own
-         auth       (ollama-auth credentials ai-proxy?)]
+         auth       (conn/auth credentials ai-proxy?)]
      (log/debug "Ollama request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
      (with-span :info {:name       :metabot.ollama/request
                        :model      model
@@ -535,7 +534,7 @@
 (defn ollama
   "Call an Ollama server's Chat Completions API, return AISDK stream."
   [{:keys [credentials] :as opts}]
-  (let [plan (forced/plan opts (cloud? credentials))]
+  (let [plan (forced/plan opts (conn/cloud? credentials))]
     (eduction (comp (or (forced/read-back-xf plan) identity)
                     (ollama->aisdk-chunks-xf))
               (ollama-raw opts plan))))

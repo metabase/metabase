@@ -1,11 +1,14 @@
 (ns metabase.metabot.settings-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -285,19 +288,66 @@
       (with-selected-model "vllm/vllm-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
+(def ^:private ollama-credentials
+  {:hosting "self-hosted" :base-url "http://ollama.internal:11434/v1"})
+
+(defn- ollama-connection
+  [config]
+  (connection "ollama" "ollama" (merge ollama-credentials config)))
+
+(defn- showing-capabilities
+  "Stub `http/request` so `/api/show` reports `capabilities-by-model`, and a model absent from it comes
+  back without a `capabilities` key — an Ollama too old to report them."
+  [capabilities-by-model]
+  (fn [{:keys [body]}]
+    (let [model (:model (json/decode+kw (str body)))]
+      {:status 200
+       :body   (cond-> {:model model}
+                 (contains? capabilities-by-model model)
+                 (assoc :capabilities (get capabilities-by-model model)))})))
+
+(defn- supports-reasoning?
+  "The setting's answer for `model`, once the adapter has been given the chance to learn about it.
+
+  The setting itself only reads what is known — it is public, so it never calls Ollama. Warming here
+  goes through the accessor the request path uses, which is one of the two places that fills the
+  cache in production; the other is listing a connection's models."
+  [model]
+  (ollama.capabilities/reasoning-model? ollama-credentials model)
+  (with-selected-model (str "ollama/" model)
+    (metabot.settings/llm-metabot-supports-reasoning?)))
+
+(defn- with-capabilities!
+  "Call `f` against a `/api/show` stub reporting `by-model`, with the capability cache emptied on both
+  sides so no test inherits another's models."
+  [by-model f]
+  (ollama.capabilities/clear-cache!)
+  (try
+    (mt/with-dynamic-fn-redefs [http/request (showing-capabilities by-model)]
+      (f))
+    (finally
+      (ollama.capabilities/clear-cache!))))
+
 (deftest metabot-supports-reasoning-ollama-test
-  (testing "Ollama answers from the probe as vLLM does, and for the same reason — but from the
-           model's template rather than a server flag, so there is nothing an admin could declare"
-    (doseq [recorded ["true" "false"]]
-      (testing (str "recorded " recorded)
-        (with-connections [(connection "ollama" "ollama" {:hosting         "self-hosted"
-                                                          :base-url        "http://ollama.internal:11434/v1"
-                                                          :model-reasoning recorded})]
-          (with-selected-model "ollama/ollama-test"
-            (is (= (= "true" recorded) (metabot.settings/llm-metabot-supports-reasoning?))))))))
-  (testing "an unprobed server defaults to the non-reasoning renderer rather than guessing"
-    (with-connections [(connection "ollama" "ollama" {:hosting  "self-hosted"
-                                                      :base-url "http://ollama.internal:11434/v1"})]
+  (testing "Ollama answers per model rather than per connection — one connection serves as many models
+           as the operator has pulled, and the single flag this replaced could only ever describe the
+           one the connection was probed on"
+    (with-capabilities! {"thinking-model" ["completion" "tools" "thinking"]
+                         "chat-model"     ["completion" "tools"]}
+      (fn []
+        (with-connections [(ollama-connection {})]
+          (testing "thinking-model" (is (true? (supports-reasoning? "thinking-model"))))
+          (testing "chat-model"     (is (false? (supports-reasoning? "chat-model"))))))))
+  (testing "a connection saved before Ollama reported capabilities keeps the probe's answer, but only
+           for the model that probe described"
+    (with-capabilities! {}
+      (fn []
+        (with-connections [(ollama-connection {:model-reasoning "true" :probed-model "probed-model"})]
+          (testing "probed-model" (is (true? (supports-reasoning? "probed-model"))))
+          (testing "other-model"  (is (false? (supports-reasoning? "other-model"))))))))
+  (testing "and a model nothing has looked up yet reads as non-reasoning rather than guessing — the
+           setting is public, so it answers from what is known and never calls Ollama itself"
+    (with-connections [(ollama-connection {})]
       (with-selected-model "ollama/ollama-test"
         (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
 
