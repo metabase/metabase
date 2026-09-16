@@ -29,24 +29,6 @@
                              :native_search_terms}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
           [column {:optional true} ::h2x/expr])))
-
-(def sql-states
-  "SQLSTATE codes returned by supported application databases."
-  ;; `undefined_table` is PostgreSQL-specific; the rest are X/Open. H2 uses three missing-table states, corresponding
-  ;; to `TABLE_OR_VIEW_NOT_FOUND_1`, `..._WITH_CANDIDATES_2`, and `..._DATABASE_EMPTY_1` in `org.h2.api.ErrorCode`.
-  {:undefined-table                         "42P01"
-   :table-or-view-not-found                 "42S02"
-   :table-or-view-not-found-with-candidates "42S03"
-   :table-or-view-not-found-database-empty  "42S04"
-   :unique-violation                        "23505"
-   :integrity-constraint-violation          "23000"})
-
-(def error-codes
-  "Vendor-specific error codes returned by supported application databases."
-  ;; MySQL and MariaDB use one SQLSTATE for every integrity-constraint failure, so `ER_DUP_ENTRY` identifies duplicate
-  ;; keys.
-  {:mysql/duplicate-entry 1062})
-
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
   matching `where-clause`, or every row when it is nil.

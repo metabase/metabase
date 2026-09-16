@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
@@ -19,9 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql SQLException)))
+   [toucan2.core :as t2]))
 
 (comment
   h2/keep-me
@@ -232,28 +231,6 @@
         (dissoc :native_query)
         (merge (specialization/extra-entry-fields entity)))))
 
-;; Keep these aligned with `impl-table-known-to-not-exist?` in the H2, Postgres, and MySQL drivers. Importing that
-;; predicate would make the search module depend on the driver module.
-(def ^:private table-not-found-sql-states
-  (into #{} (map search.db/sql-states) [:undefined-table
-                                        :table-or-view-not-found
-                                        :table-or-view-not-found-with-candidates
-                                        :table-or-view-not-found-database-empty]))
-
-(defn- table-not-found-exception? [e]
-  ;; SQLSTATE distinguishes a missing table from other errors raised by the same driver.
-  (loop [e e]
-    (cond
-      (nil? e)
-      false
-
-      (and (instance? SQLException e)
-           (contains? table-not-found-sql-states (.getSQLState ^SQLException e)))
-      true
-
-      :else
-      (recur (ex-cause e)))))
-
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
            {:table-type                table-type
@@ -290,7 +267,7 @@
           (throw ie))
         (catch Exception e
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (table-not-found-exception? e) (not (exists? table-name)))
+          (if (and (= :table-not-found (sql-errors/error-kind e)) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
@@ -300,7 +277,7 @@
                     (.interrupt (Thread/currentThread))
                     (throw ie))
                   (catch Exception e2
-                    (if (table-not-found-exception? e2)
+                    (if (= :table-not-found (sql-errors/error-kind e2))
                       (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
                       (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
                           (log/errorf "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing: %s"
@@ -385,7 +362,7 @@
                    ;; The table can disappear after we read its name, especially during tests.
                    {search-model (try (isolate-write!
                                        #(search.db/delete-index-rows! table-name search-model (set ids)))
-                                      (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                                      (catch Exception e (if (= :table-not-found (sql-errors/error-kind e)) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))
 
