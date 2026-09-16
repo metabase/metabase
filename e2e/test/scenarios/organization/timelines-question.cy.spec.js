@@ -650,8 +650,20 @@ describe("scenarios > organization > timelines > question", () => {
         .findByText("Other")
         .should("be.visible");
 
-      cy.log("clicking the grouped chip directly focuses the group again");
+      cy.log("clicking the still-selected chip clears the selection");
       H.timelineEventChip("4 events").click();
+      H.timelineEventChip("4 events").should(
+        "have.attr",
+        "data-selected",
+        "false",
+      );
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("be.visible");
+
+      cy.log("clicking it again focuses the sidebar on the group");
+      H.timelineEventChip("4 events").click();
+      cy.findByTestId("timeline-sidebar-show-all").should("be.visible");
       cy.findByTestId("sidebar-content").within(() => {
         H.timelineEventCard("Alpha").should("be.visible");
         cy.findByText("Other").should("not.exist");
