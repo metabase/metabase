@@ -612,8 +612,10 @@
   [_ notification]
   (or (mi/superuser?)
       (and (current-user-can-read-payload? notification)
-           ;; if advanced-permissions is enabled, we require users to have subscription permissions
-           (or (not (premium-features/has-feature? :advanced-permissions))
+           ;; if advanced-permissions is enabled, we require users to have subscription permissions.
+           ;; Not a bare `has-feature?`: that ignores whether EE code is present, so an OSS jar with a
+           ;; stale paid token would demand a permission it can never grant.
+           (or (not (premium-features/enable-advanced-permissions?))
                (perms/current-user-has-application-permissions? :subscription)))))
 
 (defmethod mi/can-update? :model/Notification
@@ -629,7 +631,7 @@
      ;; if advanced-permissions is enabled, we require users to have subscription permissions
      ;; and is the owner of the notification and can read the payload
      (or
-      (not (premium-features/has-feature? :advanced-permissions))
+      (not (premium-features/enable-advanced-permissions?))
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? instance)
      (current-user-can-read-payload? (merge instance changes))))))
@@ -642,7 +644,7 @@
     (and
      (current-user-is-creator? notification)
      (or
-      (not (premium-features/has-feature? :advanced-permissions))
+      (not (premium-features/enable-advanced-permissions?))
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? notification))))
   ([_model pk]
