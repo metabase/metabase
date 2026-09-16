@@ -3,7 +3,7 @@ import path from "path";
 import glob from "glob";
 
 import { elements } from "../module-boundaries.mjs";
-import { assertSharedTierCoverage } from "../shared-tiers.mjs";
+import { TIERED_SHARED } from "../shared-tiers.mjs";
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
@@ -25,79 +25,31 @@ describe("module-boundaries elements", () => {
 });
 
 describe("shared tier coverage", () => {
-  const elements = [
-    { type: "shared/tiered" },
-    { type: "shared/legacy" },
-    { type: "feature/screen" },
-  ];
-  const assignments = {
-    tiered: ["shared/tiered"],
-    untiered: ["shared/legacy"],
-  };
+  // A shared module can have multiple element patterns.
+  const sharedTypes = new Set(
+    elements
+      .map(({ type }) => type)
+      .filter((type) => type.startsWith("shared/")),
+  );
 
-  it("accepts tiered modules and explicit migration exceptions", () => {
-    expect(() => assertSharedTierCoverage(elements, assignments)).not.toThrow();
+  it("only leaves the existing migration backlog untiered", () => {
+    // Only shrink this list: new shared modules must have a tier.
+    expect(
+      [...sharedTypes].filter((type) => !TIERED_SHARED.includes(type)).sort(),
+    ).toEqual([
+      "shared/common",
+      "shared/embedding",
+      "shared/embedding-sdk",
+      "shared/embedding-sdk-shared",
+      "shared/embedding-sdk-window-bridge",
+    ]);
   });
 
-  it("accepts several element patterns belonging to one shared module", () => {
-    expect(() =>
-      assertSharedTierCoverage(
-        [...elements, { type: "shared/tiered" }],
-        assignments,
-      ),
-    ).not.toThrow();
+  it("assigns each tiered module exactly once", () => {
+    expect(TIERED_SHARED.length).toBe(new Set(TIERED_SHARED).size);
   });
 
-  it("rejects a new shared module without a tier even if its enforcement is disabled", () => {
-    expect(() =>
-      assertSharedTierCoverage(
-        [...elements, { type: "shared/new", enforceSharedTiers: false }],
-        assignments,
-      ),
-    ).toThrow("Shared module shared/new is missing a tier assignment");
-  });
-
-  it("requires removing the exception when a module gets a tier", () => {
-    expect(() =>
-      assertSharedTierCoverage(elements, {
-        ...assignments,
-        tiered: [...assignments.tiered, "shared/legacy"],
-      }),
-    ).toThrow(
-      "Tiered module shared/legacy must be removed from the untiered allowlist",
-    );
-  });
-
-  it.each([
-    ["tiered", "tier lists"],
-    ["untiered", "untiered allowlist"],
-  ])("rejects stale entries in %s", (key, label) => {
-    expect(() =>
-      assertSharedTierCoverage(elements, {
-        ...assignments,
-        [key]: [...assignments[key], "shared/deleted"],
-      }),
-    ).toThrow(`Unknown shared module shared/deleted in ${label}`);
-  });
-
-  it.each([
-    ["tiered", "tier lists", "shared/tiered"],
-    ["untiered", "untiered allowlist", "shared/legacy"],
-  ])("rejects duplicate assignments in %s", (key, label, type) => {
-    expect(() =>
-      assertSharedTierCoverage(elements, {
-        ...assignments,
-        [key]: [...assignments[key], type],
-      }),
-    ).toThrow(`Duplicate ${type} in ${label}`);
-  });
-
-  it("rejects assigning a shared tier to a non-shared element", () => {
-    expect(() =>
-      assertSharedTierCoverage(elements, {
-        ...assignments,
-        tiered: [...assignments.tiered, "feature/screen"],
-      }),
-    ).toThrow("Unknown shared module feature/screen in tier lists");
+  it("only assigns tiers to existing shared modules", () => {
+    expect(TIERED_SHARED.filter((type) => !sharedTypes.has(type))).toEqual([]);
   });
 });

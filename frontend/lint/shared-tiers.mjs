@@ -91,67 +91,6 @@ const SHARED_UTILS = SHARED_UTILS_LEVELS.flat();
 const SHARED_PLATFORM = SHARED_PLATFORM_LEVELS.flat();
 const TIERED_SHARED = [...SHARED_UTILS, ...SHARED_PLATFORM, ...SHARED_DOMAIN];
 
-// Existing modules awaiting ownership/composition changes before they can be
-// tiered. This list should only shrink: new shared modules need an explicit tier.
-// Remove an entry in the same change that assigns its tier.
-const UNTIERED_SHARED = [
-  "shared/common",
-  "shared/embedding",
-  "shared/embedding-sdk",
-  "shared/embedding-sdk-shared",
-  "shared/embedding-sdk-window-bridge",
-];
-
-function assertSharedTierCoverage(
-  elements,
-  { tiered = TIERED_SHARED, untiered = UNTIERED_SHARED } = {},
-) {
-  // A module can have several element patterns, but only one tier assignment.
-  const sharedTypes = new Set(
-    elements
-      .map(({ type }) => type)
-      .filter((type) => type.startsWith("shared/")),
-  );
-  const assigned = new Set();
-  const problems = [];
-
-  for (const [label, types] of [
-    ["tier lists", tiered],
-    ["untiered allowlist", untiered],
-  ]) {
-    const seen = new Set();
-    for (const type of types) {
-      if (seen.has(type)) {
-        problems.push(`Duplicate ${type} in ${label}`);
-      }
-      if (!sharedTypes.has(type)) {
-        problems.push(`Unknown shared module ${type} in ${label}`);
-      }
-      if (label === "untiered allowlist" && assigned.has(type)) {
-        problems.push(
-          `Tiered module ${type} must be removed from the untiered allowlist`,
-        );
-      }
-      seen.add(type);
-    }
-    for (const type of seen) {
-      assigned.add(type);
-    }
-  }
-
-  for (const type of sharedTypes) {
-    if (!assigned.has(type)) {
-      problems.push(`Shared module ${type} is missing a tier assignment`);
-    }
-  }
-
-  if (problems.length > 0) {
-    throw new Error(
-      `Invalid shared tier configuration:\n${problems.join("\n")}`,
-    );
-  }
-}
-
 // Each level may import only strictly lower levels of its sub-tier,
 // plus `base` (the sub-tiers below).
 // Same-level peers are deliberately not allowed.
@@ -165,7 +104,7 @@ const levelAllows = (levels, base = []) =>
 
 const sharedRules = [
   // Later rules win, so these must come after the baseline shared/* allow they narrow.
-  // Edges to UNTIERED_SHARED modules fall through to that allow.
+  // Edges to untiered shared modules fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,
@@ -200,4 +139,4 @@ const sharedRules = [
   },
 ];
 
-export { assertSharedTierCoverage, sharedRules };
+export { TIERED_SHARED, sharedRules };

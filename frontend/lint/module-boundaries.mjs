@@ -1,4 +1,4 @@
-import { assertSharedTierCoverage, sharedRules } from "./shared-tiers.mjs";
+import { sharedRules } from "./shared-tiers.mjs";
 
 const createElement = ({
   type,
@@ -445,10 +445,6 @@ const elements = [
     mode: "full",
   }),
 ];
-
-// Fail when loading either lint configuration if a shared module can silently
-// bypass the sub-tier rules or a completed migration leaves a stale exception.
-assertSharedTierCoverage(elements);
 
 const baseRules = [
   ...elements.map((element) => ({
