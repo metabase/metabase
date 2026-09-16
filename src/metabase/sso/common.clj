@@ -4,7 +4,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.permissions.core :as perms]
-   [metabase.sso.db :as sso.db]
+   [metabase.sso.queries :as sso.queries]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -49,7 +49,7 @@
    only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
    (let [excluded           (excluded-group-ids)
-         current-group-ids  (sso.db/user-group-ids-excluding (u/the-id user-or-id) excluded)
+         current-group-ids  (sso.queries/user-group-ids-excluding (u/the-id user-or-id) excluded)
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
                                                                          excluded))]
      (sync-group-memberships*! user-or-id to-remove to-add)))
@@ -57,7 +57,7 @@
    (let [excluded           (excluded-group-ids)
          mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
-                              (sso.db/user-group-ids-among (u/the-id user-or-id) mapped-group-ids excluded))
+                              (sso.queries/user-group-ids-among (u/the-id user-or-id) mapped-group-ids excluded))
          new-group-ids      (-> (set (map u/the-id new-groups-or-ids))
                                 (set/intersection mapped-group-ids)
                                 (set/difference excluded))
