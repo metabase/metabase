@@ -13,13 +13,15 @@
 
 (mr/def ::session-filters
   "The filters accepted by [[metabase-enterprise.session-management.query/filters->where]]. Temporal values arrive
-  already parsed."
+  already parsed. `:query` is a free-text search over the session owner's name and email; only the list endpoint
+  accepts it, since revoking by a name search is far easier to get wrong than revoking by an explicit criterion."
   [:map {:closed true}
    [:user-id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:ids                {:optional true} [:maybe [:sequential :string]]]
    [:provider           {:optional true} [:maybe :string]]
    [:type               {:optional true} [:maybe ::session-type]]
    [:tenancy            {:optional true} [:maybe [:enum :all :internal :external]]]
+   [:query              {:optional true} [:maybe :string]]
    [:created-before     {:optional true} [:maybe ms/TemporalInstant]]
    [:created-after      {:optional true} [:maybe ms/TemporalInstant]]
    [:last-active-before {:optional true} [:maybe ms/TemporalInstant]]

@@ -122,14 +122,6 @@ export const SessionsTable = ({
         ),
       },
       {
-        id: "ip_address",
-        header: t`IP address`,
-        width: 140,
-        enableSorting: false,
-        accessorFn: (session) => session.ip_address ?? "",
-        cell: ({ row }) => row.original.ip_address ?? EMPTY_CELL_PLACEHOLDER,
-      },
-      {
         id: "provider",
         header: t`Auth method`,
         width: 140,
@@ -145,28 +137,6 @@ export const SessionsTable = ({
         sortDescFirst: true,
         accessorFn: (session) => session.created_at,
         cell: ({ row }) => <DateCell value={row.original.created_at} />,
-      },
-      {
-        id: "last_active_at",
-        header: t`Last active`,
-        width: 170,
-        enableSorting: true,
-        sortDescFirst: true,
-        accessorFn: (session) => session.last_active_at ?? "",
-        cell: ({ row }) =>
-          row.original.last_active_at ? (
-            <DateCell value={row.original.last_active_at} />
-          ) : (
-            EMPTY_CELL_PLACEHOLDER
-          ),
-      },
-      {
-        id: "expires_at",
-        header: t`Expires`,
-        width: 170,
-        enableSorting: false,
-        accessorFn: (session) => session.expires_at,
-        cell: ({ row }) => <DateCell value={row.original.expires_at} />,
       },
     ],
     [],
@@ -230,7 +200,7 @@ export const SessionsTable = ({
       {isLoading ? (
         <TreeTableSkeleton
           showCheckboxes
-          columnWidths={[0.2, 0.18, 0.1, 0.1, 0.14, 0.14, 0.14]}
+          columnWidths={[0.34, 0.3, 0.16, 0.2]}
         />
       ) : (
         <>

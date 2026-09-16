@@ -171,6 +171,44 @@
         (is (= 2 (:total (list-sessions user-id :ids [a c]))))
         (is (= #{b} (set (ids (list-sessions user-id :ids [b])))))))))
 
+(deftest search-by-owner-test
+  (testing "`query` searches the session owner's first name, last name, and email"
+    (mt/with-temp [:model/User {ann :id}   {:first_name "Ann" :last_name "Admin"
+                                            :email "ann@search.test"}
+                   :model/User {bob :id}   {:first_name "Bob" :last_name "Boss"
+                                            :email "bob@search.test"}]
+      (let [ann-session (insert-session! ann)
+            bob-session (insert-session! bob)
+            listed      (fn [& {:as params}]
+                          (set (ids (apply mt/user-http-request :crowberto :get 200 "ee/session-management"
+                                           (mapcat identity (merge {:ids [ann-session bob-session]} params))))))]
+        (testing "first name"
+          (is (= #{ann-session} (listed :query "ann"))))
+        (testing "last name, case-insensitively"
+          (is (= #{bob-session} (listed :query "BOSS"))))
+        (testing "email"
+          (is (= #{ann-session} (listed :query "ann@search"))))
+        (testing "every whitespace-separated term has to match, so a full name works"
+          (is (= #{ann-session} (listed :query "ann admin")))
+          (is (= #{} (listed :query "ann boss"))))
+        (testing "a term matching nobody lists nothing"
+          (is (= #{} (listed :query "nobody"))))
+        (testing "`total` agrees with the filtered rows"
+          (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "ee/session-management"
+                                                 :ids [ann-session bob-session] :query "ann")))))
+        (testing "LIKE wildcards in the query are matched literally"
+          (is (= #{} (listed :query "a%n"))))))))
+
+(deftest revoke-rejects-a-query-test
+  (testing "POST /revoke does not accept `query`: a name search is too blunt an instrument to revoke by"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Ann" :last_name "Admin"}]
+      (let [session-id (insert-session! user-id)]
+        (is (some? (mt/user-http-request :crowberto :post 400 "ee/session-management/revoke"
+                                         {:query "ann"})))
+        ;; `session-exists?` is defined further down, with the revoke tests
+        (is (t2/exists? (t2/table-name :model/Session) :id session-id)
+            "a rejected request revokes nothing")))))
+
 (deftest filter-by-type-test
   (testing "`type` splits normal sessions from full-app-embed ones by whether they carry an anti-CSRF token"
     (mt/with-temp [:model/User {user-id :id} {}]
