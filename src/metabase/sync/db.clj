@@ -256,7 +256,7 @@
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
   [table-ids :- [:sequential ::lib.schema.id/table]
    changes   :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table :id [:in (mapv long table-ids)] changes))
+  (t2/update! :model/Table {:id [:in (mapv long table-ids)]} changes))
 
 (mu/defn deactivate-tables!
   "Mark the active Tables among `table-ids` inactive, returning the number updated."
@@ -268,6 +268,10 @@
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    new-schema  :- [:maybe :string]]
+  ;; Kept as kv-args: `schema` is `[:maybe :string]`, and the kv-arg form compiles a nil to IS NULL whereas
+  ;; `[:= :schema nil]` never matches -- converting would stop moving the tables of a nil (default) schema.
+  ;; Both values are already bound.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/update! :model/Table :db_id (long database-id) :schema [:auto/param schema] {:schema new-schema}))
 
 (mu/defn archive-inactive-table!
@@ -453,13 +457,14 @@
   `[schema table-name field-name]` triples in `schema+table+names`, with a nil schema spelled `\"__null__\"`."
   [database-id        :- ::lib.schema.id/database
    schema+table+names :- [:sequential [:tuple :string :string :string]]]
+  ;; `schema+table+names` stays unmarked. It sits in the value slot of a `[:composite ...]` `:in`, which HoneySQL
+  ;; already binds element-wise as `IN ((?, ?, ?))`; a marker wraps the whole list in a single `PARAM(...)` and
+  ;; emits invalid SQL. Rubric "Known limits": `[:composite ...]` is an operator form the lint's walk does not
+  ;; classify.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/reducible-query {:select     [[:f.id]]
                        :from      [(warehouse-schema-overlay/field-query {:alias :f})]
                        :inner-join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
-                       ;; `schema+table+names` stays unmarked. It sits in the value slot of a `[:composite ...]`
-                       ;; `:in`, which HoneySQL already binds element-wise as `IN ((?, ?, ?))`; a marker wraps the
-                       ;; whole list in a single `PARAM(...)` and emits invalid SQL. Rubric "Known limits":
-                       ;; `[:composite ...]` is an operator form the lint's walk does not classify.
                        :where      [:and
                                     [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
                                     [:= :t.db_id (long database-id)]
@@ -512,7 +517,7 @@
   "Set the fingerprint version of the Fields with `field-ids` to `fingerprint-version`, returning the number updated."
   [field-ids           :- [:sequential ::lib.schema.id/field]
    fingerprint-version :- :int]
-  (t2/update! :model/Field :id [:in (mapv long field-ids)] {:fingerprint_version fingerprint-version}))
+  (t2/update! :model/Field {:id [:in (mapv long field-ids)]} {:fingerprint_version fingerprint-version}))
 
 (mu/defn set-table-fields-indexed!
   "Mark the Fields of the Table with `table-id` whose id is in `indexed-field-ids` as indexed, and all its other
@@ -528,6 +533,9 @@
   "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]
    indexed?  :- :boolean]
+  ;; Kept as kv-args: `:parent_id nil` compiles to IS NULL, which is what "top-level" means here. A conditions
+  ;; map would write `[:= :parent_id nil]`, which never matches, so every field would be skipped.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/update! :model/Field :parent_id nil :id [:in (mapv long field-ids)] {:database_indexed indexed?}))
 
 (mu/defn mark-incomplete-fields-analyzed-for-table!
@@ -744,6 +752,10 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
+  ;; Kept as kv-args: `:type` on :model/FieldValues carries `mi/transform-keyword`, and Toucan applies a model's
+  ;; `:in` transform only via `apply-kv-arg`. A conditions map bypasses it, so these keywords would reach the
+  ;; statement unconverted.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/count :model/FieldValues :field_id (long field-id) :type [:in types]
             :created_at (before-max-age-value max-age-days)))
 
@@ -752,5 +764,8 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
+  ;; Kept as kv-args: see `field-values-older-than-count` -- `:type` relies on the model's keyword transform,
+  ;; which Toucan runs only for kv-args.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/delete! :model/FieldValues :field_id (long field-id) :type [:in types]
               :created_at (before-max-age-value max-age-days)))

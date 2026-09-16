@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.sync.db :as sync.db]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private sql-injection-attempt
   "A value shaped like SQL. Bound as a parameter it matches nothing; interpolated it would match every row."
@@ -57,3 +58,20 @@
       (is (true? (sync.db/field-values-exist? (:id f1))))
       ;; `:full` FieldValues have a nil hash_key, so the advanced-only count excludes them.
       (is (zero? (sync.db/advanced-field-values-count-before (:id f1) #{:linked-filter} 0))))))
+
+(deftest update!-conditions-maps-filter-rather-than-naming-a-where-column
+  (testing "update-tables! updates only the tables it is given"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {a :id} {:db_id db-id :name "A" :active true}
+                   :model/Table {b :id} {:db_id db-id :name "B" :active true}]
+      (is (= 1 (sync.db/update-tables! [a] {:active false})))
+      (is (false? (t2/select-one-fn :active :model/Table :id a)))
+      (is (true? (t2/select-one-fn :active :model/Table :id b)))))
+  (testing "set-fields-fingerprint-version! updates only the fields it is given"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {t-id :id} {:db_id db-id}
+                   :model/Field {a :id} {:table_id t-id :name "fa" :fingerprint_version 1}
+                   :model/Field {b :id} {:table_id t-id :name "fb" :fingerprint_version 1}]
+      (is (= 1 (sync.db/set-fields-fingerprint-version! [a] 3)))
+      (is (= 3 (t2/select-one-fn :fingerprint_version :model/Field :id a)))
+      (is (= 1 (t2/select-one-fn :fingerprint_version :model/Field :id b))))))
