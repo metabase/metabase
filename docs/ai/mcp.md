@@ -142,7 +142,7 @@ The consent page lists the permission scopes the client is asking for. Each [too
 - `agent:sql:run`: write and run raw SQL on your connected databases.
 - `agent:delivery:write`: create alerts and subscriptions that email or Slack your data. Creating one also needs `agent:query:run`, since it runs a query when it fires.
 
-The consent page may also list `agent:resource:read` (shown as **View resources**). No tool needs it; it covers the server's own reference material, like the list of fields each tool accepts.
+The consent page may also list `agent:resource:read` (shown as **View resources**). No tool needs it; it covers the server's own reference material: the list of fields your agent can ask `get_content` to return for each content type.
 
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
 
