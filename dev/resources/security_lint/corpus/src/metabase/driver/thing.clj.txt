@@ -32,3 +32,13 @@
 (defn- count-rows [driver database spec table]
   (let [described (driver/describe-table driver database table)]
     (jdbc/query spec (format "SELECT count(*) FROM %s" (:name described)))))
+
+;; the :value compiler overridden with no scalar check: a `[{:raw ...}]` in the value slot is SQL
+(defmethod sql.qp/->honeysql [:thing :value]
+  [_driver [_ _opts v]]
+  [:cast v :text])
+
+;; the same override delegating to the parent for what it does not handle: the parent's guard runs
+(defmethod sql.qp/->honeysql [:thing-safe :value]
+  [driver [_ _opts v :as clause]]
+  (if (uuid? v) v ((get-method sql.qp/->honeysql [:sql :value]) driver clause)))

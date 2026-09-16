@@ -24,8 +24,11 @@
 
 (def ^:private unowned-models
   "Models nobody permission-checks a row of: settings are not rows, and the rest are scoped to the current
-  user by construction or administered as a whole."
-  #{"setting" "Setting" "UserKeyValue" "LoginHistory" "User" "AuthIdentity" "Session" "ContentTranslation"})
+  user by construction or administered as a whole.
+
+  `User` is deliberately not here: the directory is scoped by tenant and by the `user-visibility` setting, so an
+  endpoint that returns it unscoped serves every tenant's users to each tenant."
+  #{"setting" "Setting" "UserKeyValue" "LoginHistory" "AuthIdentity" "Session" "ContentTranslation"})
 
 (defn- id-params
   "The symbols in a `defendpoint` parameter vector that name an id: `id`, `card_id`, `dashboard-id`, whether bound
@@ -49,8 +52,7 @@
    :description (str "An id the request supplies -- `card_id`, `action_id`, `collection_id` -- is used by the "
                      "endpoint, and on no path is it handed to `read-check`, `write-check`, `can-write?` or any "
                      "other authorization check. Whatever is done with it, the caller chose the object and nobody "
-                     "asked whether they may: a notification repointed at any card, a dashcard given any action, "
-                     "a card moved into any collection.")
+                     "asked whether they may: a notification pointed at any card, a dashcard given any action,a card moved into any collection.")
    :remediation (str "Read-check (or write-check) the object the id names before using it, in the endpoint or the "
                      "function it hands the id to.")
    ;; A warning: an id used only to *filter* a listing the caller may see needs no check, and the rule cannot
@@ -120,9 +122,8 @@
    :enabled     false
    :description (str "An id read out of request data -- `(:action_id dashcard)` for each dashcard in the body, "
                      "`(get-in body [:values_source_config :card_id])` -- is used, and on no path is *that key* "
-                     "handed to a permission check. A check on some other key of the same map does not count. "
-                     "Dashcard actions, parameter source cards and target fields were all set this way without "
-                     "anyone asking whether the caller may.")
+                     "handed to a permission check. A check on some other key of the same map does not count: a dashcard's action, a parameter's"
+                     "source card, a mapping's target field are each a reference the caller chose.")
    :remediation "Read-check the object each id names, at the point the id is read or in the function it goes to."
    :severity    :warning
    :precision   :medium
@@ -158,10 +159,9 @@
   {:name        "Endpoint returns rows of a model it never permission-checked"
    :enabled     false
    :description (str "The response carries rows read from a model, and no check on that model -- or on the "
-                     "model that owns it -- runs on any path the values took. A table's foreign keys returned "
-                     "full Field rows of tables the caller could not see; revision descriptions resolved names "
-                     "of collections the caller could not read; a bookmark listing kept names after access was "
-                     "revoked.")
+                     "model that owns it -- runs on any path the values took: a listing of another table's foreign keys carries that"
+                     "table's columns, a revision's description carries the names of collections it mentions, a"
+                     "bookmark listing carries names past the point access was revoked.")
    :remediation (str "Read-check the object, or filter the listing by what the caller may see with the "
                      "`visible-*` helpers, before returning it.")
    ;; A note: a listing scoped to the current user by construction, or a model with no permissions of its own,
@@ -192,3 +192,49 @@
                  (not (some #(nil? (namespace %)) checks)))
         {:message (str "Returns rows of " (str/join ", " leaks) " with no check on "
                        (if (next leaks) "them" "it") " on any path")}))))
+
+(def ^:private read-side-checks
+  "Checks that establish the caller may *see* the object, and nothing about changing it."
+  #{"read-check" "can-read?" "can-query?" "query-check" "check-404"})
+
+(defn- write-side-authz?
+  "An authorization that vouches for a write: a write/create/update check on an object, a superuser or
+  application-permission check on the caller, a query scoped to the caller's own rows, or any check named like one
+  in [[vocab/object-checks]] that is not a read-side one."
+  [nm]
+  (and (or (contains? vocab/authz-names nm) (re-find vocab/object-checks nm))
+       (not (contains? read-side-checks nm))))
+
+(def ^:private write-sink
+  "A model write, or the write-query executor that actions run: `toucan2.core/update!`, `insert-returning-pk!`,
+  `qp.writeback/execute-write-query!`."
+  #"^(toucan2\.core/(update|delete|insert(-returning-[a-z]+)?)!|metabase\.query-processor\.writeback/execute-write-query!)$")
+
+(defrule write-reached-under-read-check-only
+  {:name        "Endpoint writes after nothing but a read check"
+   :enabled     false
+   :description (str "The endpoint executes a model write or a write query, and every authorization on its paths "
+                     "asks only whether the caller may *see* something: a read-check on a table ahead of a write "
+                     "to its rows, a read on a notification ahead of running its card as the creator. Whoever may "
+                     "look may then change.")
+   :remediation (str "Gate the write on a write-side check -- `write-check`, `can-write?`, `create-check`, "
+                     "`check-superuser` -- on the object being changed, or scope the row to the current user.")
+   ;; a warning: the write may be to a row the caller owns by construction in a way the graph does not see
+   :severity    :warning
+   :precision   :medium
+   :cwe         "CWE-862"
+   :endpoint-rule true
+   :exempt-files [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/" #"session/api\.clj$"
+                  #"testing_api/" #"scim/" #"(pulse|notification)/api/unsubscribe\.clj$" #"sync/api/notify"
+                  #"oauth_server/api/" #"setup_rest/"
+                  #"sso/api"]}    ; login and logout write the session; the IdP's assertion is the authorization
+  [{:keys [nearby-deep ns-middleware]}]
+  (when-not (some #(str/starts-with? (name %) "+check") ns-middleware)
+    ;; Both within four hops: `api -> core -> db.clj -> t2` is where an endpoint's own write and its own check
+    ;; live. Over the whole closure every query endpoint writes (an execution row, a view log) and every closure
+    ;; holds some check, so the rule found nothing; over two hops it missed the check.
+    (let [writes (into #{} (comp (map str) (filter #(re-find write-sink %))) nearby-deep)]
+      (when (and (seq writes)
+                 (not (some #(write-side-authz? (name %)) nearby-deep)))
+        {:message (str "Writes (" (str/join ", " (sort (map #(subs % (inc (str/last-index-of % "/"))) writes)))
+                       ") with no write-side authorization on any path")}))))

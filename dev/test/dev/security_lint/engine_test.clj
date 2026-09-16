@@ -208,6 +208,31 @@
       (is (= #{:job} (:reachable-from f)))
       (is (false? (:endpoint-reachable? f))))))
 
+(deftest privilege-grades-severity-test
+  (testing "a finding is graded by the least privilege that reaches it:
+            an error the rule declares stays one for an anonymous or any-session path, and is capped for a path
+            only an application-permission holder or a superuser can start"
+    (let [r     {:id :test/p :name "n" :description "d" :severity :error :precision :high :cwe "C"
+                 :triggers '#{clojure.java.shell/sh} :detect (fn [_] {:message "m"})}
+          dir   (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                  .mkdirs .deleteOnExit)
+          write (fn [^String n src] (spit (doto (java.io.File. ^java.io.File dir n) .deleteOnExit) src))
+          _     (write "routes.clj" "(ns metabase.api-routes.routes (:require [metabase.api.macros :as api.macros] [metabase.api.routes.common :as routes.common]))
+(defn- +auth [h] (routes.common/+auth (api.macros/ns-handler h)))
+(def ^:private route-map {\"/a\" (+auth 'metabase.a.api) \"/pub\" 'metabase.pub.api})")
+          _     (write "a.clj" "(ns metabase.a.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [metabase.permissions.core :as perms] [clojure.java.shell :as shell]))
+(api.macros/defendpoint :get \"/session\" \"doc\" [_r _q _b] (shell/sh \"a\"))
+(api.macros/defendpoint :get \"/su\" \"doc\" [_r _q _b] (api/check-superuser) (shell/sh \"b\"))
+(api.macros/defendpoint :get \"/setting\" \"doc\" [_r _q _b] (perms/check-has-application-permission :setting) (shell/sh \"c\"))")
+          _     (write "pub.clj" "(ns metabase.pub.api (:require [metabase.api.macros :as api.macros] [clojure.java.shell :as shell]))
+(api.macros/defendpoint :get \"/x\" \"doc\" [_r _q _b] (shell/sh \"d\"))")
+          by-snippet (into {} (map (juxt :snippet (juxt :min-privilege :severity)))
+                           (engine/analyze {:paths [(.getAbsolutePath dir)] :rules [r] :taint-sources :call-graph}))]
+      (is (= [:session :error]   (get by-snippet "(shell/sh \"a\")")))
+      (is (= [:superuser :note]  (get by-snippet "(shell/sh \"b\")")))
+      (is (= [:elevated :warning] (get by-snippet "(shell/sh \"c\")")))
+      (is (= [:anonymous :error] (get by-snippet "(shell/sh \"d\")"))))))
+
 (deftest value-references-are-edges-test
   (testing "a function passed as a plain value -- not through map/filter -- is reachable, and a :refer is not a use"
     (let [r {:id :test/v :name "n" :description "d" :severity :error :precision :high :cwe "C"

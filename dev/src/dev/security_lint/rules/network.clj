@@ -132,3 +132,37 @@
                (not (and setter
                          (some #(re-find host-validation (ast/->str %)) (ast/find-nodes ast/symbol-node? setter)))))
       {:message (str "Setting " setting-name " accepts any host")})))
+
+(defrule outbound-http-follows-redirects
+  {:name        "Outbound request to a caller-chosen host that follows redirects"
+   :enabled     false
+   :description (str "clj-http follows 3xx redirects by default, and the redirect target is never re-validated: a "
+                     "host that passed the network policy answers `302 Location: http://169.254.169.254/` and the "
+                     "request goes there.")
+   :remediation "Pass `:redirect-strategy :none` (or `:follow-redirects false`) on every request to a host the code did not choose."
+   ;; as `unguarded-outbound-http` grades: a host from a request, a row or a document is the finding; one from a
+   ;; setting is that setting's, reported once by `url-setting-without-host-validation`, so a note
+   :severity    {:tainted :warning :otherwise :note}
+   :precision   :medium
+   :cwe         "CWE-918"
+   :triggers    #{clj-http.client/get clj-http.client/post clj-http.client/put clj-http.client/patch
+                  clj-http.client/delete clj-http.client/head clj-http.client/request}
+   ;; the wrapper sets the strategy for every call it makes
+   :exempt-files [#"src/metabase/util/http\.clj$"]}
+  [{:keys [node] :as ctx}]
+  (let [a0   (some-> (ast/arg node 0) ast/unmeta)
+        url  (if (ast/map-node? a0) (ast/map-get a0 :url) a0)
+        opts (if (ast/map-node? a0) a0 (some-> (ast/arg node 1) ast/unmeta))
+        off? (and opts (ast/map-node? opts)
+                  (or (some-> (ast/map-get opts :redirect-strategy) ast/->str (= ":none"))
+                      (some-> (ast/map-get opts :follow-redirects) ast/->str (= "false"))))
+        ;; `(format google-auth-token-info-url token)`: the host is the constant's, the request value is the path
+        constant-host? (fn [u] (let [u (ast/unmeta u)]
+                                 (and (ast/call? u)
+                                      (contains? '#{str format} (some-> (ast/head-sym u) name symbol))
+                                      (let [h (some-> (ast/arg u 0) ast/unmeta)]
+                                        (and h (ast/symbol-node? h) (empty? (taint/origins ctx h)))))))
+        os   (when url (into #{} (remove #{:local}) (taint/origins ctx url)))]
+    (when (and url (not (literal-host? url)) (not (constant-host? url)) (not off?) (seq os))
+      {:tainted? (not (every? #(= :app-db/setting %) os))
+       :message  (str "Request to a caller-chosen host follows redirects: " (ast/->str url))})))

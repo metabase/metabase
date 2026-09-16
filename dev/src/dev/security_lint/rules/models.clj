@@ -35,9 +35,9 @@
   {:name        "Map from across a trust boundary written straight into a model"
    :description (str "A value that came from a request, a document, warehouse metadata or another model's row is "
                      "passed as the changes map, so it sets whatever columns it happens to name -- including "
-                     "ones the code never meant to expose, such as ownership, archival or permission columns. "
-                     "Warehouse-controlled metadata rewrote admin-only Field columns this way; a revert wrote "
-                     "a revision's whole object back, embedding settings and collection included.")
+                     "ones the code never meant to expose, such as ownership, archival or permission columns: "
+                     "warehouse-controlled metadata written into a Field row, a revision's whole object written "
+                     "back on revert, embedding settings and collection included.")
    :remediation (str "Select the permitted keys explicitly before writing, with `select-keys` or a schema, rather "
                      "than passing the map through.")
    ;; A request map outside the data-access layer and a map from outside the instance are errors. A map whose
@@ -48,7 +48,9 @@
    :precision   :medium
    :cwe         "CWE-915"
    ;; config.yml is the operator's file, and writing users and databases wholesale from it is what that
-   ;; feature is. Content synced from a git remote is not, and stays: that is remote_sync, and SEC-1002.
+   ;; feature is. Content synced from a git remote is not, and stays: that is remote_sync. The serialization API
+   ;; import is superuser-only by design and stays too: the same `load-one!` is reached from the remote-sync job
+   ;; with no user at all, and the entry kind is what tells them apart.
    :exempt-files [#"advanced_config/"]
    :triggers    #{toucan2.core/update!
                   toucan2.core/insert!
@@ -133,3 +135,43 @@
                :message  (str "Hands " fq " " phrase "; it is written into " (or target "the application database")
                               ", setting every column the map names")})
             {:tainted? tainted? :message message}))))))
+
+(defn- privileged-key? [k]
+  (and (ast/keyword-node? k) (contains? vocab/privileged-columns (n/sexpr k))))
+
+(defn- request-value? [ctx node]
+  (boolean (some #(= :request (taint/label-kind %)) (taint/origins ctx node))))
+
+(defrule privileged-column-from-request
+  {:name        "Privileged column written from a request value"
+   :enabled     false
+   :description (str "Some columns decide who may see or do what: `public_uuid` and `made_public_by_id` make an "
+                     "object anonymous-readable, `enable_embedding` and `embedding_params` publish it to embedding, "
+                     "`creator_id` and `is_superuser` are identity. Each has one gated endpoint that may set it. A "
+                     "write that takes the column from the request body -- through `select-keys`, or "
+                     "`(:public_uuid body)` -- sets it for whoever can call that endpoint, which is how a plain "
+                     "editor publishes an object or rewrites its creator.")
+   :remediation "Drop the column from what the endpoint accepts; set it only from the endpoint that gates it."
+   :severity    :error
+   :precision   :medium
+   :cwe         "CWE-915"
+   :triggers    #{toucan2.core/update! toucan2.core/insert! toucan2.core/insert-returning-instance!
+                  toucan2.core/insert-returning-instances! toucan2.core/insert-returning-pk!}}
+  [{:keys [node] :as ctx}]
+  (let [changes (some-> (last (ast/args node)) ast/unmeta)
+        head    (some-> (ast/head-sym changes) name)
+        hits    (cond
+                  ;; `{:public_uuid (:public_uuid body)}`: the column's value came from the request
+                  (ast/map-node? changes)
+                  (for [[k v] (ast/map-entries changes)
+                        :when (and (privileged-key? (ast/unmeta k)) (request-value? ctx v))]
+                    (ast/->str k))
+
+                  ;; `(select-keys body [:name :public_uuid])`: the request's own value, kept by name
+                  (and (= "select-keys" head) (request-value? ctx (ast/arg changes 0)))
+                  (for [k (some-> (ast/arg changes 1) ast/unmeta ast/children)
+                        :when (privileged-key? (ast/unmeta k))]
+                    (ast/->str k)))]
+    (when (seq hits)
+      {:tainted? true
+       :message  (str "Privileged column" (when (next hits) "s") " written from the request: " (str/join ", " hits))})))

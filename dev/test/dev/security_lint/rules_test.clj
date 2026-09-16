@@ -438,6 +438,32 @@
         rows (map :row (check-cg :metabase-security-lint/embed-endpoint-reaches-token-verification src))]
     (is (= [4] rows))))
 
+(deftest embed-endpoint-reaches-param-validation-test
+  (let [src "(ns metabase.embedding-rest.api.embed (:require [metabase.api.macros :as api.macros] [metabase.embedding-rest.api.common :as api.embed.common]))
+(defn- unsign-and-translate-ids [t] t)
+(defn- run [card params] [card params])
+(api.macros/defendpoint :get \"/card/:token\" \"doc\" [{:keys [token]} _q _b] (unsign-and-translate-ids token))
+(api.macros/defendpoint :get \"/card/:token/query\" \"doc\" [{:keys [token]} query-params _b] (run (unsign-and-translate-ids token) (api.embed.common/validate-and-merge-params {} {} query-params)))
+(api.macros/defendpoint :get \"/tiles/card/:token/:zoom\" \"doc\" [{:keys [token zoom]} {:keys [parameters]} _b] (run (unsign-and-translate-ids token) parameters))
+(api.macros/defendpoint :get \"/card/:token/params/:key/remapping\" \"doc\" [{:keys [token key]} {:keys [value]} _b] (run (unsign-and-translate-ids token) value))"
+        rows (map :row (check-cg :metabase-security-lint/embed-endpoint-reaches-param-validation src))]
+    (is (= [6 7] rows)
+        "the tile endpoint took `parameters` straight off the query string and never applied embedding_params
+; a remapping value is a parameter too. Fetching the object takes no parameters, and the query
+         endpoint validates them")))
+
+(deftest public-endpoint-returns-unscrubbed-object-test
+  (let [src "(ns metabase.public-sharing-rest.api (:require [metabase.api.macros :as api.macros] [toucan2.core :as t2]))
+(defn- remove-card-non-public-columns [card] (select-keys card [:id :name]))
+(defn- public-card [id] (remove-card-non-public-columns (t2/select-one :model/Card :id id)))
+(api.macros/defendpoint :get \"/card/:uuid\" \"doc\" [{:keys [uuid]} _q _b] (public-card uuid))
+(api.macros/defendpoint :get \"/dashboard/:uuid\" \"doc\" [{:keys [uuid]} _q _b] (t2/select-one :model/Dashboard :public_uuid uuid))
+(api.macros/defendpoint :get \"/card/:uuid/query\" \"doc\" [{:keys [uuid]} _q _b] (run (t2/select-one :model/Card :public_uuid uuid)))"
+        rows (map :row (check-cg :metabase-security-lint/public-endpoint-returns-unscrubbed-object src))]
+    (is (= [5] rows)
+        "a Dashboard served to an anonymous caller without a scrubber carries what it must not unless a scrubber runs;
+         one served through the scrubber is fine, and a query endpoint serves results, not the row")))
+
 (deftest model-read-without-authorization-test
   (let [src "(ns metabase.things.api (:require [metabase.api.macros :as api.macros] [toucan2.core :as t2] [metabase.api.common :as api]))
 (api.macros/defendpoint :get \"/checked/:id\" \"doc\" [{:keys [id]} _q _b] (api/read-check :model/Thing id))
@@ -457,8 +483,10 @@
         "SQL text assembled around a value the function did not choose")
     (is (flags? id "(ns t) (defn f [kind] [:datediff [:raw (name kind)] 1 2])")
         "the name of an unvalidated keyword is spliced as-is")
-    (is (clean? id "(ns t) (defn f [unit] [:datediff [:raw (name unit)] 1 2])")
-        "a temporal unit is an MBQL enum, validated before a driver sees it")
+    (is (flags? id "(ns t) (defn f [unit] [:datediff [:raw (name unit)] 1 2])")
+        "a temporal unit is no exception: not every clause's unit is validated before a driver sees it")
+    (is (clean? id "(ns t) (def units #{:day}) (defn f [unit] (when-not (contains? units unit) (throw (ex-info \"bad\" {}))) [:datediff [:raw (name unit)] 1 2])")
+        "an allow-list assertion ahead of the splice is what clears it")
     (is (clean? id "(ns t) (defn f [] [:select [[:raw \"now()\"]]])") "a literal is what :raw is for")
     (is (clean? id "(ns t) (defn f [unit] [:datediff [:raw (datepart-token unit)] 1 2])")
         "a value mapped through some other function is that function's to get right")
@@ -493,7 +521,9 @@
         "wrapping in backticks without doubling the ones inside is the ClickHouse rename-table hole")
     (is (flags? id (d "(defn f [s] (str \"'\" s \"'\"))")) "a string literal built the same way")
     (is (flags? id (d "(defn f [kind] (format \"'%s'\" (name kind)))")) "the name of a keyword is as raw as the keyword")
-    (is (clean? id (d "(defn f [unit] (format \"'%s'\" (name unit)))")) "a temporal unit is an MBQL enum")
+    (is (flags? id (d "(defn f [unit] (format \"'%s'\" (name unit)))")) "a temporal unit is no exception")
+    (is (clean? id (d "(def units #{:day}) (defn f [unit] (when-not (contains? units unit) (throw (ex-info \"bad\" {}))) (format \"'%s'\" (name unit)))"))
+        "an allow-list assertion before the splice clears it")
     (is (flags? id "(ns t) (defn f [old new] (format \"RENAME TABLE %s TO %s\" old new))")
         "DDL with a bare interpolated identifier, wherever it is written")
     (is (flags? id (d "(defn f [s] (format \"\\\"%s\\\"\" s))")) "%s wrapped in quotes")
@@ -967,7 +997,202 @@
     (is (empty? (check-cg id (src "(let [t (api/read-check :model/Thing id)] (t2/select :model/Thing :parent_id (:id t)))")))
         "checked as the model returned")
     (is (empty? (check-cg id (src "(t2/select :model/Thing {:where (visible-thing-filter-clause)})")))
-        "a visibility filter on the query vouches for what it returns")))
+        "a visibility filter on the query vouches for what it returns")
+    (is (= ["Returns rows of User with no check on it on any path"]
+           (map :message (check-cg id (src "(t2/select [:model/User :id :email])"))))
+        "the user directory is scoped -- by tenant, by the user-visibility setting -- and an endpoint that returns
+         it unscoped serves every tenant's users to each tenant")))
+
+(deftest middleware-acts-on-request-value-test
+  (let [id :metabase-security-lint/middleware-acts-on-request-value
+        mw (fn [body] (str "(ns metabase.server.middleware.x (:require [metabase.settings.core :as setting] [metabase.premium-features.core :as premium-features] [metabase.util.log :as log]))
+(defn wrap-x [handler] (fn [request respond raise] " body " (handler request respond raise)))"))
+        sev (fn [src] (map :severity (check-cg id src)))]
+    (is (= [:error] (sev (mw "(setting/set! :site-url (get-in request [:headers \"host\"]))")))
+        "a header written into site-url repoints every link the instance sends")
+    (is (= [:error] (sev (mw "(slurp (:body request))")))
+        "a body read here is read for every route, before auth")
+    (is (= [:warning] (sev (mw "(when (get-in request [:cookies \"c\" :value]) (premium-features/clear-cache!))")))
+        "a cache purge a cookie can trigger, unthrottled; the cookie decides, no value flows")
+    (is (= [:warning] (sev (mw "(setting/restore-cache!)"))) "the raw settings reload")
+    (is (= [:warning] (sev (mw "(log/error \"bad origin\" (get-in request [:headers \"origin\"]))")))
+        "a header written to the operator's log at ERROR on every request")
+    (is (empty? (sev (mw "(setting/set! :site-url \"https://x\")"))) "a literal is nobody's")
+    (is (empty? (sev (mw "(setting/restore-cache-if-needed!)"))) "the throttled reload is the fix")
+    (is (empty? (sev "(ns metabase.a.api (:require [metabase.api.macros :as api.macros] [metabase.settings.core :as setting]))
+(api.macros/defendpoint :put \"/x\" \"doc\" [_r _q {:keys [url]}] (setting/set! :site-url url))"))
+        "an endpoint's write is the endpoint rules' question; this one is about code that runs before them")))
+
+(deftest check-gated-on-current-user-test
+  (let [id :metabase-security-lint/check-gated-on-current-user
+        d  (fn [body] (str "(ns metabase.query-processor.middleware.permissions (:require [metabase.api.common :as api]))
+(defn- check-audit-db [q] q)
+(defn f [query] " body ")"))]
+    (is (flags? id (d "(when api/*current-user-id* (check-audit-db query) (throw (ex-info \"no\" {})))"))
+        "a guard inside (when *current-user-id* ...) is skipped by a nil user -- a public card, a job")
+    (is (flags? id (d "(when (some? api/*current-user-id*) (check-audit-db query))"))
+        "a check by name, and the test spelled with some?")
+    (is (flags? id (d "(if api/*current-user-id* (throw (ex-info \"no\" {})) query)"))
+        "an if whose then-branch throws")
+    (is (clean? id (d "(when api/*current-user-id* (record-view! query))"))
+        "a body that only does something for the user -- a view log, a bookmark -- guards no check")
+    (is (clean? id (d "(do (check-audit-db query) (when api/*current-user-id* (record-view! query)))"))
+        "the check outside the gate is the fix")
+    (is (clean? id (d "(when (:admin? query) (throw (ex-info \"no\" {})))"))
+        "a gate on anything but the bound user is some other rule's business")))
+
+(deftest untyped-query-reaches-query-processor-test
+  (let [id :metabase-security-lint/untyped-query-reaches-query-processor
+        ep (fn [params body] (str "(ns metabase.agent-api.api (:require [metabase.api.macros :as api.macros] [metabase.query-processor :as qp] [metabase.util.json :as json] [metabase.util.malli.schema :as ms]))
+(api.macros/defendpoint :post \"/query\" \"doc\" " params " " body ")"))]
+    (is (= [:error] (map :severity (check-cg id (ep "[_r _q {:keys [query]} :- [:map [:query :map]]]" "(qp/process-query query)"))))
+        "an open map is decoded as whatever the client sent, internal QP keys included: `::sandbox?` switched sandboxing
+         off, an impersonation role picks the warehouse role, a map in an option slot becomes a subquery")
+    (is (= [:error] (map :severity (check-cg id (ep "[_r _q {:keys [query]} :- [:map [:query :any]]]" "(qp/process-query query)"))))
+        ":any is an open map by another name")
+    (is (= [:error] (map :severity (check-cg id (ep "[_r _q {:keys [q]} :- [:map [:q :string]]]" "(qp/process-query (json/decode q))"))))
+        "a JSON string decoded by hand skips the schema decoder that strips internal keys")
+    (is (empty? (check-cg id (ep "[_r _q {:keys [query]} :- [:map [:query ::lib.schema/query]]]" "(qp/process-query query)")))
+        "a registry schema is decoded, closed, and stripped of internal keys: the fix")
+    (is (empty? (check-cg id (ep "[_r _q {:keys [id]} :- [:map [:id ms/PositiveInt]]]" "(qp/process-query (card-query id))")))
+        "a query built by the server from an id is the server's")))
+
+(deftest write-reached-under-read-check-only-test
+  (let [src "(ns metabase.things.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [metabase.models.interface :as mi] [toucan2.core :as t2]))
+(defn- can-update-error [table] (when-not (mi/can-read? table) \"no\"))
+(defn- update-csv! [table] (when-let [e (can-update-error table)] (throw (ex-info e {}))) (t2/update! :model/Table (:id table) {:rows 1}))
+(api.macros/defendpoint :post \"/:id/append-csv\" \"doc\" [{:keys [id]} _q _b] (update-csv! (api/read-check :model/Table id)))
+(api.macros/defendpoint :delete \"/:id\" \"doc\" [{:keys [id]} _q _b] (t2/delete! :model/Table (:id (api/write-check :model/Table id))))
+(api.macros/defendpoint :get \"/:id\" \"doc\" [{:keys [id]} _q _b] (api/read-check :model/Table id))
+(api.macros/defendpoint :post \"/:id/bookmark\" \"doc\" [{:keys [id]} _q _b] (t2/insert! :model/Bookmark {:table_id (:id (api/read-check :model/Table id)) :user_id api/*current-user-id*}))
+(api.macros/defendpoint :post \"/admin/:id/reset\" \"doc\" [{:keys [id]} _q _b] (api/check-superuser) (t2/update! :model/Table id {:rows 0}))"
+        rows (map :row (check-cg :metabase-security-lint/write-reached-under-read-check-only src))]
+    (is (= [4] rows)
+        "append-csv rewrites the table after only a read-check; delete write-checks; a GET writes
+         nothing; a row scoped to the current user is the caller's own; a superuser check authorizes a write")))
+
+(deftest json-column-value-in-query-position-test
+  (let [id :metabase-security-lint/json-column-value-in-query-position
+        d  (fn [body] (str "(ns metabase.things.db (:require [toucan2.core :as t2]))
+(defn f [id] (let [dc (t2/select-one :model/DashboardCard id)] " body "))"))]
+    (is (flags? id (d "(t2/select-one :model/Card :id (get-in dc [:visualization_settings :link :entity :id]))"))
+        "a link card's entity id, out of a JSON column, executed as SQL by the render job")
+    (is (flags? id (d "(let [entity-id (-> dc :visualization_settings :link :entity :id)] (t2/select-one :model/Card :id entity-id))"))
+        "the same through a threaded read and a local")
+    (is (flags? id (d "(t2/select :model/User :id [:in (map #(-> % :attrs :entityId) (:content dc))])"))
+        "mention ids out of a stored document into [:in ...]")
+    (is (flags? id (d "(t2/insert! :model/Dependency {:to_entity_id (get-in dc [:document :attrs :entityId])})"))
+        "and into an insert's value slot")
+    (is (clean? id (d "(t2/select-one :model/Card :id (long (get-in dc [:visualization_settings :link :entity :id])))"))
+        "coerced to a number it is a number")
+    (is (clean? id (d "(t2/select-one :model/Card :id (:card_id dc))")) "an id column is an integer")
+    (is (clean? id (d "(t2/update! :model/Card id {:name (:name dc)})")) "a string column binds as a parameter")
+    (is (clean? id (d "(t2/select-one :model/Card :id (:id (:card dc)))")) "a hydrated row is a row, not a document")
+    (is (clean? id (d "(t2/update! :model/Card id {:dataset_query (:dataset_query dc)})"))
+        "a document written back into a JSON column is encoded on the way")))
+
+(deftest driver-value-clause-guard-bypassed-test
+  (let [id :metabase-security-lint/driver-value-clause-guard-bypassed
+        d  (fn [body] (str "(ns metabase.driver.x (:require [metabase.driver.sql.query-processor :as sql.qp] [metabase.util.honey-sql-2 :as h2x]))
+" body))]
+    (is (flags? id (d "(defmethod sql.qp/->honeysql [:x :value] [driver [_ {:keys [base-type]} v]] (h2x/cast :inet v))"))
+        "an override of the :value compiler that never checks the value is a scalar: a `[{:raw ...}]` in the value
+         slot is formatted by HoneySQL as SQL")
+    (is (clean? id (d "(defmethod sql.qp/->honeysql [:x :value] [driver [_ opts v]] (sql.qp/check-value-literal driver v) (h2x/cast :inet v))"))
+        "the base guard, called first: the fix")
+    (is (clean? id (d "(defmethod sql.qp/->honeysql [:x :value] [driver [_ opts v :as clause]] (if (uuid? v) v ((get-method sql.qp/->honeysql [:sql :value]) driver clause)))"))
+        "delegating to the parent runs its guard")
+    (is (clean? id (d "(defmethod sql.qp/->honeysql [:x :datetime-diff] [driver [_ unit x y]] [:datediff unit x y])"))
+        "another clause is another rule's")
+    (is (flags? id "(ns metabase.driver.mongo.query-processor)
+(defmethod ->rvalue :value [_query _stage [_ {base-type :base-type} value]] value)")
+        "Mongo's rvalue for a :value clause, passing a map through into an $expr operand")
+    (is (clean? id "(ns metabase.driver.mongo.query-processor)
+(defmethod ->rvalue :value [_query _stage [_ {base-type :base-type} value]] (when (coll? value) (throw (ex-info \"no\" {}))) value)")
+        "a scalar guard of its own")))
+
+(deftest h2x-cast-from-dynamic-test
+  (let [id :metabase-security-lint/h2x-cast-from-dynamic
+        ep (fn [params body] (str "(ns metabase.actions.api (:require [metabase.api.macros :as api.macros] [metabase.util.honey-sql-2 :as h2x] [metabase.util.malli.schema :as ms]))
+(api.macros/defendpoint :post \"/execute\" \"doc\" " params " " body ")"))]
+    (is (= [:error] (map :severity (check-cg id (ep "[_r _q {:keys [value]} :- [:map [:value :any]]]" "(h2x/cast :integer value)"))))
+        "a value of any shape under a cast: a `{:raw ...}` map is formatted as SQL inside the CAST")
+    (is (empty? (check-cg id (ep "[_r _q {:keys [value]} :- [:map [:value :string]]]" "(h2x/cast :integer value)")))
+        "a string binds as a parameter")
+    (is (empty? (check-cg id (ep "[_r _q {:keys [value]} :- [:map [:value :any]]]" "(h2x/cast :integer (long value))")))
+        "coerced, it is a number")
+    (is (empty? (check-cg id "(ns metabase.driver.x (:require [metabase.util.honey-sql-2 :as h2x]))
+(defn f [expr] (h2x/cast :text expr))"))
+        "a HoneySQL form the compiler built is the compiler's")))
+
+(deftest namespace-authz-outlier-test
+  (let [ns-src (fn [ns body] (str "(ns " ns " (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [metabase.permissions.core :as perms]))
+" body))
+        routes "(ns metabase.api-routes.routes (:require [metabase.api.macros :as api.macros] [metabase.api.routes.common :as routes.common]))
+(defn- +auth [h] (routes.common/+auth (api.macros/ns-handler h)))
+(def ^:private route-map {\"/slack\" (+auth 'metabase.channel.api.slack) \"/settings\" (+auth 'metabase.settings.api)})"
+        scan   (fn [& srcs]
+                 (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                             .mkdirs .deleteOnExit)]
+                   (doseq [[i src] (map-indexed vector srcs)]
+                     (spit (doto (java.io.File. ^java.io.File dir (str "f" i ".clj")) .deleteOnExit) src))
+                   (map (juxt :row :message)
+                        (engine/analyze {:paths [(.getAbsolutePath dir)]
+                                         :rules [(rule/by-id :metabase-security-lint/namespace-authz-outlier)]
+                                         :taint-sources :call-graph}))))]
+    (is (= [[5 "POST /bug-report is gated by a session only; its 3 siblings all require more"]]
+           (scan routes (ns-src "metabase.channel.api.slack" "(api.macros/defendpoint :put \"/settings\" \"doc\" [_r _q _b] (perms/check-has-application-permission :setting) 1)
+(api.macros/defendpoint :get \"/manifest\" \"doc\" [_r _q _b] (perms/check-has-application-permission :setting) 1)
+(api.macros/defendpoint :get \"/app-info\" \"doc\" [_r _q _b] (perms/check-has-application-permission :setting) 1)
+(api.macros/defendpoint :post \"/bug-report\" \"doc\" [_r _q _b] 1)")))
+        "the one endpoint in the namespace with no application-permission check")
+    (is (empty? (scan routes (ns-src "metabase.settings.api" "(api.macros/defendpoint :get \"/\" \"doc\" [_r _q _b] 1)
+(api.macros/defendpoint :put \"/:key\" \"doc\" [_r _q _b] (api/check-superuser) 1)")))
+        "a listing beside a superuser write is the ordinary shape of a settings namespace: a GET is not an outlier")
+    (is (empty? (scan routes (ns-src "metabase.settings.api" "(api.macros/defendpoint :post \"/a\" \"doc\" [_r _q _b] 1)
+(api.macros/defendpoint :post \"/b\" \"doc\" [_r _q _b] 1)
+(api.macros/defendpoint :put \"/:key\" \"doc\" [_r _q _b] (api/check-superuser) 1)")))
+        "two session writes beside one superuser write: no consensus to be an outlier from")
+    (is (empty? (scan routes (ns-src "metabase.settings.api" "(api.macros/defendpoint :post \"/invalidate\" \"doc\" [_r _q {:keys [id]}] (api/write-check :model/Database id) 1)
+(api.macros/defendpoint :put \"/:key\" \"doc\" [_r _q _b] (api/check-superuser) 1)")))
+        "a write that authorizes each object it touches is gated, on another axis")))
+
+(deftest privileged-column-from-request-test
+  (let [id :metabase-security-lint/privileged-column-from-request
+        ep (fn [body] (str "(ns metabase.actions.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [toucan2.core :as t2]))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] " body ")"))
+        sev (fn [src] (map :severity (check-cg id src)))]
+    (is (= [:error] (sev (ep "(t2/update! :model/Action id (select-keys body [:name :public_uuid]))")))
+        "public_uuid kept by an allow-list that includes it: whoever can call the endpoint publishes the object")
+    (is (= [:error] (sev (ep "(t2/update! :model/Action id {:name (:name body) :creator_id (:creator_id body)})")))
+        "creator_id from the body")
+    (is (= [:error] (sev (ep "(t2/update! :model/Card id {:embedding_params (:embedding_params body)})")))
+        "the embed allow-list is superuser-only to change")
+    (is (empty? (sev (ep "(t2/update! :model/Action id {:public_uuid (str (random-uuid)) :made_public_by_id api/*current-user-id*})")))
+        "the server minting one is the public-link endpoint doing its job; whether the caller may is the privilege axis")
+    (is (empty? (sev (ep "(t2/update! :model/Action id {:name (:name body)})"))) "an ordinary column")))
+
+(deftest unanchored-malli-regex-test
+  (let [id :metabase-security-lint/unanchored-malli-regex]
+    (is (flags? id "(ns t) (def zone [:re #\"[+-]\\d{2}:\\d{2}\"])")
+        "Malli's :re uses re-find: any string *containing* an offset passed as a timezone id, and the rest of it
+         is the caller's")
+    (is (flags? id "(ns t) (def zone [:re {:error/message \"offset\"} #\"[+-]\\d{2}:\\d{2}\"])") "with options")
+    (is (clean? id "(ns t) (def zone [:re #\"^[+-]\\d{2}:\\d{2}$\"])") "anchored at both ends")
+    (is (clean? id "(ns t) (def zone [:re #\"\\A[+-]\\d{2}:\\d{2}\\z\"])") "or with \\A and \\z")
+    (is (clean? id "(ns t) (def zone [:re zone-offset-regex])") "a regex built elsewhere is judged there")))
+
+(deftest outbound-http-follows-redirects-test
+  (let [id :metabase-security-lint/outbound-http-follows-redirects
+        ep (fn [body] (str "(ns metabase.channel.impl.http (:require [metabase.api.macros :as api.macros] [clj-http.client :as http]))
+(api.macros/defendpoint :post \"/test\" \"doc\" [_r _q {:keys [url]}] " body ")"))
+        n  (fn [src] (count (check-cg id src)))]
+    (is (= 1 (n (ep "(http/get url {:as :json})")))
+        "the host is validated and then clj-http follows a 302 to loopback")
+    (is (= 1 (n (ep "(http/request {:url url :method :post})"))) "the map form")
+    (is (zero? (n (ep "(http/get url {:as :json :redirect-strategy :none})"))) "redirects off: the fix")
+    (is (zero? (n (ep "(http/get url {:as :json :follow-redirects false})"))) "clj-http's other spelling")
+    (is (zero? (n (ep "(http/get \"https://api.example.com/v1\" {:as :json})"))) "a host the code chose")))
 
 (deftest every-rule-is-covered-test
   (testing "every registered rule has a test in this namespace, so new rules can't land untested"

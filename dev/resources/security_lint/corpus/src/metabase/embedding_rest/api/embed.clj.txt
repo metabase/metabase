@@ -6,12 +6,27 @@
 
 (defn- unsign-and-translate-ids [token] (embed/unsign token))
 
+(defn- remove-card-non-public-columns [card] (select-keys card [:id :name]))
+
 (api.macros/defendpoint :get "/card/:token"
-  "Verifies its token."
+  "Verifies its token, and serves the card through the scrubber."
   [{:keys [token]} _query _body]
-  (unsign-and-translate-ids token))
+  (remove-card-non-public-columns (unsign-and-translate-ids token)))
 
 (api.macros/defendpoint :get "/theme/:token"
   "Trusts its token."
   [{:keys [token]} _query _body]
   token)
+
+(defn- validate-and-merge-params [embedding-params token-params query-params]
+  (merge query-params token-params))
+
+(api.macros/defendpoint :get "/card/:token/query"
+  "Takes the caller's parameters and validates them against embedding_params."
+  [{:keys [token]} query-params _body]
+  [(unsign-and-translate-ids token) (validate-and-merge-params {} {} query-params)])
+
+(api.macros/defendpoint :get "/tiles/card/:token/:zoom"
+  "Takes `parameters` off the query string and applies them as they are."
+  [{:keys [token zoom]} {:keys [parameters]} _body]
+  [(unsign-and-translate-ids token) parameters zoom])

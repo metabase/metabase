@@ -227,7 +227,7 @@
       (is (= "[\"raw\" \"via\"]" (:message f))))))
 
 (deftest stored-origins-test
-  (let [by-row (origins-of! "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver] [clj-http.client :as http] [metabase.settings.core :refer [defsetting]]))
+  (let [by-row (origins-of! "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver] [clj-http.client :as http] [buddy.sign.jwt :as jwt] [metabase.settings.core :refer [defsetting]]))
 (defn sink [x] x)
 (defsetting tile-url \"doc\")
 (defn a [id] (let [card (t2/select-one :model/Card id)] (sink (:dataset_query card))))
@@ -236,7 +236,8 @@
 (defn d [] (sink (tile-url)))
 (defn e [] (let [n 5] (sink n)))
 (defn f [rows] (doseq [row (t2/select :model/Field)] (sink (:name row))))
-(defn g [db] (sink (quote-ident (t2/select-one :model/Card 1))))")]
+(defn g [db] (sink (quote-ident (t2/select-one :model/Card 1))))
+(defn h [tok] (let [claims (jwt/unsign tok \"secret\")] (sink (:groups claims))))")]
     (testing "a Toucan read is the application database, refined to the model"
       (is (= "(:app-db/Card)" (get by-row 4)))
       (is (= "(:app-db/Field)" (get by-row 9)) "through a doseq binding"))
@@ -249,7 +250,10 @@
     (testing "a literal is nothing"
       (is (= "()" (get by-row 8))))
     (testing "a sanitizer clears it"
-      (is (= "()" (get by-row 10))))))
+      (is (= "()" (get by-row 10))))
+    (testing "a JWT's claims were written by whoever holds the signing key: an identity provider, an embedding
+              application -- outside the instance"
+      (is (= "(:external)" (get by-row 11))))))
 
 (deftest scalar-setting-test
   (let [by-row (origins-of! "(ns t (:require [metabase.settings.core :refer [defsetting]]))

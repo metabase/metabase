@@ -41,9 +41,8 @@
    :enabled     false
    :description (str "An HTTP request whose destination came from a setting, a stored row or a request carries a "
                      "credential -- an Authorization header, an API key in the body. Whoever chose the host "
-                     "receives the credential: a settings manager repointing the LLM base URL collected the "
-                     "vendor key, and an HTTP notification channel forwarded its Authorization header to "
-                     "wherever a redirect sent it.")
+                     "receives the credential: whoever may write the base-URL setting, whoever answers a "
+                     "redirect.")
    :remediation (str "Pin the host, or validate it against an allow-list before attaching the credential; never "
                      "follow redirects with a credential attached.")
    :severity    :error
@@ -70,8 +69,7 @@
   {:name        "Stored query executed under another user's identity"
    :enabled     false
    :description (str "Inside `with-current-user` or `as-admin`, a query read from the application database is "
-                     "executed with that identity's permissions. Whoever could write the query -- a notification "
-                     "recipient repointing a card, a model editor scheduling an index refresh -- runs it as the "
+                     "executed with that identity's permissions. Whoever could write the query runs it as the "
                      "creator or as an admin, past every check the caller would have failed.")
    :remediation (str "Run stored queries as the caller and check what the caller may see first; where the "
                      "switch is the design, check the query's source before switching.")
@@ -104,8 +102,8 @@
   {:name        "Setting written from data that came from outside the instance"
    :enabled     false
    :description (str "A setting value taken from a synced document, an HTTP response or warehouse metadata. "
-                     "Git-synced content overwrote instance settings this way; a setting that steers "
-                     "authentication or outbound traffic rewritten from outside is a takeover.")
+                     "A setting that steers authentication or outbound traffic rewritten from outside is a "
+                     "takeover.")
    :remediation "Write settings from validated request values or code; treat imported content as content."
    :severity    :error
    :precision   :medium

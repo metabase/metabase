@@ -21,8 +21,8 @@ Some forms are there to be *found* and some to be *not* found. A file that fetch
 checks public sharing is enabled sits next to an endpoint that never reaches that check. A fixed-string
 `http/get` sits next to one fed from the request body. The expected set in the test says which is which.
 
-The fifth element of each expected tuple lists the entry kinds that reach the finding (`:http`, `:job`, `:mq`,
-`:event`, `:cli`, `:startup`, `:setting`, `:protocol`), so a regression in entry-point detection or multimethod
+The fifth element of each expected tuple lists the entry kinds that reach the finding (`:http`, `:middleware`,
+`:job`, `:mq`, `:event`, `:cli`, `:startup`, `:setting`, `:protocol`), so a regression in entry-point detection or multimethod
 resolution shows up even when the finding itself is unchanged. An empty list means the analyzer found the code
 but nothing it recognises as an entry point reaches it.
 

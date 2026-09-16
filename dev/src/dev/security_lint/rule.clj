@@ -28,6 +28,24 @@
 
 (def ^:private severity-rank {:note 0 :warning 1 :error 2})
 
+(def ^:private severity-rank {:error 2 :warning 1 :note 0})
+
+(defn cap-severity
+  "`severity`, lowered to what the least privilege that reaches the finding warrants.
+
+  A rule's severity says how bad the *shape* is; who can get there is the other half. A path only a superuser can
+  start caps at a note whatever the sink, and one that needs an application permission or a data-analyst grant
+  at a warning; an anonymous or any-session path, a background task, and code nothing reaches keep the rule's own
+  grade -- the last two because taint, not privilege, is what grades a planted value that a job later runs."
+  [severity privilege]
+  (let [cap (case privilege
+              :superuser :note
+              :elevated  :warning
+              nil)]
+    (if (and cap (> (severity-rank severity) (severity-rank cap)))
+      cap
+      severity)))
+
 (defn severity-for
   "The severity a finding should carry.
 

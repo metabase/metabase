@@ -70,8 +70,8 @@ identity off it, so renaming a rule orphans its alerts.
 - `:exempt-files` is a vector of regexes over the repo-relative path. The namespace that legitimately owns a
   dangerous operation, such as the HTTP wrapper that is allowed to call the raw client, goes here.
 - `:taint-policy :any-local` makes every local binding count as tainted for this rule, whatever the scan runs
-  under. For the rules whose sources the graph cannot see -- a warehouse column type, a saved question's unit --
-  which were the majority of the SQL findings in the security tracker. The call-graph positions still arrive as
+  under. For the rules whose sources the graph cannot see -- a warehouse column type, a saved question's unit.
+  The call-graph positions still arrive as
   `:boundary-locals`, so such a rule grades a value that crossed a boundary above a merely dynamic one.
 
 **What the rule watches.** One of these families, or more than one when the same thing has two spellings.
@@ -100,8 +100,8 @@ identity off it, so renaming a rule orphans its alerts.
 |---|---|---|
 | `:node` | every rule | The rewrite-clj node of the matched form, with position metadata. |
 | `:filename` | every rule | Absolute path of the file. |
-| `:reachable-from` | every rule | Set of entry kinds that reach this code: `:http`, `:job`, `:mq`, `:event`, `:cli`, `:startup`, `:setting`, `:protocol`. Empty means nothing known reaches it. |
-| `:endpoint-reachable?` | every rule | Shorthand for `:http` being in the set. |
+| `:reachable-from` | every rule | Set of entry kinds that reach this code: `:http`, `:middleware` (Ring middleware, which runs on every request ahead of the session check), `:job`, `:mq`, `:event`, `:cli`, `:startup`, `:setting`, `:protocol`. Empty means nothing known reaches it. |
+| `:endpoint-reachable?` | every rule | Shorthand for `:http` or `:middleware` being in the set. |
 | `:tainted?` | rules with `:tainted-arg n` | Whether argument `n` derives from attacker input, resolved up front so the body can branch on it. |
 | `:locals` | every rule | The tainted local positions in this file under the rule's policy; `taint/tainted?` reads it. For an endpoint rule, the boundary positions of the endpoint's own body. |
 | `:boundary-locals` | call-site rules | The call-graph positions regardless of policy, `{[row col] #{label}}`: every value that crossed a trust boundary and which -- `:request`, `:app-db/Card`, `:warehouse`, `:external`, `:file`. |
@@ -113,8 +113,12 @@ identity off it, so renaming a rule orphans its alerts.
 | `:structured-locals` | call-site rules | The request positions pinned to neither a number nor a string -- what may arrive as a HoneySQL clause. |
 | `:local-inits` | call-site rules | Local usage position -> the node it was bound to; `taint/tainted?` follows a local back through it. |
 | `:marks` | call-site rules | The metadata keywords written on the matched form. |
+| `:top-level` | call-site rules | The top-level form -- the `defn` -- the site sits in, for a rule that asks what else that function does. |
 | `:ns` | call-site rules | The file's namespace symbol. |
 | `:nearby` | endpoint rules | The functions within two call hops of the endpoint, for questions the full closure drowns. |
+| `:method`, `:privilege` | endpoint rules | The endpoint's HTTP method as written (`:put`) and the least privilege it demands (`:anonymous`, `:session`, `:elevated`, `:superuser`; see below). |
+| `:siblings` | endpoint rules | The namespace's other endpoints, each `{:name :method :privilege}`, for a rule about consensus. |
+| `:nearby-deep` | endpoint rules | The same within four hops: `api -> core -> db.clj -> t2` is where an endpoint's own write and its own check live. |
 | `:ns-wrappers` | endpoint rules | Every router wrapper applied to the namespace's handler, from any file: `+auth`, `+require-premium-feature`. |
 | `:endpoint-ns` | endpoint rules | The endpoint's namespace symbol. |
 | `:reaches` | endpoint rules | Set of function symbols the endpoint transitively calls. |
@@ -216,7 +220,11 @@ sanitized whole, since the earlier steps are the sanitizer's input. An escaper a
 A `when`/`if` whose test is `re-matches` or `contains?` vouches for its then-branch only. A validating assertion
 -- `(validate-url! url)`, `(assert-llm-host-allowed! url)`, `(check-sso-redirect redirect)`, any name that says it
 checks and what it checks (`vocabulary/assertion-validator`) -- vouches for its argument in the forms after it in
-the same body, and its value is the value it validated. It does not follow values
+the same body, and its value is the value it validated. So does the same assertion spelled inline, `(when-not
+(contains? allowed-units unit) (throw ...))`: a `when-not` whose body only throws lets the forms after it run only
+when the check passed. An allow-list check ahead of `(name unit)` is that shape, and it clears the splice under
+either taint policy; `(name unit)` itself gets no exemption, since not every clause's unit is validated upstream.
+It does not follow values
 through atoms, dynamic vars, protocol methods, or `reduce`/`swap!`, so a zero from a taint-dependent rule is not
 proof of absence.
 
@@ -224,8 +232,8 @@ Request values are also classified by what their `defendpoint` schema pins them 
 enforced in production: `id :- ms/PositiveInt` cannot arrive as a string, so a rule about Toucan's pk-or-query
 position leaves it alone. A `mu/defn` annotation on a helper does *not* count -- it is compiled out of production
 builds unless the namespace is marked `^:instrument/always` -- and a value validated only by one is treated as
-untyped. That is the honest reading of SEC-823 and SEC-843, and the reason `toucan-positional-arg-from-request` is
-a warning rather than an error until SEC-1215 lands. A union of pinned schemas is pinned (`[:or ms/PositiveInt
+untyped -- which is why `toucan-positional-arg-from-request` is a warning rather than an error for now. A union of
+pinned schemas is pinned (`[:or ms/PositiveInt
 [:= :root]]`). Stored values have no schema, but an id column read straight off a row -- `(:card_id dashcard)` --
 is an integer key, and so is a local named like one (`card-id`, `ids`, `idx`) when what it holds is stored; a
 key read inside a JSON column, or off an untyped request map, is whatever the document or the client put there
@@ -233,9 +241,34 @@ key read inside a JSON column, or off an untyped request map, is whatever the do
 
 Reachability is over-approximate by design: a function referenced as a value (`partial`, `comp`, `#'f`, stored in
 a map) counts as reachable. The findings feed human and model review, and a false positive costs a minute where a
-false negative costs an incident. The one place the graph is strict is the endpoint rules' "does this endpoint
+false negative costs far more. The one place the graph is strict is the endpoint rules' "does this endpoint
 execute a check" question, where a referenced-but-never-run check must not clear a finding: only direct calls and
 `apply`/`mapply` count there.
+
+## What "least privilege" means
+
+Every finding carries the least an actor must hold to reach it -- no account, any account, an elevated grant, a
+superuser -- and its severity is capped by that. A rule's own severity knows nothing about it: a splice reached only
+past `check-superuser` is the same code as one a public link reaches, and a very different finding.
+
+Each `defendpoint` gets a privilege from what the router wrapped its namespace in, what the namespace's own
+`ns-handler` wraps every endpoint in, and the checks within two call hops of its body (`cg/entry-privilege`): no
+authenticating wrapper is `:anonymous`; `+auth` alone is `:session`; `check-has-application-permission` or
+`check-data-analyst` is `:elevated`; `check-superuser` or `+check-superuser` is `:superuser`. A grant the graph cannot
+see by name -- the Transform model's checks need the data-analyst flag, a write to a Database is `write-check`ed
+against manage-database -- is declared in `vocabulary/elevated-endpoints`, each entry saying which grant. A
+request-taking function that is not an endpoint starts an `:anonymous` path when it is Ring middleware and a
+`:session` one otherwise.
+
+The privilege closures walk *executions* only, and stop at an event dispatch: `publish-event!` resolves to every
+handler and the handlers reach the model layer, so over references an anonymous endpoint would grade most of the
+tree as anonymous. A finding's least privilege is the lowest over the entries that reach it (`cg/min-privilege-entry`,
+which also says which entry), `:background` when only a job, an event, a queue or startup reaches it -- no request,
+so no actor; the taint origins say who planted what it runs -- and nil when nothing does. `rule/cap-severity` then
+lowers an `:elevated` finding to at most a warning and a `:superuser` one to at most a note; anonymous, session and
+background findings keep the rule's own grade. The text report prints it as `least privilege: a superuser (POST
+/import in metabase-enterprise.serialization.api)`, SARIF carries it as `minimumPrivilege` and in the message, and the
+level GitHub sees is the capped one, so the error threshold means "reachable without an elevated grant".
 
 ## Writing a rule
 

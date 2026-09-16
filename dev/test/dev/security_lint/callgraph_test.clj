@@ -188,6 +188,157 @@
       (is (= 4 (-> t :guards first :checks first :row)) "the re-matches check on row 4")
       (is (= 5 (-> t :guards first :body :row)) "the body it guards on row 5"))))
 
+(def ^:private throwing-guard-src
+  "(ns t)
+
+(def ^:private units #{:day :month})
+
+(defn- guarded [unit x]
+  (when-not (contains? units unit)
+    (throw (ex-info \"bad unit\" {:unit unit})))
+  [:raw (name unit)]
+  x)
+
+(defn- not-a-guard [unit]
+  (when-not (contains? units unit)
+    (log/warn \"odd unit\" unit))
+  [:raw (name unit)])
+")
+
+(deftest throwing-guard-extraction-test
+  (testing "a when-not whose body only throws is an assertion: it vouches for the forms after it in the same body"
+    (let [t (cg/extract "f.clj" 't (root throwing-guard-src))]
+      (is (= 1 (count (:guards t))) "the logging when-not vouches for nothing: its body runs on and the value is still used")
+      (is (= 6 (-> t :guards first :checks first :row)) "the contains? check on row 6")
+      (is (= [8 9] ((juxt :row :end-row) (-> t :guards first :body))) "the forms after it, to the end of the body"))))
+
+(def ^:private privilege-routes
+  "(ns metabase.api-routes.routes (:require [metabase.api.macros :as api.macros] [metabase.api.routes.common :as routes.common]))
+(defn- +auth [h] (routes.common/+auth (api.macros/ns-handler h)))
+(def ^:private route-map {\"/a\" (+auth 'metabase.a.api) \"/pub\" 'metabase.pub.api \"/adm\" (+auth 'metabase.adm.api)
+                          \"/transform\" (+auth 'metabase.transforms-rest.api.transform) \"/database\" (+auth 'metabase.warehouses-rest.api)})
+")
+
+(def ^:private privilege-a
+  "(ns metabase.a.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [metabase.permissions.core :as perms]))
+(api.macros/defendpoint :get \"/plain\" \"doc\" [_r _q _b] (metabase.helpers/shared))
+(api.macros/defendpoint :get \"/su\" \"doc\" [_r _q _b] (api/check-superuser) (metabase.helpers/su-only))
+(api.macros/defendpoint :get \"/setting\" \"doc\" [_r _q _b] (perms/check-has-application-permission :setting) (metabase.helpers/setting-only))
+(defn- gate [] (api/check-superuser))
+(api.macros/defendpoint :get \"/su-nearby\" \"doc\" [_r _q _b] (gate) 1)
+")
+
+(def ^:private privilege-pub
+  "(ns metabase.pub.api (:require [metabase.api.macros :as api.macros]))
+(api.macros/defendpoint :get \"/x\" \"doc\" [_r _q _b] (metabase.helpers/shared))
+")
+
+(def ^:private privilege-transforms
+  "(ns metabase.transforms-rest.api.transform (:require [metabase.api.macros :as api.macros]))
+(api.macros/defendpoint :post \"/:id/run\" \"doc\" [_r _q _b] 1)
+")
+
+(def ^:private privilege-warehouses
+  "(ns metabase.warehouses-rest.api (:require [metabase.api.macros :as api.macros]))
+(api.macros/defendpoint :get \"/:id\" \"doc\" [_r _q _b] 1)
+(api.macros/defendpoint :put \"/:id\" \"doc\" [_r _q _b] 1)
+")
+
+(def ^:private privilege-adm
+  "(ns metabase.adm.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api]))
+(api.macros/defendpoint :get \"/x\" \"doc\" [_r _q _b] 1)
+(def routes (api.macros/ns-handler *ns* api/+check-superuser))
+")
+
+(def ^:private privilege-helpers
+  "(ns metabase.helpers (:require [clojurewerkz.quartzite.jobs :as jobs]))
+(defn shared [] 1)
+(defn su-only [] 2)
+(defn setting-only [] 3)
+(defn job-only [] 4)
+(defn nobody [] 5)
+(jobs/defjob Nightly [_] (job-only))
+")
+
+(defn- privilege-reach
+  "The helpers are called fully qualified: with no clj-kondo resolution in these unit tests, only a qualified head
+  crosses files."
+  []
+  (let [files {"routes.clj" ['metabase.api-routes.routes privilege-routes]
+               "a.clj"      ['metabase.a.api privilege-a]
+               "pub.clj"    ['metabase.pub.api privilege-pub]
+               "adm.clj"    ['metabase.adm.api privilege-adm]
+               "tr.clj"     ['metabase.transforms-rest.api.transform privilege-transforms]
+               "wh.clj"     ['metabase.warehouses-rest.api privilege-warehouses]
+               "helpers.clj" ['metabase.helpers privilege-helpers]}
+        tables (into {} (for [[f [ns src]] files] [f (cg/extract f ns (root src))]))]
+    (cg/reachable-regions {:tables tables :resolve {}})))
+
+(deftest entry-privilege-test
+  (testing "the least an actor needs to hold to start at each endpoint"
+    (let [reach (privilege-reach)
+          at    (fn [file row] (:privilege (first (filter #(and (= file (:filename %)) (= row (:row %))) (cg/entries reach)))))]
+      (is (= :session  (at "a.clj" 2)) "mounted under +auth and checks nothing more")
+      (is (= :superuser (at "a.clj" 3)) "check-superuser in the body")
+      (is (= :elevated  (at "a.clj" 4)) "an application permission a non-superuser can hold")
+      (is (= :superuser (at "a.clj" 6)) "check-superuser one hop down")
+      (is (= :anonymous (at "pub.clj" 2)) "mounted under no authenticating wrapper")
+      (is (= :superuser (at "adm.clj" 2)) "the namespace's own ns-handler wraps every endpoint in +check-superuser")
+      (is (= :elevated  (at "tr.clj" 2)) "a transform: the model's own checks need the data-analyst flag, by vocabulary")
+      (is (= :session   (at "wh.clj" 2)) "reading a database is any user's")
+      (is (= :elevated  (at "wh.clj" 3)) "writing one is manage-database, by vocabulary"))))
+
+(deftest min-privilege-test
+  (testing "the least privilege among everything that reaches a position; a job is nobody's request"
+    (let [reach (privilege-reach)
+          at    (fn [row] (cg/min-privilege reach {:filename "helpers.clj" :row row :col 3}))]
+      (is (= :anonymous  (at 2)) "shared: reached from the public mount as well as the session one")
+      (is (= :superuser  (at 3)) "su-only: only through the superuser check")
+      (is (= :elevated   (at 4)) "setting-only: only through the application-permission check")
+      (is (= :background (at 5)) "job-only: no request starts here")
+      (is (nil? (at 6)) "nobody: nothing reaches it"))))
+
+(def ^:private middleware-src
+  "(ns metabase.server.middleware.x (:require [metabase.settings.core :as setting]))
+(defn- act [v] v)
+(defn wrap-x [handler]
+  (fn [request respond raise]
+    (act (get-in request [:headers \"host\"]))
+    (handler request respond raise)))
+")
+
+(deftest middleware-entry-kind-test
+  (testing "Ring middleware is an entry of its own kind, and starts an anonymous path: it runs before any session is checked"
+    (let [tables {"mw.clj" (cg/extract "mw.clj" 'metabase.server.middleware.x (root middleware-src))}
+          reach  (cg/reachable-regions {:tables tables :resolve {}})
+          pos    {:filename "mw.clj" :row 2 :col 3}]
+      (is (= #{:middleware} (cg/reachable-from reach pos)))
+      (is (= :anonymous (cg/min-privilege reach pos))))))
+
+(def ^:private superuser-guard-src
+  "(ns metabase.a.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api]))
+(defn- act [v] v)
+(api.macros/defendpoint :get \"/flag\" \"doc\" [_r _q _b {superuser? :is-superuser?}]
+  (when superuser?
+    (act 1))
+  (act 2))
+(api.macros/defendpoint :get \"/var\" \"doc\" [_r _q _b]
+  (if api/*is-superuser?*
+    (act 3)
+    (act 4)))
+")
+
+(deftest superuser-guard-test
+  (testing "a branch a superuser flag guards is a superuser's, whatever reaches the endpoint"
+    (let [tables {"routes.clj" (cg/extract "routes.clj" 'metabase.api-routes.routes (root privilege-routes))
+                  "a.clj"      (cg/extract "a.clj" 'metabase.a.api (root superuser-guard-src))}
+          reach  (cg/reachable-regions {:tables tables :resolve {}})
+          at     (fn [row col] (cg/min-privilege reach {:filename "a.clj" :row row :col col}))]
+      (is (= :superuser (at 5 5)) "under (when superuser? ...), the flag destructured from the request")
+      (is (= :session   (at 6 3)) "after it")
+      (is (= :superuser (at 9 5)) "the then-branch of (if api/*is-superuser?* ...)")
+      (is (= :session   (at 10 5)) "not the else-branch"))))
+
 (deftest nullary-higher-order-call-test
   (testing "a bare (map) does not crash extraction"
     (is (map? (cg/extract "f.clj" 't (root "(ns t)\n(defn f [] (map))\n(defn g [] (-> 1))\n"))))))

@@ -81,6 +81,19 @@
                               cwe (assoc :cwe cwe))}
       (rule-source-uri r) (assoc :helpUri (rule-source-uri r)))))
 
+(def ^:private privilege-phrase
+  "The least an actor needs, as a reader would say it."
+  {:anonymous  "no account"
+   :session    "any signed-in user"
+   :elevated   "an application permission or a data-analyst grant"
+   :superuser  "a superuser"
+   :background "no request: a background task runs it"})
+
+(defn- privilege-sentence
+  [min-privilege privilege-entry]
+  (when-let [p (get privilege-phrase min-privilege)]
+    (str "Least privilege on the path: " p (when privilege-entry (str " (" privilege-entry ")")) ".")))
+
 (defn- reachability-sentence
   "GitHub shows a result's message and nothing of its properties, so the one fact a reviewer wants first -- can a
   request even get here -- has to be in the text."
@@ -114,7 +127,7 @@
     (str "Values cross: " (str/join ", " (origin-phrases origins)) ".")))
 
 (defn- flow-kinds
-  "Flows in report order: http first, since a request is the triage question, then the rest by name."
+  "Flows in report order: http first, since a request is the first question, then the rest by name."
   [flows]
   (sort-by (fn [[k _]] [(if (= k :http) 0 1) (name k)]) flows))
 
@@ -164,12 +177,14 @@
   (sha256 (str/join "|" [(str (symbol rule-id)) uri (or form snippet "") occurrence])))
 
 (defn- finding->result [rule-index root occurrence {:keys [rule-id file row col end-row end-col severity message
-                                                           form snippet endpoint-reachable? reachable-from origins callers]
+                                                           form snippet endpoint-reachable? reachable-from origins callers
+                                                           min-privilege privilege-entry]
                                                     :as finding}]
   (let [uri      (relativize root file)
         cflows   (code-flows root finding)
         sentence (str message (when-not (re-find #"[.!?]$" message) "."))
-        text     (str/join " " (remove nil? [sentence (reachability-sentence reachable-from callers) (origins-sentence origins)]))]
+        text     (str/join " " (remove nil? [sentence (reachability-sentence reachable-from callers)
+                                             (privilege-sentence min-privilege privilege-entry) (origins-sentence origins)]))]
     (cond-> {:ruleId              (str (symbol rule-id))
              :ruleIndex           (get rule-index rule-id)
              :level               (level severity "warning")
@@ -184,10 +199,13 @@
                                                         :startColumn col
                                                         :endLine     end-row
                                                         :endColumn   end-col}}}]
-             ;; Whether an HTTP request can reach this code at all -- the single most useful thing for triage order.
+             ;; Whether an HTTP request can reach this code at all -- the single most useful thing for review order.
              :properties          {:endpointReachable (boolean endpoint-reachable?)
                                    ;; every kind of entry point that reaches it: http, job, mq, cli, event, startup
                                    :reachableFrom     (vec (sort (map name reachable-from)))
+                                   ;; the least an actor needs to reach it: anonymous, session, elevated,
+                                   ;; superuser, background -- what capped the level
+                                   :minimumPrivilege  (some-> min-privilege name)
                                    ;; the boundaries the flagged values crossed: request, app-db/Card, warehouse
                                    :origins           (vec (sort (map #(str (symbol %)) origins)))}
              :partialFingerprints {:primaryLocationLineHash (fingerprint rule-id uri form snippet occurrence)}}
@@ -311,6 +329,8 @@
    (when (seq (:origins finding))
      [(str "    values cross " (str/join ", " (origin-phrases (:origins finding))))])
    (reachability-lines finding)
+   (when-let [p (get privilege-phrase (:min-privilege finding))]
+     [(str "    least privilege: " p (when-let [e (:privilege-entry finding)] (str " (" e ")")))])
    (when-let [code (not-empty (one-line snippet))]
      [(str "    | " code)])
    [""]))

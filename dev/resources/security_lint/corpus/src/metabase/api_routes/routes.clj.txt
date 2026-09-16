@@ -16,4 +16,5 @@
    "/xml"      (+auth 'metabase.xml.parse)
    "/public"   (routes.common/+public-exceptions 'metabase.public-sharing-rest.api)
    "/embed"    (routes.common/+message-only-exceptions 'metabase.embedding-rest.api.embed)
-   "/mt/gtap"  metabase.sandbox.api.gtap/routes})
+   "/mt/gtap"  metabase.sandbox.api.gtap/routes
+   "/slack"    (+auth 'metabase.things.slack-api)})

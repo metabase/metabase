@@ -12,7 +12,7 @@
     :severity :error :precision :high :cwe "CWE-78" :message "dynamic arg"
     :snippet "(shell/sh ...)" :form "(shell/sh ...)"
     :description "Full desc CI" :remediation "Use a vector of args"
-    :endpoint-reachable? true :reachable-from #{:http :job}
+    :endpoint-reachable? true :reachable-from #{:http :job} :min-privilege :session
     :flows {:http {:count 2 :entries ["GET /a" "POST /b"]
                    :path [{:name "GET /a" :filename "/repo/src/metabase/api.clj" :row 3 :col 1}
                           {:name "metabase.a/run" :filename "/repo/src/metabase/a.clj" :row 6 :col 1}]}
@@ -126,9 +126,16 @@
            (map #(get-in % [:properties :reachableFrom]) (get-in (run-report) [:runs 0 :results]))))))
 
 (deftest endpoint-reachable-property-test
-  (testing "reachability rides along on each result, so triage can be ordered by it"
+  (testing "reachability rides along on each result, so review can be ordered by it"
     (let [results (get-in (run-report) [:runs 0 :results])]
       (is (= [true false false] (map #(get-in % [:properties :endpointReachable]) results))))))
+
+(deftest minimum-privilege-property-test
+  (testing "the least privilege that reaches a finding rides along, and is said in the message, since GitHub shows
+            nothing of the properties"
+    (let [results (get-in (run-report) [:runs 0 :results])]
+      (is (= ["session" nil nil] (map #(get-in % [:properties :minimumPrivilege]) results)))
+      (is (str/includes? (get-in (first results) [:message :text]) "any signed-in user")))))
 
 (deftest empty-findings-test
   (testing "a clean run still emits a valid report so GitHub clears resolved alerts"
@@ -153,7 +160,7 @@
 (deftest message-carries-reachability-test
   (testing "GitHub does not display result properties, so what reaches the finding goes in the message text"
     (let [msgs (mapv #(get-in % [:message :text]) (get-in (run-report) [:runs 0 :results]))]
-      (is (= "dynamic arg. Reachable from http, job." (first msgs)))
+      (is (= "dynamic arg. Reachable from http, job. Least privilege on the path: any signed-in user." (first msgs)))
       (is (= "dynamic arg. Not reachable from any known entry point; the outermost caller is metabase.b/outer, which nothing calls."
              (second msgs))))))
 

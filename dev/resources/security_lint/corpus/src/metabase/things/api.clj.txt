@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
+   [metabase.api.macros :as api.macros] [metabase.query-processor :as qp] [metabase.util.honey-sql-2 :as h2x]
    [metabase.request.core :as request]
    [metabase.things.db :as things.db]
    [metabase.util.log :as log]
@@ -165,6 +165,34 @@
   "Lists the most recent things."
   [_route _query {:keys [n]}]
   (t2/select :model/Thing {:limit [:inline n]}))
+
+;; a query declared as an open map reaches the query processor with whatever internal keys the client set
+(api.macros/defendpoint :post "/query"
+  "Runs an ad-hoc query."
+  [_route _query {:keys [query]} :- [:map [:query :map]]]
+  (qp/process-query query))
+
+;; the registry schema decodes, closes and strips it: the fix
+(api.macros/defendpoint :post "/query-typed"
+  "Runs an ad-hoc query."
+  [_route _query {:keys [query]} :- [:map [:query ::lib.schema/query]]]
+  (qp/process-query query))
+
+;; a body value of any shape under a cast: a map is formatted as SQL inside the CAST. The write is also
+;; unauthorized, which `write-reached-under-read-check-only` says.
+(api.macros/defendpoint :post "/:id/execute"
+  "Runs a thing's action with the caller's values."
+  [_route _query {:keys [value]} :- [:map [:value :any]]]
+  (things.db/update-thing! 1 {:value (h2x/cast :integer value)}))
+
+;; the request's own public_uuid kept by an allow-list that includes it: whoever can call the endpoint publishes the thing
+(api.macros/defendpoint :put "/:id/publish"
+  "Updates a thing's sharing columns from the body."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]] _query body]
+  (t2/update! :model/Thing id (select-keys body [:name :public_uuid])))
+
+;; an unanchored Malli :re: re-find accepts any string containing an offset, and the rest is the caller's
+(def ^:private ZoneOffset [:re #"[+-]\d{2}:\d{2}"])
 
 ;; dead code must not be scanned
 #_(javax.crypto.Cipher/getInstance "DES/ECB/PKCS5Padding")
