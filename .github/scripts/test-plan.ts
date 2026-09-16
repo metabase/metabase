@@ -4,7 +4,9 @@
  *
  * A plan is a plain JSON object that records, for one set of inputs, which
  * workflows run and which jobs inside them run — plus the reason for each
- * decision. CI builds the plan once, up front, and every later job reads it
+ * decision. A workflow may carry conditions of its own, which gate every job
+ * in it: fail them and nothing inside runs, pass them and each job is still
+ * asked its own question. CI builds the plan once, up front, and every later job reads it
  * instead of re-deriving the answer, so there is a single place where "does
  * this run?" is decided and a single artefact to look at when it surprises you.
  *
@@ -38,7 +40,7 @@ import {
   parseFilters,
 } from "./paths-filter";
 
-export const PLAN_VERSION = 2;
+export const PLAN_VERSION = 3;
 
 /**
  * Everything known without looking at the diff. Overrides decide from this
@@ -74,7 +76,12 @@ export type PlanInputs = PlanContext & {
 };
 
 export type JobPlan = { run: boolean; reason: string };
-export type WorkflowPlan = { run: boolean; jobs: Record<string, JobPlan> };
+export type WorkflowPlan = {
+  run: boolean;
+  /** Why the workflow as a whole came out the way it did. */
+  reason: string;
+  jobs: Record<string, JobPlan>;
+};
 
 export type TestPlan = {
   version: number;
@@ -96,8 +103,8 @@ export type Condition = {
 };
 
 /**
- * The blocks a job may carry, whatever else it has on it. `LADDER` is what
- * settles them against each other.
+ * The blocks a job or a workflow may carry, whatever else it has on it.
+ * `LADDER` is what settles them against each other.
  */
 export type Blocks = {
   "force-skip"?: Condition | null;
@@ -105,7 +112,7 @@ export type Blocks = {
   skip?: Condition | null;
 };
 
-/** An override gets the two blocks that are not workflow level settings. */
+/** An override gets the two blocks that make sense above a workflow. */
 export type Override = Pick<Blocks, "run" | "skip"> & {
   id: string;
   reason: string;
@@ -121,9 +128,26 @@ export type JobConfig = Blocks & {
   calls?: string;
 };
 
+/**
+ * A workflow: its own conditions, and the jobs inside it.
+ *
+ * The workflow's blocks are a gate on everything below them. They are asked
+ * first, and a job is only asked its own question once they have let it
+ * through — so `backend` can say "only when the backend changed" once, in one
+ * place, instead of every job in it repeating the same `paths:` line.
+ *
+ * A gate only ever holds jobs back. Matching a workflow's `run:` is permission
+ * for its jobs to be considered, never an instruction that they run: a job
+ * whose own conditions are unmet still skips. That is what keeps the gate a
+ * summary of its jobs rather than a second, competing answer.
+ */
+export type WorkflowConfig = Blocks & {
+  jobs: Record<string, JobConfig>;
+};
+
 export type PlanConfig = {
   overrides: Override[];
-  workflows: Record<string, Record<string, JobConfig>>;
+  workflows: Record<string, WorkflowConfig>;
 };
 
 // ---------------------------------------------------------------------------
@@ -309,11 +333,12 @@ function describe(
  *               outranks a plain skip.
  *   skip        the weakest, since it only ever says "no reason to bother".
  *
- * This ladder settles a workflow's own jobs against each other, and nothing
- * more: an override is decided first and outranks all of it. `override` marks
- * the blocks an override may use — `force-skip` is a workflow level setting,
- * and would be meaningless there anyway, since an override that wants to skip
- * something already has `skip` and already wins.
+ * The same ladder reads a job's blocks and the blocks of the workflow holding
+ * it; they differ only in what happens when nothing matches, and in a gate
+ * being unable to compel a job to run. Above both sits an override, which is
+ * decided first and outranks all of it. `override` marks the blocks an
+ * override may use — `force-skip` would be meaningless there, since an
+ * override that wants to skip something already has `skip` and already wins.
  */
 const LADDER = [
   { block: "force-skip", run: false, override: false },
@@ -529,7 +554,10 @@ export function parseConfig(source: string): PlanConfig {
       };
     }
 
-    workflows[workflow] = jobs;
+    workflows[workflow] = {
+      ...parseBlocks(rawWorkflow, `workflow "${workflow}"`, LADDER, true),
+      jobs,
+    };
   }
 
   validateCalls(workflows);
@@ -565,7 +593,7 @@ function parseCalls(
 
 /** A called workflow has to be described here, or nothing can plan its jobs. */
 function validateCalls(workflows: PlanConfig["workflows"]): void {
-  for (const [workflow, jobs] of Object.entries(workflows)) {
+  for (const [workflow, { jobs }] of Object.entries(workflows)) {
     for (const [job, options] of Object.entries(jobs)) {
       if (options.calls !== undefined && !workflows[options.calls]) {
         throw new Error(
@@ -576,8 +604,8 @@ function validateCalls(workflows: PlanConfig["workflows"]): void {
   }
 }
 
-/** Every `paths` group a job filters on, wherever in its config it sits. */
-function pathGroups(options: JobConfig): string[] {
+/** Every `paths` group a job or workflow filters on, wherever it sits. */
+function pathGroups(options: Blocks): string[] {
   return LADDER.flatMap(({ block }) => {
     const groups = options[block]?.predicates.paths;
 
@@ -589,15 +617,21 @@ function pathGroups(options: JobConfig): string[] {
 
 /** Catches a `paths` group that no longer exists in the paths-filter config. */
 export function validateGroups(config: PlanConfig, known: string[]): void {
-  for (const [workflow, jobs] of Object.entries(config.workflows)) {
-    for (const [job, options] of Object.entries(jobs)) {
-      for (const group of pathGroups(options)) {
-        if (!known.includes(group)) {
-          throw new Error(
-            `job "${workflow}/${job}" filters on unknown path group "${group}", expected one of ${known.join(", ")}`,
-          );
-        }
+  const check = (where: string, options: Blocks): void => {
+    for (const group of pathGroups(options)) {
+      if (!known.includes(group)) {
+        throw new Error(
+          `${where} filters on unknown path group "${group}", expected one of ${known.join(", ")}`,
+        );
       }
+    }
+  };
+
+  for (const [workflow, options] of Object.entries(config.workflows)) {
+    check(`workflow "${workflow}"`, options);
+
+    for (const [job, jobOptions] of Object.entries(options.jobs)) {
+      check(`job "${workflow}/${job}"`, jobOptions);
     }
   }
 }
@@ -798,15 +832,25 @@ function keyLines(lines: string[], { start, end }: Section): KeyLine[] {
  */
 export type JobText = { inline: string; body: string[] };
 
-/** What a config already says about each job, by workflow and then by job. */
-export type ExistingJobs = Record<string, Record<string, JobText>>;
+/**
+ * What a config already says about one workflow: the blocks written above its
+ * `jobs:`, and then each job.
+ */
+export type ExistingWorkflow = {
+  /** The workflow's own lines, `run:` and its conditions, verbatim. */
+  blocks: string[];
+  jobs: Record<string, JobText>;
+};
+
+/** What a config already says, by workflow and then by job. */
+export type ExistingConfig = Record<string, ExistingWorkflow>;
 
 /**
- * Every job an existing config describes, exactly as it is written. A job with
- * nothing on or under it is still the config saying something: that the job
- * runs unconditionally.
+ * Everything an existing config describes, exactly as it is written. A job
+ * with nothing on or under it is still the config saying something: that the
+ * job runs unconditionally.
  */
-export function existingJobs(config: string): ExistingJobs {
+export function existingConfig(config: string): ExistingConfig {
   const lines = config.split("\n");
   const section = workflowsSection(lines);
 
@@ -815,33 +859,72 @@ export function existingJobs(config: string): ExistingJobs {
   }
 
   const keys = keyLines(lines, { start: section.start + 1, end: section.end });
-  const existing: ExistingJobs = {};
-  // The jobs of the workflow the walk is inside, so a job never has to look
-  // its own workflow back up.
-  let jobs: Record<string, JobText> | null = null;
+  const existing: ExistingConfig = {};
+  // The workflow the walk is inside, so nothing below has to look it back up.
+  let current: ExistingWorkflow | null = null;
+  // A workflow's own conditions sit at the same depth as `jobs:`, and the
+  // conditions under them at the same depth as a job. Only once `jobs:` has
+  // been passed does a key that deep name a job rather than a `paths:` list.
+  let inJobs = false;
 
   keys.forEach((entry, index) => {
     if (entry.indent === WORKFLOW_INDENT) {
-      jobs = existing[entry.key] ??= {};
+      current = existing[entry.key] ??= { blocks: [], jobs: {} };
+      inJobs = false;
       return;
     }
 
-    if (entry.indent !== JOB_INDENT || jobs === null) {
+    if (current === null) {
+      return;
+    }
+
+    if (entry.indent === WORKFLOW_INDENT + 2 && entry.key === "jobs") {
+      // Everything between the workflow's name and its `jobs:` is the gate.
+      current.blocks = trimBlank(
+        lines.slice(sectionStart(keys, index), entry.line),
+      );
+      inJobs = true;
+      return;
+    }
+
+    if (entry.indent !== JOB_INDENT || !inJobs) {
       return;
     }
 
     // The job's body runs to the next job, the next workflow, or the end.
     const next = keys.slice(index + 1).find((key) => key.indent <= JOB_INDENT);
-    const body = lines.slice(entry.line + 1, next?.line ?? section.end);
+    const body = trimBlank(
+      lines.slice(entry.line + 1, next?.line ?? section.end),
+    );
 
-    while (body.at(-1)?.trim() === "") {
-      body.pop();
-    }
-
-    jobs[entry.key] = { inline: entry.inline, body };
+    current.jobs[entry.key] = { inline: entry.inline, body };
   });
 
   return existing;
+}
+
+/** Where the workflow holding `keys[index]` puts its first line. */
+function sectionStart(keys: KeyLine[], index: number): number {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const key = keys[i];
+
+    if (key && key.indent === WORKFLOW_INDENT) {
+      return key.line + 1;
+    }
+  }
+
+  return 0;
+}
+
+/** The lines, without the blank ones trailing them. */
+function trimBlank(lines: string[]): string[] {
+  const trimmed = [...lines];
+
+  while (trimmed.at(-1)?.trim() === "") {
+    trimmed.pop();
+  }
+
+  return trimmed;
 }
 
 function callsIn(body: string[] | undefined): string | undefined {
@@ -887,10 +970,16 @@ function jobLines(
 
 /** The `workflows:` block, as the config file spells it. */
 export function renderWorkflows(scaffold: Scaffold, config = ""): string {
-  const existing = existingJobs(config);
+  const existing = existingConfig(config);
 
   const blocks = Object.entries(scaffold).map(([workflow, jobs]) => {
-    const lines = [`${" ".repeat(WORKFLOW_INDENT)}${workflow}:`];
+    const before = existing[workflow];
+    // The workflow's own conditions are written by hand, like a job's, so they
+    // are copied across rather than regenerated.
+    const lines = [
+      `${" ".repeat(WORKFLOW_INDENT)}${workflow}:`,
+      ...(before?.blocks ?? []),
+    ];
 
     // A workflow whose every job is the plan's own machinery has nothing for
     // the config to decide, but it is still a workflow, and `jobs` is required.
@@ -903,7 +992,7 @@ export function renderWorkflows(scaffold: Scaffold, config = ""): string {
     lines.push(`${" ".repeat(WORKFLOW_INDENT + 2)}jobs:`);
 
     for (const { job, calls } of jobs) {
-      lines.push(...jobLines(job, calls, existing[workflow]?.[job]));
+      lines.push(...jobLines(job, calls, before?.jobs[job]));
     }
 
     return lines.join("\n");
@@ -937,7 +1026,7 @@ export function withWorkflows(config: string, block: string): string {
  */
 export function describeSync(
   scaffold: Scaffold,
-  existing: ExistingJobs,
+  existing: ExistingConfig,
 ): string[] {
   const changes: string[] = [];
 
@@ -949,7 +1038,7 @@ export function describeSync(
     }
 
     for (const { job, calls } of jobs) {
-      const text = before?.[job];
+      const text = before?.jobs[job];
 
       if (text === undefined) {
         changes.push(`+ job ${workflow}/${job}`);
@@ -965,7 +1054,7 @@ export function describeSync(
       }
     }
 
-    for (const job of Object.keys(before ?? {})) {
+    for (const job of Object.keys(before?.jobs ?? {})) {
       if (!jobs.some((entry) => entry.job === job)) {
         changes.push(`- job ${workflow}/${job}`);
       }
@@ -1013,10 +1102,19 @@ export function selectOverride(
   return null;
 }
 
-export function planJob(
-  options: JobConfig,
+/**
+ * What one set of blocks decides, on the ladder, before anything outside them
+ * is taken into account.
+ *
+ * A job and the workflow holding it are read the same way — same blocks, same
+ * order, same reasons — and differ only in `unconditional`, what it means to
+ * have said nothing at all.
+ */
+function decide(
+  blocks: Blocks,
   facts: Facts,
   override: Decision | null,
+  unconditional: string,
 ): JobPlan {
   // Overrides always take precedence over every workflow level setting, which
   // is the outer rule: `force-skip` tops the ladder below, not this.
@@ -1024,11 +1122,11 @@ export function planJob(
     return { run: override.run, reason: override.reason };
   }
 
-  const verdict = weigh(options, facts);
+  const verdict = weigh(blocks, facts);
 
   if (verdict) {
     const reason = `${verdict.block} condition met: ${describeMatched(verdict.condition, verdict.hits, facts)}`;
-    const loser = overruled(options, verdict, facts);
+    const loser = overruled(blocks, verdict, facts);
 
     return {
       run: verdict.run,
@@ -1040,14 +1138,34 @@ export function planJob(
 
   // A `run:` block is the condition for running, so failing to match it is a
   // skip. With no `run:` block at all there was never anything to satisfy.
-  if (options.run) {
+  if (blocks.run) {
     return {
       run: false,
-      reason: `no run condition met: ${describeCondition(options.run)}`,
+      reason: `no run condition met: ${describeCondition(blocks.run)}`,
     };
   }
 
-  return { run: true, reason: "no conditions, always runs" };
+  return { run: true, reason: unconditional };
+}
+
+export function planJob(
+  options: JobConfig,
+  facts: Facts,
+  override: Decision | null,
+): JobPlan {
+  return decide(options, facts, override, "no conditions, always runs");
+}
+
+/**
+ * Whether a workflow's own conditions let its jobs be considered at all.
+ *
+ * This is only ever a veto. An open gate hands each job back its own question,
+ * so a workflow saying `run: paths: backend_all` does not drag every job in it
+ * along with the backend — it stops asking them anything when the backend is
+ * untouched, and otherwise leaves them exactly as they were.
+ */
+export function gateWorkflow(config: WorkflowConfig, facts: Facts): JobPlan {
+  return decide(config, facts, null, "no workflow conditions");
 }
 
 /** The id the plan carries when everything ran because the diff failed. */
@@ -1100,9 +1218,9 @@ function planWorkflows(
       );
     }
 
-    const jobConfigs = config.workflows[workflow];
+    const workflowConfig = config.workflows[workflow];
 
-    if (!jobConfigs) {
+    if (!workflowConfig) {
       throw new Error(
         `workflow "${workflow}" is called but not described in the config`,
       );
@@ -1110,9 +1228,24 @@ function planWorkflows(
 
     calling.push(workflow);
 
+    // An override settles every job in every workflow on its own, so there is
+    // nothing left for a gate to hold back and it is not consulted.
+    const gate = override ? null : gateWorkflow(workflowConfig, facts);
+    const closed = gate !== null && !gate.run;
+
     const jobs: Record<string, JobPlan> = {};
 
-    for (const [job, options] of Object.entries(jobConfigs)) {
+    for (const [job, options] of Object.entries(workflowConfig.jobs)) {
+      if (closed) {
+        // Named so the reason reads the same wherever the job is looked up,
+        // rather than making sense only next to the workflow it belongs to.
+        jobs[job] = {
+          run: false,
+          reason: `the ${workflow} workflow is skipped: ${gate.reason}`,
+        };
+        continue;
+      }
+
       jobs[job] = options.calls
         ? planCall(options.calls, planWorkflow(options.calls))
         : planJob(options, facts, override);
@@ -1120,8 +1253,15 @@ function planWorkflows(
 
     calling.pop();
 
+    const run = Object.values(jobs).some((plan) => plan.run);
+
     const workflowPlan: WorkflowPlan = {
-      run: Object.values(jobs).some((plan) => plan.run),
+      run,
+      reason: closed
+        ? gate.reason
+        : run
+          ? "a job in it has work to do"
+          : "no job in it has work to do",
       jobs,
     };
 
@@ -1635,7 +1775,9 @@ function describePlan(plan: TestPlan): string {
   );
 
   for (const [workflow, workflowPlan] of Object.entries(plan.workflows)) {
-    lines.push(`${workflowPlan.run ? "RUN " : "SKIP"} ${workflow}`);
+    lines.push(
+      `${workflowPlan.run ? "RUN " : "SKIP"} ${workflow.padEnd(width - 2)} ${workflowPlan.reason}`,
+    );
 
     for (const [job, jobPlan] of Object.entries(workflowPlan.jobs)) {
       lines.push(
@@ -1700,11 +1842,10 @@ async function executeCommand(options: Options): Promise<number> {
   const decision = job
     ? lookupJob(plan, workflow, job)
     : lookupWorkflow(plan, workflow);
-  const reason = "reason" in decision ? decision.reason : "any job runs";
 
   console.log(String(decision.run));
   console.error(
-    `${workflow}${job ? `/${job}` : ""}: ${decision.run ? "run" : "skip"} (${reason})`,
+    `${workflow}${job ? `/${job}` : ""}: ${decision.run ? "run" : "skip"} (${decision.reason})`,
   );
 
   writeOutput("run", String(decision.run));
@@ -1757,7 +1898,7 @@ async function syncCommand(options: Options): Promise<number> {
   // next run rather than by the person doing the syncing.
   parseConfig(updated);
 
-  const changes = describeSync(scaffold, existingJobs(config));
+  const changes = describeSync(scaffold, existingConfig(config));
 
   console.error(changes.length > 0 ? changes.join("\n") : "already in sync");
 
@@ -1890,8 +2031,9 @@ export const COMMANDS: Record<string, Command> = {
       "Reads a workflow file and every workflow it calls, however deep the",
       "calls go, and writes out the `workflows:` block they describe: each",
       "job, and, for a job that is a call, the workflow it calls. Conditions",
-      "already in the config are kept exactly as they are, comments and all",
-      "— the workflow files say what jobs there are, and you say when they",
+      "already in the config are kept exactly as they are, comments and all,",
+      "a workflow's own gate included — the workflow files say what jobs",
+      "there are, and you say when they",
       "run. The jobs that build the plan and check it afterwards are left",
       "out, since the plan cannot govern them. Prints the updated config,",
       "and lists what changed on stderr.",
