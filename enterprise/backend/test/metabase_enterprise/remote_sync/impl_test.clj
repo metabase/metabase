@@ -447,24 +447,24 @@
       (is (= :error (:status result)))
       (is (re-find #"Network error" (:message result))))))
 
-(deftest import!-calls-update-progress-with-expected-values-test
-  (testing "import! calls update-progress! with expected progress values"
+(deftest import!-reports-progress-checkpoints-test
+  (testing "a first full import writes only the forced checkpoints when the per-entity writes fall inside the throttle window"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
       (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
-        (let [mock-source (test-helpers/create-mock-source)
+        (let [mock-source    (test-helpers/create-mock-source)
               progress-calls (atom [])]
           (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
                                       (fn [task-id progress]
-                                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
+                                        (swap! progress-calls conj {:task-id task-id :progress progress}))
+                                      ;; a frozen clock keeps every per-entity write inside the throttle window
+                                      remote-sync.task/make-progress-reporter
+                                      (let [real (mt/original-fn #'remote-sync.task/make-progress-reporter)]
+                                        (fn [task-id opts] (real task-id (assoc opts :now-fn (constantly 0)))))]
             (let [result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result)))
-              (is (= 5 (count @progress-calls)))
-              (is (= task-id (:task-id (first @progress-calls))))
-              (is (= task-id (:task-id (second @progress-calls))))
-              (is (= task-id (:task-id (nth @progress-calls 2))))
-              (is (= 0.7 (:progress (nth @progress-calls 2))))
-              (is (= 0.8 (:progress (nth @progress-calls 3))))
-              (is (= 0.95 (:progress (nth @progress-calls 4)))))))))))
+              (is (every? #(= task-id (:task-id %)) @progress-calls))
+              (is (= [0.02 0.05 0.7 0.75 0.9 0.95] (mapv :progress @progress-calls))
+                  "conflict scan, load start, load done, reconcile start, commit, reindex"))))))))
 
 (deftest import!-runs-a-single-reindex-inside-the-task-test
   (testing "a full import runs exactly one reindex, synchronous on H2 and asynchronous elsewhere"

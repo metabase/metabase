@@ -1,15 +1,14 @@
 (ns metabase-enterprise.remote-sync.source.ingestable-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as rst]
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.audit-app.events.audit-log]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as mt]
-   [metabase.users.settings]
-   [toucan2.core :as t2]))
+   [metabase.users.settings]))
 
 (comment metabase.audit-app.events.audit-log/keep-me
          metabase.users.settings/keep-me)
@@ -66,50 +65,31 @@
           (is (= 3 (count @calls)) "Callback should be called three times"))))))
 
 (deftest wrap-progress-ingestable-test
-  (testing "wrap-progress-ingestable creates CallbackIngestable with progress tracking"
-    ;; This test cannot use with-temp because the callback uses a separate connection to make
-    ;; sure it is updating progress outside of the transaction serdes is using
-    (mt/with-model-cleanup [:model/User :model/RemoteSyncTask]
-      (let [user (first (t2/insert-returning-instances! :model/User {:first_name "Test"
-                                                                     :last_name "User"
-                                                                     :email "test2@example.com"
-                                                                     :password "password123"}))
-            task (first (t2/insert-returning-instances! :model/RemoteSyncTask {:sync_task_type "import"
-                                                                               :initiated_by (:id user)}))
-            task-id (:id task)
-            mock-source (test-helpers/create-mock-source)
-            base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
-            normalize 100]
-        (testing "creates a CallbackIngestable"
-          (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)]
-            (is (instance? metabase_enterprise.remote_sync.source.ingestable.CallbackIngestable wrapped)
-                "Should return CallbackIngestable instance")))
-        (testing "updates task progress in database as items are ingested"
-          (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)
-                paths (serialization/ingest-list wrapped)
-                total-paths (count paths)]
-            (is (seq paths) "Should have paths to ingest")
-            (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
-              (is (nil? (:progress initial-task)) "Progress should be nil initially"))
-            (serialization/ingest-one wrapped (first paths))
-            (let [task-after-first (t2/select-one :model/RemoteSyncTask :id task-id)]
-              (is (some? (:progress task-after-first)) "Progress should be updated after first item")
-              (is (< (abs (- (:progress task-after-first) (double (* (/ 1 total-paths) normalize)))) 0.01)
-                  "Progress should reflect one item ingested")
-              (is (some? (:last_progress_report_at task-after-first))
-                  "last_progress_report_at should be set"))
-            (serialization/ingest-one wrapped (second paths))
-            (let [task-after-second (t2/select-one :model/RemoteSyncTask :id task-id)]
-              (is (< (abs (- (:progress task-after-second) (double (* (/ 2 total-paths) normalize)))) 0.01)
-                  "Progress should reflect two items ingested"))))
-        (testing "progress reaches normalize value when all items ingested"
-          (let [wrapped (ingestable/wrap-progress-ingestable task-id normalize base-ingestable)
-                paths (serialization/ingest-list wrapped)]
-            (doseq [path paths]
-              (serialization/ingest-one wrapped path))
-            (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
-              (is (< (abs (- (:progress final-task) (double normalize))) 0.01)
-                  "Progress should equal normalize value when all items ingested"))))))))
+  (let [mock-source     (test-helpers/create-mock-source)
+        base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
+        paths           (serialization/ingest-list base-ingestable)
+        total           (count paths)
+        approx=         (fn [expected actual] (< (abs (- expected actual)) 1e-9))]
+    (is (pos? total))
+    (testing "the n-th of N ingested entities reports lo + n/N * (hi - lo) through the reporter"
+      (let [writes  (atom [])
+            report  (rst/make-progress-reporter 1 {:throttle-ms 0 :write-fn (fn [f] (swap! writes conj f))})
+            wrapped (ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)]
+        (is (instance? metabase_enterprise.remote_sync.source.ingestable.CallbackIngestable wrapped))
+        (doseq [path paths]
+          (serialization/ingest-one wrapped path))
+        (is (= total (count @writes)) "one report per ingested entity")
+        (is (every? true? (map approx=
+                               (map #(+ 0.05 (* (/ % total) 0.65)) (range 1 (inc total)))
+                               @writes)))
+        (is (= 0.7 (last @writes)) "the last entity lands on hi exactly")))
+    (testing "a failing report is logged and the entity is still ingested"
+      (let [wrapped (ingestable/wrap-progress-ingestable (fn [_] (throw (RuntimeException. "db down"))) [0.0 1.0] base-ingestable)]
+        (is (some? (serialization/ingest-one wrapped (first paths))))))
+    (testing "a cancellation raised by the report propagates and stops the ingestion"
+      (let [wrapped (ingestable/wrap-progress-ingestable (fn [_] (throw (ex-info "cancelled" {:cancelled? true}))) [0.0 1.0] base-ingestable)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cancelled"
+                              (serialization/ingest-one wrapped (first paths))))))))
 
 (deftest root-dependency-ingestable-test
   (testing "RootDependencyIngestable filters items based on root dependencies"
