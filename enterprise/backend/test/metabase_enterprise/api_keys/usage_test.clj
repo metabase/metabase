@@ -233,6 +233,19 @@
             (is (= 255 (count (:route_template (row-for (subs route 0 255))))))
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template (subs route 0 255)))))))))
 
+(deftest record-api-key-usage!-unmatched-route-is-recorded-test
+  (testing "a nil route-template is recorded with the unmatched sentinel, not dropped"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; a dedicated api-key-id, since the stored route_template is the sentinel rather than
+        ;; `route` — this test can't find its row by route like the others do
+        (let [api-key-id 424242]
+          (try
+            (record! (request-info (unique-route) :api-key-id api-key-id :route-template nil))
+            (is (= "(unmatched)"
+                   (:route_template (t2/select-one :model/ApiKeyUsageLog :api_key_id api-key-id))))
+            (finally (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id))))))))
+
 (deftest record-api-key-usage!-drops-incomplete-log-row-test
   (testing "a row missing a NOT NULL value is dropped rather than queued, so it can't sink its batch"
     (mt/with-premium-features #{:audit-app}

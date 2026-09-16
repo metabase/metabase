@@ -258,29 +258,36 @@
 (defn log-api-call
   "Logs info about request such as status code, number of DB calls, and time taken to complete. Also the write point
   for API-key usage analytics — see [[record-api-key-usage!]]; requests that didn't authenticate with an API key are
-  unaffected."
+  unaffected.
+
+  Console logging and API-key usage recording are independent concerns with independent eligibility: a request
+  suppressed from the console log (health checks, `/api/logger/logs`) still has its usage recorded if it
+  authenticated with an API key, and vice versa. Neither gates the other."
   [handler]
   (fn [request respond raise]
-    (if-not (should-log-request? request)
-      ;; non-API call or health or logs call, don't log it
-      (handler request respond raise)
-      ;; API call, log info about it
-      (t2/with-call-count [call-count-fn]
-        (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
-          (let [;; only API-key requests need to know which route matched, and only they pay for finding out
-                carrier    (when (api-key-request? request)
-                             (volatile! nil))
-                request    (cond-> request
-                             carrier (assoc api.macros/route-template-carrier-key carrier))
-                start-time (u/start-timer)
-                respond*   (fn [response]
-                             (record-api-key-usage! request response carrier start-time)
-                             (logged-response {:request       request
-                                               :response      response
-                                               :start-time    start-time
-                                               :call-count-fn call-count-fn
-                                               :diag-info-fn  diag-info-fn
-                                               :log-context   {:metabase-user-id (or (:metabase-user-id (meta response))
-                                                                                     api/*current-user-id*)}})
-                             (respond response))]
-            (handler request respond* raise)))))))
+    (let [should-log? (should-log-request? request)
+          api-key?    (api-key-request? request)]
+      (if-not (or should-log? api-key?)
+        ;; neither concern applies — skip the wrapping entirely
+        (handler request respond raise)
+        (t2/with-call-count [call-count-fn]
+          (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
+            (let [;; only API-key requests need to know which route matched, and only they pay for finding out
+                  carrier    (when api-key?
+                               (volatile! nil))
+                  request    (cond-> request
+                               carrier (assoc api.macros/route-template-carrier-key carrier))
+                  start-time (u/start-timer)
+                  respond*   (fn [response]
+                               (when api-key?
+                                 (record-api-key-usage! request response carrier start-time))
+                               (when should-log?
+                                 (logged-response {:request       request
+                                                   :response      response
+                                                   :start-time    start-time
+                                                   :call-count-fn call-count-fn
+                                                   :diag-info-fn  diag-info-fn
+                                                   :log-context   {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                                         api/*current-user-id*)}}))
+                               (respond response))]
+              (handler request respond* raise))))))))

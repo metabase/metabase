@@ -118,11 +118,14 @@
          (is (= rows-before (t2/count :model/ApiKeyUsageLog)))
          (is (empty? (rows-for! api-key-id))))))))
 
-(deftest unmatched-route-is-not-recorded-test
-  (testing "a request that matches no endpoint has no route template, so the row is dropped rather than written"
+(deftest unmatched-route-is-recorded-test
+  (testing "a request that matches no endpoint is still a real event — recorded with the unmatched sentinel,
+           not dropped"
     (do-with-api-key!
      (fn [unmasked-key api-key-id]
        (client/client :get 404 "user/current/not-a-real-route" (api-key-headers unmasked-key))
-       (is (empty? (rows-for! api-key-id)))
-       (testing "but the key is still marked as used — the request did authenticate"
+       (let [[row] (rows-for! api-key-id)]
+         (is (= "(unmatched)" (:route_template row)))
+         (is (= 404 (:status row))))
+       (testing "and the key is still marked as used — the request did authenticate"
          (is (some? (last-used-at! api-key-id))))))))
