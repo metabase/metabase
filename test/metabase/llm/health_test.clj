@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.llm.health :as llm.health]
+   [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]))
 
 (set! *warn-on-reflection* true)
@@ -51,12 +52,12 @@
     (testing "a transient failure stops counting once it is old enough, so recovery needs no intervention"
       (llm.health/record-exception! "expiring-conn" (ex-info "bad gateway" {:status 502}))
       (is (some? (llm.health/failure "expiring-conn")))
-      (with-redefs [llm.health/now-ms (constantly an-hour-from-now)]
+      (mt/with-dynamic-fn-redefs [llm.health/now-ms (constantly an-hour-from-now)]
         (is (nil? (llm.health/failure "expiring-conn")))
         (is (true? (llm.health/healthy? "expiring-conn")))))
     (testing "a fatal failure does not, because nothing about waiting fixes a rejected key"
       (llm.health/record-exception! "permanent-conn" (ex-info "invalid x-api-key" {:status 401}))
-      (with-redefs [llm.health/now-ms (constantly an-hour-from-now)]
+      (mt/with-dynamic-fn-redefs [llm.health/now-ms (constantly an-hour-from-now)]
         (is (some? (llm.health/failure "permanent-conn")))))))
 
 (deftest record-success-clears-test
