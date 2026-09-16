@@ -129,21 +129,22 @@
 (mu/defn required
   "The `capability` of `provider`, which every provider that serves requests must have.
 
-  No return schema: what a capability yields depends on which one was asked for — a var holding a fn for
-  `:stream`, a var holding a map for `:supported-models`. Naming that would mean a getter per capability
-  rather than one generic lookup."
+  No return schema: what a capability yields depends on which one was asked for — a fn for `:stream`, a
+  map for `:supported-models`. Naming that would mean a getter per capability rather than one generic
+  lookup."
   [provider   :- ProviderType
    capability :- Capability]
-  (or (get (adapter provider) capability)
-      (throw (ex-info (str "LLM provider " provider " has no " capability)
-                      {:provider provider :capability capability}))))
+  (if-let [capability-var (get (adapter provider) capability)]
+    @capability-var
+    (throw (ex-info (str "LLM provider " provider " has no " capability)
+                    {:provider provider :capability capability}))))
 
 (mu/defn optional
   "The `capability` of `provider`, or nil where it has none. Still throws for a provider with no row at all:
   a new adapter that forgets to register must fail rather than read as one that simply has no models."
   [provider   :- ProviderType
    capability :- Capability]
-  (get (adapter provider) capability))
+  (some-> (get (adapter provider) capability) deref))
 
 (mu/defn registered? :- :boolean
   "Whether `provider` has a row. For a caller holding a type that may not name a provider at all, rather
