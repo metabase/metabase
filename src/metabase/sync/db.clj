@@ -44,7 +44,7 @@
 (mu/defn database-on-demand-flags
   "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn :is_on_demand :model/Database :id [:in (mapv long database-ids)]))
+  (t2/select-pk->fn :is_on_demand :model/Database {:where [:in :id (mapv long database-ids)]}))
 
 (mu/defn synced-user-database-exists?
   "Whether any non-sample, non-audit Database has completed its initial sync."
@@ -173,7 +173,8 @@
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-pk->fn :db_id :model/Table {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                         :where [:in :id (mapv long table-ids)]}))
 
 (mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
@@ -196,8 +197,8 @@
 (mu/defn sync-table-ids
   "The IDs of the synced Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-vec :id :model/Table :db_id (long database-id) {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                                :where sync-tables-clause}))
+  (t2/select-fn-vec :id :model/Table {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                      :where [:and sync-tables-clause [:= :db_id (long database-id)]]}))
 
 (mu/defn sync-table-schemas
   "The distinct `:schema` rows of the synced Tables of the Database with `database-id`."
@@ -219,9 +220,9 @@
    schema-names :- [:maybe [:or [:set [:maybe :string]] [:sequential [:maybe :string]]]]
    table-names  :- [:maybe [:or [:set :string] [:sequential :string]]]]
   (t2/reducible-select :model/Table
-                       :db_id (long database-id)
                        {:from     [(warehouse-schema-overlay/table-query {:user-settings? false})]
                         :where    [:and sync-tables-clause
+                                   [:= :db_id (long database-id)]
                                    (when (seq schema-names) [:in :schema [:auto/param schema-names]])
                                    (when (seq table-names) [:in :name [:auto/param table-names]])]
                         :order-by [[:schema :asc] [:name :asc]]}))
@@ -441,8 +442,11 @@
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select-pks-vec :model/Field :name [:in [:auto/param field-names]] :table_id (long table-id) :parent_id nil
-                     {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-pks-vec :model/Field {:from  [(warehouse-schema-overlay/field-query)]
+                                   :where [:and
+                                           [:in :name [:auto/param field-names]]
+                                           [:= :table_id (long table-id)]
+                                           [:= :parent_id nil]]}))
 
 (mu/defn top-level-field-ids-by-schema-table-and-name-reducible
   "Reducible `:id` rows of the top-level Fields of the Database with `database-id` matching one of the
@@ -677,8 +681,9 @@
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/reducible-select :model/Table :id [:in (mapv long table-ids)] {:from     [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                                     :order-by [[:schema :asc] [:name :asc]]}))
+  (t2/reducible-select :model/Table {:from     [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                     :where    [:in :id (mapv long table-ids)]
+                                     :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn update-field-data-sensitivity!
   "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`, returning the number updated."
