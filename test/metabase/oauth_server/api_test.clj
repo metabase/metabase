@@ -373,6 +373,8 @@
 (def ^:private invalid-target-description
   "The resource parameter must be an absolute URI without a fragment.")
 
+(def ^:private invalid-token-request-description "The token request is invalid.")
+
 (deftest authorize-invalid-client-id-test
   (testing "GHY-4542: a missing or unknown client identifier is answered with a 400 in the user's browser, with no
             redirect anywhere, even when the request also carries a second error."
@@ -1144,6 +1146,51 @@
     (client/client :post expected-status "oauth/revoke"
                    {:request-options request-options}
                    params)))
+
+(deftest token-refresh-resource-outside-the-grant-keeps-the-generic-description-test
+  (testing "GHY-4542: oidc-provider raises `invalid_target` for a refresh whose `resource` is not in the original
+            grant, carrying no description of its own. That is a well-formed absolute URI, so answering it with the
+            description for an unparseable one would send the client chasing a syntax problem it does not have: only
+            this endpoint's own resource check knows the URI was malformed."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id client_secret]} (create-test-client!)
+              granted-resource (str "http://localhost:3000" (mcp/mcp-canonical-path))
+              consent-resp     (authorize-request! 200
+                                                   :client_id     client_id
+                                                   :redirect_uri  "https://example.com/callback"
+                                                   :response_type "code"
+                                                   :scope         "agent:content:read"
+                                                   :resource      granted-resource
+                                                   :state         "test-state")
+              body             (:body consent-resp)
+              decision         (form-post-decision!
+                                :crowberto
+                                {:approved      "true"
+                                 :csrf_token    (extract-csrf-token-from-consent body)
+                                 :params_sig    (extract-params-sig-from-consent body)
+                                 :client_id     client_id
+                                 :redirect_uri  "https://example.com/callback"
+                                 :response_type "code"
+                                 ;; the MCP resource accepts it, so narrowing leaves it as requested
+                                 :scope         "agent:content:read"
+                                 :resource      granted-resource
+                                 :state         "test-state"}
+                                302
+                                :csrf-cookie (extract-csrf-cookie consent-resp))
+              tokens           (token-request! {:grant_type   "authorization_code"
+                                                :code         (extract-query-param
+                                                               (get-in decision [:headers "Location"]) "code")
+                                                :redirect_uri "https://example.com/callback"}
+                                               :authorization (basic-auth-header client_id client_secret))]
+          (is (some? (:refresh_token tokens)) "the original grant carries the resource it was issued for")
+          (is (= {:error             "invalid_target"
+                  :error_description invalid-token-request-description}
+                 (token-request! {:grant_type    "refresh_token"
+                                  :refresh_token (:refresh_token tokens)
+                                  :resource      "https://other.example.com/api/mcp"}
+                                 :expected-status 400
+                                 :authorization (basic-auth-header client_id client_secret)))))))))
 
 (deftest token-refresh-revoked-token-test
   (testing "Refresh token grant with revoked refresh token returns error"

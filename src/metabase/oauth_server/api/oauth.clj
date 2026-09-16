@@ -169,25 +169,29 @@
 
 ;;; -------------------------------------------- Resource indicators ----------------------------------------------
 
-(defn- unparseable-resource?
-  "True when any `resource` indicator (a string, or a sequence of strings) is not syntactically a URI."
+(defn- malformed-resource?
+  "True when any `resource` indicator (a string, or a sequence of strings) is not an absolute URI without a fragment,
+   as RFC 8707 section 2 requires."
   [resource]
   ;; oidc-provider validates resource indicators by constructing a `java.net.URI`, so an unparseable one reaches the
-  ;; endpoints as a URISyntaxException rather than the ex-info they catch. Checked here before the library sees it.
+  ;; endpoints as a URISyntaxException rather than the ex-info they catch. Checked here before the library sees it,
+  ;; which also lets every malformed indicator be answered with the description saying what a valid one looks like.
   (boolean
    (some (fn [r]
            (try
-             (URI. (str r))
-             false
+             (let [uri (URI. (str r))]
+               (or (not (.isAbsolute uri))
+                   (some? (.getFragment uri))))
              (catch URISyntaxException _
                true)))
          (if (string? resource) [resource] resource))))
 
-(defn- check-resource-parseable!
-  "Throw the RFC 8707 `invalid_target` error when any `resource` indicator is not syntactically a URI."
+(defn- check-resource-indicators!
+  "Throw the RFC 8707 `invalid_target` error when any `resource` indicator is malformed."
   [resource]
-  (when (unparseable-resource? resource)
-    (throw (ex-info "resource is not a URI" {:error "invalid_target"}))))
+  (when (malformed-resource? resource)
+    (throw (ex-info "resource is not a valid indicator" {:error             "invalid_target"
+                                                         :error-description invalid-target-description}))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -368,12 +372,10 @@
         :else                           "invalid_request")))
 
 (defn- error-description
-  "The `error_description` for an exception's ex-data: the one it carries, else the fixed description for its `error`
-   code, else `fallback`."
-  [data error fallback]
+  "The `error_description` for an exception's ex-data: the one it carries, else `fallback`."
+  [data fallback]
   (or (:error-description data)
       (:error_description data)
-      (when (= error "invalid_target") invalid-target-description)
       fallback))
 
 (defn- scope-to-grant
@@ -417,7 +419,7 @@
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
    cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and `:error-description`."
   [provider query-params request]
-  (let [_            (check-resource-parseable! (:resource query-params))
+  (let [_            (check-resource-indicators! (:resource query-params))
         ;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
         ;; then reported as `invalid_scope` by [[scope-to-grant]].
         parsed       (oidc/parse-authorization-request provider
@@ -475,8 +477,7 @@
                 {:status  400
                  :headers {"Content-Type" "application/json"}
                  :body    {:error             error
-                           :error_description (error-description data error
-                                                                 invalid-authorization-request-description)}}))))
+                           :error_description (error-description data invalid-authorization-request-description)}}))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"
@@ -516,7 +517,7 @@
                  :body    {:error "csrf_validation_failed"}}
                 (let [approved (= "true" (str (:approved body)))]
                   (try
-                    (check-resource-parseable! (:resource auth-params))
+                    (check-resource-indicators! (:resource auth-params))
                     (let [parsed        (oidc/parse-authorization-request provider auth-params)
                           ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                           ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
@@ -570,7 +571,7 @@
       (or (when-let [provider (oauth-server/get-provider)]
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
-                (check-resource-parseable! (:resource body))
+                (check-resource-indicators! (:resource body))
                 (let [response (oidc/token-request provider body authorization-header)]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
@@ -586,8 +587,7 @@
                                "Cache-Control" "no-store"
                                "Pragma"        "no-cache"}
                      :body    {:error             error
-                               :error_description (error-description data error
-                                                                     invalid-token-request-description)}})))))
+                               :error_description (error-description data invalid-token-request-description)}})))))
           {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :post "/revoke"
