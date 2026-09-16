@@ -19,51 +19,54 @@ The descriptions and argument notes here are exactly what your agent sees (which
 
 The tables don't mark arguments as required; each tool's description says what a call needs. Nested objects show up as `object`, and the argument's note describes their shape. If your client marks every argument as required, that's the strict-schema convention: send `null` for anything the description doesn't call for.
 
+Tools are listed alphabetically. A tool marked interactive renders a chart inline in your AI client. It only works in (and only shows up in) clients that support inline visualizations. Your client may also list a helper tool that charts call for themselves; it isn't documented here.
+
 Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. By default, handles expire after 24 hours.
 
 Your agent will use `execute_query` for anything Metabase's query language can express (counts, sums, grouping, filtering, joins) and `execute_sql` for the rest (window functions, CTEs, engine-specific functions), or when you ask for SQL outright.
 
 The query tools take a `row_limit`. That's the page size, not a cap: longer results come back marked truncated, and `execute_query` returns a cursor for the next page.
 
-## Interactive tools
+## Alert write
 
-These render inline charts in your AI client. They only work in clients that support inline visualizations. Your client may also list a helper tool that charts call for themselves; it isn't documented here.
+- Tool name: `alert_write`
+- Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
+- Creates or changes content.
 
-### Render drill through
-
-- Tool name: `render_drill_through`
-- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only.
-
-Render the drill-through visualization the user just navigated into. Use this — not an execute tool — when the user asks to show a result and their message carries a handle UUID; it is the exact follow-up for the phrase `Show me the result`. Pass that UUID through as query_handle without running the query yourself. Like visualize_query, this renders a lightweight inline visualization and is the final answer: do not restate the numbers with an execute tool, and do not tell the user to change display types or open a Metabase panel or sidebar.
+Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition. method: "create" requires card_id (the question) and schedule; method: "update" requires id and changes only the fields you pass. schedule is {schedule_type: "hourly" | "daily" | "weekly" | "monthly", schedule_hour? (0-23, required for daily, weekly, and monthly), schedule_minute? (0-59, hourly only), schedule_day? ("mon"…"sun", required for weekly, and picks the weekday for a monthly "first" or "last" frame), schedule_frame? ("first" | "mid" | "last", required for monthly — "mid" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: "has_result" (default) | "goal_above" | "goal_below", send_once?: boolean} — the goal conditions need a goal line on the question's chart, and send_once pauses the alert (active: false) after it first fires. Delivery is one channel: "email" (default) with recipients, a list mixing user ids and email addresses that defaults to you, or "slack" with slack_channel, a channel name like "#data-team" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing its delivery or its schedule, resuming a paused one, or clearing send_once additionally requires the agent:query:run scope — the alert runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard.
 
 Arguments:
 
-| Argument       | Type   | Description                                                                                                      |
-| -------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
-| `query_handle` | string | The handle UUID from the user's drill-through message. Pass it through verbatim — do not run the query yourself. |
+| Argument        | Type              | Description                                                                                                                                                                                                                                       |
+| --------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `active`        | boolean           | false pauses the alert, true resumes it (resuming needs the agent:query:run scope). Defaults to true on create. Alerts have no archived state and cannot be deleted here.                                                                         |
+| `card_id`       | integer or string | Numeric id of the saved question the alert runs. Fixed at creation. 21-character entity_id of the saved question the alert runs. Fixed at creation.                                                                                               |
+| `channel`       | string            | One of: `email`, `slack`. Where to deliver: "email" (default) with `recipients`, or "slack" with `slack_channel`. Passing any of channel, slack_channel, or recipients on update replaces the alert's delivery; omit all three to leave it alone. |
+| `condition`     | object            | When the alert sends. Defaults to sending whenever the question returns rows; the goal conditions need a goal line on the question's chart.                                                                                                       |
+| `id`            | integer or string | Numeric id of the alert to update. The numeric id as a string, for clients that send every id as a string. Alerts have no entity_id.                                                                                                              |
+| `method`        | string            | One of: `create`, `update`. "create" makes a new alert (requires `card_id` and `schedule`); "update" edits the one named by `id`, changing only the fields you pass.                                                                              |
+| `recipients`    | array             | Who gets the email: numeric user ids, or email addresses. Defaults to you. On update this replaces the current list. Not used for channel "slack". Numeric id of a Metabase user. An email address.                                               |
+| `schedule`      | object            | When the question runs, in the instance's report time zone. Required on create; never a cron string.                                                                                                                                              |
+| `slack_channel` | string            | Slack channel name to post to, e.g. "#data-team". Required for channel "slack".                                                                                                                                                                   |
 
-### Visualize query
+## Bookmark content
 
-- Tool name: `visualize_query`
-- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only.
+- Tool name: `bookmark_content`
+- Permission scope: `agent:content:write` — Create, edit and trash Metabase content
+- Creates or changes content.
+- Running it again with the same arguments has the same effect as running it once.
 
-Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). The chart type is inferred from the result shape. Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI.
+Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller. The item's name comes back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement. This response is the only place bookmark state is reported: no tool reads a bookmark back, search and get_content carry no bookmarked field, and there is no bookmark listing — so keep this result if you need it later rather than spending calls looking for a read path.
 
 Arguments:
 
-| Argument       | Type   | Description                                                                                                                                                                                                                                                   |
-| -------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prompt`       | string | The user's original request, recorded with a freshly minted handle for the iframe's feedback flow. Ignored alongside `query_handle`: the stored prompt is fixed at mint time and there is no update path, so pass `prompt` on the call that mints the handle. |
-| `query`        | object | A fresh query in the same dialect execute_query takes: numeric table/field ids from browse_data, never base64. Exactly one of query \| query_handle.                                                                                                          |
-| `query_handle` | string | A query_handle from a previous execute_query / execute_sql call — visualizes the exact stored query, MBQL or native SQL. Preferred over query. Exactly one of query \| query_handle.                                                                          |
+| Argument     | Type              | Description                                                                                                                              |
+| ------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `bookmarked` | boolean           | true bookmarks the item, false removes the bookmark.                                                                                     |
+| `id`         | integer or string | Numeric id. A 21-character entity_id.                                                                                                    |
+| `type`       | string            | One of: `collection`, `dashboard`, `document`, `metric`, `model`, `question`. The content type, as returned by search/browse_collection. |
 
-## Read-only tools
-
-These read from your Metabase. They don't create, change, or delete anything.
-
-### Browse collection
+## Browse collection
 
 - Tool name: `browse_collection`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
@@ -89,7 +92,7 @@ Arguments:
 | `sort_direction`  | string            | One of: `asc`, `desc`. items mode: sort direction (default asc).                                                                                                                                                                                                                                                                                                                          |
 | `type`            | array of string   | One of: `question`, `model`, `metric`, `dashboard`, `collection`, `document`. items mode, content namespace only: return only these item types.                                                                                                                                                                                                                                           |
 
-### Browse data
+## Browse data
 
 - Tool name: `browse_data`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
@@ -112,160 +115,7 @@ Arguments:
 | `search`          | string           | list_tables only: case-insensitive substring filter on table name or display name, applied before paging.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `table_ids`       | array of integer | get_fields only: numeric table ids (tables have no entity_id), at most 20 per call.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
-### Execute query
-
-- Tool name: `execute_query`
-- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only.
-
-The default way to answer a question from data: validate and execute a structured (MBQL) query over a table, model, metric, or saved question, returning rows plus a query_handle. Use it first for any count, sum, average, group-by, filter, sort, or join — including one-liners like "how many X do we have" — and fall back to execute_sql only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Only this route validates against database metadata and names what did not resolve, pages with a cursor, and saves as a question that wires to dashboard filters as-is — so any card bound for a filtered dashboard starts here; a raw-SQL card needs template tags first. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — it holds the query that ran without the cursor's paging position, so saving or visualizing from any page gives the whole question rather than that one page. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size) until truncated is false, otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000). row_limit is the page size, not the bound on the result: "the first N / top N rows" is a stage limit: N with an order-by (example below), served row_limit rows per call, whose last page arrives truncated: false with no next_cursor — never count pages by hand to stop at N. Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess ids, never base64, never a schema-qualified name. A bare row count needs only the table id browse_data list_tables (or search) already returned; browse_data get_fields gives field ids when the query filters, groups, or aggregates over a column. Top level: {"lib/type": "mbql/query", "stages": [...]}; each stage "lib/type": "mbql.stage/mbql" plus source-table: <numeric table id> or source-card: <numeric card id> on the FIRST stage only — later stages read the previous stage's output. Every clause is ["op", {}, ...args], options map mandatory at position 1. Field refs: ["field", {}, <numeric field id>], or a bare column-name string against a previous stage (["field", {}, "count"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Simplest aggregate (row count of one table — the whole query for "how many rows"): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]]}]}. Example (row count by month): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]], "breakout": [["field", {"temporal-unit": "month"}, <FIELD_ID>]]}]}. First N rows (e.g. the first 400 ids, ascending) is a stage with only "source-table", "fields": [["field", {}, <FIELD_ID>]], "order-by": [["asc", {}, ["field", {}, <FIELD_ID>]]], "limit": 400. <TABLE_ID> and <FIELD_ID> are placeholders — ids differ per instance, so resolve yours with browse_data before calling. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn("query-dialect") before authoring a non-trivial query (joins, expressions, multi-stage); learn("query-dialect", "operators") lists every operator. Native SQL is rejected at any depth — it belongs in execute_sql.
-
-Arguments:
-
-| Argument        | Type    | Description                                                                                                                                                                               |
-| --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cursor`        | string  | The next_cursor from a previous truncated response — fetches the next page. Exactly one of query \| query_handle \| cursor, but row_limit may accompany it and sets this page's size.     |
-| `prompt`        | string  | The user's original request, stored with the minted query_handle and carried along its cursor pages.                                                                                      |
-| `query`         | object  | A fresh structured query (shape and examples in the tool description): numeric table/field ids from browse_data, never base64, never SQL. Exactly one of query \| query_handle \| cursor. |
-| `query_handle`  | string  | A query_handle from a previous call — re-validates and re-runs the exact stored query. Exactly one of query \| query_handle \| cursor.                                                    |
-| `row_limit`     | integer | Range: 1 to 2000. Maximum rows to return in this call (default 100, max 2000) — the page size, not a bound on the result; the bound is limit: N in the query's stage.                     |
-| `validate_only` | boolean | true validates against schema + database metadata and mints a query_handle without executing (default false).                                                                             |
-
-### Get content
-
-- Tool name: `get_content`
-- Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only.
-
-Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown.
-
-Arguments:
-
-| Argument          | Type            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ----------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `include`         | array of string | One of: `definition`, `fields`, `visualization_settings`, `parameters`, `layout`, `dimensions`, `comments`. Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata), visualization_settings (question/model stored chart settings, the shape question_write takes back; {} when nothing is stored), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned content_markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error. |
-| `items`           | array of object | The content to fetch — up to 10 items, mixed types allowed (e.g. a dashboard and its questions in one call).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `response_format` | string          | One of: `concise`, `detailed`. concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-
-### Get parameter values
-
-- Tool name: `get_parameter_values`
-- Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only.
-
-Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target ("dashboard" or "question" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: "date", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in ("YYYY-MM-DD", "YYYY-MM-DD~YYYY-MM-DD", "past30days", "thisyear") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`.
-
-Arguments:
-
-| Argument       | Type              | Description                                                                                                                                                                                                                    |
-| -------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `constraints`  | object            | Chain filtering: the current selections of the dashboard's OTHER filters, keyed by their parameter ids, narrowing this filter to the values still valid alongside them. Dashboards only.                                       |
-| `id`           | integer or string | Numeric id. A 21-character entity_id.                                                                                                                                                                                          |
-| `limit`        | integer           | Range: 1 to 1000. Maximum values to return in this call (default 100, max 1000).                                                                                                                                               |
-| `offset`       | integer           | Index of the first value to return (default 0) — continue a truncated response. Each page refetches from the source, which returns at most 1000 values, so narrow with `query` rather than paging to reach anything past that. |
-| `parameter_id` | string            | The parameter's id, as returned by get_content under `parameters` — not its name or slug.                                                                                                                                      |
-| `query`        | string            | Return only values matching this search string. Use it to narrow a large value list.                                                                                                                                           |
-| `target`       | string            | One of: `dashboard`, `question`. Whether id names a dashboard or a card. "question" covers any card — question, model, or metric.                                                                                              |
-
-### Learn
-
-- Tool name: `learn`
-- Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only.
-
-Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference "operators" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference "settings" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context.
-
-Arguments:
-
-| Argument    | Type   | Description                                                                |
-| ----------- | ------ | -------------------------------------------------------------------------- |
-| `reference` | string | A reference file of `topic`, by the name the skill (or the catalog) lists. |
-| `topic`     | string | A topic from the catalog. Omit to list all topics.                         |
-
-### Run saved question
-
-- Tool name: `run_saved_question`
-- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
-- Read-only.
-
-Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({% raw %}{{variable}}{% endraw %} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000).
-
-Arguments:
-
-| Argument     | Type              | Description                                                                                                                                                                        |
-| ------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`         | integer or string | Numeric card id. A 21-character entity_id.                                                                                                                                         |
-| `parameters` | array of object   | Parameter values to apply, each {id, value} where id is the parameter's id or slug. The card's stored target and type always apply. Discover a card's parameters with get_content. |
-| `row_limit`  | integer           | Range: 1 to 2000. Maximum rows to return in this call (default 100, max 2000).                                                                                                     |
-
-### Search
-
-- Tool name: `search`
-- Permission scope: `agent:content:read` — See your Metabase content and data structure
-- Read-only.
-
-Find content across the Metabase instance by relevance. Two modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by type, collection_id (scopes to the collection subtree), created_by: "me", archived: true; (2) recent: true — your recently viewed items. A query is required for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a collection), use browse_collection or browse_data instead — this tool redirects query-less listings there. type: ["snippet"] searches SQL snippets you can read by name and must be requested on its own, not alongside other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace: "transforms"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking limit — so a large total is a floor (the response says "at least N"). An empty {data: [], total: 0} means no match against the search index, which on a freshly started instance can still be building — if content you can reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent.
-
-Arguments:
-
-| Argument           | Type              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `archived`         | boolean           | true searches the trash instead of active content.                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `collection_id`    | integer or string | Numeric collection id. A 21-character entity_id, or "root" for no scoping.                                                                                                                                                                                                                                                                                                                                                                                             |
-| `created_by`       | string            | One of: `me`. "me" restricts results to items you created. Only question, model, metric, dashboard, document, measure, and action index a creator.                                                                                                                                                                                                                                                                                                                     |
-| `fields`           | array of string   | Dot-paths picked from the detailed row shape, item-relative (e.g. "collection.name"). Mutually exclusive with response_format.                                                                                                                                                                                                                                                                                                                                         |
-| `limit`            | integer           | Range: 1 to 50. Maximum results to return (default 20, max 50).                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `offset`           | integer           | Number of results to skip, for paging (default 0).                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `recent`           | boolean           | true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters. Reflects Metabase UI views only — content you read through these tools is not recorded as a view, so a fresh token's recents can be empty even after get_content calls in the same session.                                                                 |
-| `response_format`  | string            | One of: `concise`, `detailed`. concise (default) returns {type, id, name, collection_path, description} rows; detailed returns the full search-result rows.                                                                                                                                                                                                                                                                                                            |
-| `semantic_queries` | array of string   | A natural-language query matched by semantic similarity when a semantic engine is active (keyword-ranked otherwise). Each query runs separately; results are merged by rank.                                                                                                                                                                                                                                                                                           |
-| `term_queries`     | array of string   | A keyword query matched against names and descriptions via full-text search. Each query runs separately; results are merged by rank.                                                                                                                                                                                                                                                                                                                                   |
-| `type`             | array of string   | One of: `question`, `model`, `metric`, `measure`, `segment`, `dashboard`, `document`, `collection`, `table`, `database`, `snippet`, `transform`, `action`. Restrict results to these entity types. "snippet" is served by a separate listing (snippets aren't in the search index), requires the agent:content:read scope, and must be requested on its own — combining it with other types is an error. Omit to search every type this tool supports except snippets. |
-
-## Write and delete tools
-
-These create or change content in your Metabase. Like every tool here, they're scoped to what you have permission to do.
-
-### Alert write
-
-- Tool name: `alert_write`
-- Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
-- Creates or changes content.
-
-Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition. method: "create" requires card_id (the question) and schedule; method: "update" requires id and changes only the fields you pass. schedule is {schedule_type: "hourly" | "daily" | "weekly" | "monthly", schedule_hour? (0-23, required for daily, weekly, and monthly), schedule_minute? (0-59, hourly only), schedule_day? ("mon"…"sun", required for weekly, and picks the weekday for a monthly "first" or "last" frame), schedule_frame? ("first" | "mid" | "last", required for monthly — "mid" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: "has_result" (default) | "goal_above" | "goal_below", send_once?: boolean} — the goal conditions need a goal line on the question's chart, and send_once pauses the alert (active: false) after it first fires. Delivery is one channel: "email" (default) with recipients, a list mixing user ids and email addresses that defaults to you, or "slack" with slack_channel, a channel name like "#data-team" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing its delivery or its schedule, resuming a paused one, or clearing send_once additionally requires the agent:query:run scope — the alert runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard.
-
-Arguments:
-
-| Argument        | Type              | Description                                                                                                                                                                                                                                       |
-| --------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `active`        | boolean           | false pauses the alert, true resumes it (resuming needs the agent:query:run scope). Defaults to true on create. Alerts have no archived state and cannot be deleted here.                                                                         |
-| `card_id`       | integer or string | Numeric id of the saved question the alert runs. Fixed at creation. 21-character entity_id of the saved question the alert runs. Fixed at creation.                                                                                               |
-| `channel`       | string            | One of: `email`, `slack`. Where to deliver: "email" (default) with `recipients`, or "slack" with `slack_channel`. Passing any of channel, slack_channel, or recipients on update replaces the alert's delivery; omit all three to leave it alone. |
-| `condition`     | object            | When the alert sends. Defaults to sending whenever the question returns rows; the goal conditions need a goal line on the question's chart.                                                                                                       |
-| `id`            | integer or string | Numeric id of the alert to update. The numeric id as a string, for clients that send every id as a string. Alerts have no entity_id.                                                                                                              |
-| `method`        | string            | One of: `create`, `update`. "create" makes a new alert (requires `card_id` and `schedule`); "update" edits the one named by `id`, changing only the fields you pass.                                                                              |
-| `recipients`    | array             | Who gets the email: numeric user ids, or email addresses. Defaults to you. On update this replaces the current list. Not used for channel "slack". Numeric id of a Metabase user. An email address.                                               |
-| `schedule`      | object            | When the question runs, in the instance's report time zone. Required on create; never a cron string.                                                                                                                                              |
-| `slack_channel` | string            | Slack channel name to post to, e.g. "#data-team". Required for channel "slack".                                                                                                                                                                   |
-
-### Bookmark content
-
-- Tool name: `bookmark_content`
-- Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Creates or changes content.
-- Running it again with the same arguments has the same effect as running it once.
-
-Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller. The item's name comes back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement. This response is the only place bookmark state is reported: no tool reads a bookmark back, search and get_content carry no bookmarked field, and there is no bookmark listing — so keep this result if you need it later rather than spending calls looking for a read path.
-
-Arguments:
-
-| Argument     | Type              | Description                                                                                                                              |
-| ------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `bookmarked` | boolean           | true bookmarks the item, false removes the bookmark.                                                                                     |
-| `id`         | integer or string | Numeric id. A 21-character entity_id.                                                                                                    |
-| `type`       | string            | One of: `collection`, `dashboard`, `document`, `metric`, `model`, `question`. The content type, as returned by search/browse_collection. |
-
-### Collection write
+## Collection write
 
 - Tool name: `collection_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -287,7 +137,7 @@ Arguments:
 | `namespace`       | string            | One of: `snippets`, `transforms`. Create only: puts the collection in a separate hierarchy instead of the normal one. "snippets" holds SQL snippet folders; "transforms" holds transform folders, the ones transform_write's `collection_id` names. Omit for a normal collection. |
 | `parent_id`       | integer or string | The collection to nest under (create) or move into (update). Numeric id, 21-character entity_id, or "root" for the top level. Omitted on create means your personal collection. You need write access to the parent.                                                              |
 
-### Dashboard write
+## Dashboard write
 
 - Tool name: `dashboard_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -313,7 +163,7 @@ Arguments:
 | `validate_only`       | boolean           | Dry run: returns the layout the ops would produce, writing nothing.                                                                                                                                                                                                                       |
 | `width`               | string            | One of: `fixed`, `full`. "fixed" (default) centers the grid; "full" stretches it to the browser width.                                                                                                                                                                                    |
 
-### Document write
+## Document write
 
 - Tool name: `document_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -335,7 +185,7 @@ Arguments:
 | `method`              | string            | One of: `create`, `update`. "create" makes a new document (requires `name` and `content_markdown`); "update" edits the one named by `id`.                                                                                                                                                                        |
 | `name`                | string            | Document title. Required on create; on update, renames it.                                                                                                                                                                                                                                                       |
 
-### Duplicate content
+## Duplicate content
 
 - Tool name: `duplicate_content`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -353,7 +203,26 @@ Arguments:
 | `new_name`      | string            | Name for the copy. Defaults to "Copy of <source name>".                                                                                                   |
 | `type`          | string            | One of: `question`, `dashboard`, `document`. The kind of content to copy. Card flavors other than question (model, metric) aren't supported yet.          |
 
-### Execute SQL
+## Execute query
+
+- Tool name: `execute_query`
+- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
+- Read-only.
+
+The default way to answer a question from data: validate and execute a structured (MBQL) query over a table, model, metric, or saved question, returning rows plus a query_handle. Use it first for any count, sum, average, group-by, filter, sort, or join — including one-liners like "how many X do we have" — and fall back to execute_sql only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Only this route validates against database metadata and names what did not resolve, pages with a cursor, and saves as a question that wires to dashboard filters as-is — so any card bound for a filtered dashboard starts here; a raw-SQL card needs template tags first. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — it holds the query that ran without the cursor's paging position, so saving or visualizing from any page gives the whole question rather than that one page. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size) until truncated is false, otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000). row_limit is the page size, not the bound on the result: "the first N / top N rows" is a stage limit: N with an order-by (example below), served row_limit rows per call, whose last page arrives truncated: false with no next_cursor — never count pages by hand to stop at N. Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess ids, never base64, never a schema-qualified name. A bare row count needs only the table id browse_data list_tables (or search) already returned; browse_data get_fields gives field ids when the query filters, groups, or aggregates over a column. Top level: {"lib/type": "mbql/query", "stages": [...]}; each stage "lib/type": "mbql.stage/mbql" plus source-table: <numeric table id> or source-card: <numeric card id> on the FIRST stage only — later stages read the previous stage's output. Every clause is ["op", {}, ...args], options map mandatory at position 1. Field refs: ["field", {}, <numeric field id>], or a bare column-name string against a previous stage (["field", {}, "count"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Simplest aggregate (row count of one table — the whole query for "how many rows"): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]]}]}. Example (row count by month): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]], "breakout": [["field", {"temporal-unit": "month"}, <FIELD_ID>]]}]}. First N rows (e.g. the first 400 ids, ascending) is a stage with only "source-table", "fields": [["field", {}, <FIELD_ID>]], "order-by": [["asc", {}, ["field", {}, <FIELD_ID>]]], "limit": 400. <TABLE_ID> and <FIELD_ID> are placeholders — ids differ per instance, so resolve yours with browse_data before calling. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn("query-dialect") before authoring a non-trivial query (joins, expressions, multi-stage); learn("query-dialect", "operators") lists every operator. Native SQL is rejected at any depth — it belongs in execute_sql.
+
+Arguments:
+
+| Argument        | Type    | Description                                                                                                                                                                               |
+| --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cursor`        | string  | The next_cursor from a previous truncated response — fetches the next page. Exactly one of query \| query_handle \| cursor, but row_limit may accompany it and sets this page's size.     |
+| `prompt`        | string  | The user's original request, stored with the minted query_handle and carried along its cursor pages.                                                                                      |
+| `query`         | object  | A fresh structured query (shape and examples in the tool description): numeric table/field ids from browse_data, never base64, never SQL. Exactly one of query \| query_handle \| cursor. |
+| `query_handle`  | string  | A query_handle from a previous call — re-validates and re-runs the exact stored query. Exactly one of query \| query_handle \| cursor.                                                    |
+| `row_limit`     | integer | Range: 1 to 2000. Maximum rows to return in this call (default 100, max 2000) — the page size, not a bound on the result; the bound is limit: N in the query's stage.                     |
+| `validate_only` | boolean | true validates against schema + database metadata and mints a query_handle without executing (default false).                                                                             |
+
+## Execute SQL
 
 - Tool name: `execute_sql`
 - Permission scope: `agent:sql:run` — Write and run its own raw SQL on your connected databases
@@ -372,7 +241,58 @@ Arguments:
 | `template_tag_values` | object  | Values for the {% raw %}{{tag}}{% endraw %} placeholders in sql, keyed by tag name. Each value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. Snippet ({% raw %}{{snippet: …}}{% endraw %}) and card-reference ({% raw %}{{#123}}{% endraw %}) tags cannot be populated here. |
 | `validate_only`       | boolean | true mints a query_handle without executing — template tags and permissions are checked, the SQL text itself is not (default false).                                                                                                                                                                                                            |
 
-### Measure write
+## Get content
+
+- Tool name: `get_content`
+- Permission scope: `agent:content:read` — See your Metabase content and data structure
+- Read-only.
+
+Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown.
+
+Arguments:
+
+| Argument          | Type            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `include`         | array of string | One of: `definition`, `fields`, `visualization_settings`, `parameters`, `layout`, `dimensions`, `comments`. Extra sections, each applied to every item whose type supports it and ignored for the rest — so a mixed-type batch can ask for several at once: definition (query-bearing types, returned as the stored query — numeric ids, the shape execute_query and question_write accept back verbatim), fields (question/model column metadata), visualization_settings (question/model stored chart settings, the shape question_write takes back; {} when nothing is stored), parameters (dashboard's full parameter array), layout (dashboard grid + tabs, document block outline), dimensions (metric/measure), comments (document comment threads, each anchored into the returned content_markdown by {start, end, text} character offsets — the exact slice of the block the thread is attached to; comments attach to whole blocks, a block nested inside a list/blockquote anchors to the span of the nearest enclosing block that has one, and an empty block gives start == end; threads whose block no longer exists come back under orphaned_comments so they can be re-anchored by editing the right block, and if the document read fell back to flattened text no thread carries an anchor). A section no item in the batch supports is an error. |
+| `items`           | array of object | The content to fetch — up to 10 items, mixed types allowed (e.g. a dashboard and its questions in one call).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `response_format` | string          | One of: `concise`, `detailed`. concise (default) returns each type's essential shape; detailed adds entity_id, creator, timestamps, and other secondary columns.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+## Get parameter values
+
+- Tool name: `get_parameter_values`
+- Permission scope: `agent:content:read` — See your Metabase content and data structure
+- Read-only.
+
+Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target ("dashboard" or "question" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: "date", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in ("YYYY-MM-DD", "YYYY-MM-DD~YYYY-MM-DD", "past30days", "thisyear") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`.
+
+Arguments:
+
+| Argument       | Type              | Description                                                                                                                                                                                                                    |
+| -------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `constraints`  | object            | Chain filtering: the current selections of the dashboard's OTHER filters, keyed by their parameter ids, narrowing this filter to the values still valid alongside them. Dashboards only.                                       |
+| `id`           | integer or string | Numeric id. A 21-character entity_id.                                                                                                                                                                                          |
+| `limit`        | integer           | Range: 1 to 1000. Maximum values to return in this call (default 100, max 1000).                                                                                                                                               |
+| `offset`       | integer           | Index of the first value to return (default 0) — continue a truncated response. Each page refetches from the source, which returns at most 1000 values, so narrow with `query` rather than paging to reach anything past that. |
+| `parameter_id` | string            | The parameter's id, as returned by get_content under `parameters` — not its name or slug.                                                                                                                                      |
+| `query`        | string            | Return only values matching this search string. Use it to narrow a large value list.                                                                                                                                           |
+| `target`       | string            | One of: `dashboard`, `question`. Whether id names a dashboard or a card. "question" covers any card — question, model, or metric.                                                                                              |
+
+## Learn
+
+- Tool name: `learn`
+- Permission scope: `agent:content:read` — See your Metabase content and data structure
+- Read-only.
+
+Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference "operators" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference "settings" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context.
+
+Arguments:
+
+| Argument    | Type   | Description                                                                |
+| ----------- | ------ | -------------------------------------------------------------------------- |
+| `reference` | string | A reference file of `topic`, by the name the skill (or the catalog) lists. |
+| `topic`     | string | A topic from the catalog. Omit to list all topics.                         |
+
+## Measure write
 
 - Tool name: `measure_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -394,7 +314,7 @@ Arguments:
 | `revision_message` | string            | Update only, required: a short sentence describing the change, recorded in the revision history.                                                                                                                                                                                                                                                                                                                                                |
 | `table_id`         | integer           | Create only: numeric table id (tables have no entity_ids). A bare-clause `definition` is reassembled into a query on this table; a full-query one must name this same source table — a mismatch is a teaching error, not silently reconciled.                                                                                                                                                                                                   |
 
-### Metric write
+## Metric write
 
 - Tool name: `metric_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -418,7 +338,7 @@ Arguments:
 | `name`                | string            | Create only (editable on update): display name of the metric.                                                                                                                                                                                                                                                                                                                                                      |
 | `query_handle`        | string            | A query_handle from execute_query — saves exactly the query that ran. Pass this or definition, not both.                                                                                                                                                                                                                                                                                                           |
 
-### Question write
+## Question write
 
 - Tool name: `question_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -448,7 +368,62 @@ Arguments:
 | `query_handle`           | string            | A handle returned by execute_query, execute_sql, or visualize_query. The preferred query source on create: it saves exactly the query that tool validated.                                                                                                                                |
 | `visualization_settings` | object            | Display settings for the chosen `display`; learn("visualization-settings") lists the keys.                                                                                                                                                                                                |
 
-### Segment write
+## Render drill through
+
+- Tool name: `render_drill_through`
+- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
+- Read-only.
+- Interactive: renders a chart inline in your AI client. Only available in clients that support inline visualizations.
+
+Render the drill-through visualization the user just navigated into. Use this — not an execute tool — when the user asks to show a result and their message carries a handle UUID; it is the exact follow-up for the phrase `Show me the result`. Pass that UUID through as query_handle without running the query yourself. Like visualize_query, this renders a lightweight inline visualization and is the final answer: do not restate the numbers with an execute tool, and do not tell the user to change display types or open a Metabase panel or sidebar.
+
+Arguments:
+
+| Argument       | Type   | Description                                                                                                      |
+| -------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
+| `query_handle` | string | The handle UUID from the user's drill-through message. Pass it through verbatim — do not run the query yourself. |
+
+## Run saved question
+
+- Tool name: `run_saved_question`
+- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
+- Read-only.
+
+Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({% raw %}{{variable}}{% endraw %} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000).
+
+Arguments:
+
+| Argument     | Type              | Description                                                                                                                                                                        |
+| ------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | integer or string | Numeric card id. A 21-character entity_id.                                                                                                                                         |
+| `parameters` | array of object   | Parameter values to apply, each {id, value} where id is the parameter's id or slug. The card's stored target and type always apply. Discover a card's parameters with get_content. |
+| `row_limit`  | integer           | Range: 1 to 2000. Maximum rows to return in this call (default 100, max 2000).                                                                                                     |
+
+## Search
+
+- Tool name: `search`
+- Permission scope: `agent:content:read` — See your Metabase content and data structure
+- Read-only.
+
+Find content across the Metabase instance by relevance. Two modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by type, collection_id (scopes to the collection subtree), created_by: "me", archived: true; (2) recent: true — your recently viewed items. A query is required for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a collection), use browse_collection or browse_data instead — this tool redirects query-less listings there. type: ["snippet"] searches SQL snippets you can read by name and must be requested on its own, not alongside other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace: "transforms"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking limit — so a large total is a floor (the response says "at least N"). An empty {data: [], total: 0} means no match against the search index, which on a freshly started instance can still be building — if content you can reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent.
+
+Arguments:
+
+| Argument           | Type              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `archived`         | boolean           | true searches the trash instead of active content.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `collection_id`    | integer or string | Numeric collection id. A 21-character entity_id, or "root" for no scoping.                                                                                                                                                                                                                                                                                                                                                                                             |
+| `created_by`       | string            | One of: `me`. "me" restricts results to items you created. Only question, model, metric, dashboard, document, measure, and action index a creator.                                                                                                                                                                                                                                                                                                                     |
+| `fields`           | array of string   | Dot-paths picked from the detailed row shape, item-relative (e.g. "collection.name"). Mutually exclusive with response_format.                                                                                                                                                                                                                                                                                                                                         |
+| `limit`            | integer           | Range: 1 to 50. Maximum results to return (default 20, max 50).                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `offset`           | integer           | Number of results to skip, for paging (default 0).                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `recent`           | boolean           | true returns your recently viewed items instead of searching. Combines with type (only question, model, metric, dashboard, document, collection, table are tracked) but not with queries or other filters. Reflects Metabase UI views only — content you read through these tools is not recorded as a view, so a fresh token's recents can be empty even after get_content calls in the same session.                                                                 |
+| `response_format`  | string            | One of: `concise`, `detailed`. concise (default) returns {type, id, name, collection_path, description} rows; detailed returns the full search-result rows.                                                                                                                                                                                                                                                                                                            |
+| `semantic_queries` | array of string   | A natural-language query matched by semantic similarity when a semantic engine is active (keyword-ranked otherwise). Each query runs separately; results are merged by rank.                                                                                                                                                                                                                                                                                           |
+| `term_queries`     | array of string   | A keyword query matched against names and descriptions via full-text search. Each query runs separately; results are merged by rank.                                                                                                                                                                                                                                                                                                                                   |
+| `type`             | array of string   | One of: `question`, `model`, `metric`, `measure`, `segment`, `dashboard`, `document`, `collection`, `table`, `database`, `snippet`, `transform`, `action`. Restrict results to these entity types. "snippet" is served by a separate listing (snippets aren't in the search index), requires the agent:content:read scope, and must be requested on its own — combining it with other types is an error. Omit to search every type this tool supports except snippets. |
+
+## Segment write
 
 - Tool name: `segment_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -470,7 +445,7 @@ Arguments:
 | `revision_message` | string            | Update only, required: a short sentence describing the change, recorded in the revision history.                                                                                                                                                                                                                                                     |
 | `table_id`         | integer           | Create only: numeric table id (tables have no entity_ids). A bare-clause `definition` is reassembled into a query on this table; a full-query one must name this same source table — a mismatch is a teaching error, not silently reconciled.                                                                                                        |
 
-### Subscription write
+## Subscription write
 
 - Tool name: `subscription_write`
 - Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
@@ -493,7 +468,7 @@ Arguments:
 | `skip_if_empty` | boolean           | When true, no email is sent if every card comes back empty. Default false.                                                                                                                                      |
 | `slack_channel` | string            | Slack channel or username to post to, e.g. "data-team". Required for channel "slack".                                                                                                                           |
 
-### Transform write
+## Transform write
 
 - Tool name: `transform_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
@@ -515,3 +490,20 @@ Arguments:
 | `query_handle`  | string            | A query_handle from execute_query or execute_sql — saves exactly the query that ran. Pass this or definition, not both.                                                                                                                                       |
 | `tag_ids`       | array of integer  | Numeric ids of transform tags to label the transform with; jobs select transforms by tag. Replaces the current list — pass [] to clear it.                                                                                                                    |
 | `target`        | object            | The table the transform writes, recreated on every run. On update this patches the current target, so passing only `name` renames the table and keeps its schema. A target read back from get_content can be passed back unchanged.                           |
+
+## Visualize query
+
+- Tool name: `visualize_query`
+- Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
+- Read-only.
+- Interactive: renders a chart inline in your AI client. Only available in clients that support inline visualizations.
+
+Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). The chart type is inferred from the result shape. Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI.
+
+Arguments:
+
+| Argument       | Type   | Description                                                                                                                                                                                                                                                   |
+| -------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prompt`       | string | The user's original request, recorded with a freshly minted handle for the iframe's feedback flow. Ignored alongside `query_handle`: the stored prompt is fixed at mint time and there is no update path, so pass `prompt` on the call that mints the handle. |
+| `query`        | object | A fresh query in the same dialect execute_query takes: numeric table/field ids from browse_data, never base64. Exactly one of query \| query_handle.                                                                                                          |
+| `query_handle` | string | A query_handle from a previous execute_query / execute_sql call — visualizes the exact stored query, MBQL or native SQL. Preferred over query. Exactly one of query \| query_handle.                                                                          |

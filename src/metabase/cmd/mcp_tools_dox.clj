@@ -21,24 +21,12 @@
 
 (def ^:private intro-resource "metabase/cmd/resources/mcp-tools-intro.md")
 
-(def ^:private sections
-  "The page's sections, in order, each with the predicate that claims a tool for it. A tool lands in the first
-  section whose `:claims?` says yes."
-  [{:heading "Interactive tools"
-    :blurb   (str "These render inline charts in your AI client. They only work in clients that support inline "
-                  "visualizations. Your client may also list a helper tool that charts call for themselves; it "
-                  "isn't documented here.")
-    ;; A UI tool is recognized by the `:_meta` `:ui` block it publishes rather than by its
-    ;; `:required-extensions`, because `:_meta` is the half a client actually sees.
-    ;; `metabase.cmd.mcp-tools-dox-test/all-tools-test` pins the two to the same set.
-    :claims? #(some? (get-in % [:_meta :ui]))}
-   {:heading "Read-only tools"
-    :blurb   "These read from your Metabase. They don't create, change, or delete anything."
-    :claims? #(true? (get-in % [:annotations :readOnlyHint]))}
-   {:heading "Write and delete tools"
-    :blurb   (str "These create or change content in your Metabase. Like every tool here, they're scoped to what "
-                  "you have permission to do.")
-    :claims? (constantly true)}])
+(defn- interactive?
+  "Does `tool` render an inline chart in the AI client? Recognized by the `:_meta` `:ui` block it publishes rather
+  than by its `:required-extensions`, because `:_meta` is the half a client actually sees.
+  `metabase.cmd.mcp-tools-dox-test/all-tools-test` pins the two to the same set."
+  [tool]
+  (some? (get-in tool [:_meta :ui])))
 
 ;;;; Which tools belong on the page
 
@@ -152,6 +140,14 @@
      ;; only worth saying about a tool that changes something; that a read is repeatable goes without saying
      (when (and idempotentHint (not readOnlyHint))
        "Running it again with the same arguments has the same effect as running it once.")]))
+
+(defn- interactive-bullet
+  "That the tool renders inline, for the ones that do. Worth its own line because a reader won't find such a tool
+  in every client: the registry hides it from clients that can't render an iframe."
+  [tool]
+  (when (interactive? tool)
+    (str "Interactive: renders a chart inline in your AI client. Only available in clients that support inline "
+         "visualizations.")))
 
 ;;;; Arguments
 
@@ -296,41 +292,24 @@
   tool belongs in its `deftool` docstring, where the agent reads it too."
   [tool]
   (md/paragraphs
-   [(md/heading 3 (tool-title tool))
-    (md/bullets (into [(str "Tool name: " (md/code (:name tool)))
-                       (scope-bullet tool)]
-                      (effect-bullets tool)))
+   [(md/heading 2 (tool-title tool))
+    (md/bullets (-> [(str "Tool name: " (md/code (:name tool)))
+                     (scope-bullet tool)]
+                    (into (effect-bullets tool))
+                    (conj (interactive-bullet tool))))
     (md/sentence (tool-description tool))
     (md/labeled-block "Arguments:" (arguments-markdown tool))]))
 
-(defn- section-markdown
-  "One of the page's [[sections]], with the tools it claimed."
-  [{:keys [heading blurb]} tools]
-  (md/paragraphs
-   (into [(md/heading 2 heading) blurb]
-         (map tool-section tools))))
-
-(defn- group-tools
-  "Split `tools` across [[sections]]. Returns `[section tools]` pairs in section order, dropping any section nothing
-  claimed."
-  [tools]
-  (let [by-heading (group-by (fn [tool]
-                               (:heading (first (filter #((:claims? %) tool) sections))))
-                             tools)]
-    (for [{:keys [heading] :as section} sections
-          :let [claimed (get by-heading heading)]
-          :when (seq claimed)]
-      [section claimed])))
-
 (defn- document-markdown
-  "The whole page: the `intro` resource, then a section per group of tools."
+  "The whole page: the `intro` resource, then a section per tool. No grouping between them — the tools arrive
+  name-sorted from the registry, and a flat alphabetical list is the easiest to scan and to link into. What a
+  section used to say by its placement (read-only, interactive) each tool now says in its own bullets."
   [intro tools]
   (when (empty? tools)
     (throw (ex-info (str "No MCP tools found; the v2 registry is empty, so metabase.mcp.v2.api either no longer "
                          "requires the tool namespaces or no longer loads")
                     {})))
-  (md/document (cons intro (for [[section claimed] (group-tools tools)]
-                             (section-markdown section claimed)))))
+  (md/document (cons intro (map tool-section tools))))
 
 ;;;; Entry point
 

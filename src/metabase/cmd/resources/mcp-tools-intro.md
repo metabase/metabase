@@ -19,6 +19,8 @@ The descriptions and argument notes here are exactly what your agent sees (which
 
 The tables don't mark arguments as required; each tool's description says what a call needs. Nested objects show up as `object`, and the argument's note describes their shape. If your client marks every argument as required, that's the strict-schema convention: send `null` for anything the description doesn't call for.
 
+Tools are listed alphabetically. A tool marked interactive renders a chart inline in your AI client. It only works in (and only shows up in) clients that support inline visualizations. Your client may also list a helper tool that charts call for themselves; it isn't documented here.
+
 Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. By default, handles expire after 24 hours.
 
 Your agent will use `execute_query` for anything Metabase's query language can express (counts, sums, grouping, filtering, joins) and `execute_sql` for the rest (window functions, CTEs, engine-specific functions), or when you ask for SQL outright.

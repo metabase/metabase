@@ -75,6 +75,15 @@
            (remove nil? (#'mcp-tools-dox/effect-bullets
                          {:annotations {:destructiveHint true :idempotentHint true}}))))))
 
+(deftest ^:parallel interactive-bullet-test
+  (testing "a tool publishing a :_meta :ui block is flagged as interactive"
+    ;; the page used to say this by grouping; now each such tool says it for itself
+    (is (str/starts-with? (#'mcp-tools-dox/interactive-bullet
+                           {:name "visualize_query" :_meta {:ui {:resourceUri "ui://metabase/visualize-query.html"}}})
+                          "Interactive:")))
+  (testing "any other tool contributes no bullet"
+    (is (nil? (#'mcp-tools-dox/interactive-bullet {:name "search" :annotations {:readOnlyHint true}})))))
+
 ;;;; Argument types
 
 (deftest ^:parallel property-type-label-test
@@ -213,8 +222,8 @@
                   (->> (v2.registry/list-tools nil {:supports-mcp-ui? true})
                        (remove #'mcp-tools-dox/app-only?)
                        (map :name)))))
-    (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page groups them"
-      ;; `sections` keys off `:_meta`; keep it in step with the extension the tool actually requires
+    (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page flags them"
+      ;; `interactive?` keys off `:_meta`; keep it in step with the extension the tool actually requires
       (doseq [{:keys [name _meta required-extensions]} tools]
         (is (= (contains? (set required-extensions) :mcp-app-ui) (some? (:ui _meta)))
             (str name " disagrees about being an MCP Apps tool"))))))
@@ -228,20 +237,6 @@
             [k property]                          (:properties inputSchema)]
       (is (not= "—" (#'mcp-tools-dox/description-cell property))
           (str tool-name " argument " (name k) " has no description")))))
-
-(deftest ^:parallel group-tools-test
-  (testing "an interactive tool is claimed by the interactive section even though it's also read-only"
-    ;; section order is load-bearing: a reader needs to know it won't show up in every client
-    (let [grouped (#'mcp-tools-dox/group-tools
-                   [{:name "visualize_query" :_meta {:ui {:resourceUri "ui://metabase/visualize-query.html"}}
-                     :annotations {:readOnlyHint true}}
-                    {:name "search" :annotations {:readOnlyHint true}}
-                    {:name "collection_write" :annotations {:destructiveHint true}}])]
-      (is (= [["Interactive tools" ["visualize_query"]]
-              ["Read-only tools" ["search"]]
-              ["Write and delete tools" ["collection_write"]]]
-             (for [[section tools] grouped]
-               [(:heading section) (mapv :name tools)]))))))
 
 (deftest ^:parallel document-markdown-test
   (testing "an empty registry fails loudly rather than writing a page with no tools"
@@ -264,16 +259,28 @@
       (testing "every registered tool gets a section"
         ;; the point of the page: a `deftool` can't quietly go undocumented
         (doseq [t documented]
-          (is (str/includes? markdown (str "### " (#'mcp-tools-dox/tool-title t)))
+          (is (str/includes? markdown (str "\n## " (#'mcp-tools-dox/tool-title t) "\n"))
               (str "no section for " (:name t)))
           (is (str/includes? markdown (str "Tool name: `" (:name t) "`"))
               (str "no tool name for " (:name t)))))
-      (testing "sections run interactive, then read-only, then write"
-        (is (< (str/index-of markdown "## Interactive tools")
-               (str/index-of markdown "## Read-only tools")
-               (str/index-of markdown "## Write and delete tools"))))
+      (testing "tools are not grouped: no heading but the tools' own"
+        (doseq [stale ["## Interactive tools" "## Read-only tools" "## Write and delete tools"]]
+          (is (not (str/includes? markdown stale))))
+        (is (not (str/includes? markdown "\n### "))))
+      (testing "tools run in name order"
+        ;; `all-tool-entries` name-sorts; the page keeps that rather than imposing an order of its own
+        (let [positions (map #(str/index-of markdown (str "\n## " (#'mcp-tools-dox/tool-title %) "\n")) documented)]
+          (is (apply < positions))))
+      (testing "an interactive tool says so, and a plain one doesn't"
+        (let [section-of (fn [title]
+                           (-> (str/split markdown (re-pattern (str "\n## " title "\n")))
+                               second
+                               (str/split #"\n## ")
+                               first))]
+          (is (str/includes? (section-of "Visualize query") "Interactive:"))
+          (is (not (str/includes? (section-of "Search") "Interactive:")))))
       (testing "each section runs facts, then description, then arguments"
-        (let [section (second (str/split markdown #"\n### Search\n"))]
+        (let [section (second (str/split markdown #"\n## Search\n"))]
           (is (< (str/index-of section "Tool name:")
                  (str/index-of section "Permission scope:")
                  (str/index-of section "Arguments:")))))
@@ -286,15 +293,15 @@
         (is (not (re-find #"(?m)^\| Argument .*\bRequired\b.*\|$" markdown))))
       (testing "argument prose survives the nullable wrapper every v2 argument has"
         ;; the whole table would be em dashes if `property-descriptions` stopped at the property
-        (let [section (second (str/split markdown #"\n### Search\n"))]
+        (let [section (second (str/split markdown #"\n## Search\n"))]
           (is (str/includes? section "| `limit`"))
           (is (not (re-find #"\| `limit`\s+\| integer\s+\| —" section)))))
       (testing "an action hub publishes the actions it dispatches on"
-        (let [section (second (str/split markdown #"\n### Browse data\n"))]
+        (let [section (second (str/split markdown #"\n## Browse data\n"))]
           (is (str/includes? section "`list_databases`"))))
       (testing "an array-of-objects argument carries only its own prose, not every element's"
         ;; `ops` is a union of two dozen op objects; before `item-descriptions` their sentences ran together
-        (let [section (second (str/split markdown #"\n### Dashboard write\n"))
+        (let [section (second (str/split markdown #"\n## Dashboard write\n"))
               ops-row (re-find #"(?m)^\| `ops` .*$" section)]
           (is (some? ops-row))
           (is (< (count ops-row) 400) ops-row)
