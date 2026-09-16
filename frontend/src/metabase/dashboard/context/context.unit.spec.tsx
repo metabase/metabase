@@ -87,6 +87,18 @@ describe("DashboardContextProvider timeline event controls", () => {
     jest.restoreAllMocks();
   });
 
+  it("enables controls when requested on a regular dashboard", async () => {
+    const { result } = await setup({ withTimelineEvents: true });
+
+    expect(result.current.withTimelineEvents).toBe(true);
+  });
+
+  it("disables controls by default on a regular dashboard", async () => {
+    const { result } = await setup();
+
+    expect(result.current.withTimelineEvents).toBe(false);
+  });
+
   it.each<[string, SetupOptions]>([
     ["public dashboards", { uuid: PUBLIC_UUID }],
     ["signed embedded dashboards", { token: EMBED_TOKEN }],
