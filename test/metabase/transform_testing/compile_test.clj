@@ -1,15 +1,16 @@
 (ns metabase.transform-testing.compile-test
-  "Pure unit tests for the SQL-building half of transform testing: the queries a run executes, and the quoting and
-  parameterization that keep author-supplied text out of them.
-
-  No warehouse and no app DB. Driver keywords appear only so HoneySQL can pick a dialect."
+  "Tests for the SQL-building half of transform testing: the queries a run executes, and the
+  quoting and parameterization that keep author-supplied text out of them."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.driver :as driver]
    [metabase.driver.h2]
    [metabase.driver.postgres]
-   [metabase.transform-testing.compile :as transform-testing.compile]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test :as mt]
+   [metabase.transform-testing.compile :as transform-testing.compile]
+   [metabase.transform-testing.test-util :as transform-testing.test-util]))
 
 (comment metabase.driver.h2/keep-me)
 (comment metabase.driver.postgres/keep-me)
@@ -201,3 +202,66 @@
   (testing "the drivers these tests format for load and initialize without a database"
     (is (= :postgres (driver/the-initialized-driver :postgres)))
     (is (= :h2 (driver/the-initialized-driver :h2)))))
+
+;;; ------------------------------------ database_type as a cast target ----------------------------------
+
+(deftest ^:mb/driver-tests reported-database-type-is-a-usable-cast-target-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (testing "a column's reported database_type is a cast target the same driver accepts"
+      (let [driver   driver/*driver*
+            [int-type text-type] (transform-testing.test-util/cast-types)
+            declared [{:name "id" :database_type int-type}
+                      {:name "note" :database_type text-type}]
+            run!     (fn [conn {:keys [query params]}]
+                       (try
+                         (driver/query-on-connection driver conn [query params] {:max-rows 1})
+                         (catch Throwable e (ex-message e))))]
+        (driver/do-with-test-connection
+         driver
+         (mt/db)
+         (fn [conn]
+           (let [seed (run! conn (transform-testing.compile/rows-query
+                                  driver declared ["id" "note"] [{"id" 1 "note" "abc"}]))]
+             ;; If the fixture's own types don't compile, the test is broken, not the product.
+             (is (map? seed) (str "cast-types does not compile on " driver ": " (pr-str seed)))
+             (when (map? seed)
+               (let [reported (:columns seed)
+                     names    (mapv :name reported)
+                     back     (run! conn (transform-testing.compile/rows-query
+                                          driver reported names [(zipmap names [1 "abc"])]))]
+                 (is (= 2 (count reported)))
+                 (is (map? back)
+                     (str "reported types " (pr-str (mapv :database_type reported))
+                          " are not cast targets on " driver ": " (pr-str back))))))))))))
+
+(deftest ^:mb/driver-tests reported-database-type-round-trips-from-a-synced-table-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (testing "every database_type a real table reports is a cast target the same driver accepts"
+      ;; Seeded from a real table, so the types under test are the ones a warehouse actually reports
+      ;; rather than two chosen scalars.
+      (let [driver driver/*driver*
+            {:keys [schema], table :name} (lib.metadata/table (mt/metadata-provider) (mt/id :people))
+            run!   (fn [conn {:keys [query params]}]
+                     (try
+                       (driver/query-on-connection driver conn [query params] {:max-rows 1})
+                       (catch Throwable e (ex-message e))))
+            ;; A declared cell is JSON, so a non-scalar value is written as a string.
+            cell   (fn [v] (if (or (nil? v) (boolean? v) (number? v) (string? v)) v (str v)))]
+        (driver/do-with-test-connection
+         driver
+         (mt/db)
+         (fn [conn]
+           (let [seed (run! conn {:query (str "SELECT * FROM " schema "." table) :params []})]
+             ;; If we can't read the table, the test is broken, not the product.
+             (is (map? seed) (str "could not read people on " driver ": " (pr-str seed)))
+             (when (map? seed)
+               (let [reported  (:columns seed)
+                     col-names (mapv :name reported)
+                     row       (zipmap col-names (map cell (first (:rows seed))))
+                     back      (run! conn (transform-testing.compile/rows-query
+                                           driver reported col-names [row]))]
+                 (is (seq reported))
+                 (is (map? back)
+                     (str "reported types "
+                          (pr-str (mapv :database_type reported))
+                          " do not all compile as cast targets on " driver ": " (pr-str back))))))))))))

@@ -81,7 +81,9 @@
                               :test/time-type                   false
                               :transforms/python                true
                               :transforms/table                 true
-                              :transforms/testing               true
+                              ;; Off until `h2x/cast` stops emitting a reported type containing a quote
+                              ;; (`DateTime64(3, 'GMT0')`) as a quoted identifier.
+                              :transforms/testing               false
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          true}]

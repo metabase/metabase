@@ -101,7 +101,9 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
-                              :transforms/testing                     true
+                              ;; Off until `equals` stops casting to the type names sync reports:
+                              ;; MySQL rejects every integer and string spelling it reports as a CAST target.
+                              :transforms/testing                     false
                               :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
