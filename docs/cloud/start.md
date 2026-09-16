@@ -20,26 +20,26 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 ### Metabase Cloud overview
 
 - [Why Metabase Cloud](https://www.metabase.com/blog/why-metabase-cloud)
-- [Metabase Cloud versus self-hosting](./cloud-vs-self-hosting.md)
-- [Metabase Cloud Storage](./storage.md)
-- [Syncing Google Sheets with Metabase](./google-sheets.md)
-- [Limitations of Metabase Cloud](./limitations.md)
+- [Metabase Cloud versus self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting)
+- [Metabase Cloud Storage](https://www.metabase.com/docs/latest/cloud/storage)
+- [Syncing Google Sheets with Metabase](https://www.metabase.com/docs/latest/cloud/google-sheets)
+- [Limitations of Metabase Cloud](https://www.metabase.com/docs/latest/cloud/limitations)
 
 ### Metabase Cloud settings
 
-- [Changing which region your Metabase is hosted in](./change-region.md)
-- [IP addresses to whitelist](ip-addresses-to-whitelist.md)
-- [Changing your domain name](./custom-domain.md)
+- [Changing which region your Metabase is hosted in](https://www.metabase.com/docs/latest/cloud/change-region)
+- [IP addresses to whitelist](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist)
+- [Changing your domain name](https://www.metabase.com/docs/latest/cloud/custom-domain)
 
 ### Migrations
 
-- [Migration from an existing self-hosted Metabase](./migrate/guide.md)
-- [Migration from Heroku](./migrate/heroku.md)
-- [Migration from Metabase Cloud to a self-hosted Metabase](./migrate/cloud-to-self-hosted.md)
+- [Migration from an existing self-hosted Metabase](https://www.metabase.com/docs/latest/cloud/migrate/guide)
+- [Migration from Heroku](https://www.metabase.com/docs/latest/cloud/migrate/heroku)
+- [Migration from Metabase Cloud to a self-hosted Metabase](https://www.metabase.com/docs/latest/cloud/migrate/cloud-to-self-hosted)
 
 ### Billing
 
-- [Accounts and billing](./accounts-and-billing.md)
+- [Accounts and billing](https://www.metabase.com/docs/latest/cloud/accounts-and-billing)
 - [How billing works](https://www.metabase.com/how-billing-works)
 
 ## Metabase Cloud contact

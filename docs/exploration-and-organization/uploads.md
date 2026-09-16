@@ -35,7 +35,7 @@ The upload icon only appears in collections where you have Curate access. Everyo
 4. Choose the destination collection at the bottom of the modal.
 5. Click **Upload**.
 
-You can also add data from [Google Sheets](../cloud/google-sheets.md) (Metabase Cloud only).
+You can also add data from [Google Sheets](https://www.metabase.com/docs/latest/cloud/google-sheets) (Metabase Cloud only).
 
 ## Create, append, or replace models with uploads
 
