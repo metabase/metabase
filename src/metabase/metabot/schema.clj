@@ -37,6 +37,24 @@
   "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state."
   ::lib.util/query-like)
 
+(mr/def ::result-column
+  "Column metadata returned by Metabot tools via `metabase.metabot.tools.util/->result-column`."
+  [:map {:closed true}
+   [:field_id [:maybe [:or :int :string]]]
+   [:name [:maybe :string]]
+   [:display_name :string]
+   [:type [:maybe (ms/enum-keywords-and-strings :boolean :string :number :datetime :time :date)]]
+   [:description           {:optional true} :string]
+   [:base_type             {:optional true} :string]
+   [:effective_type        {:optional true} :string]
+   [:semantic_type         {:optional true} :string]
+   [:database_type         {:optional true} :string]
+   [:coercion_strategy      {:optional true} :string]
+   [:field_values          {:optional true} [:sequential ::lib.schema.common/field-value]]
+   [:portable_fk           {:optional true} [:cat :string [:maybe :string] :string [:+ :string]]]
+   [:fk_target_portable_fk {:optional true} [:cat :string [:maybe :string] :string [:+ :string]]]
+   [:table_reference       {:optional true} :string]])
+
 (mr/def ::todo
   "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
   between the turn that creates it and the turn that fills in its details."
@@ -156,6 +174,16 @@
   [state]
   (mc/decode ::state state (mtx/transformer {:name :normalize})))
 
+(mr/def ::uploaded-file
+  [:map {:closed true}
+   [:card_id ms/PositiveInt]
+   [:filename [:string {:min 1 :max 255}]]
+   [:size [:int {:min 0 :max 52428800}]]
+   [:media_type [:enum "text/csv" "text/tab-separated-values"]]])
+
+(mr/def ::attachments
+  [:vector {:max 5} ::uploaded-file])
+
 ;;; ------------------------------- Client message shape -------------------------------
 
 (mr/def ::client-message-part
@@ -166,7 +194,8 @@
      [:id      :string]
      [:role    [:enum "user" "agent"]]
      [:type    [:= "text"]]
-     [:message :string]]]
+     [:message :string]
+     [:attachments {:optional true} ::attachments]]]
    ["tool_call"
     [:map
      [:id       :string]

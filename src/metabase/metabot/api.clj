@@ -2,6 +2,7 @@
   "`/api/metabot/` routes"
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics.core :as analytics.core]
@@ -20,6 +21,7 @@
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
+   [metabase.metabot.attachments :as attachments]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.conversation-title :as conversation-title]
@@ -27,6 +29,7 @@
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -300,12 +303,19 @@
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
   [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id
-           user_message_id assistant_message_id]} request-info]
-  (let [message    (metabot.envelope/user-message message)
+           user_message_id assistant_message_id attachments]} request-info]
+  (let [message    (cond-> (metabot.envelope/user-message message)
+                     (seq attachments) (assoc :attachments (attachments/validate! attachments)))
+        _          (api/check-400 (or (seq attachments) (not (str/blank? (:content message))))
+                                  (tru "A message or attachment is required."))
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
+        _          (when (seq attachments)
+                     (api/check-400 (and (contains? #{metabot.config/internal-metabot-id "metabotmetabotmetabot"} metabot-id)
+                                         (contains? #{"internal" "nlq"} profile-id))
+                                    (tru "Attachments are only supported in internal and NLQ conversations.")))
         ;; reject before `start-turn!` persists anything or the title job calls the LLM
         _          (when-not (profiles/profile-registered? (keyword profile-id))
                      (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
@@ -340,8 +350,15 @@
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
           state     (metabot.persistence/conversation-state live)
+          message   (if retry_message_id
+                      (let [row (u/seek #(= retry_message_id (:external_id %)) live)]
+                        {:role :user
+                         :content (apply str (keep #(when (= "text" (:type %)) (:text %)) (:data row)))
+                         :attachments (attachments/from-parts (:data row))})
+                      message)
           first-msg (or (:content (metabot.persistence/first-non-forked-user-message live))
-                        (:content message))
+                        (not-empty (:content message))
+                        (str/join ", " (map :filename (:attachments message))))
           title-job (conversation-title/ensure-title!
                      conversation_id
                      (metabot.usage/valid-usage-profile-id profile-id)
@@ -350,7 +367,7 @@
       (native-agent-streaming-request
        {:metabot-id       metabot-id
         :profile-id       profile-id
-        :message          message
+        :message          (attachments/llm-message message)
         :context          context
         :history          history
         :conversation-id  conversation_id
@@ -395,7 +412,8 @@
    body :- [:map {:closed true}
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
-            [:message ms/NonBlankString]
+            [:message :string]
+            [:attachments {:optional true} ::metabot.schema/attachments]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
             [:parent_message_id {:optional true} [:maybe ms/UUIDString]]

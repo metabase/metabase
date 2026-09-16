@@ -117,7 +117,16 @@
     [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:terminal-error?   {:optional true} :boolean]
     [:data-parts        {:optional true} [:sequential DataPart]]
-    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
+    [:resources         {:optional true}
+     [:sequential
+      [:map {:closed true}
+       [:uri :string]
+       [:content {:optional true}
+        [:map {:closed true}
+         [:structured-output {:optional true} ::schema.v2/tool-io]
+         [:output            {:optional true} [:maybe :string]]
+         [:formatted         {:optional true} [:maybe :string]]]]
+       [:error {:optional true} :string]]]]
     [:instructions      {:optional true} [:maybe :string]]
     [:status-code       {:optional true} [:maybe :int]]
     [:error             {:optional true} [:maybe [:map {:closed true}

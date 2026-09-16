@@ -20,6 +20,11 @@ import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { MetabotChatContext } from "metabase-types/api";
 
+import {
+  type AttachmentDraft,
+  EMPTY_ATTACHMENT_DRAFT,
+} from "./attachment-state";
+
 export type ChatContextProviderFn = (
   state: State,
 ) => Promise<Partial<MetabotChatContext> | void>;
@@ -29,6 +34,7 @@ export type DeregisterChatContextProviderFn = () => void;
 // internal type so we can support tiptap editor and textarea as inputs
 export type MetabotPromptInputRef = {
   focus: () => void;
+  clear?: () => void;
   getValue?: () => string;
   captureDictationSelection?: () => {
     insert: (text: string) => string | null;
@@ -39,6 +45,9 @@ export type MetabotPromptInputRef = {
 };
 
 export type MetabotCtx = {
+  attachmentDrafts: Record<string, AttachmentDraft>;
+  getAttachmentDraft: (conversationId: string) => AttachmentDraft;
+  setAttachmentDraft: (conversationId: string, draft: AttachmentDraft) => void;
   prompt: string;
   setPrompt: (prompt: string) => void;
   promptInputRef: RefObject<MetabotPromptInputRef> | undefined;
@@ -50,6 +59,9 @@ export type MetabotCtx = {
 };
 
 export const defaultContext: MetabotCtx = {
+  attachmentDrafts: {},
+  getAttachmentDraft: () => EMPTY_ATTACHMENT_DRAFT,
+  setAttachmentDraft: () => {},
   prompt: "",
   setPrompt: () => {},
   promptInputRef: undefined,
@@ -107,6 +119,28 @@ export const MetabotProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  const [attachmentDrafts, setAttachmentDrafts] = useState<
+    Record<string, AttachmentDraft>
+  >({});
+  const attachmentDraftsRef = useRef(attachmentDrafts);
+  const getAttachmentDraft = useCallback(
+    (id: string) => attachmentDraftsRef.current[id] ?? EMPTY_ATTACHMENT_DRAFT,
+    [],
+  );
+  const setAttachmentDraft = useCallback(
+    (id: string, draft: AttachmentDraft) => {
+      const drafts = { ...attachmentDraftsRef.current };
+      if (draft.files.length === 0 && draft.status === "idle" && !draft.error) {
+        delete drafts[id];
+      } else {
+        drafts[id] = draft;
+      }
+      attachmentDraftsRef.current = drafts;
+      setAttachmentDrafts(drafts);
+    },
+    [],
+  );
+
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
@@ -157,6 +191,9 @@ export const MetabotProvider = ({
   return (
     <MetabotContext.Provider
       value={{
+        attachmentDrafts,
+        getAttachmentDraft,
+        setAttachmentDraft,
         prompt,
         setPrompt,
         promptInputRef,

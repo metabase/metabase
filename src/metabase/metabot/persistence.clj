@@ -7,6 +7,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.attachments :as attachments]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
@@ -314,7 +315,7 @@
       (metabot.db/insert-messages!
        (cond-> {:conversation_id conversation-id
                 :data            (schema.v2/check-message-data "metabot_message.data"
-                                                               [{:type "text" :text (:content user-message)}])
+                                                               (attachments/message-parts user-message))
                 :data_version    schema.v2/current-data-version
                 :role            :user
                 :profile_id      profile-id
@@ -474,8 +475,8 @@
 
 (defn- user-row->llm-message
   [message]
-  {:role    :user
-   :content (message-text message)})
+  (attachments/llm-message
+   {:role :user :content (message-text message) :attachments (attachments/from-parts (:data message))}))
 
 (defn- assistant-row->llm-messages
   [{:keys [data]}]
@@ -591,6 +592,9 @@
       (= "output-error" (:state part))
       (assoc :result nil :is_error true))
 
+    (= "data-uploaded-file" (:type part))
+    nil
+
     (schema.v2/data-part? part)
     {:id   (str (random-uuid))
      :role "agent"
@@ -603,7 +607,12 @@
 (defn- message->parts
   "The row's `:data` blocks as frontend message parts."
   [message]
-  (into [] (keep #(convert-content-block (:role message) %)) (:data message)))
+  (let [files (when (user-row? message) (attachments/from-parts (:data message)))]
+    (into []
+          (comp (keep #(convert-content-block (:role message) %))
+                (map #(cond-> %
+                        (and (seq files) (= "text" (:type %))) (assoc :attachments files))))
+          (:data message))))
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by

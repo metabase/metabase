@@ -40,6 +40,7 @@ import type { IconName, MetabotFeedback } from "metabase-types/api";
 
 import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
+import { MetabotAttachment } from "../MetabotAttachment";
 
 import { AgentDataPart } from "./MetabotAgentDataPart";
 import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
@@ -149,6 +150,22 @@ export const UserMessage = ({
       data-testid="metabot-chat-message"
       {...props}
     >
+      <Flex gap="xs" wrap="wrap">
+        {message.parts
+          .flatMap((part) =>
+            part.role === "user" && part.type === "text"
+              ? (part.attachments ?? [])
+              : [],
+          )
+          .map((attachment) => (
+            <MetabotAttachment
+              key={attachment.card_id}
+              filename={attachment.filename}
+              size={attachment.size}
+              attachment={attachment}
+            />
+          ))}
+      </Flex>
       {text && (
         <AIMarkdown
           className={cx(Styles.message, Styles.messageUser)}

@@ -339,7 +339,7 @@ export const submitInput = createAsyncThunk<
     } = payload;
 
     const prompt = rawPrompt.trim();
-    if (prompt === "") {
+    if (prompt === "" && !payload.attachments?.length) {
       console.warn(
         "An empty prompt was submitted to conversation: ",
         conversationId,
@@ -364,7 +364,9 @@ export const submitInput = createAsyncThunk<
         );
       }
 
-      const command = parseSlashCommand(prompt);
+      const command = payload.attachments?.length
+        ? undefined
+        : parseSlashCommand(prompt);
       if (command) {
         await dispatch(
           executeSlashCommand({
@@ -877,6 +879,11 @@ export const retryPrompt = createAsyncThunk<
         conversationId,
         type: "text",
         message: promptText,
+        attachments: userTurn.parts.flatMap((part) =>
+          part.role === "user" && part.type === "text"
+            ? (part.attachments ?? [])
+            : [],
+        ),
         context,
         metabot_id,
         profile,

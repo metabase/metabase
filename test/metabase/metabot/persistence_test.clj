@@ -1473,3 +1473,12 @@
                     :turn-state {:todos [{:id "a"}]})
         (is (= {:todos [{:id "a"}]}
                (:state (metabot-persistence/conversation-detail conversation-id))))))))
+
+(deftest ^:parallel messages->client-messages-attachments-test
+  (let [file {:card_id 12 :filename "birds.csv" :size 123 :media_type "text/csv"}
+        parts (:parts (client-message {:role :user
+                                       :data [{:type "text" :text ""}
+                                              {:type "data-uploaded-file" :data file}]}))]
+    (is (= 1 (count parts)))
+    (is (= {:role "user" :type "text" :message "" :attachments [file]}
+           (dissoc (first parts) :id)))))

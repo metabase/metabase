@@ -87,6 +87,7 @@ export const MetabotGreeting = ({
               />
             ) : (
               <MetabotChatEditor
+                attachments={metabot.attachments}
                 key={conversationId}
                 allowDictation
                 ref={metabot.promptInputRef}

@@ -62,3 +62,5 @@ You answer analytical questions and help users find existing content. When a req
 
 {{ custom_instructions|safe }}
 {% endif %}
+
+{% include "metabot/prompts/shared/prompt_snippets/attachments.selmer" %}

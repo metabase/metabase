@@ -29,6 +29,7 @@ import {
 } from "../state";
 
 import { useIsFullPageMetabot } from "./use-is-full-page-metabot";
+import { useMetabotAttachments } from "./use-metabot-attachments";
 
 export type SubmitInputOptions = {
   profile?: MetabotProfileId | undefined;
@@ -50,6 +51,12 @@ export const useMetabotConversation = (conversationId: string) => {
   const metabotRequestId = useSelector((state) =>
     getMetabotRequestId(state, conversationId),
   );
+
+  const metabotId = useSelector(getMetabotId);
+  const profile = useSelector((state) =>
+    getProfileOverride(state, conversationId),
+  );
+  const attachments = useMetabotAttachments(conversationId, metabotId, profile);
 
   const prepareRetryIfUnsuccesful = useCallback(
     (result: MetabotPromptSubmissionResult) => {
@@ -73,35 +80,48 @@ export const useMetabotConversation = (conversationId: string) => {
       prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
       options?: SubmitInputOptions,
     ) => {
+      const files = await attachments.prepare();
+      if (!files) {
+        return;
+      }
       setPrompt("");
+      promptInputRef?.current?.clear?.();
       options?.onBeforeSubmit?.();
 
       if (options?.focusInput) {
         promptInputRef?.current?.focus();
       }
 
-      const action = await dispatch(
-        submitInputAction({
-          ...(typeof prompt === "string"
-            ? { type: "text", message: prompt }
-            : prompt),
-          context: await getChatContext(),
-          conversationId,
-          metabot_id: metabotRequestId,
-          profile: options?.profile,
-          isFullPageMetabot,
-        }),
-      );
+      try {
+        const action = await dispatch(
+          submitInputAction({
+            ...(typeof prompt === "string"
+              ? { type: "text", message: prompt }
+              : prompt),
+            ...(files.length > 0 ? { attachments: files } : {}),
+            context: await getChatContext(),
+            conversationId,
+            metabot_id: metabotRequestId,
+            profile: options?.profile,
+            isFullPageMetabot,
+          }),
+        );
 
-      trackMetabotRequestSent();
+        trackMetabotRequestSent();
 
-      if (isFulfilled(action)) {
-        prepareRetryIfUnsuccesful(action.payload);
+        if (isFulfilled(action)) {
+          prepareRetryIfUnsuccesful(action.payload);
+        }
+
+        attachments.finish(isFulfilled(action) && action.payload.success);
+        return action;
+      } catch (error) {
+        attachments.finish(false);
+        throw error;
       }
-
-      return action;
     },
     [
+      attachments,
       dispatch,
       getChatContext,
       metabotRequestId,
@@ -128,9 +148,13 @@ export const useMetabotConversation = (conversationId: string) => {
       );
       if (isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);
+        if (action.payload.success) {
+          attachments.finishRetry();
+        }
       }
     },
     [
+      attachments,
       dispatch,
       getChatContext,
       metabotRequestId,
@@ -158,6 +182,7 @@ export const useMetabotConversation = (conversationId: string) => {
     setPrompt,
     promptInputRef,
     setProfileOverride,
+    attachments,
     submitInput,
     retryMessage,
     cancelRequest,

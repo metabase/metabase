@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import type { DictationState } from "metabase/metabot/hooks/use-metabot-dictation";
@@ -16,6 +17,7 @@ import { DictationWaveform } from "./DictationWaveform";
 import S from "./MetabotDictation.module.css";
 
 type Props = {
+  leadingAction?: ReactNode;
   state: DictationState;
   available: boolean;
   isResponding: boolean;
@@ -61,6 +63,7 @@ function Control({
 }
 
 export function MetabotDictationActions({
+  leadingAction,
   state,
   available,
   isResponding,
@@ -81,6 +84,7 @@ export function MetabotDictationActions({
         </Text>
       )}
       <Box className={S.actions}>
+        {leadingAction && <Box mr="auto">{leadingAction}</Box>}
         {active ? (
           <>
             <Control

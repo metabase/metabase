@@ -172,8 +172,7 @@ export const metabot = createSlice({
           action.payload;
         convo.hasMessagedInSession = true;
         const userMessage = startUserMessage(convo, { id, externalId });
-        // Unjustified type cast. FIXME
-        userMessage.parts.push({ id, role: "user", ...rest, message } as any);
+        userMessage.parts.push({ id, role: "user", ...rest, message });
       },
     ),
     addAgentMessage: convoReducer(

@@ -1,0 +1,18 @@
+.card {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  background: var(--mb-color-background-primary);
+  padding: 0.625rem;
+  width: 13rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+}

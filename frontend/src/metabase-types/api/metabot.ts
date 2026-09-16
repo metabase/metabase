@@ -153,7 +153,15 @@ export type MetabotCodeEdit = {
 
 /* Metabot v3 - API Request Types */
 
+export type MetabotUploadedFile = {
+  card_id: CardId;
+  filename: string;
+  size: number;
+  media_type: "text/csv" | "text/tab-separated-values";
+};
+
 export type MetabotAgentRequest = {
+  attachments?: MetabotUploadedFile[];
   message: string;
   context: MetabotChatContext;
   conversation_id: string; // uuid

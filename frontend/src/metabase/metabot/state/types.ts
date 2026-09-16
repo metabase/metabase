@@ -9,6 +9,7 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
+  MetabotUploadedFile,
 } from "metabase-types/api";
 
 export type MetabotDataPart = Exclude<
@@ -41,6 +42,7 @@ export type MetabotAgentTurnError = {
 };
 
 export type MetabotUserTextChatMessage = {
+  attachments?: MetabotUploadedFile[];
   id: string;
   role: "user";
   type: "text";

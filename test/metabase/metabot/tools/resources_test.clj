@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
@@ -17,6 +18,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel scalar-uris-arg-test
@@ -1228,6 +1230,21 @@
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://model/" m-id "/sources")]})]
           (is (str/includes? output (str "uri=\"metabase://database/" db-id "\""))))))))
+
+(deftest read-model-request-schema-test
+  (mt/with-temp [:model/Card {model-id :id} {:type :model
+                                             :name "Bird sightings"
+                                             :dataset_query (lib/query (mt/metadata-provider)
+                                                                       (lib.metadata/table (mt/metadata-provider)
+                                                                                           (mt/id :products)))}]
+    (mt/with-test-user :crowberto
+      (doseq [suffix ["" "/fields"]]
+        (let [uri    (str "metabase://model/" model-id suffix)
+              result (read-resource/read-resource-tool {:uris [uri]})]
+          (is (map? (get-in result [:resources 0 :content :structured-output])))
+          (is (nil? (mr/explain self.core/LLMRequestOpts
+                                {:input [{:type :tool-output :id "call-1"
+                                          :function "read_resource" :result result}]}))))))))
 
 (deftest read-question-resource-test
   (let [mp (mt/metadata-provider)

@@ -1379,3 +1379,46 @@
                              :context         {}
                              :conversation_id (str (random-uuid))
                              :state           {}}))))
+
+(deftest uploaded-files-conversation-test
+  (with-mock-streaming-provider!
+    (fn []
+      (mt/with-temp [:model/Card {card-id :id} {:type :model}]
+        (let [conversation-id (str (random-uuid))
+              attachment {:card_id card-id :filename "birds.csv" :size 22 :media_type "text/csv"}
+              response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                             {:message "" :attachments [attachment] :context {}
+                                              :conversation_id conversation-id :profile_id "nlq"})
+              user-message (t2/select-one :model/MetabotMessage :conversation_id conversation-id :role :user)]
+          (is (= [{:type "text" :text ""} {:type "data-uploaded-file" :data attachment}]
+                 (:data user-message)))
+          (is (= [attachment]
+                 (-> (metabot.persistence/conversation-detail conversation-id) :messages first :parts first :attachments)))
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (str/includes? (:content (first (metabot.persistence/history
+                                                 (metabot.persistence/live-messages conversation-id))))
+                               (str "metabase://model/" card-id)))
+            (let [fork (metabot.persistence/fork-conversation! conversation-id (streamed-message-id response)
+                                                               (mt/user->id :rasta))]
+              (is (= [attachment]
+                     (-> (metabot.persistence/conversation-detail fork)
+                         :messages first :parts first :attachments)))))
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                {:message "Now group by month" :context {} :conversation_id conversation-id
+                                 :profile_id "nlq" :parent_message_id (streamed-message-id response)})
+          (is (= 2 (t2/count :model/MetabotMessage :conversation_id conversation-id :role :user))))))))
+
+(deftest uploaded-files-validation-test
+  (with-mock-streaming-provider!
+    (fn []
+      (mt/with-temp [:model/Card {card-id :id} {:type :model}]
+        (let [attachment {:card_id card-id :filename "birds.csv" :size 22 :media_type "text/csv"}
+              request {:message "" :context {} :conversation_id (str (random-uuid))}]
+          (doseq [body [request
+                        (assoc request :attachments [attachment] :profile_id "sql")
+                        (assoc request :attachments (vec (repeat 6 attachment)))
+                        (assoc request :attachments [(assoc attachment :size 52428801)])]]
+            (mt/user-http-request :rasta :post 400 "metabot/agent-streaming" body))
+          (mt/user-http-request :rasta :post 404 "metabot/agent-streaming"
+                                (assoc request :attachments [(assoc attachment :card_id Integer/MAX_VALUE)]))
+          (is (zero? (t2/count :model/MetabotMessage :conversation_id (:conversation_id request)))))))))

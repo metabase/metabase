@@ -214,6 +214,7 @@ export const MetabotChat = ({
                 )}
               >
                 <MetabotChatEditor
+                  attachments={metabot.attachments}
                   key={conversationId}
                   ref={metabot.promptInputRef}
                   allowDictation={

@@ -17,3 +17,8 @@
 .contentWrapper :global(.ProseMirror) {
   min-height: 4rem;
 }
+
+.editorContainer[data-dragging] {
+  outline: 2px solid var(--mb-color-core-brand);
+  border-radius: 0.5rem;
+}

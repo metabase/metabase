@@ -168,7 +168,8 @@ export const cardApi = Api.injectEndpoints({
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
-      createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
+      createCardFromCsv: builder.mutation<CardId, CreateCardFromCsvRequest>({
+        extraOptions: { retry: false },
         query: ({ file, collection_id }) => {
           const formData = new FormData();
           formData.append("file", file);
@@ -394,6 +395,7 @@ export const {
   useSearchCardParameterValuesQuery,
   useGetRemappedCardParameterValueQuery,
   useCreateCardMutation,
+  useCreateCardFromCsvMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,
   useCopyCardMutation,
