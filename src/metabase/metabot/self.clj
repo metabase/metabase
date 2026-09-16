@@ -79,13 +79,7 @@
   128,000 output), and the shared context window for providers whose output counts
   against the window itself (Anthropic et al.)."
   [model-ref]
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
-        ;; an unresolvable ref yields no type at all, and asking about a model we cannot place is a
-        ;; question with a nil answer rather than a mistake
-        window-fn            (when (registry/registered? type)
-                               (registry/optional type :context-window))]
-    (when (and window-fn model)
-      (window-fn model))))
+  (registry/context-window-tokens model-ref))
 
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.

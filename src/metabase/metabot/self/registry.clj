@@ -170,3 +170,14 @@
   "Whether a model reference names a model we can serve in Anthropic fast mode."
   [model-ref :- [:maybe :string]]
   (model-capability model-ref :fast-mode?))
+
+(mu/defn context-window-tokens :- [:maybe :int]
+  "The input context window of the model `model-ref` names, or nil where we do not know one.
+
+  Not a [[model-capability]] like the two above: those ask the provider a yes/no about the whole resolved
+  ref, while `:context-window` answers a number about the model alone, so a ref that resolves to a
+  provider but names no model has nothing to ask about."
+  [model-ref :- [:maybe :string]]
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)]
+    (when-let [window-fn (and model (registered? type) (optional type :context-window))]
+      (window-fn model))))
