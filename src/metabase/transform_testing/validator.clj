@@ -16,7 +16,6 @@
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
    [clojure.string :as str]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.schema :as transform-testing.schema]
@@ -28,21 +27,21 @@
 (defn- same-name?
   "Do `a` and `b` name the same thing? Case-agnostic, the rule the rewrite matches by."
   [^String a ^String b]
-  (or (= a b)
-      (and a b (.equalsIgnoreCase a b))))
+  (boolean (or (= a b)
+               (and a b (.equalsIgnoreCase a b)))))
 
 (mu/defn- table-match? :- :boolean
-  "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by
-  name, with schema equal, or the reference bare (nil schema) against a declared table in the
-  driver's `default-schema` — the one-directional defaulting `table-replacements` uses when it
-  rewrites (a bare read resolves to the default schema; a bare declaration does not cover a
-  qualified read). The single matching rule for both completeness directions."
-  [driver :- :keyword
-   {ref-schema :schema ref-name :name} :- ::transform-testing.schema/table
-   {d-schema :schema d-name :name}     :- ::transform-testing.schema/table]
+  "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by name, with schema
+  equal, or the reference bare (nil schema) against a declared table in `default-schema` — the one-directional
+  defaulting `table-replacements` uses when it rewrites (a bare read resolves to the default schema; a bare
+  declaration does not cover a qualified read). Case-agnostic, and the single matching rule for both completeness
+  directions."
+  [{ref-schema :schema ref-name :name} :- ::transform-testing.schema/table
+   {d-schema :schema d-name :name}     :- ::transform-testing.schema/table
+   default-schema                      :- [:maybe :string]]
   (and (same-name? d-name ref-name)
        (or (same-name? d-schema ref-schema)
-           (and (nil? ref-schema) (same-name? d-schema (sql.normalize/default-schema driver))))))
+           (and (nil? ref-schema) (same-name? d-schema default-schema)))))
 
 (mu/defn table-label :- :string
   "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is
@@ -53,22 +52,22 @@
 (mu/defn- missing-inputs :- [:sequential ::transform-testing.schema/table]
   "The tables in `referenced-tables` with no matching declared input — reads that would fall
   through to a real table. Empty means every read is faked (the safety-critical direction)."
-  [driver            :- :keyword
-   inputs            :- ::transform-testing.schema/inputs
-   referenced-tables :- [:set ::transform-testing.schema/table]]
+  [inputs            :- ::transform-testing.schema/inputs
+   referenced-tables :- [:set ::transform-testing.schema/table]
+   default-schema    :- [:maybe :string]]
   (let [declared (into #{} (map :table) inputs)]
-    (into [] (remove (fn [ref] (some #(table-match? driver ref %) declared))) referenced-tables)))
+    (into [] (remove (fn [ref] (some #(table-match? ref % default-schema) declared))) referenced-tables)))
 
 (mu/defn- unused-inputs :- [:sequential ::transform-testing.schema/table]
   "The declared inputs the transform does not read — a fake for a table the query never touches
   (usually a stale or mistyped input). Empty means the suite declares nothing extraneous. Together
   with `missing-inputs`, this makes the declared set exactly the referenced set: every read faked,
   no fake unused."
-  [driver            :- :keyword
-   inputs            :- ::transform-testing.schema/inputs
-   referenced-tables :- [:set ::transform-testing.schema/table]]
+  [inputs            :- ::transform-testing.schema/inputs
+   referenced-tables :- [:set ::transform-testing.schema/table]
+   default-schema    :- [:maybe :string]]
   (into [] (comp (map :table)
-                 (remove (fn [decl] (some #(table-match? driver % decl) referenced-tables))))
+                 (remove (fn [decl] (some #(table-match? % decl default-schema) referenced-tables))))
         inputs))
 
 (mu/defn- surviving-references :- [:sequential :string]
@@ -102,10 +101,10 @@
   Two inputs collide when a reference could resolve to either: the same table declared twice, or the same table
   declared once bare and once in the driver's default schema. The rewrite maps each reference to one temp table, so a
   collision would silently drop one input's fixture and read the other's."
-  [driver :- :keyword
-   inputs :- ::transform-testing.schema/inputs]
+  [inputs         :- ::transform-testing.schema/inputs
+   default-schema :- [:maybe :string]]
   (let [input-keys (fn [{{:keys [schema name]} :table}]
-                     (set (transform-testing.compile/table-keys driver schema name)))
+                     (set (transform-testing.compile/table-keys schema name default-schema)))
         colliding  (->> (map input-keys inputs)
                         (mapcat identity)
                         frequencies
@@ -144,28 +143,30 @@
 
   `referenced-tables` are the tables the transform's source reads, parsed before any replacement; `rewritten-transform`
   is that source after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
-  the temp tables everything may read."
+  the temp tables everything may read; `default-schema` is the schema an unqualified reference resolves to in the
+  database under test."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-transform replacements]}
+   {:keys [inputs expectations referenced-tables rewritten-transform replacements default-schema]}
    :- [:map {:closed true}
        [:inputs              ::transform-testing.schema/inputs]
        [:expectations        ::transform-testing.schema/expectations]
        [:referenced-tables   [:set ::transform-testing.schema/table]]
        [:rewritten-transform :string]
-       [:replacements        ::transform-testing.compile/table-replacements]]]
-  (when-let [missing (seq (missing-inputs driver inputs referenced-tables))]
+       [:replacements        ::transform-testing.compile/table-replacements]
+       [:default-schema      [:maybe :string]]]]
+  (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/missing-inputs
             (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
                  (str/join ", " (map table-label missing)))
             {:tables (mapv table-label missing)})))
-  (when-let [unused (seq (unused-inputs driver inputs referenced-tables))]
+  (when-let [unused (seq (unused-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unused-inputs
             (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
                  (str/join ", " (map table-label unused)))
             {:tables (mapv table-label unused)})))
-  (when-let [colliding (seq (colliding-inputs driver inputs))]
+  (when-let [colliding (seq (colliding-inputs inputs default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/duplicate-input-table
             (tru "Duplicate test inputs; each input table may be declared only once: {0}"
@@ -173,8 +174,6 @@
             {:tables (vec colliding)})))
   (let [temp-tables (into #{} (map :table) (vals replacements))]
     (check-rewrite driver rewritten-transform temp-tables nil)
-    ;; An expectation carrying the author's own SQL gets the same rewrite as the transform, and so needs the same
-    ;; guard: nothing stands in for a table it names that the test never declared.
     (doseq [{:keys [name sql]} expectations
             :when              sql]
       (check-rewrite driver (transform-testing.compile/replace-tables driver sql replacements) temp-tables name)))

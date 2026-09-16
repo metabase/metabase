@@ -736,7 +736,7 @@
   (u/upper-case-en name-str))
 
 (defmethod sql/default-schema :h2
-  [_]
+  [_driver _database]
   "PUBLIC")
 
 (defmethod driver/temp-table-name :h2

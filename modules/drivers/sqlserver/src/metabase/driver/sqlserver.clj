@@ -113,7 +113,7 @@
   :sunday)
 
 (defmethod driver.sql/default-schema :sqlserver
-  [_]
+  [_driver _database]
   "dbo")
 
 (defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))

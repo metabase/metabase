@@ -208,8 +208,8 @@
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
   Returns {:table table-id} or {:transform transform-id}, or nil."
-  [driver tables transforms spec]
-  (common/find-table-or-transform driver tables transforms spec))
+  [driver database tables transforms spec]
+  (common/find-table-or-transform driver database tables transforms spec))
 
 (defn resolve-field
   "Resolve a field reference to one or more actual database fields.

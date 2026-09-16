@@ -68,7 +68,7 @@
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
                  (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
-                 (assoc :schema (driver.sql/default-schema driver)))]
+                 (assoc :schema (driver.sql/default-schema driver/*driver* (mt/db))))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
@@ -252,7 +252,7 @@
    Useful for tests that need to create tables with a schema matching transform targets."
   []
   (or (when (get-method driver.sql/default-schema driver/*driver*)
-        (driver.sql/default-schema driver/*driver*))
+        (driver.sql/default-schema driver/*driver* (mt/db)))
       (if (= :bigquery-cloud-sdk driver/*driver*)
         (t2/select-one-fn :schema :model/Table :db_id (mt/id))
         "public")))

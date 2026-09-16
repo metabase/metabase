@@ -1495,7 +1495,7 @@
   (driver.conn/effective-details database))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
-  [_]
+  [_driver _database]
   nil)
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk

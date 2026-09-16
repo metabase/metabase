@@ -6,6 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver.sql.normalize/default-schema` now takes the database as well as the driver:
+  `[driver database]`. The schema an unqualified table reference resolves to is a property of the connection for a
+  driver that opens a database where others have a default schema — ClickHouse now answers with the database its
+  connection opened, where before it inherited `"public"` from `:sql`. `database` may be nil when the caller has none
+  in hand, and such a driver answers nil for it.
+
 - New feature `:transforms/testing` -- whether the driver can run transform test suites against temp tables. Drivers
   with this feature implement the new multimethods `metabase.driver/temp-table-name` `[driver]`,
   `metabase.driver/compile-create-temp-table` `[driver {:keys [table query]}]`,

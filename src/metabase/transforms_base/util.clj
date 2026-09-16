@@ -193,7 +193,7 @@
    This handles the case where transforms create tables without explicit schema
    but the driver needs a schema to find the table during sync."
   [driver database table]
-  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+  (when-let [default-schema (try (sql.normalize/default-schema driver database) (catch Exception _ nil))]
     (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
       default-schema)))
 

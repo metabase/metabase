@@ -108,7 +108,7 @@
         db-tables     (lib.metadata/bulk-metadata query :metadata/table table-ids)
         db-transforms (lib.metadata/transforms query)]
     (into #{}
-          (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
+          (keep #(sql-tools.common/find-table-or-transform driver (lib.metadata/database query) db-tables db-transforms %))
           specs)))
 
 (defmethod sql-tools/referenced-tables-impl :macaw

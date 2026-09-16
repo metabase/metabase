@@ -66,10 +66,9 @@
   transform output is TMP_OUT."
   [inputs]
   (transform-testing.compile/table-replacements
-   :h2
    (transform-under-test)
    (into {} (map-indexed (fn [i input] [input (str "TMP_IN_" (inc i))])) inputs)
-   "TMP_OUT"))
+   "TMP_OUT" "PUBLIC"))
 
 (defn- only-temp-tables?
   "True iff every table in `refs` is one of the temp tables named by [[replacements-for]]."
@@ -79,7 +78,7 @@
 (defn- missing-inputs
   "The tables `sql` reads that `inputs` does not declare."
   [inputs sql]
-  (#'transform-testing.validator/missing-inputs :h2 inputs (declared-refs sql)))
+  (#'transform-testing.validator/missing-inputs inputs (declared-refs sql) "PUBLIC"))
 
 ;;; ------------------------------------- Rewrite completeness -------------------------------------
 
@@ -186,7 +185,8 @@
       :expectations        expectations
       :referenced-tables   (declared-refs sql)
       :rewritten-transform (rewrite sql replacements)
-      :replacements        replacements})))
+      :replacements        replacements
+      :default-schema      "PUBLIC"})))
 
 (deftest expectation-sql-reads-only-temp-tables-test
   (let [inputs [(declared-input "PUBLIC" "PEOPLE")]
@@ -240,10 +240,10 @@
     ;; its fixture loaded but unreferenced, and the query would read the other one's data.
     (let [inputs [(declared-input nil "ORDERS") (declared-input "PUBLIC" "ORDERS")]]
       (is (= ["ORDERS" "PUBLIC.ORDERS"]
-             (#'transform-testing.validator/colliding-inputs :h2 inputs)))))
+             (#'transform-testing.validator/colliding-inputs inputs "PUBLIC")))))
   (testing "the same table in two schemas is not a collision: a qualified reference tells them apart"
     (let [inputs [(declared-input "SALES" "ORDERS") (declared-input "ARCHIVE" "ORDERS")]]
-      (is (= [] (#'transform-testing.validator/colliding-inputs :h2 inputs))))))
+      (is (= [] (#'transform-testing.validator/colliding-inputs inputs "PUBLIC"))))))
 
 ;;; ------------------------------- Occurrences that are not references -------------------------------
 

@@ -1323,7 +1323,7 @@
   (= (sql-jdbc/get-sql-state e) "42S02"))
 
 (defmethod driver.sql/default-schema :mysql
-  [_]
+  [_driver _database]
   nil)
 
 ;; Override db-type-name to handle tinyint(1) as boolean

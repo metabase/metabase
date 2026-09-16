@@ -136,6 +136,15 @@
        (remove str/blank?)
        first))
 
+(defmethod driver.sql/default-schema :clickhouse
+  [_driver database]
+  ;; ClickHouse opens a database where other engines have a default schema, so an unqualified reference resolves to
+  ;; the one this connection opened rather than to anything the driver could name on its own. `:db` is the older
+  ;; spelling of `:dbname`, and both are still in the wild.
+  (let [details (:details database)]
+    (or (first-db-name (:dbname details))
+        (first-db-name (:db details)))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (let [;; ensure defaults merge on top of nils

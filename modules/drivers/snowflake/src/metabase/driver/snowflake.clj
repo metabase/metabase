@@ -120,7 +120,7 @@
   :sunday)
 
 (defmethod driver.sql/default-schema :snowflake
-  [_]
+  [_driver _database]
   "PUBLIC")
 
 (defmethod driver/temp-table-name :snowflake

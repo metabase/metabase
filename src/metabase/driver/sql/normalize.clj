@@ -40,15 +40,19 @@
     error))
 
 (defmulti default-schema
-  "Returns the default schema for a given database driver.
+  "The schema an unqualified table reference resolves to in `database`, or nil when the driver has none.
+
+  `database` may be nil when the caller has none in hand, and a driver whose default schema is a property of the
+  connection rather than of the driver — ClickHouse opens a database where other engines have a default schema —
+  answers nil for it.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
+  {:added "0.57.0" :arglists '([driver database])}
+  (fn [driver _database] (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
 (defmethod default-schema :sql
-  [_]
+  [_driver _database]
   "public")
 
 (defmulti reserved-literal

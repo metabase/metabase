@@ -22,6 +22,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transform-testing.compile :as transform-testing.compile]
@@ -179,22 +180,24 @@
   Throws a typed refusal from [[metabase.transform-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
-  (let [transform    (testable-transform transform_id)
-        database     (testable-database transform)
-        driver       (keyword (:engine database))
-        source       (parsed-source driver transform transform_id)
-        input->table (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
-        output-table (driver/temp-table-name driver)
-        labels       (table-labels transform input->table output-table)
-        replacements (transform-testing.compile/table-replacements driver transform input->table output-table)
-        compiled     (transform-testing.compile/compile-transform driver source replacements)]
+  (let [transform      (testable-transform transform_id)
+        database       (testable-database transform)
+        driver         (keyword (:engine database))
+        source         (parsed-source driver transform transform_id)
+        input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
+        output-table   (driver/temp-table-name driver)
+        labels         (table-labels transform input->table output-table)
+        default-schema (sql.normalize/default-schema driver database)
+        replacements   (transform-testing.compile/table-replacements transform input->table output-table default-schema)
+        compiled       (transform-testing.compile/compile-transform driver source replacements)]
     (transform-testing.validator/validate
      driver
      {:inputs              inputs
       :expectations        expectations
       :referenced-tables   (:referenced-tables source)
       :rewritten-transform (:query compiled)
-      :replacements        replacements})
+      :replacements        replacements
+      :default-schema      default-schema})
     (driver/do-with-test-connection
      driver database
      (fn [conn]
