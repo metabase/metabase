@@ -337,10 +337,10 @@ function DashCardInner({
     ? onEditVisualizationClick
     : undefined;
 
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card) ? buildQuestion(dashcard.card) : null;
-  }, [dashcard.card, buildQuestion]);
+  const question =
+    useQuestionFromCard(
+      isQuestionCard(dashcard.card) ? dashcard.card : undefined,
+    ) ?? null;
 
   return (
     <ErrorBoundary>

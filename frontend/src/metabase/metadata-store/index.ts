@@ -36,7 +36,8 @@ export {
   useMetadataProviderUnfiltered,
   useMetricMetadataProvider,
   useQuestionFromCard,
-  useQuestionFromOpts,
+  useQuestionFromCardBuilder,
+  useQuestionFromOptsBuilder,
 } from "./provider";
 export type {
   CardQuestionBuilder,

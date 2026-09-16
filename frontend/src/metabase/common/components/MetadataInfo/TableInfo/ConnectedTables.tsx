@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useQuestionFromOpts } from "metabase/metadata-store";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import * as Urls from "metabase/urls";
 import type { NormalizedTable } from "metabase-types/api";
 
@@ -58,7 +58,7 @@ function ConnectedTableButton({
 }
 
 function ConnectedTableLink({ table }: { table: ConnectedTable }) {
-  const buildQuestion = useQuestionFromOpts();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const question = buildQuestion({
     dataset_query: {
       database: table.db_id,

@@ -118,11 +118,7 @@ function ModelActionsLoader(dispatchProps: DispatchProps) {
     isLoading,
     error,
   } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
-  const buildQuestion = useQuestionFromCard();
-  const model = useMemo(
-    () => (card != null ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const model = useQuestionFromCard(card);
 
   if (!model) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
