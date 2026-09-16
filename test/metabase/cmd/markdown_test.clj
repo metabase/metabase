@@ -45,6 +45,16 @@
     (is (= "## Anthropic" (md/heading 2 "Anthropic")))
     (is (= "### `MB_ADMIN_EMAIL`" (md/heading 3 (md/code "MB_ADMIN_EMAIL"))))))
 
+(deftest ^:parallel sentence-case-test
+  (are [expected title] (= expected (md/sentence-case title))
+    "Search Metabase content" "Search Metabase Content"
+    ;; acronyms keep their spelling wherever they fall, whichever convention the title came from
+    "Execute SQL"             "execute sql"
+    "Execute SQL"             "Execute Sql"
+    "Refresh UI credential"   "refresh ui credential"
+    ;; a word that merely contains an acronym is untouched
+    "Validate idea"           "validate idea"))
+
 (deftest ^:parallel escape-liquid-test
   ;; the docs site runs Liquid over every page before Markdown, so prose that quotes Metabase's template syntax
   ;; has to be fenced or the site either drops it or refuses the page

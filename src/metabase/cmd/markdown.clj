@@ -58,6 +58,30 @@
   [s]
   (str/replace (str s) #"\{\{.*?\}\}|\{%.*?%\}|\{\{|\{%" "{% raw %}$0{% endraw %}"))
 
+(def ^:private fixed-case-words
+  "Words that keep their capitalization in a sentence-cased title, keyed by lowercase form."
+  {"sql"      "SQL"
+   "url"      "URL"
+   "uri"      "URI"
+   "api"      "API"
+   "ui"       "UI"
+   "id"       "ID"
+   "mbql"     "MBQL"
+   "metabase" "Metabase"})
+
+(defn sentence-case
+  "`title` with the first word capitalized and the rest lowered, except for the acronyms and names in
+  [[fixed-case-words]], which keep their spelling wherever they fall."
+  [title]
+  (->> (str/split title #" ")
+       (map-indexed (fn [i word]
+                      (let [lowered (str/lower-case word)]
+                        (or (get fixed-case-words lowered)
+                            (if (zero? i)
+                              (str/capitalize lowered)
+                              lowered)))))
+       (str/join " ")))
+
 (defn sentence
   "`s` as a sentence: forced out of i18n and terminated with a period. Nil when there is nothing to say, so a field
   whose text is blank contributes no stray `.` to its bullet.
