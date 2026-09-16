@@ -40,9 +40,9 @@
   (->Message lines (vec args)))
 
 (mu/defn raw :- ::raw
-  "Mark `x` as server-controlled text that [[render]] interpolates into a message without cleaning."
-  [x :- ::value]
-  (->Raw x))
+  "Mark string `s` as server-controlled text that [[render]] interpolates into a message without cleaning."
+  [s :- :string]
+  (->Raw s))
 
 (def ^:private escaped-categories
   "Unicode general categories escaped by [[clean]]: invisible, line-breaking, and unassigned code points."
@@ -132,9 +132,10 @@
   #"%(?:\d+\$)?([-#+ 0,(<]*)(\d*)(\.\d+)?([tT]?[a-zA-Z%])")
 
 (defn- single-line?
-  "Whether format string `line` renders as one line: no line-breaking or control characters, and no `%n`."
+  "Whether format string `line` renders as one line of ordinary text: no line-breaking, control, or private-use
+   characters — truncation markers are built from private-use ones — and no `%n`."
   [line]
-  (and (not (re-find #"[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]" line))
+  (and (not (re-find #"[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]" line))
        (not-any? #(= "n" (nth % 4)) (re-seq format-specifier line))))
 
 (defn- reshapes-string?
@@ -222,7 +223,7 @@
   [arg]
   (cond
     (message? arg)      [:message arg]
-    (instance? Raw arg) (when (string? (:value arg)) [:text (:value arg)])
+    (instance? Raw arg) [:text (:value arg)]
     (unquoted? arg)     nil
     :else               [:clean arg]))
 

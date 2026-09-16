@@ -86,6 +86,23 @@
   (testing "GHY-4544: a keyword built from untrusted text can't smuggle a raw newline"
     (is (not (str/includes? (#'message/clean (keyword "a\nb")) "\n")))))
 
+(deftest ^:parallel raw-takes-only-strings-test
+  (testing "GHY-4544: raw marks server text, so anything but a string fails its schema"
+    (are [x] (thrown? Exception (message/raw x))
+      :kw
+      42
+      nil
+      ['sym])
+    (is (= "Call browse_data." (message/render (message/msg ["Call %s."] (message/raw "browse_data")))))))
+
+(deftest ^:parallel raw-holding-truncation-markers-test
+  (testing "GHY-4544: raw text holding the private-use code points truncation markers are built from is emitted as
+            itself, not read back as an argument marker"
+    (let [marked (str "a" (char 0xE000) "0" (char 0xE001) "b")
+          m      (message/msg ["Note: %s"] (message/raw marked))]
+      (is (= (str "Note: " marked) (message/render m)))
+      (is (= (str "Note: " marked) (message/render (message/truncate m 100)))))))
+
 (deftest ^:parallel clean-prints-boundedly-test
   (testing "GHY-4544: an unbounded sequence is printed to a bounded length instead of hanging"
     (let [rendered (message/render (message/msg ["%s"] (range)))]
@@ -127,6 +144,10 @@
       "first\nsecond"
       (str "first" (char 0x2028) "second")
       "first%nsecond"))
+  (testing "GHY-4544: a line holding a private-use character, which truncation markers are built from, is cleaned whole"
+    (are [line] (= (#'message/clean line) (message/render (message/msg [line])))
+      (str "first" (char 0xE000) "second")
+      (str "first" (char 0xE001) "second")))
   (testing "a message whose lines aren't all strings, built past `msg`'s schema, is cleaned whole instead of formatted"
     (let [rendered (message/render (message/->Message ["ok" 42] ["x\ny"]))]
       (is (string? rendered))
@@ -156,8 +177,6 @@
              (message/render (message/msg ["Rows: %s"] throwing))))
       (is (= "Internal error while rendering a message."
              (message/render throwing)))
-      (is (= "Internal error while rendering a message."
-             (message/render (message/raw throwing))))
       (testing "a nested message that can't render embeds the literal in its parent"
         (is (= "Failed: Internal error while rendering a message."
                (message/render (message/msg ["Failed: %s"] (message/msg ["Rows: %s"] throwing)))))))))
@@ -180,7 +199,7 @@
   (testing "GHY-4544: a rendering within the limit is kept whole"
     (is (= "Found \"a\"." (message/render (message/truncate (message/msg ["Found %s."] "a") 11))))
     (are [x] (= (message/render x) (message/render (message/truncate x 10000)))
-      (message/msg ["%s of %,d at 100%% — %2$d again, %1$s again" "next: %s"] "a\nb" 1234 (message/raw 'sym))
+      (message/msg ["%s of %,d at 100%% — %2$d again, %1$s again" "next: %s"] "a\nb" 1234 (message/raw "sym"))
       (message/msg ["Wrapped: %s" "%s"] (message/msg ["No table %s."] :orders) (message/raw "server\ntext"))
       (message/msg ["Values: %s, %s, %b, %s"] nil {:a "“b”"} "x" 1.5)
       (message/msg ["Count: %d"] "x\ny")
