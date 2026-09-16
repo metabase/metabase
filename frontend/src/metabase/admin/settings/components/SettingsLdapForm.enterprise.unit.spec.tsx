@@ -48,7 +48,7 @@ const setup = async (
 
 describe("SettingsLdapForm (EE)", () => {
   describe("user provisioning", () => {
-    it("sits right below the server settings", async () => {
+    it("sits right above the attributes", async () => {
       await setup();
 
       const cardTitles = screen
@@ -56,8 +56,8 @@ describe("SettingsLdapForm (EE)", () => {
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
         "Server settings",
-        "User provisioning",
         "User schema",
+        "User provisioning",
         "Attributes",
         "Group mapping",
       ]);

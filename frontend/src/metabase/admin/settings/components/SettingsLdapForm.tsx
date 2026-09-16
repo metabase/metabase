@@ -212,10 +212,6 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </SettingsSection>
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning
-                disabled={!isConfigured}
-              />
               <SettingsSection
                 title={t`User schema`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -245,10 +241,15 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning
+                disabled={!isConfigured}
+              />
               <CollapsibleSettingsSection
                 title={t`Attributes`}
                 description={t`Map LDAP attributes to the email, first name, and last name fields in ${applicationName}`}
                 defaultOpened={hasCustomAttributes}
+                disabled={!isConfigured}
               >
                 <Stack gap="lg">
                   <FormTextInput

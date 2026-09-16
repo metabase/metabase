@@ -254,7 +254,7 @@ describe("SettingsLdapForm", () => {
 
   describe("defaults", () => {
     it("shows the defaults as placeholders and leaves unset fields empty", async () => {
-      await setup({ settingDefinitions: DEFAULT_DEFINITIONS });
+      await setupConfigured({ settingDefinitions: DEFAULT_DEFINITIONS });
 
       const userFilter = screen.getByLabelText(/User filter/);
       expect(userFilter).toHaveValue("");
@@ -311,8 +311,18 @@ describe("SettingsLdapForm", () => {
       expect(screen.getByText("Using MB_LDAP_HOST")).toBeInTheDocument();
     });
 
+    it("keeps the attributes card disabled until LDAP is configured", async () => {
+      await setup({ settingValues: { "ldap-attribute-email": "uid" } });
+
+      const attributesHeader = screen.getByRole("button", {
+        name: "Attributes",
+      });
+      expect(attributesHeader).toBeDisabled();
+      expect(attributesHeader).toHaveAttribute("aria-expanded", "false");
+    });
+
     it("keeps the attributes card collapsed until an attribute is customized", async () => {
-      await setup({ settingDefinitions: DEFAULT_DEFINITIONS });
+      await setupConfigured({ settingDefinitions: DEFAULT_DEFINITIONS });
 
       expect(
         screen.getByRole("button", { name: "Attributes" }),
@@ -321,7 +331,9 @@ describe("SettingsLdapForm", () => {
     });
 
     it("opens the attributes card when an attribute is set", async () => {
-      await setup({ settingValues: { "ldap-attribute-email": "uid" } });
+      await setupConfigured({
+        settingValues: { "ldap-attribute-email": "uid" },
+      });
 
       expect(
         screen.getByRole("button", { name: "Attributes" }),
@@ -330,7 +342,7 @@ describe("SettingsLdapForm", () => {
     });
 
     it("opens the attributes card when an attribute comes from an env var", async () => {
-      await setup({
+      await setupConfigured({
         settingDefinitions: [
           {
             key: "ldap-attribute-lastname",
