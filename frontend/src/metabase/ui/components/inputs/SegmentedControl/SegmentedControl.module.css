@@ -1,13 +1,27 @@
 .SegmentedControl {
-  background-color: var(--sc-background-color);
+  padding: var(--mantine-spacing-xxs);
+  border-radius: calc(
+    /* inner radius + padding */ var(--mantine-radius-xs) +
+      var(--mantine-spacing-xxs)
+  );
+  background-color: var(--mb-color-background_surface-secondary);
+  display: inline-flex;
+  gap: var(--mantine-spacing-xxs);
+
+  &[data-full-width] {
+    display: flex;
+  }
 }
 
 .SegmentedControlLabel {
-  color: var(--mb-color-text-primary);
-  line-height: 1;
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-xs);
 
-  &:hover {
-    color: var(--mb-color-core-brand);
+  &:hover:not([data-active], [data-disabled]) {
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-segmented_control-hover);
   }
 
   &[data-disabled] {
@@ -17,18 +31,27 @@
     }
   }
 
+  &:active:not([data-active], [data-disabled]) {
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-segmented_control-pressed);
+  }
+
   &[data-active] {
-    &,
-    &:hover {
-      color: var(--sc-active-text-color);
-    }
+    color: var(--mb-color-text-primary);
   }
 }
 
-.SegmentedControl_Control {
-  &:not(:first-of-type) {
-    border-color: var(--mb-color-border-neutral);
-  }
+.SegmentedControlInnerLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1rem;
+}
+
+.SegmentedControlIndicator {
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
+  background-color: var(--mb-color-segmented_control-selected);
+  box-shadow: var(--mantine-shadow-xs_outline);
 }
 
 .SegmentedControlInput {

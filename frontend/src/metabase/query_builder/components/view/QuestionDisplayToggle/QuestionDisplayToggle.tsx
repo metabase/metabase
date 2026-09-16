@@ -1,10 +1,7 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Icon, SegmentedControl } from "metabase/ui";
-
-import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";
 
 export interface QuestionDisplayToggleProps {
   className?: string;
@@ -30,12 +27,7 @@ export const QuestionDisplayToggle = ({
   return (
     <SegmentedControl
       classNames={{
-        root: cx(QuestionDisplayToggleS.Well, className),
-        label: QuestionDisplayToggleS.ToggleIcon,
-        indicator: cx(
-          QuestionDisplayToggleS.ToggleIcon,
-          QuestionDisplayToggleS.active,
-        ),
+        root: className,
       }}
       onClick={(e) => {
         e.preventDefault();
@@ -55,14 +47,7 @@ export const QuestionDisplayToggle = ({
           disabled: true,
           value: "data",
           label: (
-            <Icon
-              size={16}
-              name="table2"
-              className={cx(QuestionDisplayToggleS.InnerLabel, {
-                [QuestionDisplayToggleS.activeLabel]: isShowingRawTable,
-              })}
-              aria-label={t`Switch to data`}
-            />
+            <Icon size={16} name="table2" aria-label={t`Switch to data`} />
           ),
         },
         {
@@ -72,9 +57,6 @@ export const QuestionDisplayToggle = ({
             <Icon
               size={16}
               name="lineandbar"
-              className={cx(QuestionDisplayToggleS.InnerLabel, {
-                [QuestionDisplayToggleS.activeLabel]: !isShowingRawTable,
-              })}
               aria-label={t`Switch to visualization`}
             />
           ),

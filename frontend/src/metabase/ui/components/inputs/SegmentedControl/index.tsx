@@ -14,7 +14,15 @@ export interface SegmentedControlItem<Value extends string> extends Omit<
 
 export interface SegmentedControlProps<Value extends string> extends Omit<
   MantineSegmentedControlProps,
-  "data" | "value" | "onChange"
+  | "data"
+  | "value"
+  | "onChange"
+  | "color"
+  | "size"
+  | "radius"
+  | "bg"
+  | "variant"
+  | "autoContrast"
 > {
   data: SegmentedControlItem<Value>[] | Value[];
   value?: Value;
