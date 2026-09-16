@@ -70,6 +70,7 @@
     [:metabase-security-lint/unguarded-outbound-http                   "src/metabase/notify/payload.clj"            13 :error   [:http]]
     [:metabase-security-lint/insecure-tls-option                       "src/metabase/notify/payload.clj"            15 :error   [:http]]
     [:metabase-security-lint/unsafe-deserialization                    "src/metabase/notify/payload.clj"            17 :note    []]
+    [:metabase-security-lint/throwable-map-outside-sanitizer           "src/metabase/server/middleware/exceptions.clj" 10 :error [:middleware]]
     [:metabase-security-lint/middleware-acts-on-request-value          "src/metabase/server/middleware/misc.clj"    13 :error   [:middleware]]
     [:metabase-security-lint/middleware-acts-on-request-value          "src/metabase/server/middleware/misc.clj"    19 :note    [:middleware]]
     [:metabase-security-lint/middleware-acts-on-request-value          "src/metabase/server/middleware/misc.clj"    24 :warning [:middleware]]

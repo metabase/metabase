@@ -862,6 +862,34 @@
         (is (= [11] (map :row fs)) "only the call handing over warehouse metadata")
         (is (= #{:warehouse} (:origins (first fs))) "with that call's own origins")))))
 
+(deftest throwable-map-outside-sanitizer-test
+  (let [id  :metabase-security-lint/throwable-map-outside-sanitizer
+        at  (fn [relpath src]
+              (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+                          .mkdirs .deleteOnExit)
+                    f   (java.io.File. dir relpath)]
+                (.mkdirs (.getParentFile f))
+                (.deleteOnExit f)
+                (spit f src)
+                (engine/analyze {:paths [(.getAbsolutePath f)] :rules [(rule/by-id id)] :taint-sources :any-local
+                                 :root (.getAbsolutePath dir)})))]
+    (testing "an exception turned into data anywhere but the sanitizer: its ex-data, and every cause's, is on its way
+              to a caller"
+      (is (flags? id "(ns t) (defn body [e] (merge {:message (ex-message e)} (Throwable->map e)))"))
+      (is (flags? id "(ns t) (defn body [e] (cond-> (Throwable->map e) true (dissoc :trace)))")
+          "a denylist over the map afterwards is the pattern that kept reopening, not the fix"))
+    (testing "the sanitizer is the one place it happens, and the stored task-history row never reaches a response"
+      (is (empty? (at "src/metabase/api/response.clj"
+                      "(ns metabase.api.response) (defn throwable->response-map [e] (dissoc (Throwable->map e) :data))")))
+      (is (empty? (at "src/metabase/task_history/models/task_history.clj"
+                      "(ns metabase.task-history.models.task-history) (defn serialize [e] (Throwable->map e))")))
+      (is (seq (at "src/metabase/server/middleware/exceptions.clj"
+                   "(ns metabase.server.middleware.exceptions) (defn body [e] (Throwable->map e))"))
+          "and the exemption is by path, not by the name of a var"))
+    (testing "the fix clears it"
+      (is (clean? id "(ns t (:require [metabase.api.response :as api.response]))
+                      (defn body [e] (api.response/throwable->response-map e))")))))
+
 (deftest setting-written-from-boundary-test
   (let [id :metabase-security-lint/setting-written-from-boundary]
     (is (= 1 (count (check-cg id "(ns t (:require [metabase.settings.core :as setting] [clj-yaml.core :as yaml]))
