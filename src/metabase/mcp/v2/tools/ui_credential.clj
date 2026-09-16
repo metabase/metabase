@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]))
 
@@ -33,9 +34,9 @@
   (if (and session-id api/*current-user-id*)
     ;; Always minted with the caller's scopes, which is what subjects the credential to the native-SQL gate
     ;; on /api/dataset. (v1's claimless, gate-exempt 2-arity retired with v1 in this slice.)
-    (assoc (common/success-content "MCP UI credential refreshed.")
+    (assoc (common/success-content (message/msg ["MCP UI credential refreshed."]))
            :_meta {common/mcp-apps-meta-key
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id* token-scopes)
                     :sessionId  session-id}})
-    (common/error-content "Refreshing an MCP UI credential requires an authenticated MCP session."
+    (common/error-content (message/msg ["Refreshing an MCP UI credential requires an authenticated MCP session."])
                           common/error-code-invalid-request)))
