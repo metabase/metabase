@@ -181,8 +181,13 @@
   "Get the current sync task"
   []
   (api/check-superuser)
-  (when-let [task (remote-sync.task/most-recent-task)]
-    (t2/hydrate task :status)))
+  (when-let [task (some-> (remote-sync.task/most-recent-task) (t2/hydrate :status))]
+    (if (= :timed-out (:status task))
+      ;; The owning worker is gone (its heartbeat stopped), so close the row now rather than leaving it to the
+      ;; next task creation. Idempotent and safe to race across nodes and polling tabs.
+      (do (remote-sync.task/supersede-stale-tasks!)
+          (t2/hydrate (remote-sync.task/most-recent-task) :status))
+      task)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"

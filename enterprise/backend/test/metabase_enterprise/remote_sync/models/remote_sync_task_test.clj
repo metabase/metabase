@@ -546,11 +546,22 @@
           stale-task (insert-task! {:started_at old-time
                                     :last_progress_report_at old-time
                                     :progress 0.5})]
-      (rst/supersede-stale-tasks!)
+      (mt/with-temporary-setting-values [:remote-sync-task-time-limit-ms 120000]
+        (rst/supersede-stale-tasks!))
       (let [after (t2/select-one :model/RemoteSyncTask :id (:id stale-task))]
         (is (true? (:cancelled after)))
         (is (some? (:ended_at after)))
-        (is (= "Superseded after staleness timeout" (:error_message after)))))))
+        (is (= "Sync was interrupted: the server stopped responding for 2 minutes (it may have restarted)"
+               (:error_message after)))))))
+
+(deftest supersede-stale-tasks!-message-uses-singular-for-one-minute-test
+  (testing "the interruption message reads '1 minute' when the window is one minute"
+    (let [old-time   (t/minus (t/offset-date-time) (t/hours 1))
+          stale-task (insert-task! {:started_at old-time :last_progress_report_at old-time})]
+      (mt/with-temporary-setting-values [:remote-sync-task-time-limit-ms 60000]
+        (rst/supersede-stale-tasks!))
+      (is (= "Sync was interrupted: the server stopped responding for 1 minute (it may have restarted)"
+             (t2/select-one-fn :error_message :model/RemoteSyncTask :id (:id stale-task)))))))
 
 (deftest supersede-stale-tasks!-leaves-brand-new-tasks-alone-test
   (testing "supersede-stale-tasks! must NOT mark a brand-new task that just inserted —

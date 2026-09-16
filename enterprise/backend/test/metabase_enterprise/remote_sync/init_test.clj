@@ -146,3 +146,16 @@
       (testing "the worker's late result does not overwrite the shutdown bookkeeping"
         (is (=? {:error_message "Interrupted by server shutdown" :outcome nil}
                 (t2/select-one :model/RemoteSyncTask :id own-id)))))))
+
+(deftest remote-sync-init-supersedes-stale-tasks-test
+  (testing "boot closes open task rows whose owner has been silent past the window and leaves fresh ones alone"
+    (mt/with-temporary-setting-values [:remote-sync-url nil]
+      (let [stale-id (new-task-id)
+            _        (t2/update! :model/RemoteSyncTask stale-id
+                                 {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
+            fresh-id (new-task-id)]
+        (#'init/remote-sync-init)
+        (is (=? {:cancelled true :ended_at some? :error_message #"^Sync was interrupted.*"}
+                (t2/select-one :model/RemoteSyncTask :id stale-id)))
+        (is (=? {:cancelled false :ended_at nil :error_message nil}
+                (t2/select-one :model/RemoteSyncTask :id fresh-id)))))))

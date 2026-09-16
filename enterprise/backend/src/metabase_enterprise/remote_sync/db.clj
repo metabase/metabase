@@ -696,12 +696,14 @@
   (t2/update! :model/RemoteSyncTask {:id task-id, :ended_at nil} {:last_heartbeat_at :%now}))
 
 (mu/defn supersede-stale-tasks!
-  "Cancel and end now the started, unfinished RemoteSyncTasks whose owner was last alive before `cutoff`."
-  [cutoff :- ms/TemporalInstant]
+  "Cancel and end now, with `message` as the error message, the started, unfinished RemoteSyncTasks whose owner
+  was last alive before `cutoff`."
+  [cutoff  :- ms/TemporalInstant
+   message :- :string]
   (t2/query {:update (t2/table-name :model/RemoteSyncTask)
              :set    {:cancelled     true
                       :ended_at      :%now
-                      :error_message "Superseded after staleness timeout"}
+                      :error_message message}
              :where  [:and
                       [:<> :started_at nil]
                       [:= :ended_at nil]

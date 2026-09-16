@@ -755,6 +755,32 @@
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-closes-a-stale-open-task-test
+  (testing "GET /api/ee/remote-sync/current-task closes an open task whose owner is gone and returns it cancelled"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
+      (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                     :started_at old-time
+                                                     :last_progress_report_at old-time}]
+        (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+          (is (=? {:id id
+                   :status "cancelled"
+                   :cancelled true
+                   :ended_at some?
+                   :error_message #"^Sync was interrupted.*"}
+                  first-response))
+          (testing "a second GET returns the same closed row"
+            (is (=? (select-keys first-response [:id :status :cancelled :ended_at :error_message])
+                    (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))))))
+
+(deftest current-task-leaves-a-live-task-running-test
+  (testing "GET /api/ee/remote-sync/current-task returns a task with a fresh heartbeat as running even when its progress is stale"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                   :started_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_progress_report_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_heartbeat_at :%now}]
+      (is (=? {:id id :status "running" :ended_at nil}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
 
 (deftest cancel-task-requires-superuser-test

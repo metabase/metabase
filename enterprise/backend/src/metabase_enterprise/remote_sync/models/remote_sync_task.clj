@@ -199,11 +199,17 @@
   Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
   JVM/thread is gone or hung. Returns nothing meaningful.
 
+  The error message written names the staleness window, so the UI can show it as the reason the sync stopped.
+
   Combined with `handle-task-result!`'s already-terminated check, this means a stale task's thread
   that eventually wakes up and tries to complete will detect that its row is terminated and exit
   without writing the setting or overwriting bookkeeping."
   []
-  (remote-sync.db/supersede-stale-tasks! (liveness-cutoff)))
+  (let [minutes (max 1 (quot (setting/get :remote-sync-task-time-limit-ms) 60000))]
+    (remote-sync.db/supersede-stale-tasks!
+     (liveness-cutoff)
+     (format "Sync was interrupted: the server stopped responding for %d minute%s (it may have restarted)"
+             minutes (if (= 1 minutes) "" "s")))))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
