@@ -22,6 +22,7 @@ import { initializePlugin as initializeContentVerification } from "./content_ver
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeDataApps } from "./data_apps";
+import { initializePlugin as initializeDataSensitivity } from "./data_sensitivity";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -76,6 +77,7 @@ export function initializePlugins() {
   initializeContentVerification();
   initializeCustomViz();
   initializeDataApps();
+  initializeDataSensitivity();
   initializeDatabaseReplication();
   initializeDatabaseRouting();
   initializeDependencies();
