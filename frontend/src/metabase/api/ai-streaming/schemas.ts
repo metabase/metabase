@@ -2,7 +2,7 @@ import * as Yup from "yup";
 
 import type {
   AddResearchGroupsResponse,
-  AdhocDashboardTile,
+  AdhocDashcard,
   CardDisplayType,
   DatasetQuery,
   MetabotCodeEdit,
@@ -96,7 +96,7 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboardTile = AdhocDashboardTile;
+export type GeneratedDashcard = AdhocDashcard;
 
 export type GeneratedXrayDashboard = {
   type: "dashboard";
@@ -110,7 +110,7 @@ export type GeneratedAdhocDashboard = {
   id: string;
   title: string;
   description?: string;
-  tiles: GeneratedDashboardTile[];
+  dashcards: GeneratedDashcard[];
 };
 
 export type GeneratedDashboard =

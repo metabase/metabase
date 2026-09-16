@@ -314,7 +314,7 @@ describe("DashboardApp ad-hoc dashboards", () => {
   const definition: AdhocDashboardDefinition = {
     name: "Ops overview",
     description: "Key ops charts.",
-    tiles: [
+    dashcards: [
       {
         title: "Venues by price",
         display: "bar",
@@ -374,7 +374,7 @@ describe("DashboardApp ad-hoc dashboards", () => {
     setupCardQueryEndpoints(createMockCard({ id: 42 }), createMockDataset());
     setupAdhoc({
       ...definition,
-      tiles: [{ ...definition.tiles[0], card_id: 42 }],
+      dashcards: [{ ...definition.dashcards[0], card_id: 42 }],
     });
 
     expect(await screen.findByText("Venues by price")).toBeInTheDocument();
@@ -401,8 +401,11 @@ describe("DashboardApp ad-hoc dashboards", () => {
   it("renders a blank Metabot dashboard as an empty dashboard that can still be saved", async () => {
     setupAdhoc({
       name: "Enterprise Sales Dashboard (test)",
-      tiles: [],
-      metabot: { conversation_id: "convo-1", dashboard_id: "dash-blank" },
+      dashcards: [],
+      metabot: {
+        conversation_id: "convo-1",
+        generated_dashboard_id: "dash-blank",
+      },
     });
 
     expect(
@@ -419,7 +422,7 @@ describe("DashboardApp ad-hoc dashboards", () => {
   it("moves to the saved dashboard when the conversation saves it from the sidebar", async () => {
     const { store } = setupAdhoc({
       ...definition,
-      metabot: { conversation_id: "convo-1", dashboard_id: "dash-1" },
+      metabot: { conversation_id: "convo-1", generated_dashboard_id: "dash-1" },
     });
     expect(await screen.findByText("Ops overview")).toBeInTheDocument();
 
@@ -435,12 +438,15 @@ describe("DashboardApp ad-hoc dashboards", () => {
       {
         name: "save-dashboard",
         matchPartialBody: true,
-        body: { dashboard_id: "dash-1", dashboard: { name: "Ops overview" } },
+        body: {
+          generated_dashboard_id: "dash-1",
+          dashboard: { name: "Ops overview" },
+        },
       },
     );
     setupAdhoc({
       ...definition,
-      metabot: { conversation_id: "convo-1", dashboard_id: "dash-1" },
+      metabot: { conversation_id: "convo-1", generated_dashboard_id: "dash-1" },
     });
 
     await userEvent.click(

@@ -1,11 +1,12 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { isAdhocDashboardId } from "metabase/utils/dashboard";
 
 import { getDashboard } from "../selectors";
 
 export const useRegisterDashboardMetabotContext = () => {
   useRegisterMetabotContextProvider(async (state) => {
     const dashboard = getDashboard(state);
-    if (!dashboard || typeof dashboard.id !== "number") {
+    if (!dashboard || isAdhocDashboardId(dashboard.id)) {
       return {};
     }
 

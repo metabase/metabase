@@ -33,7 +33,9 @@ export const SaveAdhocDashboardButton = () => {
   );
   const metabot = definition?.metabot;
   const savedDashboardId = useSelector((state) =>
-    metabot != null ? getSavedEntityId(state, metabot.dashboard_id) : undefined,
+    metabot != null
+      ? getSavedEntityId(state, metabot.generated_dashboard_id)
+      : undefined,
   );
 
   useEffect(() => {
@@ -48,7 +50,10 @@ export const SaveAdhocDashboardButton = () => {
 
   const handleSaved = (saved: SaveMetabotDashboardResponse) => {
     dispatch(
-      markEntitySaved({ entityId: metabot.dashboard_id, savedId: saved.id }),
+      markEntitySaved({
+        entityId: metabot.generated_dashboard_id,
+        savedId: saved.id,
+      }),
     );
     closeSaveModal();
   };
@@ -65,10 +70,10 @@ export const SaveAdhocDashboardButton = () => {
       {isSaveModalOpen && (
         <MetabotSaveDashboardModal
           conversationId={metabot.conversation_id}
-          dashboardId={metabot.dashboard_id}
+          dashboardId={metabot.generated_dashboard_id}
           name={definition.name}
           description={definition.description}
-          tiles={definition.tiles}
+          dashcards={definition.dashcards}
           onSaved={handleSaved}
           onClose={closeSaveModal}
         />

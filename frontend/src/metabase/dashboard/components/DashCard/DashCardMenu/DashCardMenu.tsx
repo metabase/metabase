@@ -72,7 +72,7 @@ export const DashCardMenu = ({
     question,
     result,
     // dashboardId can be an entityId and the download endpoint expects a numeric id;
-    // an unsaved ad-hoc dashboard has no dashcard endpoint, so its tiles download
+    // an unsaved ad-hoc dashboard has no dashcard endpoint, so its dashcards download
     // as questions (saved card) or ad-hoc queries (generated tile)
     dashboardId: isAdhocDashboard
       ? undefined

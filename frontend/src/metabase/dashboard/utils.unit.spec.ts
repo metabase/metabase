@@ -890,7 +890,7 @@ describe("expandAdhocDashboard", () => {
   const definition: AdhocDashboardDefinition = {
     name: "Ops overview",
     description: "Key ops charts.",
-    tiles: [
+    dashcards: [
       {
         title: "Venues by price",
         display: "bar",
@@ -929,7 +929,7 @@ describe("expandAdhocDashboard", () => {
     expect(dashcard.card).toMatchObject({
       name: "Venues by price",
       display: "bar",
-      dataset_query: definition.tiles[0].dataset_query,
+      dataset_query: definition.dashcards[0].dataset_query,
       visualization_settings: {},
     });
   });
@@ -985,9 +985,9 @@ describe("expandAdhocDashboard", () => {
     const dashboard = expandAdhocDashboard(
       Urls.adhocDashboard({
         ...definition,
-        tiles: [
+        dashcards: [
           {
-            ...definition.tiles[0],
+            ...definition.dashcards[0],
             card_id: 42,
             visualization_settings: { "graph.dimensions": ["PRICE"] },
           },

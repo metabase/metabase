@@ -56,7 +56,7 @@ export interface CreateDashboardFormOwnProps {
   targetCollection?: CollectionId | null;
   initialValues?: Partial<CreateDashboardProperties>;
   submitLabel?: string;
-  onSubmit?: (values: CreateDashboardProperties) => Promise<void>;
+  saveDashboard?: (values: CreateDashboardProperties) => Promise<void>;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -66,7 +66,7 @@ export function CreateDashboardForm({
   targetCollection,
   initialValues,
   submitLabel,
-  onSubmit,
+  saveDashboard,
   onCreate,
   onCancel,
 }: CreateDashboardFormOwnProps) {
@@ -90,26 +90,23 @@ export function CreateDashboardForm({
     targetCollection,
   ]);
 
-  const handleCreate = useCallback(
+  const createDashboard = useCallback(
     async (values: CreateDashboardProperties) => {
-      if (onSubmit) {
-        await onSubmit(values);
-        return;
-      }
       const dashboard = await handleCreateDashboard(values).unwrap();
       if (dashboard) {
         onCreate?.(dashboard);
       }
     },
-    [handleCreateDashboard, onCreate, onSubmit],
+    [handleCreateDashboard, onCreate],
   );
+  const handleSubmit = saveDashboard ?? createDashboard;
 
   return (
     <FormProvider
       initialValues={computedInitialValues}
       enableReinitialize
       validationSchema={DASHBOARD_SCHEMA}
-      onSubmit={handleCreate}
+      onSubmit={handleSubmit}
     >
       {() => (
         <Form as={Stack} gap={0}>

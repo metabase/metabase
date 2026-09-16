@@ -53,11 +53,11 @@
                 :id          dashboard-id
                 :title       "Ops overview"
                 :description "Key ops charts."}
-               (dissoc data :tiles)))
+               (dissoc data :dashcards)))
         (is (= [{:title "Venues by price" :display "bar" :row 0 :col 0 :size_x 12 :size_y 9 :chart_id "c-1"}
                 {:title "All venues" :display "table" :row 0 :col 12 :size_x 12 :size_y 9}]
-               (map #(dissoc % :dataset_query) (:tiles data))))
-        (is (every? #(map? (:dataset_query %)) (:tiles data)))))
+               (map #(dissoc % :dataset_query) (:dashcards data))))
+        (is (every? #(map? (:dataset_query %)) (:dashcards data)))))
     (testing "tells the model the dashboard is not saved yet"
       (is (re-find #"not saved anywhere yet" (:output result))))))
 
@@ -121,7 +121,7 @@
                              :tiles [{:card_id (:id card) :title "Saved venues"}
                                      {:chart_id "c-1" :title "Venues by price"}]})
             dashboard-id (get-in result [:structured-output :dashboard_id])
-            tiles        (get-in result [:data-parts 0 :data :tiles])]
+            tiles        (get-in result [:data-parts 0 :data :dashcards])]
         (testing "an existing saved question can be a tile, stored by its card id"
           (is (= {:title "Saved venues" :row 0 :col 0 :size_x 12 :size_y 6 :card_id (:id card)}
                  (first (get-in result [:structured-output :tiles])))))
@@ -141,7 +141,7 @@
       (is (string? dashboard-id))
       (is (= {:dashboard_id dashboard-id :name "Enterprise Sales Dashboard (test)" :tiles []}
              (get-in @memory [:state :dashboards dashboard-id])))
-      (is (= {:type "dashboard" :id dashboard-id :title "Enterprise Sales Dashboard (test)" :tiles []}
+      (is (= {:type "dashboard" :id dashboard-id :title "Enterprise Sales Dashboard (test)" :dashcards []}
              (get-in result [:data-parts 0 :data])))
       (is (re-find #"blank dashboard" (:output result))))))
 

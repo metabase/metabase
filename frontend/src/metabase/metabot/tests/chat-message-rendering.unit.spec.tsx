@@ -284,13 +284,13 @@ describe("AgentMessage", () => {
   });
 
   describe("generated_entity dashboard", () => {
-    it("links a generated dashboard entity to the ad-hoc dashboard page built from its tiles", () => {
+    it("links a generated dashboard entity to the ad-hoc dashboard page built from its dashcards", () => {
       const dashboard: GeneratedAdhocDashboard = {
         type: "dashboard",
         id: "dash-1",
         title: "Ops overview",
         description: "Key ops charts.",
-        tiles: [
+        dashcards: [
           {
             title: "Venues by price",
             display: "bar",

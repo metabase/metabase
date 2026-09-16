@@ -7,7 +7,7 @@ import {
 } from "metabase/common/CreateDashboard/CreateDashboardForm";
 import { Modal } from "metabase/ui";
 import type {
-  AdhocDashboardTile,
+  AdhocDashcard,
   SaveMetabotDashboardResponse,
 } from "metabase-types/api";
 
@@ -18,7 +18,7 @@ export function MetabotSaveDashboardModal({
   dashboardId,
   name,
   description,
-  tiles,
+  dashcards,
   onSaved,
   onClose,
 }: {
@@ -26,7 +26,7 @@ export function MetabotSaveDashboardModal({
   dashboardId: string;
   name: string;
   description?: string;
-  tiles: AdhocDashboardTile[];
+  dashcards: AdhocDashcard[];
   onSaved: (saved: SaveMetabotDashboardResponse) => void;
   onClose: () => void;
 }) {
@@ -39,8 +39,8 @@ export function MetabotSaveDashboardModal({
   const handleSubmit = async (values: CreateDashboardProperties) => {
     const saved = await saveMetabotDashboard({
       conversation_id: conversationId,
-      dashboard_id: dashboardId,
-      dashboard: { ...values, tiles },
+      generated_dashboard_id: dashboardId,
+      dashboard: { ...values, dashcards },
     }).unwrap();
     onSaved(saved);
   };
@@ -55,7 +55,7 @@ export function MetabotSaveDashboardModal({
       <CreateDashboardForm
         initialValues={initialValues}
         submitLabel={t`Save`}
-        onSubmit={handleSubmit}
+        saveDashboard={handleSubmit}
         onCancel={onClose}
       />
     </Modal>

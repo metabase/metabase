@@ -640,19 +640,19 @@
                        :model/Collection {coll-id :id} {}]
           (let [created (mt/user-http-request :crowberto :post 200
                                               (str "metabot/conversations/" convo-id "/saved-dashboard")
-                                              {:dashboard_id "d-1"
+                                              {:generated_dashboard_id "d-1"
                                                :dashboard    {:name          "Ops overview"
                                                               :description   "Key ops charts."
                                                               :collection_id coll-id
-                                                              :tiles         [{:title         "Venues by price"
-                                                                               :display       "bar"
-                                                                               :dataset_query (venues-query)
-                                                                               :row 0 :col 0 :size_x 12 :size_y 6
-                                                                               :chart_id      "c-1"}
-                                                                              {:title         "All venues"
-                                                                               :display       "table"
-                                                                               :dataset_query (venues-query)
-                                                                               :row 0 :col 12 :size_x 12 :size_y 6}]}})
+                                                              :dashcards         [{:title         "Venues by price"
+                                                                                   :display       "bar"
+                                                                                   :dataset_query (venues-query)
+                                                                                   :row 0 :col 0 :size_x 12 :size_y 6
+                                                                                   :chart_id      "c-1"}
+                                                                                  {:title         "All venues"
+                                                                                   :display       "table"
+                                                                                   :dataset_query (venues-query)
+                                                                                   :row 0 :col 12 :size_x 12 :size_y 6}]}})
                 cards   (t2/select :model/Card :dashboard_id (:id created) {:order-by [[:id :asc]]})]
             (is (= {:name "Ops overview" :description "Key ops charts." :collection_id coll-id}
                    (select-keys created [:name :description :collection_id])))
@@ -683,10 +683,10 @@
                        :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
           (mt/user-http-request :lucky :post 403
                                 (str "metabot/conversations/" convo-id "/saved-dashboard")
-                                {:dashboard_id "d-1"
+                                {:generated_dashboard_id "d-1"
                                  :dashboard    {:name  "x"
-                                                :tiles [{:title "t" :display "table" :dataset_query (venues-query)
-                                                         :row 0 :col 0 :size_x 12 :size_y 6}]}})
+                                                :dashcards [{:title "t" :display "table" :dataset_query (venues-query)
+                                                             :row 0 :col 0 :size_x 12 :size_y 6}]}})
           (is (zero? (t2/count :model/Dashboard :name "x"))))))))
 
 (deftest record-saved-dashboard-rejects-dashboard-questions-test
@@ -699,10 +699,10 @@
                        :model/Card {card-id :id} {:dashboard_id owner-id :dataset_query (venues-query)}]
           (mt/user-http-request :crowberto :post 400
                                 (str "metabot/conversations/" convo-id "/saved-dashboard")
-                                {:dashboard_id "d-owned"
+                                {:generated_dashboard_id "d-owned"
                                  :dashboard    {:name  "Borrowed"
-                                                :tiles [{:title "t" :display "table" :dataset_query (venues-query)
-                                                         :row 0 :col 0 :size_x 12 :size_y 6 :card_id card-id}]}})
+                                                :dashcards [{:title "t" :display "table" :dataset_query (venues-query)
+                                                             :row 0 :col 0 :size_x 12 :size_y 6 :card_id card-id}]}})
           (is (zero? (t2/count :model/Dashboard :name "Borrowed"))))))))
 
 (deftest record-saved-dashboard-twice-test
@@ -711,8 +711,8 @@
       (mt/with-model-cleanup [:model/Dashboard]
         (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
                        :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
-          (let [body    {:dashboard_id "d-twice"
-                         :dashboard    {:name "Twice" :tiles []}}
+          (let [body    {:generated_dashboard_id "d-twice"
+                         :dashboard    {:name "Twice" :dashcards []}}
                 first   (mt/user-http-request :crowberto :post 200
                                               (str "metabot/conversations/" convo-id "/saved-dashboard") body)
                 second  (mt/user-http-request :crowberto :post 200
@@ -726,7 +726,7 @@
         (mt/user-http-request :crowberto :post 400
                               (str "metabot/conversations/" convo-id "/saved-dashboard")
                               {:dashboard_id (apply str (repeat 37 "d"))
-                               :dashboard    {:name "Too long" :tiles []}})))))
+                               :dashboard    {:name "Too long" :dashcards []}})))))
 
 (deftest record-saved-blank-dashboard-test
   (testing "a blank dashboard saves with no cards"
@@ -736,8 +736,8 @@
                        :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
           (let [created (mt/user-http-request :crowberto :post 200
                                               (str "metabot/conversations/" convo-id "/saved-dashboard")
-                                              {:dashboard_id "d-blank"
-                                               :dashboard    {:name "Enterprise Sales Dashboard (test)" :tiles []}})]
+                                              {:generated_dashboard_id "d-blank"
+                                               :dashboard    {:name "Enterprise Sales Dashboard (test)" :dashcards []}})]
             (is (= "Enterprise Sales Dashboard (test)" (:name created)))
             (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id created))))
             (is (= {:metabot_conversation_id convo-id :metabot_dashboard_id "d-blank"}

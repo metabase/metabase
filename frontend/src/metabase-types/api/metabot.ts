@@ -371,7 +371,7 @@ export interface SaveMetabotEntityRequest {
   card: CreateCardRequest;
 }
 
-export interface AdhocDashboardTile {
+export interface AdhocDashcard {
   title: string;
   display: CardDisplayType;
   dataset_query: DatasetQuery;
@@ -386,12 +386,14 @@ export interface AdhocDashboardTile {
 
 export interface SaveMetabotDashboardRequest {
   conversation_id: string;
-  dashboard_id: string;
+  // the id the agent generated for the dashboard within the conversation (a
+  // string), unlike the saved dashboard's numeric id in the response
+  generated_dashboard_id: string;
   dashboard: {
     name: string;
     description: string | null;
     collection_id: CollectionId | null;
-    tiles: AdhocDashboardTile[];
+    dashcards: AdhocDashcard[];
   };
 }
 

@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -240,23 +240,29 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
     </Anchor>
   );
 
-  let message;
-  if (savedDashboard != null) {
-    message = target
-      ? jt`Dashboard ${entityName} saved to ${target}`
-      : jt`Dashboard ${entityName} saved`;
-  } else {
-    message = target
-      ? jt`Chart ${entityName} saved to ${target}`
-      : jt`Chart ${entityName} saved`;
-  }
-
   return (
     <Flex align="center" gap="sm" c="text-secondary">
       <Icon name="check" size={14} />
-      <Text c="text-secondary">{message}</Text>
+      <Text c="text-secondary">
+        {getSavedMessage(savedDashboard != null, entityName, target)}
+      </Text>
     </Flex>
   );
+};
+
+const getSavedMessage = (
+  isDashboard: boolean,
+  entityName: ReactNode,
+  target: ReactNode,
+) => {
+  if (isDashboard) {
+    return target
+      ? jt`Dashboard ${entityName} saved to ${target}`
+      : jt`Dashboard ${entityName} saved`;
+  }
+  return target
+    ? jt`Chart ${entityName} saved to ${target}`
+    : jt`Chart ${entityName} saved`;
 };
 
 const formatPartType = (type: string) => type.replace(/^data-/, "");
