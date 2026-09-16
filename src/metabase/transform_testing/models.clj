@@ -24,13 +24,22 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
+(defn- validated-expectations
+  "The wire form `raw`, normalized, once every expectation in it has validated."
+  [raw]
+  (let [normalized (lib/normalize ::transform-testing.schema/expectations raw)]
+    (dorun (map transform-testing.schema/validate! normalized raw))
+    (mu/validate-throw ::transform-testing.schema/expectations normalized)
+    normalized))
+
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
 
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::transform-testing.schema/inputs)
-   :expectations (json-column ::transform-testing.schema/expectations)})
+   :expectations {:in  (comp mi/json-in validated-expectations)
+                  :out (comp #(lib/normalize ::transform-testing.schema/expectations %) mi/json-out-with-keywordization)}})
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

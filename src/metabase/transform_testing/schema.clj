@@ -1,7 +1,12 @@
 (ns metabase.transform-testing.schema
   (:require
+   [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.transform-testing.errors :as transform-testing.errors]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -169,3 +174,29 @@
    [:map {:closed true}
     [:client     (ms/InstanceOfClass Object)]
     [:session-id :string]]])
+
+(defn- known-types
+  "The `:type` values `::expectation` has a branch for."
+  []
+  (into #{} (map first) (mc/children (mr/schema ::expectation))))
+
+(defn validate!
+  "Return `m`, an already-normalized expectation, iff it matches its schema; otherwise throw a
+  typed refusal from [[metabase.transform-testing.errors]]: `unknown-expectation-type`, naming the
+  types this version knows, or `invalid-expectation`, explaining `raw` — which defaults to `m`."
+  ([m] (validate! m m))
+  ([m raw]
+   (let [type (:type m)]
+     (when (and (map? m) (some? type) (not (contains? (known-types) (keyword type))))
+       (throw (transform-testing.errors/ex
+               ::transform-testing.errors/unknown-expectation-type
+               (tru "Unknown expectation type {0}. Known types: {1}."
+                    (pr-str type) (str/join ", " (sort (map name (known-types)))))
+               {:type type :expectation raw})))
+     (when-not (mr/validate ::expectation m)
+       (throw (transform-testing.errors/ex
+               ::transform-testing.errors/invalid-expectation
+               (tru "Invalid expectation: {0}"
+                    (mu/explain ::expectation (if (map? m) m raw)))
+               {:expectation raw}))))
+   m))

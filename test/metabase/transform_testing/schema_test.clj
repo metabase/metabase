@@ -154,5 +154,16 @@
 
 (deftest every-type-can-be-built-test
   (testing "every branch of the aggregate has a `build` method, so nothing storable is unrunnable"
-    (is (= (set (keys expected-types))
+    (is (= (conj (set (keys expected-types)) :default)
            (set (keys (methods expectations.protocol/build)))))))
+
+(deftest every-build-validates-before-constructing-test
+  ;; A `build` method that skipped `validate!` would either construct a record from a shape it
+  ;; never checked, or blow up on some other exception first (a `case` with no matching branch, a
+  ;; nil field dereferenced).
+  (testing "every known type's build method refuses a malformed value as `invalid-expectation`, before constructing anything"
+    (doseq [type (keys expected-types)]
+      (testing type
+        (let [e (try (expectations.protocol/build {:type type}) nil (catch Exception e e))]
+          (is (some? e))
+          (is (= ::transform-testing.errors/invalid-expectation (:error-type (ex-data e)))))))))

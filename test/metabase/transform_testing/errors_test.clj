@@ -29,7 +29,9 @@
 (def ^:private expected-status
   "The status every declared error type must map to. Exhaustive over `all` by assertion below, so a
   new error type with no mapping fails here instead of being absorbed by the 500 fallback."
-  {::errors/unknown-column             400
+  {::errors/unknown-expectation-type   400
+   ::errors/invalid-expectation        400
+   ::errors/unknown-column             400
    ::errors/ambiguous-column           400
    ::errors/missing-inputs             400
    ::errors/unused-inputs              400
@@ -57,7 +59,9 @@
 
 (deftest status-code-classes-test
   (testing "authoring errors — the caller can fix the test — are 400"
-    (is (= #{::errors/unknown-column
+    (is (= #{::errors/unknown-expectation-type
+             ::errors/invalid-expectation
+             ::errors/unknown-column
              ::errors/ambiguous-column
              ::errors/missing-inputs
              ::errors/unused-inputs

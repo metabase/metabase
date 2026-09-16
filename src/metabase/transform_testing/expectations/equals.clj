@@ -199,6 +199,7 @@
 
 (defmethod expectations.protocol/build :equals
   [{:keys [format] :as m}]
+  (transform-testing.schema/validate! m)
   ;; The linter forbids these constructors everywhere, so that an expectation is only ever built from a
   ;; value the schema has passed. This is the one place they are the right call.
   #_{:clj-kondo/ignore [:discouraged-var]}
