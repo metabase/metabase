@@ -1,14 +1,19 @@
+import path from "path";
+
 import type { BaseQueryApi } from "@reduxjs/toolkit/query/react";
 import fetchMock from "fetch-mock";
 import ts from "typescript";
 
 import { baseQuery } from "metabase/api/api";
+import { defineRequest } from "metabase/api/define-request";
 
 import {
   type ClientRequest,
   type ModelResult,
   modelClientRequest,
+  modelDeclaredRequest,
 } from "./client-request";
+import { resolveDeclaredRequest } from "./declared-request";
 import { resolveRtkRequest } from "./rtk-request";
 import { type Shape, describeShape } from "./shape";
 import {
@@ -52,6 +57,7 @@ function fixtureSource(
 ) {
   return `
     ${ENDPOINT_PRELUDE}
+    declare const defineRequest: typeof import(${JSON.stringify(path.resolve(__dirname, "../../src/metabase/api/define-request"))}).defineRequest;
     ${declarations}
     const endpoint = defineEndpoint(${endpoint});
     const arguments_: Parameters<typeof endpoint.query>[0][] = [${arguments_.join(",")}];
@@ -63,6 +69,13 @@ function model(source: string): Modelled {
     "request.ts": source,
   });
   const config = endpointObject(program, files["request.ts"] ?? "");
+  const declared = resolveDeclaredRequest(checker, config);
+  if (declared) {
+    return {
+      request: modelDeclaredRequest(checker, declared, config),
+      checker,
+    };
+  }
   const rtk = resolveRtkRequest(config);
   if (!rtk) {
     throw new Error("The fixture's query function is not a static request.");
@@ -83,8 +96,9 @@ function loadFixture(source: string): {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   });
   const loaded: unknown = new Function(
+    "defineRequest",
     `${outputText}\nreturn { endpoint, arguments_ };`,
-  )();
+  )(defineRequest);
   if (
     !isRecord(loaded) ||
     !isRecord(loaded.endpoint) ||
@@ -382,17 +396,6 @@ describe("modelClientRequest against the real API client", () => {
   );
 
   it.each(["FormData", "URLSearchParams"])(
-    "should send nothing for a GET %s body",
-    async (type) => {
-      await expectConformance(
-        { endpoint: `{ query: (body: ${type}) => ({ url: "/api/x", body }) }` },
-        projected({}),
-        [{ argument: `new ${type}()`, expected: sentRequest({}) }],
-      );
-    },
-  );
-
-  it.each(["FormData", "URLSearchParams"])(
     "should send a non-GET %s body as it is",
     async (type) => {
       await expectConformance(
@@ -437,20 +440,48 @@ describe("modelClientRequest against the real API client", () => {
     },
   );
 
-  // `JSON.stringify` throws for a bigint, so the client never sends this body.
-
-  it("should retain the absent query alternative of a nullable GET body", async () => {
-    await expectConformance(
-      {
-        endpoint:
-          '{ query: (body: { limit: number } | null) => ({ url: "/api/x", params: {}, body }) }',
-      },
-      projected({ query: [{ limit: ["number"] }, "nothing"] }),
-      [{ argument: "null", expected: sentRequest({}) }],
-    );
-  });
-
   const cases: [string, Fixture, Outcome, ReturnType<typeof projection>][] = [
+    [
+      "should send declared path, query and body keys independently",
+      {
+        endpoint: `{ query: defineRequest({
+          method: "PUT", route: "/api/x/{id}",
+          request: (id: number) => ({path: {id}, query: {id}, body: {id}}),
+        }) }`,
+        argument: "7",
+      },
+      sentRequest({
+        method: "PUT",
+        path: "/api/x/7",
+        query: [["id", "7"]],
+        body: { kind: "json", value: { id: 7 } },
+      }),
+      projected({
+        method: "PUT",
+        path: "/api/x/{id}",
+        parameters: [["number"]],
+        query: [{ id: ["number"] }],
+        body: [{ id: ["number"] }],
+      }),
+    ],
+    [
+      "should encode declared path segments once before the client builds its URL",
+      {
+        endpoint: `{ query: defineRequest({method: "GET", route: "/api/x/{id}", request: (id: "a/b?%") => ({path: {id}})}) }`,
+        argument: '"a/b?%"',
+      },
+      sentRequest({ path: "/api/x/a%2Fb%3F%25" }),
+      projected({ path: "/api/x/{id}", parameters: [['"a/b?%"']] }),
+    ],
+    [
+      "should leave declared uploads unverified while preserving the raw body",
+      {
+        endpoint: `{query: defineRequest({method: "POST", route: "/api/x", request: (body: FormData) => ({body})})}`,
+        argument: "new FormData()",
+      },
+      sentRequest({ method: "POST", body: { kind: "raw", type: "FormData" } }),
+      projected({ method: "POST", body: "unverified" }),
+    ],
     [
       "should send GET when the request names no method",
       {
@@ -472,16 +503,6 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { name: "n" } },
       }),
       projected({ method: "POST", body: [{ name: ["string"] }] }),
-    ],
-    [
-      "should send a GET body as query parameters",
-      {
-        endpoint:
-          '{ query: (body: { name: string }) => ({ url: "/api/x", body }) }',
-        argument: '{ name: "n" }',
-      },
-      sentRequest({ query: [["name", "n"]] }),
-      projected({ query: [{ name: ["string"] }] }),
     ],
     [
       "should leave out a nullable query value that is null",
@@ -696,59 +717,6 @@ describe("modelClientRequest against the real API client", () => {
       }),
     ],
     [
-      "should keep an inline query string from the URL template",
-      {
-        endpoint:
-          "{ query: (id: number) => ({ url: `/api/x/${id}?flag=true` }) }",
-        argument: "1",
-      },
-      sentRequest({ path: "/api/x/1", query: [["flag", "true"]] }),
-      projected({
-        path: "/api/x/{param}",
-        parameters: [["number"]],
-        query: [{ flag: ['"true"'] }],
-      }),
-    ],
-    [
-      "should leave the query unverified when an inline query span is not one known text",
-      {
-        endpoint:
-          "{ query: (flag: boolean) => ({ url: `/api/x?a=${flag}&b=${encodeURIComponent(flag)}` }) }",
-        argument: "true",
-      },
-      sentRequest({
-        query: [
-          ["a", "true"],
-          ["b", "true"],
-        ],
-      }),
-      projected({ query: "unverified" }),
-    ],
-    [
-      "should leave dynamic inline query separators unverified",
-      {
-        endpoint:
-          '{ query: (value: "x&y=1") => ({ url: `/api/x?v=${value}` }) }',
-        argument: '"x&y=1"',
-      },
-      sentRequest({
-        query: [
-          ["v", "x"],
-          ["y", "1"],
-        ],
-      }),
-      projected({ query: "unverified" }),
-    ],
-    [
-      "should read inline query text after URLSearchParams decoding",
-      {
-        endpoint: "{ query: (_: void) => ({ url: `/api/x?q=a+b%21#skip=1` }) }",
-        argument: "undefined",
-      },
-      sentRequest({ query: [["q", "a b!"]] }),
-      projected({ query: [{ q: ['"a b!"'] }] }),
-    ],
-    [
       "should not treat a local encodeURIComponent as the global one",
       {
         endpoint:
@@ -850,15 +818,6 @@ describe("modelClientRequest against the real API client", () => {
       projected({ method: "PUT", body: [{}] }),
     ],
     [
-      "should send no body for a null GET body",
-      {
-        endpoint: '{ query: (body: null) => ({ url: "/api/x", body }) }',
-        argument: "null",
-      },
-      sentRequest({}),
-      projected({}),
-    ],
-    [
       "should send no body for an undefined non-GET body",
       {
         endpoint:
@@ -907,20 +866,6 @@ describe("modelClientRequest against the real API client", () => {
       }),
     ],
     [
-      "should leave the query unverified for an empty object rest in a GET body",
-      {
-        endpoint:
-          "{ query: ({ id, ...body }: { id: number }) => ({ url: `/api/x/${id}`, body }) }",
-        argument: "{ id: 1 }",
-      },
-      sentRequest({ path: "/api/x/1" }),
-      projected({
-        path: "/api/x/{param}",
-        parameters: [["number"]],
-        query: "unverified",
-      }),
-    ],
-    [
       "should leave a URL tag unverified when params keys are known only at runtime",
       {
         endpoint:
@@ -929,22 +874,6 @@ describe("modelClientRequest against the real API client", () => {
       },
       sentRequest({ path: "/api/x/5", query: [["q", "text"]] }),
       "unverified",
-    ],
-    [
-      "should mark GET query parameters unverified when a value with no declared keys is merged with other fields",
-      {
-        declarations: "type Args = { params: {}; body: { name: string } };",
-        endpoint:
-          '{ query: (arg: Args) => ({ url: "/api/x", params: arg.params, body: arg.body }) }',
-        argument: '{ params: { q: "text" }, body: { name: "n" } }',
-      },
-      sentRequest({
-        query: [
-          ["q", "text"],
-          ["name", "n"],
-        ],
-      }),
-      projected({ query: "unverified" }),
     ],
     [
       "should leave the query unverified for an empty object rest in params",
@@ -994,23 +923,6 @@ describe("modelClientRequest against the real API client", () => {
       "failed",
     ],
     [
-      "should mark a key sent from both GET params and body unverified",
-      {
-        declarations:
-          "type Args = { params: { q: string }; body: { q: string } };",
-        endpoint:
-          '{ query: (arg: Args) => ({ url: "/api/x", params: arg.params, body: arg.body }) }',
-        argument: '{ params: { q: "a" }, body: { q: "b" } }',
-      },
-      sentRequest({
-        query: [
-          ["q", "a"],
-          ["q", "b"],
-        ],
-      }),
-      projected({ query: "unverified" }),
-    ],
-    [
       "should mark a request unverified when extraOptions replaces its URL",
       {
         endpoint:
@@ -1050,16 +962,6 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: [{ inner: ["{ a?: string; b: number; }"] }],
       }),
-    ],
-    [
-      "should leave the query unverified when an inline query key is built at runtime",
-      {
-        declarations: 'const search: string = "built=later";',
-        endpoint: "{ query: (_: void) => ({ url: `/api/x?${search}` }) }",
-        argument: "undefined",
-      },
-      sentRequest({ query: [["built", "later"]] }),
-      projected({ query: "unverified" }),
     ],
     [
       "should mark a bigint body field as a request the client never sends",

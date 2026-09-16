@@ -29,7 +29,8 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ router_database_id, destination_database }) => ({
         method: "POST",
-        url: "/api/ee/database-routing/destination-database?check_connection_details=true",
+        url: "/api/ee/database-routing/destination-database",
+        params: { check_connection_details: true },
         body: {
           router_database_id,
           destinations: [destination_database],

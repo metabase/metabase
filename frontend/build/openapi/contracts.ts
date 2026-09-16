@@ -383,7 +383,7 @@ function resolveEndpoint(
   if (!rtk) {
     return {
       unverified:
-        "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, conditional returns, computed properties, accessors, or spread).",
+        "Cannot statically identify one HTTP request (queryFn, dynamic URL/method, conditional returns, computed properties, accessors, spread, or a URL query string/fragment). Declare query parameters in params.",
     };
   }
   const clientRoute = `${rtk.method} ${rtk.url.path}`;
