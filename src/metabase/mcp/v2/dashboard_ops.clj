@@ -617,8 +617,9 @@
                    (message/msg ["card %s has no template tag named %s. Its tags: %s. %s"]
                                 (:card_id dashcard) target-tag (common/list-message (sort (keys tag-types)))
                                 skills/wire-target-grammar)
-                   (message/msg [(str "card %s has no template tag named %s. It has no template tags — \"target_tag\" "
-                                      "wires a native-SQL card's tags; for an MBQL card pass \"target_field\". %s")]
+                   (message/msg [(str "card %s has no template tag named %s. It has no template tags — "
+                                      "\"target_tag\" wires a native-SQL card's tags; for an MBQL card pass "
+                                      "\"target_field\". %s")]
                                 (:card_id dashcard) target-tag skills/wire-target-grammar)))
 
       :else

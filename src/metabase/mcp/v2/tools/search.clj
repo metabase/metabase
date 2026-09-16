@@ -360,7 +360,8 @@
                       (common/list-message bad))))
       (when (or created_by (collection-scoping? args) (true? archived))
         (common/throw-teaching-error
-         (message/msg ["recent: true supports only the type filter — drop collection_id, created_by, and archived."]))))
+         (message/msg [(str "recent: true supports only the type filter — drop collection_id, created_by, "
+                            "and archived.")]))))
     (if (seq @narrowed)
       (let [final-types (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
             type-list   (common/list-message final-types)]

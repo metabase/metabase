@@ -312,7 +312,8 @@
   [{:keys [returned total more? offset limit query]}]
   (cond
     (and (zero? total) query)
-    (message/msg ["No values match %s — try a shorter or less specific search, or omit \"query\" to list every value."]
+    (message/msg [(str "No values match %s — try a shorter or less specific search, or omit \"query\" to list "
+                       "every value.")]
                  query)
 
     (zero? total)

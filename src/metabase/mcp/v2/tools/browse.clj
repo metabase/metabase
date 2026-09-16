@@ -742,7 +742,8 @@
   [more parent-name parent-id offset]
   ;; Markers are string values in the JSON tree, so they're rendered here.
   (message/render
-   (message/msg ["… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], offset: %d)"]
+   (message/msg [(str "… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], "
+                      "offset: %d)")]
                 more parent-name parent-id offset)))
 
 (defn- expand-tree-node
@@ -806,7 +807,8 @@
      (message/msg ["The trash never appears in tree mode — use mode: \"items\" to list trashed items."])))
   (when (:archived collection)
     (common/throw-teaching-error
-     (message/msg ["Collection %s is archived — archived subtrees never appear in tree mode; browse its items instead."]
+     (message/msg [(str "Collection %s is archived — archived subtrees never appear in tree mode; browse its "
+                        "items instead.")]
                   (:id collection))))
   (let [depth      (or (:depth args) tree-default-depth)
         ns-str     (some-> (:namespace collection) u/qualified-name)

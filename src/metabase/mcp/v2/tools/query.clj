@@ -385,8 +385,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess id
   ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
   ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
   ;; caller wrote the SQL and knows its key, which is the information the server lacks.
-  (message/msg [(str "returned %d rows, more available — narrow the SQL (add filters/aggregation), raise \"row_limit\" "
-                     "(max %d), or page with `ORDER BY <unique key>` + `WHERE <key> > <last value returned>`")]
+  (message/msg [(str "returned %d rows, more available — narrow the SQL (add filters/aggregation), raise "
+                     "\"row_limit\" (max %d), or page with `ORDER BY <unique key>` + "
+                     "`WHERE <key> > <last value returned>`")]
                returned max-row-limit))
 
 (def ^:private mbql-hint

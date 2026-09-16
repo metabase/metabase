@@ -50,8 +50,8 @@
 
 (def ^:private schedule-field-advice
   "What to do instead, per field a schedule type doesn't read."
-  {:schedule_hour  (message/raw (str "an hourly schedule sends every hour — use \"daily\", \"weekly\", or \"monthly\" "
-                                     "to send at one hour"))
+  {:schedule_hour  (message/raw (str "an hourly schedule sends every hour — use \"daily\", \"weekly\", "
+                                     "or \"monthly\" to send at one hour"))
    :schedule_day   (message/raw (str "use \"weekly\", or \"monthly\" with \"schedule_frame\" \"first\" or \"last\", "
                                      "to send on a weekday"))
    :schedule_frame (message/raw "only a monthly schedule sends on a frame of the month")})
