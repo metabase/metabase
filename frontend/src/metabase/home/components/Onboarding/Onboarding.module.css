@@ -35,6 +35,7 @@
   color: var(--mb-color-text-primary);
   height: 3rem;
   padding-inline-start: 0;
+  background-color: transparent;
 }
 
 .accordion .control:hover {
