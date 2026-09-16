@@ -910,15 +910,16 @@
   {:pattern "^metabase\\.app-db\\..*"
    :name    app-db-namespaces}
   ;;
-  ;; MCP source namespaces, whose prose reaches an LLM agent, excluding test namespaces.
+  ;; MCP source namespaces, OSS and enterprise, whose prose reaches an LLM agent, excluding test namespaces.
   ;;
-  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase\\.mcp\\..*"
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase(?:-enterprise)?\\.mcp\\..*"
    :name    agent-message-namespaces}
   ;;
-  ;; MCP source namespaces whose caller-facing errors are MCP exits: `metabase.mcp.transport` and `metabase.mcp.v2.*`.
-  ;; Other MCP namespaces' 4xx `ex-info`s are admin API and middleware errors, not MCP exits.
+  ;; MCP source namespaces whose caller-facing errors are MCP exits: `metabase.mcp.transport` and `metabase.mcp.v2.*`,
+  ;; and their enterprise counterparts. Other MCP namespaces' 4xx `ex-info`s are admin API and middleware errors, not
+  ;; MCP exits.
   ;;
-  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase\\.mcp\\.(?:transport$|v2\\..*)"
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase(?:-enterprise)?\\.mcp\\.(?:transport$|v2\\..*)"
    :name    agent-exit-namespaces}]
 
  :config-in-ns

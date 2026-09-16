@@ -47,8 +47,9 @@
   (reduce (fn [n c] (+ (* 10 n) (- (int c) (int \0)))) 0 s))
 
 (def ^:private format-specifier
-  "A `java.util.Formatter` specifier; groups are explicit index, flags, width, precision, and conversion."
-  #"%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([tT]?[a-zA-Z%])")
+  "A `java.util.Formatter` specifier; groups are explicit index, flags, width, precision, and conversion. The index is
+  capped at nine digits, so a longer one reads as malformed rather than a number too large to work with."
+  #"%(?:(\d{1,9})\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([tT]?[a-zA-Z%])")
 
 (defn- consumed-args
   "`[index conversion]` for each argument-consuming specifier in `fmt`, with zero-based argument indexes."
@@ -79,20 +80,26 @@
   (hooks/reg-finding! (assoc (meta node) :message message :type msg-linter)))
 
 (defn- line-break?
-  "Whether format string `line` contains a line-breaking or control character, or a `%n` specifier."
+  "Whether format string `line` contains a line-breaking, control, or private-use character, or a `%n` specifier."
   [line]
-  (boolean (or (re-find #"[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]" line)
+  ;; Private-use characters delimit the argument markers `render` formats with, so a line holding one could fake one.
+  (boolean (or (re-find #"[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]" line)
                (some #(= "n" (nth % 5)) (re-seq format-specifier line)))))
 
-(defn- altered-string-conversion?
-  "Whether format string `line` has a `%S`, or a `%s` with a width, precision, or flags other than `<`."
+(defn- allowed-specifier?
+  "Whether specifier match `specifier` renders its value as `render` passes it: a bare `%%`, a `%s` with no flags but
+  `<`, or a `%d` with any flags and width but no precision. An explicit argument index is allowed on each."
+  [[_ explicit flags width precision conversion]]
+  (case conversion
+    "%" (not (or explicit (seq flags) width precision))
+    "s" (not (or width precision (seq (str/replace flags "<" ""))))
+    "d" (not precision)
+    false))
+
+(defn- disallowed-specifier
+  "The first specifier in format string `line` that isn't [[allowed-specifier?]], as it is written, or nil."
   [line]
-  (boolean
-   (some (fn [[_ _ flags width precision conversion]]
-           (or (= "S" conversion)
-               (and (= "s" conversion)
-                    (or width precision (seq (str/replace flags "<" ""))))))
-         (re-seq format-specifier line))))
+  (some #(when-not (allowed-specifier? %) (first %)) (re-seq format-specifier line)))
 
 (def ^:private valid-conversion
   "The conversions `java.util.Formatter` accepts, with each date/time conversion's required suffix."
@@ -115,13 +122,15 @@
          "pass values as arguments after the vector.")
 
     (line-break? line)
-    "A `msg` line can't contain a line break, `%n`, or control character; put each line in its own string."
-
-    (altered-string-conversion? line)
-    "`%s` in a `msg` line can't take a width, precision, flags, or `%S`; they would cut or alter the quoted value."
+    (str "A `msg` line can't contain a line break, `%n`, or a control or private-use character; "
+         "put each line in its own string.")
 
     (malformed-specifier? line)
-    "A `%` in a `msg` line must begin a format specifier; write a literal percent sign as `%%`."))
+    "A `%` in a `msg` line must begin a format specifier; write a literal percent sign as `%%`."
+
+    :else
+    (when-let [specifier (disallowed-specifier line)]
+      (str "A `msg` line may only use `%s`, `%d`, or `%%`; `" specifier "` would alter or hide the value."))))
 
 (defn- lint-lines!
   "Flag each of `line-nodes` whose literal string, the matching element of `lines`, has a problem."
@@ -145,8 +154,8 @@
                                      (plural expected "argument") given (if (= 1 given) "is" "are"))))))
 
 (defn lint-msg
-  "Flag `msg` calls whose lines aren't a literal vector of single-line literal strings, that alter a `%s` value or
-  hold a malformed specifier, or whose arguments don't match the lines' format specifiers."
+  "Flag `msg` calls whose lines aren't a literal vector of single-line literal strings, that hold a malformed
+  specifier or a conversion other than `%s`, `%d`, or `%%`, or whose arguments don't match the lines' specifiers."
   [{:keys [node config] :as input}]
   (when (level-on? config msg-linter)
     (let [[fn-node lines-node & args] (:children node)]

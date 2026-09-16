@@ -54,25 +54,32 @@
 
 (deftest ^:parallel config-scope-test
   (let [config (edn/read-string (slurp ".clj-kondo/config.edn"))]
-    (testing "GHY-4544: `msg` lines are checked in every MCP source namespace and no test namespace"
-      (doseq [[ns-name enabled?] {"metabase.mcp.ui-resource"          true
-                                  "metabase.mcp.transport"            true
-                                  "metabase.mcp.v2.tools.browse"      true
-                                  "metabase.mcp.ui-resource-test"     false
-                                  "metabase.mcp.v2.tools.browse-test" false
-                                  "metabase.mcp.test-util"            false
-                                  "metabase.queries.models.card"      false}]
+    (testing "GHY-4544: `msg` lines are checked in every OSS and enterprise MCP source namespace, and no test one"
+      (doseq [[ns-name enabled?] {"metabase.mcp.ui-resource"                     true
+                                  "metabase.mcp.transport"                       true
+                                  "metabase.mcp.v2.tools.browse"                 true
+                                  "metabase-enterprise.mcp.usage"                true
+                                  "metabase-enterprise.mcp.v2.tools.browse"      true
+                                  "metabase.mcp.ui-resource-test"                false
+                                  "metabase.mcp.v2.tools.browse-test"            false
+                                  "metabase.mcp.test-util"                       false
+                                  "metabase-enterprise.mcp.usage-test"           false
+                                  "metabase-enterprise.mcp.v2.tools.browse-test" false
+                                  "metabase.queries.models.card"                 false}]
         (testing ns-name
           (is (= enabled? (linter-enabled-in-ns? config :metabase/agent-message-lines ns-name))))))
     (testing "GHY-4544: exits are checked in MCP transport and v2 source namespaces, whose 4xx errors reach the agent"
-      (doseq [[ns-name enabled?] {"metabase.mcp.transport"            true
-                                  "metabase.mcp.v2.common"            true
-                                  "metabase.mcp.v2.tools.browse"      true
-                                  "metabase.mcp.settings"             false
-                                  "metabase.mcp.validation"           false
-                                  "metabase.mcp.transport-test"       false
-                                  "metabase.mcp.v2.tools.browse-test" false
-                                  "metabase.queries.models.card"      false}]
+      (doseq [[ns-name enabled?] {"metabase.mcp.transport"                       true
+                                  "metabase.mcp.v2.common"                       true
+                                  "metabase.mcp.v2.tools.browse"                 true
+                                  "metabase-enterprise.mcp.v2.common"            true
+                                  "metabase.mcp.settings"                        false
+                                  "metabase.mcp.validation"                      false
+                                  "metabase-enterprise.mcp.usage"                false
+                                  "metabase.mcp.transport-test"                  false
+                                  "metabase.mcp.v2.tools.browse-test"            false
+                                  "metabase-enterprise.mcp.v2.tools.browse-test" false
+                                  "metabase.queries.models.card"                 false}]
         (testing ns-name
           (is (= enabled? (linter-enabled-in-ns? config :metabase/agent-message-exit ns-name))))))
     (testing "GHY-4544: `:empty-hint` is checked on `list-content` and on wrappers passing their options map to it"
@@ -122,7 +129,7 @@
             (findings agent-message/lint-msg '(msg ["ok" line]))))
     (is (=? [#".*string literal or a `str` of string literals.*"]
             (findings agent-message/lint-msg '(msg [(str "split " x)])))))
-  (testing "a line can't contain a line break or other control character; each line is its own string"
+  (testing "a line can't contain a line break, control, or private-use character; each line is its own string"
     (is (=? [#".*own string.*"]
             (findings agent-message/lint-msg '(msg ["first\nsecond"]))))
     (is (=? [#".*own string.*"]
@@ -132,32 +139,47 @@
     (is (=? [#".*own string.*"]
             (findings agent-message/lint-msg '(msg ["tab\tseparated"]))))
     (is (=? [#".*own string.*"]
-            (findings agent-message/lint-msg '(msg ["done.%n"])))))
-  (testing "GHY-4544: `%s` can't take a width, precision, or flags, and `%S` isn't allowed"
-    (doseq [line ["%.20s" "%10s" "%-5s" "%#s" "%S" "%1$.3s" "%-10S"]]
-      (testing line
-        (is (=? [#"`%s` in a `msg` line can't take a width, precision, flags, or `%S`.*"]
-                (findings agent-message/lint-msg (list 'msg [(str "Name: " line)] 'x)))))))
-  (testing "other conversions keep their flags, width, and precision"
-    (is (empty? (findings agent-message/lint-msg '(msg ["%,d rows, %.1f%%, %05d, %-8d"] a b c d)))))
-  (testing "GHY-4544: a `%` that doesn't begin a valid format specifier is flagged, since `String/format` rejects it"
-    (doseq [line ["Braces %}" "Dot %." "Trailing %" "Space % " "Unknown %q" "Bad date %tq" "%" "%1$"]]
-      (testing (pr-str line)
-        (is (=? [#"A `%` in a `msg` line must begin a format specifier.*`%%`.*"]
-                (findings agent-message/lint-msg (list 'msg [line])))))))
-  (testing "valid specifiers, including an escaped percent sign, aren't flagged as malformed"
-    (doseq [form ['(msg ["100%% done"])
-                  '(msg ["%,d rows"] n)
-                  '(msg ["%1$s, then %<s"] x)
-                  '(msg ["%tY"] d)
-                  '(msg [(str "50%" "% of %s")] x)]]
-      (testing (pr-str form)
-        (is (empty? (findings agent-message/lint-msg form))))))
+            (findings agent-message/lint-msg '(msg ["done.%n"]))))
+    (testing "GHY-4544: a private-use character, which the truncation markers use, is flagged too"
+      (is (=? [#".*own string.*"]
+              (findings agent-message/lint-msg (list 'msg [(str "first" (char 0xE000) "second")]))))
+      (is (=? [#".*own string.*"]
+              (findings agent-message/lint-msg (list 'msg [(str "marked" (char 0xF8FF))]))))))
   (testing "the argument count must match the specifiers across all lines"
     (is (=? [#".*2 arguments.*1.*"]
             (findings agent-message/lint-msg '(msg ["%s and" "%s"] a))))
     (is (=? [#".*1 argument.*2.*"]
             (findings agent-message/lint-msg '(msg ["only %s"] a b))))))
+
+(deftest ^:parallel msg-specifier-test
+  (testing "GHY-4544: only `%s` with no flags but `<`, `%d` with flags and width, and `%%` are allowed"
+    (doseq [line ["%s" "%d" "%1$s" "%,d" "%05d" "%-8d" "%(d" "%1$,10d"
+                  "%s again %<s" "%d again %<d" "%s (100%%)"]]
+      (testing line
+        (is (empty? (findings agent-message/lint-msg (list 'msg [(str "Value: " line)] 'x)))))))
+  (testing "GHY-4544: any other conversion, or a `%s` or `%d` that reshapes its value, is flagged"
+    (doseq [line ["%b" "%h" "%c" "%x" "%X" "%f" "%e" "%o" "%g" "%a" "%tY" "%TY" "%B"
+                  "%S" "%.20s" "%10s" "%-5s" "%#s" "%1$.3s" "%-10S" "%.1f" "%.2d" "%1$.2d"]]
+      (testing line
+        (is (=? [#"A `msg` line may only use `%s`, `%d`, or `%%`; .* would alter or hide the value\."]
+                (findings agent-message/lint-msg (list 'msg [(str "Value: " line)] 'x)))))))
+  (testing "GHY-4544: a `%` that doesn't begin a valid format specifier is flagged, since `String/format` rejects it"
+    (doseq [line ["Braces %}" "Dot %." "Trailing %" "Space % " "Unknown %q" "Bad date %tq" "%" "%1$"
+                  ;; GHY-4544: an argument index too large to be one is malformed, not an arithmetic overflow
+                  "%999999999999999999999999$s"]]
+      (testing (pr-str line)
+        (is (=? [#"A `%` in a `msg` line must begin a format specifier.*`%%`.*"]
+                (findings agent-message/lint-msg (list 'msg [line]))))))
+    (testing "an index at the digit cap still parses, and is reported as an argument count"
+      (is (=? [#".*999999999 arguments.*"]
+              (findings agent-message/lint-msg '(msg ["%999999999$s"] x))))))
+  (testing "valid specifiers, including an escaped percent sign, aren't flagged as malformed"
+    (doseq [form ['(msg ["100%% done"])
+                  '(msg ["%,d rows"] n)
+                  '(msg ["%1$s, then %<s"] x)
+                  '(msg [(str "50%" "% of %s")] x)]]
+      (testing (pr-str form)
+        (is (empty? (findings agent-message/lint-msg form)))))))
 
 (def ^:private stringy-texts
   "Message arguments built as text rather than with `msg`."
