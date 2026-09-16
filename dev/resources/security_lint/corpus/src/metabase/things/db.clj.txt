@@ -22,3 +22,11 @@
 
 ;; a column picked off the row by destructuring: still born from the read
 (defn thing-preview-url [id] (let [{:keys [preview_url]} (t2/select-one :model/Thing :id id)] preview_url))
+
+;; a link card's entity id, out of a JSON column, executed as a query value when a subscription renders
+(defn link-card-entity [dashcard]
+  (t2/select-one :model/Thing :id (get-in dashcard [:visualization_settings :link :entity :id])))
+
+;; the same read coerced: a number, whatever the document held
+(defn link-card-entity-safe [dashcard]
+  (t2/select-one :model/Thing :id (long (get-in dashcard [:visualization_settings :link :entity :id]))))

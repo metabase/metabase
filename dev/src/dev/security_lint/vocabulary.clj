@@ -242,6 +242,16 @@
   "As [[string-schema-names]], for the keyword schemas."
   #{:string :uuid :keyword})
 
+(def json-columns
+  "The JSON columns of application-database models: what a row holds under one of these has whatever shape the
+  client stored, keywordized on the way back out (`json-out-with-keywordization`, `normalize-visualization-settings`),
+  so a map planted there is a HoneySQL clause when it reaches a query. A dashcard's `visualization_settings`, a
+  document's `document`/`content`, a card's `parameters` and `dataset_query`, a database's `details` and
+  `settings`, a user's `login_attributes`, a revision's `object`."
+  #{:visualization_settings :dataset_query :result_metadata :parameters :parameter_mappings :template_tags
+    :details :settings :document :content :definition :attributes :login_attributes :embedding_params
+    :options :metadata :payload :object :diff :message :attrs :card_schema :viz_settings})
+
 (def string-id-keys
   "Columns named like an id that hold a string: NanoIDs, foreign systems' identifiers, OAuth client ids. Every
   other `*_id` column in the application database is an integer key, see [[id-key?]]."
@@ -306,6 +316,25 @@
   of these serves its endpoints to anyone."
   #"^\+(auth|static-apikey|check-)")
 
+(def elevated-endpoints
+  "Endpoints whose authorization is an elevated grant the graph cannot see by name: the check is inside a model's
+  `can-create?`/`can-write?`, or a `write-check` on a fetched object. Each entry says which grant. Matched on the
+  endpoint's namespace, and on its method where only the writes are gated."
+  [{:ns  #"^metabase\.transforms-rest\.|^metabase-enterprise\.transforms-(python|inspector)\.|^metabase-enterprise\.transforms\."
+    :why "the Transform model's checks require the data-analyst flag and a transforms grant on the database"}
+   {:ns      #"^metabase\.warehouses-rest\.api$"
+    :methods #{":put" ":post" ":delete"}
+    :why     "a write to a Database is `write-check`ed against `:perms/manage-database`"}])
+
+(defn elevated-endpoint?
+  "Whether an endpoint in `ns-sym` with `method` (`\":put\"`, as written) is gated by an elevated grant, see
+  [[elevated-endpoints]]."
+  [ns-sym method]
+  (boolean (some (fn [{:keys [ns methods]}]
+                   (and (re-find ns (str ns-sym))
+                        (or (nil? methods) (contains? methods method))))
+                 elevated-endpoints)))
+
 (def credential-params
   "Parameter names that mean an endpoint verifies a secret. Guessing one is what a throttle prevents."
   #"(?i)\b(password|old[-_]password|new[-_]password|otp|mfa[-_]code|reset[-_]token)\b")
@@ -360,7 +389,15 @@
     clojure.data.json/read                      :file
     clojure.data.json/read-str                  :file
     clojure.edn/read-string                     :file
-    clj-yaml.core/parse-string                  :file})
+    clj-yaml.core/parse-string                  :file
+    ;; a document decoded by hand has whatever shape its author gave it, and skipped the request decoder that
+    ;; would have stripped internal keys
+    metabase.util.json/decode                   :file
+    metabase.util.json/decode+kw                :file
+    ;; a verified token's claims were written by whoever holds the signing key -- an identity provider, an
+    ;; embedding application, whoever the shared secret leaked to -- and a claim in a query position is theirs
+    buddy.sign.jwt/unsign                       :external
+    buddy.sign.jwt/decrypt                      :external})
 
 (def origin-prefixes
   "As [[origin-functions]], for a family matched by prefix: every `toucan2.core/select*` is a read of the
@@ -450,6 +487,15 @@
     "Permissions" "DataPermissions" "PermissionsGroup" "PermissionsGroupMembership"
     "PermissionsRevision" "ApplicationPermissionsRevision" "CollectionPermissionGraphRevision"
     "Tenant" "SupportAccessGrant" "OAuthClient" "Sandbox" "ConnectionImpersonation"})
+
+(def privileged-columns
+  "Columns that decide who may see or do what, each settable through one gated endpoint and nowhere else:
+  `public_uuid`/`made_public_by_id` make an object anonymous-readable (the public-link endpoints, superuser),
+  `enable_embedding`/`embedding_params`/`embedding_type` publish it to embedding (superuser), `is_remote_synced`
+  enrolls a collection in git sync (superuser), `creator_id` and `is_superuser` are identity. `collection_id` is
+  deliberately absent: every create sets it, and its gate is a destination check the value rules ask about."
+  #{:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type :is_remote_synced
+    :creator_id :is_superuser :is_active :group_id :sandboxed :archived_directly})
 
 (def model-parents
   "What authorizes a write to a model besides a check on the model itself: a Card is written by whoever may write

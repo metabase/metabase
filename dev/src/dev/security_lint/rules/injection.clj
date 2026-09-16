@@ -9,7 +9,8 @@
    [dev.security-lint.ast :as ast]
    [dev.security-lint.rule :refer [defrule]]
    [dev.security-lint.taint :as taint]
-   [dev.security-lint.vocabulary :as vocab]))
+   [dev.security-lint.vocabulary :as vocab]
+   [rewrite-clj.node :as n]))
 
 (set! *warn-on-reflection* true)
 
@@ -182,10 +183,10 @@
   {:name        "Identifier quoted by string concatenation, or DDL built from a bare value"
    :enabled     false
    :description (str "Wrapping a name in quote characters with `str` does not escape the quote characters "
-                     "already inside it, so a backtick in a transform target name closed the identifier and "
-                     "ran a second statement. A DDL statement built with `format` from an unquoted value is "
-                     "the same hole with no quotes at all. The value was stored data in every real case, not "
-                     "the request that ran the statement.")
+                     "already inside it, so a backtick in a table name closes the identifier and what follows "
+                     "is a second statement. A DDL statement built with `format` from an unquoted value is the "
+                     "same hole with no quotes at all. The value is usually stored data, not the request that "
+                     "runs the statement.")
    :remediation (str "Quote identifiers with the driver's quoting function -- `sql.u/quote-name`, "
                      "`h2x/identifier`, `quote-identifier` -- which double the quote character inside the name.")
    :severity    {:tainted :error :otherwise :warning}
@@ -201,14 +202,9 @@
         ;; `(str "`" (str/replace s "`" "``") "`")` has escaped the quote character; that is a sanitizer by
         ;; effect, not by name
         sanitizers (into vocab/sanitizers ['replace 'replace-first #"^escape" 'the-id 'long 'int])
-        ;; `(name unit)`: a temporal bucketing unit is an MBQL enum, validated before any driver sees it
-        unit?    (fn [a] (let [a (ast/unmeta a)]
-                           (and (ast/call? a) (= "name" (some-> (ast/head-sym a) name))
-                                (some-> (ast/arg a 0) ast/unmeta ast/->str (->> (re-find #"unit$")))
-                                ;; unless the unit is the client's, sent in whatever shape
-                                (not (contains? (get (:labels ctx) ((juxt :row :col) (meta (ast/unmeta (ast/arg a 0)))))
-                                                :request/untyped)))))
-        dynamic  (remove unit? (filter #(taint/raw-value? ctx % {:sanitizers sanitizers}) args))
+        ;; `(name unit)` gets no exemption: not every clause's unit is validated before a driver sees it. An
+        ;; allow-list assertion ahead of the splice clears it.
+        dynamic  (filter #(taint/raw-value? ctx % {:sanitizers sanitizers}) args)
         quoting? (and (re-find sql-building-ns (str ns))
                       (or (some #(re-find bare-quote %) literals)
                           ;; `''%s''` is how i18n escapes a quote in a message, not SQL
@@ -219,3 +215,22 @@
                                 dynamic))
        :message  (str (if quoting? "Identifier quoted by concatenation around " "DDL interpolates an unquoted value ")
                       (str/join ", " (map ast/->str dynamic)))})))
+
+(defrule unanchored-malli-regex
+  {:name        "Malli :re schema whose pattern is not anchored"
+   :enabled     false
+   :description (str "Malli's `:re` validates with `re-find`, a substring match, so a pattern without `^`...`$` "
+                     "accepts any string that contains a match, and the rest of the string is the caller's: a "
+                     "schema meant to admit a timezone offset admits anything with an offset somewhere in it.")
+   :remediation "Anchor the pattern: `#\"^...$\"`, or `\\\\A`...`\\\\z`."
+   :severity    :warning
+   :precision   :high
+   :cwe         "CWE-20"
+   :vector-triggers #{:re}}
+  [{:keys [node]}]
+  (let [pattern (some->> (rest (ast/children node)) (map ast/unmeta) (filter #(= :regex (n/tag %))) first)
+        src     (some-> pattern n/string)]
+    (when (and src
+               (not (re-find #"^#\"(\^|\\A)" src))
+               (not (re-find #"(\$|\\z|\\Z)\"$" src)))
+      {:message (str "Malli :re pattern is unanchored, so re-find matches a substring: " src)})))

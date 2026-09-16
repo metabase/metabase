@@ -93,7 +93,7 @@
    :precision   :medium
    :cwe         "CWE-532"
    ;; Every level, plain and format variants alike. A secret at debug level ships to the aggregator the day
-   ;; someone turns debug logging on to chase an incident, which is exactly when the logs get read.
+   ;; someone turns debug logging on to chase a problem, which is exactly when the logs get read.
    :triggers    #{clojure.tools.logging/trace clojure.tools.logging/tracef
                   clojure.tools.logging/debug clojure.tools.logging/debugf
                   clojure.tools.logging/info clojure.tools.logging/infof

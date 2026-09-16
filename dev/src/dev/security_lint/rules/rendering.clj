@@ -2,7 +2,7 @@
   "Markup assembled from values that are not escaped.
 
   The email and subscription renderer builds HTML with hiccup 1, which does not escape strings, and one SVG by
-  string concatenation. A dashboard heading, a parameter value, a colour: each has carried `<script>` or an
+  string concatenation. A dashboard heading, a parameter value, a colour: each can carry `<script>` or an
   `<image xlink:href=\"file://...\">` into every recipient's inbox."
   (:require
    [clojure.string :as str]
@@ -39,9 +39,9 @@
   {:name        "Dynamic value rendered into markup unescaped"
    :enabled     false
    :description (str "`hiccup.core/html` renders strings as they are, so a value placed in an element body is "
-                     "live markup (attribute values it does escape). Building a tag with `str` is the same thing without the library. "
-                     "Both have carried attacker-authored HTML into subscription emails, and an SVG attribute "
-                     "built this way gave Batik a file:// URL to rasterize.")
+                     "live markup (attribute values it does escape). Building a tag with `str` is the same thing "
+                     "without the library: attacker-authored HTML in a subscription email, or an SVG attribute that "
+                     "hands the rasterizer a file:// URL.")
    :remediation (str "Render with `hiccup2.core/html`, which escapes by default, or wrap each value in `h`. "
                      "For hand-built markup, escape with `hiccup.util/escape-html` before concatenating.")
    :severity    {:tainted :error :otherwise :warning}

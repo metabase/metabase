@@ -210,6 +210,17 @@
                         :config {:output {:analysis {:var-usages true :locals true} :format :edn}}}
                  config-dir (assoc :config-dir config-dir)))))
 
+(defn- guard-vouched-positions
+  "The positions a validating guard vouches for, `{filename #{[row col]}}`, over every local -- what the
+  `:any-local` policy subtracts. A scan run under that policy builds no graph, and the guards are the one part of
+  it that policy still needs: the allow-list assertion ahead of `(name unit)` is what clears the splice."
+  [analysis roots]
+  (let [ns-by-file (into {} (map (juxt :filename :name)) (:namespace-definitions analysis))]
+    (cg/sanitized-positions {:tables       (into {} (for [[f root] roots]
+                                                      [f (cg/extract f (get ns-by-file f 'unknown) root)]))
+                             :local-usages (:local-usages analysis)
+                             :tainted      :all})))
+
 (defn- call-graph-positions
   "Tainted local-usage positions, by filename, computed across the whole scan.
 
@@ -251,6 +262,11 @@
         vouched    (cg/sanitized-positions {:tables       tables
                                             :local-usages (:local-usages analysis)
                                             :tainted      tainted})
+        ;; and the same over every local, for the rules that run under `:any-local`: the guard ahead of
+        ;; `(name unit)` clears the splice whether or not the graph saw a source reach the unit
+        vouched-all (cg/sanitized-positions {:tables       tables
+                                             :local-usages (:local-usages analysis)
+                                             :tainted      :all})
         by-file    (reduce (fn [acc {:keys [id filename row col]}]
                              (if-let [ls (get tainted id)]
                                (update acc filename (fnil assoc {}) [row col] ls)
@@ -260,6 +276,8 @@
     {;; {filename {[row col] #{label}}}: every label, at every usage
      :tainted    (into {} (for [[f ps] by-file]
                             [f (apply dissoc ps (get vouched f))]))
+     ;; {filename #{[row col]}}: what a guard vouched for, whatever reached it -- the any-local policy's subtraction
+     :vouched-all vouched-all
      ;; the same keyed by the *binding* position, for a rule that asks about a parameter that is never used
      :bindings   (reduce (fn [acc {:keys [id filename row col]}]
                            (if-let [ls (get tainted id)]
@@ -309,12 +327,16 @@
 
   A rule may pin `:any-local` for itself with `:taint-policy`, whatever the scan runs under. That is for the
   rules whose sources the graph cannot see: a warehouse column name or a stored card option is not a request
-  value, and the raw-SQL sites those reach were the majority of the SQL findings in the security tracker. Such a
+  value, and the raw-SQL sites those reach are where the SQL findings are. Such a
   rule still receives the call-graph positions as `:boundary-locals`, so it can grade a request-reachable value
-  above a merely dynamic one."
-  [policy per-file-cg local-usages]
+  above a merely dynamic one.
+
+  `vouched` is the positions a validating guard covers in this file, subtracted under `:any-local` as the
+  call-graph positions already had theirs subtracted when they were propagated."
+  [policy per-file-cg local-usages & [vouched]]
   (case policy
-    :any-local (into {} (map (fn [pos] [pos #{:local}])) (taint/all-local-positions local-usages))
+    :any-local (into {} (comp (remove (or vouched #{})) (map (fn [pos] [pos #{:local}])))
+                     (taint/all-local-positions local-usages))
     per-file-cg))
 
 (defn- test-file?
@@ -334,9 +356,15 @@
         p    (if (and root (str/starts-with? path root)) (subs path (count root)) path)]
     (str/replace p #"^(\./)+" "")))
 
+(defn- top-level-form
+  "The top-level form of `root` that holds `[row col]`: the `defn` a call site sits in, for a rule that asks
+  what else that function does."
+  [root row col]
+  (some (fn [nd] (when (cg/within? (meta nd) row col) nd)) (ast/children root)))
+
 (defn- finding
   "Turn a rule's `:detect` result into a finding, carrying the rule's metadata along for the reporter."
-  [{:keys [rule filename row col]} node result reachable-from & [ctx]]
+  [{:keys [rule filename row col min-privilege privilege-entry]} node result reachable-from & [ctx]]
   (let [{:keys [end-row end-col]} (meta node)
         ;; the boundaries the values *in* the form crossed -- its arguments, not the form itself, which may be
         ;; an origin in its own right (`http/get` is a sink for its URL and a source for its response) -- judged
@@ -349,9 +377,8 @@
                    #{})
         ;; A stored origin grades exactly as a request does. The model cannot tell a row the server wrote from
         ;; one a user did -- and should not try: a row in the application database can always be written by
-        ;; other means than this code (SEC-1018 through SEC-1023 forged sessions and API keys that way), so
-        ;; nothing read back from it is trusted.
-        severity (rule/severity-for rule (:tainted? result))]
+        ;; other means than this code, so nothing read back from it is trusted.
+        severity (rule/cap-severity (rule/severity-for rule (:tainted? result)) min-privilege)]
     (merge {:rule-id   (:id rule)
             :rule-name (:name rule)
             :file      filename
@@ -368,9 +395,14 @@
             :snippet   (some-> node n/string str/split-lines first)
             ;; the whole form, formatting removed: what the SARIF fingerprint hashes
             :form      (ast/normalized-text node)
-            ;; :http means a request can trigger it -- the triage question; the full set says what else can
+            ;; :http means a request can trigger it -- the first question; the full set says what else can
             :reachable-from      reachable-from
-            :endpoint-reachable? (contains? reachable-from :http)
+            ;; a request reaches it: through an endpoint, or through middleware that runs ahead of every endpoint
+            :endpoint-reachable? (boolean (some reachable-from [:http :middleware]))
+            ;; the least an actor needs to get here -- what capped the severity, see `rule/cap-severity`
+            :min-privilege       min-privilege
+            ;; and the entry that set it, for the report: "no account (GET /oembed)"
+            :privilege-entry     privilege-entry
             :origins             origins}
            result)))
 
@@ -384,20 +416,31 @@
   (for [entry (cg/entries reach)
         ;; these rules are about HTTP endpoints; a job or a queue consumer is not one
         :when (and (= filename (:filename entry)) (= :http (:kind entry)))
+        :let  [;; the other endpoints of the namespace, with the privilege each demands, for a rule about consensus
+               siblings (for [e (cg/entries reach)
+                              :when (and (= filename (:filename e)) (= :http (:kind e)) (not= e entry))]
+                          (select-keys e [:name :method :privilege]))]
         :let  [node    (node-at index (:row entry) (:col entry))
                ;; once per endpoint, not once per rule: with dispatch resolved a closure can hold every driver
                reaches (when node (cg/entry-closure reach entry))]
         :when node
         rule  rules
         :when (not (rule/exempt? rule (relative-to root filename)))
-        :let  [site   {:rule rule :filename filename :row (:row entry) :col (:col entry)}
+        :let  [site   {:rule rule :filename filename :row (:row entry) :col (:col entry)
+                       :min-privilege (:privilege entry) :privilege-entry (str (:name entry) " in " ns-sym)}
                ctx    {:node                node
                        :site                site
                        :filename            filename
                        :endpoint-ns         ns-sym
                        :reaches             reaches
+                       :method              (:method entry)
+                       :privilege           (:privilege entry)
+                       :siblings            siblings
                        ;; the endpoint's own helpers: two call hops, for rules the full closure drowns
                        :nearby              (cg/entry-neighbourhood reach entry 2)
+                       ;; and four: an endpoint's write is usually `api -> core -> db.clj -> t2`, and so is the
+                       ;; check that guards it
+                       :nearby-deep         (cg/entry-neighbourhood reach entry 4)
                        :ns-middleware       (get-in reach [:ns-middleware-by-file filename] #{})
                        ;; every router wrapper applied to this namespace's handler, from any file
                        :ns-wrappers         (get-in reach [:wrappers-by-ns ns-sym] #{})
@@ -464,6 +507,8 @@
         indexes  (into {} (for [[f root] roots] [f (call-index root)]))
         graph    (when-not (= :any-local taint-sources)
                    (call-graph-positions analysis roots))
+        ;; what a guard vouched for, for the rules that run under `:any-local`; the graph has it when there is one
+        vouched-all (if graph (:vouched-all graph) (guard-vouched-positions analysis roots))
         cg-pos   (:tainted graph)
         bindings (:bindings graph)
         origin-pos (:origins graph)
@@ -480,9 +525,11 @@
               :let     [index   (get indexes filename)
                         labels  (get cg-pos filename {})
                         ;; a position whose only labels are checks is not tainted; the checks are asked for by name
-                        tainted (taint-positions taint-sources (taint/boundary-labels labels) (get uses filename))
+                        tainted (taint-positions taint-sources (taint/boundary-labels labels) (get uses filename)
+                                                 (get vouched-all filename))
                         ;; only the rules that ask for it pay for the broader policy
-                        any-local (delay (taint-positions :any-local nil (get uses filename)))
+                        any-local (delay (taint-positions :any-local nil (get uses filename)
+                                                          (get vouched-all filename)))
                         ;; the positions that may hold a string, a map or a vector, and the ones that may hold
                         ;; a HoneySQL clause, for rules about the *shape* of a value -- once per file, not per site
                         untyped    (if graph (taint/select-labels tainted taint/untyped-label?) tainted)
@@ -508,6 +555,8 @@
                                 :untyped-locals      untyped
                                 :structured-locals   structured
                                 :marks               (:marks site #{})
+                                ;; the defn (or other top-level form) the site sits in
+                                :top-level           (top-level-form root-node (:row site) (:col site))
                                 :origin-calls        (get origin-pos filename {})
                                 :sanitized-calls     (get sanitized-pos filename #{})
                                 ;; the calls that handed a parameter a map of unknown keys, by usage position
@@ -516,7 +565,7 @@
                                 :local-inits         @inits
                                 ;; what can reach this code: :http means a request can
                                 :reachable-from      kinds
-                                :endpoint-reachable? (contains? kinds :http)}
+                                :endpoint-reachable? (boolean (some kinds [:http :middleware]))}
                         ;; `:tainted-arg` resolves the taint of one argument up front, so a rule can branch on it
                         ;; without every body repeating the same call
                         ctx    (if-let [n (:tainted-arg (:rule site))]
@@ -532,7 +581,9 @@
                                   (some-> (get indexes (:filename at)) (node-at (:row at) (:col at)))
                                   node)]
               :when    at-node]
-          (let [site'  (merge site (select-keys at [:filename :row :col]))
+          (let [site'  (cond-> (merge site (select-keys at [:filename :row :col]))
+                         reach (merge (let [{:keys [privilege entry]} (cg/min-privilege-entry reach at)]
+                                        {:min-privilege privilege :privilege-entry entry})))
                 kinds' (if (and reach (:at result)) (cg/reachable-from reach at) kinds)
                 flows  (when reach (cg/flows-to reach at))]
             (cond-> (finding site' at-node (dissoc result :at) kinds' ctx)

@@ -74,6 +74,22 @@
     "if-not" (some-> (nth args 2 nil) vector)
     nil))
 
+(defn- superuser-test?
+  "Whether a conditional's test is the session's superuser flag: `superuser?` destructured from the request's
+  `:is-superuser?`, `api/*is-superuser?*`, `(:is-superuser? request)`, or one of those under `and`."
+  [test]
+  (let [test (ast/unmeta test)]
+    (boolean
+     (cond
+       (ast/symbol-node? test) (re-find #"^\*?is-superuser\?\*?$|^superuser\?$" (name (n/sexpr test)))
+       (ast/call? test)        (let [head (ast/head-sym test)]
+                                 (cond
+                                   (= 'and head)                (some superuser-test? (ast/args test))
+                                   (ast/keyword-node? (first (ast/children test)))
+                                   (= :is-superuser? (n/sexpr (first (ast/children test))))
+                                   :else                        false))
+       :else                   false))))
+
 (defn- positive-checks
   "The validator calls a test *positively* applies.
 
@@ -87,6 +103,21 @@
       (contains? validator-heads head) [test]
       (= 'and head)                    (mapcat positive-checks (ast/args test))
       :else                            [])))
+
+(defn- throwing-guard-checks
+  "The validator calls a *throwing guard* applies: `(when-not (contains? allowed unit) (throw ...))`, a statement
+  whose body is nothing but a throw. `when-not` vouches for no branch of its own -- its body runs when the check
+  failed -- but when that body only throws, the forms after the statement run only when the check passed, so the
+  statement is an assertion, like a named `validate-url!`: an allow-list check ahead of `(name unit)`. A `when-not`
+  that logs and carries on vouches for nothing."
+  [node]
+  (let [node (ast/unmeta node)
+        args (ast/args node)]
+    (when (and (ast/call? node)
+               (= 'when-not (some-> (ast/head-sym node) name symbol))
+               (= 2 (count args))
+               (= 'throw (some-> (second args) ast/unmeta ast/head-sym name symbol)))
+      (seq (positive-checks (first args))))))
 
 (def ^:private threading-heads vocab/threading-slots)
 
@@ -485,7 +516,7 @@
   does not propagate into it. That is the conservative direction -- it loses findings rather than inventing them."
   [filename ns-sym root-node]
   (let [params (volatile! []) inits (volatile! []) calls (volatile! []) sources (volatile! [])
-        fns (volatile! []) entries (volatile! []) guards (volatile! []) sites (volatile! [])
+        fns (volatile! []) entries (volatile! []) guards (volatile! []) privilege-guards (volatile! []) sites (volatile! [])
         ns-middleware (volatile! #{}) wraps (volatile! []) handler-defs (volatile! [])
         numeric (volatile! []) strings (volatile! []) registry (volatile! []) keyed (volatile! []) sanitized (volatile! [])
         origin-fns (volatile! []) model-args (volatile! {}) tails (volatile! []) checks (volatile! [])
@@ -527,14 +558,19 @@
         ;; `(validate-url! url) (http/get url)`: a validating assertion as a statement throws on a bad value, so
         ;; the forms after it in the same body see a validated one. A guard, like a conditional's, over the rest
         ;; of the enclosing form -- and only the rest: `(sink url) (validate-url! url)` validated nothing in time.
+        ;; A throwing guard -- `(when-not (contains? allowed unit) (throw ...))` -- is the same assertion spelled
+        ;; inline, and vouches for the same forms; see [[throwing-guard-checks]].
         (let [cs (vec (ast/children node))]
           (doseq [[i c] (map-indexed vector cs)
-                  :let  [c (ast/unmeta c)]
-                  :when (and (pos? i) (ast/call? c) (vocab/assertion-validator? (ast/head-sym c))
-                             (< (inc i) (count cs)))
+                  :let  [c      (ast/unmeta c)
+                         checks (when (and (pos? i) (ast/call? c) (< (inc i) (count cs)))
+                                  (if (vocab/assertion-validator? (ast/head-sym c))
+                                    [c]
+                                    (throwing-guard-checks c)))]
+                  :when (seq checks)
                   :let  [b0 (meta (nth cs (inc i)))
                          bn (meta (peek cs))]]
-            (vswap! guards conj {:checks [(assoc (meta c) :filename filename)]
+            (vswap! guards conj {:checks (mapv #(assoc (meta %) :filename filename) checks)
                                  :body   {:filename filename
                                           :row     (:row b0)     :col     (:col b0)
                                           :end-row (:end-row bn) :end-col (:end-col bn)}})))
@@ -692,7 +728,7 @@
                 (vswap! sources conj (assoc (meta slot) :filename filename)))))
 
           ;; A conditional guarded by a validating test protects the forms under it. Recording that is what lets a
-          ;; correctly defended site stop being reported forever, rather than being re-triaged every run.
+          ;; correctly defended site stop being reported forever, rather than being re-reviewed every run.
           (contains? guard-heads head)
           (let [test   (first args)
                 body   (guarded-forms (name head) args)
@@ -703,7 +739,17 @@
                 (vswap! guards conj {:checks (mapv #(assoc (meta %) :filename filename) checks)
                                      :body   {:filename filename
                                               :row      (:row b0)     :col     (:col b0)
-                                              :end-row  (:end-row bn) :end-col (:end-col bn)}}))))
+                                              :end-row  (:end-row bn) :end-col (:end-col bn)}})))
+            ;; `(when superuser? ...)`, `(if api/*is-superuser?* ...)`: the branch is a superuser's whoever reached
+            ;; the function -- middleware that runs for anonymous callers and writes a setting only under this
+            ;; flag, say. What is under it grades as a superuser's, see [[min-privilege-entry]].
+            (when (and test (seq body) (superuser-test? test))
+              (let [b0 (meta (first body))
+                    bn (meta (last body))]
+                (vswap! privilege-guards conj {:privilege :superuser
+                                               :body      {:filename filename
+                                                           :row      (:row b0)     :col     (:col b0)
+                                                           :end-row  (:end-row bn) :end-col (:end-col bn)}}))))
 
           ;; `(api.macros/ns-handler *ns* api/+check-superuser ...)` wraps every endpoint in the namespace with
           ;; middleware. That is authorization the closure cannot otherwise see -- it is applied by the router,
@@ -747,7 +793,9 @@
             ;; the keys of a request map under a closed schema are the schema's: `closed-schemas` holds for
             ;; every `defendpoint`, and only there -- a `mu/defn` schema is neither enforced nor checked closed
             (vswap! keyed into (:keyed typed)))
-          (vswap! entries conj (assoc (meta node) :filename filename :kind :http :name (entry-name node))))
+          (vswap! entries conj (assoc (meta node) :filename filename :kind :http :name (entry-name node)
+                                      ;; `:put`, as written, for [[vocab/elevated-endpoint?]]
+                                      :method (some-> (first args) ast/unmeta ast/->str))))
         ;; A threading macro passes its seed into each step, which the plain call extraction below cannot see:
         ;; `(-> request :url h)` looks like a three-argument call to `->`. Record a synthetic call per step so the
         ;; seed's taint reaches the function each step names.
@@ -857,7 +905,7 @@
                                  :targets (handler-targets (rest (ast/args nd)) ns-sym)}))
     (let [ns-form (first (filter #(and (ast/call? %) (= 'ns (ast/head-sym %))) (ast/children root-node)))]
       {:ns ns-sym :params @params :inits @inits :calls @calls :sources @sources
-       :fns @fns :entries @entries :guards @guards :call-sites @sites :ns-middleware @ns-middleware
+       :fns @fns :entries @entries :guards @guards :privilege-guards @privilege-guards :call-sites @sites :ns-middleware @ns-middleware
        :wraps @wraps :handler-defs @handler-defs
        :numeric-regions @numeric :string-regions @strings :registry-regions @registry :keyed-regions @keyed
        :sanitized @sanitized
@@ -968,6 +1016,60 @@
             tables
             sites)))
 
+(def privilege-order
+  "The least an actor must hold to start at an entry, least first: no account, any account, an elevated grant, a
+  superuser. The rules' own severities know nothing about it: a splice reached only past `check-superuser` is the
+  same code as one an anonymous public link reaches, and a very different finding."
+  [:anonymous :session :elevated :superuser])
+
+(def ^:private privilege-rank (into {} (map-indexed (fn [i p] [p i])) privilege-order))
+
+(defn- superuser-name? [nm] (str/starts-with? nm "check-superuser"))
+
+(defn- elevated-name?
+  "A check a non-superuser can pass by holding a grant: an application permission (settings, monitoring,
+  subscriptions) or the data-analyst flag."
+  [nm]
+  (or (= nm "check-has-application-permission") (str/starts-with? nm "check-data-analyst")))
+
+(defn- entry-privilege
+  "The least an actor needs to start at `entry`, an `:http` entry: what the router wrapped its namespace in
+  (`ns-wrappers`), what the namespace's own `ns-handler` wraps every endpoint in (`ns-middleware`), and the checks
+  within two call hops of the body (`nearby`) -- where this codebase keeps them."
+  [{:keys [ns-wrappers ns-middleware nearby ns method]}]
+  (let [wrapper-names (into #{} (map name) (concat ns-wrappers ns-middleware))
+        nearby-names  (into #{} (map name) nearby)]
+    (cond
+      (or (some #(str/starts-with? % "+check-superuser") wrapper-names) (some superuser-name? nearby-names))
+      :superuser
+
+      (or (some #(str/starts-with? % "+check-has-application-permission") wrapper-names)
+          (some elevated-name? nearby-names)
+          ;; a grant the graph cannot see by name, see [[vocab/elevated-endpoints]]
+          (vocab/elevated-endpoint? ns method))
+      :elevated
+
+      (some #(re-find vocab/authenticating-wrappers %) wrapper-names)
+      :session
+
+      :else
+      :anonymous)))
+
+(declare entry-neighbourhood)
+
+(defn- handler-fn-kind
+  "The entry kind of a request-taking function that is not an endpoint form: `:middleware` for Ring middleware,
+  which runs on every request before any session is checked, and `:http` for any other -- a helper handed the
+  request by an endpoint."
+  [fq]
+  (if (str/starts-with? (str fq) "metabase.server.middleware") :middleware :http))
+
+(defn- handler-fn-privilege
+  "As [[handler-fn-kind]]: middleware starts an anonymous path; a helper is credited with the session the
+  endpoints that call it hold."
+  [fq]
+  (if (= :middleware (handler-fn-kind fq)) :anonymous :session))
+
 (defn reachable-regions
   "Regions of code an HTTP request can reach.
 
@@ -1017,12 +1119,13 @@
         ;; frontier BFS: expand only what the last round added. Re-expanding the whole seen-set each round was
         ;; harmless at closures of ~90 functions; once multimethod dispatch pulls every driver into a closure it
         ;; is not.
-        closure    (fn [seeds]
+        closure*   (fn [edges seeds]
                      (loop [seen (set seeds), frontier (set seeds)]
                        (if (empty? frontier)
                          seen
                          (let [next (into #{} (comp (mapcat #(get edges %)) (remove seen)) frontier)]
                            (recur (into seen next) next)))))
+        closure    (partial closure* edges)
         ;; each endpoint form keeps its own seeds, so a rule can ask what *this* endpoint reaches rather
         ;; than what any endpoint reaches
         calls-by-file (group-by #(:filename (:pos %)) all-calls)
@@ -1038,32 +1141,76 @@
                                                      (map resolve-to))
                                            (get calls-by-file (:filename e)))))
         ;; one closure per entry kind, so a finding can say what reaches it: a request, a job, a queue...
-        kinds      (into #{:http} (map :kind) entries)
+        kinds      (into #{:http :middleware} (map :kind) entries)
         refs-in    (fn [e] (into #{} (comp (filter #(and (:value? %)
                                                          (within? e (:row (:pos %)) (:col (:pos %)))))
                                            (map resolve-to))
                                  (get calls-by-file (:filename e))))
         seeds-for  (fn [kind]
-                     (into (if (= :http kind) handler-fns #{})
+                     (into (into #{} (filter #(= kind (handler-fn-kind %))) handler-fns)
                            (comp (filter #(= kind (:kind %))) (mapcat #(into (:seeds %) (refs-in %))))
                            entry-recs))
         reached    (into {} (for [k kinds] [k (closure (seeds-for k))]))
         kinds-of   (reduce (fn [acc [k fqs]] (reduce #(update %1 %2 (fnil conj #{}) k) acc fqs)) {} reached)
-        regions    (concat (for [e entries] (assoc e :kinds #{(:kind e)}))
-                           (for [[fq ks] kinds-of, r (get regions-of fq)] (assoc r :kinds ks)))
+        ;; the least an actor needs at each http entry, from the router's wrappers, the namespace's own
+        ;; middleware and the checks two hops into the body -- what `entry-privilege` reads
+        wrappers   (handler-wrappers tables)
+        middleware (into {} (for [[f t] tables] [f (:ns-middleware t)]))
+        entry-recs (for [e entry-recs]
+                     (if (= :http (:kind e))
+                       (assoc e :privilege (entry-privilege {:ns-wrappers   (get wrappers (get ns-of (:filename e)) #{})
+                                                             :ns-middleware (get middleware (:filename e) #{})
+                                                             :nearby        (entry-neighbourhood {:call-edges call-edges} e 2)
+                                                             :ns            (get ns-of (:filename e))
+                                                             :method        (:method e)}))
+                       e))
+        ;; one closure per privilege level, as per kind above, so a finding can say the least that reaches it
+        ;; seed -> the name of an entry that seeds it, so a finding can say which entry set its grade
+        seeds-at   (fn [p]
+                     (into (into {} (comp (filter #(= p (handler-fn-privilege %))) (map (fn [fq] [fq (str fq)]))) handler-fns)
+                           ;; `POST /` is one of forty; the namespace says which
+                           (for [e entry-recs :when (= p (:privilege e)), fq (into (:seeds e) (refs-in e))]
+                             [fq (str (:name e) " in " (get ns-of (:filename e)))])))
+        ;; multi-source BFS over executions only, each function labelled with the first entry to reach it. The
+        ;; reference closure of any endpoint holds most of the codebase -- a permission check reaches the event
+        ;; system, which reaches everything -- and graded a third of all findings as anonymous because the login
+        ;; endpoint's closure held them. What an endpoint *runs* is the question here.
+        ;; The walk stops at an event dispatch: `publish-event!` resolves to every handler, and the handlers reach
+        ;; the whole model layer, so the login endpoint graded a third of the tree as anonymous through them. A
+        ;; handler is an entry of its own kind (`:event`), graded as a background task -- what it runs is decided
+        ;; by what was stored, not by who fired the event.
+        labelled   (fn [seeds]
+                     (loop [seen seeds, frontier (apply dissoc seeds (keys vocab/entry-multimethods))]
+                       (if (empty? frontier)
+                         seen
+                         (let [next (into {} (for [[fq from] frontier, callee (get call-edges fq)
+                                                   :when (and (not (contains? seen callee))
+                                                              (not (contains? vocab/entry-multimethods callee)))]
+                                               [callee from]))]
+                           (recur (merge next seen) next)))))
+        reached-at (into {} (for [p privilege-order] [p (labelled (seeds-at p))]))
+        ;; fq -> {privilege entry-name}
+        privs-of   (reduce (fn [acc [p fq->entry]] (reduce (fn [acc [fq from]] (assoc-in acc [fq p] from)) acc fq->entry))
+                           {} reached-at)
+        regions    (concat (for [e entry-recs] (cond-> (assoc e :kinds #{(:kind e)})
+                                                 (:privilege e) (assoc :privileges {(:privilege e) (str (:name e) " in " (get ns-of (:filename e)))})))
+                           (for [[fq ks] kinds-of, r (get regions-of fq)]
+                             (assoc r :kinds ks :privileges (get privs-of fq {}))))
         ;; for [[flows-to]]: every entry that can start a path, with everything it seeds, plus the request-taking
         ;; functions that start an http path without being an entry form; `:i` is the index into the vector
         flow-entries (into [] (map-indexed (fn [i e] (assoc e :i i)))
                            (concat (for [e entry-recs] (assoc e :flow-seeds (into (:seeds e) (refs-in e))))
                                    (for [fq handler-fns :let [r (first (get regions-of fq))] :when r]
-                                     (assoc r :kind :http :name (str fq) :flow-seeds #{fq}))))]
+                                     (assoc r :kind (handler-fn-kind fq) :name (str fq) :flow-seeds #{fq}))))]
     {;; grouped by file so a lookup does not scan every reachable region in the codebase
      :by-file (group-by :filename regions)
      :edges      edges
      :call-edges call-edges
      :entries    (vec entry-recs)
-     :ns-middleware-by-file (into {} (for [[f t] tables] [f (:ns-middleware t)]))
-     :wrappers-by-ns (handler-wrappers tables)
+     :ns-middleware-by-file middleware
+     :wrappers-by-ns wrappers
+     ;; {filename [{:privilege :superuser :body region}]}: branches a superuser flag guards
+     :privilege-guards-by-file (into {} (for [[f t] tables] [f (:privilege-guards t)]))
      ;; for [[flows-to]]: every entry that can start a path, with everything it seeds, plus the request-taking
      ;; functions that start an http path without being an entry form
      :flow-entries flow-entries
@@ -1113,10 +1260,32 @@
         (recur (into seen next) next (dec n))))))
 
 (defn reachable-from
-  "The kinds of entry point from which execution can reach `pos`: a subset of #{:http :job :mq :cli :event
-  :startup}. Empty means nothing modelled reaches it."
+  "The kinds of entry point from which execution can reach `pos`: a subset of #{:http :middleware :job :mq :cli
+  :event :startup ...}. Empty means nothing modelled reaches it."
   [{:keys [by-file]} {:keys [filename row col]}]
   (into #{} (mapcat :kinds) (filter #(within? % row col) (get by-file filename))))
+
+(declare min-privilege-entry)
+
+(defn min-privilege
+  "The least an actor needs to reach `pos`: the lowest [[privilege-order]] level among the http entries whose
+  closure holds it; `:background` when only a job, an event, a queue or startup reaches it -- no request at all,
+  so no actor, and the taint origins say who planted what it runs; nil when nothing modelled reaches it."
+  [reach pos]
+  (:privilege (min-privilege-entry reach pos)))
+
+(defn min-privilege-entry
+  "As [[min-privilege]], with the entry that set it: `{:privilege :anonymous :entry \"GET /oembed\"}`."
+  [{:keys [by-file privilege-guards-by-file]} {:keys [filename row col]}]
+  (let [regions (filter #(within? % row col) (get by-file filename))
+        privs   (into {} (mapcat :privileges) regions)
+        guarded (some #(when (within? (:body %) row col) (:privilege %)) (get privilege-guards-by-file filename))]
+    (cond
+      (and guarded (seq privs))            {:privilege guarded :entry "a branch the superuser flag guards"}
+      (seq privs)                          (let [p (apply min-key privilege-rank (keys privs))]
+                                             {:privilege p :entry (get privs p)})
+      (some (comp seq :kinds) regions)     {:privilege :background}
+      :else                                nil)))
 
 (defn reachable?
   "Whether anything modelled reaches `pos`."
@@ -1225,15 +1394,19 @@
   If a conditional tests a tainted value with an allow-list check, uses of that value inside the conditional are
   not worth reporting. `metabase.ai-tracing.api/trace-file` is the case that motivated this: it matches the id
   against an anchored regex and checks the resolved path's parent before opening anything, and was reported
-  anyway."
+  anyway.
+
+  `tainted` is the propagated label map, or `:all` for the any-local policy, under which every local counts and
+  so every local a guard checks is vouched for."
   [{:keys [tables local-usages tainted]}]
-  (let [usage-idx (index-by-row local-usages)]
+  (let [usage-idx (index-by-row local-usages)
+        tainted?  (if (= :all tainted) (constantly true) #(contains? tainted %))]
     (reduce
      (fn [acc {:keys [checks body]}]
        ;; ids a validator was actually applied to -- inside the validator call, not merely somewhere in the test
        (let [checked (into #{} (for [check checks
                                      {:keys [id row col]} (in-rows usage-idx check)
-                                     :when (and (contains? tainted id) (within? check row col))]
+                                     :when (and (tainted? id) (within? check row col))]
                                  id))]
          (if (empty? checked)
            acc

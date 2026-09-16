@@ -1,8 +1,8 @@
 (ns dev.security-lint.rules.drivers
   "Invariants across driver implementations.
 
-  A defence added to one driver has repeatedly failed to reach its siblings: the JDBC property denylist covered
-  two of nine drivers at one point. These rules ask each implementation the question the first fix answered."
+  A defence added to one driver does not reach its siblings on its own. These rules ask each implementation the
+  question the shared implementation answers."
   (:require
    [dev.security-lint.ast :as ast]
    [dev.security-lint.rule :refer [defrule]]
@@ -50,7 +50,7 @@
    :description (str "`driver/validate-db-details!` on `:sql-jdbc` rejects JDBC properties that load classes or "
                      "write files -- `socketFactory`, `sslfactory`, `loggerFile`. A driver that overrides it "
                      "without running the parent loses that list; a driver whose `can-connect?` never calls it "
-                     "connects with whatever the details say. Both shapes have shipped, per driver, more than once.")
+                     "connects with whatever the details say.")
    :remediation (str "In `validate-db-details!`, call `((get-method driver/validate-db-details! :sql-jdbc) driver "
                      "details)` before the driver's own checks. In `can-connect?`, call `driver/validate-db-details!` "
                      "or delegate to the `:sql-jdbc` implementation.")
@@ -72,3 +72,45 @@
       {:message "can-connect? override never validates the connection details"})
 
     nil))
+
+(defn- value-clause-method?
+  "Whether a `defmethod` form implements the compiler for a `:value` clause: `sql.qp/->honeysql [<driver> :value]`
+  in a SQL driver, or Mongo's `->rvalue :value`. The base `[:sql :value]` is the guard's home and is left alone."
+  [node]
+  (let [nm       (some-> (ast/arg node 0) ast/unmeta n/sexpr)
+        dispatch (some-> (ast/arg node 1) ast/unmeta)]
+    (boolean
+     (and (symbol? nm)
+          (case (name nm)
+            "->honeysql" (and dispatch (ast/vector-node? dispatch)
+                              (let [[d clause] (map (comp n/sexpr ast/unmeta) (ast/children dispatch))]
+                                (and (= :value clause) (not= :sql d))))
+            "->rvalue"   (and dispatch (= :value (n/sexpr dispatch)))
+            false)))))
+
+(defn- guards-scalar?
+  "Whether the method body checks the value is a scalar itself -- `check-value-literal`, a `coll?`/`map?`/
+  `sequential?` test -- or delegates to the parent implementation, which does."
+  [node]
+  (or (delegates-to-parent? node)
+      (some #(mentions? node %) ["check-value-literal" "coll?" "map?" "sequential?" "scalar?"])))
+
+(defrule driver-value-clause-guard-bypassed
+  {:name        "Driver :value compiler that never checks the value is a scalar"
+   :enabled     false
+   :description (str "The base `->honeysql [:sql :value]` throws when the value slot holds a collection, because "
+                     "HoneySQL formats a map or a vector there as SQL structure: `[{:raw \"...\"}]` is raw SQL. A "
+                     "driver that overrides the `:value` compiler and never runs that check hands any query-builder "
+                     "user arbitrary SQL, and a stored Segment or Measure definition carrying such a value runs it "
+                     "for every user who references it. Mongo's `->rvalue :value` is the same position: a map "
+                     "there is an `$expr` operand, where `$function` is server-side JavaScript.")
+   :remediation (str "Call `sql.qp/check-value-literal` on the value first, or delegate to the `[:sql :value]` "
+                     "implementation for every type the override does not handle itself.")
+   :severity    :error
+   :precision   :high
+   :cwe         "CWE-89"
+   :form-triggers #{defmethod}}
+  [{:keys [node]}]
+  (when (and (value-clause-method? node) (not (guards-scalar? node)))
+    {:message (str (ast/->str (ast/arg node 0)) " " (ast/->str (ast/arg node 1))
+                   " never checks that the value is a scalar")}))

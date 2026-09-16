@@ -5,14 +5,23 @@
    [metabase.public-sharing.validation :as validation]
    [toucan2.core :as t2]))
 
+(defn- remove-card-non-public-columns [card]
+  (select-keys card [:id :name]))
+
 (defn- card-with-uuid [uuid]
   (validation/check-public-sharing-enabled)
   (t2/select-one :model/Card :public_uuid uuid))
 
 (api.macros/defendpoint :get "/card/:uuid"
-  "Reaches the enablement check through a helper."
+  "Reaches the enablement check through a helper, and serves the card through the scrubber."
   [{:keys [uuid]} _query _body]
-  (card-with-uuid uuid))
+  (remove-card-non-public-columns (card-with-uuid uuid)))
+
+(api.macros/defendpoint :get "/dashboard/:uuid"
+  "Serves the Dashboard row as it is: every column with it."
+  [{:keys [uuid]} _query _body]
+  (validation/check-public-sharing-enabled)
+  (t2/select-one :model/Dashboard :public_uuid uuid))
 
 (api.macros/defendpoint :get "/oembed"
   "Never reaches the enablement check."

@@ -14,8 +14,8 @@
    :enabled     false
    :description (str "`api-exception-response` merges an exception's ex-data into the HTTP response body. An "
                      "`ex-info` whose data holds the query, the compiled SQL or the object being checked hands "
-                     "that to the caller -- including the caller whose permission check just failed. A 403 "
-                     "denying access to a card has returned the card's native SQL three times over.")
+                     "that to the caller -- including the caller whose permission check just failed, who then "
+                     "reads the definition of the object they were refused.")
    :remediation (str "Put identifiers in ex-data, not definitions: the card id rather than its query. Keep the "
                      "query in a log line if a human needs it.")
    ;; Reported only for a throw that is an HTTP error by construction -- it carries `:status-code` -- and that a

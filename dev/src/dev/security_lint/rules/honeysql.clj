@@ -1,15 +1,14 @@
 (ns dev.security-lint.rules.honeysql
   "HoneySQL forms that render a value as SQL text rather than binding it as a parameter.
 
-  These are the shapes behind most of the SQL findings in the security tracker: a `[:raw ...]` around a stored
-  column type, a `(name unit)` spliced for a unit nobody validated, a `LIKE` pattern built with `str`, a value in
-  Toucan's pk-or-query position that arrived as a string. The application database has a runtime guard for the
+  A `[:raw ...]` around a stored column type, a `(name unit)` spliced for a unit nobody validated, a `LIKE`
+  pattern built with `str`, a value in Toucan's pk-or-query position that arrived as a string. The application database has a runtime guard for the
   first of these (`metabase.app-db.honeysql-guard`); the warehouse compile path has nothing, which is where these
   rules carry the weight.
 
-  Most run under the `:any-local` taint policy on purpose. The value that reached the sink in the real incidents
-  was a warehouse column name or a saved card's option, not the request that triggered the query, and the graph
-  cannot see those sources. Request taint is still consulted, to grade a request-reachable value as an error
+  Most run under the `:any-local` taint policy on purpose. The value that reaches such a sink is typically a
+  warehouse column name or a saved card's option, not the request that triggered the query, and the graph cannot
+  see those sources. Request taint is still consulted, to grade a request-reachable value as an error
   above a merely dynamic one."
   (:require
    [clojure.string :as str]
@@ -31,29 +30,13 @@
   "The default sanitizers plus the numeric coercions: past `(long x)` a value is a number whatever it was."
   (into vocab/sanitizers vocab/scalar-coercions))
 
-(defn- client-shaped?
-  "Whether the local inside `(name x)` carries an untyped request label: the client chose its shape."
-  [ctx node]
-  (let [a (some-> (ast/arg (ast/unmeta node) 0) ast/unmeta)]
-    (boolean (and a (contains? (get (:labels ctx) ((juxt :row :col) (meta a))) :request/untyped)))))
-
-(defn- temporal-unit-name?
-  "`(name unit)` in a driver's date implementation: the temporal bucketing units are an MBQL enum, validated by
-  the query schema before any driver sees one, and every `sql.qp/date` implementation splices the unit's name.
-  Judged by the local's name; the schema is not visible from here."
-  [node]
-  (let [node (ast/unmeta node)]
-    (boolean (and (ast/call? node) (= "name" (some-> (ast/head-sym node) name))
-                  (let [a (some-> (ast/arg node 0) ast/unmeta)]
-                    (and a (ast/symbol-node? a) (re-find #"unit$" (ast/->str a))))))))
-
 (defrule honeysql-raw-from-dynamic
   {:name        "Raw SQL spliced from a dynamic value"
    :enabled     false
    :description (str "A `[:raw ...]` form renders its argument as SQL text with no quoting and no parameter "
                      "binding. When the argument is a plain value the code did not build -- a warehouse column "
-                     "type, a saved question's unit, a transform target name -- it carries whatever reached it. "
-                     "Each of those has been the payload in a warehouse SQL injection.")
+                     "type, a saved question's unit, a transform target name -- it carries whatever reached it, "
+                     "and whatever reached it is executed.")
    :remediation (str "Bind the value as a parameter, quote it as an identifier with `h2x/identifier`, or "
                      "validate it against an allow-list and mark the form `^:allow-raw-sql` to say so -- the "
                      "same marker the application-database guard requires.")
@@ -68,8 +51,8 @@
     ;; mapped or rendered, and is left to that function; only a value spliced as it is counts.
     (when (and arg
                (not (contains? marks :allow-raw-sql))
-               ;; unless the unit is the client's, sent in whatever shape
-               (not (and (temporal-unit-name? arg) (not (client-shaped? ctx arg))))
+               ;; `(name unit)` gets no exemption: not every clause's unit is validated before a driver sees it. An
+               ;; allow-list assertion ahead of the splice is what clears the finding.
                (taint/raw-value? ctx arg {:sanitizers coercion-sanitizers}))
       {:tainted? (crosses-boundary? ctx arg {:sanitizers coercion-sanitizers})
        :message  (str ":raw renders a dynamic value as SQL text: " (ast/->str arg))})))
@@ -194,7 +177,7 @@
    :enabled     false
    :description (str "The right-hand side of `LIKE` is a pattern. A search string placed into it unescaped keeps "
                      "its own `%` and `_` live, and a handful of interior wildcards make the database's matcher "
-                     "backtrack for seconds per row: an 8-byte query parameter cost 31 seconds of server thread.")
+                     "backtrack for seconds per row.")
    :remediation "Build the pattern with `h2x/like-pattern` or `h2x/like-substring`, which escape the value."
    ;; A warning even when a request value reaches it: measured over this codebase, half of those were collection
    ;; location paths built from ids, or a value escaped in a caller through `(map h2x/like-substring ...)`, which
@@ -226,3 +209,99 @@
       ;; a number cannot carry a wildcard, so graded on the request values not pinned to one
       {:tainted? (taint/tainted? (assoc ctx :locals (:untyped-locals ctx)) pattern {:sanitizers sanitizers})
        :message  (str "LIKE pattern carries a dynamic value unescaped: " (ast/->str pattern))})))
+
+(def ^:private decoder-heads
+  "A document decoded by hand: what comes out has whatever shape the client gave it."
+  #{"decode" "decode+kw" "read-str" "read-string" "parse-string"})
+
+(defn- as-it-arrived?
+  "Whether `node` is a request value in the shape the client sent: a binding with no initializer (a parameter)
+  whose schema pins it to no shape, a keyword or `get` over one, or a hand decoder over any request value. A
+  local bound from a call to anything else -- `(lib/query mp ...)`, `(prepare-agent-query q)`,
+  `(chain-filter-mbql-query ...)` -- was built or rewritten by the server, and the map's shape is then the
+  server's, whatever request values it holds.
+
+  `shaped` is the context over the structured request positions; `ctx` over every tainted one, for the decoder
+  case, where the input is a string the schema *did* pin and the shape appears on decoding."
+  [ctx shaped node]
+  (let [node (ast/unmeta node)]
+    (cond
+      (ast/symbol-node? node) (if-let [init (get (:local-inits ctx) ((juxt :row :col) (meta node)))]
+                                (as-it-arrived? ctx shaped init)
+                                (taint/tainted? shaped node))
+      (ast/call? node)        (let [head (ast/head-sym node)]
+                                (boolean
+                                 (or (and (ast/keyword-node? (first (ast/children node)))
+                                          (some #(as-it-arrived? ctx shaped %) (ast/args node)))
+                                     (and head (contains? '#{get get-in} (symbol (name head)))
+                                          (as-it-arrived? ctx shaped (ast/arg node 0)))
+                                     (and head (contains? decoder-heads (name head))
+                                          (some #(taint/tainted? ctx %) (ast/args node))))))
+      :else                   false)))
+
+(defrule untyped-query-reaches-query-processor
+  {:name        "Query handed to the query processor in whatever shape the client sent it"
+   :enabled     false
+   :description (str "The query processor trusts internal keys on the query it is given -- a sandboxing marker, an "
+                     "impersonation role, a persisted-cache SQL string, a row-limit override -- because the schema "
+                     "decoder strips every one of them at the boundary. A query declared as an open `:map` or `:any`, "
+                     "or decoded from a string by hand, never went through that decoder, and every internal key on "
+                     "it is the client's: a sandboxing marker turns sandboxing off, an impersonation role picks the "
+                     "warehouse role, a limit override removes the row cap, a persisted-cache string is executed as "
+                     "SQL.")
+   :remediation (str "Declare the parameter as `::lib.schema/query` (or the legacy query schema) so the request "
+                     "decoder normalizes it and strips internal keys, and decode nothing by hand on the way.")
+   :severity    :error
+   :precision   :medium
+   :cwe         "CWE-915"
+   ;; the query processor hands the query on to itself, arity to arity and middleware to middleware
+   :exempt-files [#"src/metabase/query_processor" #"src/metabase/driver/"]
+   :triggers    #{metabase.query-processor/process-query
+                  metabase.query-processor/userland-query
+                  metabase.query-processor/userland-query-with-default-constraints
+                  metabase.query-processor.preprocess/preprocess
+                  metabase.query-processor.compile/compile
+                  metabase.query-processor.compile/compile-with-inline-parameters
+                  metabase.query-processor.writeback/execute-write-query!
+                  metabase.query-permissions.core/check-run-permissions-for-query}}
+  [{:keys [node structured-locals] :as ctx}]
+  (when-let [q (ast/arg node 0)]
+    ;; over the structured positions only -- a request value no schema pins to a number, a string or a registry
+    ;; schema -- and a value read out of a document parsed by hand (`json/decode`), which no schema saw at all.
+    ;; A stored query is structured too, but the model's read transform normalizes it, and every
+    ;; `(qp/process-query (:dataset_query card))` is that shape.
+    ;;
+    ;; And only the map as it arrived -- the local itself, `(:query body)`, `(json/decode s)` -- not a query the
+    ;; server built around a request value: `(lib/query mp ...)` with a parameter value inside is the server's
+    ;; shape, and grading those reported every chain-filter and custom-values query in the codebase. The agent
+    ;; API's `(prepare-agent-query raw-query)` is such a call, and passes; what it wraps is decoded through
+    ;; `api.macros/decode-and-validate-params`, which this rule does not see.
+    (let [client-shaped (taint/select-labels structured-locals
+                                             #(or (= :request/structured %) (= :file (taint/label-kind %))))]
+      (when (as-it-arrived? ctx (assoc ctx :locals client-shaped) q)
+        {:tainted? true
+         :message  (str (name (ast/head-sym node)) " receives a query in the client's own shape: " (ast/->str q))}))))
+
+(defrule h2x-cast-from-dynamic
+  {:name        "Cast over a value of unchecked shape"
+   :enabled     false
+   :description (str "`h2x/cast` wraps its value in `CAST(? AS type)`, and HoneySQL binds a scalar there as a "
+                     "parameter. A map or a vector is not bound: it is formatted as SQL inside the cast, so a "
+                     "`{\"raw\": \"(SELECT ...)\"}` cast into an UPDATE's value is a subquery in the UPDATE.")
+   :remediation "Check the value is a scalar (`sql.qp/check-value-literal`) or coerce it before the cast."
+   :severity    :error
+   :precision   :medium
+   :cwe         "CWE-89"
+   ;; The compilers cast HoneySQL forms they built -- `hsql-form`, `expr` -- and a form is not a value. The rule
+   ;; is for application code that casts a value it was handed: actions.
+   :exempt-files [#"util/honey_sql_2\.clj$" #"driver/sql/query_processor\.clj$" #"src/metabase/driver/[a-z_]+\.clj$"
+                  #"modules/drivers/.*/(query_processor|[a-z_]+_qp)\.clj$" #"query_processor/"]
+   :triggers    #{metabase.util.honey-sql-2/cast}}
+  [{:keys [node structured-locals] :as ctx}]
+  (when-let [v (ast/arg node 1)]
+    ;; over the structured positions: a request value no schema pins to a scalar, or a stored value -- and not a
+    ;; form another `h2x` helper built, which is a form whatever went into it
+    (when (and (not (some-> (ast/head-sym (ast/unmeta v)) namespace (= "h2x")))
+               (taint/tainted? (assoc ctx :locals structured-locals) v {:sanitizers coercion-sanitizers}))
+      {:tainted? true
+       :message  (str "Value of unchecked shape under a cast: " (ast/->str v))})))
