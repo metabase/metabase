@@ -134,8 +134,8 @@
      [:maybe
       [:map
        {:closed true}
-       [:origins-fn         {:optional true} fn?]
-       [:sandbox-origin?-fn {:optional true} fn?]]]]]])
+       [:origins-fn         {:optional true} ifn?]
+       [:sandbox-origin?-fn {:optional true} ifn?]]]]]])
 
 (mu/defn- apply-middleware :- ::api.macros/handler
   [handler :- ::api.macros/handler

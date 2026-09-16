@@ -4,12 +4,16 @@
    [clojure.test :refer :all]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.server.handler :as server.handler]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]))
 
 (def ^:private cors
   {:origins-fn         #'mcp/cors-origins
    :sandbox-origin?-fn #'mcp/sandbox-origin?})
+
+(deftest make-handler-accepts-var-cors-callbacks-test
+  (is (ifn? (server.handler/make-handler (fn [_request _respond _raise]) {:cors cors}))))
 
 (defn- get-cors-origin-header
   "Returns the Access-Control-Allow-Origin header value for a given request origin."
