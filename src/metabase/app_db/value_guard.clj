@@ -127,14 +127,21 @@
                             ;; A marked kv-arg has to come back out as a comparison, since Toucan
                             ;; folded the column into the marker rather than building one.
                             wrap (if kv? #(vector := (second x) %) identity)]
-                        (if (or (nil? v)
-                                (and (coll? v) (empty? v)))
-                          ;; Some literals are rewritten downstream by something that has to see
-                          ;; them. HoneySQL turns a literal nil in a comparison into `IS NULL`,
-                          ;; where a bound parameter would get `= ?` and match nothing; Toucan
-                          ;; rewrites `[:in col []]` to `false`, where a bound parameter would
-                          ;; leave `IN ()` -- invalid on Postgres, and quietly accepted by H2.
-                          ;; Lifting hides the literal from those rewrites, so leave it in place.
+                        (when (and (coll? v) (empty? v) (not (map? v)))
+                          ;; Toucan rewrites `[:in col []]` to `false`, because `IN ()` is invalid
+                          ;; SQL, and that rewrite runs inside the compile step this wraps -- so a
+                          ;; lifted empty collection would hide it and leave `IN ()`, which Postgres
+                          ;; rejects and H2 quietly accepts. Whether the rewrite applies depends on
+                          ;; the enclosing operator, which is not visible here, so refuse rather
+                          ;; than guess.
+                          (throw (ex-info (str "Marked an empty collection: " (pr-str x)
+                                               ". Leave it unmarked -- an empty collection is not a"
+                                               " value that needs binding, and Toucan rewrites an"
+                                               " empty `:in` that it can see.")
+                                          {:type ::marked-empty-collection, :form x})))
+                        (if (nil? v)
+                          ;; HoneySQL turns a literal nil in a comparison into `IS NULL`, where a
+                          ;; bound parameter would get `= ?` and match nothing. Leave it to HoneySQL.
                           (wrap v)
                           (let [k (param-key)]
                             (vswap! params assoc k v)
