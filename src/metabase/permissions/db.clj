@@ -194,11 +194,13 @@
   [database-id :- ::lib.schema.id/database
    group-ids   :- [:sequential ms/PositiveInt]
    perm-types  :- [:sequential [:or :keyword :string]]]
+  ;; `perm-types` is left unmarked: it may be empty, and marking an empty collection throws rather than
+  ;; compiling to the `WHERE FALSE` that Toucan rewrites it into. Its values are internal keywords from a
+  ;; [:sequential [:or :keyword :string]] schema, not request data.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select :model/DataPermissions
              {:where [:and [:= :db_id (long database-id)] [:= :table_id nil]
                       [:in :group_id (mapv long group-ids)]
-                      ;; `perm-types` is left unmarked: it may be empty, and marking an empty collection
-                      ;; throws rather than compiling to the `WHERE FALSE` that Toucan rewrites it into.
                       [:in :perm_type perm-types]]}))
 
 (mu/defn distinct-table-level-permission-values
@@ -207,11 +209,12 @@
   [database-id :- ::lib.schema.id/database
    group-ids   :- [:sequential ms/PositiveInt]
    perm-types  :- [:sequential [:or :keyword :string]]]
+  ;; `perm-types` is left unmarked: see `database-level-permissions`.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select :model/DataPermissions
              {:select-distinct [:group_id :perm_type :schema_name :perm_value]
               :where           [:and [:= :db_id (long database-id)] [:not= :table_id nil]
                                 [:in :group_id (mapv long group-ids)]
-                                ;; `perm-types` is left unmarked: see `database-level-permissions`.
                                 [:in :perm_type perm-types]]}))
 
 (mu/defn distinct-database-permission-values-for-group
@@ -258,11 +261,12 @@
   `perm-types`, excluding rows on the audit Database."
   [group-ids  :- [:sequential ms/PositiveInt]
    perm-types :- [:sequential [:or :keyword :string]]]
+  ;; `perm-types` is left unmarked: see `database-level-permissions`.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/query {:select-distinct [:group_id :perm_type :perm_value]
              :from            [[(t2/table-name :model/DataPermissions)]]
              :where           [:and
                                [:in :group_id (mapv long group-ids)]
-                               ;; `perm-types` is left unmarked: see `database-level-permissions`.
                                [:in :perm_type perm-types]
                                [:not [:exists ^:allow-subquery {:select [1]
                                                                 :from   [[(t2/table-name :model/Database) :audit_db]]
@@ -761,7 +765,7 @@
   "Apply `changes` to the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]
    changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User :id [:in (mapv long user-ids)] changes))
+  (t2/update! :model/User {:id [:in (mapv long user-ids)]} changes))
 
 (mu/defn clear-data-analyst-flags!
   "Unset `is_data_analyst` on every User that has it set."
@@ -771,7 +775,7 @@
 (mu/defn deactivate-active-tenant-users!
   "Deactivate every active tenant User, marking them as deactivated with their tenant."
   []
-  (t2/update! :model/User :tenant_id [:not= nil] :is_active true {:is_active false :deactivated_with_tenant true}))
+  (t2/update! :model/User {:tenant_id [:not= nil], :is_active true} {:is_active false :deactivated_with_tenant true}))
 
 (mu/defn deactivate-all-tenants!
   "Mark every tenant row inactive."

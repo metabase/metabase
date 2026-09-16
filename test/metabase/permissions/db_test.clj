@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.db :as permissions.db]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest field-visibility-info-honors-user-set-visibility-type-test
   (testing "field-visibility-info honors a user-set visibility_type (e.g. sensitive) over the sync value"
@@ -71,3 +72,11 @@
                                                                  sql-injection-attempt
                                                                  (mt/id)
                                                                  sql-injection-attempt)))))))
+
+(deftest update-users!-filters-on-the-ids-it-is-given
+  (testing "the conditions map filters, rather than being read as a column named :where"
+    (mt/with-temp [:model/User {a :id} {:is_data_analyst false}
+                   :model/User {b :id} {:is_data_analyst false}]
+      (is (= 1 (permissions.db/update-users! [a] {:is_data_analyst true})))
+      (is (true? (t2/select-one-fn :is_data_analyst :model/User :id a)))
+      (is (false? (t2/select-one-fn :is_data_analyst :model/User :id b))))))
