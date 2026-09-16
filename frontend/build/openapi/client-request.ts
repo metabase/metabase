@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import type { DeclaredRequest } from "./declared-request";
 import type { RtkRequest, TagSlot, UrlSlot } from "./rtk-request";
 import {
   type Shape,
@@ -12,6 +13,7 @@ import {
   elementTypes,
   isObjectLike,
   properties,
+  propertyType,
   symbolDeclaration,
   typeText,
   unionMembers,
@@ -69,6 +71,127 @@ interface ModelContext {
   at: ts.Node;
 }
 
+/** Explicit declarations have one query source and no implicit path-key consumption or GET body. */
+export function modelDeclaredRequest(
+  checker: ts.TypeChecker,
+  request: DeclaredRequest,
+  at: ts.Node,
+): ModelResult {
+  const context = { checker, at };
+  const overridden = extraOptionsUnverified(request);
+  if (overridden) {
+    return { kind: "unverified", message: overridden };
+  }
+  const variants: ClientRequest[] = [];
+  for (const parts of unionMembers(checker, request.parts)) {
+    if (!isObjectLike(parts) || parts.flags & ts.TypeFlags.Any) {
+      return {
+        kind: "unverified",
+        message: "The declared request parts must have a known object type.",
+      };
+    }
+    const input = (name: string): PayloadInput | undefined => {
+      const type = propertyType(checker, parts, name, at);
+      return type ? { type } : undefined;
+    };
+    const body = bodyPayloads(context, input("body"), request.method);
+    if (body.failure) {
+      return { kind: "failed", message: body.failure };
+    }
+    const query = paramsPayloads(context, input("query"));
+    const queryVariants = query.payloads.map((payload) =>
+      sendAsQuery(
+        checker,
+        withoutCacheKey(payload, "params", query.notes),
+        query.notes,
+        (reason) => {
+          query.unverified ??= reason;
+        },
+      ),
+    );
+    const path = input("path")?.type;
+    const pathParameters = [...request.url.path.matchAll(/\{([^}]+)\}/g)].map(
+      ([, name]): SentPathParameter => {
+        const type = path && propertyType(checker, path, name, at);
+        const source = `path.${name}`;
+        const sent = stringifiedValues(
+          checker,
+          source,
+          [typeShape(type ?? checker.getUnknownType())],
+          "defineRequest applies String and encodeURIComponent",
+          false,
+        );
+        return {
+          source,
+          ...sent,
+          unverified:
+            sent.unverified ??
+            pathTextUnverified(checker, source, sent.values, true),
+        };
+      },
+    );
+    variants.push({
+      kind: "modelled",
+      method: request.method,
+      path: request.url.path,
+      pathParameters,
+      query: {
+        variants: queryVariants.map((payload) =>
+          isEmpty(payload) ? typeShape(checker.getUndefinedType()) : payload,
+        ),
+        notes: query.notes,
+        unverified: query.unverified,
+        alwaysSent: false,
+      },
+      body: {
+        variants: body.payloads.map((payload) =>
+          sendAsJson(
+            checker,
+            withoutCacheKey(payload, "body", body.notes),
+            body.notes,
+          ),
+        ),
+        notes: body.notes,
+        unverified: body.unverified,
+        alwaysSent: body.alwaysSent,
+      },
+    });
+  }
+  const first = variants[0];
+  if (!first) {
+    return {
+      kind: "unverified",
+      message: "The declared request has no returning branch.",
+    };
+  }
+  const mergePart = (name: "query" | "body"): SentPart => ({
+    variants: variants.flatMap((variant) => variant[name].variants),
+    notes: [...new Set(variants.flatMap((variant) => variant[name].notes))],
+    unverified: variants.find((variant) => variant[name].unverified)?.[name]
+      .unverified,
+    alwaysSent: variants.every((variant) => variant[name].alwaysSent),
+  });
+  return {
+    ...first,
+    query: mergePart("query"),
+    body: mergePart("body"),
+    pathParameters: first.pathParameters.map((parameter, index) => ({
+      ...parameter,
+      values: variants.flatMap(
+        (variant) => variant.pathParameters[index].values,
+      ),
+      notes: [
+        ...new Set(
+          variants.flatMap((variant) => variant.pathParameters[index].notes),
+        ),
+      ],
+      unverified: variants.find(
+        (variant) => variant.pathParameters[index].unverified,
+      )?.pathParameters[index].unverified,
+    })),
+  };
+}
+
 export function modelClientRequest(
   checker: ts.TypeChecker,
   rtk: RtkRequest,
@@ -78,11 +201,11 @@ export function modelClientRequest(
   const { method } = rtk;
   const foldsBody = method === "GET" && rtk.body !== undefined;
 
-  const body = bodyPayloads(context, rtk.body, method);
+  const body = bodyPayloads(context, payloadInput(checker, rtk.body), method);
   if (body.failure) {
     return { kind: "failed", message: body.failure };
   }
-  const params = paramsPayloads(context, rtk.params);
+  const params = paramsPayloads(context, payloadInput(checker, rtk.params));
   const queryNotes = [...params.notes];
   const bodyNotes = [...body.notes];
   const paramsVariants = params.payloads.map((payload) =>
@@ -217,10 +340,11 @@ interface CopiedPayload {
 function typePayload(
   { checker, at }: ModelContext,
   type: ts.Type,
-  expression: ts.Expression,
+  expression: ts.Expression | undefined,
   channel: "params" | "body",
 ): CopiedPayload {
-  const exact = ts.isObjectLiteralExpression(expression);
+  const exact =
+    expression !== undefined && ts.isObjectLiteralExpression(expression);
   const unverified = (reason: string): CopiedPayload => ({
     payload: { kind: "type", type },
     notes: [],
@@ -271,9 +395,12 @@ function typePayload(
     return {
       payload: { kind: "type", type },
       notes: [],
-      unverified: isObjectRest(checker, expression)
-        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
-        : undefined,
+      unverified:
+        expression && isObjectRest(checker, expression)
+          ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
+          : expression
+            ? undefined
+            : "the declared payload has no known properties; its own keys are only known at runtime",
     };
   }
   return {
@@ -310,19 +437,33 @@ function isEmpty(payload: Payload): boolean {
   );
 }
 
+interface PayloadInput {
+  type: ts.Type;
+  expression?: ts.Expression;
+}
+
+function payloadInput(
+  checker: ts.TypeChecker,
+  expression: ts.Expression | undefined,
+): PayloadInput | undefined {
+  return expression
+    ? { type: checker.getTypeAtLocation(expression), expression }
+    : undefined;
+}
+
 function paramsPayloads(
   context: ModelContext,
-  expression: ts.Expression | undefined,
+  input: PayloadInput | undefined,
 ): { payloads: Payload[]; notes: string[]; unverified: string | undefined } {
   const { checker } = context;
-  if (!expression) {
+  if (!input) {
     return {
       payloads: [typeShape(checker.getUndefinedType())],
       notes: [],
       unverified: undefined,
     };
   }
-  const type = checker.getTypeAtLocation(expression);
+  const { type, expression } = input;
   const members = unionMembers(checker, type);
   const dropped = members.filter((member) => member.flags & NULLISH);
   const copied = members
@@ -355,7 +496,7 @@ function globalInterface(
 
 function bodyPayloads(
   context: ModelContext,
-  expression: ts.Expression | undefined,
+  input: PayloadInput | undefined,
   method: string,
 ): {
   payloads: Payload[];
@@ -371,7 +512,7 @@ function bodyPayloads(
   let failure: string | undefined;
   // A non-GET body that is not undefined is always sent, as JSON or as-is (ApiClient._prepareRequest).
   let alwaysSent = method !== "GET";
-  if (!expression) {
+  if (!input) {
     return {
       payloads: [typeShape(checker.getUndefinedType())],
       notes,
@@ -380,7 +521,7 @@ function bodyPayloads(
       alwaysSent: false,
     };
   }
-  const type = checker.getTypeAtLocation(expression);
+  const { type, expression } = input;
   const rawBodyTypes = ["FormData", "URLSearchParams"].flatMap((name) => {
     const rawType = globalInterface(context, name);
     return rawType ? [{ name, type: rawType }] : [];
@@ -708,7 +849,9 @@ function queryPayloads(
   return nonempty[0] ?? sources[0] ?? [];
 }
 
-function extraOptionsUnverified(rtk: RtkRequest): string | undefined {
+function extraOptionsUnverified(
+  rtk: Pick<RtkRequest, "extraOptions">,
+): string | undefined {
   const extraOptions = rtk.extraOptions && unwrap(rtk.extraOptions);
   const replacesRequest =
     extraOptions !== undefined &&

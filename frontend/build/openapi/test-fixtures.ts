@@ -24,7 +24,7 @@ export const ENDPOINT_BUILDER = `${BASE_QUERY_ARGS}
     type EndpointBuilder = {
       query<Response, Request>(config: {
         query?: (request: Request) => BaseQueryArgs;
-        queryFn?: () => unknown;
+        queryFn?: () => unknown; extraOptions?: unknown;
         transformResponse?: (response: unknown) => Response;
       }): unknown;
     };

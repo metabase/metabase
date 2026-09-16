@@ -4,7 +4,12 @@ import {
   type ClientRequest,
   type SentPart,
   modelClientRequest,
+  modelDeclaredRequest,
 } from "./client-request";
+import {
+  type DeclaredRequest,
+  resolveDeclaredRequest,
+} from "./declared-request";
 import { type RtkRequest, resolveRtkRequest } from "./rtk-request";
 import { typeShape } from "./shape";
 import {
@@ -74,7 +79,7 @@ interface ResolvedEndpoint {
   node: ts.CallExpression;
   config: ts.ObjectLiteralExpression;
   responseType: ts.TypeNode;
-  request: RtkRequest;
+  request: RtkRequest | DeclaredRequest;
   operation: Operation;
   /** The HTTP method and backend path, e.g. `GET /api/card/{id}`. */
   route: string;
@@ -346,7 +351,7 @@ function checkEndpoint(context: CheckContext, endpoint: Endpoint): Check[] {
 }
 
 function resolveEndpoint(
-  { operations }: CheckContext,
+  { operations, checker }: CheckContext,
   { id, node, name }: Endpoint,
 ): ResolvedEndpoint | { unverified: string } {
   const config = node.arguments[0] && unwrap(node.arguments[0]);
@@ -373,7 +378,8 @@ function resolveEndpoint(
         "Endpoint configuration contains a spread or computed property.",
     };
   }
-  const rtk = resolveRtkRequest(config);
+  const rtk =
+    resolveDeclaredRequest(checker, config) ?? resolveRtkRequest(config);
   if (!rtk) {
     return {
       unverified:
@@ -466,7 +472,10 @@ function checkRequest(
 ): Check[] {
   const { checker, generated } = context;
   const { endpointId, node, request, operation, route } = resolved;
-  const client = modelClientRequest(checker, request, node);
+  const client =
+    "parts" in request
+      ? modelDeclaredRequest(checker, request, node)
+      : modelClientRequest(checker, request, node);
   if (client.kind !== "modelled") {
     return [
       {
@@ -569,7 +578,7 @@ function checkPathParameters(
         part: "path",
         status: "unverified",
         diagnostics: [
-          "Path parameters are not represented by URL template expressions.",
+          "Path parameters are not represented by the frontend request.",
         ],
       },
     ];
