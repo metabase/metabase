@@ -1,5 +1,8 @@
 (ns metabase.app-db.kvop-test
-  (:require [clojure.test :refer :all] [metabase.test :as mt] [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest marker-goes-on-the-value-not-the-operator-test
   (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}
