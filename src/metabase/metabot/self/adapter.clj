@@ -283,11 +283,12 @@
         tool-count (count tools)
         res->msg   (or error-msg (:error-msg p))]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
-    (with-span :info (merge {:name       span
-                             :model      model
-                             :msg-count  msg-count
-                             :tool-count tool-count}
-                            span-attrs)
+    ;; BOT-2168 tracks fixing the wrapper.
+    (with-span :info {:name       span
+                      :attributes (merge {:model      model
+                                          :msg-count  msg-count
+                                          :tool-count tool-count}
+                                         span-attrs)}
       (try
         ;; ahead of `path`, which a provider may derive from credentials that can fail to resolve: a proxied
         ;; request should say the proxy is unsupported, not report whatever is missing from a connection it

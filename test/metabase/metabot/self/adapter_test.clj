@@ -1,13 +1,14 @@
 (ns metabase.metabot.self.adapter-test
   (:require
    [clj-http.client :as http]
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
@@ -17,9 +18,7 @@
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
-   [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.self.debug :as debug]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.tracing.test-util :as tracing.tu]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,7 +113,7 @@
    :schema    [:=> [:cat [:map {:closed true} [:x :string]]] :any]
    :fn        (fn [_] "ok")})
 
-(defn- streamed-request
+(defn- streamed-request!
   "Run `thunk` with streaming stubbed to the identity chain, so the adapter's `stream!` hands back the
   clj-http request map it would have sent."
   [thunk]
@@ -124,39 +123,46 @@
                 http/request                        (fn [req] {:body req})]
     (thunk)))
 
-(defn- captured-counts
-  "Run a Claude request with HTTP and streaming stubbed out, and return the `:msg-count` / `:tool-count`
-  [[adapter/stream!]] reported for it.
-
-  Read back off the debug log rather than the span: `metabase.util.o11y/with-span` passes its map straight
-  to clj-otel, which reads only `:name`/`:attributes`/`:parent`/… and silently drops everything else, so
-  these counts never reach a span."
+(defn- request-span!
+  "Run a Claude request with HTTP and streaming stubbed out, and return the request span
+  [[adapter/stream!]] opened for it, as `{:name ... :attrs ...}`."
   [opts]
-  (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.self.adapter :debug]]
-               (streamed-request
-                #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
-                                            :credentials {:api-key  "sk-ant-test"
-                                                          :base-url "https://api.anthropic.com"}}
-                                           opts)))
-               (msgs))]
-    (some-> (m/find-first #(str/includes? (:message %) "Anthropic request") msgs)
-            :message
-            (->> (re-find #"\{:model .*?:msg-count (\d+), :tools (\d+)\}"))
-            (->> (drop 1) (mapv parse-long))
-            (->> (zipmap [:msg-count :tool-count])))))
+  (tracing.tu/with-span-exporter [exporter]
+    (streamed-request!
+     #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
+                                 :credentials {:api-key  "sk-ant-test"
+                                               :base-url "https://api.anthropic.com"}}
+                                opts)))
+    (first (tracing.tu/finished-spans exporter))))
+
+(defn- captured-counts!
+  "The `:msg-count` / `:tool-count` [[adapter/stream!]] reported for `opts`, off the request span.
+
+  Attribute names arrive snake_cased: clj-otel rewrites them to OpenTelemetry's naming convention."
+  [opts]
+  (let [attrs (:attrs (request-span! opts))]
+    {:msg-count (get attrs "msg_count") :tool-count (get attrs "tool_count")}))
+
+(deftest request-shape-reaches-the-span-test
+  (testing "the model and the counts arrive as span attributes rather than as flat keys, which clj-otel
+            reads from nowhere and drops without a warning"
+    (let [span (request-span! {:input [{:role :user :content "hi"}]})]
+      (is (= ":metabot.anthropic/request" (:name span)))
+      (is (= {"model" "claude-haiku-4-5" "msg_count" 1 "tool_count" 0}
+             (select-keys (:attrs span) ["model" "msg_count" "tool_count"]))))))
 
 (deftest counts-describe-the-callers-request-test
   (testing "tool-count is the tools the caller offered, not the tools that reach the wire"
     ;; a structured-output request replaces the whole tool array with one synthetic `structured_output`
     ;; tool, so counting the composed body reported 1 however many tools the caller passed
     (is (= {:msg-count 1 :tool-count 15}
-           (captured-counts {:input  [{:role :user :content "hi"}]
+           (captured-counts! {:input  [{:role :user :content "hi"}]
                              :tools  (mapv tool (range 15))
                              :schema {:type "object" :properties {}}}))))
   (testing "msg-count is the caller's AISDK parts, not the messages the dialect merged them into"
     ;; `parts->claude-messages` collapses consecutive assistant parts into one wire message
     (is (= {:msg-count 3 :tool-count 0}
-           (captured-counts {:input [{:role :user :content "hi"}
+           (captured-counts! {:input [{:role :user :content "hi"}
                                      {:type :text :text "one"}
                                      {:type :text :text "two"}]})))))
 
@@ -171,7 +177,7 @@
                :url     "https://api.anthropic.com/v1/messages"
                :headers {"anthropic-version" "2023-06-01"
                          "Content-Type"      "application/json"}}
-              (streamed-request
+              (streamed-request!
                #(claude/claude-raw {:model       "claude-haiku-4-5"
                                     :input       [{:role :user :content "hi"}]
                                     :credentials {:api-key  "sk-ant-test"
@@ -182,7 +188,7 @@
                :headers {"HTTP-Referer" "https://metabase.com"
                          "X-Title"      "Metabase"
                          "Content-Type" "application/json"}}
-              (streamed-request
+              (streamed-request!
                #(openrouter/openrouter-raw {:model       "anthropic/claude-haiku-4.5"
                                             :input       [{:role :user :content "hi"}]
                                             :credentials {:api-key  "sk-or-test"
@@ -193,7 +199,7 @@
     ;; Claude's fast mode adds `anthropic-beta`; dropping `anthropic-version` alongside it would 400
     (is (=? {:headers {"anthropic-version" "2023-06-01"
                        "anthropic-beta"    string?}}
-            (streamed-request
+            (streamed-request!
              #(claude/claude-raw {:model       "claude-opus-4-8"
                                   :input       [{:role :user :content "hi"}]
                                   :fast?       true
