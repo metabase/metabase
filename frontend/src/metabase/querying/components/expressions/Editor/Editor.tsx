@@ -7,11 +7,11 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { getShallowDatabases } from "metabase/metadata-store";
 import {
   type ExpressionError,
   diagnoseAndCompile,
@@ -20,7 +20,6 @@ import {
 } from "metabase/querying/expressions";
 import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import { useSelector } from "metabase/redux";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -86,8 +85,8 @@ export function Editor(props: EditorProps) {
 
   const ref = useRef<CodeMirrorRef>(null);
   const databaseId = Lib.databaseID(query);
-  const database = useSelector((state) =>
-    databaseId != null ? getShallowDatabases(state)[databaseId] : undefined,
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
   );
   const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
     useDisclosure();

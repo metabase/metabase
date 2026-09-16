@@ -4,9 +4,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
-   [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
-   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -19,14 +17,11 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -70,7 +65,6 @@
   (into item-types-qc
         #{"document"
           "dashboard"
-          "transform"
           "code_editor"}))
 
 (def ^:private item-type-schema
@@ -194,101 +188,9 @@
    [:type [:= "code_editor"]]
    [:buffers [:sequential CodeEditorBufferSchema]]])
 
-(def ^:private TransformSourceTableSchema
-  "One entry of a Python transform's `source-tables`."
-  [:map {:closed true}
-   [:alias :string]
-   [:table_id {:optional true} [:maybe :int]]
-   [:schema {:optional true} [:maybe :string]]
-   [:database_id {:optional true} [:maybe :int]]])
-
-(def ^:private TransformSourceSchema
-  "A transform's `:source`. Everything but `:type` is optional so a draft transform -- no database chosen, no
-  source tables picked -- validates just like a saved one."
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map {:closed true}
-     [:type [:or [:= :query] [:= "query"]]]
-     [:query {:optional true} [:maybe [:or :string ItemQuerySchema]]]
-     [:source-incremental-strategy {:optional true} [:maybe ::transforms.schema/source-incremental-strategy]]]]
-   [:python
-    [:map {:closed true}
-     [:type [:or [:= :python] [:= "python"]]]
-     [:body {:optional true} [:maybe :string]]
-     [:source-database {:optional true} [:maybe :int]]
-     [:source-tables {:optional true} [:maybe [:sequential TransformSourceTableSchema]]]
-     [:source-incremental-strategy {:optional true} [:maybe ::transforms.schema/source-incremental-strategy]]]]])
-
-(def ^:private TransformTargetSchema
-  "A transform's `:target`. Everything but `:type` is optional so an unsaved/suggested transform -- which may omit
-  `:database` or the incremental strategy -- validates just like a saved one."
-  [:multi {:dispatch (comp keyword :type)}
-   [:table
-    [:map {:closed true}
-     [:type [:or [:= :table] [:= "table"]]]
-     [:name {:optional true} [:maybe :string]]
-     [:schema {:optional true} [:maybe :string]]
-     [:database {:optional true} [:maybe :int]]]]
-   [:table-incremental
-    [:map {:closed true}
-     [:type [:or [:= :table-incremental] [:= "table-incremental"]]]
-     [:name {:optional true} [:maybe :string]]
-     [:schema {:optional true} [:maybe :string]]
-     [:database {:optional true} [:maybe :int]]
-     [:target-incremental-strategy {:optional true} [:maybe ::transforms.schema/target-incremental-strategy]]]]])
-
-(def ^:private TransformCreatorSchema
-  "The `:creator` hydrated onto a transform, mirroring the transforms REST API's own response shape."
-  [:map {:closed true}
-   [:id :int]
-   [:email :string]
-   [:first_name {:optional true} [:maybe :string]]
-   [:last_name {:optional true} [:maybe :string]]
-   [:common_name {:optional true} [:maybe :string]]
-   [:last_login {:optional true} [:maybe :string]]
-   [:is_qbnewb {:optional true} [:maybe :boolean]]
-   [:is_superuser {:optional true} [:maybe :boolean]]
-   [:is_data_analyst {:optional true} [:maybe :boolean]]
-   [:tenant_id {:optional true} [:maybe :int]]
-   [:date_joined {:optional true} [:maybe :string]]])
-
-(def ^:private TransformOwnerSchema
-  "The `:owner` hydrated onto a transform, mirroring the transforms REST API's own response shape."
-  [:map {:closed true}
-   [:id {:optional true} [:maybe :int]]
-   [:email {:optional true} [:maybe :string]]
-   [:first_name {:optional true} [:maybe :string]]
-   [:last_name {:optional true} [:maybe :string]]
-   [:common_name {:optional true} [:maybe :string]]])
-
-(def ^:private TransformLastRunSchema
-  "The `:last_run` hydrated onto a transform, mirroring the transforms REST API's own response shape."
-  [:map {:closed true}
-   [:id {:optional true} [:maybe :int]]
-   [:transform_id {:optional true} [:maybe :int]]
-   [:run_method {:optional true} [:maybe [:or :string :keyword]]]
-   [:status {:optional true} [:maybe [:or :string :keyword]]]
-   [:is_active {:optional true} [:maybe :boolean]]
-   [:start_time {:optional true} [:maybe :string]]
-   [:end_time {:optional true} [:maybe :string]]
-   [:message {:optional true} [:maybe :string]]
-   [:user_id {:optional true} [:maybe :int]]
-   [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]
-   [:job_run_id {:optional true} [:maybe :int]]
-   [:dag_run_id {:optional true} [:maybe :int]]
-   [:checkpoint_filter_field_id {:optional true} [:maybe :int]]
-   [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]
-   [:metered_as {:optional true} [:maybe :string]]])
-
-(def ^:private TransformTableDependencySchema
-  "One entry of a transform's `:table_dependencies`."
-  [:or ::driver/native-query-deps.table-dep ::driver/native-query-deps.transform-dep])
-
 (def ^:private item-entries
   "The keys of a viewing context item this code reads. The rest of the item is the shape of one of
-  `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document/transform) or `MetabotCodeEditorContext`, so
+  `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document) or `MetabotCodeEditorContext`, so
   everything the frontend can send is named here rather than forwarded opaquely."
   [[:id              {:optional true} [:maybe [:or :int :string]]]
    [:name            {:optional true} [:maybe :string]]
@@ -296,9 +198,6 @@
    [:database_schema {:optional true} [:maybe :string]]
    [:sql_engine      {:optional true} [:maybe :string]]
    [:error           {:optional true} [:maybe :string]]
-   [:source_type     {:optional true} [:maybe [:or :string :keyword]]]
-   [:source          {:optional true} [:maybe TransformSourceSchema]]
-   [:target          {:optional true} [:maybe TransformTargetSchema]]
    [:used_tables     {:optional true} [:maybe [:sequential [:map {:closed true}
                                                             [:id              {:optional true} [:maybe :int]]
                                                             [:type            {:optional true} [:maybe [:or :keyword :string]]]
@@ -307,39 +206,7 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
-   ;; Transform fields (`MetabotTransformInfo` = `Transform | SuggestedTransform | DraftTransform`), mirroring the
-   ;; transforms REST API's own response shape. All optional: a draft/suggested/unsaved transform may carry only a
-   ;; handful of these.
-   [:collection_id   {:optional true} [:maybe :int]]
-   [:created_at      {:optional true} [:maybe :string]]
-   [:updated_at      {:optional true} [:maybe :string]]
-   [:source_readable {:optional true} [:maybe :boolean]]
-   [:can_read        {:optional true} [:maybe :boolean]]
-   [:can_write       {:optional true} [:maybe :boolean]]
-   [:can_execute     {:optional true} [:maybe :boolean]]
-   [:source_database_id {:optional true} [:maybe :int]]
-   [:deleted         {:optional true} [:maybe :boolean]]
-   [:creator_id      {:optional true} [:maybe :int]]
-   [:owner_user_id   {:optional true} [:maybe :int]]
-   [:owner_email     {:optional true} [:maybe :string]]
-   [:owner           {:optional true} [:maybe TransformOwnerSchema]]
-   [:last_checkpoint_value {:optional true} [:maybe :string]]
-   [:dependency      {:optional true} [:maybe :boolean]]
-   [:scheduled       {:optional true} [:maybe :boolean]]
-   [:collection      {:optional true} [:maybe ::collections.schema/collection]]
-   [:tag_ids         {:optional true} [:maybe [:sequential :int]]]
-   [:table           {:optional true} [:maybe ::warehouse-schema.schema/table]]
-   [:last_run        {:optional true} [:maybe TransformLastRunSchema]]
-   [:creator         {:optional true} [:maybe TransformCreatorSchema]]
-   ;; Driver index-method metadata, keyed by index-kind. Never read by this code -- forwarded as the frontend
-   ;; sent it -- and the driver's own schema for it isn't closed-schema-clean, so it's opaque rather than typed.
-   [:requestable_indexes {:optional true} [:maybe ms/OpaqueJSONObject]]
-   [:target_db_id    {:optional true} [:maybe :int]]
-   [:target_table_id {:optional true} [:maybe :int]]
-   [:run_trigger     {:optional true} [:maybe [:or :string :keyword]]]
-   [:entity_id       {:optional true} [:maybe :string]]
-   [:table_dependencies {:optional true} [:maybe [:sequential TransformTableDependencySchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
@@ -400,14 +267,9 @@
    [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]])
 
 (defn- query-for-sql-parsing
-  "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
-  from it, otherwise nil."
+  "Return the native query in a viewing-context item, or nil."
   [item]
-  (when-let [query (case (:type item)
-                     "transform" (-> item :source :query)
-                     "adhoc" (-> item :query)
-                     (-> item :query))]
-    ;; Draft transforms might not have a database yet. Check this before attempting to normalize the query.
+  (when-let [query (:query item)]
     (when (:database query)
       (when-let [normalized-query (lib-be/normalize-query query)]
         (when (lib/native-only-query? normalized-query)
@@ -440,26 +302,6 @@
       [])
     (catch Exception e
       (log/errorf "Error getting database tables for context: %s" (ex-message e))
-      [])))
-
-(defn- python-transform-db-and-table-ids
-  "Returns a map with :database-id and :table-ids, or nil if not a Python transform."
-  [item]
-  (when (and (= (:type item) "transform")
-             (= (get-in item [:source :type]) "python"))
-    (when-let [source-database (get-in item [:source :source-database])]
-      (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
-        {:database-id source-database
-         :table-ids (map :table_id source-tables)}))))
-
-(defn- python-transform-tables-for-context
-  "Get tables for Python transform formatted for metabot context."
-  [{:keys [database-id table-ids]}]
-  (try
-    (when (and database-id (seq table-ids))
-      (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
-    (catch Exception e
-      (log/errorf "Error getting Python transform tables for context: %s" (ex-message e))
       [])))
 
 (defn- mbql-source-table-ids
@@ -499,13 +341,13 @@
       nil)))
 
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries, MBQL queries, SQL transforms, and Python transforms."
+  "Enhance context by adding table schema information for native and MBQL queries."
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
                   (or
-                   ;; Handle native queries and SQL transforms
+                   ;; Handle native queries
                    (when-let [query (query-for-sql-parsing item)]
                      (when-let [tables (seq (database-tables-for-context {:query query}))]
                        (assoc item :used_tables tables)))
@@ -513,34 +355,10 @@
                    (when-let [db-and-table-ids (mbql-source-table-ids item)]
                      (when-let [tables (seq (mbql-source-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-                   ;; Handle Python transforms
-                   (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
-                     (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
-                       (assoc item :used_tables tables)))
                    ;; Unknown item: return unchanged
                    item))
                 user-viewing)]
       (assoc context :user_is_viewing enhanced-viewing))
-    context))
-
-(defn- annotate-transform-source-types
-  "Annotate transforms in context with source types if not already present (e.g. for draft transforms not yet saved)"
-  [context]
-  (if-let [user-viewing (get context :user_is_viewing)]
-    (let [annotated-viewing
-          (mapv (fn [item]
-                  (try
-                    (if (and (= (:type item) "transform")
-                             (not (:source_type item)))
-                      (let [transform (transforms-base.u/normalize-transform item)]
-                        (assoc transform
-                               :source_type (transforms-base.u/transform-source-type (:source transform))))
-                      item)
-                    (catch Exception e
-                      (log/errorf "Error annotating transform source type for metabot context: %s" (ex-message e))
-                      item)))
-                user-viewing)]
-      (assoc context :user_is_viewing annotated-viewing))
     context))
 
 (defn- get-metabot
@@ -627,6 +445,5 @@
    (metabot.perms/with-cache
      (-> context
          enhance-context-with-schema
-         annotate-transform-source-types
          (add-recent-views (or opts {}))
          (set-user-time opts)))))
