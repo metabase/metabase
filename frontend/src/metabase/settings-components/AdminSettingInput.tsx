@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
 import {
@@ -22,7 +21,8 @@ import type {
   SettingKey,
 } from "metabase-types/api";
 
-import { SettingHeader } from "../SettingHeader";
+import { SettingHeader } from "./SettingHeader";
+import { isSettingSetFromEnvVar } from "./is-setting-set-from-env-var";
 
 type SelectInputType = "select";
 type RadioInputType = "radio";
@@ -68,8 +68,8 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
 
 /**
  * A simple admin settings component for basic needs, if you need something special,
- * create a special component (in the widgets/ folder) instead of building one-off
- * features into this component
+ * create a special component (in admin/settings/components/widgets/) instead of
+ * building one-off features into this component
  */
 export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   title,

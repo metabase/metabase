@@ -5,7 +5,6 @@ import {
   RelatedSettingsSection,
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -17,6 +16,7 @@ import {
   PLUGIN_IS_EE_BUILD,
 } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings/EmbeddingSdkSettings";

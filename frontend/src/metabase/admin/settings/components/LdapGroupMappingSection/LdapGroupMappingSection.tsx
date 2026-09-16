@@ -17,7 +17,7 @@ import {
   SETTINGS_CARD_STACK_PROPS,
   SETTINGS_CARD_TITLE_PROPS,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+} from "metabase/settings-components";
 import {
   Box,
   type BoxProps,

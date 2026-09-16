@@ -29,7 +29,7 @@ import {
   SETTINGS_CARD_TITLE_PROPS,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+} from "metabase/settings-components";
 import { Box, Flex, Radio, Stack } from "metabase/ui";
 import type {
   EnterpriseSettings,
