@@ -25,8 +25,8 @@
   :string)
 
 (def Capability
-  "What a registry row can answer about a provider. Closed, so a lookup for a capability that does not
-  exist is a compile-time-checkable mistake rather than a nil that reads as \"this provider has none\"."
+  "The capabilities a registry row may expose. Passing any other key fails Malli validation in
+  instrumented builds instead of looking like an absent optional capability."
   [:enum :stream :list-models :supported-models :context-window :reasoning? :fast-mode?])
 
 (def AdapterRow
