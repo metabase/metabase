@@ -316,6 +316,19 @@
    lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
 
+(mu/defn lock-pending-index-metadata!
+  "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
+  Must be called inside the transaction that will promote the row."
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
+  (t2/select-one [:model/SearchIndexMetadata :id]
+                 :engine engine
+                 :version version
+                 :lang_code lang-code
+                 :status :pending
+                 {:for :update}))
+
 (mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword

@@ -33,6 +33,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -951,6 +952,21 @@
     model
     [model (first (t2/primary-keys model))]))
 
+(defn- delete-new-rows!
+  "Delete the rows of `model` whose `pk` exceeds `old-max-id`, skipping Toucan hooks. Returns the row count."
+  [model pk old-max-id]
+  (t2/query-one {:delete-from (t2/table-name model)
+                 :where       [:and
+                               ;; The first use in a test run may have no previous maximum ID.
+                               (if old-max-id [:> pk old-max-id] true)
+                               (with-model-cleanup-additional-conditions model)]}))
+
+(defn- search-relevant-models
+  "Models whose rows, deleted with raw SQL, can leave stale rows in the search index."
+  []
+  ;; Deleting a user cascades to their personal collection, which is indexed.
+  (conj (set (keys (search.spec/model-hooks))) :model/User))
+
 (defn- reindex-search-index! []
   ;; Wiping and repopulating the whole index table can deadlock against a concurrent writer — search ingestion from
   ;; another test's writes, or another test's cleanup doing this same thing. The loser of a deadlock has lost nothing
@@ -982,20 +998,13 @@
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (let [deleted (reduce (fn [total [model pk]]
-                                ;; The first use in a test run may have no previous maximum ID.
-                                (let [old-max-id            (get model->old-max-id model)
-                                      max-id-condition      (if old-max-id [:> pk old-max-id] true)
-                                      additional-conditions (with-model-cleanup-additional-conditions model)]
-                                  (+ total (t2/query-one
-                                            {:delete-from (t2/table-name model)
-                                             :where       [:and max-id-condition additional-conditions]}))))
-                              0
-                              models)]
-          ;; Raw deletes skip Toucan hooks, so a reindex purges whatever the deleted rows contributed to the
-          ;; search index. Cascades count too: deleting a user removes their personal collection, whose index
-          ;; row would otherwise linger. Only an empty cleanup skips the rebuild.
-          (when (pos? deleted)
+        (let [search-relevant? (search-relevant-models)
+              reindex?        (some (comp search-relevant? first) models)]
+          (doseq [[model pk] models]
+            (delete-new-rows! model pk (get model->old-max-id model)))
+          ;; Search has no delete hook, so the body may already have deleted a row while leaving its indexed document
+          ;; behind. Reindex whenever the declared cleanup scope can affect search, even when the final delete is empty.
+          (when reindex?
             (reindex-search-index!)))))))
 
 (defmacro with-model-cleanup
@@ -1045,6 +1054,14 @@
           (is (not (t2/exists? :model/Card :name card-name)))
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
+
+(deftest with-model-cleanup-reindexes-search-models-test
+  (testing "a search-relevant cleanup reindexes even when the body already removed every new row"
+    (let [reindexes (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [reindex-search-index! #(swap! reindexes inc)]
+        (with-model-cleanup [:model/Card]))
+      (is (= 1 @reindexes)))))
 
 (deftest reindex-search-index!-test
   (testing "a transient appdb failure is retried"

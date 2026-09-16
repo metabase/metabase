@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.search.db :as search.db]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -55,6 +56,42 @@
         (is (= 1 (search-index-metadata/delete-non-active-index! engine version index-4)))
         (is (zero? (search-index-metadata/delete-non-active-index! engine version index-3)))
         (is (= {:active index-3} (indexes)))))))
+
+(deftest delete-non-active-index-racing-with-promotion-test
+  (let [engine         :something-futureproof
+        version        (str (random-uuid))
+        active-index   (str (random-uuid))
+        pending-index  (str (random-uuid))
+        lock-acquired  (promise)
+        release-lock   (promise)
+        deleting       (promise)
+        original-prune search.db/delete-retired-index-metadata!]
+    (try
+      (is (search-index-metadata/create-pending! engine version active-index))
+      (is (= active-index (search-index-metadata/active-pending! engine version)))
+      (is (search-index-metadata/create-pending! engine version pending-index))
+      (mt/with-dynamic-fn-redefs
+        [search.db/delete-retired-index-metadata!
+         (fn [& args]
+           (deliver lock-acquired true)
+           @release-lock
+           (apply original-prune args))]
+        (let [promotion (future (search-index-metadata/active-pending! engine version))]
+          (is (true? (deref lock-acquired 5000 false)))
+          (let [deletion (future
+                           (deliver deleting true)
+                           (search-index-metadata/delete-non-active-index! engine version pending-index))]
+            @deleting
+            (is (= ::blocked (deref deletion 100 ::blocked)))
+            (deliver release-lock true)
+            (is (= pending-index (deref promotion 5000 ::timeout)))
+            (is (zero? (deref deletion 5000 ::timeout)))
+            (is (= pending-index
+                   (t2/select-one-fn :index_name :model/SearchIndexMetadata
+                                     :engine engine :version version :status :active))))))
+      (finally
+        (deliver release-lock true)
+        (t2/delete! :model/SearchIndexMetadata :engine engine :version version)))))
 
 (deftest delete-obsolete!-test
   (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]

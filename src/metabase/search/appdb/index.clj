@@ -267,7 +267,7 @@
           (throw ie))
         (catch Exception e
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (= :table-not-found (sql-errors/error-kind e)) (not (exists? table-name)))
+          (if (and (sql-errors/table-not-found? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
@@ -277,7 +277,7 @@
                     (.interrupt (Thread/currentThread))
                     (throw ie))
                   (catch Exception e2
-                    (if (= :table-not-found (sql-errors/error-kind e2))
+                    (if (sql-errors/table-not-found? e2)
                       (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
                       (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
                           (log/errorf "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing: %s"
@@ -362,7 +362,7 @@
                    ;; The table can disappear after we read its name, especially during tests.
                    {search-model (try (isolate-write!
                                        #(search.db/delete-index-rows! table-name search-model (set ids)))
-                                      (catch Exception e (if (= :table-not-found (sql-errors/error-kind e)) 0 (throw e))))})))
+                                      (catch Exception e (if (sql-errors/table-not-found? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))
 
@@ -387,9 +387,11 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-non-active-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-non-active-index! :appdb
+                                                                              (search.spec/index-version-hash)
+                                                                              table-name)]
                   (when (pos? deleted)
-                    (log/infof "Deleted %d pending indices" deleted))))
+                    (log/infof "Deleted %d non-active metadata rows for index %s" deleted table-name))))
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]

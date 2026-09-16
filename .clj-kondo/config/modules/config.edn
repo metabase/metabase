@@ -349,7 +349,7 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock
+   :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting

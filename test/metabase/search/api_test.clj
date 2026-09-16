@@ -27,7 +27,6 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -2073,31 +2072,17 @@
                 "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (mt/with-model-cleanup [:model/Card]
-    (testing "Multiple `limit` query args should be handled correctly (#45345)"
-      ;; Insert outside a transaction so server threads can see the rows. A real HTTP request is required to exercise
-      ;; Ring's duplicate-parameter parsing.
-      (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
-        (t2/insert! :model/Card (for [n ["one" "two"]]
-                                  {:name                   (str q " " n)
-                                   :creator_id             (mt/user->id :crowberto)
-                                   :database_id            (mt/id)
-                                   :dataset_query          {}
-                                   :display                :table
-                                   :visualization_settings {}}))
-        (when (search/supports-index?)
-          (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
-        ;; Wait until both cards are indexed. No expected status on the polling request: search may 500 until
-        ;; an active index exists, and the status check is an assertion that would record a failure per attempt.
-        (tu/poll-until 30000
-                       (try
-                         (= 2 (count (:data (mt/user-real-request :crowberto :get (str "search?q=" q)))))
-                         (catch Exception _ false)))
-        (let [total-count  (-> (mt/user-real-request :crowberto :get 200 (str "search?q=" q))
+  (testing "Multiple `limit` query args should be handled correctly (#45345)"
+    ;; Repeated query-parameter keywords reach Ring as `limit=1&limit=3`, so the mock client exercises the same
+    ;; duplicate-parameter parsing as a real request.
+    (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
+      (mt/with-temp [:model/Card _ {:name (str q " one")}
+                     :model/Card _ {:name (str q " two")}]
+        (let [total-count  (-> (mt/user-http-request :crowberto :get 200 "search" :q q)
                                :data count)
-              result-count (-> (mt/user-real-request :crowberto :get 200 (str "search?q=" q "&limit=1&limit=3"))
+              result-count (-> (mt/user-http-request :crowberto :get 200 "search" :q q :limit 1 :limit 3)
                                :data count)]
-          (is (>= total-count result-count))
+          (is (= 2 total-count))
           (is (= 1 result-count)))))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
