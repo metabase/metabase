@@ -18,7 +18,7 @@
   [:map {:closed true}
    [:user-id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:ids                {:optional true} [:maybe [:sequential :string]]]
-   [:provider           {:optional true} [:maybe :string]]
+   [:provider           {:optional true} [:maybe [:sequential :string]]]
    [:type               {:optional true} [:maybe ::session-type]]
    [:tenancy            {:optional true} [:maybe [:enum :all :internal :external]]]
    [:query              {:optional true} [:maybe :string]]

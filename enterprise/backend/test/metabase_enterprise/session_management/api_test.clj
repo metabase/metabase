@@ -231,6 +231,26 @@
         (testing "`mcp` is not an accepted filter value: those sessions are never listed"
           (is (some? (mt/user-http-request :crowberto :get 400 "ee/session-management" :provider "mcp"))))))))
 
+(deftest filter-by-several-providers-test
+  (testing "`provider` accepts a list: the sessions on any of the named auth methods"
+    (mt/with-temp [:model/User         {user-id :id} {}
+                   :model/AuthIdentity {saml-id :id} {:user_id user-id :provider "saml"}
+                   :model/AuthIdentity {jwt-id :id}  {:user_id user-id :provider "jwt"}]
+      (let [unknown (insert-session! user-id)
+            saml    (insert-session! user-id :auth_identity_id saml-id)
+            jwt     (insert-session! user-id :auth_identity_id jwt-id)]
+        (testing "two named providers"
+          (is (= #{saml jwt} (set (ids (list-sessions user-id :provider ["saml" "jwt"])))))
+          (is (= 2 (:total (list-sessions user-id :provider ["saml" "jwt"])))))
+        (testing "`unknown` mixed with a named one asks for either, since it means \"no auth identity row\""
+          (is (= #{unknown saml} (set (ids (list-sessions user-id :provider ["unknown" "saml"]))))))
+        (testing "one value behaves the same whether sent bare or as a list"
+          (is (= [saml] (ids (list-sessions user-id :provider "saml"))))
+          (is (= [saml] (ids (list-sessions user-id :provider ["saml"])))))
+        (testing "an unaccepted value is rejected even alongside valid ones"
+          (is (some? (mt/user-http-request :crowberto :get 400 "ee/session-management"
+                                           :provider ["saml" "mcp"]))))))))
+
 (deftest ids-length-limit-test
   (testing "`ids` may name at most 1000 sessions: every id is a bind parameter, and a page never holds more"
     (let [at-limit  (vec (repeat 1000 "a"))

@@ -25,6 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import { SIDEBAR_WIDTH, SessionDetailSidebar } from "../SessionDetailSidebar";
+import { SessionsFilters } from "../SessionsFilters";
 import { SessionsTable } from "../SessionsTable";
 
 import {
@@ -66,6 +67,7 @@ export const SessionsPage = () => {
     clearSelection,
     urlState.page,
     urlState.query,
+    urlState.provider,
     urlState.sort_column,
     urlState.sort_direction,
   ]);
@@ -185,13 +187,15 @@ export const SessionsPage = () => {
             </Button>
           </Flex>
 
-          <DebouncedSearchInput
-            value={urlState.query}
-            placeholder={t`Search by name or email…`}
-            aria-label={t`Search sessions`}
-            onChange={handleSearchChange}
-            flex={0}
-          />
+          <Flex gap="md" align="center">
+            <DebouncedSearchInput
+              value={urlState.query}
+              placeholder={t`Search by name or email…`}
+              aria-label={t`Search sessions`}
+              onChange={handleSearchChange}
+            />
+            <SessionsFilters state={urlState} onChange={patchUrlState} />
+          </Flex>
 
           <SessionsTable
             sessions={sessions}
