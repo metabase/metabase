@@ -1,0 +1,25 @@
+## Add remote_sync_task.last_heartbeat_at: stamped every few seconds by the thread running the task so a
+## stale value means the owning process died, independent of how long the current phase stays silent.
+## last_progress_report_at keeps meaning "progress last changed", so a live-but-hung task stays
+## distinguishable from a dead one (GHY-4593).
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-09-15T00:00:00
+      author: tplude
+      comment: Add remote_sync_task.last_heartbeat_at, stamped periodically by the running thread; null on rows written before the column existed or by a worker that died before its first beat
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: last_heartbeat_at
+                  type: ${timestamp_type}
+                  remarks: Heartbeat timestamp stamped periodically while the task runs; a stale value means the owning process died. Null before the first beat.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: remote_sync_task
+            columnName: last_heartbeat_at

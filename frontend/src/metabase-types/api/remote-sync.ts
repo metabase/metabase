@@ -224,6 +224,7 @@ export type RemoteSyncTask = {
   started_at: string | null;
   ended_at: string | null;
   last_progress_report_at: string | null;
+  last_heartbeat_at?: string | null;
   error_message: string | null;
   outcome?: RemoteSyncOutcome | null;
   initiated_by: UserId;

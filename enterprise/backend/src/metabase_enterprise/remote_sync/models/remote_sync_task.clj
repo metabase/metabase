@@ -6,6 +6,8 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -114,6 +116,31 @@
             (vreset! last-fraction f)
             (write-fn f))))))))
 
+(def default-heartbeat-interval-ms
+  "Ms between heartbeat writes while a task runs. Deliberately not derived from `remote-sync-task-time-limit-ms`:
+  an operator can set that below this interval, and a test would rather fail loudly than beat silently too slowly."
+  15000)
+
+(defn start-heartbeat!
+  "Start a virtual thread stamping `last_heartbeat_at` on the task with `task-id` every `interval-ms` (default
+  [[default-heartbeat-interval-ms]]) for as long as it runs. Returns a zero-arg fn that stops it.
+
+  A failed write is logged at debug and the loop continues: a DB hiccup must not kill the heartbeat, and a
+  connection wait only makes the beat late. The update count is ignored because under a test transaction the
+  row is invisible to the heartbeat's own connection, and because an ended row is meant to update nothing."
+  ([task-id] (start-heartbeat! task-id default-heartbeat-interval-ms))
+  ([task-id interval-ms]
+   (let [stop (promise)]
+     (u.jvm/in-virtual-thread*
+      (loop []
+        (when (= ::tick (deref stop interval-ms ::tick))
+          (try
+            (remote-sync.db/touch-task! task-id)
+            (catch Throwable t
+              (log/debugf t "Heartbeat write failed for remote sync task %d" task-id)))
+          (recur))))
+     (fn stop-heartbeat! [] (deliver stop ::stop) nil))))
+
 (defn set-version!
   "Sets the version value for a sync task.
 
@@ -147,21 +174,27 @@
   (remote-sync.db/end-task! task-id
                             {:error_message error-msg}))
 
+(defn- liveness-cutoff
+  "The instant before which a running task's last sign of life makes it stale."
+  []
+  (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))
+
 (defn current-task
   "Gets the current active sync task.
 
-  Returns the most recent RemoteSyncTask that is still running (started but not ended, and has reported progress
-  within the time limit), or nil if no active task exists."
+  Returns the most recent RemoteSyncTask that is still running (started but not ended, and whose owning thread
+  heartbeat or reported progress within the time limit), or nil if no active task exists."
   []
-  (remote-sync.db/current-task (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))))
+  (remote-sync.db/current-task (liveness-cutoff)))
 
 (defn supersede-stale-tasks!
   "Marks any genuinely stale task rows as cancelled and terminated.
 
-  A task is considered stale if it has `started_at` set, `ended_at` nil, and `last_progress_report_at`
-  is older than `remote-sync-task-time-limit-ms`. The DB schema requires `last_progress_report_at`
-  to be non-null with a default of `current_timestamp`, so a brand-new task always has a recent
-  value (set on insert) and is not considered stale.
+  A task is considered stale if it has `started_at` set, `ended_at` nil, and its last sign of life
+  (`last_heartbeat_at`, or `last_progress_report_at` when no beat was ever written) is older than
+  `remote-sync-task-time-limit-ms`. The DB schema requires `last_progress_report_at` to be non-null with
+  a default of `current_timestamp`, so a brand-new task always has a recent value (set on insert) and is
+  not considered stale.
 
   Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
   JVM/thread is gone or hung. Returns nothing meaningful.
@@ -170,9 +203,7 @@
   that eventually wakes up and tries to complete will detect that its row is terminated and exit
   without writing the setting or overwriting bookkeeping."
   []
-  (let [cutoff (t/minus (t/offset-date-time)
-                        (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
-    (remote-sync.db/supersede-stale-tasks! cutoff)))
+  (remote-sync.db/supersede-stale-tasks! (liveness-cutoff)))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
@@ -234,11 +265,12 @@
 
   Takes a RemoteSyncTask instance.
 
-  Returns true if the task is incomplete and has not reported progress within the time limit, false otherwise."
+  Returns true if the task is incomplete and its owning thread has neither heartbeat nor reported progress within
+  the time limit, false otherwise. A row with no heartbeat falls back to its progress stamp."
   [task]
   (and (nil? (:ended_at task))
-       (t/< (:last_progress_report_at task)
-            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))))
+       (t/< (or (:last_heartbeat_at task) (:last_progress_report_at task))
+            (liveness-cutoff))))
 
 (defn conflict?
   "Checks if a task ended with conflicts.
