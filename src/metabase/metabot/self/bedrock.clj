@@ -256,6 +256,8 @@
    "anthropic.claude-opus-4-7"  {:display-name "Claude Opus 4.7"       :context-window 1000000}
    "anthropic.claude-sonnet-5"  {:display-name "Claude Sonnet 5"       :context-window 1000000}
    "anthropic.claude-haiku-4-5" {:display-name "Claude Haiku 4.5"      :context-window 200000}
+   ;; Astra's input window is its 1,050,000 token context minus up to 128,000 output tokens.
+   "openai.gpt-6-astra"         {:display-name "GPT-6 Astra"           :context-window 922000}
    "openai.gpt-5.4"             {:display-name "GPT-5.4"               :context-window 272000}
    "openai.gpt-5.4-2026-03-05"  {:display-name "GPT-5.4 (2026-03-05)"  :context-window 272000}
    "openai.gpt-5.5"             {:display-name "GPT-5.5"               :context-window 272000}
