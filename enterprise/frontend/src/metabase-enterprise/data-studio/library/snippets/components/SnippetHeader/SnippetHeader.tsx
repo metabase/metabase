@@ -10,13 +10,13 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-  type PaneHeaderProps,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useToast } from "metabase/common/hooks";
+import {
+  DataStudioPaneHeader,
+  type DataStudioPaneHeaderProps,
+} from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
@@ -35,7 +35,7 @@ export function SnippetHeader({
   snippet,
   actions,
   ...rest
-}: SnippetHeaderProps & Omit<PaneHeaderProps, "breadcrumbs">) {
+}: SnippetHeaderProps & Omit<DataStudioPaneHeaderProps, "breadcrumbs">) {
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -50,7 +50,7 @@ export function SnippetHeader({
   );
 
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       title={
         <SnippetNameInput
           snippet={snippet}

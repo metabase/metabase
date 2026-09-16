@@ -2,12 +2,10 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import type { SegmentTabUrls } from "metabase/data-studio/segments/types";
 import { Stack } from "metabase/ui";
@@ -40,7 +38,7 @@ export function SegmentHeader({
 }: SegmentHeaderProps) {
   return (
     <Stack gap={0}>
-      <PaneHeader
+      <DataStudioPaneHeader
         data-testid="segment-pane-header"
         title={
           <SegmentNameInput

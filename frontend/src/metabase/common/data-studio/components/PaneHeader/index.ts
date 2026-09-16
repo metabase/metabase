@@ -1,1 +1,7 @@
-export * from "./PaneHeader";
+export {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+  PanelHeaderTitle,
+  type PaneHeaderProps,
+} from "./PaneHeader";

@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
-import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   Box,
   Button,
@@ -25,8 +23,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs: ReactNode;
-  showMetabotButton?: boolean;
-  showAppSwitcher?: boolean;
+  controls?: ReactNode;
 }
 
 export const PaneHeader = ({
@@ -37,8 +34,7 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showMetabotButton,
-  showAppSwitcher = true,
+  controls,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -47,8 +43,7 @@ export const PaneHeader = ({
         {breadcrumbs}
 
         <Group ml="auto" gap="lg" className={S.ButtonGroup}>
-          {showMetabotButton && <MetabotDataStudioButton />}
-          {showAppSwitcher && <AppSwitcher />}
+          {controls}
         </Group>
       </Flex>
       <Group

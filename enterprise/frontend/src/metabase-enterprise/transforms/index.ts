@@ -1,7 +1,7 @@
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { TransformsUpsellPage } from "./upsells/pages/TransformsUpsellPage";
+import { TransformsUpsellPage } from "./upsells/pages/TransformsUpsellPage/lazy";
 
 // transforms is not a regular plugin, but a set of addons - basic transforms + python transforms
 export function initializePlugin() {

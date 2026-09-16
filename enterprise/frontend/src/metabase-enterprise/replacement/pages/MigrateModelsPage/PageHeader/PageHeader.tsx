@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { Box, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export function PageHeader() {
   return (
     <Box>
-      <PaneHeader
+      <DataStudioPaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>
             <Link to={Urls.transformList()}>{t`Transforms`}</Link>

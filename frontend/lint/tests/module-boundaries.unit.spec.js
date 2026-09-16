@@ -38,7 +38,6 @@ describe("shared tier coverage", () => {
       [...sharedTypes].filter((type) => !TIERED_SHARED.includes(type)).sort(),
     ).toEqual([
       "shared/common",
-      "shared/data-studio-ui",
       "shared/embedding",
       "shared/embedding-sdk",
       "shared/embedding-sdk-shared",

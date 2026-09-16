@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { trackMetabotChatOpened } from "metabase/metabot/analytics";
+import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -9,10 +11,6 @@ import { useSetting } from "metabase/settings";
 import { ActionIcon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { METAKEY } from "metabase/utils/browser";
-
-import { trackMetabotChatOpened } from "../analytics";
-
-import { MetabotIcon } from "./MetabotIcon";
 
 export const MetabotDataStudioButton = () => {
   const { hasMetabotAccess } = useUserMetabotPermissions();

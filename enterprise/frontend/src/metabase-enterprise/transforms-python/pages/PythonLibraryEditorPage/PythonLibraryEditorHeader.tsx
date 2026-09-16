@@ -2,10 +2,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import {
-  PaneHeader,
-  PanelHeaderTitle,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PanelHeaderTitle } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -23,7 +21,7 @@ export const PythonLibraryEditorHeader = ({
   onRevert,
 }: PythonLibraryEditorHeaderProps) => {
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.transformList()}>{t`Transforms`}</Link>

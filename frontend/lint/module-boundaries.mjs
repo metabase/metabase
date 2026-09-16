@@ -93,13 +93,10 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "shared", name: "metrics-ui", pattern }),
   ),
-  // Data-studio UI shared by the metrics and data-studio features and consumed
-  // by shared/transforms. Only the components are carved out: they import
-  // querying/nav/metabot/upsells, which must not become edges of shared/common.
+  // Presentation shared by the metrics and data-studio features. Query previews
+  // compose querying from platform P3; product headers supply their own controls.
   // The sibling analytics and collection utils stay in common (common files
-  // import them). Untiered for now: it cannot take a sub-tier level until the
-  // metabot button and the AppSwitcher are slotted out of PaneHeader, and a
-  // pattern element cannot take enforcePublicApi.
+  // import them). A pattern element cannot take enforcePublicApi.
   createElement({
     type: "shared",
     name: "data-studio-ui",
@@ -268,7 +265,6 @@ const elements = [
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
-  createElement({ type: "shared", name: "transforms" }),
   createElement({
     type: "shared",
     name: "types",
@@ -281,7 +277,14 @@ const elements = [
   // feature
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
+  // Transform screens belong to Data Studio. Keep their existing paths for now;
+  // the follow-up relocation is frontend/src/metabase/data-studio/transforms/.
   createElement({ type: "feature", name: "data-studio" }),
+  createElement({
+    type: "feature",
+    name: "data-studio",
+    pattern: "frontend/src/metabase/transforms/**",
+  }),
   createElement({ type: "shared", name: "documents" }),
   // The hub's route table and the page that mounts the app-tier theme editor.
   // Must precede feature/embedding-hub: routes.tsx imports admin's permissions

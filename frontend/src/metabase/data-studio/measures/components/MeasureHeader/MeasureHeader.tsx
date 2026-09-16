@@ -2,11 +2,9 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateMeasureMutation } from "metabase/api";
-import {
-  PaneHeader,
-  PaneHeaderInput,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import { Stack } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
@@ -39,7 +37,7 @@ export function MeasureHeader({
 }: MeasureHeaderProps) {
   return (
     <Stack gap={0}>
-      <PaneHeader
+      <DataStudioPaneHeader
         data-testid="measure-pane-header"
         title={
           <MeasureNameInput

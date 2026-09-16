@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import {
-  PaneHeader,
-  PaneHeaderInput,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
+import { DataStudioPaneHeader } from "metabase/data-studio/app/components/DataStudioPaneHeader";
 
 import { SegmentMoreMenu } from "../SegmentMoreMenu";
 
@@ -24,7 +22,7 @@ export function NewSegmentHeader({
   actions,
 }: NewSegmentHeaderProps) {
   return (
-    <PaneHeader
+    <DataStudioPaneHeader
       data-testid="segment-pane-header"
       title={
         <PaneHeaderInput

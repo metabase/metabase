@@ -21,7 +21,6 @@ import * as Urls from "metabase/urls";
 
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
-import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
 import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
 
@@ -35,6 +34,11 @@ const dataStudioLayout = () =>
   ).then(({ DataStudioLayout }) => ({
     Component: DataStudioLayout,
   }));
+
+const guidePage = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./guide/pages/GuidePage/GuidePage"
+  ).then(({ GuidePage }) => ({ Component: GuidePage }));
 
 const dataSectionLayout = () =>
   import(
@@ -97,7 +101,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
       <Route element={<CanAccessDataStudio />}>
         <Route path="data-studio" lazy={dataStudioLayout}>
           <Route index element={<DataStudioIndexRedirect />} />
-          <Route path="guide" element={<GuidePage />} />
+          <Route path="guide" lazy={guidePage} />
           <Route path="data" element={<CanAccessDataModel />}>
             <Route lazy={dataSectionLayout}>
               {getDataStudioMetadataRoutes(IsAdmin)}
