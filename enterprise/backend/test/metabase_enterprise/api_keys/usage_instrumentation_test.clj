@@ -63,6 +63,8 @@
            (is (= "/api/user/current" (:route_template row))))
          (is (= api-key-id (:api_key_id row)))
          (is (= (t2/select-one-fn :user_id :model/ApiKey :id api-key-id) (:user_id row)))
+         (is (= (mt/user->id :crowberto) (:created_by_id row))
+             "crowberto created the key over the API in do-with-api-key!")
          (is (= "GET" (:http_method row)))
          (is (= 200 (:status row)))
          (is (int? (:duration_ms row)))

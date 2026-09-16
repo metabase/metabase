@@ -10,12 +10,12 @@ SELECT
     t.duration_ms,
     t.api_key_id                                               AS api_key_id,
     ak.name                                                    AS api_key_name,
-    t.user_id,
-    COALESCE(CONCAT(u.first_name, ' ', u.last_name), u.email)  AS user_display_name,
+    t.created_by_id                                            AS user_id,
+    COALESCE(CONCAT(creator.first_name, ' ', creator.last_name), creator.email) AS user_display_name,
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id
-     WHERE pgm.user_id = t.user_id
+     WHERE pgm.user_id = t.created_by_id
        AND pg.id != 1
      ORDER BY pg.name
      LIMIT 1)                                                  AS group_name,
@@ -39,5 +39,5 @@ SELECT
 FROM api_key_usage_log t
 LEFT JOIN api_key ak
     ON ak.id = t.api_key_id
-LEFT JOIN core_user u
-    ON u.id = t.user_id;
+LEFT JOIN core_user creator
+    ON creator.id = t.created_by_id;

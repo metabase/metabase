@@ -256,12 +256,14 @@
                                                  :updated_by_id         (mt/user->id :lucky)
                                                  ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
     (testing "A valid API key works, and user info is added to the request"
-      ;; `:api-key-id` and `:tenant-id` are resolved for API-key auth only — the usage analytics hook
-      ;; in `metabase.server.middleware.log` reads both off the request rather than looking them up again.
+      ;; `:api-key-id`, `:api-key-creator-id`, and `:tenant-id` are resolved for API-key auth only — the usage
+      ;; analytics hook in `metabase.server.middleware.log` reads all three off the request rather than looking
+      ;; them up again.
       (let [req {:headers {"x-api-key" "mb_foobar123"}}]
         (testing "No premium features, do not include :is-group-manager?"
           (mt/with-premium-features #{}
             (is (= (merge req {:api-key-id              api-key-id
+                               :api-key-creator-id      (mt/user->id :lucky)
                                :metabase-user-id        (mt/user->id :lucky)
                                :is-superuser?           false
                                :is-data-analyst?        false
@@ -273,6 +275,7 @@
           (when config/ee-available?
             (mt/with-premium-features #{:advanced-permissions}
               (is (= (merge req {:api-key-id              api-key-id
+                                 :api-key-creator-id      (mt/user->id :lucky)
                                  :metabase-user-id        (mt/user->id :lucky)
                                  :is-superuser?           false
                                  :is-data-analyst?        false
