@@ -1,12 +1,6 @@
 {:paths
  ["src" "resources"]
 
- ;; Benchmark harness (e24s01) — scripts/ is NOT part of the driver jar.
- :aliases
- {:bench {:extra-paths ["scripts"]
-          :extra-deps  {org.clojure/java.jdbc {:mvn/version "0.7.12"}}
-          :main-opts   ["-m" "athena-bench"]}}
-
  :mvn/repos
  {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}}
 
