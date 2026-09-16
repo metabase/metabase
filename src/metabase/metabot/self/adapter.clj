@@ -79,7 +79,7 @@
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."
   [:map
-   [:path                              :string]
+   [:path                              [:or :string fn?]]
    [:body                              :map]
    [:headers          {:optional true} [:maybe [:map-of :string :string]]]
    [:request-options  {:optional true} [:maybe :map]]
@@ -252,7 +252,10 @@
 
   The third argument says how this adapter puts that request on the wire:
 
-    :path             - the streaming endpoint, relative to the base URL.
+    :path             - the streaming endpoint, relative to the base URL, or a thunk returning it. A
+                        thunk is called inside the span and behind the proxy refusal, for the one
+                        provider whose path is derived from credentials that can fail to resolve
+                        (Google) — so that failure lands on the trace, and loses to the refusal.
     :body             - the composed request body. Encoded here.
     :headers          - extra request headers, beyond the descriptor's own and `Content-Type`.
     :request-options  - extra [[core/request]] opts, e.g. per-provider timeouts.
@@ -280,23 +283,28 @@
                              :tool-count tool-count}
                             span-attrs)
       (try
-        (-> (request! p {:credentials credentials
-                         :ai-proxy?   ai-proxy?
-                         :method      :post
-                         :path        path
-                         :as          :stream
-                         :headers     (merge {"Content-Type" "application/json"} headers)
-                         ;; encoded up front, since a provider may sign over the body
-                         :body        (json/encode body)}
-                      request-options)
-            :body
-            core/sse-reducible
-            (debug/capture-stream {:provider slug
-                                   :model    model
-                                   :url      path
-                                   :request  body})
-            wrap-stream
-            (core/reducible-with-api-errors slug res->msg))
+        ;; ahead of `path`, which a provider may derive from credentials that can fail to resolve: a proxied
+        ;; request should say the proxy is unsupported, not report whatever is missing from a connection it
+        ;; will never use. [[request!]] checks again, for callers that do not come through here.
+        (reject-ai-proxy! p ai-proxy?)
+        (let [path (if (fn? path) (path) path)]
+          (-> (request! p {:credentials credentials
+                           :ai-proxy?   ai-proxy?
+                           :method      :post
+                           :path        path
+                           :as          :stream
+                           :headers     (merge {"Content-Type" "application/json"} headers)
+                           ;; encoded up front, since a provider may sign over the body
+                           :body        (json/encode body)}
+                        request-options)
+              :body
+              core/sse-reducible
+              (debug/capture-stream {:provider slug
+                                     :model    model
+                                     :url      path
+                                     :request  body})
+              wrap-stream
+              (core/reducible-with-api-errors slug res->msg)))
         (catch Exception e
           (if on-request-error
             (on-request-error e)

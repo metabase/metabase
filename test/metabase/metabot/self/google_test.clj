@@ -667,7 +667,18 @@
            #"AI proxy is not supported for Google"
            (google-raw {:model     "google/gemini-3.5-flash"
                         :input     [{:role :user :content "hi"}]
-                        :ai-proxy? true}))))))
+                        :ai-proxy? true})))))
+  (testing (str "and still wins once the credentials are present but unusable. Google resolves its credentials "
+                "inside the request span — late enough that the refusal has to be checked first, or a proxied "
+                "request would be told about a project ID belonging to a connection it will never use")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Google"
+           (google-raw {:model       "google/gemini-3.5-flash"
+                        :input       [{:role :user :content "hi"}]
+                        :credentials {:oauth-access-token "token" :project-id "Not A Project ID"}
+                        :ai-proxy?   true}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; End-to-end stream translation.

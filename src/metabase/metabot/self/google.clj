@@ -225,18 +225,25 @@
     (assoc creds :project-id project-id)))
 
 (defn- google-auth
-  "Google's `:auth`. Takes credentials [[resolve-credentials]] has already resolved, and reads the host from them:
-  the API host has to agree with the location, so it is not a fixed base URL the way it is for every other provider."
+  "Google's `:auth`. Reads the host from the credentials: the API host has to agree with the location, so it is not a
+  fixed base URL the way it is for every other provider.
+
+  Resolves them itself rather than trusting the caller to have done it. [[resolve-credentials]] is idempotent and the
+  service-account parse is cached, so the [[adapter/request!]] callers that resolve first pay nothing, and the chat
+  path can hand over the raw map — which is what puts a missing credential, a bad project ID or a malformed key
+  inside the request span. Because resolution raises the missing-credential error itself, [[core/resolve-auth]] never
+  reaches its own `missing-api-key-ex` branch here."
   [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
-  (core/resolve-auth slug display-name
-                     (when-let [method (auth-method credentials)]
-                       {:url     (api-base-url credentials)
-                        :headers (case method
-                                   :service-account (fresh-bearer-headers
-                                                     (cached-service-account-credentials
-                                                      (:service-account-key credentials)))
-                                   :oauth-token     (oauth-bearer-headers (:oauth-access-token credentials)))})
-                     ai-proxy?))
+  (let [credentials (resolve-credentials credentials)]
+    (core/resolve-auth slug display-name
+                       (when-let [method (auth-method credentials)]
+                         {:url     (api-base-url credentials)
+                          :headers (case method
+                                     :service-account (fresh-bearer-headers
+                                                       (cached-service-account-credentials
+                                                        (:service-account-key credentials)))
+                                     :oauth-token     (oauth-bearer-headers (:oauth-access-token credentials)))})
+                       ai-proxy?)))
 
 (defn- effective-project-id
   "Returns the project ID for a credential's requests.
@@ -378,8 +385,9 @@
     (format "%s/publishers/%s/models/%s" (location-path credentials) publisher model-id)))
 
 (def ^:private provider
-  "Google is the only adapter whose request path is derived from its credentials rather than fixed, so it resolves
-  them itself (see [[resolve-credentials]]) and hands the resolved map to [[adapter/stream!]]."
+  "Google is the only adapter whose request path is derived from its credentials rather than fixed, so the path it
+  hands [[adapter/stream!]] is a thunk and [[google-auth]] resolves the credentials itself (see
+  [[resolve-credentials]]) — both inside the request span."
   (adapter/provider
    {:slug         "google"
     :display-name "Google"
@@ -536,29 +544,28 @@
   "Makes a streaming request to the Gemini Enterprise Agent Platform.
   Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`.
   `:ai-proxy?` is not supported and throws when it is true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model credentials] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  ;; ahead of resolving credentials, and so ahead of [[adapter/request!]] doing it: a proxied request should
-  ;; say the proxy is unsupported, not report whatever is missing from a connection it will never use
-  (adapter/reject-ai-proxy! provider ai-proxy?)
   (let [family (model->family model)
-        ;; resolved before the request is composed: the project and the location are URL segments, so the path
-        ;; cannot be built until the credentials are
-        creds    (resolve-credentials credentials)
-        res->msg (google-res->msg creds)
-        opts   (assoc opts :model model :credentials creds)]
+        opts   (assoc opts :model model)]
     (adapter/stream! provider opts
-                     {:path             (str (model-resource-path creds model)
-                                             (case family
-                                               :anthropic raw-predict-method
-                                               :google    generate-content-method))
+                     {;; a thunk, not a string: the project and the location are URL segments, so the path cannot be
+                      ;; built until the credentials resolve, and that resolution is the only one in the fleet that
+                      ;; can fail. [[adapter/stream!]] calls it inside the span and behind the proxy refusal, so a
+                      ;; bad project ID lands on the trace and a proxied request still hears about the proxy first.
+                      :path             #(str (model-resource-path (resolve-credentials credentials) model)
+                                              (case family
+                                                :anthropic raw-predict-method
+                                                :google    generate-content-method))
                       :body             (case family
                                           :anthropic (raw-predict/request-body (model-id model) opts)
                                           ;; `opts` carries the defaulted model: the thinking directive keys off it
                                           :google    (stream-generate-content/request-body opts))
                       :span-attrs       {:family family}
-                      :error-msg        res->msg
-                      :on-request-error #(rethrow-google-api-error! creds %)})))
+                      ;; both read only `:location`, which resolution does not touch, so the raw map serves and
+                      ;; neither can mask a resolution failure with one of its own
+                      :error-msg        (google-res->msg credentials)
+                      :on-request-error #(rethrow-google-api-error! credentials %)})))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
