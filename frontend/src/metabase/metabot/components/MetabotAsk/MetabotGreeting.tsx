@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
@@ -14,6 +15,7 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Icon,
   Paper,
@@ -21,6 +23,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 
@@ -77,6 +80,14 @@ export const MetabotGreeting = ({
           <Text fz="xl" fw={600} c="text-primary">
             {title}
           </Text>
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newExploration()}
+            bd="none"
+            leftSection={<Icon name="telescope" c="brand" />}
+          >
+            {t`Research`}
+          </Button>
         </Flex>
         <Paper className={S.inputContainer}>
           <Box className={S.editorWrapper}>

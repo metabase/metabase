@@ -1020,7 +1020,7 @@
 
   explorations
   {:team "UX West"
-   :api #{metabase.explorations.core metabase.explorations.init metabase.explorations.schema}
+   :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init metabase.explorations.schema}
    :uses #{analytics
            analytics.interface
            api
