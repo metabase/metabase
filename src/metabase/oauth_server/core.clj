@@ -39,7 +39,7 @@
 
 (defn all-scopes-registered?
   "True when every scope in the space-delimited `scope` string is registered via
-  [[metabase.api-scope.core/defscope]]. A nil or blank `scope` has none that are not."
+  [[metabase.api-scope.core/defscope]]. A nil or blank `scope` names none, so it is true."
   [scope]
   (every? api-scope/registered-scope? (api-scope/parse-scopes scope)))
 
@@ -51,37 +51,6 @@
            (filter api-scope/registered-scope?)
            seq
            (str/join " ")))
-
-(defn- authorization-server-metadata-url
-  "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
-  []
-  (str (system/site-url) "/.well-known/oauth-authorization-server"))
-
-(defn unsupported-scopes-description
-  "The `error_description` for a request naming a scope that is not registered. Deliberately does not echo the
-  request's scopes."
-  []
-  (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
-       (authorization-server-metadata-url)))
-
-(defn no-supported-scopes-description
-  "The `error_description` for an authorization request in which no requested scope is registered. Deliberately does
-  not echo the request's scopes."
-  []
-  (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
-       (authorization-server-metadata-url)))
-
-(defn missing-scope-description
-  "The `error_description` for an authorization request with no scope."
-  []
-  (str "The request must include a scope. Request only scopes listed in scopes_supported at "
-       (authorization-server-metadata-url)))
-
-(defn empty-scope-description
-  "The `error_description` for a client registration whose `scope` is present but empty."
-  []
-  (str "The scope must not be empty. Omit scope, or include only scopes listed in scopes_supported at "
-       (authorization-server-metadata-url)))
 
 (defn mcp-resource-scopes
   "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
@@ -158,17 +127,14 @@
   no named surface accepts are dropped, so the consent screen asks for what the token can actually be used for
   rather than everything the client registered. Several indicators may be sent, and the token has to work against
   each, so what survives is the union of what they accept. Returns the scope unchanged when no indicator names a
-  resource we narrow for, and nil when nothing survives.
-
-  Note nil is the answer for both \"nothing was requested\" and \"nothing survived\"; the caller has the requested
-  scope and must tell them apart, since only the first may drop the parameter (see the authorize handler).
+  resource we narrow for, and nil when no requested scope survives.
 
   Every alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one: a client that connected
   through an alias was handed that path as its resource identifier, and narrowing has to recognize what it was told to
   send back.
 
-  Only ever removes scopes, and runs after the provider has validated the request, so it can never turn a valid
-  authorization into a rejected one.
+  Only ever removes scopes: a request in which none survive is refused by the caller rather than granted an empty
+  scope.
 
   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming the MCP resource is
   asking for a token to use against that surface — which accepts none of the REST API that scope unlocks.

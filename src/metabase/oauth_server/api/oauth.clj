@@ -116,12 +116,64 @@
                   ;; hardcoding the scope string in the view.
                   :full-access? (= s oauth-server/full-access-scope)})))))
 
+;;; ------------------------------------------- Error descriptions ------------------------------------------------
+
+;;; Fixed strings, never echoing what the request sent, and within the RFC 6749 section 5.2 character set.
+
+(def ^:private invalid-authorization-request-description "The authorization request is invalid.")
+
+(def ^:private invalid-token-request-description "The token request is invalid.")
+
 (def ^:private invalid-target-description
   "The resource parameter must be an absolute URI without a fragment.")
+
+(def ^:private narrowed-away-scope-description
+  "The requested scopes are not accepted by the requested resource.")
+
+(defn- authorization-server-metadata-url
+  "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
+  []
+  (str (system/site-url) "/.well-known/oauth-authorization-server"))
+
+(defn- unsupported-scopes-description
+  "The `error_description` for a registration naming a scope that is not registered."
+  []
+  (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- no-supported-scopes-description
+  "The `error_description` for an authorization request in which no requested scope is registered."
+  []
+  (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- missing-scope-description
+  "The `error_description` for an authorization request with no scope."
+  []
+  (str "The request must include a scope. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- empty-scope-description
+  "The `error_description` for a client registration whose `scope` is present but empty."
+  []
+  (str "The scope must not be empty. Omit scope, or include only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- invalid-client-metadata-response
+  "The RFC 7591 `invalid_client_metadata` 400 for a registration this endpoint refuses before the library sees it."
+  [description]
+  {:status  400
+   :headers {"Content-Type" "application/json"}
+   :body    {"error"             "invalid_client_metadata"
+             "error_description" description}})
+
+;;; -------------------------------------------- Resource indicators ----------------------------------------------
 
 (defn- unparseable-resource?
   "True when any `resource` indicator (a string, or a sequence of strings) is not syntactically a URI."
   [resource]
+  ;; oidc-provider validates resource indicators by constructing a `java.net.URI`, so an unparseable one reaches the
+  ;; endpoints as a URISyntaxException rather than the ex-info they catch. Checked here before the library sees it.
   (boolean
    (some (fn [r]
            (try
@@ -130,6 +182,12 @@
              (catch URISyntaxException _
                true)))
          (if (string? resource) [resource] resource))))
+
+(defn- check-resource-parseable!
+  "Throw the RFC 8707 `invalid_target` error when any `resource` indicator is not syntactically a URI."
+  [resource]
+  (when (unparseable-resource? resource)
+    (throw (ex-info "resource is not a URI" {:error "invalid_target"}))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -228,26 +286,17 @@
       (or (when-let [provider (oauth-server/get-provider)]
             (cond
               (nil? body)
-              {:status  400
-               :headers {"Content-Type" "application/json"}
-               :body    {"error"             "invalid_client_metadata"
-                         "error_description" "Invalid or missing JSON body"}}
+              (invalid-client-metadata-response "Invalid or missing JSON body")
 
               ;; Only an omitted `scope` gets the default below; an empty one would register a client that
               ;; can never authorize.
               (and (contains? body :scope) (str/blank? (:scope body)))
-              {:status  400
-               :headers {"Content-Type" "application/json"}
-               :body    {"error"             "invalid_client_metadata"
-                         "error_description" (oauth-server/empty-scope-description)}}
+              (invalid-client-metadata-response (empty-scope-description))
 
               ;; A client's registered scopes are the ceiling /authorize checks requests against, so a
               ;; self-nominated wildcard such as `*` would later be granted as one.
               (not (oauth-server/all-scopes-registered? (:scope body)))
-              {:status  400
-               :headers {"Content-Type" "application/json"}
-               :body    {"error"             "invalid_client_metadata"
-                         "error_description" (oauth-server/unsupported-scopes-description)}}
+              (invalid-client-metadata-response (unsupported-scopes-description))
 
               :else
               (try
@@ -305,8 +354,6 @@
                :body    body}))))
       {:status 404 :body {:error "not_found"}}))
 
-(def ^:private invalid-authorization-request-description "The authorization request is invalid.")
-
 (defn- authorization-error-code
   "The RFC 6749 section 4.1.2.1 (or RFC 8707) `error` code for the ex-data of an exception thrown while validating an
    authorization request."
@@ -319,6 +366,15 @@
         (contains? data :response-type) "unsupported_response_type"
         (contains? data :requested)     "invalid_scope"
         :else                           "invalid_request")))
+
+(defn- error-description
+  "The `error_description` for an exception's ex-data: the one it carries, else the fixed description for its `error`
+   code, else `fallback`."
+  [data error fallback]
+  (or (:error-description data)
+      (:error_description data)
+      (when (= error "invalid_target") invalid-target-description)
+      fallback))
 
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
@@ -334,7 +390,7 @@
         _          (when (str/blank? (:scope parsed))
                      (throw (ex-info "no scope was requested"
                                      {:oauth-error       "invalid_scope"
-                                      :error-description (oauth-server/missing-scope-description)})))
+                                      :error-description (missing-scope-description)})))
         ;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
         ;; would honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than
         ;; refusing (RFC 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to
@@ -344,7 +400,7 @@
         _          (when-not registered
                      (throw (ex-info "no requested scope is a registered scope"
                                      {:oauth-error       "invalid_scope"
-                                      :error-description (oauth-server/no-supported-scopes-description)})))
+                                      :error-description (no-supported-scopes-description)})))
         narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
     ;; Nothing surviving means the client asked exclusively for scopes this resource does not
     ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
@@ -353,8 +409,7 @@
     (when-not narrowed
       (throw (ex-info "no requested scope is accepted by the named resource"
                       {:oauth-error       "invalid_scope"
-                       :error-description (str "The requested scopes are not accepted by "
-                                               "the requested resource.")
+                       :error-description narrowed-away-scope-description
                        :resource          (:resource parsed)})))
     narrowed))
 
@@ -362,11 +417,7 @@
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
    cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and `:error-description`."
   [provider query-params request]
-  (let [;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
-        _            (when (unparseable-resource? (:resource query-params))
-                       (throw (ex-info "resource is not a URI"
-                                       {:oauth-error       "invalid_target"
-                                        :error-description invalid-target-description})))
+  (let [_            (check-resource-parseable! (:resource query-params))
         ;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
         ;; then reported as `invalid_scope` by [[scope-to-grant]].
         parsed       (oidc/parse-authorization-request provider
@@ -419,12 +470,13 @@
               ;; Dynamic registration is unauthenticated, so a client can register any redirect URI it likes, and
               ;; redirecting errors there would turn a link on this host into a zero-click open redirector
               ;; (RFC 9700 section 4.11).
-              (let [data (ex-data e)]
+              (let [data  (ex-data e)
+                    error (authorization-error-code data)]
                 {:status  400
                  :headers {"Content-Type" "application/json"}
-                 :body    {:error             (authorization-error-code data)
-                           :error_description (or (:error-description data)
-                                                  invalid-authorization-request-description)}}))))
+                 :body    {:error             error
+                           :error_description (error-description data error
+                                                                 invalid-authorization-request-description)}}))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"
@@ -464,9 +516,7 @@
                  :body    {:error "csrf_validation_failed"}}
                 (let [approved (= "true" (str (:approved body)))]
                   (try
-                    ;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
-                    (when (unparseable-resource? (:resource auth-params))
-                      (throw (ex-info "resource is not a URI" {})))
+                    (check-resource-parseable! (:resource auth-params))
                     (let [parsed        (oidc/parse-authorization-request provider auth-params)
                           ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                           ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
@@ -492,7 +542,7 @@
                       {:status  400
                        :headers {"Content-Type" "application/json"}
                        :body    {:error             "invalid_request"
-                                 :error_description "The authorization request is invalid."}}))))))
+                                 :error_description invalid-authorization-request-description}}))))))
           {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :post "/token"
@@ -520,11 +570,7 @@
       (or (when-let [provider (oauth-server/get-provider)]
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
-                ;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
-                (when (unparseable-resource? (:resource body))
-                  (throw (ex-info "resource is not a URI"
-                                  {:error             "invalid_target"
-                                   :error_description invalid-target-description})))
+                (check-resource-parseable! (:resource body))
                 (let [response (oidc/token-request provider body authorization-header)]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
@@ -540,7 +586,8 @@
                                "Cache-Control" "no-store"
                                "Pragma"        "no-cache"}
                      :body    {:error             error
-                               :error_description (or (:error_description data) "The token request is invalid.")}})))))
+                               :error_description (error-description data error
+                                                                     invalid-token-request-description)}})))))
           {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :post "/revoke"

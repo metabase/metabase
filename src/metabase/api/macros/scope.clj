@@ -57,7 +57,7 @@
    challenge that names `required-scope` as `scope` when non-nil and uses `message` as `error_description`."
   [error message required-scope]
   {:status  403
-   ;; Comma-separated per RFC 7235's `#auth-param`, in the order the MCP transport's challenge uses.
+   ;; Comma-separated per RFC 7235's `#auth-param`.
    :headers {"Content-Type"     "application/json"
              "WWW-Authenticate" (str "Bearer error=\"insufficient_scope\""
                                      (when required-scope
@@ -68,9 +68,9 @@
 
 (defn- oauth-without-token-scopes?
   "True for a request the session middleware authenticated with an OAuth access token that carries no
-   `:token-scopes`. Nil scopes mean scope-unaware auth only for sessions and API keys; for OAuth they must fail
-   closed."
+   `:token-scopes`."
   [request]
+  ;; Nil scopes mean scope-unaware auth only for sessions and API keys; for OAuth they must fail closed.
   (and (:authenticated-via-oauth? request)
        (empty? (:token-scopes request))))
 

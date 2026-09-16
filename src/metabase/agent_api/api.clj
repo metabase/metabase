@@ -1651,10 +1651,11 @@
     (str/trim (subs auth-header 7))))
 
 (defn- error-response
-  "Create a 401 error response with structured JSON body."
-  [error-type message]
+  "Create a 401 error response with a structured JSON body and `challenge` as its RFC 6750 `WWW-Authenticate` value."
+  [error-type message challenge]
   {:status  401
-   :headers {"Content-Type" "application/json"}
+   :headers {"Content-Type"     "application/json"
+             "WWW-Authenticate" challenge}
    :body    {:error   error-type
              :message message}})
 
@@ -1713,7 +1714,6 @@
     (cond
       ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
       ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
-      ;; An OAuth request without scopes keeps nil so the scope middleware refuses it.
       metabase-user-id
       (handler (cond-> request
                  (and (not token-scopes) (not (:authenticated-via-oauth? request)))
@@ -1725,18 +1725,19 @@
       (let [auth-header  (get headers "authorization")
             bearer-token (extract-bearer-token auth-header)]
         (cond
-          ;; No authorization header and no session
+          ;; No authorization header and no session.
           ;; RFC 6750 section 3.1: a challenge to a request with no bearer token carries no error code.
           (nil? auth-header)
-          (respond (assoc-in (error-response "missing_authorization"
-                                             "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>.")
-                             [:headers "WWW-Authenticate"] "Bearer"))
+          (respond (error-response "missing_authorization"
+                                   (str "Authentication required. Use X-Metabase-Session header or "
+                                        "Authorization: Bearer <jwt>.")
+                                   "Bearer"))
 
           ;; Authorization header present but not Bearer format
           (nil? bearer-token)
-          (respond (assoc-in (error-response "invalid_authorization_format"
-                                             "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>")
-                             [:headers "WWW-Authenticate"] "Bearer"))
+          (respond (error-response "invalid_authorization_format"
+                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"
+                                   "Bearer"))
 
           ;; Validate JWT
           :else
@@ -1751,8 +1752,7 @@
                                                             token-scopes
                                                             #{::scope/unrestricted}))
                            respond raise)))
-              (respond (assoc-in (error-response (:error result) (:message result))
-                                 [:headers "WWW-Authenticate"] "Bearer error=\"invalid_token\"")))))))))
+              (respond (error-response (:error result) (:message result) "Bearer error=\"invalid_token\"")))))))))
 
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
