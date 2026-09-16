@@ -1359,6 +1359,22 @@
                 "malformed JSON must throw, not return the {:_raw_arguments ...} sentinel as a result")
             (is (= "structured-output-invalid" (:error-code (ex-data e))))))))))
 
+(deftest call-llm-structured-fast-options-test
+  (llm.tu/with-default-connections
+    (let [calls (atom [])]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [opts]
+                                    (swap! calls conj opts)
+                                    (throw (ex-info "Rate limited" {:status 429})))
+                                  self/retry-delay-ms (constantly 0)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Rate limited"
+                              (self/call-llm-structured
+                               "openrouter/test-model" [{:role "user" :content "test"}]
+                               {:type "object"} nil 512
+                               {:required-permission :permission/metabot :retry? false :reasoning? false})))
+        (is (= 1 (count @calls)))
+        (is (false? (:reasoning? (first @calls))))))))
+
 (deftest call-llm-structured-surfaces-provider-error-test
   (llm.tu/with-default-connections
     (testing "a provider mid-stream :error part surfaces its message, not a generic 'no tool call' error"

@@ -34,6 +34,8 @@ import {
 export interface MetabotPromptInputProps {
   value: string;
   placeholder?: string;
+  suggestedPrompt?: string;
+  onNavigateSuggestions?: (direction: "up" | "down") => void;
   autoFocus?: boolean;
   disabled: boolean;
   readOnly?: boolean;
@@ -53,6 +55,8 @@ export const MetabotPromptInput = forwardRef<
     {
       value,
       placeholder = t`How can I help? Type @ to mention items.`,
+      suggestedPrompt,
+      onNavigateSuggestions,
       autoFocus,
       disabled,
       readOnly = false,
@@ -68,6 +72,26 @@ export const MetabotPromptInput = forwardRef<
     const serializedRef = useRef(value);
     const readOnlyRef = useRef(readOnly);
     readOnlyRef.current = readOnly;
+    const shortcutRef = useRef({
+      value,
+      disabled,
+      suggestedPrompt,
+      onNavigateSuggestions,
+    });
+    shortcutRef.current = {
+      value,
+      disabled,
+      suggestedPrompt,
+      onNavigateSuggestions,
+    };
+    const placeholderRef = useRef(placeholder);
+    placeholderRef.current = suggestedPrompt
+      ? t`${suggestedPrompt} (Tab to send)`
+      : placeholder;
+    const acceptedSuggestionRef = useRef<string>();
+    useEffect(() => {
+      acceptedSuggestionRef.current = undefined;
+    }, [suggestedPrompt]);
 
     // editorProps closures are baked into the editor at creation and are not
     // refreshed by tiptap when useEditor has a dependency array, so they must
@@ -81,7 +105,7 @@ export const MetabotPromptInput = forwardRef<
       Document,
       Paragraph,
       Text,
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({ placeholder: () => placeholderRef.current }),
       HardBreak,
       SmartLink.configure({
         HTMLAttributes: { class: S.smartLink },
@@ -150,6 +174,49 @@ export const MetabotPromptInput = forwardRef<
             if (readOnlyRef.current) {
               return false;
             }
+            const shortcuts = shortcutRef.current;
+            const mentionState = MetabotMentionPluginKey.getState(view.state);
+            const isEmpty =
+              view.state.doc.childCount === 1 &&
+              view.state.doc.firstChild?.childCount === 0;
+            if (
+              isEmpty &&
+              shortcuts.value === "" &&
+              !shortcuts.disabled &&
+              !mentionState?.active &&
+              !view.composing &&
+              !event.isComposing &&
+              !event.shiftKey &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey
+            ) {
+              if (
+                event.key === "Tab" &&
+                shortcuts.suggestedPrompt &&
+                onSubmitRef.current
+              ) {
+                event.preventDefault();
+                if (
+                  !event.repeat &&
+                  acceptedSuggestionRef.current !== shortcuts.suggestedPrompt
+                ) {
+                  acceptedSuggestionRef.current = shortcuts.suggestedPrompt;
+                  onSubmitRef.current(shortcuts.suggestedPrompt);
+                }
+                return true;
+              }
+              if (
+                (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+                shortcuts.onNavigateSuggestions
+              ) {
+                event.preventDefault();
+                shortcuts.onNavigateSuggestions(
+                  event.key === "ArrowUp" ? "up" : "down",
+                );
+                return true;
+              }
+            }
             if (event.key === "Escape" || event.key === "Enter") {
               // Defer enter handling to mention UI if open
               const mentionState = MetabotMentionPluginKey.getState(view.state);
@@ -202,7 +269,6 @@ export const MetabotPromptInput = forwardRef<
       [
         suggestionConfig.onlyDatabaseId,
         suggestionConfig.suggestionModels.join(","),
-        placeholder,
         siteUrl,
       ],
     );
@@ -259,10 +325,19 @@ export const MetabotPromptInput = forwardRef<
       editor?.setEditable(!readOnly, false);
     }, [editor, readOnly]);
 
+    useEffect(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.view.dispatch(editor.state.tr);
+      }
+    }, [editor, placeholder, suggestedPrompt]);
+
     // Sync external value changes to editor
     useEffect(() => {
-      if (value !== serializedRef.current) {
-        editor?.commands.setContent(parseMetabotMessageToTiptapDoc(value));
+      if (editor && value !== serializedRef.current) {
+        editor.commands.setContent(parseMetabotMessageToTiptapDoc(value), {
+          emitUpdate: false,
+        });
+        serializedRef.current = value;
       }
     }, [editor, value]);
 

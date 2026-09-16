@@ -557,6 +557,8 @@
   catch them.
 
   `opts` extends `tracking-opts` and may include:
+    :retry?              - When false, attempt the request only once.
+    :reasoning?          - When false, suppress optional provider reasoning.
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot`, which is always checked.
@@ -591,6 +593,7 @@
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
+                         (contains? opts :reasoning?) (assoc :reasoning? (:reasoning? opts))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
@@ -633,7 +636,8 @@
 
               :else
               (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+                              {:parts parts})))))
+        (constantly (not (false? (:retry? opts))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

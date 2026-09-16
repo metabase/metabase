@@ -440,6 +440,7 @@ export const metabot = createSlice({
         ensureChain(convo); // resuming mid-response
       }
       convo.stateBeforeTurn = undefined;
+      convo.completedResponseId = undefined;
       state.conversations[conversationId] = convo;
 
       // NOTE: live reactions aren't reconstructed from a fetched snapshot
@@ -460,6 +461,7 @@ export const metabot = createSlice({
         const convo = getRequestConversation(state, action);
         if (convo) {
           convo.isProcessing = true;
+          convo.completedResponseId = undefined;
           convo.hasMessagedInSession = true;
           convo.stateBeforeTurn = convo.state;
           startAgentMessage(convo, action.meta.arg.assistant_message_id);
@@ -500,6 +502,11 @@ export const metabot = createSlice({
                   isContextWindowFull(contextUsage),
               }
             : { type: "done" };
+
+          convo.completedResponseId =
+            finishReason === "stop"
+              ? (message.externalId ?? action.meta.arg.assistant_message_id)
+              : undefined;
 
           convo.activeToolCalls = [];
           convo.isProcessing = false;

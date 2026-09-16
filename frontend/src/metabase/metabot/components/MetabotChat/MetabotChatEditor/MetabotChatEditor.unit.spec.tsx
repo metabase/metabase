@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor } from "@tiptap/react";
 import fetchMock from "fetch-mock";
@@ -88,6 +88,35 @@ const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor dictation", () => {
   let browser: ReturnType<typeof mockDictationBrowser>;
+
+  it("disables the suggested placeholder and Tab submission during dictation", async () => {
+    const onSubmit = jest.fn();
+    setup({
+      suggestedPrompt: "Show the trend",
+      onSubmit,
+      allowDictation: true,
+    });
+    const placeholderSelector =
+      '[data-placeholder="Show the trend (Tab to send)"]';
+    expect(
+      await screen.findByText("", { selector: placeholderSelector }),
+    ).toBeVisible();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Dictate" }),
+    );
+    await screen.findByRole("button", { name: "Cancel dictation" });
+    expect(
+      screen.queryByText("", { selector: placeholderSelector }),
+    ).not.toBeInTheDocument();
+    fireEvent.keyDown(await input(), { key: "Tab" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel dictation" }),
+    );
+    expect(
+      await screen.findByText("", { selector: placeholderSelector }),
+    ).toBeVisible();
+  });
   beforeEach(() => {
     browser = mockDictationBrowser();
     fetchMock.get(

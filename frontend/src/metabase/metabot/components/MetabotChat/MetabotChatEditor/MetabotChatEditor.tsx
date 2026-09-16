@@ -24,6 +24,8 @@ type MetabotChatEditorProps = Pick<
   MetabotPromptInputProps,
   | "value"
   | "placeholder"
+  | "suggestedPrompt"
+  | "onNavigateSuggestions"
   | "autoFocus"
   | "onChange"
   | "onSubmit"
@@ -76,6 +78,9 @@ export const MetabotChatEditor = forwardRef<
     }
   });
   const active = dictation.state.status !== "idle";
+  const canUseSuggestions =
+    !active && !busy && !attachments?.draft.files.length && props.value === "";
+  const suggestedPrompt = canUseSuggestions ? props.suggestedPrompt : undefined;
   const cancelDictation = dictation.cancel;
   useEffect(() => {
     if (isResponding && active) {
@@ -169,6 +174,10 @@ export const MetabotChatEditor = forwardRef<
       <Box className={S.contentWrapper}>
         <MetabotPromptInput
           {...props}
+          suggestedPrompt={suggestedPrompt}
+          onNavigateSuggestions={
+            canUseSuggestions ? props.onNavigateSuggestions : undefined
+          }
           ref={mergedRef}
           disabled={busy}
           readOnly={active}

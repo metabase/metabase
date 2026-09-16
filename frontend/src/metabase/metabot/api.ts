@@ -11,6 +11,8 @@ import type {
   MetabotDictationAvailability,
   MetabotDictationResponse,
   MetabotFeedback,
+  MetabotFollowUpPromptsRequest,
+  MetabotFollowUpPromptsResponse,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
   MetabotId,
@@ -38,6 +40,17 @@ export type MetabotConversationDetail = {
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getMetabotFollowUpPrompts: builder.query<
+      MetabotFollowUpPromptsResponse,
+      MetabotFollowUpPromptsRequest
+    >({
+      query: ({ conversation_id, message_id }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/follow-up-prompts`,
+        body: { message_id },
+      }),
+      extraOptions: { retry: false },
+    }),
     getMetabotDictation: builder.query<MetabotDictationAvailability, void>({
       query: () => "/api/metabot/dictation",
       providesTags: ["session-properties"],
@@ -216,6 +229,7 @@ export const metabotApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetMetabotFollowUpPromptsQuery,
   useGetMetabotDictationQuery,
   useTranscribeMetabotDictationMutation,
   useGetMetabotConversationQuery,

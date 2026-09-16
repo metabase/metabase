@@ -314,6 +314,16 @@
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
+(mu/defn recent-messages
+  "The latest `limit` live messages, newest first."
+  [conversation-id :- :string
+   limit :- ms/PositiveInt]
+  (t2/select :model/MetabotMessage
+             :conversation_id conversation-id
+             :deleted_at nil
+             {:order-by [[:created_at :desc] [:id :desc]]
+              :limit limit}))
+
 (mu/defn insert-message-returning-pk!
   "Insert `message` and return its ID."
   [message :- ::metabot.schema/metabot-message.update]

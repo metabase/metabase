@@ -469,3 +469,11 @@ export interface MetabotDictationAvailability {
 export interface MetabotDictationResponse {
   text: string;
 }
+export type MetabotFollowUpPromptsRequest = {
+  conversation_id: string;
+  message_id: string;
+};
+
+export type MetabotFollowUpPromptsResponse = {
+  prompts: string[];
+};

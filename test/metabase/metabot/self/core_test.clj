@@ -1,10 +1,30 @@
 (ns metabase.metabot.self.core-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.metabot.self.core :as core]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel search-tool-output-test
+  (let [item {:id 12 :type "question" :name "Revenue and orders over time"
+              :description nil :database_id 1 :database_name "Sample Database" :database_engine :sqlite
+              :portable_entity_id "evd6f3MoDUtTNsoXHwu0T" :display "combo"
+              :verified false :official false :curated false
+              :created_at (t/offset-date-time "2024-07-17T17:04:40Z")
+              :updated_at (t/offset-date-time "2024-07-17T17:04:40Z")
+              :collection {:id 2 :name "Examples" :authority_level nil}}
+        request (fn [result]
+                  {:input [{:type :tool-output :function "search" :id "call-1"
+                            :result {:output "Search results"
+                                     :structured-output {:result-type :search :data [result] :total_count 1}
+                                     :data-parts [{:type :data :data-type "search_results"
+                                                   :data {:total_count 1 :results [result]}}]}}]})]
+    (is (nil? (mr/explain core/LLMRequestOpts (request item))))
+    (is (mr/validate core/LLMRequestOpts
+                     (request (assoc item :type "metric" :base_table_id 1 :base_table_name "orders"
+                                     :base_table_schema nil :base_table_portable_fk ["Sample Database" nil "orders"]))))))
 
 (deftest ^:parallel tool-input-part-arguments-test
   (let [part-schema @#'core/AISDKPart

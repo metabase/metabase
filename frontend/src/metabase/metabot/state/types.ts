@@ -173,6 +173,7 @@ export interface MetabotConversationState {
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   hasMessagedInSession: boolean;
+  completedResponseId?: string;
   messages: MetabotMessage[];
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
