@@ -542,6 +542,54 @@
     (testing "and a function whose tails are not literals says nothing about its keys"
       (is (= "(:shape/opaque)" (get by-row 11))))))
 
+(deftest shape-through-apply-and-thread-last-test
+  (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+              :triggers '#{t/sink}
+              :detect (fn [{:keys [node] :as ctx}]
+                        {:message (pr-str (sort (taint/shape ctx (ast/arg node 0))))})}
+        ;; the permission-graph pattern: rows built as literals under `map`/`keep` in a `->>`, concatenated,
+        ;; returned under a key from two branches, the branches merged with `apply merge-with`, the key
+        ;; destructured off the result and handed to the write
+        by-row (into {} (map (juxt :row :message))
+                     (engine/analyze {:paths [(temp! "(ns t (:require [metabase.api.macros :as api.macros] [toucan2.core :as t2]))
+(defn sink [x] x)
+(defn- merge-changes [& changes] (apply merge-with (fn [a b] (distinct (concat a b))) changes))
+(defn- new-rows [group-id table-perms]
+  (map (fn [[table value]] (let [{:keys [id db_id]} table] {:group_id group-id :table_id id :db_id db_id :value value})) table-perms))
+(defn- existing [db-id ids]
+  (let [others (->> (t2/select :model/Table :db_id db-id)
+                    (remove #(contains? ids (:id %)))
+                    (keep (fn [table] {:group_id 1 :table_id (:id table) :db_id db-id :value :no})))]
+    {:to-delete [db-id] :to-insert (concat others (new-rows 1 {}))}))
+(defn- fresh [group-id table-perms]
+  {:to-delete [] :to-insert (new-rows group-id table-perms)})
+(defn- build [group-id db-id table-perms]
+  (if (empty? table-perms)
+    {:to-delete [] :to-insert []}
+    (apply merge-changes
+           (if-let [db-perm (t2/select-one :model/DataPermissions :db_id db-id)]
+             (existing db-id #{})
+             (fresh group-id table-perms))
+           [(fresh group-id table-perms)])))
+(defn- insert! [rows] (sink rows))
+(defn- applied! [m] (sink m))
+(defn- threaded! [rows] (sink rows))
+(defn- threaded-opaque! [rows] (sink rows))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body]
+  (let [{:keys [to-insert]} (build id id (:table-perms body))]
+    (insert! to-insert))
+  (applied! (apply merge-changes [{:a 1}] [(fresh id {})]))
+  (threaded! (->> [{:id 1}] (filter :id) (map (fn [t] {:table_id (:id t)}))))
+  (threaded-opaque! (->> [{:id 1}] (map (fn [t] (:row t))))))")] :rules [rule]}))]
+    (testing "a key destructured off a function whose tails are a literal and an `apply` of a merge helper over the
+              branches of an `if-let`: keyed, since every path builds its rows as literals"
+      (is (= "(:shape/keyed)" (get by-row 21))))
+    (testing "`(apply merge-with f xs)` and `(apply f xs)` are the merge, and the call, over the elements"
+      (is (= "(:shape/keyed)" (get by-row 22))))
+    (testing "`->>` has its last step's shape: a `map` over a literal body is rows, over an accessor is not"
+      (is (= "(:shape/keyed)" (get by-row 23)))
+      (is (= "(:shape/opaque)" (get by-row 24))))))
+
 (deftest schema-shape-test
   (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
               :triggers '#{t/sink}
