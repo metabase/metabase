@@ -86,14 +86,16 @@ OAuth protected resource metadata is available at:
 
 On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
 unticked. Only the scopes the user ticks are granted. A scope left unticked isn't remembered, so the next 403 steps up
-for it again. Each challenge's `error_description` ends with a note that the permission starts unticked and the user
-must tick it.
+for it again. Each challenge's `error_description` ends with a note that the user must tick the permission on the
+consent screen.
 
 Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
 `instructions` explain scope failures to the model too. For an OAuth token, they also list which v2 scopes the
 connection holds and which it lacks, by consent-screen label, so the model can ask the user before a tool needs a
-missing one. The instructions are built per `initialize` from the calling token's scopes and never cached. A cookie
-session gets no list.
+missing one. They also warn that a permission the connection had can be taken away mid-session, when the user or
+another window of the same app unticks it, so the model doesn't read a newly failing tool as an expired login. The
+instructions are built per `initialize` from the calling token's scopes and never cached. A cookie session gets no
+list.
 
 ## Available tools
 

@@ -143,6 +143,10 @@
         (testing "and not to send the user to reconnect first: with no refused call, reconnecting asks for the baseline
                   only, so the permission never appears on the consent screen"
           (is (re-find #"(?i)reconnecting before a refused call won't offer it" instructions)))
+        (testing "and that a permission this connection had can be removed mid-session, so a tool that worked earlier
+                  failing now is not an expired login either"
+          (is (re-find #"(?i)taken away mid-session" instructions))
+          (is (re-find #"(?i)the user or another window unticked it" instructions)))
         (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
       (testing "the retry waits until the user has reconnected"
         (is (re-find #"(?i)retry once they have reconnected" instructions)))
@@ -824,16 +828,19 @@
 
 (def ^:private unticked-note
   "What every `insufficient_scope` `error_description` ends with."
-  ". On the consent screen this permission starts unticked; the user must tick it.")
+  ". The user must tick this permission on the consent screen.")
 
 (deftest ^:parallel step-up-description-test
   (testing "GHY-4555: a step-up opens a consent screen where the missing permission is unticked, so a client that shows
-            the error_description tells the user to tick it; the text stays inside RFC 6750's error_description
-            characters (printable ASCII without quote or backslash)"
+            the error_description tells the user to tick it; the note covers a permission that was never granted and one
+            that was unticked and removed, so it does not claim the permission starts unticked; the text stays inside
+            RFC 6750's error_description characters (printable ASCII without quote or backslash)"
     (is (= (str "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)"
                 unticked-note)
            (#'v2.api/step-up-description
             "execute_sql requires agent:sql:run (Write and run its own raw SQL on your connected databases)")))
+    (is (not (str/includes? unticked-note "starts unticked"))
+        "a removed permission does not start unticked, it was ticked and then cleared")
     (is (re-matches #"[\x20\x21\x23-\x5B\x5D-\x7E]+" unticked-note))))
 
 (deftest scope-denial-is-a-403-insufficient-scope-challenge-test
@@ -1170,7 +1177,8 @@
        "this connection lacks (a call failed, or the list below says so), tell the user which one (each tool's "
        "description starts with the permission it requires) and why, and ask whether to grant it. If they agree, make "
        "the call anyway: the refusal is what makes their client request it, and reconnecting before a refused call "
-       "won't offer it. Some clients then open the consent screen "
+       "won't offer it. A permission can also be taken away mid-session, if the user or another window unticked it. "
+       "Some clients then open the consent screen "
        "themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; Codex: "
        "`codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; tell them to "
        "tick it. Retry once they have reconnected."))

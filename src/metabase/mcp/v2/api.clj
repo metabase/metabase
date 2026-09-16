@@ -56,10 +56,11 @@
 
 (defn- step-up-description
   "The `insufficient_scope` challenge's `error_description`: `description`, which names the missing permission, then a
-   note that the consent screen shows it unticked."
+   note telling the user to tick it on the consent screen."
   [description]
-  ;; Printable ASCII without `\"` or `\\`: the characters RFC 6750 allows in `error_description`.
-  (str description ". On the consent screen this permission starts unticked; the user must tick it."))
+  ;; The note covers a permission never granted and one the user unticked mid-session, so it doesn't say the
+  ;; permission starts unticked. Printable ASCII without `\"` or `\\`: what RFC 6750 allows in `error_description`.
+  (str description ". The user must tick this permission on the consent screen."))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
@@ -176,7 +177,8 @@
        "this connection lacks (a call failed, or the list below says so), tell the user which one (each tool's "
        "description starts with the permission it requires) and why, and ask whether to grant it. If they agree, make "
        "the call anyway: the refusal is what makes their client request it, and reconnecting before a refused call "
-       "won't offer it. Some clients then open the consent screen "
+       "won't offer it. A permission can also be taken away mid-session, if the user or another window unticked it. "
+       "Some clients then open the consent screen "
        "themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; Codex: "
        "`codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; tell them to "
        "tick it. Retry once they have reconnected."))
