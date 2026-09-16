@@ -101,8 +101,14 @@
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms
             *param-values-query*
-            (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-              (throw (query-perms/perms-exception required-perms)))
+            (do
+              ;; The value-source Card itself is read-checked by the caller, but its query may nest other Cards; the
+              ;; user must be able to read every one of those too, just like when running the Card normally.
+              ;; Otherwise a readable wrapper Card launders the values of a Card the user cannot read.
+              (doseq [card-id source-card-ids]
+                (query-perms/check-card-read-perms database-id card-id))
+              (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+                (throw (query-perms/perms-exception required-perms))))
 
             ;; Ad-hoc query (not a saved question)
             :else
