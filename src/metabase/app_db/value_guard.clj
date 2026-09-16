@@ -12,11 +12,14 @@
   the inline marker into that pair at the compile step, so a caller writes the value where it
   belongs and never keeps the two in sync.
 
-  Put a marker in a value slot. Written anywhere else -- a table or column position, say -- it is
-  rewritten into a `[:param :k]` that HoneySQL formats as an identifier and never binds, so the
-  value is dropped and the generated key appears in the SQL. Nothing here catches that: HoneySQL
-  gives no signal for a param it did not consume, and which positions bind is a decision it makes
-  per operator, so it cannot be inferred from the query alone."
+  Put a marker in a value slot. Written anywhere else it is rewritten into a `[:param :k]` that
+  HoneySQL formats as an identifier rather than binding, so the value is dropped and the generated
+  key lands in the statement:
+
+    {:from [[:auto/param \"core_user\"]]}   ;; => [\"SELECT * FROM param AS p33yf8xpiqaxw\"]
+
+  Nothing here catches that: HoneySQL gives no signal for a param it did not consume, and which
+  positions bind is a decision it makes per operator, so it cannot be inferred from the query."
   (:require
    [clojure.walk :as walk]
    [methodical.core :as methodical]
@@ -50,6 +53,10 @@
   (and (marker-form? x)
        (vector? x)
        (contains? #{2 3} (count x))))
+
+(def ^:private comparison-operators
+  "Operators a kv-arg value may itself be, e.g. `:locale [:in [...]]`."
+  #{:= :not= :< :> :<= :>= :in :not-in :like :not-like :ilike :not-ilike :between :is :is-not})
 
 (defn- kv-arg-marker?
   "Whether `x` is the `[:auto/param column v]` form Toucan builds from a marked kv-arg."
@@ -85,10 +92,7 @@
   `[rewritten-query params-map]`.
 
   Does not descend into a marker's payload: whatever a caller marked is the value, even when that
-  value is itself shaped like a marker.
-
-  Keys are gensymed rather than sequential so that a `[:param :k]` arriving from request data
-  cannot name a slot this query minted."
+  value is itself shaped like a marker."
   [query]
   (let [params (volatile! {})
         walked (walk/prewalk
@@ -100,6 +104,14 @@
                       (check-well-formed! x)
                       (let [kv? (kv-arg-marker? x)
                             v   (if kv? (nth x 2) (second x))
+                            _   (when (and kv? (sequential? v) (comparison-operators (first v)))
+                                  ;; A kv-arg value may be an operator form -- `:locale [:in [...]]`.
+                                  ;; Rewriting that as `[:= column [:param k]]` would bind the form
+                                  ;; itself and change the comparison, so the marker goes inside it.
+                                  (throw (ex-info (str "Marked a whole operator form: " (pr-str x)
+                                                       ". Put the marker on the value instead, e.g. "
+                                                       "[" (first v) " [:auto/param ...]].")
+                                                  {:type ::marked-operator-form, :form x})))
                             ;; A marked kv-arg has to come back out as a comparison, since Toucan
                             ;; folded the column into the marker rather than building one.
                             wrap (if kv? #(vector := (second x) %) identity)]

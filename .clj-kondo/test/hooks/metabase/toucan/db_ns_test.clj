@@ -128,3 +128,8 @@
   (testing "a select's values are still flagged"
     (is (=? [{:type :metabase/unmarked-sql-value}]
             (lint-query-call '(t2/select :model/X :key k) 'metabase.foo.db)))))
+
+(deftest ^:parallel operator-arity-test
+  (testing "a value operator with an unexpected arity still has its args examined"
+    (is (seq (lint-query-call '(t2/select :model/X {:where [:= :a b c]}) 'metabase.foo.db)))
+    (is (seq (lint-query-call '(t2/select :model/X {:where [:between :a lo hi]}) 'metabase.foo.db)))))

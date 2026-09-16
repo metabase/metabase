@@ -31,7 +31,7 @@
 
 (def ^:private value-operators
   "Operators whose second argument is a value rather than a column."
-  '#{= not= < > <= >= like not-like ilike not-ilike in not-in})
+  '#{= not= < > <= >= like not-like ilike not-ilike in not-in between})
 
 (defn- marked?
   "Whether `node` is an `[:auto/param v]` marker."
@@ -54,9 +54,10 @@
         (contains? #{:and :or :not} op)
         (mapcat value-nodes args)
 
+        ;; `[:= col v]`, `[:in col vs]`, `[:between col lo hi]` -- the first argument is the
+        ;; column and the rest are values, whatever the arity.
         (and (keyword? op) (contains? value-operators (symbol (name op))))
-        (when (= 2 (count args))
-          [(second args)])
+        (rest args)
 
         :else
         (mapcat value-nodes (:children node))))
@@ -74,7 +75,7 @@
   "Whether `node` is a query call whose values are filtered on rather than written."
   [node]
   (let [f (some-> (first (:children node)) hooks/sexpr)]
-    (not (contains? write-fns (symbol (name f))))))
+    (not (contains? write-fns (some-> f name symbol)))))
 
 (defn- kv-arg-values
   "The value nodes of the `:column value` pairs a query call takes after its model.
