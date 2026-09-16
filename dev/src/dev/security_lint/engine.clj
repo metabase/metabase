@@ -330,14 +330,36 @@
                              acc))
                          {}
                          (:var-usages analysis))
-     ;; {filename {[row col] [{:pos :fq} ...]}}: at every usage of a parameter, the calls that handed it a map
-     ;; whose keys are not the code's. A rule about what a map sets reports at the call rather than at the write.
-     :feeders    (reduce (fn [acc {:keys [id filename row col]}]
-                           (if-let [fs (get shape-feeders id)]
-                             (update acc filename (fnil assoc {}) [row col] fs)
-                             acc))
-                         {}
-                         (:local-usages analysis))
+     ;; {filename {[row col] [{:pos :fq :origins} ...]}}: at every usage of a parameter, the calls that handed it
+     ;; a map whose keys are not the code's, each with the boundaries the values *it* handed over crossed. A rule
+     ;; about what a map sets reports at the call rather than at the write, and grades each call by its own
+     ;; argument: the write's parameter carries every caller's values at once, and one caller's User row is
+     ;; not another caller's problem.
+     :feeders    (let [usages-by-file (group-by :filename (:local-usages analysis))
+                       origins-by-file (group-by :filename origins)
+                       returns-by-file (group-by :filename return-sites)
+                       region-origins (fn [{:keys [filename] :as region}]
+                                        (into #{}
+                                              (concat (for [{:keys [id row col]} (get usages-by-file filename)
+                                                            :when (cg/within? region row col)
+                                                            l (get tainted id)]
+                                                        l)
+                                                      (for [{:keys [row col label]} (get origins-by-file filename)
+                                                            :when (cg/within? region row col)
+                                                            l (if (sequential? label) label [label])]
+                                                        l)
+                                                      (for [{:keys [row col labels]} (get returns-by-file filename)
+                                                            :when (cg/within? region row col)
+                                                            l labels]
+                                                        l))))
+                       with-origins (memoize (fn [f] (cond-> (dissoc f :region)
+                                                       (:region f) (assoc :origins (taint/boundary-origins (region-origins (:region f)))))))]
+                   (reduce (fn [acc {:keys [id filename row col]}]
+                             (if-let [fs (get shape-feeders id)]
+                               (update acc filename (fnil assoc {}) [row col] (mapv with-origins fs))
+                               acc))
+                           {}
+                           (:local-usages analysis)))
      :reach      reach
      :ns-by-file ns-by-file}))
 

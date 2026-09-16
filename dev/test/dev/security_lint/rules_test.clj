@@ -844,7 +844,23 @@
 (defn b! [rows] (a! rows))
 (defn c! [rows] (b! rows))
 (defn from-warehouse! [driver db id] (c! (driver/describe-table driver db id)))")]
-        (is (= [6] (map :row fs)))))))
+        (is (= [6] (map :row fs)))))
+    (testing "each call is graded by what *it* hands over, not by everything every caller of the write hands over:
+              a keyed literal built from a User row is no finding, and does not make the round-trip of an
+              AuthIdentity row into its own row one either"
+      (let [fs (dal "(ns t (:require [toucan2.core :as t2] [metabase.driver :as driver]))
+(defn update-auth-identity! [id changes] (t2/update! :model/AuthIdentity id changes))
+(defn- consumed [ai] (assoc-in ai [:credentials :consumed_at] 1))
+(defn create! [user-id]
+  (let [user (t2/select-one :model/User user-id)]
+    (update-auth-identity! 1 {:user_id user-id :provider_id (:email user)})))
+(defn consume! [user-id]
+  (let [ai (t2/select-one :model/AuthIdentity :user_id user-id)]
+    (update-auth-identity! (:id ai) (consumed ai))))
+(defn sync! [driver db id]
+  (update-auth-identity! id (driver/describe-table driver db id)))")]
+        (is (= [11] (map :row fs)) "only the call handing over warehouse metadata")
+        (is (= #{:warehouse} (:origins (first fs))) "with that call's own origins")))))
 
 (deftest setting-written-from-boundary-test
   (let [id :metabase-security-lint/setting-written-from-boundary]
