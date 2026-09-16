@@ -4,7 +4,6 @@
    [malli.core :as mc]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as common]
    [metabase.types.core :as types]
    [metabase.util :as u]
@@ -44,7 +43,7 @@
                      [false [:ref ::base-type]]]
   "Determine the type of an MBQL expression. Returns either a type keyword, or if the type is ambiguous, a set of
   possible types."
-  [expr]
+  [expr :- [:ref ::common/clause-arg]]
   (or
    ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of-method]] methods
    ;; and return that type directly. Ignore everything else! Life hack!
@@ -260,7 +259,7 @@
     {:error/message "expressions must have unique names"}
     (fn [expressions]
       (or (empty? expressions)
-          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
+          (apply distinct? (map (fn [[_tag opts]] (:lib/expression-name opts)) expressions))))]])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

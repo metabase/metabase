@@ -86,18 +86,12 @@
 ;;; of the kooky extra info we add here... none of it should affect calculated metadata
 
 (mu/defn- returned-columns :- :metabase.lib.metadata.calculation/returned-columns
-  [query :- [:merge
-             ::lib.schema/query
-             [:map
-              [::original ::lib.schema/query]]]
+  [query :- ::lib.schema/query
    path  :- ::lib.walk/path]
   (lib.walk/apply-f-for-stage-at-path lib/returned-columns (::original query) path))
 
 (mu/defn- resolve-field-ref :- :metabase.lib.metadata.calculation/visible-column
-  [query      :- [:merge
-                  ::lib.schema/query
-                  [:map
-                   [::original ::lib.schema/query]]]
+  [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/path
    field-ref  :- :mbql.clause/field]
   (u/prog1 (lib.walk/apply-f-for-stage-at-path lib/metadata (::original query) stage-path field-ref)
@@ -456,7 +450,7 @@
 (mr/def ::options
   [:map
    {:closed true}
-   [:globally-unique-join-aliases? {:default false} :any]])
+   [:globally-unique-join-aliases? {:default false} :boolean]])
 
 (mu/defn- escape-join-aliases :- ::lib.schema/query
   [query                                                                              :- ::lib.schema/query
@@ -532,10 +526,10 @@
 
   If this is a nested column, the path to the column, e.g. for `grandparent.parent.child` this will be `[\"grandparent\"
   \"child\"]."
-  ([query]
+  ([query :- [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query :metabase.legacy-mbql.schema/MBQLInnerQuery]]
    (add-alias-info query nil))
 
-  ([query   :- :map
+  ([query   :- [:or ::lib.schema/query :metabase.legacy-mbql.schema/Query :metabase.legacy-mbql.schema/MBQLInnerQuery]
     options :- [:maybe ::options]]
    (cond
      ;; MBQL 5 query

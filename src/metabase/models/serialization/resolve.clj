@@ -10,6 +10,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
@@ -210,9 +211,13 @@
   ([resolver exported]
    (mbql-fully-qualified-names->ids* resolver exported)))
 
+(mr/def ::mbql-node
+  "Any node reached while walking an MBQL form being imported, which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+
 (mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
-  [form]
+  [form :- [:ref ::mbql-node]]
   (when (and (vector? form)
              (#{:field :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))

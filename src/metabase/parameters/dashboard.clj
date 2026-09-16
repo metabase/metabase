@@ -20,7 +20,8 @@
   1000)
 
 (mu/defn- param->fields
-  [param :- ::parameters.schema/resolved-parameter & {:keys [op-override]}]
+  [param :- ::parameters.schema/resolved-parameter
+   & {:keys [op-override]} :- [:maybe [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]]
   (let [op      (or op-override (params/param-type->op (:type param)))
         options (or (:options param) (params/param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -29,8 +30,8 @@
        :options  options})))
 
 (mu/defn ^:private chain-filter-constraints :- ::chain-filter/constraints
-  [dashboard                   :- :map
-   constraint-param-key->value :- [:map-of string? any?]]
+  [dashboard                   :- :metabase.dashboards.schema/dashboard
+   constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
              :when             param
@@ -76,12 +77,14 @@
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."
-  ([dashboard param-key constraint-param-key->value]
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- :map
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
     param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- [:map-of string? any?]
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard   (cond-> dashboard
                        (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
@@ -130,9 +133,9 @@
   1000th-earliest rather than the column's max. Extremes merge across a multi-field parameter exactly
   (the min of mins bounds every field, as does the max of maxes); the distinct count cannot, and is
   dropped rather than guessed at."
-  [dashboard                   :- :map
+  [dashboard                   :- :metabase.dashboards.schema/dashboard
    param-key                   :- ms/NonBlankString
-   constraint-param-key->value :- [:map-of string? any?]]
+   constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
   (let [dashboard   (cond-> dashboard
                       (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
         constraints (chain-filter-constraints dashboard constraint-param-key->value)
@@ -159,12 +162,14 @@
   - static-list: user defined values list
   - card: values is result of running a card
   - nil: chain-filter"
-  ([dashboard param-key constraint-param-key->value]
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
    (param-values dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- :map
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
     param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- [:map-of string? any?]
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]

@@ -35,6 +35,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -53,7 +54,22 @@
   [:tuple
    [:enum :field :expression :aggregation]
    [:and
-    :map
+    [:map {:closed true}
+     [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:database-type   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:name            {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:case-sensitive  {:optional true} :boolean]
+     [:include-current {:optional true} :boolean]
+     [:default         {:optional true} [:ref :metabase.lib.schema.expression/expression]]
+     [:join-alias      {:optional true} [:ref ::lib.schema.join/alias]]
+     [:source-field    {:optional true} ::lib.schema.id/field]
+     [:source-field-name       {:optional true} ::lib.schema.common/non-blank-string]
+     [:source-field-join-alias {:optional true} ::lib.schema.common/non-blank-string]
+     [:temporal-unit           {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+     [:inherited-temporal-unit {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+     [:original-temporal-unit  {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+     [:binning                 {:optional true} [:ref :metabase.lib.schema.binning/binning]]]
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
      (complement (some-fn :base-type :effective-type :lib/uuid))]]
@@ -72,7 +88,7 @@
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
-  [:map
+  [:map {:closed true}
    [:id                        ::lib.schema.id/dimension]              ; unique ID for the remapping
    [:name                      ::lib.schema.common/non-blank-string]   ; display name for the remapping
    [:field-id                  ::lib.schema.id/field]                  ; ID of the Field being remapped
@@ -104,15 +120,18 @@
 
 (mr/def ::remap-info
   [:and
-   [:map
+   [:map {:closed true}
     [:original-field-clause :mbql.clause/field]
     [:new-field-clause      [:and
                              :mbql.clause/field
                              [:tuple
                               [:= :field]
-                              [:map
-                               [::new-field-dimension-id ::lib.schema.id/dimension]]
-                              :any]]]
+                              [:map {:closed true}
+                               [::new-field-dimension-id ::lib.schema.id/dimension]
+                               [:lib/uuid      {:optional true} ::lib.schema.common/uuid]
+                               [:source-field  {:optional true} ::lib.schema.id/field]
+                               [:join-alias    {:optional true} [:ref ::lib.schema.join/alias]]]
+                              ::lib.schema.id/field]]]
     [:dimension             ::external-remapping]]
    [:fn
     {:error/message "the new field clause should have the same join alias as the original field clause"}
@@ -373,7 +392,7 @@
 ;;;; Post-processing
 
 (mr/def ::internal-remapping-info
-  [:map
+  [:map {:closed true}
    ;; index of original column
    [:col-index      :int]
    ;; names
@@ -381,26 +400,26 @@
    ;; I'm not convinced this works if there's already a column with the same name in the results.
    [:to              ::lib.schema.common/non-blank-string]
    ;; map of original value -> human readable value
-   [:value->readable :map]
+   [:value->readable [:map-of ::lib.schema.literal/literal ::lib.schema.literal/literal]]
    ;; Info about the new column we will tack on to end of `:cols`
-   [:new-column      :map]])
+   [:new-column      ::qp.schema/result-metadata.column]])
 
 (mr/def ::internal-columns-info
-  [:map
+  [:map {:closed true}
    [:internal-only-dims [:maybe [:sequential ::internal-remapping-info]]]
    ;; this is just (map :new-column internal-only-dims)
-   [:internal-only-cols [:maybe [:sequential :map]]]])
+   [:internal-only-cols [:maybe ::qp.schema/result-metadata.columns]]])
 
 ;;;; Metadata
 
 (mu/defn- merge-metadata-for-internally-remapped-column :- [:maybe [:sequential :map]]
   "If one of the internal remapped columns says it's remapped from this column, merge in the `:remapped_to` info."
-  [columns                :- [:maybe [:sequential :map]]
+  [columns                :- [:maybe ::qp.schema/result-metadata.columns]
    {:keys [col-index to]} :- ::internal-remapping-info]
   (update (vec columns) col-index assoc :remapped_to to))
 
 (mu/defn- merge-metadata-for-internal-remaps :- [:maybe [:sequential :map]]
-  [columns                      :- [:maybe [:sequential :map]]
+  [columns                      :- [:maybe ::qp.schema/result-metadata.columns]
    {:keys [internal-only-dims]} :- [:maybe ::internal-columns-info]]
   (reduce
    merge-metadata-for-internally-remapped-column
@@ -431,9 +450,9 @@
 ;;     :name          "NAME"
 ;;     :display_name  "Sender ID"}
 (mu/defn- merge-metadata-for-externally-remapped-column* :- :map
-  [columns
+  [columns :- [:maybe ::qp.schema/result-metadata.columns]
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
-    :as                                          column} :- :map
+    :as                                          column} :- ::qp.schema/result-metadata.column
    {dimension-id      :id
     from-name         :field-name
     from-display-name :name
@@ -477,13 +496,13 @@
       (log/trace "Added remapping metadata to column"))))
 
 (mu/defn- merge-metadata-for-externally-remapped-column :- [:maybe [:sequential :map]]
-  [columns :- [:maybe [:sequential :map]] dimension :- ::external-remapping]
+  [columns :- [:maybe ::qp.schema/result-metadata.columns] dimension :- ::external-remapping]
   (log/tracef "Merging metadata for external dimension %s" (:id dimension))
   (mapv #(merge-metadata-for-externally-remapped-column* columns % dimension)
         columns))
 
 (mu/defn- merge-metadata-for-external-remaps :- [:maybe [:sequential :map]]
-  [columns :- [:maybe [:sequential :map]] remapping-dimensions :- [:maybe [:sequential ::external-remapping]]]
+  [columns :- [:maybe ::qp.schema/result-metadata.columns] remapping-dimensions :- [:maybe [:sequential ::external-remapping]]]
   (reduce
    merge-metadata-for-externally-remapped-column
    columns
@@ -494,7 +513,7 @@
   To get this critical information, this uses the `remapping-dimensions` info saved by the pre-processing portion of
   this middleware for external remappings, and the internal-only remapped columns handled by post-processing
   middleware below for internal columns."
-  [columns              :- [:maybe [:sequential :map]]
+  [columns              :- [:maybe ::qp.schema/result-metadata.columns]
    remapping-dimensions :- [:maybe [:sequential ::external-remapping]]
    internal-cols-info   :- [:maybe ::internal-columns-info]]
   (-> columns
@@ -601,8 +620,7 @@
 (mu/defn- add-remapped-to-and-from-metadata
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
-  [metadata                                             :- [:map
-                                                            [:cols [:maybe [:sequential :map]]]]
+  [metadata                                             :- ::qp.schema/metadata
    remapping-dimensions                                 :- [:maybe [:sequential ::external-remapping]]
    {:keys [internal-only-cols], :as internal-cols-info} :- [:maybe ::internal-columns-info]]
   (update metadata :cols (fn [cols]
@@ -615,7 +633,8 @@
   added and each row flowing through needs to include the remapped data for the new column. For external remappings
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [{:keys [internal-only-dims]} :- ::internal-columns-info rf]
+  [{:keys [internal-only-dims]} :- ::internal-columns-info
+   rf                           :- fn?]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
     ((map remap-fn) rf)
     rf))
@@ -623,7 +642,7 @@
 (mu/defn remap-results :- ::qp.schema/rff
   "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
   results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
-  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- :map
+  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- ::lib.schema/query
    rff                                                                           :- ::qp.schema/rff]
   (if disable-remaps?
     rff

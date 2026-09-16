@@ -1,11 +1,14 @@
 (ns metabase.notification.payload.core
   (:require
    [clojure.walk :as w]
+   [malli.util :as mut]
    [metabase.appearance.core :as appearance]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]
@@ -24,50 +27,74 @@
   cleanup!
   cleanable?])
 
+(def ^:private RowTimestamp
+  "A `created_at`/`updated_at` column: a `java.time` value on the way out, and -- because clients echo the
+  notification they were handed back at us on update -- the ISO string it was encoded as on the way back in."
+  [:maybe [:or ms/TemporalInstant ms/TemporalString]])
+
+(def ^:private notification-common-entries
+  "Entries every notification map has, whatever its `:payload_type`."
+  [[:payload_type                   (into [:enum] models.notification/notification-types)]
+   ;; allow unsaved notification to be sent
+   [:id                      {:optional true} [:maybe ms/PositiveInt]]
+   [:creator_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:active                  {:optional true} :boolean]
+   [:created_at              {:optional true} RowTimestamp]
+   [:updated_at              {:optional true} RowTimestamp]
+   [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
+   ;;  the subscription that triggered this notification
+   [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]
+   [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
+   [:handlers                {:optional true}
+    [:maybe [:sequential
+             [:merge
+              ::models.notification/NotificationHandler
+              [:map {:closed true}
+               [:channel         {:optional true} [:maybe ::models.channel/Channel]]
+               [:template        {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+               [:recipients      {:optional true} [:sequential ::models.notification/NotificationRecipient]]
+               [:attachment_only {:optional true} [:maybe :boolean]]
+               [:include_pdf     {:optional true} [:maybe :boolean]]]]]]]
+   [:payload_id              {:optional true} [:maybe ms/PositiveInt]]])
+
+(def ^:private NotificationBase
+  "The common notification entries as a closed map, for `[:notification/system-event]` and the other payload types."
+  (into [:map {:closed true}] notification-common-entries))
+
 (mr/def ::Notification
   "Schema for the notification."
-  ;; TODO: how do we make this schema closed after :merge?
-  [:merge #_{:closed true}
-   [:map
-    [:payload_type                   (into [:enum] models.notification/notification-types)]
-    ;; allow unsaved notification to be sent
-    [:id                      {:optional true} [:maybe ms/PositiveInt]]
-    [:active                  {:optional true} :boolean]
-    [:created_at              {:optional true} :any]
-    [:updated_at              {:optional true} :any]
-    [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
-    ;;  the subscription that triggered this notification
-    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
-   [:multi {:dispatch :payload_type}
-    ;; system event is a bit special in that part of the payload comes from the event itself
-    [:notification/system-event
-     [:map
-      [:payload
-       [:map {:closed true}
-        ;; TODO: event-info schema for each event type
-        [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
-        [:event_info  [:maybe :map]]]]]]
-    [:notification/card
-     [:map
-      [:payload    {:optional true} ::models.notification/NotificationCard]
-      [:creator_id                  ms/PositiveInt]]]
-    [:notification/dashboard
-     [:map
-      [:creator_id ms/PositiveInt]
-      ;; replacement of pulse
-      [:dashboard_subscription #_{:optional true}
-       [:map
-        [:dashboard_id ms/PositiveInt]
-        [:parameters {:optional true} [:maybe [:sequential :map]]]
-        [:dashboard_subscription_dashcards {:optional true}
-         [:sequential [:map
-                       [:card_id                        [:maybe ms/PositiveInt]]
-                       [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
-                       [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
-                       [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
-                       [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
-    ;; for testing only
-    [:notification/testing :map]]])
+  [:multi {:dispatch :payload_type}
+   ;; system event is a bit special in that part of the payload comes from the event itself
+   [:notification/system-event
+    (mut/merge NotificationBase [:map {:closed true} [:payload ::models.notification/SystemEventPayload]])]
+   [:notification/card
+    (mut/merge NotificationBase [:map {:closed true}
+                                 [:payload    {:optional true} ::models.notification/NotificationCard]
+                                 [:creator_id                  ms/PositiveInt]])]
+   [:notification/dashboard
+    (mut/merge NotificationBase
+               [:map {:closed true}
+                [:creator_id ms/PositiveInt]
+                ;; replacement of pulse
+                [:dashboard_subscription
+                 [:map {:closed true}
+                  [:id             {:optional true} [:maybe ms/PositiveInt]]
+                  [:dashboard_id ms/PositiveInt]
+                  [:disable_links  {:optional true} [:maybe :boolean]]
+                  [:skip_if_empty  {:optional true} :boolean]
+                  [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-optional-type]]]
+                  [:dashboard_subscription_dashcards {:optional true}
+                   [:sequential [:map {:closed true}
+                                 [:card_id                            [:maybe ms/PositiveInt]]
+                                 [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]
+                                 [:include_csv       {:optional true} [:maybe ms/BooleanValue]]
+                                 [:include_xls       {:optional true} [:maybe ms/BooleanValue]]
+                                 [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
+                                 [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]]]]]]])]
+   ;; for testing only
+   [:notification/testing
+    (mut/merge NotificationBase [:map {:closed true}
+                                 [:payload {:optional true} [:maybe ::models.notification/SystemEventPayload]]])]])
 
 (mr/def ::NotificationPayload
   "Schema for the notification payload."

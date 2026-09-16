@@ -83,7 +83,12 @@
         ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
         ;; the `before-insert` hook as a safety net for any code path that inserts QueryExecution directly (where
         ;; dynamic vars would still be bound).
-        execution-info' (add-running-time (analytics.core/include-sdk-info execution-info))]
+        json-query      (:json_query execution-info)
+        execution-info' (-> execution-info
+                            (dissoc :json_query)
+                            analytics.core/include-sdk-info
+                            add-running-time
+                            (cond-> json-query (assoc :json_query json-query)))]
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))

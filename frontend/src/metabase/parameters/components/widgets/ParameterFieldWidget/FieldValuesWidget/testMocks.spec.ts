@@ -1,6 +1,6 @@
+import { createMockMetadata } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
 import {
   createMockField,
   createMockFieldDimension,
@@ -10,7 +10,6 @@ import {
   PRODUCTS,
   REVIEWS_ID,
   createOrdersTable,
-  createPeoplePasswordField,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
@@ -130,26 +129,4 @@ export const state = createMockState({
   }),
 });
 
-export const metadata = getMetadata(state);
-
-const stateWithSearchValuesField = createMockState({
-  entities: createMockEntitiesState({
-    databases: [
-      createSampleDatabase({
-        tables: [
-          createPeopleTable({
-            fields: [
-              createPeoplePasswordField({
-                has_field_values: "search",
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  }),
-});
-
-export const metadataWithSearchValuesField = getMetadata(
-  stateWithSearchValuesField,
-);
+export const metadata = createMockMetadata({ databases: [database] });

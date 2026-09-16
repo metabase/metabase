@@ -8,6 +8,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.version.core :as version]
    [toucan2.core :as t2])
   (:import
@@ -57,9 +58,188 @@
    :snowplow/ai_service_event "1-0-0"
    :snowplow/data_complexity  "1-0-0"})
 
-(def ^:private SnowplowSchema
+(def SnowplowSchema
   "Malli enum for valid Snowplow schemas"
   (into [:enum] (keys schema->version)))
+
+(def ^:private no-payload-event-data
+  "Shape for `SnowplowSchema` values with no caller in this codebase today."
+  [:map {:closed true}
+   [:event {:optional true} :keyword]])
+
+(def ^:private account-event-data
+  [:map {:closed true}
+   [:event {:optional true} :keyword]])
+
+(def ^:private invite-event-data
+  [:map {:closed true}
+   [:event           {:optional true} :keyword]
+   [:invited-user-id {:optional true} ms/PositiveInt]
+   [:source          {:optional true} [:or :keyword :string]]])
+
+(def ^:private dashboard-event-data
+  [:map {:closed true}
+   [:event          {:optional true} :keyword]
+   [:dashboard-id   {:optional true} ms/PositiveInt]
+   [:question-id    {:optional true} ms/PositiveInt]
+   [:num-tabs       {:optional true} :int]
+   [:total-num-tabs {:optional true} :int]])
+
+(def ^:private database-event-data
+  [:map {:closed true}
+   [:event        {:optional true} :keyword]
+   [:database     {:optional true} [:or :keyword :string]]
+   [:database-id  {:optional true} ms/PositiveInt]
+   [:source       {:optional true} [:or :keyword :string]]
+   [:dbms-version {:optional true} [:maybe :string]]
+   [:dbms_version {:optional true} :string]])
+
+(def ^:private simple-event-data
+  [:map {:closed true}
+   [:event          {:optional true} [:or :string :keyword]]
+   [:event_detail   {:optional true} [:maybe :string]]
+   [:event-detail   {:optional true} [:maybe :string]]
+   [:target_id      {:optional true} ms/PositiveInt]
+   [:duration_ms    {:optional true} [:maybe :int]]
+   [:result         {:optional true} :string]
+   [:triggered_from {:optional true} :string]])
+
+(def ^:private timeline-event-data
+  [:map {:closed true}
+   [:event         {:optional true} :keyword]
+   [:time_matters  {:optional true} [:maybe :boolean]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   [:source        {:optional true} :string]
+   [:question_id   {:optional true} ms/PositiveInt]])
+
+(def ^:private action-event-data
+  [:map {:closed true}
+   [:event          {:optional true} :keyword]
+   [:source         {:optional true} :keyword]
+   [:type           {:optional true} :keyword]
+   [:action_id      {:optional true} ms/PositiveInt]
+   [:num_parameters {:optional true} :int]])
+
+(def ^:private embed-share-event-data
+  [:map {:closed true}
+   [:event                      {:optional true} :keyword]
+   [:embedding-app-origin-set   {:optional true} :boolean]
+   [:number-embedded-questions  {:optional true} :int]
+   [:number-embedded-dashboards {:optional true} :int]])
+
+(def ^:private model-event-data
+  [:map {:closed true}
+   [:event    {:optional true} :keyword]
+   [:model-id {:optional true} ms/PositiveInt]])
+
+(def ^:private csvupload-event-data
+  [:map {:closed true}
+   [:event             {:optional true} :keyword]
+   [:num-rows          {:optional true} :int]
+   [:num-columns       {:optional true} :int]
+   [:generated-columns {:optional true} :int]
+   [:size-mb           {:optional true} number?]
+   [:upload-seconds    {:optional true} number?]
+   [:model-id          {:optional true} ms/PositiveInt]])
+
+(def ^:private token-usage-event-data
+  [:map {:closed true}
+   [:request-id                    {:optional true} [:maybe :string]]
+   [:model-id                      {:optional true} [:maybe :string]]
+   [:total-tokens                  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:prompt-tokens                 {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:completion-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:estimated-costs-usd           {:optional true} [:maybe number?]]
+   [:cache-creation-tokens         {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:cache-read-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:user-id                       {:optional true} [:maybe :int]]
+   [:duration-ms                   {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:source                        {:optional true} [:maybe :string]]
+   [:tag                           {:optional true} [:maybe :string]]
+   [:session-id                    {:optional true} [:maybe :string]]
+   [:profile                       {:optional true} [:maybe :string]]
+   [:hashed-metabase-license-token {:optional true} [:maybe :string]]])
+
+(def ^:private serialization-event-data
+  [:map {:closed true}
+   [:event           {:optional true} :keyword]
+   [:direction       {:optional true} :string]
+   [:source          {:optional true} :string]
+   [:duration_ms     {:optional true} :int]
+   [:models          {:optional true} :string]
+   [:count           {:optional true} :int]
+   [:error_count     {:optional true} :int]
+   [:success         {:optional true} :boolean]
+   [:error_message   {:optional true} [:maybe :string]]
+   [:collection      {:optional true} :string]
+   [:all_collections {:optional true} :boolean]
+   [:data_model      {:optional true} :boolean]
+   [:settings        {:optional true} :boolean]
+   [:field_values    {:optional true} [:maybe :boolean]]
+   [:secrets         {:optional true} :boolean]])
+
+(def ^:private cleanup-event-data
+  [:map {:closed true}
+   [:event                   {:optional true} :keyword]
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:total_stale_items_found {:optional true} :int]
+   [:cutoff_date             {:optional true} :string]])
+
+(def ^:private data-complexity-event-data
+  [:map {:closed true}
+   [:event           {:optional true} :keyword]
+   [:batch_id        {:optional true} :string]
+   [:formula_version {:optional true} :int]
+   [:parameters      {:optional true}
+    [:map {:closed true}
+     ["synonym_threshold" {:optional true} [:maybe number?]]
+     ["weights"           {:optional true} [:maybe ms/OpaqueJSONObject]]
+     ["embedding_model"   {:optional true} [:maybe ms/OpaqueJSONObject]]
+     ["text_variant"      {:optional true} [:maybe :string]]]]
+   [:catalog     {:optional true} :keyword]
+   [:key         {:optional true} :string]
+   [:score       {:optional true} number?]
+   [:measurement {:optional true} number?]
+   [:error       {:optional true} :string]])
+
+(def ^:private ai-service-event-data
+  [:map {:closed true}
+   [:hashed-metabase-license-token {:optional true} [:maybe :string]]
+   [:request-id                    {:optional true} [:maybe :string]]
+   [:source                        {:optional true} [:maybe :string]]
+   [:event                         {:optional true} :string]
+   [:user-id                       {:optional true} [:maybe ms/PositiveInt]]
+   [:session-id                    {:optional true} [:maybe :string]]
+   [:profile                       {:optional true} [:maybe :string]]
+   [:duration-ms                   {:optional true} [:maybe :int]]
+   [:result                        {:optional true} :string]
+   [:event-details                 {:optional true}
+    [:map {:closed true}
+     ["tool_name" {:optional true} [:maybe :string]]
+     ["step"      {:optional true} :int]]]])
+
+(def SnowplowEventData
+  "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`
+  value actually carries at its call sites. `:snowplow/instance_stats` is an opaque, deeply-nested telemetry blob
+  assembled from many stats sources and forwarded to Snowplow without being read by key."
+  [:or
+   account-event-data
+   invite-event-data
+   dashboard-event-data
+   database-event-data
+   simple-event-data
+   timeline-event-data
+   action-event-data
+   embed-share-event-data
+   model-event-data
+   csvupload-event-data
+   token-usage-event-data
+   serialization-event-data
+   cleanup-event-data
+   data-complexity-event-data
+   ai-service-event-data
+   ms/OpaqueJSONObject
+   no-payload-event-data])
 
 (defn- tracker-config
   []
@@ -149,10 +329,10 @@
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
   is available. Returns true when the event was actually handed to the tracker; false when tracking is disabled or
   emission threw — callers that need to gate durable side-effects on real delivery can check the return value."
-  ([schema :- SnowplowSchema data]
+  ([schema :- SnowplowSchema data :- SnowplowEventData]
    (track-event! schema data api/*current-user-id*))
 
-  ([schema :- SnowplowSchema data user-id]
+  ([schema :- SnowplowSchema data :- SnowplowEventData user-id :- [:maybe ms/PositiveInt]]
    (boolean
     (when (analytics.settings/snowplow-enabled)
       (try

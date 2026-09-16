@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1609,12 +1610,13 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! {:entity_id     eid
-                                            :name          "the action"
-                                            :model_id      (:id card)
-                                            :type          :query
-                                            :dataset_query (mt/mbql-query users {:limit 1})
-                                            :database_id   (:id db)})]
+                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                          {:entity_id     eid
+                                                           :name          "the action"
+                                                           :model_id      (:id card)
+                                                           :type          :query
+                                                           :dataset_query (mt/mbql-query users {:limit 1})
+                                                           :database_id   (:id db)}))]
             (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
                                                      (and (= model "Action") (= id eid)))
@@ -2648,7 +2650,7 @@
           (ts/with-db source-db
             (ts/create! :model/Channel :name "Test Email Channel"
                         :type :channel/email
-                        :details {:host "smtp.example.com" :port 587}
+                        :details {}
                         :description "A test email channel")
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -2701,7 +2703,7 @@
         (ts/with-db source-db
           (ts/create! :model/Channel :name "Minimal Channel"
                       :type :channel/email
-                      :details {:host "smtp.example.com" :port 587}
+                      :details {}
                       :description "Some description")
           (reset! serialized (into [] (serdes.extract/extract {}))))
         (let [minimal (mapv (fn [entity]

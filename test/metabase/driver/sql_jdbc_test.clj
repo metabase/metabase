@@ -200,11 +200,11 @@
                                              :+features   [:actions]
                                              :+conn-props ["schema-filters"]})
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
-      (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                             (fn [metadata]
-                                                               (eduction
-                                                                cat
-                                                                [(orig metadata) [fake-schema-name]])))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas (let [orig (mt/original-fn #'sql-jdbc.describe-database/all-schemas)]
+                                                                           (fn [metadata]
+                                                                             (eduction
+                                                                              cat
+                                                                              [(orig metadata) [fake-schema-name]])))]
         (let [syncable (driver/syncable-schemas driver/*driver* (mt/db))]
           (is (contains? syncable "public"))
           (is (contains? syncable fake-schema-name))))
@@ -290,7 +290,7 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]])))
+                   [:= {} col-ref (lib/normalize [:value {:base-type :type/UUID} (str uuid)])])))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed

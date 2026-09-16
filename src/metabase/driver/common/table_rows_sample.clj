@@ -5,18 +5,14 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
-   ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
-   ;; so we need to go in and update the sync code as well.
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]))
 
 (def max-sample-rows
@@ -31,10 +27,10 @@
 (mr/def ::table-rows-sample.options
   "Schema for `table-rows-sample` options"
   [:maybe
-   [:map
+   [:map {:closed true}
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} [:maybe [:sequential :some]]] ; something that can be passed to [[metabase.lib.core/order-by]]
+    [:order-by        {:optional true} [:maybe [:sequential [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]]]]
     [:rff             {:optional true} fn?]]])
 
 (mu/defn- table-rows-sample-query :- ::lib.schema/query
@@ -87,17 +83,13 @@
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
-  ([table  :- (ms/InstanceOf :model/Table)
-    fields :- [:sequential (ms/InstanceOf :model/Field)]
-    rff]
+  ([table  :- :metabase.warehouse-schema.schema/table
+    fields :- [:sequential :metabase.warehouse-schema.schema/field]
+    rff    :- ::qp.schema/rff]
    (table-rows-sample table fields rff nil))
 
-  ([table  :- [:and
-               (ms/InstanceOf :model/Table)
-               [:map
-                [:id    ::lib.schema.id/table]
-                [:db_id ::lib.schema.id/database]]]
-    fields :- [:sequential (ms/InstanceOf :model/Field)]
+  ([table  :- :metabase.warehouse-schema.schema/table
+    fields :- [:sequential :metabase.warehouse-schema.schema/field]
     rff    :- ::qp.schema/rff
     opts   :- ::table-rows-sample.options]
    (let [database-id (:db_id table)

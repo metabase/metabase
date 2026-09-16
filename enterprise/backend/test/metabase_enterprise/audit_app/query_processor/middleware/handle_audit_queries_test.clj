@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries-test
   "Additional tests for this namespace can be found in `metabase-enterprise.audit-app.pages-test`."
   (:require
+   [clojure.data.csv :as csv]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.query-processor.test :as qp]
@@ -45,3 +46,18 @@
           (testing "rows"
             (is (= expected-rows
                    (mt/rows @results)))))))))
+
+(defmethod audit.i/internal-query ::export-query-fn
+  [_]
+  {:metadata [[:title {:display_name "Title", :base_type :type/Text}]
+              [:count {:display_name "Count", :base_type :type/Integer}]]
+   :results  [{:title "Birds", :count 2}
+              {:title "Cans", :count 3}]})
+
+(deftest export-internal-query-test
+  (testing "POST /api/dataset/:export-format downloads the results of an internal query"
+    (mt/with-premium-features #{:audit-app}
+      (is (= [["Birds" "2"] ["Cans" "3"]]
+             (rest (csv/read-csv (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                                       {:query {:type "internal"
+                                                                :fn   (u/qualified-name ::export-query-fn)}}))))))))

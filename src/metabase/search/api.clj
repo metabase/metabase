@@ -143,7 +143,7 @@
 
 (mu/defn- set-weights!
   [context   :- :keyword
-   overrides :- [:map-of keyword? double?]]
+   overrides :- [:map-of ::search.config/scorer-key double?]]
   (api/check-superuser)
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
