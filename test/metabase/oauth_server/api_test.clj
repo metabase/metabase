@@ -1862,6 +1862,48 @@
                      (checkbox-states (consent-page-at! :crowberto (:client_id requester-client)
                                                         (second requester))))))))))))
 
+(deftest consent-page-pre-ticks-only-the-most-recent-grant-test
+  (testing (str "GHY-4555: pre-ticking follows the app's most recent live grant, not the union of its live tokens. A "
+                "refresh token outlives several authorizations, so a union would let an older, wider grant keep "
+                "re-ticking a scope a later authorization dropped -- silently undoing that decision every time the "
+                "user re-authorizes.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (let [redirect  "https://claude.ai/api/mcp/auth_callback"
+            days-ago  #(.minusDays (java.time.OffsetDateTime/now) %)
+            wide      (conj v2-baseline-scope-set "agent:content:write" "agent:sql:run")
+            narrowed  (conj v2-baseline-scope-set "agent:content:write")
+            expected  (merge baseline-locked
+                             {"agent:content:write"  [true false]
+                              "agent:sql:run"        [false false]
+                              "agent:delivery:write" [false false]})]
+        (testing "day 1 grants sql:run, day 5 leaves it unticked, day 10 must not offer it pre-ticked again"
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (let [day-1 (register-app-client! "Claude" redirect)
+                  day-5 (register-app-client! "Claude" redirect)
+                  day-10 (register-app-client! "Claude" redirect)]
+              ;; day 1's tokens are still live -- that is the whole point: a union would read them
+              (insert-token! :model/OAuthAccessToken :crowberto (:client_id day-1) wide :created_at (days-ago 10))
+              (insert-token! :model/OAuthRefreshToken :crowberto (:client_id day-1) wide
+                             :created_at (days-ago 10) :expiry nil)
+              (insert-token! :model/OAuthAccessToken :crowberto (:client_id day-5) narrowed
+                             :created_at (days-ago 5))
+              (insert-token! :model/OAuthRefreshToken :crowberto (:client_id day-5) narrowed
+                             :created_at (days-ago 5) :expiry nil)
+              (is (= expected (checkbox-states (consent-page-at! :crowberto (:client_id day-10) redirect)))))))
+        (testing "the newest grant still speaks through its refresh token once its access token has expired"
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (let [older   (register-app-client! "Claude" redirect)
+                  newer   (register-app-client! "Claude" redirect)
+                  current (register-app-client! "Claude" redirect)]
+              (insert-token! :model/OAuthAccessToken :crowberto (:client_id older) wide :created_at (days-ago 10))
+              (insert-token! :model/OAuthAccessToken :crowberto (:client_id newer) narrowed
+                             :created_at (days-ago 5)
+                             :expiry (.toEpochMilli (.minusSeconds (java.time.Instant/now) 3600)))
+              (insert-token! :model/OAuthRefreshToken :crowberto (:client_id newer) narrowed
+                             :created_at (days-ago 5) :expiry nil)
+              (is (= expected (checkbox-states (consent-page-at! :crowberto (:client_id current) redirect)))))))))))
+
 ;;; --------------------------------------- Unticking a held scope -----------------------------------------------
 
 (defn- authorize-at!

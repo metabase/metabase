@@ -86,9 +86,9 @@ OAuth protected resource metadata is available at:
 ```
 
 On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
-unticked — except one the same app already holds through a live token, which starts ticked so a step-up doesn't
-silently drop it. Only the scopes the user ticks are granted, and only for the token this authorization mints: an
-untick never touches a token the app already has. A scope left unticked isn't remembered, so the next 403 steps up for
+unticked — except one the same app already holds through its most recent live grant, which starts ticked so a step-up
+doesn't silently drop it. Only the scopes the user ticks are granted, and only for the token this authorization mints:
+an untick never touches a token the app already has. A scope left unticked isn't remembered, so the next 403 steps up for
 it again. Each challenge's `error_description` ends with a note that the user must tick the permission on the consent
 screen.
 

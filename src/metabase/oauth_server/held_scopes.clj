@@ -1,6 +1,6 @@
 (ns metabase.oauth-server.held-scopes
-  "The scopes an app already holds through a user's live OAuth tokens, which the consent page pre-ticks so a step-up
-  does not silently drop them.
+  "The scopes an app already holds through a user's most recent live OAuth grant, which the consent page pre-ticks so a
+  step-up does not silently drop them.
 
   An app is not one OAuth client: several MCP clients register a new client on every login or step-up. So a token
   belongs to the same app as an authorization request when its client has the same `client_id`, or a redirect that
@@ -41,7 +41,16 @@
   app."
   [a-name a-uri b-name b-uri]
   (if-let [a-key (loopback-key a-uri)]
-    ;; Loopback paths like `/callback` are shared by unrelated tools, so the name has to agree too.
+    ;; Loopback paths like `/callback` are shared by unrelated tools, so the name has to agree too. The port cannot:
+    ;; Claude Code registers a fresh `client_id` on a fresh port every time it authenticates, and matching the port
+    ;; would mean it never sees a pre-tick at all -- the client this is most for.
+    ;;
+    ;; Accepted risk: `POST /oauth/register` is unauthenticated, so a local program can register under the same name on
+    ;; its own loopback port and send the user to `/authorize`, where their held scopes appear pre-ticked on a consent
+    ;; screen that looks like the real one, and one Authorize click grants them. It takes local code execution plus a
+    ;; user click, and such an attacker can request those scopes outright anyway; the only difference is that an
+    ;; outright request starts unticked. Requiring a `client_id` match or the port closes it and disables the feature
+    ;; for Claude Code, so the trade is taken deliberately.
     (and (not (str/blank? a-name))
          (= a-name b-name)
          (= a-key (loopback-key b-uri)))
@@ -64,8 +73,13 @@
                [a-uri b-uri])))))
 
 (defn held-scopes
-  "The set of scope strings that the live access and refresh tokens of the User with `user-id` hold for the same app as
-  the client `client-id` authorizing for `redirect-uri`."
+  "The set of scope strings held by the most recent live grant the User with `user-id` has for the same app as the
+  client `client-id` authorizing for `redirect-uri`. Empty when the app has no live token.
+
+  The most recent grant, not the union of every live one: a refresh token can outlive several authorizations, so a
+  union would let an old, wider grant keep pre-ticking a scope the user has since left unticked, silently undoing that
+  decision every time they re-authorize. Erring narrow is safe now that an untick only shapes the token being
+  minted."
   [user-id client-id redirect-uri]
   (let [now        (System/currentTimeMillis)
         tokens     (concat (oauth-server.db/live-access-tokens-for-user user-id now)
@@ -78,5 +92,12 @@
                      (into #{}
                            (comp (filter #(same-app? requesting %)) (map :client_id))
                            (oauth-server.db/oauth-clients client-ids))
-                     #{})]
-    (into #{} (comp (filter (comp same-app :client_id)) (mapcat :scope)) tokens)))
+                     #{})
+        live       (filterv (comp same-app :client_id) tokens)
+        ;; A grant's access and refresh tokens are written by one token request, so they share a `created_at`: the
+        ;; newest timestamp names a grant, not a row, and every row carrying it speaks for that grant. That is what
+        ;; keeps the newest grant readable once its access token has expired and only its refresh token is left.
+        newest     (last (sort (keep :created_at live)))]
+    (into #{}
+          (comp (filter #(zero? (compare (:created_at %) newest))) (mapcat :scope))
+          live)))
