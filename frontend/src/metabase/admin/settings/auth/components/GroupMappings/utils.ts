@@ -6,23 +6,19 @@ import {
 } from "metabase/common/utils/groups";
 import type { GroupId, GroupListQuery } from "metabase-types/api";
 
-export type JWTGroupSyncMode = "automatic" | "manual" | "off";
-
 /** Rebuilds in place so a renamed mapping keeps its position in the list */
 export function withMappingEntry(
   mappings: MappingsType,
-  originalJwtGroupName: string | null,
-  jwtGroupName: string,
+  originalName: string | null,
+  name: string,
   groupIds: GroupId[],
 ): MappingsType {
   const entries = Object.entries(mappings).map(
     ([mappingName, ids]): [string, GroupId[]] =>
-      mappingName === originalJwtGroupName
-        ? [jwtGroupName, groupIds]
-        : [mappingName, ids],
+      mappingName === originalName ? [name, groupIds] : [mappingName, ids],
   );
-  if (originalJwtGroupName == null) {
-    entries.push([jwtGroupName, groupIds]);
+  if (originalName == null) {
+    entries.push([name, groupIds]);
   }
   // fromEntries defines own properties, so names like __proto__ stay plain keys
   return Object.fromEntries(entries);

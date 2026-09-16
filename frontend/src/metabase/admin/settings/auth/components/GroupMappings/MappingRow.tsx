@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import type { GroupLookup } from "metabase/admin/settings/auth/components/GroupMappings";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { ActionIcon, FixedSizeIcon, Flex, Icon, Text } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";
 
-import S from "./JWTGroupMappingSection.module.css";
+import S from "./GroupMappings.module.css";
+import type { GroupLookup } from "./utils";
 
 export function MappingRow({
   name,
@@ -29,7 +29,7 @@ export function MappingRow({
       className={S.mappingRow}
       align="center"
       gap="lg"
-      data-testid="jwt-group-mapping-row"
+      data-testid="group-mapping-row"
     >
       <Flex flex={1} miw={0} align="center" gap="lg" wrap="wrap">
         <Text fw="bold" flex="0 0 auto" maw="100%" className={S.wrappableText}>
@@ -82,7 +82,6 @@ function MappingRowGroups({
       </Text>
     );
   }
-  // sized by content, so the names only drop under the mapping name when they don't fit
   return (
     <Text flex="1 1 auto" miw={0} className={S.wrappableText}>
       {names.join(", ")}
