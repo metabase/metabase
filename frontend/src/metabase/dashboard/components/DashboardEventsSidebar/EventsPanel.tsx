@@ -11,7 +11,10 @@ import {
   TimelineSidebar,
   type TimelineSidebarProps,
 } from "metabase/timelines/panel/components/TimelineSidebar";
-import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type {
+  TimelineEventsVisibilityIntent,
+  TimelineEventsVisibilityUpdate,
+} from "metabase/visualizations/types";
 import type { DashCardId, TimelineEvent } from "metabase-types/api";
 
 export type EventsPanelProps = Pick<
@@ -45,13 +48,15 @@ export function EventsPanel({
   const { dashboard, closeSidebar } = useDashboardContext();
 
   const handleUpdateVisibility = useCallback(
-    (update: TimelineEventsVisibilityUpdate) =>
+    (
+      update: TimelineEventsVisibilityUpdate,
+      intent: TimelineEventsVisibilityIntent,
+    ) =>
       dispatch(
-        updateDashCardsTimelineEventsVisibility(
-          dashcardIds,
-          update,
-          selectionDashcardId != null ? "dashcard" : "dashboard",
-        ),
+        updateDashCardsTimelineEventsVisibility(dashcardIds, update, {
+          location: selectionDashcardId != null ? "dashcard" : "dashboard",
+          intent,
+        }),
       ),
     [dispatch, dashcardIds, selectionDashcardId],
   );

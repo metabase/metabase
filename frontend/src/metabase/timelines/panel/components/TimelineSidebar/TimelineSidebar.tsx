@@ -10,7 +10,10 @@ import {
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
-import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type {
+  TimelineEventsVisibilityIntent,
+  TimelineEventsVisibilityUpdate,
+} from "metabase/visualizations/types";
 import type { TimeseriesXAxis } from "metabase/viz-core";
 import type {
   CollectionId,
@@ -41,7 +44,10 @@ export interface TimelineSidebarProps {
   xAxis?: TimeseriesXAxis | null;
   /** where events created from this sidebar are reported as coming from */
   eventSource?: TimelineEventSource;
-  onUpdateVisibility: (update: TimelineEventsVisibilityUpdate) => void;
+  onUpdateVisibility: (
+    update: TimelineEventsVisibilityUpdate,
+    intent: TimelineEventsVisibilityIntent,
+  ) => void;
   onSelectEvents: (events: TimelineEvent[]) => void;
   onDeselectEvents: () => void;
   onShowAllEvents?: () => void;
@@ -83,40 +89,50 @@ export const TimelineSidebar = ({
 
   const handleShowTimelineEvents = useCallback(
     (events: TimelineEvent[]) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        showTimelineEvents(visibility, events, allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          showTimelineEvents(visibility, events, allTimelines),
+        "show",
       ),
     [onUpdateVisibility],
   );
 
   const handleHideTimelineEvents = useCallback(
     (events: TimelineEvent[]) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        hideTimelineEvents(visibility, events, allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          hideTimelineEvents(visibility, events, allTimelines),
+        "hide",
       ),
     [onUpdateVisibility],
   );
 
   const handleShowTimeline = useCallback(
     (timeline: Timeline) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        showTimelines(visibility, [timeline.id], allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          showTimelines(visibility, [timeline.id], allTimelines),
+        "show",
       ),
     [onUpdateVisibility],
   );
 
   const handleHideTimeline = useCallback(
     (timeline: Timeline) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        hideTimelines(visibility, [timeline.id], allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          hideTimelines(visibility, [timeline.id], allTimelines),
+        "hide",
       ),
     [onUpdateVisibility],
   );
 
   const handleEventCreated = useCallback(
     (event: TimelineEvent) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        showCreatedTimelineEvent(visibility, event, allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          showCreatedTimelineEvent(visibility, event, allTimelines),
+        "create",
       ),
     [onUpdateVisibility],
   );

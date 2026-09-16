@@ -9,6 +9,9 @@ export type TimelineEventsVisibilityUpdate = (
   timelines: Timeline[],
 ) => TimelineEventsVisibility;
 
+/** the gesture behind a visibility update, for surfaces that report it */
+export type TimelineEventsVisibilityIntent = "show" | "hide" | "create";
+
 export interface AggregatedEventsVisibility {
   visibleEventIds: TimelineEventId[];
   partiallyVisibleEventIds: TimelineEventId[];

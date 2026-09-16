@@ -7,9 +7,13 @@ import {
   seedApiQueryCache,
 } from "__support__/state";
 import { getDashCardById } from "metabase/dashboard/selectors";
-import { getDashCardVisibleTimelineEventIds } from "metabase/dashboard/timeline-events/selectors";
+import {
+  getDashCardTimelineEventsVisibility,
+  getDashCardVisibleTimelineEventIds,
+} from "metabase/dashboard/timeline-events/selectors";
 import {
   hideTimelineEvents,
+  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -39,6 +43,9 @@ const eventB = createMockTimelineEvent({
   timestamp: "2021-12-26T00:00:00Z",
 });
 const timeline = createMockTimeline({ id: 10, events: [eventA, eventB] });
+
+// a timeline the events sidebar can select before the refetch lands
+const unloadedTimelineId = 11;
 
 function setup({
   savedVisibility,
@@ -123,7 +130,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           showTimelines(visibility, [timeline.id], timelines),
-        "dashboard",
+        { location: "dashboard", intent: "show" },
       ),
     );
 
@@ -146,7 +153,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           hideTimelineEvents(visibility, [eventA], timelines),
-        "dashboard",
+        { location: "dashboard", intent: "hide" },
       ),
     );
 
@@ -171,7 +178,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           hideTimelineEvents(visibility, [eventA], timelines),
-        "dashcard",
+        { location: "dashcard", intent: "hide" },
       ),
     );
 
@@ -187,7 +194,7 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           showTimelineEvents(visibility, [eventA], timelines),
-        "dashboard",
+        { location: "dashboard", intent: "show" },
       ),
     );
 
@@ -213,10 +220,36 @@ describe("dashboard timeline events visibility", () => {
         [DASHCARD_ID],
         (visibility, timelines) =>
           showTimelines(visibility, [timeline.id], timelines),
-        "dashboard",
+        { location: "dashboard", intent: "show" },
       ),
     );
 
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not report creating an event as a visibility change", () => {
+    const store = setup();
+    const createdEvent = createMockTimelineEvent({
+      id: 102,
+      timeline_id: unloadedTimelineId,
+      timestamp: "2021-12-27T00:00:00Z",
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility(
+        [DASHCARD_ID],
+        (visibility, timelines) =>
+          showCreatedTimelineEvent(visibility, createdEvent, timelines),
+        { location: "dashboard", intent: "create" },
+      ),
+    );
+
+    expect(
+      getDashCardTimelineEventsVisibility(store.getState(), DASHCARD_ID),
+    ).toEqual({
+      "timeline.selected_timeline_ids": [unloadedTimelineId],
+      "timeline.excluded_timeline_event_ids": [],
+    });
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 });

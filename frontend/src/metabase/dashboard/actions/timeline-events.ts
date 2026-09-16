@@ -17,11 +17,11 @@ import type {
   TimelineEventsSelection,
 } from "metabase/redux/store";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import {
-  isSameTimelineEventsVisibility,
-  resolveVisibleTimelineEvents,
-} from "metabase/visualizations/lib/timeline-events-visibility";
-import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import { isSameTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
+import type {
+  TimelineEventsVisibilityIntent,
+  TimelineEventsVisibilityUpdate,
+} from "metabase/visualizations/types";
 import type { DashCardId, TimelineEventsVisibility } from "metabase-types/api";
 
 import { setSidebar } from "./ui";
@@ -67,56 +67,44 @@ export const openEventsSidebar =
     }
   };
 
-type VisibilityChange = {
-  dashcardId: DashCardId;
-  visibility: TimelineEventsVisibility;
-  nextVisibility: TimelineEventsVisibility;
+type VisibilityTracking = {
+  location: DashboardEventsVisibilityLocation;
+  intent: TimelineEventsVisibilityIntent;
 };
 
 export const updateDashCardsTimelineEventsVisibility =
   (
     dashcardIds: DashCardId[],
     update: TimelineEventsVisibilityUpdate,
-    location: DashboardEventsVisibilityLocation,
+    { location, intent }: VisibilityTracking,
   ) =>
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
     const timelines = getTransformedTimelines(state);
 
-    const changes = dashcardIds.flatMap((dashcardId): VisibilityChange[] => {
-      const visibility =
-        getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
-      const nextVisibility = update(visibility, timelines);
-      return isSameTimelineEventsVisibility(visibility, nextVisibility)
-        ? []
-        : [{ dashcardId, visibility, nextVisibility }];
-    });
+    const changed = dashcardIds.flatMap(
+      (dashcardId): [DashCardId, TimelineEventsVisibility][] => {
+        const visibility =
+          getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
+        const nextVisibility = update(visibility, timelines);
+        return isSameTimelineEventsVisibility(visibility, nextVisibility)
+          ? []
+          : [[dashcardId, nextVisibility]];
+      },
+    );
 
-    if (changes.length === 0) {
+    if (changed.length === 0) {
       return;
     }
 
-    dispatch(
-      setDashCardTimelineEventsVisibility(
-        Object.fromEntries(
-          changes.map(({ dashcardId, nextVisibility }) => [
-            dashcardId,
-            nextVisibility,
-          ]),
-        ),
-      ),
-    );
+    dispatch(setDashCardTimelineEventsVisibility(Object.fromEntries(changed)));
 
-    const countVisible = (visibility: TimelineEventsVisibility) =>
-      resolveVisibleTimelineEvents({ timelines, visibility }).length;
-    const shownDelta = changes.reduce(
-      (delta, { visibility, nextVisibility }) =>
-        delta + countVisible(nextVisibility) - countVisible(visibility),
-      0,
-    );
-    trackDashboardEventsVisibilityChanged(
-      getDashboard(state)?.id,
-      location,
-      shownDelta > 0 ? "shown" : "hidden",
-    );
+    // creating an event is already reported as new_event_created
+    if (intent !== "create") {
+      trackDashboardEventsVisibilityChanged(
+        getDashboard(state)?.id,
+        location,
+        intent === "show" ? "shown" : "hidden",
+      );
+    }
   };
