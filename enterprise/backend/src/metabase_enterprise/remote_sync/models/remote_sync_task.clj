@@ -221,10 +221,10 @@
 (defn last-version
   "Gets the version that any changes are built off of.
 
-  Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist."
+  Returns the version string of the newest task (import or export) whose commit landed, regardless of how the task
+  row was closed afterwards (see [[remote-sync.db/last-synced-task]]), or nil if no task has ever synced."
   []
-  (:version (remote-sync.db/last-successful-task)))
+  (:version (remote-sync.db/last-synced-task)))
 
 (defn running?
   "Checks if a task is currently running.

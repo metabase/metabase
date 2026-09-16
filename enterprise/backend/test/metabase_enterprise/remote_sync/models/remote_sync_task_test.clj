@@ -499,28 +499,45 @@
 (deftest last-version-test
   (testing "When there are no tasks, last-version returns nil"
     (is (nil? (rst/last-version))))
-  (testing "When there are no successful tasks, last-version returns nil"
+  (testing "When no task has recorded a version, last-version returns nil"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/fail-sync-task! (:id task) "Test failure")
       (is (nil? (rst/last-version)))))
-  (testing "Returns last successful version"
+  (testing "Returns the version of the newest task whose commit landed"
     (let [successful-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
       (rst/complete-sync-task! (:id successful-task))
       (rst/set-version! (:id successful-task) "version 1")
       (is (= "version 1" (rst/last-version)))
-      (testing "Ignores cancelled tasks"
+      (testing "Ignores a cancelled task with no version"
         (rst/cancel-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))))
         (is (= "version 1" (rst/last-version))))
-      (testing "Ignores failed tasks"
+      (testing "Ignores a failed task with no version"
         (rst/fail-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))) "Error")
         (is (= "version 1" (rst/last-version))))
-      (testing "Ignores incomplete tasks"
-        (is (= "version 1" (rst/last-version))))
-      (testing "Returns newer successful tasks"
+      (testing "Ignores an open task with no version"
+        (let [open-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (is (= "version 1" (rst/last-version)))
+          (rst/complete-sync-task! (:id open-task))))
+      (testing "Ignores a conflict task even though it records the version it conflicted against"
+        (let [conflict-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/set-version! (:id conflict-task) "version 1.5")
+          (rst/conflict-sync-task! (:id conflict-task) ["some conflict"])
+          (is (= "version 1" (rst/last-version)))))
+      (testing "Returns a newer successful task's version"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/complete-sync-task! (:id new-task))
           (rst/set-version! (:id new-task) "version 2")
-          (is (= "version 2" (rst/last-version))))))))
+          (is (= "version 2" (rst/last-version)))))
+      (testing "A task cancelled after its commit landed is still the sync base"
+        (let [cancelled-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/set-version! (:id cancelled-task) "version 3")
+          (rst/cancel-sync-task! (:id cancelled-task))
+          (is (= "version 3" (rst/last-version)))))
+      (testing "A task that failed after its commit landed is still the sync base"
+        (let [failed-task (rst/create-sync-task! "export" (mt/user->id :rasta))]
+          (rst/set-version! (:id failed-task) "version 4")
+          (rst/fail-sync-task! (:id failed-task) "bookkeeping failed")
+          (is (= "version 4" (rst/last-version))))))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for supersede-stale-tasks!

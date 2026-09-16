@@ -653,15 +653,16 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(mu/defn last-successful-task
-  "The newest finished RemoteSyncTask that was neither cancelled nor failed and recorded a version, or nil."
+(mu/defn last-synced-task
+  "The newest RemoteSyncTask whose commit the local content matches, or nil. `version` is written inside the
+  transaction that commits an import or a push, and by the conflict path (which also writes `conflicts`), so
+  `version` set with `conflicts` null identifies a landed commit whatever `ended_at`, `cancelled`, or
+  `error_message` say: a task cancelled or superseded after its transaction committed is still the sync base."
   []
   (t2/select-one :model/RemoteSyncTask
                  {:where    [:and
-                             [:<> nil :ended_at]
-                             [:= false :cancelled]
-                             [:= nil :error_message]
-                             [:<> nil :version]]
+                             [:<> nil :version]
+                             [:= nil :conflicts]]
                   :limit    1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
