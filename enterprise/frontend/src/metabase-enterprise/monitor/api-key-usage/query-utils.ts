@@ -184,23 +184,15 @@ export const API_KEY_USAGE_EVENT_SORT_COLUMNS = [
 export type ApiKeyUsageEventSortColumn =
   (typeof API_KEY_USAGE_EVENT_SORT_COLUMNS)[number];
 
+// Columns in API_KEY_USAGE_EVENT_SORT_COLUMNS that only show up when PII retention is on.
+const PII_ONLY_COLUMNS: ApiKeyUsageEventSortColumn[] = ["ip_address"];
+
 export function apiKeyUsageEventColumnKeys(
   hasPii: boolean,
 ): ApiKeyUsageEventSortColumn[] {
-  return [
-    "log_id",
-    "occurred_at",
-    "route_template",
-    "http_method",
-    "status",
-    "duration_ms",
-    "api_key_name",
-    "user_display_name",
-    "client_display_name",
-    "embedding_client",
-    "embedding_hostname",
-    ...(hasPii ? (["ip_address"] as const) : []),
-  ];
+  return API_KEY_USAGE_EVENT_SORT_COLUMNS.filter(
+    (column) => hasPii || !PII_ONLY_COLUMNS.includes(column),
+  );
 }
 
 /** Append an order-by on `columnName` in `direction` if it's orderable. No-op if absent. */
