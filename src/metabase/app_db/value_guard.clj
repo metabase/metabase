@@ -12,6 +12,11 @@
   the inline marker into that pair at the compile step, so a caller writes the value where it
   belongs and never keeps the two in sync.
 
+  A marker is not what stops a hostile non-scalar. `honeysql-guard` runs `:before` this `:around`,
+  so it sees the payload still inline and rejects a `{:raw ...}` or a bare subquery there whether or
+  not it was marked. What the marker adds is that an ordinary value -- a string, a locale, a token --
+  is bound rather than left for HoneySQL to interpret.
+
   Put a marker in a value slot. Written anywhere else it is rewritten into a `[:param :k]` that
   HoneySQL formats as an identifier rather than binding, so the value is dropped and the generated
   key lands in the statement:
@@ -54,9 +59,16 @@
        (vector? x)
        (contains? #{2 3} (count x))))
 
-(def ^:private comparison-operators
-  "Operators a kv-arg value may itself be, e.g. `:locale [:in [...]]`."
-  #{:= :not= :< :> :<= :>= :in :not-in :like :not-like :ilike :not-ilike :between :is :is-not})
+(defn- operator-form?
+  "Whether `v` looks like a HoneySQL operator form -- `[:in [...]]`, `[:not-between lo hi]`.
+
+  Any keyword heads an operator as far as Toucan is concerned, so this asks whether the payload is
+  keyword-headed rather than checking against a list of known operators. Listing them would let an
+  unlisted one through to be bound as a value, which changes the comparison rather than failing."
+  [v]
+  (and (sequential? v)
+       (keyword? (first v))
+       (not= :auto/param (first v))))
 
 (defn- kv-arg-marker?
   "Whether `x` is the `[:auto/param column v]` form Toucan builds from a marked kv-arg."
@@ -104,10 +116,10 @@
                       (check-well-formed! x)
                       (let [kv? (kv-arg-marker? x)
                             v   (if kv? (nth x 2) (second x))
-                            _   (when (and kv? (sequential? v) (comparison-operators (first v)))
-                                  ;; A kv-arg value may be an operator form -- `:locale [:in [...]]`.
-                                  ;; Rewriting that as `[:= column [:param k]]` would bind the form
-                                  ;; itself and change the comparison, so the marker goes inside it.
+                            _   (when (operator-form? v)
+                                  ;; Binding an operator form would make it the value of a
+                                  ;; comparison rather than the comparison itself, turning
+                                  ;; `IN (?, ?)` into `= ?` against a list. The marker goes inside.
                                   (throw (ex-info (str "Marked a whole operator form: " (pr-str x)
                                                        ". Put the marker on the value instead, e.g. "
                                                        "[" (first v) " [:auto/param ...]].")
@@ -115,10 +127,15 @@
                             ;; A marked kv-arg has to come back out as a comparison, since Toucan
                             ;; folded the column into the marker rather than building one.
                             wrap (if kv? #(vector := (second x) %) identity)]
-                        (if (nil? v)
-                          ;; HoneySQL turns a literal nil in a comparison into `IS NULL`; a bound
-                          ;; parameter gets `= ?`, which no row satisfies. Leave nil to HoneySQL.
-                          (wrap nil)
+                        (if (or (nil? v)
+                                (and (coll? v) (empty? v)))
+                          ;; Some literals are rewritten downstream by something that has to see
+                          ;; them. HoneySQL turns a literal nil in a comparison into `IS NULL`,
+                          ;; where a bound parameter would get `= ?` and match nothing; Toucan
+                          ;; rewrites `[:in col []]` to `false`, where a bound parameter would
+                          ;; leave `IN ()` -- invalid on Postgres, and quietly accepted by H2.
+                          ;; Lifting hides the literal from those rewrites, so leave it in place.
+                          (wrap v)
                           (let [k (param-key)]
                             (vswap! params assoc k v)
                             (wrap [:param k])))))))

@@ -12,6 +12,14 @@
              (map :locale (t2/select :model/ContentTranslation
                                      :locale [:not= [:auto/param "de"]])))))
     (testing "marking the whole operator form throws rather than changing the comparison"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"Marked a whole operator form"
-           (t2/select :model/ContentTranslation :locale [:auto/param [:in ["de" "fr"]]]))))))
+      (are [form] (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+                                    (t2/select :model/ContentTranslation form))
+        ;; a query map, not only a kv-arg
+        {:where [:= :locale [:auto/param [:in ["de"]]]]}
+        {:where [:= :locale [:auto/param [:lower :x]]]})
+      (are [v] (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+                                 (t2/select :model/ContentTranslation :locale v))
+        [:auto/param [:in ["de" "fr"]]]
+        ;; an operator the check does not have to know by name
+        [:auto/param [:not-between 1 5]]
+        [:auto/param [:regexp "x"]]))))
