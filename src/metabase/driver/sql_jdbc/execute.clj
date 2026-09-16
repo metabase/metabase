@@ -1011,8 +1011,17 @@
      (try
        (f conn)
        (finally
-         (.rollback conn)
-         (.setAutoCommit conn true))))))
+         ;; Neither may throw past the body's own exception, and the connection goes back to the pool either way:
+         ;; leaving it inside a transaction hands the next borrower a session that answers every statement with
+         ;; "current transaction is aborted" on Postgres and Redshift.
+         (try
+           (.rollback conn)
+           (catch Throwable e
+             (log/warnf "Failed to roll back the transform test transaction: %s" (ex-message e))))
+         (try
+           (.setAutoCommit conn true)
+           (catch Throwable e
+             (log/warnf "Failed to restore autoCommit after the transform test: %s" (ex-message e)))))))))
 
 (defmethod driver/execute-on-connection! :sql-jdbc
   [driver conn [sql params]]

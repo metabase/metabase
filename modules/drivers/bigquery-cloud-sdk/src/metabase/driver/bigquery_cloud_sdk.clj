@@ -1350,15 +1350,19 @@
 
 (defmethod driver/query-on-connection :bigquery-cloud-sdk
   [_driver {:keys [client session-id]} query {:keys [max-rows]}]
+  ;; Every scalar arrives as a String, and a NULL as an Object (TBD-1592), so the values go through the same per-field
+  ;; parsers the query processor reads results with rather than straight off the cell.
   (let [^TableResult result (.getQueryResults (run-session-job! client session-id query)
-                                              (u/varargs BigQuery$QueryResultsOption))]
+                                              (u/varargs BigQuery$QueryResultsOption))
+        ^Schema schema      (.getSchema result)
+        parsers             (get-field-parsers schema)]
     {:columns (perf/mapv (fn [^Field field]
                            {:name          (.getName field)
                             :database_type (.. field getType name)})
-                         (.getFields ^Schema (.getSchema result)))
+                         (.getFields schema))
      :rows    (into []
                     (comp (map (fn [^FieldValueList row]
-                                 (perf/mapv #(.getValue ^FieldValue %) row)))
+                                 (perf/mapv parse-field-value row parsers)))
                           (if max-rows (take max-rows) identity))
                     (.iterateAll result))}))
 
