@@ -50,7 +50,8 @@ export type AdminSession = {
 export type AdminSessionFilters = {
   "user-id"?: UserId;
   ids?: AdminSessionId[];
-  provider?: AdminSessionProvider;
+  // A list: the endpoint coerces a single `?provider=` into one, so filtering on several auth methods is one request
+  provider?: AdminSessionProvider[];
   type?: AdminSessionType;
   tenancy?: AdminSessionTenancy;
   "created-before"?: string;

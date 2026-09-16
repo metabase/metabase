@@ -30,7 +30,11 @@
    ;; a single `?ids=` arrives as a bare string; coerce so one id and many behave the same. `:and` decodes through
    ;; its first child only, so the coercion runs before the length check
    [:ids                {:optional true} [:and (ms/QueryVectorOf :string) [:vector {:max 1000} :string]]]
-   [:provider           {:optional true} (into [:enum] session-providers)]
+   ;; a single `?provider=` arrives as a bare string, coerced like `ids` above so one value and many behave the same
+   [:provider           {:optional true} [:and
+                                          (ms/QueryVectorOf (into [:enum] session-providers))
+                                          [:vector {:max (count session-providers)}
+                                           (into [:enum] session-providers)]]]
    [:type               {:optional true} ::sm.schema/session-type]
    [:tenancy            {:default :all}  [:enum :all :internal :external]]
    [:created-before     {:optional true} ms/TemporalString]

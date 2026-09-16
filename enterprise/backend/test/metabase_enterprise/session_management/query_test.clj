@@ -119,7 +119,8 @@
         (is (= #{normal} (listed-ids lp :user-id user-id)))
         (is (= 1 (sm.db/live-session-count lp {:user-id user-id})))
         (testing "not even when explicitly asking for the `unknown` provider bucket, which is what a null provider is"
-          (is (= #{normal} (listed-ids lp :user-id user-id :provider "unknown"))))))))
+          ;; a list, not a bare string: the single-value coercion happens in the API schema, not down here
+          (is (= #{normal} (listed-ids lp :user-id user-id :provider ["unknown"]))))))))
 
 (deftest filters->where-test
   (testing "an explicitly empty id list matches nothing rather than everything — `IN ()` is not valid SQL"
