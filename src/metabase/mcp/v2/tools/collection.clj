@@ -10,6 +10,7 @@
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -41,17 +42,19 @@
     :create (doseq [k [:id :archived]]
               (when (contains? args k)
                 (common/throw-teaching-error
-                 (format "`%s` applies to method \"update\" only — remove it from this create call." (name k)))))
+                 (message/msg ["%s applies to method \"update\" only — remove it from this create call."]
+                              (name k)))))
     :update (do
               (when (contains? args :namespace)
                 (common/throw-teaching-error
-                 (str "`namespace` applies to method \"create\" only — a collection cannot move between "
-                      "namespaces, which are independent hierarchies.")))
+                 (message/msg [(str "\"namespace\" applies to method \"create\" only — a collection "
+                                    "cannot move between namespaces, which are independent hierarchies.")])))
               (when (and (true? (:archived args)) (contains? args :parent_id))
                 (common/throw-teaching-error
-                 (str "`archived: true` and `parent_id` can't be combined — archiving moves the collection "
-                      "to the trash, so the parent_id move never happens. Move first, then archive; or "
-                      "archive now and pass `parent_id` on a later `archived: false` restore call."))))))
+                 (message/msg [(str "`archived: true` and \"parent_id\" can't be combined — archiving "
+                                    "moves the collection to the trash, so the parent_id move never "
+                                    "happens. Move first, then archive; or archive now and pass "
+                                    "\"parent_id\" on a later `archived: false` restore call.")]))))))
 
 (defn- check-move-out-of-trash!
   "Reject a `parent_id` move of a trashed `collection` that doesn't say what to do about the trash.
@@ -62,9 +65,9 @@
              (contains? args :parent_id)
              (not (contains? args :archived)))
     (common/throw-teaching-error
-     (str "This collection is in the trash, and `parent_id` on its own would move it without taking it "
-          "out — nothing would appear under the new parent. Pass `archived: false` alongside `parent_id` "
-          "to restore it into the new parent."))))
+     (message/msg [(str "This collection is in the trash, and \"parent_id\" on its own would move it "
+                        "without taking it out — nothing would appear under the new parent. Pass "
+                        "`archived: false` alongside \"parent_id\" to restore it into the new parent.")]))))
 
 (defn- resolve-existing
   "Resolve an update's `id` (numeric or entity_id) to the collection behind its read check.
