@@ -738,6 +738,25 @@ describe("request comparison rules", () => {
   const frontend = "type ErdResponse = { id: number };";
 
   it.each([
+    ['{ url: "/api/user", body: {id: 1} }', "request"],
+    ['{ method: "GET", url: "/api/user", body: undefined }', "request"],
+    ['{ url: "/api/user?flag=true" }', "endpoint"],
+    ["{ url: `/api/user?flag=${true}` }", "endpoint"],
+    ['{ url: "/api/user#fragment" }', "endpoint"],
+  ])("requires explicit query parameters for %s", (expression, part) => {
+    const results = check({
+      frontend,
+      backend:
+        'export type GetUserData = { url: "/api/user"; query?: { id?: number; flag?: boolean } };',
+      endpoint: request("void", `() => (${expression})`),
+    });
+    expect(resultFor(results, part)).toMatchObject({
+      status: "unverified",
+      message: expect.stringContaining("params"),
+    });
+  });
+
+  it.each([
     ["mismatch", '["a"]', "throws before sending an array body"],
     [
       "unverified",
@@ -800,15 +819,6 @@ describe("request comparison rules", () => {
       "body: { required: string }",
       "request.body",
       "mismatch",
-    ],
-    [
-      "duplicate inline query keys",
-      "void",
-      '{ url: "/api/user?flag=true&flag=oops" }',
-      "Get",
-      "query: { flag: boolean }",
-      "request.query",
-      "unverified",
     ],
     [
       "branded primitive",

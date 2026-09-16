@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import type { DeclaredRequest } from "./declared-request";
 import type { RtkRequest, TagSlot, UrlSlot } from "./rtk-request";
 import {
   type Shape,
@@ -12,6 +13,7 @@ import {
   elementTypes,
   isObjectLike,
   properties,
+  propertyType,
   symbolDeclaration,
   typeText,
   unionMembers,
@@ -69,6 +71,143 @@ interface ModelContext {
   at: ts.Node;
 }
 
+/** Explicit declarations have one query source and no implicit path-key consumption or GET body. */
+export function modelDeclaredRequest(
+  checker: ts.TypeChecker,
+  request: DeclaredRequest,
+  at: ts.Node,
+): ModelResult {
+  const context = { checker, at };
+  const overridden = extraOptionsUnverified(request);
+  if (overridden) {
+    return { kind: "unverified", message: overridden };
+  }
+  const variants: ClientRequest[] = [];
+  for (const parts of unionMembers(checker, request.parts)) {
+    if (!isObjectLike(parts) || parts.flags & ts.TypeFlags.Any) {
+      return {
+        kind: "unverified",
+        message: "The declared request parts must have a known object type.",
+      };
+    }
+    const input = (name: string): PayloadInput | undefined => {
+      const type = propertyType(checker, parts, name, at);
+      return type ? { type } : undefined;
+    };
+    const bodyInput = input("body");
+    if (
+      request.method === "GET" &&
+      bodyInput &&
+      !(bodyInput.type.flags & UNDEFINED)
+    ) {
+      return {
+        kind: "unverified",
+        message: "A declared GET request cannot send a body.",
+      };
+    }
+    const body = bodyPayloads(context, bodyInput);
+    if (body.failure) {
+      return { kind: "failed", message: body.failure };
+    }
+    const query = paramsPayloads(context, input("query"));
+    const queryVariants = query.payloads.map((payload) =>
+      sendAsQuery(
+        checker,
+        withoutCacheKey(payload, "params", query.notes),
+        query.notes,
+        (reason) => {
+          query.unverified ??= reason;
+        },
+      ),
+    );
+    const path = input("path")?.type;
+    const pathParameters = [...request.url.path.matchAll(/\{([^}]+)\}/g)].map(
+      ([, name]): SentPathParameter => {
+        const type = path && propertyType(checker, path, name, at);
+        const source = `path.${name}`;
+        const sent = stringifiedValues(
+          checker,
+          source,
+          [typeShape(type ?? checker.getUnknownType())],
+          "defineRequest applies String and encodeURIComponent",
+          false,
+        );
+        const rejected = (knownTexts(checker, sent.values) ?? []).some((text) =>
+          ["", ".", ".."].includes(text),
+        );
+        return {
+          source,
+          ...sent,
+          unverified:
+            sent.unverified ??
+            (rejected
+              ? "defineRequest rejects empty and dot path segments before sending"
+              : undefined),
+        };
+      },
+    );
+    variants.push({
+      kind: "modelled",
+      method: request.method,
+      path: request.url.path,
+      pathParameters,
+      query: {
+        variants: queryVariants.map((payload) =>
+          isEmpty(payload) ? typeShape(checker.getUndefinedType()) : payload,
+        ),
+        notes: query.notes,
+        unverified: query.unverified,
+        alwaysSent: false,
+      },
+      body: {
+        variants: body.payloads.map((payload) =>
+          sendAsJson(
+            checker,
+            withoutCacheKey(payload, "body", body.notes),
+            body.notes,
+          ),
+        ),
+        notes: body.notes,
+        unverified: body.unverified,
+        alwaysSent: body.alwaysSent,
+      },
+    });
+  }
+  const first = variants[0];
+  if (!first) {
+    return {
+      kind: "unverified",
+      message: "The declared request has no returning branch.",
+    };
+  }
+  const mergePart = (name: "query" | "body"): SentPart => ({
+    variants: variants.flatMap((variant) => variant[name].variants),
+    notes: [...new Set(variants.flatMap((variant) => variant[name].notes))],
+    unverified: variants.find((variant) => variant[name].unverified)?.[name]
+      .unverified,
+    alwaysSent: variants.every((variant) => variant[name].alwaysSent),
+  });
+  return {
+    ...first,
+    query: mergePart("query"),
+    body: mergePart("body"),
+    pathParameters: first.pathParameters.map((parameter, index) => ({
+      ...parameter,
+      values: variants.flatMap(
+        (variant) => variant.pathParameters[index].values,
+      ),
+      notes: [
+        ...new Set(
+          variants.flatMap((variant) => variant.pathParameters[index].notes),
+        ),
+      ],
+      unverified: variants.find(
+        (variant) => variant.pathParameters[index].unverified,
+      )?.pathParameters[index].unverified,
+    })),
+  };
+}
+
 export function modelClientRequest(
   checker: ts.TypeChecker,
   rtk: RtkRequest,
@@ -76,13 +215,19 @@ export function modelClientRequest(
 ): ModelResult {
   const context: ModelContext = { checker, at };
   const { method } = rtk;
-  const foldsBody = method === "GET" && rtk.body !== undefined;
+  if (method === "GET" && rtk.body !== undefined) {
+    return {
+      kind: "unverified",
+      message:
+        "GET bodies are not supported by the contract checker; declare query parameters in params.",
+    };
+  }
 
-  const body = bodyPayloads(context, rtk.body, method);
+  const body = bodyPayloads(context, payloadInput(checker, rtk.body));
   if (body.failure) {
     return { kind: "failed", message: body.failure };
   }
-  const params = paramsPayloads(context, rtk.params);
+  const params = paramsPayloads(context, payloadInput(checker, rtk.params));
   const queryNotes = [...params.notes];
   const bodyNotes = [...body.notes];
   const paramsVariants = params.payloads.map((payload) =>
@@ -91,7 +236,7 @@ export function modelClientRequest(
   const bodyVariants = body.payloads.map((payload) =>
     withoutCacheKey(payload, "body", bodyNotes),
   );
-  const { pathSlots, query, tags } = rtk.url;
+  const { pathSlots, tags } = rtk.url;
   const { parameters: tagParameters, unverified: tagUnverified } =
     substituteTags(
       context,
@@ -105,55 +250,15 @@ export function modelClientRequest(
   }
   const parameters = pathParameters(context, pathSlots, tagParameters);
 
-  const inline = inlineQuery(query);
-  queryNotes.push(...inline.notes);
-  if (inline.fields.length) {
-    queryNotes.push(
-      "the URL template's inline query string is kept by new URL (ApiClient.buildUrl)",
-    );
-  }
-  // A GET body is sent as query parameters, so what stops the body being compared stops the query instead.
-  let queryUnverified =
-    inline.unverified ??
-    params.unverified ??
-    (foldsBody ? body.unverified : undefined);
-  const onUnverified = (reason: string) => {
-    queryUnverified ??= reason;
-  };
-  const inlinePayload: Payload = {
-    kind: "object",
-    fields: inline.fields,
-    indexes: [],
-    from: undefined,
-  };
-
-  const sources = [
-    [inlinePayload],
-    paramsVariants.map((payload) =>
-      sendAsQuery(checker, payload, queryNotes, onUnverified),
-    ),
-  ];
-  let sentBody: Shape[];
-  if (foldsBody) {
-    sources.push(
-      bodyVariants.map((payload) =>
-        sendAsQuery(checker, payload, queryNotes, onUnverified),
-      ),
-    );
-    sentBody = [typeShape(checker.getUndefinedType())];
-    queryNotes.push(
-      ...bodyNotes.splice(0),
-      "a GET body is sent as query parameters, so it is compared with the backend query (ApiClient._prepareRequest)",
-    );
-    bodyNotes.push(
-      "a GET body is sent as query parameters, so no request body is sent (ApiClient._prepareRequest)",
-    );
-  } else {
-    sentBody = bodyVariants.map((payload) =>
-      sendAsJson(checker, payload, bodyNotes),
-    );
-  }
-  const queryVariants = queryPayloads(sources, onUnverified);
+  let queryUnverified = params.unverified;
+  const queryVariants = paramsVariants.map((payload) =>
+    sendAsQuery(checker, payload, queryNotes, (reason) => {
+      queryUnverified ??= reason;
+    }),
+  );
+  const sentBody = bodyVariants.map((payload) =>
+    sendAsJson(checker, payload, bodyNotes),
+  );
 
   return {
     kind: "modelled",
@@ -172,8 +277,8 @@ export function modelClientRequest(
     body: {
       variants: sentBody,
       notes: [...new Set(bodyNotes)],
-      unverified: foldsBody ? undefined : body.unverified,
-      alwaysSent: !foldsBody && body.alwaysSent,
+      unverified: body.unverified,
+      alwaysSent: body.alwaysSent,
     },
   };
 }
@@ -217,10 +322,11 @@ interface CopiedPayload {
 function typePayload(
   { checker, at }: ModelContext,
   type: ts.Type,
-  expression: ts.Expression,
+  expression: ts.Expression | undefined,
   channel: "params" | "body",
 ): CopiedPayload {
-  const exact = ts.isObjectLiteralExpression(expression);
+  const exact =
+    expression !== undefined && ts.isObjectLiteralExpression(expression);
   const unverified = (reason: string): CopiedPayload => ({
     payload: { kind: "type", type },
     notes: [],
@@ -271,9 +377,12 @@ function typePayload(
     return {
       payload: { kind: "type", type },
       notes: [],
-      unverified: isObjectRest(checker, expression)
-        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
-        : undefined,
+      unverified:
+        expression && isObjectRest(checker, expression)
+          ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
+          : expression
+            ? undefined
+            : "the declared payload has no known properties; its own keys are only known at runtime",
     };
   }
   return {
@@ -310,19 +419,33 @@ function isEmpty(payload: Payload): boolean {
   );
 }
 
+interface PayloadInput {
+  type: ts.Type;
+  expression?: ts.Expression;
+}
+
+function payloadInput(
+  checker: ts.TypeChecker,
+  expression: ts.Expression | undefined,
+): PayloadInput | undefined {
+  return expression
+    ? { type: checker.getTypeAtLocation(expression), expression }
+    : undefined;
+}
+
 function paramsPayloads(
   context: ModelContext,
-  expression: ts.Expression | undefined,
+  input: PayloadInput | undefined,
 ): { payloads: Payload[]; notes: string[]; unverified: string | undefined } {
   const { checker } = context;
-  if (!expression) {
+  if (!input) {
     return {
       payloads: [typeShape(checker.getUndefinedType())],
       notes: [],
       unverified: undefined,
     };
   }
-  const type = checker.getTypeAtLocation(expression);
+  const { type, expression } = input;
   const members = unionMembers(checker, type);
   const dropped = members.filter((member) => member.flags & NULLISH);
   const copied = members
@@ -355,8 +478,7 @@ function globalInterface(
 
 function bodyPayloads(
   context: ModelContext,
-  expression: ts.Expression | undefined,
-  method: string,
+  input: PayloadInput | undefined,
 ): {
   payloads: Payload[];
   notes: string[];
@@ -369,9 +491,9 @@ function bodyPayloads(
   const notes: string[] = [];
   let unverified: string | undefined;
   let failure: string | undefined;
-  // A non-GET body that is not undefined is always sent, as JSON or as-is (ApiClient._prepareRequest).
-  let alwaysSent = method !== "GET";
-  if (!expression) {
+  // A body that is not undefined is always sent, as JSON or as-is (ApiClient._prepareRequest).
+  let alwaysSent = true;
+  if (!input) {
     return {
       payloads: [typeShape(checker.getUndefinedType())],
       notes,
@@ -380,7 +502,7 @@ function bodyPayloads(
       alwaysSent: false,
     };
   }
-  const type = checker.getTypeAtLocation(expression);
+  const { type, expression } = input;
   const rawBodyTypes = ["FormData", "URLSearchParams"].flatMap((name) => {
     const rawType = globalInterface(context, name);
     return rawType ? [{ name, type: rawType }] : [];
@@ -393,29 +515,18 @@ function bodyPayloads(
       payloads.push(typeShape(checker.getUndefinedType()));
       alwaysSent = false;
     } else if (member.flags & ts.TypeFlags.Null) {
-      if (method === "GET") {
-        payloads.push(typeShape(checker.getUndefinedType()));
-      } else {
-        payloads.push({
-          kind: "object",
-          fields: [],
-          indexes: [],
-          from: undefined,
-        });
-        notes.push(
-          "a null body is sent as the JSON object {} (ApiClient._resolveOptions and _prepareRequest)",
-        );
-      }
+      payloads.push({
+        kind: "object",
+        fields: [],
+        indexes: [],
+        from: undefined,
+      });
+      notes.push(
+        "a null body is sent as the JSON object {} (ApiClient._resolveOptions and _prepareRequest)",
+      );
     } else if (raw) {
-      if (method === "GET") {
-        payloads.push(typeShape(checker.getUndefinedType()));
-        notes.push(
-          `a ${raw.name} body is not sent with a GET request (ApiClient._prepareRequest)`,
-        );
-      } else {
-        payloads.push({ kind: "type", type: member });
-        unverified = `a ${raw.name} body is sent as-is (ApiClient._prepareRequest), and its fields are appended at runtime`;
-      }
+      payloads.push({ kind: "type", type: member });
+      unverified = `a ${raw.name} body is sent as-is (ApiClient._prepareRequest), and its fields are appended at runtime`;
     } else if (checker.isArrayType(member) || checker.isTupleType(member)) {
       failure =
         "the client throws before sending an array body (ApiClient._prepareRequest)";
@@ -693,22 +804,9 @@ function sendAsJson(
   );
 }
 
-function queryPayloads(
-  sources: Payload[][],
-  onUnverified: (reason: string) => void,
-): Payload[] {
-  const nonempty = sources.filter((variants) =>
-    variants.some((payload) => !isEmpty(payload)),
-  );
-  if (nonempty.length > 1) {
-    onUnverified(
-      "query parameters come from more than one source, which the checker does not model (ApiClient._prepareRequest)",
-    );
-  }
-  return nonempty[0] ?? sources[0] ?? [];
-}
-
-function extraOptionsUnverified(rtk: RtkRequest): string | undefined {
+function extraOptionsUnverified(
+  rtk: Pick<RtkRequest, "extraOptions">,
+): string | undefined {
   const extraOptions = rtk.extraOptions && unwrap(rtk.extraOptions);
   const replacesRequest =
     extraOptions !== undefined &&
@@ -924,48 +1022,4 @@ function pathParameters(
     }
   }
   return parameters;
-}
-
-function inlineQuery(query: UrlSlot[]): {
-  fields: ShapeField[];
-  notes: string[];
-  unverified: string | undefined;
-} {
-  if (query.some((slot) => slot.kind !== "text")) {
-    return {
-      fields: [],
-      notes: [],
-      unverified:
-        "the checker does not model a dynamic inline query string (ApiClient.buildUrl)",
-    };
-  }
-  const text = query
-    .map((slot) => (slot.kind === "text" ? slot.text : ""))
-    .join("");
-  const search = text.split("#")[0] ?? "";
-  const fields: ShapeField[] = [];
-  const names = new Set<string>();
-  for (const [name, value] of new URLSearchParams(search)) {
-    if (names.has(name)) {
-      return {
-        fields: [],
-        notes: [],
-        unverified: `${name} is repeated in the inline query string, and the checker does not model repeated keys`,
-      };
-    }
-    names.add(name);
-    fields.push({
-      name,
-      shape: { kind: "text", text: value },
-      optional: false,
-      declaration: undefined,
-    });
-  }
-  return {
-    fields,
-    notes: text.includes("#")
-      ? ["fetch does not send the URL fragment (ApiClient.buildUrl)"]
-      : [],
-    unverified: undefined,
-  };
 }

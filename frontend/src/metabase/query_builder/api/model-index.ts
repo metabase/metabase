@@ -1,4 +1,5 @@
 import { Api } from "metabase/api";
+import { defineRequest } from "metabase/api/define-request";
 import {
   invalidateTags,
   listTag,
@@ -14,10 +15,10 @@ import type {
 export const modelIndexApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listModelIndexes: builder.query<ModelIndex[], ModelIndexesListQuery>({
-      query: (body) => ({
+      query: defineRequest({
         method: "GET",
-        url: "/api/model-index",
-        body,
+        route: "/api/model-index",
+        request: (params) => ({ query: params }),
       }),
       providesTags: (modelIndexes = []) =>
         provideModelIndexListTags(modelIndexes),

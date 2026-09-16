@@ -8,6 +8,7 @@ import {
   setupMostRecentlyViewedDashboard,
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
+import type { RecentsRequest } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockRecentCollectionItem,
@@ -51,6 +52,39 @@ describe("activityApi", () => {
     activeStore?.dispatch(Api.util.resetApiState());
     activeStore = undefined;
     fetchMock.removeRoutes().clearHistory();
+  });
+
+  describe("listRecents query parameters", () => {
+    it.each<{ request: RecentsRequest | undefined; expected: string }>([
+      { request: undefined, expected: "context=views" },
+      { request: { context: [] }, expected: "" },
+      {
+        request: { context: ["views", "selections"], include_metadata: false },
+        expected: "context=selections&context=views&include_metadata=false",
+      },
+      {
+        request: { include_metadata: true },
+        expected: "context=views&include_metadata=true",
+      },
+    ])(
+      "serializes $request without changing its context array",
+      async ({ request, expected }) => {
+        const { store } = setup();
+        const original = request?.context?.slice();
+
+        await store.dispatch(
+          activityApi.endpoints.listRecents.initiate(request),
+        );
+
+        const calls = await findRequests("GET");
+        const call = calls.find((request) =>
+          request.url.includes("/api/activity/recents"),
+        );
+        expect(call).toBeDefined();
+        expect(new URL(call!.url).searchParams.toString()).toBe(expected);
+        expect(request?.context).toEqual(original);
+      },
+    );
   });
 
   describe("logRecentItem invalidation", () => {

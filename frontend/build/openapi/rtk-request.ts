@@ -12,7 +12,6 @@ export type TagSlot = Extract<UrlSlot, { kind: "tag" }>;
 interface RequestUrl {
   path: string;
   pathSlots: UrlSlot[];
-  query: UrlSlot[];
   tags: TagSlot[];
 }
 
@@ -81,30 +80,6 @@ function textSlots(text: string): UrlSlot[] {
   return slots;
 }
 
-function splitAtQuery(slots: UrlSlot[]): {
-  path: UrlSlot[];
-  query: UrlSlot[];
-} {
-  const index = slots.findIndex(
-    (slot) => slot.kind === "text" && slot.text.includes("?"),
-  );
-  const at = slots[index];
-  if (index === -1 || !at || at.kind !== "text") {
-    return { path: slots, query: [] };
-  }
-  const split = at.text.indexOf("?");
-  return {
-    path: [
-      ...slots.slice(0, index),
-      { kind: "text", text: at.text.slice(0, split) },
-    ],
-    query: [
-      { kind: "text", text: at.text.slice(split + 1) },
-      ...slots.slice(index + 1),
-    ],
-  };
-}
-
 function urlTemplate(url: ts.Expression): RequestUrl | undefined {
   if (
     !ts.isStringLiteral(url) &&
@@ -122,13 +97,14 @@ function urlTemplate(url: ts.Expression): RequestUrl | undefined {
         ]),
       ]
     : textSlots(url.text);
-  const { path, query } = splitAtQuery(slots);
+  if (slots.some((slot) => slot.kind === "text" && /[?#]/.test(slot.text))) {
+    return undefined;
+  }
   return {
-    path: path
+    path: slots
       .map((slot) => (slot.kind === "text" ? slot.text : "{param}"))
       .join(""),
-    pathSlots: path,
-    query,
+    pathSlots: slots,
     tags: slots.filter((slot): slot is TagSlot => slot.kind === "tag"),
   };
 }

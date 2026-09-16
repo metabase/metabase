@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { defineRequest } from "./define-request";
 
 export interface SessionResponse {
   id: string;
@@ -94,10 +95,10 @@ export const sessionApi = Api.injectEndpoints({
       PasswordResetTokenStatus,
       string
     >({
-      query: (token) => ({
+      query: defineRequest({
         method: "GET",
-        url: "/api/session/password_reset_token_valid",
-        body: { token },
+        route: "/api/session/password_reset_token_valid",
+        request: (token) => ({ query: { token } }),
       }),
     }),
     forgotPassword: builder.mutation<void, string>({
