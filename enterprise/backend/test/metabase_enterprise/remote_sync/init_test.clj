@@ -1,11 +1,21 @@
 (ns metabase-enterprise.remote-sync.init-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
-   [metabase.test :as mt]))
+   [metabase.startup.core :as startup]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each th/clean-remote-sync-state)
 
 (defn- capture-async-import! []
   (let [calls (atom [])]
@@ -100,3 +110,39 @@
           (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
             (#'init/remote-sync-init)
             (is (empty? @calls))))))))
+
+(defn- wait-until
+  "True once `pred` returns truthy, polling every 10 ms for up to `timeout-ms`; false otherwise."
+  [pred timeout-ms]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (cond
+        (pred)                                    true
+        (> (System/currentTimeMillis) deadline)   false
+        :else                                     (do (Thread/sleep 10) (recur))))))
+
+(defn- new-task-id []
+  (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)}))
+
+(deftest remote-sync-shutdown-fails-this-jvms-running-tasks-test
+  (testing "shutdown fails every task whose worker runs in this JVM and leaves a stale open row from elsewhere untouched"
+    (let [other-id (new-task-id)
+          _        (t2/update! :model/RemoteSyncTask other-id
+                               {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
+          own-id   (new-task-id)
+          release  (promise)
+          worker   (future (impl/run-task-body! own-id nil
+                                                (fn [_] @release {:status :success :outcome {:kind "pull-skipped"}})))]
+      (try
+        (is (true? (wait-until #(contains? (impl/running-task-ids) own-id) 5000)))
+        (startup/def-shutdown-logic! ::init/remote-sync-shutdown)
+        (is (=? {:ended_at some? :cancelled false :error_message "Interrupted by server shutdown"}
+                (t2/select-one :model/RemoteSyncTask :id own-id)))
+        (is (=? {:ended_at nil :error_message nil}
+                (t2/select-one :model/RemoteSyncTask :id other-id)))
+        (finally
+          (deliver release nil)
+          (is (not= ::timeout (deref worker 10000 ::timeout)))))
+      (testing "the worker's late result does not overwrite the shutdown bookkeeping"
+        (is (=? {:error_message "Interrupted by server shutdown" :outcome nil}
+                (t2/select-one :model/RemoteSyncTask :id own-id)))))))

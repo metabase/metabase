@@ -1428,6 +1428,18 @@
   []
   @running-tasks)
 
+(defn fail-running-tasks!
+  "Fail every RemoteSyncTask in [[running-task-ids]] with `message`. For graceful shutdown: the workers die with
+  the process and their rows would otherwise stay open until reaped as stale. Goes through `handle-task-result!`
+  so a result that already landed, or a cancel, wins. Never throws."
+  [message]
+  (doseq [task-id (running-task-ids)]
+    (try
+      (log/infof "Failing remote sync task %d: %s" task-id message)
+      (handle-task-result! {:status :error :message message} task-id)
+      (catch Throwable t
+        (log/errorf t "Failed to close remote sync task %d" task-id)))))
+
 (defn- ensure-task-ended!
   "Close the RemoteSyncTask `task-id` as failed if it is still open after its worker exited. Goes through
   `handle-task-result!` so a concurrent cancel, or a result that did land, wins. Never throws: the reason the row

@@ -70,3 +70,7 @@
 (defmethod startup/def-startup-logic! ::remote-sync-setup
   [_]
   (remote-sync-init))
+
+(defmethod startup/def-shutdown-logic! ::remote-sync-shutdown
+  [_]
+  (impl/fail-running-tasks! "Interrupted by server shutdown"))
