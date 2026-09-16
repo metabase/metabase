@@ -1528,6 +1528,65 @@
             (is (= "agent:content:read" (:scope token))
                 "the minted token carries only the registered scope")))))))
 
+(defn- sign-decision-params
+  "Sign `oauth-params` with `csrf-token` exactly as the consent page does, so a hand-built form carries a signature
+   the decision endpoint accepts."
+  [csrf-token oauth-params]
+  (#'api.oauth/sign-oauth-params csrf-token oauth-params))
+
+(deftest authorize-decision-enforces-scope-rules-test
+  (testing "GHY-4542: the HMAC over the consent form is keyed by the CSRF token, which is printed on the page the
+            user is looking at, so the user can recompute it over whatever scope they like. The signature proves no
+            third party tampered with the form; it does not prove the scope was ever validated. /authorize/decision
+            is the endpoint that issues the code, so it applies the scope rules itself: drop unregistered scopes,
+            refuse when none survive, and grant exactly what is left."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        ;; as :rasta, so this test's decisions don't share :crowberto's per-user decision throttle with the rest of
+        ;; the namespace
+        (let [{:keys [client_id client_secret]} (create-test-client!
+                                                 {:scopes ["*" "agent:content:read" "agent:table:read"]})
+              consent-resp (get-consent-page! :rasta client_id)
+              csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
+              csrf-cookie  (extract-csrf-cookie consent-resp)
+              approve!     (fn [scope expected-status]
+                             (let [params (cond-> {:client_id     client_id
+                                                   :redirect_uri  "https://example.com/callback"
+                                                   :response_type "code"
+                                                   :state         "test-state"}
+                                            scope (assoc :scope scope))]
+                               (form-post-decision!
+                                :rasta
+                                (assoc params
+                                       :approved   "true"
+                                       :csrf_token csrf-token
+                                       :params_sig (sign-decision-params csrf-token params))
+                                expected-status
+                                :csrf-cookie csrf-cookie)))
+              refused      {:error             "invalid_request"
+                            :error_description "The authorization request is invalid."}]
+          (testing "a correctly signed approval of a registered scope still issues a code"
+            (let [response (approve! "agent:content:read" 302)]
+              (is (some? (extract-query-param (get-in response [:headers "Location"]) "code")))))
+          (testing "a re-signed wildcard is dropped, so the code is issued for the registered scope alone and the
+                    token it buys carries no wildcard"
+            (let [response (approve! "* agent:content:read" 302)
+                  code     (extract-query-param (get-in response [:headers "Location"]) "code")
+                  token    (token-request! {:grant_type   "authorization_code"
+                                            :code         code
+                                            :redirect_uri "https://example.com/callback"}
+                                           :authorization (basic-auth-header client_id client_secret))]
+              (is (= "agent:content:read" (:scope token)))))
+          (testing "a re-signed request whose scopes are all unregistered is refused, since dropping leaves nothing"
+            (is (= refused (:body (approve! "*" 400))))
+            (is (= refused (:body (approve! "agent:table:read" 400)))))
+          (testing "a re-signed request with no usable scope at all is refused"
+            (doseq [scope [nil "" "   "]]
+              (testing (pr-str scope)
+                (let [response (approve! scope 400)]
+                  (is (= refused (:body response)))
+                  (is (nil? (get-in response [:headers "Location"]))))))))))))
+
 (deftest authorize-rejects-a-request-whose-scopes-are-all-unregistered-test
   (testing "GHY-4542: dropping unregistered scopes cannot leave a request with none, because a scope-less token is
             indistinguishable downstream from scope-unaware auth. When nothing survives the filter the request is

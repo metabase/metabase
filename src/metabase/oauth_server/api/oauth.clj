@@ -320,6 +320,44 @@
         (contains? data :requested)     "invalid_scope"
         :else                           "invalid_request")))
 
+(defn- scope-to-grant
+  "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
+   then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
+   `:error-description` when the request names no scope, when none of its scopes are registered, or when none of
+   them survive narrowing.
+
+   Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
+   form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
+   can re-sign anything. The endpoint that issues the code has to apply these rules itself."
+  [parsed]
+  (let [;; A scope-less request would otherwise mint a token with no scopes.
+        _          (when (str/blank? (:scope parsed))
+                     (throw (ex-info "no scope was requested"
+                                     {:oauth-error       "invalid_scope"
+                                      :error-description (oauth-server/missing-scope-description)})))
+        ;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
+        ;; would honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than
+        ;; refusing (RFC 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to
+        ;; re-authorize, and the refusal would reach a browser tab rather than the client program. Filtered
+        ;; before narrowing, so a request is treated the same with and without `resource`.
+        registered (oauth-server/registered-scopes-only (:scope parsed))
+        _          (when-not registered
+                     (throw (ex-info "no requested scope is a registered scope"
+                                     {:oauth-error       "invalid_scope"
+                                      :error-description (oauth-server/no-supported-scopes-description)})))
+        narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
+    ;; Nothing surviving means the client asked exclusively for scopes this resource does not
+    ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
+    ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
+    ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
+    (when-not narrowed
+      (throw (ex-info "no requested scope is accepted by the named resource"
+                      {:oauth-error       "invalid_scope"
+                       :error-description (str "The requested scopes are not accepted by "
+                                               "the requested resource.")
+                       :resource          (:resource parsed)})))
+    narrowed))
+
 (defn- authorization-consent-response
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
    cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and `:error-description`."
@@ -330,39 +368,12 @@
                                        {:oauth-error       "invalid_target"
                                         :error-description invalid-target-description})))
         ;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
-        ;; then reported as `invalid_scope` below.
+        ;; then reported as `invalid_scope` by [[scope-to-grant]].
         parsed       (oidc/parse-authorization-request provider
                                                        (cond-> query-params
                                                          (str/blank? (:scope query-params)) (dissoc :scope)))
-        ;; A scope-less request would otherwise mint a token with no scopes.
-        _            (when (str/blank? (:scope parsed))
-                       (throw (ex-info "no scope was requested"
-                                       {:oauth-error       "invalid_scope"
-                                        :error-description (oauth-server/missing-scope-description)})))
-        ;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
-        ;; would honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than
-        ;; refusing (RFC 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to
-        ;; re-authorize, and the refusal would reach a browser tab rather than the client program. Filtered
-        ;; before narrowing, so a request is treated the same with and without `resource`.
-        registered   (oauth-server/registered-scopes-only (:scope parsed))
-        _            (when-not registered
-                       (throw (ex-info "no requested scope is a registered scope"
-                                       {:oauth-error       "invalid_scope"
-                                        :error-description (oauth-server/no-supported-scopes-description)})))
-        ;; Narrow before signing: the signature then binds the narrowed scope through the
-        ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
-        narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) registered)
-        ;; Nothing surviving means the client asked exclusively for scopes this resource does not
-        ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
-        ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
-        ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
-        _            (when-not narrowed
-                       (throw (ex-info "no requested scope is accepted by the named resource"
-                                       {:oauth-error       "invalid_scope"
-                                        :error-description (str "The requested scopes are not accepted by "
-                                                                "the requested resource.")
-                                        :resource          (:resource parsed)})))
-        parsed       (assoc parsed :scope narrowed)
+        ;; Narrowed before signing, so the signature binds the granted scope through the consent form round-trip.
+        parsed       (assoc parsed :scope (scope-to-grant parsed))
         client       (proto/get-client (:client-store provider) (:client_id parsed))
         csrf-token   (generate-csrf-token)
         oauth-params (select-keys parsed oauth-param-keys)
@@ -467,7 +478,15 @@
                         {:status  403
                          :headers {"Content-Type" "application/json"}
                          :body    {:error "params_tampered"}}
-                        (redirect-authorization-decision provider parsed approved request)))
+                        ;; The signature says the form was not tampered with by a third party, not that its scope
+                        ;; was ever validated: it is keyed by the CSRF token printed on the consent page, so the
+                        ;; user can re-sign anything. This is where the code is issued, so the scope rules apply
+                        ;; here too. A denial grants nothing and needs none of them.
+                        (redirect-authorization-decision provider
+                                                         (cond-> parsed
+                                                           approved (assoc :scope (scope-to-grant parsed)))
+                                                         approved
+                                                         request)))
                     (catch ExceptionInfo e
                       (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
