@@ -1,19 +1,21 @@
 (ns metabase-enterprise.api-keys.usage-test
   "Tests for [[metabase.api-keys.usage/record-api-key-usage!]] — one lean `api_key_usage_log` row per
-  API-key-authenticated request, plus the `api_key.last_used_at` stamp, both batched via Grouper.
-  Exercises the `defenterprise` dispatch via the OSS entry point in `metabase.api-keys.usage`.
-  Collection runs on every EE instance (`:feature :none`); PII is gated by
-  `analytics-pii-retention-enabled` (itself `:audit-app`-gated). Both writes go through Grouper
-  queues, so every test that expects to observe one forces `synchronous-batch-updates`."
+  API-key-authenticated request, plus the `api_key.last_used_at` stamp. Exercises the `defenterprise`
+  dispatch via the OSS entry point in `metabase.api-keys.usage`. Collection runs on every EE instance
+  (`:feature :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated).
+  The usage-log row goes through a Grouper queue, so every test that expects to observe one forces
+  `synchronous-batch-updates`. The `last_used_at` stamp coalesces in an in-memory map instead and is
+  only ever written by an explicit call to the private `flush-last-used-at!`."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase-enterprise.api-keys.usage :as ee-usage]
    [metabase.api-keys.core :as-alias api-keys]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -56,7 +58,7 @@
    {:api-key-id       api-key-id
     :metabase-user-id user-id
     :tenant-id        tenant-id
-    :request-method   (some-> http-method str/lower-case keyword)
+    :request-method   (some-> http-method u/lower-case-en keyword)
     :headers          (cond-> {}
                         user-agent         (assoc "user-agent" user-agent)
                         ip-address         (assoc "x-forwarded-for" ip-address)
@@ -340,3 +342,29 @@
           (mt/with-dynamic-fn-redefs [t2/query (fn [& _] (throw (ex-info "boom" {})))]
             (is (nil? (#'ee-usage/flush-last-used-at!))))
           (finally (t2/delete! :model/ApiKeyUsageLog :route_template route)))))))
+
+(deftest flush-last-used-at!-requeues-skipped-keys-test
+  (testing "a key the DB layer skips (e.g. a busy row) goes back into the pending map, merged against
+           newer arrivals rather than overwritten by the stale retry"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_4444444444"
+                                                     :name                   (mt/random-name)
+                                                     :user_id                (mt/user->id :crowberto)
+                                                     :creator_id             (mt/user->id :crowberto)
+                                                     :updated_by_id          (mt/user->id :crowberto)}]
+        ;; truncated to microseconds to match real DB storage precision; H2 alone preserves nanoseconds.
+        (let [now     #(-> (t/instant) (t/truncate-to :micros) (t/offset-date-time (t/zone-offset 0)))
+              earlier (now)
+              later   (t/plus earlier (t/seconds 5))
+              route   (unique-route)]
+          (try
+            (record! (request-info route :api-key-id api-key-id :occurred-at earlier))
+            ;; simulate the lock step finding every key busy: nothing is actually written
+            (mt/with-dynamic-fn-redefs [api-keys.db/update-api-keys-last-used-at! (fn [id->timestamp] id->timestamp)]
+              (#'ee-usage/flush-last-used-at!))
+            (is (nil? (last-used-at api-key-id)) "still pending — the redef simulated a busy row")
+            ;; a fresher event lands before the key is retried
+            (record! (request-info route :api-key-id api-key-id :occurred-at later))
+            (#'ee-usage/flush-last-used-at!)
+            (is (= later (last-used-at api-key-id)) "the retried write kept the newer of the two timestamps")
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
