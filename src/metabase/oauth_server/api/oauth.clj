@@ -406,8 +406,8 @@
         narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
     ;; Nothing surviving means the client asked exclusively for scopes this resource does not
     ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
-    ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
-    ;; in-product way to widen the grant. RFC 6749 section 4.1.2.1 has an error for it.
+    ;; zero-scope token, which looks like success while authorizing nothing on the resource the
+    ;; client named. RFC 6749 section 4.1.2.1 has an error for it.
     (when-not narrowed
       (throw (ex-info "no requested scope is accepted by the named resource"
                       {:oauth-error       "invalid_scope"

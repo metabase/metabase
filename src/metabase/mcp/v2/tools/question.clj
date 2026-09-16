@@ -141,11 +141,11 @@
    unrestricted sentinel, which matches everything)."
   [token-scopes]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
-    (common/throw-teaching-error
+    (common/throw-insufficient-scope!
      (message/msg [(str "Saving a native (SQL) query requires the %s scope — "
                         "this token can write content but not author raw SQL.")]
                   (message/raw metabot.scope/agent-sql-run))
-     {:status-code 403 ::common/error-code common/error-code-invalid-request}))
+     metabot.scope/agent-sql-run))
   (v2.queries/check-execute-sql-enabled! (message/raw "Saving a native (SQL) query")))
 
 (defn- resolve-query-source
