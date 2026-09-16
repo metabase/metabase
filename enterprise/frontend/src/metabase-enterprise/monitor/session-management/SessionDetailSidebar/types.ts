@@ -7,7 +7,10 @@ export type SessionDetailSidebarProps = {
   sessionFromPage: AdminSession | undefined;
   prevSessionId: AdminSessionId | undefined;
   nextSessionId: AdminSessionId | undefined;
+  isRevoking: boolean;
   onNavigate: (sessionId: AdminSessionId) => void;
+  onRevokeSession: (session: AdminSession) => void;
+  onRevokeUserSessions: (session: AdminSession) => void;
   onClose: () => void;
 };
 
@@ -16,7 +19,10 @@ export type SidebarHeaderProps = {
   session: AdminSession | undefined;
   prevSessionId: AdminSessionId | undefined;
   nextSessionId: AdminSessionId | undefined;
+  isRevoking: boolean;
   onNavigate: (sessionId: AdminSessionId) => void;
+  onRevokeSession: (session: AdminSession) => void;
+  onRevokeUserSessions: (session: AdminSession) => void;
   onClose: () => void;
 };
 
