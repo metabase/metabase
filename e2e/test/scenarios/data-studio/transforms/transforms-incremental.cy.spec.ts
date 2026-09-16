@@ -199,7 +199,6 @@ def transform(animals):
             const transformId = response?.body?.id;
             expect(response?.statusCode).to.equal(200);
             expect(transformId).to.be.a("number");
-            cy.wrap(transformId).as("transformId");
           });
         });
 
@@ -213,9 +212,7 @@ def transform(animals):
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess({
-          timeout: PYTHON_TRANSFORM_RUN_TIMEOUT,
-        });
+        runTransformAndWaitForSuccess();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -241,9 +238,7 @@ def transform(animals):
 
         cy.go("back");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess({
-          timeout: PYTHON_TRANSFORM_RUN_TIMEOUT,
-        });
+        runTransformAndWaitForSuccess();
 
         cy.log(
           "verify the new element was picked up in the incremental transfer",
@@ -276,9 +271,7 @@ def transform(animals):
           "go to Runs tab, run transform again and check new run has checkpoint to 31",
         );
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess({
-          timeout: PYTHON_TRANSFORM_RUN_TIMEOUT,
-        });
+        runTransformAndWaitForSuccess();
         cy.findByRole("link", { name: "See all runs" }).click();
         cy.findByRole("treegrid", { name: "Transform runs" }).within(() => {
           cy.findAllByRole("row", { name: /Python transform/i })
@@ -411,7 +404,9 @@ function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
 }
 
-function runTransformAndWaitForSuccess(options: { timeout?: number } = {}) {
+function runTransformAndWaitForSuccess(
+  options: { timeout?: number } = { timeout: PYTHON_TRANSFORM_RUN_TIMEOUT },
+) {
   getRunButton().click();
   getRunButton(options).should("have.text", "Ran successfully");
 }
