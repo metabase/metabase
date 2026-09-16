@@ -139,6 +139,14 @@
   [builder]
   (fn [params] (t2/query (builder params))))
 
+;;; ADOPTION RULE: a model's reads may move here only if every read-firing behavior it declares is
+;;; an `:out` transform, which `wrap-out-transforms` re-applies. `define-after-select` is a separate
+;;; Toucan mechanism (a `pipeline/results-transform`, not a `deftransforms` entry) and is NOT
+;;; re-applied yet, so a model declaring one would silently lose it -- for several models that means
+;;; leaking a field the hook exists to scrub. Check with
+;;; `(isa? model :toucan2.tools.after-select/after-select)` before porting; see GHY-4609 for the fix
+;;; and the audited list. The SSO models this namespace serves declare neither.
+
 (defn select-executor
   "A `params -> [instance]` fn for a read query: in-transforms, execute, out-transforms + instance.
   `builder` is a `def-sqlvec-fns`-generated fn (turns a param map into a sqlvec)."
