@@ -11,29 +11,18 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
 import { updateDatabase } from "metabase/reference/update-actions";
-import type { User } from "metabase-types/api";
+import type { Database, User } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getDatabase,
-  getIsEditing,
-  getIsFormulaExpanded,
-  getUser,
-} from "../selectors";
-import type { BaseDetailFormFields, StubbedDatabase } from "../types";
+import type { StateWithReference } from "../selectors";
+import { getIsEditing, getIsFormulaExpanded, getUser } from "../selectors";
+import type { BaseDetailFormFields } from "../types";
 
 interface DatabaseDetailFormFields extends BaseDetailFormFields {
   revision_message?: string;
 }
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => {
-  const entity = getDatabase(state, props) || {};
-
+const mapStateToProps = (state: StateWithReference) => {
   return {
-    entity,
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -48,7 +37,7 @@ const mapDispatchToProps = {
 
 interface DatabaseDetailProps {
   style?: React.CSSProperties;
-  entity: StubbedDatabase;
+  database: Database | undefined;
   user: User | null;
   isEditing?: boolean;
   startEditing: () => void;
@@ -62,7 +51,7 @@ interface DatabaseDetailProps {
 const DatabaseDetail = (props: DatabaseDetailProps) => {
   const {
     style,
-    entity,
+    database: entity,
     loadingError,
     loading,
     user,
@@ -111,7 +100,7 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
         />
       )}
       <EditableReferenceHeader
-        entity={entity}
+        entity={entity ?? {}}
         type="database"
         name="Details"
         headerIcon="database"
@@ -145,7 +134,7 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Description`}
-                    description={entity.description}
+                    description={entity?.description}
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
                     field={getFormField("description")}
@@ -154,7 +143,7 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Why this database is interesting`}
-                    description={entity.points_of_interest}
+                    description={entity?.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
                     field={getFormField("points_of_interest")}
@@ -163,7 +152,7 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Things to be aware of about this database`}
-                    description={entity.caveats}
+                    description={entity?.caveats}
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
                     field={getFormField("caveats")}
