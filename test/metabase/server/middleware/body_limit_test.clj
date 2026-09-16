@@ -67,11 +67,10 @@
 
 (defn- call-limited
   "Run `request` through [[mw.body-limit/wrap-limit-request-body]] wrapped around [[slurping-handler]], with the
-  authenticated limit set to `max-bytes` and the unauthenticated one to `unauthenticated-max-bytes`, returning the
-  response. `request` is treated as authenticated when it carries a `:metabase-user-id`."
-  [request max-bytes unauthenticated-max-bytes]
-  (mt/with-temp-env-var-value! [mb-max-request-body-bytes                 (str max-bytes)
-                                mb-max-unauthenticated-request-body-bytes (str unauthenticated-max-bytes)]
+  unauthenticated limit set to `max-bytes`, returning the response. `request` is treated as authenticated when it
+  carries a `:metabase-user-id`."
+  [request max-bytes]
+  (mt/with-temp-env-var-value! [mb-max-unauthenticated-request-body-bytes (str max-bytes)]
     ((mw.body-limit/wrap-limit-request-body slurping-handler)
      (merge {:request-method :post, :uri "/api/card", :headers {"content-type" "application/json"}} request)
      identity
@@ -80,74 +79,58 @@
 (deftest wrap-limit-request-body-test
   (testing "a Content-Length over the limit is rejected before a single byte is read"
     (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 1000 counter), :content-length 1000} 16 16)]
+          response (call-limited {:body (body-of-size 1000 counter), :content-length 1000} 16)]
       (is (= 413 (:status response)))
       (is (string? (:body response)))
       (is (= 0 @counter))))
   (testing "without a Content-Length (chunked), reading past the limit is rejected"
     (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 1000 counter)} 16 16)]
+          response (call-limited {:body (body-of-size 1000 counter)} 16)]
       (is (= 413 (:status response)))
       (is (<= @counter 17))))
   (testing "a body within the limit reaches the handler intact"
     (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 16 counter), :content-length 16} 16 16)]
+          response (call-limited {:body (body-of-size 16 counter), :content-length 16} 16)]
       (is (= 200 (:status response)))
       (is (= (apply str (repeat 16 "x")) (:body response)))))
   (testing "a request with no body passes through"
-    (is (= 200 (:status (call-limited {:body nil} 16 16)))))
+    (is (= 200 (:status (call-limited {:body nil} 16)))))
   (testing "multipart bodies are left to the endpoint's own multipart limits"
     (let [counter  (atom 0)
           response (call-limited {:body           (body-of-size 1000 counter)
                                   :content-length 1000
                                   :headers        {"content-type" "multipart/form-data; boundary=xyz"}}
-                                 16 16)]
+                                 16)]
       (is (= 200 (:status response)))
       (is (= 1000 @counter))))
   (testing "other exceptions from the handler are not swallowed"
-    (mt/with-temp-env-var-value! [mb-max-request-body-bytes "16"]
+    (mt/with-temp-env-var-value! [mb-max-unauthenticated-request-body-bytes "16"]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                             ((mw.body-limit/wrap-limit-request-body (fn [_ _ _] (throw (ex-info "boom" {}))))
                              {:request-method :post, :uri "/api/card", :body (body-of-size 1 (atom 0))}
                              identity
                              (fn [e] (throw e))))))))
 
-(deftest two-tier-limit-test
-  (testing "unauthenticated: a Content-Length between the two limits is rejected before a single byte is read"
+(deftest authenticated-requests-are-not-limited-test
+  (testing "authenticated: a body over the unauthenticated limit reaches the handler intact"
     (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 100 counter), :content-length 100} 1000 16)]
-      (is (= 413 (:status response)))
-      (is (= 0 @counter))))
-  (testing "unauthenticated: a chunked body between the two limits is rejected at the unauthenticated limit"
-    (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 100 counter)} 1000 16)]
-      (is (= 413 (:status response)))
-      (is (<= @counter 17))))
-  (testing "authenticated: a body between the two limits reaches the handler intact"
-    (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 100 counter), :content-length 100, :metabase-user-id 1} 1000 16)]
+          response (call-limited {:body (body-of-size 1000 counter), :content-length 1000, :metabase-user-id 1} 16)]
       (is (= 200 (:status response)))
-      (is (= (apply str (repeat 100 "x")) (:body response)))))
-  (testing "authenticated: a chunked body between the two limits reaches the handler intact"
+      (is (= (apply str (repeat 1000 "x")) (:body response)))))
+  (testing "authenticated: a chunked body over the unauthenticated limit reaches the handler intact"
     (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 100 counter), :metabase-user-id 1} 1000 16)]
+          response (call-limited {:body (body-of-size 1000 counter), :metabase-user-id 1} 16)]
       (is (= 200 (:status response)))
-      (is (= 100 @counter))))
-  (testing "authenticated: a Content-Length over the authenticated limit is still rejected before any byte is read"
-    (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 2000 counter), :content-length 2000, :metabase-user-id 1} 1000 16)]
-      (is (= 413 (:status response)))
-      (is (= 0 @counter))))
-  (testing "authenticated: a chunked body over the authenticated limit is rejected there"
-    (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 2000 counter), :metabase-user-id 1} 1000 16)]
-      (is (= 413 (:status response)))
-      (is (<= @counter 1001))))
-  (testing "an unauthenticated limit above the authenticated one is capped at the authenticated one"
-    (let [counter  (atom 0)
-          response (call-limited {:body (body-of-size 100 counter)} 16 1000)]
-      (is (= 413 (:status response)))
-      (is (<= @counter 17)))))
+      (is (= 1000 @counter))))
+  (testing "authenticated: the body is handed through unwrapped"
+    (let [body     (body-of-size 1 (atom 0))
+          captured (atom nil)]
+      (mt/with-temp-env-var-value! [mb-max-unauthenticated-request-body-bytes "16"]
+        ((mw.body-limit/wrap-limit-request-body (fn [request respond _] (reset! captured (:body request)) (respond {:status 200})))
+         {:request-method :post, :uri "/api/card", :body body, :metabase-user-id 1}
+         identity
+         (fn [e] (throw e))))
+      (is (identical? body @captured)))))
 
 (defn- request-through-full-stack
   "POST `body-bytes` bytes to `/api/card` through the real middleware stack with `headers`, returning
@@ -166,8 +149,7 @@
     [(deref response 10000 ::timeout) @counter]))
 
 (deftest json-body-is-bounded-before-auth-test
-  (mt/with-temp-env-var-value! [mb-max-request-body-bytes                 "4096"
-                                mb-max-unauthenticated-request-body-bytes "1024"]
+  (mt/with-temp-env-var-value! [mb-max-unauthenticated-request-body-bytes "1024"]
     (testing "an unauthenticated JSON POST larger than the unauthenticated limit is refused with 413 without buffering it"
       (let [[response bytes-read] (request-through-full-stack {"content-type" "application/json"} 2048)]
         (is (= 413 (:status response)))
@@ -181,15 +163,9 @@
       (let [[response bytes-read] (request-through-full-stack {"content-type" "application/x-www-form-urlencoded"} 2048)]
         (is (= 413 (:status response)))
         (is (<= bytes-read 1025))))
-    (testing "the same body with a valid session gets past the unauthenticated limit (and fails validation instead)"
-      (let [[response bytes-read] (request-through-full-stack {"content-type"       "application/json"
-                                                               "x-metabase-session" (test.users/username->token :rasta)}
-                                                              2048)]
-        (is (= 400 (:status response)))
-        (is (= 2048 bytes-read))))
-    (testing "but an authenticated body over the authenticated limit is still refused"
+    (testing "the same body with a valid session is not limited (and fails validation instead)"
       (let [[response bytes-read] (request-through-full-stack {"content-type"       "application/json"
                                                                "x-metabase-session" (test.users/username->token :rasta)}
                                                               8192)]
-        (is (= 413 (:status response)))
-        (is (<= bytes-read 4097))))))
+        (is (= 400 (:status response)))
+        (is (= 8192 bytes-read))))))

@@ -3,7 +3,7 @@
 
   [[wrap-limit-request-body]] sits inside [[metabase.server.middleware.session/wrap-current-user-info]], so it knows
   whether the caller is authenticated, and outside every middleware that reads the body, so the bound is in place
-  before the first byte is read."
+  before the first byte is read. Only unauthenticated requests are bounded."
   (:require
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.settings :as server.settings]
@@ -48,28 +48,23 @@
   (some->> (get-in request [:headers "content-type"])
            (re-find #"^multipart/form-data")))
 
-(defn- max-bytes-for [request]
-  (let [authenticated-max (server.settings/max-request-body-bytes)]
-    (if (:metabase-user-id request)
-      authenticated-max
-      (min (server.settings/max-unauthenticated-request-body-bytes) authenticated-max))))
-
 (defn- limit-request-body
-  "Reject `request` outright when its declared `Content-Length` is over the limit for its caller; otherwise bound
-  `:body` so a chunked body can't sneak past it. Multipart bodies are exempt: endpoints that accept them opt in
-  explicitly after authentication, streaming parts to disk under their own `:max-file-size`."
-  [{:keys [body content-length], :as request}]
-  (if (or (nil? body) (multipart? request))
+  "For an unauthenticated `request`, reject it outright when its declared `Content-Length` is over the limit;
+  otherwise bound `:body` so a chunked body can't sneak past it. Authenticated requests pass through untouched.
+  Multipart bodies are exempt: endpoints that accept them opt in explicitly after authentication, streaming parts to
+  disk under their own `:max-file-size`."
+  [{:keys [body content-length metabase-user-id], :as request}]
+  (if (or (nil? body) metabase-user-id (multipart? request))
     request
-    (let [max-bytes (max-bytes-for request)]
+    (let [max-bytes (server.settings/max-unauthenticated-request-body-bytes)]
       (when (and content-length (> content-length max-bytes))
         (throw (body-too-large-exception max-bytes)))
       (assoc request :body (bounded-input-stream body max-bytes)))))
 
 (defn wrap-limit-request-body
-  "Middleware that bounds request bodies, responding with 413 when a body is larger than the caller's limit. Must sit
-  inside [[metabase.server.middleware.session/wrap-current-user-info]] and outside every middleware that reads the
-  body."
+  "Middleware that bounds unauthenticated request bodies, responding with 413 when a body is larger than
+  [[server.settings/max-unauthenticated-request-body-bytes]]. Must sit inside
+  [[metabase.server.middleware.session/wrap-current-user-info]] and outside every middleware that reads the body."
   [handler]
   (fn [request respond raise]
     (try
