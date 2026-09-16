@@ -586,12 +586,18 @@
               (is (= "Good" (:name good)))
               (is (nil? (:error good))))))))))
 
-(deftest get-content-item-error-text-is-not-quoted-test
-  (testing "GHY-4544: an item's error is a JSON string value, so a caller-facing upstream string sits in it unquoted"
+(deftest get-content-item-error-text-is-cleaned-test
+  (testing "GHY-4544: a caller-facing upstream string in an item's error is cleaned whole — JSON escapes control
+            characters and quotes but not format characters like a bidi override or a zero-width space, so
+            those must arrive as literal escapes rather than raw"
     (mt/with-test-user :crowberto
       (mt/with-dynamic-fn-redefs [tools.content/fetch-measure-or-segment
-                                  (fn [& _] (throw (ex-info "Not found." {:status-code 404})))]
-        (is (= "Not found." (:error (content-one {:items [{:type "measure" :id 1}]}))))))))
+                                  (fn [& _]
+                                    (throw (ex-info (str "Not found" (char 0x202E) "x" (char 0x200B))
+                                                    {:status-code 404})))]
+        (let [error (:error (content-one {:items [{:type "measure" :id 1}]}))]
+          (is (= "\"Not found\\u202ex\\u200b\"" error))
+          (is (not (re-find #"[‮​]" error))))))))
 
 (deftest get-content-card-type-mismatch-test
   (testing "GHY-4140: asking for a model with type question teaches the actual type"

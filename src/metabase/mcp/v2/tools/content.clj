@@ -641,10 +641,10 @@
                 (assoc :type type)))))
       (catch Exception e
         ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
-        ;; judgment. The text lands in a JSON string, which already delimits it, so a plain string
-        ;; goes in as it is rather than quoted.
-        (let [error (common/caller-safe-error-message e)]
-          {:type type :id id :error (if (message/message? error) (message/render error) error)})))))
+        ;; judgment, then render it. JSON quoting is not cleaning — it escapes control characters
+        ;; and quotes but leaves format characters like a bidi override intact — so a plain string
+        ;; from upstream is rendered too, which cleans it whole.
+        {:type type :id id :error (message/render (common/caller-safe-error-message e))}))))
 
 (def ^:private get-content-args-schema
   [:map {:closed true}
