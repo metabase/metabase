@@ -290,7 +290,7 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]])))
+                   [:= {} col-ref (lib/normalize [:value {:base-type :type/UUID} (str uuid)])])))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed

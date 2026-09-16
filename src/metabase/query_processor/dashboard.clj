@@ -7,8 +7,10 @@
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
@@ -79,7 +81,9 @@
                    (lib/mbql-stage? query -1))
         card
         (if-let [dimension (default-metric-dimension provider query card)]
-          (let [definition (lib-metric/from-metric-metadata provider card)
+          (let [definition (lib-metric/from-metric-metadata
+                            provider
+                            (lib.metadata/metric (lib-be/application-database-metadata-provider (:database_id card)) (:id card)))
                 breakout   (lib-metric/dimension-breakout definition dimension)]
             (cond-> card
               breakout (assoc :dataset_query (-> query
@@ -166,9 +170,9 @@
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
   [dashboard      :- ::dashboards.schema/dashboard
-   dashcard       :- ::dashboards.schema/dashcard
+   dashcard       :- ::dashboards.schema/dashboard-card
    card-id        :- ::lib.schema.id/card
-   request-params :- [:maybe [:sequential :map]]]
+   request-params :- [:maybe ::dashboards.schema/parameters]]
   (let [dashboard-id              (:id dashboard)
         dashcard-id               (:id dashcard)
         _                         (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
@@ -235,12 +239,13 @@
              (perms/most-permissive-database-permission-for-user
               api/*current-user-id* :perms/view-data
               (:database_id card))))
-      (let [resolved-params (resolve-params-for-query dashboard dashcard card-id parameters)
+      (let [resolved-params (resolve-params-for-query dashboard dashcard card-id
+                                                      (some->> parameters not-empty (lib/normalize ::dashboards.schema/parameters)))
             options         (merge
                              {:ignore-cache false
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
-                             (dissoc options :dashboard :card)
+                             (dissoc options :dashboard :card :export-format)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"

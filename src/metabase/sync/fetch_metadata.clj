@@ -79,7 +79,7 @@
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema.
   If the driver doesn't support [[metabase.driver/describe-fields]] it uses [[driver/describe-table]] instead.
   This will be deprecated in "
-  [database :- i/DatabaseInstance & {:as args}]
+  [database :- i/DatabaseInstance & {:as args} :- [:maybe ::driver/describe-fks.options]]
   (log-if-error "fields-metadata"
     (let [driver             (driver.u/database->driver database)
           describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
@@ -97,7 +97,7 @@
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
   [database     :- i/DatabaseInstance
-   & {:as args} :- ::driver/describe-fks.options]
+   & {:as args} :- [:maybe ::driver/describe-fks.options]]
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
       (when (driver.u/supports? driver :metadata/key-constraints database)

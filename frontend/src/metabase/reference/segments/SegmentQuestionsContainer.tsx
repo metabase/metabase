@@ -18,12 +18,12 @@ import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getIsEditing,
-  getSegment,
   getSegmentId,
   getUser,
 } from "../selectors";
 
 import SegmentSidebar from "./SegmentSidebar";
+import { useSegmentPage } from "./use-segment-page";
 
 const mapDispatchToProps = {
   fetchQuestions: () => (dispatch: Dispatch) =>
@@ -42,9 +42,9 @@ function SegmentQuestionsContainer(props: SegmentQuestionsContainerProps) {
   const params = useParams<ReferenceRouteParams>();
 
   const user = useSelector(getUser);
-  const segment = useSelector((state) => getSegment(state, { params }));
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  const { segment, table } = useSegmentPage(segmentId);
 
   useReferenceFetch(() => fetchSegmentQuestionsData(dispatch, segmentId));
 
@@ -60,9 +60,15 @@ function SegmentQuestionsContainer(props: SegmentQuestionsContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<SegmentSidebar segment={segment} user={user} />}
+      sidebar={
+        <SegmentSidebar
+          segmentId={segmentId}
+          segmentName={segment?.name}
+          user={user}
+        />
+      }
     >
-      <SegmentQuestions params={params} />
+      <SegmentQuestions segment={segment} table={table} />
     </SidebarLayout>
   );
 }

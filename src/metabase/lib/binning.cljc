@@ -12,6 +12,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -45,7 +46,8 @@
 
   Pass `nil` `binning` to remove any binning."
   {:style/indent [:form]}
-  [x binning :- [:maybe [:or ::lib.schema.binning/binning.resolved ::lib.schema.binning/binning-option]]]
+  [x       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+   binning :- [:maybe [:or ::lib.schema.binning/binning.resolved ::lib.schema.binning/binning-option]]]
   (with-binning-method x (->binning-options (if (contains? binning :mbql)
                                               (:mbql binning)
                                               binning))))
@@ -64,7 +66,7 @@
   "Get the current binning options associated with `x`, if any. The options come back tagged with `:lib/type` and a
   `:metadata-fn` closure for [[metabase.lib.metadata.calculation/display-info]]; strip those before putting them back
   into a query."
-  [x]
+  [x :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (binning-method x))
 
 (defmulti available-binning-strategies-method
@@ -81,12 +83,13 @@
 
 (mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
   "Get a set of available binning strategies for `x`. Returns nil if none are available."
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (available-binning-strategies query -1 x))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (available-binning-strategies-method query stage-number x)))
 
 (mu/defn default-auto-bin :- ::lib.schema.binning/binning-option

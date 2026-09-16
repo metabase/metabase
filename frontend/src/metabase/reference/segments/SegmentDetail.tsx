@@ -18,23 +18,12 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateSegment } from "metabase/reference/update-actions";
 import type * as Lib from "metabase-lib";
-import type { User } from "metabase-types/api";
+import type { Segment, Table, User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getIsEditing,
-  getIsFormulaExpanded,
-  getSegment,
-  getTable,
-  getUser,
-} from "../selectors";
-import type {
-  BaseDetailFormFields,
-  ReferenceLoadingProps,
-  StubbedSegment,
-  StubbedTable,
-} from "../types";
+import { getIsEditing, getIsFormulaExpanded, getUser } from "../selectors";
+import type { BaseDetailFormFields, ReferenceLoadingProps } from "../types";
 import { getQuestionUrl } from "../utils";
 
 interface SegmentDetailFormFields extends BaseDetailFormFields {
@@ -42,8 +31,8 @@ interface SegmentDetailFormFields extends BaseDetailFormFields {
 }
 
 const interestingQuestions = (
-  table: StubbedTable,
-  segment: StubbedSegment,
+  table: Table,
+  segment: Segment,
   metadataProvider: Lib.MetadataProvider,
 ) => {
   return [
@@ -71,17 +60,10 @@ const interestingQuestions = (
 
 const mapStateToProps = (
   state: StateWithReference,
-  props: ReferenceRouteProps,
+  props: Pick<SegmentDetailProps, "table">,
 ) => {
-  const entity = getSegment(state, props) || {};
-
   return {
-    entity,
-    table: getTable(state, props),
-    metadataProvider: selectMetadataProvider(
-      state,
-      getTable(state, props)?.db_id ?? null,
-    ),
+    metadataProvider: selectMetadataProvider(state, props.table?.db_id ?? null),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -101,8 +83,8 @@ const validate = (values: SegmentDetailFormFields) =>
 
 interface SegmentDetailProps {
   style: React.CSSProperties;
-  entity: StubbedSegment;
-  table: StubbedTable | undefined;
+  segment: Segment | undefined;
+  table: Table | undefined;
   user: User;
   isEditing?: boolean;
   startEditing: () => void;
@@ -120,7 +102,7 @@ interface SegmentDetailProps {
 const SegmentDetail = (props: SegmentDetailProps) => {
   const {
     style,
-    entity,
+    segment: entity,
     table,
     metadataProvider,
     loadingError,
@@ -180,11 +162,15 @@ const SegmentDetail = (props: SegmentDetailProps) => {
           entity={entity}
           type="segment"
           headerIcon={modelIconMap.segment}
-          headerLink={getQuestionUrl({
-            tableId: entity.table_id!,
-            segmentId: entity.id,
-            metadataProvider: metadataProvider,
-          })}
+          headerLink={
+            table && entity
+              ? getQuestionUrl({
+                  tableId: table.id,
+                  segmentId: entity.id,
+                  metadataProvider,
+                })
+              : undefined
+          }
           name={t`Details`}
           user={user}
           isEditing={isEditing}
@@ -244,7 +230,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Description`}
-                    description={entity.description}
+                    description={entity?.description}
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
                     field={getFormField("description")}
@@ -253,7 +239,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Why this Segment is interesting`}
-                    description={entity.points_of_interest}
+                    description={entity?.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
                     field={getFormField("points_of_interest")}
@@ -262,13 +248,13 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Things to be aware of about this Segment`}
-                    description={entity.caveats}
+                    description={entity?.caveats}
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
                     field={getFormField("caveats")}
                   />
                 </li>
-                {!isEditing && table && (
+                {!isEditing && table && entity && (
                   <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(
@@ -281,7 +267,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 )}
                 {table &&
                   !isEditing &&
-                  entity.definition &&
+                  entity?.definition &&
                   entity.table_id != null && (
                     <li className={cx(CS.relative, CS.mb4)}>
                       <Formula
@@ -313,6 +299,8 @@ export default connect(
   // props, because the `actions` spread in `mapDispatchToProps` is untyped.
   // The cast restores the props a caller actually passes.
   SegmentDetail as unknown as React.ComponentType<
-    ReferenceRouteProps & ReferenceLoadingProps
+    ReferenceRouteProps &
+      ReferenceLoadingProps &
+      Pick<SegmentDetailProps, "segment" | "table">
   >,
 );

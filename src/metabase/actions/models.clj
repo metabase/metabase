@@ -5,15 +5,19 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -56,8 +60,8 @@
 (def ^:private transform-action-parameters
   "Like `parameters/transform-parameters`, but normalizes against `::actions.schema/action.parameters`: an implicit
   action's parameters carry the annotations [[implicit-action-parameters]] computes them with."
-  {:in  (comp mi/json-in actions.schema/normalize-parameters)
-   :out (comp (mi/catch-normalization-exceptions actions.schema/normalize-parameters)
+  {:in  (comp mi/json-in #(lib/normalize ::actions.schema/action.parameters %))
+   :out (comp (mi/catch-normalization-exceptions #(lib/normalize ::actions.schema/action.parameters %))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/Action
@@ -76,9 +80,9 @@
 (def ^:private transform-json-with-nested-parameters
   {:in  (comp mi/json-in
               (fn [template]
-                (u/update-if-exists template :parameters parameters/normalize-parameters)))
+                (u/update-if-exists template :parameters #(lib/normalize ::parameters.schema/parameters %))))
    :out (comp (fn [template]
-                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions parameters/normalize-parameters)))
+                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions #(lib/normalize ::parameters.schema/parameters %))))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/HTTPAction
@@ -161,7 +165,7 @@
 
 (mu/defn insert! :- ::actions.schema/id
   "Inserts an Action and related type table. Returns the action id."
-  [action-data :- :map]
+  [action-data :- ::actions.schema/action.for-insert]
   (insert*! (lib/normalize ::actions.schema/action.for-insert action-data)))
 
 (mu/defn- update*!
@@ -196,8 +200,7 @@
 (mu/defn update!
   "Updates an Action and the related type table.
    Deletes the old type table row if the type has changed."
-  [updates         :- [:map
-                       [:id ::actions.schema/id]]
+  [updates         :- ::actions.schema/action.for-update
    existing-action :- ::actions.schema/action]
   (let [updates (merge (select-keys existing-action [:type]) updates)] ; in case the updates do not include it.
     (update*! (lib/normalize ::actions.schema/action.for-update updates) existing-action)))
@@ -430,14 +433,16 @@
    model for implicit actions.
 
    Pass in known-models to save a second Card lookup."
-  [known-models & options]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
+   & options    :- [:* [:or :nil :keyword ms/PositiveInt :string :boolean]]]
   (enrich-actions-with-implicit-params known-models (apply select-actions-without-implicit-params options)))
 
 (mu/defn select-actions-for-ids :- [:maybe [:sequential ::actions.schema/action]]
   "Find the Actions whose `:id` is in `action-ids`, filling in implicit parameters as [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models action-ids]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
+   action-ids   :- [:sequential ::lib.schema.id/action]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
 
 (mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
@@ -445,7 +450,8 @@
    [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models model-ids]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
+   model-ids    :- [:sequential ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
 
 (mu/defn select-actions-non-http-for-models :- [:maybe [:sequential ::actions.schema/action]]
@@ -453,13 +459,14 @@
    [[select-actions]] does.
 
    Pass in known-models to save a second Card lookup."
-  [known-models model-ids]
+  [known-models :- [:maybe [:sequential ::queries.schema/card]]
+   model-ids    :- [:set ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-non-http-actions-for-models model-ids))))
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is interpreted by [[select-actions-matching-options]]."
-  [& options]
+  [& options :- [:* [:or :nil :keyword ms/PositiveInt :string :boolean]]]
   ;; TODO -- it's dumb that we're selecting all matches rather than a single one above, limiting like this should
   ;; never be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))

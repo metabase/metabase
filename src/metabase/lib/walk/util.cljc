@@ -85,7 +85,7 @@
 
 (mu/defn all-segment-ids :- [:maybe [:set {:min 1} ::lib.schema.id/segment]]
   "Return a set of all segment IDs anywhere in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (let [segment-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query
@@ -100,7 +100,7 @@
 
 (mu/defn all-measure-ids :- [:maybe [:set {:min 1} ::lib.schema.id/measure]]
   "Return a set of all measure IDs anywhere in the query."
-  [query]
+  [query :- ::lib.schema/query]
   (let [measure-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query
@@ -272,7 +272,7 @@
          (all-template-tags query))))
 
 (mr/def ::referenced-entity-ids
-  [:map
+  [:map {:closed true}
    [:table [:set ::lib.schema.id/table]]
    [:card [:set ::lib.schema.id/card]]
    [:metric [:set ::lib.schema.id/metric]]
@@ -281,7 +281,7 @@
    [:snippet [:set ::lib.schema.id/snippet]]])
 
 (mr/def ::referenced-entity-ids.options
-  [:map
+  [:map {:closed true}
    [:include-implicitly-joinable? {:optional true} :boolean]])
 
 (mu/defn- implicitly-joinable-table-ids :- [:set ::lib.schema.id/table]

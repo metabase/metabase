@@ -104,7 +104,8 @@
 
 (mu/defn- current-user-info-for-session :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired."
-  [session-key anti-csrf-token]
+  [session-key     :- [:maybe :string]
+   anti-csrf-token :- [:maybe :string]]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
     (some-> (server.db/session-user-info (session/hash-session-key session-key)
                                          anti-csrf-token
@@ -189,7 +190,7 @@
    merged request carries both the user identity and the access the token was granted, and marks it
    `:authenticated-via-oauth?`. A token with no scopes does not authenticate. This is the only place an
    OAuth access token authenticates a request to the general (`/api/*`) API."
-  [request]
+  [request :- ::request.schema/request]
   (when (init-status/complete?)
     (when-let [token (oauth-server/extract-bearer-token request)]
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
