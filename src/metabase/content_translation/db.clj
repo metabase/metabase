@@ -8,7 +8,11 @@
 (mu/defn translations-for-locale
   "The ContentTranslations for `locale`, ordered by message id."
   [locale :- :string]
-  (t2/select :model/ContentTranslation :locale locale {:order-by [:msgid]}))
+  ;; `locale` arrives from a request parameter, so it is bound as a SQL parameter rather than
+  ;; compiled into the query.
+  (t2/select :model/ContentTranslation
+             {:where    [:= :locale [:auto/param locale]]
+              :order-by [:msgid]}))
 
 (mu/defn all-translations
   "Every ContentTranslation, ordered by locale and message id."

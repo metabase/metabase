@@ -25,6 +25,7 @@
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.tiles.settings :as tiles.settings]
@@ -168,29 +169,31 @@
    [:unit           {:optional true} [:maybe :keyword]]])
 
 (mr/def ::QPResultData
-  "The `:data` of a QP result, as the render pipeline reads it."
-  [:map {:closed true}
-   [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
-   [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
-   [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
-   [:results_metadata {:optional true} [:maybe [:map {:closed true}
-                                                [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
-   [:results_timezone {:optional true} [:maybe :string]]
-   [:format-rows?     {:optional true} [:maybe :boolean]]
-   [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
-   [:insights         {:optional true} [:maybe [:sequential Insight]]]
-   [:rows_truncated   {:optional true} [:maybe :int]]
-   [:csv-include-bom? {:optional true} [:maybe :boolean]]
-   [:rows-file-size   {:optional true} [:maybe :int]]
-   [:model            {:optional true} [:maybe :boolean]]
-   [:dataset          {:optional true} [:maybe :boolean]]
-   [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
-                                                    [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
-                                                    [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
-                                                    [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
-                                                    [:show-row-totals    {:optional true} :boolean]
-                                                    [:show-column-totals {:optional true} :boolean]
-                                                    [:column-sort-order  {:optional true} [:maybe :metabase.query-processor.pivot/column-sort-order]]]]]])
+  "The `:data` of a QP result, as the render pipeline reads it: the query processor's result metadata plus the rows."
+  [:merge
+   ::qp.schema/metadata
+   [:map {:closed true}
+    [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+    [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
+    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
+    [:results_metadata {:optional true} [:maybe [:map {:closed true}
+                                                 [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
+    [:results_timezone {:optional true} [:maybe :string]]
+    [:format-rows?     {:optional true} [:maybe :boolean]]
+    [:native_form      {:optional true} [:maybe ::qp.compile/compiled]]
+    [:insights         {:optional true} [:maybe [:sequential Insight]]]
+    [:rows_truncated   {:optional true} [:maybe :int]]
+    [:csv-include-bom? {:optional true} [:maybe :boolean]]
+    [:rows-file-size   {:optional true} [:maybe :int]]
+    [:model            {:optional true} [:maybe :boolean]]
+    [:dataset          {:optional true} [:maybe :boolean]]
+    [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
+                                                     [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
+                                                     [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
+                                                     [:pivot-measures     {:optional true} [:maybe [:sequential :int]]]
+                                                     [:show-row-totals    {:optional true} :boolean]
+                                                     [:show-column-totals {:optional true} :boolean]
+                                                     [:column-sort-order  {:optional true} [:maybe :metabase.query-processor.pivot/column-sort-order]]]]]]])
 
 (mr/def ::QPResult
   "A QP result map (`{:data ..., :error ...}`), as the render pipeline receives it."

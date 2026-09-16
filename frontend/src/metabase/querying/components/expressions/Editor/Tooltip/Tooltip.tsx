@@ -11,7 +11,7 @@ import {
 import { enclosingFunction } from "metabase/querying/expressions";
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import { HelpText } from "../HelpText";
 import { Listbox, useCompletions } from "../Listbox";
@@ -21,7 +21,7 @@ import S from "./Tooltip.module.css";
 export function Tooltip({
   query,
   stageIndex,
-  metadata,
+  database,
   reportTimezone,
   tooltipRef,
   expressionMode,
@@ -31,7 +31,7 @@ export function Tooltip({
 }: {
   query: Lib.Query;
   stageIndex: number;
-  metadata: Metadata;
+  database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
 
@@ -101,8 +101,7 @@ export function Tooltip({
         <div className={S.tooltip} ref={tooltipRef}>
           <HelpText
             enclosingFunction={enclosingFn}
-            query={query}
-            metadata={metadata}
+            database={database}
             reportTimezone={reportTimezone}
             open={shouldShowHelpText}
             onToggle={handleToggleHelpText}

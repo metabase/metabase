@@ -49,8 +49,8 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: the data grid and writeback actions.
-  ["shared/data-grid", "shared/actions"],
+  // P0 — independent peers: the data grid, writeback actions and comments.
+  ["shared/data-grid", "shared/actions", "shared/comments"],
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
   // P2 — independent peers with no edges between them.
@@ -59,7 +59,12 @@ const SHARED_PLATFORM_LEVELS = [
   // DetailViewPage.tsx importing the nav layout constants (#79119 moves them).
   ["shared/querying", "shared/pulse", "shared/detail-view"],
   // P3 — building blocks over querying, mutually independent.
-  ["shared/metadata", "shared/parameters", "shared/questions"],
+  [
+    "shared/metadata",
+    "shared/parameters",
+    "shared/questions",
+    "shared/timelines",
+  ],
   // P4 — the metabot agent, which transforms and nav compose.
   // metabot keeps its enforceSharedTiers flag for one upward edge,
   // Metabot.tsx importing Sidebar from the main navbar.
@@ -67,8 +72,8 @@ const SHARED_PLATFORM_LEVELS = [
 ];
 
 const SHARED_DOMAIN = [
-  "shared/comments",
   "shared/custom-viz",
+  "shared/documents",
   "shared/embedding-ee",
   "shared/metrics-ui",
   "shared/nav",
@@ -77,7 +82,6 @@ const SHARED_DOMAIN = [
   "shared/segments",
   "shared/static-viz",
   "shared/status",
-  "shared/timelines",
   "shared/transforms",
   "shared/visualizer",
 ];
@@ -99,7 +103,7 @@ const levelAllows = (levels, base = []) =>
 
 const sharedRules = [
   // Later rules win, so these must come after the baseline shared/* allow they narrow.
-  // Edges to untiered modules (common, embedding, documents) fall through to that allow.
+  // Edges to untiered shared modules fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,
@@ -134,4 +138,4 @@ const sharedRules = [
   },
 ];
 
-export { sharedRules };
+export { TIERED_SHARED, sharedRules };

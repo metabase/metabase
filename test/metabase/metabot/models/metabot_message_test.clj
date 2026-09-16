@@ -21,6 +21,35 @@
                                                :from   [:metabot_message]
                                                :where  [:= :id (:id msg)]}))))))))
 
+(deftest after-select-migrates-v1-tool-results-test
+  (let [result {:output            "Created query q1."
+                :structured-output {:result-type   "query"
+                                    :query-id      "q1"
+                                    :query-content "SELECT * FROM ORDERS"
+                                    :database      1
+                                    :result-columns ["ID" "TOTAL"]}
+                :data-parts        [{:type "data" :data-type "navigate_to" :data "/question#abc"}]
+                :resources         [{:uri "metabase://table/1" :content "<table/>"}]}]
+    (mt/with-temp [:model/MetabotConversation conv {}
+                   :model/MetabotMessage      msg  {:conversation_id (:id conv)
+                                                    :role            "assistant"
+                                                    :data            [{:type "tool-input" :id "tc1" :function "create_sql_query"
+                                                                       :arguments {:sql "SELECT * FROM ORDERS"}}
+                                                                      {:type "tool-output" :id "tc1" :function "create_sql_query"
+                                                                       :result result :error nil :duration-ms 12}
+                                                                      {:type "text" :id "t1" :text "Here it is."}]
+                                                    :data_version    1}]
+      (let [row (t2/select-one :model/MetabotMessage :id (:id msg))]
+        (testing "a v1 native tool result migrates on read, carried verbatim as the v2 tool part's output"
+          (is (= [{:type       "tool-create_sql_query"
+                   :toolCallId "tc1"
+                   :state      "output-available"
+                   :input      {:sql "SELECT * FROM ORDERS"}
+                   :output     result}
+                  {:type "text" :text "Here it is."}]
+                 (:data row)))
+          (is (= 2 (:data_version row))))))))
+
 (deftest after-select-passes-v2-data-through-test
   (mt/with-temp [:model/MetabotConversation conv {}
                  :model/MetabotMessage      msg  {:conversation_id (:id conv)
