@@ -79,7 +79,7 @@
         (throw (ex-info (ex-message e)
                         (assoc (dissoc (ex-data e) :error-type)
                                :status-code (transform-testing.errors/status-code error-type)
-                               :error-code  error-type)))
+                               :error-code  (transform-testing.errors/code error-type))))
         (throw e)))))
 
 (def ^{:arglists '([request respond raise])} transform-test-routes

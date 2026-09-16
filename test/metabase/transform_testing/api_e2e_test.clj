@@ -111,7 +111,7 @@
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
                                                  (format "transform-test/%d/run" test-id))]
-              (is (= "metabase.transform-testing.errors/unsupported-transform"
+              (is (= "transform-test.unsupported-transform"
                      (:error-code response)))
               (is (string? (:message response)))
               ;; The structured branch of the exception middleware, so no stacktrace rides along —
@@ -124,7 +124,7 @@
                              {:transform_id transform-id :inputs [] :expectations []}]
                 (let [response (mt/user-http-request :crowberto :post 400
                                                      (format "transform-test/%d/run" test-id))]
-                  (is (= "metabase.transform-testing.errors/missing-inputs"
+                  (is (= "transform-test.missing-inputs"
                          (:error-code response)))
                   (is (re-find (re-pattern (str "(?i)" table)) (:message response)))
                   ;; The refusal's own ex-data rides along, so the offending tables are readable as

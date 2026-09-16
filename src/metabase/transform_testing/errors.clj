@@ -61,6 +61,14 @@
          `(ex-info ~msg (assoc ~data :error-type ~error-type) ~cause))
      `(ex-info ~msg (assoc ~data :error-type (checked ~error-type)) ~cause))))
 
+(defn code
+  "The public wire spelling of `error-type` — the vocabulary a client switches on.
+
+  Derived from the keyword's name so the two cannot drift, and prefixed so that the Clojure
+  namespace this vocabulary happens to live in is not what gets published."
+  [error-type]
+  (str "transform-test." (name error-type)))
+
 (defn status-code
   "The HTTP status for `error-type`, or 500 for an untyped or unknown one."
   [error-type]
