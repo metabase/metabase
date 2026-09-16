@@ -94,7 +94,18 @@ export function modelDeclaredRequest(
       const type = propertyType(checker, parts, name, at);
       return type ? { type } : undefined;
     };
-    const body = bodyPayloads(context, input("body"));
+    const bodyInput = input("body");
+    if (
+      request.method === "GET" &&
+      bodyInput &&
+      !(bodyInput.type.flags & UNDEFINED)
+    ) {
+      return {
+        kind: "unverified",
+        message: "A declared GET request cannot send a body.",
+      };
+    }
+    const body = bodyPayloads(context, bodyInput);
     if (body.failure) {
       return { kind: "failed", message: body.failure };
     }
@@ -121,12 +132,17 @@ export function modelDeclaredRequest(
           "defineRequest applies String and encodeURIComponent",
           false,
         );
+        const rejected = (knownTexts(checker, sent.values) ?? []).some((text) =>
+          ["", ".", ".."].includes(text),
+        );
         return {
           source,
           ...sent,
           unverified:
             sent.unverified ??
-            pathTextUnverified(checker, source, sent.values, true),
+            (rejected
+              ? "defineRequest rejects empty and dot path segments before sending"
+              : undefined),
         };
       },
     );

@@ -8,7 +8,7 @@ type PathNames<Route extends string> =
 
 type RequestParts<Method extends RequestMethod, Route extends string> = {
   query?: Record<string, unknown> | null | void;
-  body?: Method extends "GET" ? never : object | null;
+  body?: "GET" extends Method ? never : object | null;
 } & ([PathNames<Route>] extends [never]
   ? { path?: never }
   : { path: Record<PathNames<Route>, string | number | boolean> });
@@ -31,7 +31,7 @@ export function defineRequest<
 }) {
   const { method, route, request, options } = definition;
   if (
-    /[?#:]/.test(route) ||
+    /[?#:\\%\s]/.test(route) ||
     route
       .split("/")
       .some((segment) =>
@@ -43,9 +43,12 @@ export function defineRequest<
     throw new Error(`Expected a route with whole {path} segments: ${route}`);
   }
 
-  return Object.assign(
+  const query = Object.assign(
     (argument: Argument) => {
       const parts = request(argument);
+      if (method === "GET" && parts.body !== undefined) {
+        throw new Error("Declare GET query parameters in query, not body");
+      }
       const url = route.replace(/\{([^}]+)\}/g, (_, name: PathNames<Route>) => {
         const value = parts.path?.[name];
         if (
@@ -59,7 +62,9 @@ export function defineRequest<
         return encodeURIComponent(String(value));
       });
       return {
-        ...options,
+        headers: options?.headers,
+        cache: options?.cache,
+        noEvent: options?.noEvent,
         method,
         url,
         params: parts.query,
@@ -68,4 +73,7 @@ export function defineRequest<
     },
     { apiContract: Object.freeze({ method, route, request }) },
   );
+  // Tooling reads exactly the declaration used by this callable.
+  Object.freeze(query);
+  return query;
 }

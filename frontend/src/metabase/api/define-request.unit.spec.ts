@@ -38,6 +38,8 @@ describe("defineRequest", () => {
     "/api/example/:id",
     "/api/example/prefix-{id}",
     "/api/../example",
+    "/api/%2e%2e/example",
+    "/api/example\\other",
   ] as const)("rejects the ambiguous route %s", (route) => {
     expect(() =>
       defineRequest({
@@ -56,5 +58,29 @@ describe("defineRequest", () => {
       request: (body: FormData) => ({ body }),
     });
     expect(query(body).body).toBe(body);
+  });
+
+  it("forwards only supported options even when an options object has extra keys", () => {
+    const options = { cache: "no-store" as const, rawResponse: true };
+    const query = defineRequest({
+      method: "GET",
+      route: "/api/example",
+      request: () => ({}),
+      options,
+    });
+    expect(query(undefined)).not.toHaveProperty("rawResponse");
+    expect(query(undefined).cache).toBe("no-store");
+  });
+
+  it("rejects a GET body even when a caller bypasses TypeScript", () => {
+    const query = defineRequest({
+      method: "GET",
+      route: "/api/example",
+      // @ts-expect-error Exercise the runtime boundary for an invalid caller.
+      request: () => ({ body: { id: 1 } }),
+    });
+    expect(() => query(undefined)).toThrow(
+      "Declare GET query parameters in query",
+    );
   });
 });

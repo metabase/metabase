@@ -55,6 +55,9 @@ describe("declared request contracts", () => {
           query: request({method: "GET", route: ROUTE, request: id => ({path: {id}, query: {id}})}),
           extraOptions: {url: "/api/something-else"},
         }),
+        rejectedPath: builder.query<void, ".">({
+          query: request({method: "GET", route: ROUTE, request: id => ({path: {id}, query: {id}})}),
+        }),
       };
       // Reject declarations that would reintroduce implicit request channels.
       request({method: "GET", route: ROUTE,
@@ -68,6 +71,11 @@ describe("declared request contracts", () => {
       request({method: "GET", route: ROUTE,
         // @ts-expect-error Path values cannot be optional.
         request: (id: number | undefined) => ({path: {id}}),
+      });
+      declare const method: "GET" | "POST";
+      request({method, route: ROUTE,
+        // @ts-expect-error A method that may be GET cannot have a body.
+        request: (id: number) => ({path: {id}, body: {id}}),
       });
     `,
     "types.gen.d.ts": `
@@ -115,6 +123,13 @@ describe("declared request contracts", () => {
     ).toMatchObject({
       status: "unverified",
       message: expect.stringContaining("extraOptions"),
+    });
+  });
+
+  it("does not claim a guarded path value will be sent", () => {
+    expect(result("rejectedPath", "path.0")).toMatchObject({
+      status: "unverified",
+      message: expect.stringContaining("rejects empty and dot path segments"),
     });
   });
 });
