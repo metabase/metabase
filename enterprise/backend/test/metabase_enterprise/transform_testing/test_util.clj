@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.test-util
+(ns metabase-enterprise.transform-testing.test-util
   "Helpers shared by the transform-testing tests that run against a real warehouse."
   (:require
    [metabase.driver :as driver]))

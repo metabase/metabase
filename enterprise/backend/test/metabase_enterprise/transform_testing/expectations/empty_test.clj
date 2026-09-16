@@ -1,22 +1,22 @@
-(ns metabase.transform-testing.expectations.empty-test
+(ns metabase-enterprise.transform-testing.expectations.empty-test
   "The `empty` expectation: what it asks to run, and what it makes of the answer. Pure — no database
   and no warehouse connection; `probes` only parses and rewrites SQL."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.transform-testing.expectations.empty]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.expectations.report :as expectations.report]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.sql-tools.macaw.references]
-   [metabase.transform-testing.expectations.empty]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.expectations.report :as expectations.report]
-   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util :as u]))
 
 ;; The expectation under test, and the namespace registering the schema its rewrite guard validates against.
 (comment
   metabase.sql-tools.macaw.references/keep-me
-  metabase.transform-testing.expectations.empty/keep-me)
+  metabase-enterprise.transform-testing.expectations.empty/keep-me)
 
 (set! *warn-on-reflection* true)
 

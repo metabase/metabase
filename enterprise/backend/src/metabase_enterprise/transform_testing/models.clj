@@ -1,11 +1,11 @@
-(ns metabase.transform-testing.models
+(ns metabase-enterprise.transform-testing.models
   (:require
+   [metabase-enterprise.transform-testing.db :as transform-testing.db]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.transform-testing.db :as transform-testing.db]
-   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

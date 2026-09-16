@@ -1,9 +1,9 @@
-(ns metabase.transform-testing.db
+(ns metabase-enterprise.transform-testing.db
   "Application database queries for the transform-testing module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

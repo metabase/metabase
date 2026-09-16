@@ -68,7 +68,6 @@
    [metabase.testing-api.core]
    [metabase.tiles.api]
    [metabase.timeline.api]
-   [metabase.transform-testing.api]
    [metabase.transforms-rest.api.transform]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
@@ -125,7 +124,6 @@
          metabase.task-history.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
-         metabase.transform-testing.api/keep-me
          metabase.transforms-rest.api.transform/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
@@ -258,7 +256,6 @@
    "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
-   "/transform-test"       (+auth metabase.transform-testing.api/transform-test-routes)
    "/typed-schemas"        (+auth 'metabase.typed-schemas-rest.api)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)

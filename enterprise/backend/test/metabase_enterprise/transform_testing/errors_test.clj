@@ -1,9 +1,9 @@
-(ns metabase.transform-testing.errors-test
+(ns metabase-enterprise.transform-testing.errors-test
   "The `:error-type` vocabulary, the `ex` constructor, and warehouse-message remapping.
   Pure — no app-db, no warehouse, no driver."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.transform-testing.errors :as errors]))
+   [metabase-enterprise.transform-testing.errors :as errors]))
 
 ;;; -------------------------------------------- checked --------------------------------------------
 
@@ -146,8 +146,8 @@
     ;; `macroexpand` for the 3-arity, `macroexpand-1` for the 4-arity.
     ;; A macro that throws while expanding surfaces as a CompilerException wrapping the real one,
     ;; so the typed failure is the cause rather than the thrown class.
-    (doseq [form ['(metabase.transform-testing.errors/ex ::undeclared "boom" {})
-                  '(metabase.transform-testing.errors/ex ::undeclared "boom" {} nil)]]
+    (doseq [form ['(metabase-enterprise.transform-testing.errors/ex ::undeclared "boom" {})
+                  '(metabase-enterprise.transform-testing.errors/ex ::undeclared "boom" {} nil)]]
       (let [outcome (try (macroexpand form)
                          (catch clojure.lang.Compiler$CompilerException e e))
             cause   (when (instance? clojure.lang.Compiler$CompilerException outcome)

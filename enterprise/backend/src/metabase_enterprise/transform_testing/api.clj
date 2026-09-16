@@ -1,13 +1,13 @@
-(ns metabase.transform-testing.api
+(ns metabase-enterprise.transform-testing.api
   (:require
+   [metabase-enterprise.transform-testing.db :as transform-testing.db]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.transform-testing.db :as transform-testing.db]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.runner :as transform-testing.runner]
-   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -82,6 +82,6 @@
                                :error-code  (transform-testing.errors/code error-type))))
         (throw e)))))
 
-(def ^{:arglists '([request respond raise])} transform-test-routes
-  "`/api/transform-test` routes."
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/transform-test` routes."
   (api.macros/ns-handler *ns* +auth))

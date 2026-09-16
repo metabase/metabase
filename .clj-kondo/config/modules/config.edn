@@ -2848,25 +2848,6 @@
            util
            util.config}}
 
-  transform-testing
-  {:team "Graphy"
-   :api  #{metabase.transform-testing.api}
-   :uses #{api
-           driver
-           events
-           lib
-           lib.schema
-           models
-           sql-tools
-           sql-tools.parsing
-           transforms.base
-           util}
-   :model-imports #{:model/Collection
-                    :model/Database
-                    :model/Transform
-                    :model/User}
-   :model-exports #{:model/TransformTest}}
-
   transforms
   {:team "Graphy"
    :module-exports #{transforms.base
@@ -4375,6 +4356,25 @@
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
+
+  enterprise/transform-testing
+  {:team "Graphy"
+   :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
+   :uses #{api
+           driver
+           events
+           lib
+           lib.schema
+           models
+           sql-tools
+           sql-tools.parsing
+           transforms.base
+           util}
+   :model-exports #{:model/TransformTest}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Transform
+                    :model/User}}
 
   enterprise/transforms
   {:team "Graphy"

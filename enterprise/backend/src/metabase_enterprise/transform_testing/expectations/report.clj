@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.expectations.report
+(ns metabase-enterprise.transform-testing.expectations.report
   "Turning warehouse values into something a failure report can carry.
 
   Shared by every expectation type, so it sits below them rather than in the front door."

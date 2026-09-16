@@ -1,13 +1,13 @@
-(ns metabase.transform-testing.expectations.empty
+(ns metabase-enterprise.transform-testing.expectations.empty
   "The `empty` expectation: a query over the transform output returns no rows.
 
   The query is the author's own SQL, rewritten so the tables it names resolve to the run's temp
   tables rather than to the real ones."
   (:require
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.expectations.report :as expectations.report]
-   [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.expectations.report :as expectations.report]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)

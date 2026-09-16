@@ -1,13 +1,13 @@
-(ns ^:mb/driver-tests metabase.transform-testing.runner-test
+(ns ^:mb/driver-tests metabase-enterprise.transform-testing.runner-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
+   [metabase-enterprise.transform-testing.test-util :as transform-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
-   [metabase.test :as mt]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.runner :as transform-testing.runner]
-   [metabase.transform-testing.test-util :as transform-testing.test-util])
+   [metabase.test :as mt])
   (:import
    (clojure.lang ExceptionInfo)))
 

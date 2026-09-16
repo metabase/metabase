@@ -1,6 +1,6 @@
 ## Adds transform_test: a test for one transform, replacing some of its input tables with fixture data and
 ## checking its output against expectations. The inputs and expectations are JSON documents validated by
-## metabase.transform-testing.schema.
+## metabase-enterprise.transform-testing.schema.
 
 databaseChangeLog:
   - changeSet:

@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.errors
+(ns metabase-enterprise.transform-testing.errors
   "The `:error-type` vocabulary for transform tests, and [[ex]], the constructor every typed throw
   goes through.
 
@@ -45,7 +45,7 @@
   [error-type]
   (when-not (contains? all error-type)
     (throw (ex-info (str error-type " is not a declared transform-test error type; see"
-                         " metabase.transform-testing.errors/all.")
+                         " metabase-enterprise.transform-testing.errors/all.")
                     {:invalid-error-type error-type})))
   error-type)
 

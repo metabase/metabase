@@ -1,16 +1,16 @@
-(ns metabase.transform-testing.compile-test
+(ns metabase-enterprise.transform-testing.compile-test
   "Tests for the SQL-building half of transform testing: the queries a run executes, and the
   quoting and parameterization that keep author-supplied text out of them."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.test-util :as transform-testing.test-util]
    [metabase.driver :as driver]
    [metabase.driver.h2]
    [metabase.driver.postgres]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.test-util :as transform-testing.test-util]))
+   [metabase.test :as mt]))
 
 (comment metabase.driver.h2/keep-me)
 (comment metabase.driver.postgres/keep-me)

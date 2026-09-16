@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.runner
+(ns metabase-enterprise.transform-testing.runner
   "Orchestrates a transform test run over the module's separated concerns. The runner is the only
   namespace that resolves from the app db or owns the connection lifecycle; it hands ordinary
   arguments to each concern (no marshaled plan object) and owns the HTTP decisions.
@@ -20,20 +20,20 @@
 
   Everything before the connection is pure; a bad test is rejected before any temp table exists."
   (:require
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.db :as transform-testing.db]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.executor :as transform-testing.executor]
+   [metabase-enterprise.transform-testing.expectations.empty]
+   [metabase-enterprise.transform-testing.expectations.equals]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.db :as transform-testing.db]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.executor :as transform-testing.executor]
-   [metabase.transform-testing.expectations.empty]
-   [metabase.transform-testing.expectations.equals]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.schema :as transform-testing.schema]
-   [metabase.transform-testing.validator :as transform-testing.validator]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -42,8 +42,8 @@
 
 ;;; Required for the [[expectations.protocol/build]] methods and result schemas each type registers.
 (comment
-  metabase.transform-testing.expectations.empty/keep-me
-  metabase.transform-testing.expectations.equals/keep-me)
+  metabase-enterprise.transform-testing.expectations.empty/keep-me
+  metabase-enterprise.transform-testing.expectations.equals/keep-me)
 
 (defn- table-labels
   "The map from each temp table of the run to the table the author wrote, for rewriting warehouse error messages that
@@ -177,7 +177,7 @@
 (mu/defn run-transform-test! :- ::transform-testing.schema/run-result
   "Run the transform test `transform-test` against temp tables and report what each expectation found.
 
-  Throws a typed refusal from [[metabase.transform-testing.errors]] when the run cannot happen. A
+  Throws a typed refusal from [[metabase-enterprise.transform-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
   (let [transform      (testable-transform transform_id)

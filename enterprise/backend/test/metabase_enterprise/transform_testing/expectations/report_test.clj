@@ -1,10 +1,10 @@
-(ns metabase.transform-testing.expectations.report-test
+(ns metabase-enterprise.transform-testing.expectations.report-test
   "Rendering warehouse values into a failure report, and capping how much of one is carried. Pure —
   no database."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.transform-testing.expectations.report :as expectations.report]
+   [metabase-enterprise.transform-testing.expectations.report :as expectations.report]
    [metabase.util :as u])
   (:import
    (java.math BigDecimal)

@@ -1,11 +1,11 @@
-(ns metabase.transform-testing.models-test
+(ns metabase-enterprise.transform-testing.models-test
   "The `:model/TransformTest` column transforms. Both JSON columns normalize and validate on the way
   in and normalize on the way out, so every reader gets values the schema has passed — including a
   serdes import, which goes through Toucan and never touches an API endpoint."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase.test :as mt]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

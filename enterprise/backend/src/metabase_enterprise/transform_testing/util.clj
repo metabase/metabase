@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.util
+(ns metabase-enterprise.transform-testing.util
   "Helpers shared across the module."
   (:require
    [metabase.util :as u]))

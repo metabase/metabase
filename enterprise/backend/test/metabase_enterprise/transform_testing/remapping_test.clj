@@ -1,16 +1,16 @@
-(ns ^:mb/driver-tests metabase.transform-testing.remapping-test
+(ns ^:mb/driver-tests metabase-enterprise.transform-testing.remapping-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
+   [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.macaw.references]
    [metabase.test :as mt]
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.runner :as transform-testing.runner]
-   [metabase.transform-testing.validator :as transform-testing.validator]
    [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)))

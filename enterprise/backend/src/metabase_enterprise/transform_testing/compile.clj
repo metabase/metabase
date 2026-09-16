@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.compile
+(ns metabase-enterprise.transform-testing.compile
   "Pure SQL for a transform test run: the transform's source rewritten to read temp tables, and every query the run
   executes against them. No I/O.
 
@@ -9,11 +9,11 @@
   Every identifier is built with `h2x/identifier` and every cast with `h2x/cast`, which quote what cannot be written
   bare, and every value is a bound parameter, so nothing an author writes is spliced into the SQL."
   (:require
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.util :as transform-testing.u]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.transform-testing.schema :as transform-testing.schema]
-   [metabase.transform-testing.util :as transform-testing.u]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.honey-sql-2 :as h2x]

@@ -1,11 +1,11 @@
-(ns metabase.transform-testing.expectations.protocol
+(ns metabase-enterprise.transform-testing.expectations.protocol
   "The protocol every expectation type implements, and the multimethod that builds one.
 
   A type needing more than one round of probes is not precluded, but every round has to run inside
   the test connection, while the temp tables still exist."
   (:require
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)

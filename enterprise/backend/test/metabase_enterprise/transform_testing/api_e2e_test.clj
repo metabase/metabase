@@ -1,13 +1,13 @@
-(ns ^:mb/driver-tests metabase.transform-testing.api-e2e-test
-  "End-to-end tests for `/api/transform-test`: HTTP in, a real warehouse out. The unit tests pin what
+(ns ^:mb/driver-tests metabase-enterprise.transform-testing.api-e2e-test
+  "End-to-end tests for `/api/ee/transform-test`: HTTP in, a real warehouse out. The unit tests pin what
   each piece does; these pin that the seams hold — that a test authored over the API is the test the
   runner runs, and that a refusal reaches the client as a refusal."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transform-testing.test-util :as transform-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.transform-testing.test-util :as transform-testing.test-util]
    [toucan2.core :as t2]))
 
 (defmacro ^:private with-transforms-enabled
@@ -40,7 +40,7 @@
 (deftest transform-test-lifecycle-test
   (testing "author, read, run, edit, re-run and delete a transform test over the API"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic}
+      (with-transforms-enabled #{:transforms-basic :transforms-test}
         (with-people-transform
           (fn [schema table transform-id]
             (let [input   {:table  {:schema schema :name table}
@@ -57,12 +57,12 @@
                            :columns [{:name "id" :database_type int-type}
                                      {:name "name" :database_type text-type}]
                            :rows    [{"id" 1 "name" "xyz"}]}
-                  created (mt/user-http-request :crowberto :post 200 "transform-test"
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
                                                 {:transform_id transform-id
                                                  :name         "End to end"
                                                  :inputs       [input]
                                                  :expectations [passing]})
-                  path    (str "transform-test/" (:id created))]
+                  path    (str "ee/transform-test/" (:id created))]
               (try
                 (testing "POST stores the test against the transform, owned by the caller"
                   (is (=? {:id           pos-int?
@@ -104,13 +104,13 @@
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-python}
+      (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-test}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
                          {:source {:type "python" :source-database (mt/id)}}
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
-                                                 (format "transform-test/%d/run" test-id))]
+                                                 (format "ee/transform-test/%d/run" test-id))]
               (is (= "transform-test.unsupported-transform"
                      (:error-code response)))
               (is (string? (:message response)))
@@ -123,7 +123,7 @@
               (mt/with-temp [:model/TransformTest {test-id :id}
                              {:transform_id transform-id :inputs [] :expectations []}]
                 (let [response (mt/user-http-request :crowberto :post 400
-                                                     (format "transform-test/%d/run" test-id))]
+                                                     (format "ee/transform-test/%d/run" test-id))]
                   (is (= "transform-test.missing-inputs"
                          (:error-code response)))
                   (is (re-find (re-pattern (str "(?i)" table)) (:message response)))
@@ -134,12 +134,12 @@
                   (is (not (contains? response :trace))))))))))))
 
 (deftest run-is-gated-test
-  (with-transforms-enabled #{:transforms-basic}
+  (with-transforms-enabled #{:transforms-basic :transforms-test}
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {test-id :id}      {:transform_id transform-id}]
-      (let [run-path (format "transform-test/%d/run" test-id)]
+      (let [run-path (format "ee/transform-test/%d/run" test-id)]
         (testing "the routes are behind +auth"
-          (is (= "Unauthenticated" (mt/client :get 401 "transform-test")))
+          (is (= "Unauthenticated" (mt/client :get 401 "ee/transform-test")))
           (is (= "Unauthenticated" (mt/client :post 401 run-path))))
         (testing "a user with no transform access cannot run someone else's test"
           (mt/user-http-request :rasta :post 403 run-path)

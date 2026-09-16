@@ -1,14 +1,14 @@
-(ns metabase.transform-testing.expectations.equals-test
+(ns metabase-enterprise.transform-testing.expectations.equals-test
   "The `equals` expectation's two pure halves: `interpret`, over synthetic probe results, and
   `resolve-columns`, over a synthetic list of output-table column names. No warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib.core :as lib]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.expectations.equals :as expectations.equals]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.expectations.report :as expectations.report]
-   [metabase.transform-testing.schema :as transform-testing.schema])
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.expectations.equals :as expectations.equals]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.expectations.report :as expectations.report]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase.lib.core :as lib])
   (:import
    (clojure.lang ExceptionInfo)))
 

@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.executor
+(ns metabase-enterprise.transform-testing.executor
   "The one place warehouse I/O lives. Given a single test-run connection (from
   `driver/do-with-test-connection`), it creates temp tables from compiled queries, drops them, and
   runs read-back queries. It knows nothing about transform tests, expectations, or judgment — it takes
@@ -8,10 +8,10 @@
   in one auditable namespace. No plan object is marshaled between stages — callers pass ordinary
   arguments (driver, conn, compiled-query, table name)."
   (:require
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 

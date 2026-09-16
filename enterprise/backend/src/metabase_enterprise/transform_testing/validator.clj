@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.validator
+(ns metabase-enterprise.transform-testing.validator
   "May this transform test run? [[validate]] answers, once, for the whole test, and throws a typed refusal when the
   answer is no. Pure: it parses and rewrites SQL, and opens no connection.
 
@@ -16,11 +16,11 @@
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.util :as transform-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.schema :as transform-testing.schema]
-   [metabase.transform-testing.util :as transform-testing.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -170,7 +170,7 @@
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the transform it tests and every query it will run reads only the
   run's temp tables. Returns nil when there is nothing to refuse, and otherwise throws a typed refusal from
-  [[metabase.transform-testing.errors]].
+  [[metabase-enterprise.transform-testing.errors]].
 
   `referenced-tables` are the tables the transform's source reads, parsed before any replacement; `rewritten-transform`
   is that source after it; `replacements` is the map both it and the expectations are rewritten with, whose values name

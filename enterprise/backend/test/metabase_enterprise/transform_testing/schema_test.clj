@@ -1,16 +1,16 @@
-(ns metabase.transform-testing.schema-test
+(ns metabase-enterprise.transform-testing.schema-test
   "The `::expectations` schema and the records built from what it passes. The schema is the only
   gate: it normalizes the wire form, dispatches on `:type`, and refuses a repeated name. Pure — no
   warehouse, no app DB."
   (:require
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.expectations.empty :as expectations.empty]
+   [metabase-enterprise.transform-testing.expectations.equals :as expectations.equals]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib.core :as lib]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.expectations.empty :as expectations.empty]
-   [metabase.transform-testing.expectations.equals :as expectations.equals]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)

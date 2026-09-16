@@ -1,8 +1,8 @@
-(ns metabase.transform-testing.validator-test
+(ns metabase-enterprise.transform-testing.validator-test
   "Guard A: every table the transform reads must have a declared input. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.transform-testing.validator :as validator]))
+   [metabase-enterprise.transform-testing.validator :as validator]))
 
 (defn- sql-input [schema name]
   {:table {:schema schema :name name} :format :sql :sql "SELECT 1"})

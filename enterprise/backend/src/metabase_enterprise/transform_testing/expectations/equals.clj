@@ -1,4 +1,4 @@
-(ns metabase.transform-testing.expectations.equals
+(ns metabase-enterprise.transform-testing.expectations.equals
   "The `equals` expectation: the transform output holds exactly the declared rows, over exactly the
   declared columns.
 
@@ -7,11 +7,11 @@
   output has and the expectation does not."
   (:require
    [clojure.string :as str]
-   [metabase.transform-testing.compile :as transform-testing.compile]
-   [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
-   [metabase.transform-testing.expectations.report :as expectations.report]
-   [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
+   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.expectations.report :as expectations.report]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
