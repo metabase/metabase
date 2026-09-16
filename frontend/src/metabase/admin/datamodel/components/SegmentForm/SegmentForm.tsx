@@ -3,9 +3,9 @@ import { useFormik } from "formik";
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
-import { getShallowTables } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -46,7 +46,6 @@ export const SegmentForm = ({
   // `validate` runs outside render, on values this render has not seen, so it
   // reads the store at call time rather than closing over a selected value.
   const store = useStore();
-  const tables = useSelector(getShallowTables);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -63,8 +62,13 @@ export const SegmentForm = ({
     getSegmentQuery(state, definitionProps.value, tableIdProps.value),
   );
   const tableId = isNew ? tableIdProps.value : segment?.table_id;
-  const table = tableId ? tables[tableId] : undefined;
-  const isReadOnly = isRemoteSyncReadOnly && !!table?.is_published;
+  const { data: table } = useGetTableQuery(
+    tableId ? { id: tableId } : skipToken,
+  );
+  // Treat a table that has not loaded as published, so the form stays
+  // read-only until the answer is known.
+  const isReadOnly =
+    isRemoteSyncReadOnly && tableId != null && (table?.is_published ?? true);
 
   useEffect(() => {
     onIsDirtyChange(dirty);
