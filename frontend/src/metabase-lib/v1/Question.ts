@@ -610,11 +610,7 @@ class Question {
 
   parameters(): ParameterObject[] {
     if (this._parameters == null) {
-      this._parameters = getCardUiParameters(
-        this.card(),
-        this.metadata(),
-        this._parameterValues,
-      );
+      this._parameters = getCardUiParameters(this, this._parameterValues);
     }
     return this._parameters;
   }

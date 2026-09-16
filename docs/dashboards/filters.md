@@ -265,9 +265,9 @@ To change the operator for a dashboard filter:
 
 You can set a widget to display options as a dropdown menu, search box, or input box.
 
-[Metadata settings](../data-modeling/metadata-editing.md#filtering) for the filtered column, including [variable settings in native queries](../questions/native-editor/filter-widgets.md#dropdown-menu-and-search), can also affect the filter's appearance.
+[Metadata settings](../data-modeling/metadata/metadata-editing.md#filtering) for the filtered column, including [variable settings in native queries](../questions/native-editor/filter-widgets.md#dropdown-menu-and-search), can also affect the filter's appearance.
 
-For example, if the column you're connecting a filter to is configured in the [metadata settings](../data-modeling/metadata-editing.md#filtering) to display a search box instead of a dropdown, that metadata setting will take precedence.
+For example, if the column you're connecting a filter to is configured in the [metadata settings](../data-modeling/metadata/metadata-editing.md#filtering) to display a search box instead of a dropdown, that metadata setting will take precedence.
 
 To configure filter input type:
 
@@ -284,8 +284,8 @@ A list of all the possible values in a column. People can use checkboxes to sele
 
 If you're not seeing the **Dropdown list** option and your dashboard filter is based on a column from a:
 
-- Table or model built with the query builder: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
-- Model built with a SQL query: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- Table or model built with the query builder: an admin will need to [enable the dropdown widget](../data-modeling/metadata/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
+- Model built with a SQL query: go to your [model's metadata settings](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 #### Search box
 

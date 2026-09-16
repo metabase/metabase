@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::table-selectors
-  [:map
+  [:map {:closed true}
    ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
    [:database_ids {:optional true} [:sequential ms/PositiveInt]]
    [:schema_ids {:optional true} [:sequential :string]]
@@ -142,7 +142,7 @@
 
 (api.macros/defendpoint :get "/:id/publishing-info" :- [:maybe PublishingInfo]
   "Return the latest valid publishing information for a published table, or no content when unavailable."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body
    _request]

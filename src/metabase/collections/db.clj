@@ -4,11 +4,13 @@
   and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private PermissionsRow
@@ -84,8 +86,13 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :location :model/Collection :id collection-id))
 
+(defn collection-location-columns
+  "The location, id, and type of the Collection with `collection-id`, or nil."
+  [collection-id]
+  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+
 (mu/defn root-collection-type-by-id
-  "The type of the top-level ::collections.schema/collection with `collection-id`, or nil if it is not top-level."
+  "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
 
@@ -127,23 +134,25 @@
   `children-location-prefix` (see `metabase.collections.models.collection/children-location`), excluding other
   users' Personal Collections (Personal Collections owned by `current-user-id` are still included). When
   `archived?` is given (true or false, not nil), further restricted to that archived status.
-  `additional-where-clauses` are ANDed in as-is (nil, from a caller with none to add, is treated as empty); used
-  by callers that need a permission-filter builder like `visible-collection-filter-clause`, which lives in
-  `metabase.collections.models.collection` and so can't be called from here without a require cycle (that
-  namespace already requires this one)."
+
+  `visibility-clause` is the one Honey SQL argument left in this namespace, and is always a
+  `metabase.collections.models.collection/visible-collection-filter-clause`. That builder needs this namespace (it
+  looks up the Trash, the user's personal Collection subtree, and their root-Collection permission), so this
+  namespace cannot call it back without a require cycle — building the clause here means first moving the whole
+  Collection-visibility machinery below this namespace."
   [children-location-prefix :- :string
    current-user-id          :- [:maybe ::lib.schema.id/user]
    archived?                :- [:maybe :boolean]
-   additional-where-clauses :- [:maybe [:sequential vector?]]]
+   visibility-clause        :- [:maybe vector?]]
   (t2/select [:model/Collection :name :id :location :description]
-             {:where (into [:and
-                            [:like :location (str children-location-prefix "%")]
-                            [:or
-                             [:= :personal_owner_id nil]
-                             [:= :personal_owner_id current-user-id]]
-                            (when (some? archived?)
-                              [:= :archived archived?])]
-                           additional-where-clauses)}))
+             {:where [:and
+                      [:like :location (str children-location-prefix "%")]
+                      [:or
+                       [:= :personal_owner_id nil]
+                       [:= :personal_owner_id current-user-id]]
+                      (when (some? archived?)
+                        [:= :archived archived?])
+                      visibility-clause]}))
 
 (mu/defn descendant-summaries-with-type
   "The name, ID, location, description, and type of the Collections directly under any of `location-prefixes`
@@ -155,15 +164,40 @@
                       (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
                       [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
 
-(mu/defn effective-children-where
-  "The ID, name, description, and type of the Collections matching the Honey SQL `where`."
-  [where :- [:maybe vector?]]
-  (t2/select [:model/Collection :id :name :description :type] {:where where}))
+(mu/defn effective-children
+  "The ID, name, description, and type of the Collections matching `effective-children-clause`, a
+  `metabase.collections.models.collection/effective-children-where-clause`.
+
+  Like [[descendant-summaries]]'s `visibility-clause`, that builder needs this namespace and so cannot be called
+  from here."
+  [effective-children-clause :- [:maybe vector?]]
+  (t2/select [:model/Collection :id :name :description :type] {:where effective-children-clause}))
 
 (mu/defn collections-for-serdes-reducible
-  "Reducible Collections matching the Honey SQL `where` in stable storage order."
-  [where :- [:maybe vector?]]
-  (t2/reducible-select :model/Collection {:where where, :order-by serdes/stable-storage-order}))
+  "A reducible of the Collections to export via serdes, in stable storage order (which keeps filename de-dup suffixes
+  stable across exports, see GHY-3754). The Trash is never exported, nor are archived Collections when
+  `skip-archived?`. When `collection-set` is non-empty only those Collections are exported (nil in the set counts as
+  the root collection); otherwise every non-personal Collection is. `filter-column` and `filter-ids`, when given,
+  further restrict the export to the rows whose `filter-column` is one of `filter-ids`."
+  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
+   skip-archived? :- [:maybe :boolean]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  (t2/reducible-select :model/Collection
+                       {:where    [:and
+                                   (when skip-archived? [:not :archived])
+                                   (if (seq collection-set)
+                                     [:or
+                                      [:in :id collection-set]
+                                      (when (some nil? collection-set)
+                                        [:= :id nil])]
+                                     [:= :personal_owner_id nil])
+                                   [:or
+                                    [:= :type nil]
+                                    [:not= :type collections.schema/trash-collection-type]]
+                                   (when filter-column
+                                     [:in filter-column filter-ids])]
+                        :order-by serdes/stable-storage-order}))
 
 (mu/defn collection-count-by-ids
   "The number of Collections among `collection-ids`."
@@ -242,7 +276,20 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-fn->pk :personal_owner_id :model/Collection :personal_owner_id [:in user-ids]))
 
-;;; ---------------------------------------------- ::collections.schema/collection writes ----------------------------------------------
+(defn other-users-personal-collection-ids
+  "The IDs of the personal Collections owned by Users other than `user-id`."
+  [user-id]
+  (t2/select-fn-set :id :model/Collection
+                    {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+
+(defn collections-matching
+  "The Collections matching the Honey SQL `query` map. The caller builds the whole query because it needs clause
+  builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so
+  can't be called from here without a require cycle (that namespace already requires this one)."
+  [query]
+  (t2/select :model/Collection query))
+
+;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
 (mu/defn insert-collection!
   "Insert `collection` and return the new instance."
@@ -410,8 +457,13 @@
   (t2/select-pks-set :model/Dashboard
                      {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
+(defn cards-in-collection
+  "The Cards in the Collection with `collection-id`."
+  [collection-id]
+  (t2/select :model/Card :collection_id collection-id))
+
 (mu/defn card-ids-in-collection
-  "The IDs of the Cards in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?` and
+  "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
   excluding Cards materialized by an exploration Summary."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
@@ -447,7 +499,8 @@
   `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Table {:where [:and
+  (t2/select-pks-set :model/Table {:from [(warehouse-schema-overlay/table-query)]
+                                   :where [:and
                                            [:= :collection_id collection-id]
                                            [:= :is_published true]
                                            (when skip-archived? [:= :archived_at nil])]}))
@@ -460,13 +513,18 @@
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
+  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn unpublish-tables-in-collections!
-  "Unpublish the Tables in the Collections with `collection-ids` and detach them from their ::collections.schema/collection, returning
-  the number updated."
+  "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
+  returning the number updated."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/update! :model/Table {:collection_id [:in collection-ids]} {:collection_id nil, :is_published false}))
+  (let [table-ids (published-table-ids-in-collections collection-ids)]
+    (when (seq table-ids)
+      (t2/update! :model/TableUserSettings :table_id [:in table-ids]
+                  {:collection_id nil, :is_published false}))
+    (t2/update! :model/Table {:collection_id [:in collection-ids]}
+                {:collection_id nil, :is_published false})))
 
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
@@ -481,6 +539,61 @@
                                                           :where  [:and
                                                                    [:= :report_dashboardcard.card_id :report_card.id]
                                                                    [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
+
+(defn unarchived-card-collection-types-in-reducible
+  "A reducible of the distinct Collection ID and type of the unarchived Cards in the Collections with
+  `collection-ids`, leaving out dashboard questions when `exclude-dashboard-questions?`."
+  [collection-ids exclude-dashboard-questions?]
+  (t2/reducible-query {:select-distinct [:collection_id :type]
+                       :from            [:report_card]
+                       :where           [:and
+                                         (when exclude-dashboard-questions?
+                                           [:= :dashboard_id nil])
+                                         [:= :archived false]
+                                         [:in :collection_id collection-ids]]}))
+
+(defn published-table-collection-ids-in
+  "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/query {:select-distinct [:collection_id]
+             :from            [(warehouse-schema-overlay/table-query)]
+             :where           [:and
+                               [:= :is_published true]
+                               [:= :archived_at nil]
+                               [:in :collection_id collection-ids]]}))
+
+(defn transform-collection-ids-in
+  "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with
+  `collection-ids`."
+  [collection-ids source-types]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :transform
+             :where           [:and
+                               [:in :collection_id collection-ids]
+                               [:in :source_type source-types]]}))
+
+(defn unarchived-dashboard-collection-ids-in
+  "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/query {:select-distinct [:collection_id]
+             :from            :report_dashboard
+             :where           [:and
+                               [:= :archived false]
+                               [:in :collection_id collection-ids]]}))
+
+(defn collection-children-rows
+  "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections.children` from the
+  per-model item queries for a Collection's paginated child listing. Follows the same exception as
+  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
+  [query]
+  (app-db/query query))
+
+(defn collection-filter-metadata-rows
+  "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collections.children` to
+  probe which item models have at least one visible child in a Collection. Follows the same exception as
+  `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
+  [query]
+  (app-db/query query))
 
 ;;; ------------------------------------------------ Permissions ------------------------------------------------
 

@@ -23,7 +23,6 @@ import {
   getUserIsAdmin,
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { getMetadata } from "metabase/metadata-store";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
@@ -157,7 +156,6 @@ import {
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
   getTableForeignKeyReferences,
-  getTableForeignKeys,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -184,13 +182,10 @@ const mapStateToProps = (state: State) => {
 
     parameterValues: getParameterValues(state),
 
-    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-
-    metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),

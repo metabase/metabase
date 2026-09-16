@@ -8,6 +8,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
 
 (defn- relaxed-re [& s]
@@ -23,7 +24,7 @@
                     (name (first node)))
           block?  #{"paragraph"}
           attrs   (when (map? (second node)) (second node))
-          content (if attrs (drop 2 node) (drop 1 node))]
+          content (dropv (if attrs 2 1) node)]
       (u/remove-nils
        {:type    tag
         :attrs   (cond-> attrs
@@ -136,7 +137,7 @@
                                                     (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
                             (first (swap-vals! mt/inbox empty))))))))
             (testing "creates a comment for part of an entity"
-              (let [part-id (-> doc :content first :attrs :_id)
+              (let [part-id (get-in doc [:content 0 :attrs "_id"])
                     created (mt/user-http-request :rasta :post 200 "comment/"
                                                   {:target_type     "document"
                                                    :target_id       doc-id
@@ -222,7 +223,7 @@
       (testing "updates comment content"
         (is (=? {:content {:text "Updated content"}}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
-                                      {:content {"text" "Updated content"}}))))
+                                      {:content {"type" "text" "text" "Updated content"}}))))
       (testing "updates comment resolution status"
         (is (=? {:is_resolved true}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
@@ -233,7 +234,7 @@
     (mt/with-temp [:model/Document {doc-id :id} {}
                    :model/Comment  {c-id :id}   {:target_id doc-id :creator_id (mt/user->id :rasta)}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :lucky :put 403 (str "comment/" c-id) {:content {:text "hi"}})))
+             (mt/user-http-request :lucky :put 403 (str "comment/" c-id) {:content {:type "text" :text "hi"}})))
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :lucky :delete 403 (str "comment/" c-id)))))))
 
@@ -411,7 +412,7 @@
           (testing "PUT /api/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :put 403 (str "comment/" restricted-comment-id)
-                                         {:content {:text "Updated by lucky"}}))))
+                                         {:content {:type "text" :text "Updated by lucky"}}))))
           (testing "DELETE /api/comment/:id - users without document access cannot delete comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :delete 403 (str "comment/" restricted-comment-id)))))

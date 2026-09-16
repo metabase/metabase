@@ -16,7 +16,7 @@ import {
 } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
@@ -34,7 +34,6 @@ import {
   extendCardWithDashcardSettings,
   getVisualizationRaw,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DashCardId,
@@ -338,12 +337,10 @@ function DashCardInner({
     ? onEditVisualizationClick
     : undefined;
 
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
+    return isQuestionCard(dashcard.card) ? buildQuestion(dashcard.card) : null;
+  }, [dashcard.card, buildQuestion]);
 
   return (
     <ErrorBoundary>
@@ -404,7 +401,6 @@ function DashCardInner({
         <DashCardVisualization
           dashcard={dashcard}
           question={question}
-          metadata={metadata}
           series={series}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}

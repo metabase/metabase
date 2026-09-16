@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useTokenRefreshUntil } from "metabase/settings";
 import {
   Box,
   Button,

@@ -148,7 +148,8 @@ export const selectQuestionFromCard = (
   state: State,
   card: UnsavedCard,
   parameterValues?: ParameterValuesMap,
-): Question => new Question(card, getMetadata(state), parameterValues);
+  opts?: MetadataSelectorOpts,
+): Question => new Question(card, getMetadata(state, opts), parameterValues);
 
 /**
  * A v1 `Question` for a draft that has no card yet, such as an ad-hoc query.
@@ -180,8 +181,9 @@ const cardQuestionBuilders = new WeakMap<Lib.Metadata, CardQuestionBuilder>();
  */
 export const selectQuestionFromCardBuilder = (
   state: State,
+  opts?: MetadataSelectorOpts,
 ): CardQuestionBuilder => {
-  const metadata = getMetadata(state);
+  const metadata = getMetadata(state, opts);
   const cached = cardQuestionBuilders.get(metadata);
 
   if (cached) {
@@ -195,8 +197,10 @@ export const selectQuestionFromCardBuilder = (
   return build;
 };
 
-export const useQuestionFromCard = (): CardQuestionBuilder =>
-  useSelector(selectQuestionFromCardBuilder);
+export const useQuestionFromCard = (
+  opts?: MetadataSelectorOpts,
+): CardQuestionBuilder =>
+  useSelector((state) => selectQuestionFromCardBuilder(state, opts));
 
 export type DraftQuestionBuilder = (
   opts: Omit<QuestionCreatorOpts, "metadata">,

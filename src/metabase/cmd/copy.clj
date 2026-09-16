@@ -65,6 +65,7 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/Segment
     :model/ModerationReview
     :model/Revision
@@ -152,7 +153,20 @@
     :model/ExplorationQuery
     :model/ExplorationBookmark
     ;; 63+
-    :model/McpFeedback]
+    :model/McpFeedback
+    ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
+    ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
+    :model/Transform
+    :model/TransformTag
+    :model/TransformTransformTag
+    :model/TransformJob
+    :model/TransformJobTransformTag
+    ;; Serialization never exports run history; a whole-instance move keeps it.
+    ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
+    :model/TransformJobRun
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformDagRun]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
@@ -396,10 +410,13 @@
     :model/ImplicitAction
     :model/HTTPAction
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue
-    :model/OsiAiContext})
+    :model/OsiAiContext
+    ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
+    :model/TransformRunCancelation})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

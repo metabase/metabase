@@ -1,5 +1,16 @@
 accept = ["200..=204", "429"]
-exclude = ["\\.html(#.*)?$"]
+exclude = [
+  "\\.html(#.*)?$",
+  # Liquid templates ({{page.version}}) in docs/embedding/sdk are rendered by the docs site, not here.
+  "%7B%7B",
+  # Bot-blocked: 403 for anything that isn't a browser.
+  "^https://(www|dev)\\.mysql\\.com/",
+  "^https://platform\\.deepseek\\.com/",
+  # Login-walled: redirects forever between console and auth.
+  "^https://console\\.mistral\\.ai/",
+  # GitHub renders issue comments client-side, so lychee can't see #issuecomment anchors.
+  "^https://github\\.com/.+/issues/\\d+#issuecomment-",
+]
 exclude_path = ["docs/util", "docs/embedding/sdk/api"]
 no_progress = true
 include_fragments = "full"

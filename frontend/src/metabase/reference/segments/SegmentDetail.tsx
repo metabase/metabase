@@ -7,11 +7,7 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import {
-  type MetadataProviderFactory,
-  getShallowFields as getFields,
-  selectMetadataProviderFactory,
-} from "metabase/metadata-store";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -21,23 +17,13 @@ import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateSegment } from "metabase/reference/update-actions";
-import type { User } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type { Segment, Table, User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getIsEditing,
-  getIsFormulaExpanded,
-  getSegment,
-  getTable,
-  getUser,
-} from "../selectors";
-import type {
-  BaseDetailFormFields,
-  ReferenceLoadingProps,
-  StubbedSegment,
-  StubbedTable,
-} from "../types";
+import { getIsEditing, getIsFormulaExpanded, getUser } from "../selectors";
+import type { BaseDetailFormFields, ReferenceLoadingProps } from "../types";
 import { getQuestionUrl } from "../utils";
 
 interface SegmentDetailFormFields extends BaseDetailFormFields {
@@ -45,9 +31,9 @@ interface SegmentDetailFormFields extends BaseDetailFormFields {
 }
 
 const interestingQuestions = (
-  table: StubbedTable,
-  segment: StubbedSegment,
-  getMetadataProvider: MetadataProviderFactory,
+  table: Table,
+  segment: Segment,
+  metadataProvider: Lib.MetadataProvider,
 ) => {
   return [
     {
@@ -57,7 +43,7 @@ const interestingQuestions = (
         tableId: table.id,
         segmentId: segment.id,
         getCount: true,
-        metadataProvider: getMetadataProvider(table.db_id ?? null),
+        metadataProvider: metadataProvider,
       }),
     },
     {
@@ -66,7 +52,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         tableId: table.id,
         segmentId: segment.id,
-        metadataProvider: getMetadataProvider(table.db_id ?? null),
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -74,16 +60,10 @@ const interestingQuestions = (
 
 const mapStateToProps = (
   state: StateWithReference,
-  props: ReferenceRouteProps,
+  props: Pick<SegmentDetailProps, "table">,
 ) => {
-  const entity = getSegment(state, props) || {};
-  const fields = getFields(state);
-
   return {
-    entity,
-    table: getTable(state, props),
-    metadataFields: fields,
-    getMetadataProvider: selectMetadataProviderFactory(state),
+    metadataProvider: selectMetadataProvider(state, props.table?.db_id ?? null),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -103,8 +83,8 @@ const validate = (values: SegmentDetailFormFields) =>
 
 interface SegmentDetailProps {
   style: React.CSSProperties;
-  entity: StubbedSegment;
-  table: StubbedTable | undefined;
+  segment: Segment | undefined;
+  table: Table | undefined;
   user: User;
   isEditing?: boolean;
   startEditing: () => void;
@@ -114,7 +94,7 @@ interface SegmentDetailProps {
   isFormulaExpanded?: boolean;
   loading?: boolean;
   loadingError?: unknown;
-  getMetadataProvider: MetadataProviderFactory;
+  metadataProvider: Lib.MetadataProvider;
 
   onSubmit: (fields: SegmentDetailFormFields, props: any) => Promise<void>;
 }
@@ -122,9 +102,9 @@ interface SegmentDetailProps {
 const SegmentDetail = (props: SegmentDetailProps) => {
   const {
     style,
-    entity,
+    segment: entity,
     table,
-    getMetadataProvider,
+    metadataProvider,
     loadingError,
     loading,
     user,
@@ -182,11 +162,15 @@ const SegmentDetail = (props: SegmentDetailProps) => {
           entity={entity}
           type="segment"
           headerIcon={modelIconMap.segment}
-          headerLink={getQuestionUrl({
-            tableId: entity.table_id!,
-            segmentId: entity.id,
-            metadataProvider: getMetadataProvider(table.db_id ?? null),
-          })}
+          headerLink={
+            table && entity
+              ? getQuestionUrl({
+                  tableId: table.id,
+                  segmentId: entity.id,
+                  metadataProvider,
+                })
+              : undefined
+          }
           name={t`Details`}
           user={user}
           isEditing={isEditing}
@@ -246,7 +230,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Description`}
-                    description={entity.description}
+                    description={entity?.description}
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
                     field={getFormField("description")}
@@ -255,7 +239,7 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Why this Segment is interesting`}
-                    description={entity.points_of_interest}
+                    description={entity?.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
                     field={getFormField("points_of_interest")}
@@ -264,26 +248,26 @@ const SegmentDetail = (props: SegmentDetailProps) => {
                 <li className={CS.relative}>
                   <Detail
                     name={t`Things to be aware of about this Segment`}
-                    description={entity.caveats}
+                    description={entity?.caveats}
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
                     field={getFormField("caveats")}
                   />
                 </li>
-                {!isEditing && table && (
+                {!isEditing && table && entity && (
                   <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(
                         table,
                         entity,
-                        getMetadataProvider,
+                        metadataProvider,
                       )}
                     />
                   </li>
                 )}
                 {table &&
                   !isEditing &&
-                  entity.definition &&
+                  entity?.definition &&
                   entity.table_id != null && (
                     <li className={cx(CS.relative, CS.mb4)}>
                       <Formula
@@ -315,6 +299,8 @@ export default connect(
   // props, because the `actions` spread in `mapDispatchToProps` is untyped.
   // The cast restores the props a caller actually passes.
   SegmentDetail as unknown as React.ComponentType<
-    ReferenceRouteProps & ReferenceLoadingProps
+    ReferenceRouteProps &
+      ReferenceLoadingProps &
+      Pick<SegmentDetailProps, "segment" | "table">
   >,
 );

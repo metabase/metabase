@@ -126,6 +126,10 @@ export const MappingRow = ({
     selectedGroupIdsFromGroupsThatExist.length > 0 &&
     !isMappingLinkedOnlyToAdminGroup;
 
+  const hasAdminGroup = groups.some(
+    (group) => isAdminGroup(group) && selectedGroupIds.includes(group.id),
+  );
+
   return (
     <>
       <tr>
@@ -162,6 +166,7 @@ export const MappingRow = ({
         <DeleteGroupMappingModal
           name={name}
           groupIds={selectedGroupIds}
+          hasAdminGroup={hasAdminGroup}
           onHide={closeDeleteGroupMappingModal}
           onConfirm={handleConfirmDeleteMapping}
         />

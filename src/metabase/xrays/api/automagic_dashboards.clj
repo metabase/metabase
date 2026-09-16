@@ -1,6 +1,7 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -92,7 +93,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (xrays.db/database id)
       api/read-check
@@ -147,8 +148,9 @@
                                   [:map
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
-  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query query)]
+  [query :- ms/RingRequestBody]
+  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query
+                                                     (walk/keywordize-keys query))]
     (mi/instance :model/Query
                  (merge (queries/query->database-and-table-ids query)
                         {:dataset_query query}))))
@@ -207,7 +209,9 @@
 
 (mu/defn get-automagic-dashboard
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity :- Entity entity-id-or-query show]
+  [entity              :- Entity
+   entity-id-or-query  :- ::entity-id-or-query
+   show                :- [:maybe [:or [:= "all"] nat-int?]]]
   (if (= entity :transform)
     (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
@@ -219,10 +223,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [{:keys [entity entity-id-or-query]} :- [:map
+  [{:keys [entity entity-id-or-query]} :- [:map {:closed true}
                                            [:entity             Entity]
                                            [:entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
   (get-automagic-dashboard entity entity-id-or-query show))
 
@@ -252,7 +256,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
-  [{:keys [entity entity-id-or-query]} :- [:map
+  [{:keys [entity entity-id-or-query]} :- [:map {:closed true}
                                            [:entity             Entity]
                                            [:entity-id-or-query ::entity-id-or-query]]]
   (dashboard-metadata (get-automagic-dashboard entity entity-id-or-query nil)))
@@ -355,7 +359,7 @@
 (api.macros/defendpoint :get "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."
-  [{:keys [model-index-id pk-id]} :- [:map
+  [{:keys [model-index-id pk-id]} :- [:map {:closed true}
                                       [:model-index-id :int]
                                       [:pk-id          :int]]]
   (api/let-404 [model-index (xrays.db/model-index model-index-id)
@@ -377,12 +381,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
-  [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map
+  [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map {:closed true}
                                                                      [:entity             Entity]
                                                                      [:entity-id-or-query ::entity-id-or-query]
                                                                      [:prefix             Prefix]
                                                                      [:dashboard-template DashboardTemplate]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
@@ -395,11 +399,11 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in automagic dashboard for entity `entity` defined by query
   `cell-query`."
-  [{:keys [entity entity-id-or-query cell-query]} :- [:map
+  [{:keys [entity entity-id-or-query cell-query]} :- [:map {:closed true}
                                                       [:entity             Entity]
                                                       [:entity-id-or-query ::entity-id-or-query]
                                                       [:cell-query         ::cell-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show       (coerce-show show)
@@ -412,13 +416,13 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question with id `id` defined by query `cell-query` using
   dashboard-template `dashboard-template`."
-  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map
+  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map {:closed true}
                                                                                 [:entity             Entity]
                                                                                 [:entity-id-or-query ::entity-id-or-query]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
                                                                                 [:cell-query         ::cell-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
@@ -435,12 +439,12 @@
   [{:keys [entity
            entity-id-or-query
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:entity                        Entity]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
@@ -461,14 +465,14 @@
            prefix
            dashboard-template
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
                                                [:dashboard-template            DashboardTemplate]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
@@ -490,13 +494,13 @@
            entity-id-or-query
            cell-query
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:cell-query                    ::base-64-encoded-json]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
@@ -519,7 +523,7 @@
            prefix
            dashboard-template
            comparison-entity
-           comparison-entity-id-or-query]} :- [:map
+           comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
@@ -527,7 +531,7 @@
                                                [:cell-query                    ::base-64-encoded-json]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
-   {:keys [show]} :- [:map
+   {:keys [show]} :- [:map {:closed true}
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)

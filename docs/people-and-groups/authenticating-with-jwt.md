@@ -139,7 +139,7 @@ If you're running a multi-tenant application, you can use JWT to automatically a
 
 ## Note about Azure
 
-If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
+If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://learn.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
 
 ## Example code using JWT-based authentication
 

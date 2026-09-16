@@ -18,7 +18,7 @@ Some Metabase functionality requires write access to the database. Depending on 
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
-- Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape) that need read-only access to the analytics tables in your database.
+- Use the same `analytics` role for other BI tools in your data stack that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
 For operations that require write access, we recommend using separate [writable connections](./writable-connection.md).
@@ -96,7 +96,7 @@ This is a good option if you're connecting to a local database for development o
 
 ## Privileges to enable actions and editable table data
 
-Both [actions](../actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
+Both [actions](../data-modeling/models/actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
 If you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
@@ -117,7 +117,7 @@ GRANT metabase_writer TO metabase;
 
 ## Privileges to enable model persistence
 
-[Model persistence](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model persistence, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+[Model persistence](../data-modeling/models/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model persistence, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
@@ -144,7 +144,7 @@ GRANT metabase_model_persistence TO metabase;
 
 ## Privileges to enable transforms
 
-[Transforms](../data-studio/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables. We recommend using a [writable connection](./writable-connection.md) and only granting write access to the user used for the writable connection.
+[Transforms](../data-modeling/transforms/transforms-overview.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables. We recommend using a [writable connection](./writable-connection.md) and only granting write access to the user used for the writable connection.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 

@@ -6,6 +6,7 @@ jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
   getSdkAuthMethod: jest.fn(() => "sso"),
   getSdkLocaleUsed: jest.fn(() => false),
   getHostReactVersion: jest.fn(() => MOCK_REACT_VERSION),
+  getSdkClient: jest.fn(() => "embedding-sdk-react"),
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
@@ -93,6 +94,7 @@ describe("useTrackSdkComponentMount", () => {
         sdk_version: "1.2.3",
         locale_used: false,
         react_version: MOCK_REACT_VERSION,
+        client: "embedding-sdk-react",
       },
     });
   });

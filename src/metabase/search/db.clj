@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -12,14 +13,32 @@
    [metabase.search.in-place.legacy :as legacy]
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
+   [metabase.search.spec :as search.spec]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def ^:private SearchIndexRow
+  "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
+  way `metabase.search.appdb.index/document->entry` renames them), the base columns, and the extra columns the
+  active engine specialization adds, each value a Honey SQL 2 expression."
+  (into [:map {:closed true}]
+        (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
+                             :updated_at :search_vector :with_native_query_vector :search_terms
+                             :native_search_terms}
+                           (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
+          [column {:optional true} ::h2x/expr])))
+
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
-  matching `where-clause`: the search-spec generated `:where` fragment of `metabase.search.spec/search-models-to-update`,
-  or nil for every row."
+  matching `where-clause`, or every row when it is nil.
+
+  `where-clause` is the one Honey SQL argument left in this namespace. It is the search-spec generated `:where`
+  fragment of `metabase.search.spec/search-models-to-update`, which is the payload of the ingestion queue itself:
+  `metabase.search.util/impossible-condition?` drops entries by inspecting it, `metabase.search.ingestion` ORs the
+  distinct clauses of a batch together and parses `[model id]` pairs back out of them to decide what to purge.
+  Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
   (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
@@ -52,7 +71,7 @@
   [index-table            :- [:or :keyword :string]
    search-ctx             :- search.config/SearchContext
    search-string          :- [:maybe :string]
-   view-count-percentiles :- [:map-of :keyword [:maybe number?]]]
+   view-count-percentiles :- [:map-of (into [:enum] search.spec/search-models) [:maybe [:or number? :string]]]]
   (t2/query (search.scoring/with-scores search-ctx
               (search.scoring/scorers search-ctx view-count-percentiles)
               (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))
@@ -107,17 +126,15 @@
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
-  "Create the search index table named `table-name` with `columns` (the Honey SQL column definitions built by the
-  active search engine specialization)."
-  [table-name :- [:or :keyword :string]
-   columns    :- [:sequential vector?]]
+  "Create the search index table named `table-name`: the columns of `metabase.search.appdb.index-schema/base-schema`
+  as shaped by the active search engine specialization, then that specialization's post-creation statements (index
+  creation and the like)."
+  [table-name :- [:or :keyword :string]]
   (t2/query (-> (sql.helpers/create-table table-name)
-                (sql.helpers/with-columns columns))))
-
-(mu/defn run-search-index-statement!
-  "Run a single post-creation SQL statement (e.g. an index creation) for a search index table."
-  [statement :- [:or :string vector? :map]]
-  (t2/query statement))
+                (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
+  (let [table-name (name table-name)]
+    (doseq [statement (specialization/post-create-statements table-name table-name)]
+      (t2/query statement))))
 
 (mu/defn analyze-search-index-table!
   "Run `ANALYZE` on the search index table `table-name` (Postgres only)."
@@ -128,7 +145,7 @@
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
   with the new value."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
@@ -181,7 +198,7 @@
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (t2/insert! table entries))
 
 (mu/defn index-entry-count

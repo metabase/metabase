@@ -272,7 +272,8 @@
 (mu/defn- correct-columns-name :- [:maybe [:sequential driver-api/schema.actions.args.row]]
   "Ensure each rows have column name match with fields name.
   Some drivers like h2 have weird issue with casing."
-  [table-id rows :- [:sequential driver-api/schema.actions.args.row]]
+  [table-id :- driver-api/schema.id.table
+   rows     :- [:sequential driver-api/schema.actions.args.row]]
   (when (seq rows)
     (let [field-names (driver-api/cached-value
                        [::correct-columns-name table-id]
@@ -357,7 +358,9 @@
          :after    nil}))))
 
 (mu/defn- model-row-delete! :- (result-schema [:map [:rows-deleted :int]])
-  [action context inputs]
+  [action  :- qualified-keyword?
+   context :- driver-api/schema.actions.execution-context
+   inputs  :- [:sequential :metabase.legacy-mbql.schema/Query]]
   (let [database       (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
@@ -479,8 +482,9 @@
 
 ;; TODO (Cam 2026-07-23) Update this stuff to use MBQL 5 instead of legacy MBQL
 (mu/defn- model-create! :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
-  ;; the legacy MBQL query schema is deprecated, and goes away with the TODO above
-  [action context legacy-queries :- #_{:clj-kondo/ignore [:deprecated-var]} [:sequential driver-api/mbql.schema.Query]]
+  [action         :- qualified-keyword?
+   context        :- driver-api/schema.actions.execution-context
+   legacy-queries :- [:sequential :metabase.legacy-mbql.schema/Query]]
   (let [database (inputs->db legacy-queries)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
@@ -550,7 +554,8 @@
       :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
 (mr/def ::table-row-input
-  [:map
+  [:map {:closed true}
+   [:database {:optional true} driver-api/schema.id.database]
    [:table-id driver-api/schema.id.table]
    [:row driver-api/schema.actions.args.row]])
 
@@ -562,7 +567,9 @@
    :create-row row})
 
 (mu/defn- table-row-create!
-  [_action context inputs :- [:sequential ::table-row-input]]
+  [_action :- qualified-keyword?
+   context :- driver-api/schema.actions.execution-context
+   inputs  :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:row-action :model.row/create
@@ -658,7 +665,9 @@
                     {:status-code 400, :repeated-rows repeats}))))
 
 (mu/defn- table-row-delete!
-  [_action context inputs :- [:sequential ::table-row-input]]
+  [_action :- qualified-keyword?
+   context :- driver-api/schema.actions.execution-context
+   inputs  :- [:sequential ::table-row-input]]
   (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
@@ -738,7 +747,9 @@
      :update-row (apply dissoc row pk-names)}))
 
 (mu/defn- table-row-update!
-  [_action context inputs :- [:sequential ::table-row-input]]
+  [_action :- qualified-keyword?
+   context :- driver-api/schema.actions.execution-context
+   inputs  :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
          {:inputs     inputs

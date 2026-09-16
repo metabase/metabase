@@ -197,4 +197,17 @@ describe("formatValue", () => {
       }),
     ).toEqual("7/7/2019");
   });
+
+  it("should re-read column type fields when the same column object is mutated", () => {
+    const column = createMockColumn({
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: null,
+    });
+    expect(formatValue("12345", { column })).toBe("12345");
+
+    column.base_type = "type/Integer";
+    column.effective_type = "type/Integer";
+    expect(formatValue("12345", { column })).toBe("12,345");
+  });
 });

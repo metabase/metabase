@@ -9,7 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
-import type { SortingOptions } from "./sorting";
+import type { SortDirection } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 export type CollectionNamespace =
@@ -167,25 +167,43 @@ export type ListCollectionItemsSortColumn =
   | "last_edited_by"
   | "model";
 
+// Query params are kebab-case, matching the endpoint. The sort params are spelled out here rather than
+// intersecting `SortingOptions`, which stays snake_case for the endpoints that still expect that (`/api/task`,
+// `/api/ee/stale/:id`, `/api/notification/admin`).
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: (CollectionItemModel | "no_models")[];
   q?: string;
-  include_available_models?: boolean;
+  "include-available-models"?: boolean;
   archived?: boolean;
-  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  "pinned-state"?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: CollectionNamespace;
-  collection_type?: CollectionType;
-  show_dashboard_questions?: boolean;
-  include_library?: boolean;
-} & PaginationRequest &
-  Partial<SortingOptions<ListCollectionItemsSortColumn>>;
+  "collection-type"?: CollectionType;
+  "show-dashboard-questions"?: boolean;
+  "include-library"?: boolean;
+  "sort-column"?: ListCollectionItemsSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
   available_models?: string[];
 } & PaginationResponse;
+
+export type GetCollectionItemsMetadataRequest = {
+  id: CollectionId;
+  models?: CollectionItemModel[];
+  "show-dashboard-questions"?: boolean;
+  namespace?: CollectionNamespace;
+  "include-library"?: boolean;
+};
+
+export type CollectionItemsMetadata = {
+  available_models: string[];
+  // The size of the whole list, unlike the `total` of a paged, filtered items response.
+  total_items: number;
+};
 
 export interface UpdateCollectionRequest {
   id: RegularCollectionId;

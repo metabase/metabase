@@ -42,7 +42,7 @@
   :can-read-from-env? true)
 
 (defsetting remote-sync-url
-  (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
+  (deferred-tru "The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`")
   :type :string
   :visibility :admin
   :encryption :when-encryption-key-set

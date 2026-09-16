@@ -71,31 +71,31 @@
    [:title  [:maybe :string]]])
 
 (def ^:private ConversationIdParams
-  [:map [:id ms/UUIDString]])
+  [:map {:closed true} [:id ms/UUIDString]])
 
 (def ^:private ListConversationsQueryParams
   [:maybe
-   [:map
+   [:map {:closed true}
     [:profile_id {:optional true} [:maybe ms/NonBlankString]]]])
 
 (def ^:private ForkConversationBody
-  [:map
+  [:map {:closed true}
    ;; the `external_id` of the assistant message to fork at (the FE's message id)
    [:message_id ms/UUIDString]])
 
 (def ^:private SaveEntityCard
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:description            {:optional true} [:maybe :string]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    [:display                ms/NonBlankString]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private SaveEntityBody
-  [:map
+  [:map {:closed true}
    ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
    [:chart_id [:and ms/NonBlankString [:string {:max 36}]]]
    [:card     SaveEntityCard]])
@@ -105,9 +105,9 @@
    [:id                      ms/PositiveInt]
    [:name                    ms/NonBlankString]
    [:description             {:optional true} [:maybe :string]]
-   [:dataset_query           ms/Map]
+   [:dataset_query           ::lib-be.schema/maybe-legacy-query]
    [:display                 :keyword]
-   [:visualization_settings  {:optional true} [:maybe ms/Map]]
+   [:visualization_settings  {:optional true} [:maybe ms/VisualizationSettings]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]

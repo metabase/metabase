@@ -5,14 +5,52 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
+
+(def ^:private not-in-exploration-document
+  "The `:where` fragment excluding Cards that belong to an exploration Summary document.
+
+  Such a Card is materialized by the Summary itself — its `name` and `dataset_query` are copied from the
+  `ExplorationQuery` it renders, so they carry dimension values discovered under the creator's data-access lens. Its
+  parent Document is never serialized (see `metabase.documents.models.document`'s `extract-query`), and this Card's
+  `deserialization-dependencies` name that Document, so exporting the Card without it would leave a dangling
+  reference even setting the lens question aside."
+  [:or
+   [:= :document_id nil]
+   [:in :document_id ^:allow-subquery {:select [:id]
+                                       :from   [:document]
+                                       :where  [:= :exploration_id nil]}]])
+
+(mu/defn cards-for-serdes-reducible
+  "A reducible of the Cards to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the set
+  counts as the root collection; an empty or nil set means every collection), further restricted to the rows whose
+  `filter-column` is one of `filter-ids` when `filter-column` is given, never a Card materialized by an exploration
+  Summary document, and ordered ascending by `order-columns` (unordered when empty)."
+  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
+   filter-column  :- [:maybe :keyword]
+   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns  :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select :model/Card
+                       (cond-> {:where [:and
+                                        (when (seq collection-set)
+                                          [:or
+                                           [:in :collection_id collection-set]
+                                           (when (some nil? collection-set)
+                                             [:= :collection_id nil])])
+                                        (when filter-column
+                                          [:in filter-column filter-ids])
+                                        not-in-exploration-document]}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -131,6 +169,12 @@
                         [:in :card_id card-ids]]
              :group-by [:card_id]}))
 
+(defn card-dashboards
+  "The Dashboards `card` appears in, hydrating `:in_dashboards` unless it is already present."
+  [card]
+  (or (:in_dashboards card)
+      (:in_dashboards (t2/hydrate card :in_dashboards))))
+
 (mu/defn dashboards-for-cards
   "Rows of `:card_id` plus Dashboard columns for every Dashboard each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
@@ -180,14 +224,14 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [[:metabase_table :table]
+             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
+  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
@@ -446,7 +490,12 @@
 
 (mu/defn insert-queries!
   "Insert the Query `rows`, returning the number inserted."
-  [rows :- [:sequential :map]]
+  [rows :- [:sequential [:map {:closed true}
+                         [:query                  [:or
+                                                   ::lib-be.schema/empty-query
+                                                   :metabase.query-processor.schema/any-query]]
+                         [:query_hash             bytes?]
+                         [:average_execution_time number?]]]]
   (t2/insert! :model/Query rows))
 
 (mu/defn query-hash-statuses-reducible

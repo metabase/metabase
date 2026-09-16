@@ -15,11 +15,13 @@ import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 
-export const getRouterPath = (state: State, props: RouterProps) => {
+// `props` is optional because most callers read these through `useSelector`,
+// which passes only the state. The router's own location is the fallback.
+export const getRouterPath = (state: State, props?: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
 };
 
-export const getRouterHash = (state: State, props: RouterProps) => {
+export const getRouterHash = (state: State, props?: RouterProps) => {
   return props?.location?.hash ?? window.location.hash;
 };
 
@@ -33,6 +35,12 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
 
 export const getIsMonitorApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/monitor");
+});
+
+const EMBEDDING_HUB_PATH_PREFIX = "/embedding";
+
+export const getIsEmbeddingHubApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith(EMBEDDING_HUB_PATH_PREFIX);
 });
 
 export const getIsDataApp = createSelector([getRouterPath], (path) => {
@@ -74,6 +82,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/auth/,
   /^\/data-studio/,
   /^\/monitor/,
+  new RegExp(`^${EMBEDDING_HUB_PATH_PREFIX}`),
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.
   new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
@@ -204,6 +213,7 @@ export const getIsAppBarVisible = createSelector(
     getIsAdminApp,
     getIsDataStudioApp,
     getIsMonitorApp,
+    getIsEmbeddingHubApp,
     getIsEditingDashboard,
     selectIsWithinIframe,
     getIsEmbeddedAppBarVisible,
@@ -215,6 +225,7 @@ export const getIsAppBarVisible = createSelector(
     isAdminApp,
     isDataStudioApp,
     isMonitorApp,
+    isEmbeddingHubApp,
     isEditingDashboard,
     isEmbedded,
     isEmbeddedAppBarVisible,
@@ -227,6 +238,7 @@ export const getIsAppBarVisible = createSelector(
       isAdminApp ||
       isDataStudioApp ||
       isMonitorApp ||
+      isEmbeddingHubApp ||
       isEditingDashboard ||
       isFullscreen
     ) {

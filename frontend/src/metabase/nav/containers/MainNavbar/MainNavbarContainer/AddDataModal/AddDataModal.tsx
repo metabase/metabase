@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
+import {
+  PLUGIN_STORAGE_SETUP,
+  useStorageSetup,
+} from "metabase/common/components/upsells/StoragePurchaseModal";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
@@ -21,7 +24,8 @@ interface AddDataModalProps {
   onClose: () => void;
 
   initialTab?: AddDataTab;
-  fromEmbeddingSetupGuide?: boolean;
+  /** Path of the setup guide that opened this, so the flow can return there. */
+  returnToSetupGuide?: string;
 }
 
 interface Tabs {
@@ -42,16 +46,16 @@ export const AddDataModal = (props: AddDataModalProps) => (
   // Outside `Modal.Root` so setup state and its polling survive the modal
   // closing, and so the purchase modal it hosts replaces this one rather than
   // stacking. `enabled` defers the add-ons fetch until the modal is shown.
-  <PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider enabled={props.opened}>
+  <PLUGIN_STORAGE_SETUP.StorageSetupProvider enabled={props.opened}>
     <AddDataModalContent {...props} />
-  </PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider>
+  </PLUGIN_STORAGE_SETUP.StorageSetupProvider>
 );
 
 const AddDataModalContent = ({
   opened,
   onClose,
   initialTab,
-  fromEmbeddingSetupGuide,
+  returnToSetupGuide,
 }: AddDataModalProps) => {
   const { areUploadsEnabled, canManageUploads, isAdmin, hasAttachedDwh } =
     useAddDataState();
@@ -154,7 +158,7 @@ const AddDataModalContent = ({
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel
                 canSeeContent={isAdmin}
-                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
+                returnToSetupGuide={returnToSetupGuide}
               />
             </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>

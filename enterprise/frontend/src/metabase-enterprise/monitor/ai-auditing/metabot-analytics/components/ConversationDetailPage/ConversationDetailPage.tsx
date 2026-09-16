@@ -18,7 +18,7 @@ import type {
   MetabotMessage,
 } from "metabase/metabot/state/types";
 import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -49,7 +49,6 @@ import type {
   ConversationFeedback,
   GeneratedQuery,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
@@ -332,7 +331,7 @@ export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
 
   const runUrl = useMemo(() => {
     if (query.database_id == null || !query.sql) {
@@ -343,17 +342,13 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
       database: query.database_id,
       native: { query: query.sql, "template-tags": {} },
     };
-    const question = new Question(
-      {
-        name: null,
-        display: "table",
-        visualization_settings: {},
-        dataset_query: datasetQuery,
-      },
-      metadata,
-    ).setType("question");
+    const question = buildQuestion({
+      display: "table",
+      visualization_settings: {},
+      dataset_query: datasetQuery,
+    }).setType("question");
     return ML_getUrl(question);
-  }, [metadata, query.database_id, query.sql]);
+  }, [buildQuestion, query.database_id, query.sql]);
 
   return (
     <Card withBorder shadow="none" p="lg">
@@ -406,23 +401,19 @@ function NotebookGeneratedQueryCard({
   const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
     mbql.database != null ? mbql : skipToken,
   );
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCard();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
 
   const question = useMemo(() => {
-    const q = new Question(
-      {
-        name: null,
-        display: display ?? "table",
-        visualization_settings: {},
-        dataset_query: mbql,
-      },
-      metadata,
-    ).setType("question");
+    const q = buildQuestion({
+      display: display ?? "table",
+      visualization_settings: {},
+      dataset_query: mbql,
+    }).setType("question");
     return display ? q.lockDisplay() : q;
-  }, [mbql, metadata, display]);
+  }, [buildQuestion, mbql, display]);
 
   if (isLoading) {
     return (

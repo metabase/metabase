@@ -6,9 +6,8 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import {
-  type MetadataProviderFactory,
   getShallowFields,
-  selectMetadataProviderFactory,
+  selectMetadataProvider,
 } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/Reference.module.css";
@@ -19,6 +18,7 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
+import type * as Lib from "metabase-lib";
 import type { NormalizedField, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
@@ -50,7 +50,7 @@ const interestingQuestions = (
   database: StubbedDatabase,
   table: StubbedTable,
   field: StubbedField,
-  getMetadataProvider: MetadataProviderFactory,
+  metadataProvider: Lib.MetadataProvider,
   breakoutField: NormalizedField | undefined,
 ) => {
   return [
@@ -62,7 +62,7 @@ const interestingQuestions = (
         breakoutField,
         getCount: true,
         visualization: "bar",
-        metadataProvider: getMetadataProvider(database.id),
+        metadataProvider: metadataProvider,
       }),
     },
     {
@@ -73,7 +73,7 @@ const interestingQuestions = (
         breakoutField,
         getCount: true,
         visualization: "pie",
-        metadataProvider: getMetadataProvider(database.id),
+        metadataProvider: metadataProvider,
       }),
     },
     {
@@ -82,7 +82,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         tableId: table.id,
         breakoutField,
-        metadataProvider: getMetadataProvider(database.id),
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -95,7 +95,10 @@ const mapStateToProps = (
   const entity = getField(state, props) || {};
 
   return {
-    getMetadataProvider: selectMetadataProviderFactory(state),
+    metadataProvider: selectMetadataProvider(
+      state,
+      getDatabase(state, props)?.id ?? null,
+    ),
     // `getField` falls back to a stub with only an id, which cannot describe a
     // column, so the breakout takes the loaded field or nothing
     breakoutField: getShallowFields(state)?.[getFieldId(state, props)],
@@ -127,7 +130,7 @@ interface FieldDetailProps {
   endEditing: () => void;
   loading?: boolean;
   loadingError?: unknown;
-  getMetadataProvider: MetadataProviderFactory;
+  metadataProvider: Lib.MetadataProvider;
   breakoutField: NormalizedField | undefined;
 
   onSubmit: (fields: FieldDetailFormFields, props: any) => Promise<void>;
@@ -144,7 +147,7 @@ const FieldDetail = (props: FieldDetailProps) => {
     isEditing,
     startEditing,
     endEditing,
-    getMetadataProvider,
+    metadataProvider,
     breakoutField,
     onSubmit,
   } = props;
@@ -281,7 +284,7 @@ const FieldDetail = (props: FieldDetailProps) => {
                         props.database,
                         props.table,
                         props.field,
-                        getMetadataProvider,
+                        metadataProvider,
                         breakoutField,
                       )}
                     />
@@ -300,7 +303,7 @@ const FieldDetail = (props: FieldDetailProps) => {
 // `metadata` is read here but selected by the container. Naming it keeps that
 // contract type-checked.
 type FieldDetailOwnProps = ReferenceRouteProps &
-  Pick<FieldDetailProps, "getMetadataProvider" | "breakoutField"> &
+  Pick<FieldDetailProps, "metadataProvider" | "breakoutField"> &
   ReferenceLoadingProps;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

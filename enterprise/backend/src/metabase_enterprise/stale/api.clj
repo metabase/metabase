@@ -58,11 +58,11 @@
 
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
+       (map #(assoc % :fully_parameterized (queries/fully-parameterized? %)))
        present-collections
        (map (fn [card]
               (-> card
                   (assoc :model (if (queries/model? card) "dataset" "card"))
-                  (assoc :fully_parameterized (queries/fully-parameterized? card))
                   (dissoc :dataset_query))))))
 
 (defn- annotate-dashboard-with-collection-info
@@ -94,9 +94,9 @@
   - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
   - `sort_column` - the column to sort by (default: name)
   - `sort_direction` - the direction to sort by (default: asc)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt [:= :root]]]]
-   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
+   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map {:closed true}
                                                                      [:before_date    {:optional true}  [:maybe :string]]
                                                                      [:is_recursive   {:default false}  :boolean]
                                                                      [:sort_column    {:default :name}  [:enum :name :last_used_at]]

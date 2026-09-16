@@ -50,8 +50,8 @@
 (def ^:private BundleUploadParts
   "The multipart parts carrying a tar.gz bundle. `:size` is what [[check-upload!]] enforces the size limit with, so it
   has to be declared here for it to survive param decoding."
-  [:map
-   [:file [:map
+  [:map {:closed true}
+   [:file [:map {:closed true}
            [:filename :string]
            [:size     ms/IntGreaterThanOrEqualToZero]
            [:tempfile (ms/InstanceOfClass File)]]]])
@@ -165,7 +165,7 @@
    Requires custom viz plugin dev mode to be enabled."
   [_route-params
    _query-params
-   {:keys [identifier dev_bundle_url]} :- [:map
+   {:keys [identifier dev_bundle_url]} :- [:map {:closed true}
                                            [:identifier     {:optional true} [:maybe ms/NonBlankString]]
                                            [:dev_bundle_url ms/NonBlankString]]]
   (api/check-superuser)
@@ -222,7 +222,7 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (custom-viz-plugin.db/delete-plugin! id)
     (cache/purge-plugin-cache! plugin)
@@ -232,9 +232,9 @@
 
 (api.macros/defendpoint :put "/:id" :- CustomVizPluginResponse
   "Update a custom visualization plugin. Currently only `enabled` may be toggled."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         updates  (select-keys body [:enabled])]
@@ -252,7 +252,7 @@
    match the plugin's existing `identifier`."
   {:multipart {:max-file-size  cache/max-bundle-bytes
                :max-file-count 1}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
@@ -281,7 +281,7 @@
   "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from `dev_bundle_url` if set."
-  [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id], :as _route-params} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body
    _request
@@ -313,8 +313,8 @@
    and must match the manifest `icon`. Only the icon is served — plugins do not
    ship arbitrary assets.
    In dev mode, proxies from the dev base URL if set."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [path]} :- [:map [:path ms/NonBlankString]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
    _body
    _request
    respond
@@ -340,14 +340,14 @@
     (catch Throwable e
       (raise e))))
 
-(api.macros/defendpoint :put "/:id/dev-url" :- [:map [:dev_bundle_url [:maybe :string]]]
+(api.macros/defendpoint :put "/:id/dev-url" :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]
   "Set or clear the dev base URL for a plugin (e.g. `http://localhost:5174`).
    The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.
    Persisted to the database so it survives server restarts.
    Requires custom viz plugin dev mode to be enabled."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
+   {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
   (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
@@ -358,7 +358,7 @@
    Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.
    This avoids the need for a CSP exception for the dev server origin.
    Requires custom viz plugin dev mode to be enabled."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (check-dev-mode-enabled!)
   (let [dev-url (cache/resolve-dev-bundle id)]
     (when-not dev-url
@@ -395,7 +395,7 @@
   "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded
    plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (api/check-400 (dev-only-plugin? plugin)
                    "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")

@@ -64,7 +64,7 @@
    {:keys                [archived]
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
-   :- [:map
+   :- [:map {:closed true}
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
@@ -99,7 +99,7 @@
   (t2/with-transaction [_conn]
     ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
     ;; check that and fix it if needed
-    (api/maybe-reconcile-collection-position! pulse-data)
+    (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
     ;; ok, now create the Pulse
     (let [pulse (api/check-500
                  (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
@@ -122,12 +122,12 @@
   [:int {:min 0 :max 23}])
 
 (def ^:private PulseChannelRecipient
-  [:map
+  [:map {:closed true}
    [:id    {:optional true} [:maybe ms/PositiveInt]]
    [:email {:optional true} [:maybe ms/Email]]])
 
 (def ^:private PulseChannelDetails
-  [:map
+  [:map {:closed true}
    [:attachment_only {:optional true} [:maybe :boolean]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
    [:channel         {:optional true} [:maybe :string]]
@@ -137,7 +137,7 @@
 
 (def ^:private PulseChannel
   "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
-  [:map
+  [:map {:closed true}
    [:id             {:optional true}   [:maybe ms/PositiveInt]]
    [:channel_type                      PulseChannelType]
    [:enabled        {:optional true}   [:maybe :boolean]]
@@ -163,7 +163,7 @@
     collection-id       :collection_id
     collection-position :collection_position
     dashboard-id        :dashboard_id}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
        [:channels            [:+ PulseChannel]]
@@ -192,7 +192,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
@@ -286,7 +286,7 @@
       (t2/with-transaction [_conn]
         ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
         ;; depending on what changed.
-        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+        (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
         ;; ok, now update the Pulse
         (models.pulse/update-pulse!
          (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
@@ -300,10 +300,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   pulse-updates :- [:map
+   pulse-updates :- [:map {:closed true}
                      [:name          {:optional true} [:maybe ms/NonBlankString]]
                      [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
                      [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
@@ -361,7 +361,7 @@
   "Test send an unsaved pulse."
   [_route-params
    _query-params
-   {:keys [cards channels] :as body} :- [:map
+   {:keys [cards channels] :as body} :- [:map {:closed true}
                                          ;; the saved subscription this is a test send of, when there is one.
                                          ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
                                          ;; email template drops the whole "Unsubscribe" footer without a link
@@ -403,7 +403,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse-id (pulse.db/pulse-id id)
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)

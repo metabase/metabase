@@ -2449,8 +2449,7 @@
    :display-name               "ID"
    :database-required          true
    :points-of-interest         nil
-   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
-                                :type   {:type/UUID {}}}
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}}
    :lib/type                   :metadata/column})
 
 (defmethod field-metadata-method [:gh/issues :reporter-id]
@@ -2812,8 +2811,7 @@
    :preview-display            true
    :database-required          true
    :points-of-interest         nil
-   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
-                                :type   {:type/UUID {}}}
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}}
    :lib/type                   :metadata/column})
 
 (defmethod field-metadata-method [:gh/comments :author-id]
@@ -2916,8 +2914,7 @@
    :preview-display            true
    :database-required          true
    :points-of-interest         nil
-   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
-                                :type   {:type/UUID {}}}
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}}
    :lib/type                   :metadata/column})
 
 (defmethod field-metadata-method [:gh/comments :body-markdown]

@@ -15,7 +15,7 @@
 
 (mr/def ::field-stats
   "Statistics for a field from fingerprints."
-  [:map
+  [:map {:closed true}
    [:distinct_count {:optional true} :int]
    [:nil_percent {:optional true} :double]
    ;; Number stats
@@ -30,7 +30,7 @@
 
 (mr/def ::field
   "Field metadata for inspector."
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
@@ -40,7 +40,7 @@
 
 (mr/def ::table
   "Table metadata."
-  [:map
+  [:map {:closed true}
    [:table_id pos-int?]
    [:table_name :string]
    [:schema {:optional true} [:maybe :string]]
@@ -196,9 +196,14 @@
    [:metadata {:optional true} ::trigger-metadata]])
 
 (mr/def ::lens-params
-  "Params passed to a drill lens (e.g. `{:join_step 2}`), emitted on drill-lens triggers and echoed back by the FE
-   to the lens endpoints. Scalar values only."
-  [:map-of :keyword [:maybe [:or :string :int :boolean :double]]])
+  "Params passed to a drill lens, emitted on drill-lens triggers and echoed back by the FE to the lens endpoints.
+   `:join_step` scopes the unmatched-rows lens to one join; it is the only param any lens takes."
+  [:map {:closed true}
+   [:join_step {:optional true} [:maybe :int]]])
+
+(mr/def ::lens-params.request
+  "[[::lens-params]] as the FE echoes them back to the lens endpoints."
+  ::lens-params)
 
 (mr/def ::drill-lens-trigger
   "Definition for conditional drill lens availability.

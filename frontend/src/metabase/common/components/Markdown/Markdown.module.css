@@ -83,7 +83,7 @@
 
 .markdownRoot:where(:not([data-custom-code])) {
   :where(code) {
-    font-family: var(--mb-default-monospace-font-family, monospace);
+    font-family: var(--mb-default-monospace-font-family);
     font-size: 0.875em;
     background-color: var(--markdown-surface-color);
     border: 1px solid var(--markdown-border-color);

@@ -21,7 +21,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { LICENSE_TOKEN_SCHEMA } from "./constants";
+import { getLicenseTokenSchema } from "./constants";
 
 type LicenseTokenFormProps = {
   onSubmit: (token: string) => Promise<void>;
@@ -47,7 +47,7 @@ export const LicenseTokenForm = ({
   return (
     <FormProvider
       initialValues={{ license_token: initialValue }}
-      validationSchema={LICENSE_TOKEN_SCHEMA}
+      validationSchema={getLicenseTokenSchema()}
       onSubmit={(values) => onSubmit(values.license_token)}
     >
       {({ errors, setValues }) => (

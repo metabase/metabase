@@ -2,101 +2,72 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/metadata-store";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import type { Table } from "metabase-types/api";
+import { createMockTable } from "metabase-types/api/mocks";
 import {
-  createMockField,
-  createMockForeignKey,
-  createMockTable,
-} from "metabase-types/api/mocks";
+  PRODUCTS_ID,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
-import { ConnectedTables } from "./ConnectedTables";
+import { type ConnectedTable, ConnectedTables } from "./ConnectedTables";
 
-const EMPTY_TABLE = createMockTable();
-
-const TABLE_WITH_FKS = createMockTable({
-  id: 1,
-  fks: [
-    createMockForeignKey({
-      origin_id: 1,
-      origin: createMockField({
-        id: 1,
-        table_id: 2,
-        table: createMockTable({
-          id: 2,
-          display_name: "Foo",
-        }),
-      }),
-    }),
-    createMockForeignKey({
-      origin_id: 2,
-      origin: createMockField({
-        id: 2,
-        table_id: 3,
-        table: createMockTable({
-          id: 3,
-          display_name: "Bar",
-        }),
-      }),
-    }),
-  ],
-});
-
-interface SetupOpts {
-  table: Table;
-}
-
-function setup({ table }: SetupOpts) {
+function setup({ tables }: { tables: ConnectedTable[] }) {
   const state = createMockState({
     entities: createMockEntitiesState({
-      tables: [table],
+      databases: [createSampleDatabase()],
     }),
   });
-  const metadata = getMetadata(state);
 
-  return renderWithProviders(
+  renderWithProviders(
     <div data-testid="test-container">
-      <ConnectedTables table={checkNotNull(metadata.table(table.id))} />
+      <ConnectedTables tables={tables} />
     </div>,
+    { storeInitialState: state },
   );
+
+  return { state };
 }
 
 describe("ConnectedTables", () => {
-  it("should show nothing when the table has no fks", () => {
-    setup({ table: EMPTY_TABLE });
+  it("should show nothing when there are no connected tables", () => {
+    setup({ tables: [] });
     const container = screen.getByTestId("test-container");
     expect(container).toBeEmptyDOMElement();
   });
 
   it("should show a label for each connected table", () => {
-    setup({ table: TABLE_WITH_FKS });
+    setup({
+      tables: [
+        createMockTable({ id: 2, display_name: "Foo" }),
+        createMockTable({ id: 3, display_name: "Bar" }),
+      ],
+    });
 
     expect(screen.getByText("Foo")).toBeInTheDocument();
     expect(screen.getByText("Bar")).toBeInTheDocument();
   });
 
   it("should limit the number of connected tables to 8", () => {
-    const fks = Array.from({ length: 20 }).map((_, idx) =>
-      createMockForeignKey({
-        origin_id: idx,
-        origin: createMockField({
-          id: idx,
-          table_id: 21 + idx,
-          table: createMockTable({
-            id: 21 + idx,
-            display_name: `Bar-${idx + 1}`,
-          }),
-        }),
-      }),
-    );
-
     setup({
-      table: {
-        ...TABLE_WITH_FKS,
-        fks,
-      },
+      tables: Array.from({ length: 20 }).map((_, idx) =>
+        createMockTable({ id: 21 + idx, display_name: `Bar-${idx + 1}` }),
+      ),
     });
 
     expect(screen.getAllByText(/Bar-\d/)).toHaveLength(8);
+  });
+
+  it("should link each table to a new question on it", () => {
+    const { state } = setup({ tables: [createProductsTable()] });
+    const newQuestion = checkNotNull(
+      getMetadata(state).table(PRODUCTS_ID),
+    ).newQuestion();
+
+    expect(screen.getByRole("link", { name: /Products/ })).toHaveAttribute(
+      "href",
+      Urls.question(newQuestion),
+    );
   });
 });

@@ -4,11 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
-   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -88,24 +86,10 @@
                                              :base-url "https://my-resource.services.ai.azure.com/anthropic"}
                                :model       "anthropic/claude-sonnet-4-5"}))))))
 
-(deftest list-models-falls-back-to-the-configured-azure-model-test
-  (testing "without a candidate model, validation uses the saved Azure model's family"
-    (llm.tu/with-connections [(llm.tu/connection "azure" {:api-key "saved-key" :base-url test-base-url})]
-      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "azure/openai/gpt-4.1-mini"]
-        (let [captured (atom nil)]
-          (with-redefs [http/request (fn [req] (reset! captured req) {:status 200 :body {:data []}})]
-            (is (= {:models []}
-                   (azure/list-models {:credentials {:api-key "saved-key" :base-url test-base-url}})))
-            (is (=? {:method :get
-                     :url    (str test-base-url "/v1/models")}
-                    @captured))))))))
-
 (deftest list-models-skips-validation-without-any-model-test
-  (testing "with no candidate model and a non-Azure provider configured, there is no surface to probe"
-    (llm.tu/with-default-connections
-      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-        (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-          (is (= {:models []} (azure/list-models))))))))
+  (testing "without a candidate model there is no surface to probe"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (= {:models []} (azure/list-models))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; API family dispatch and request construction
@@ -161,23 +145,85 @@
     (testing "temperature is omitted when the deployment is named after a reasoning model"
       (is (not (contains? body :temperature))))))
 
-(deftest reasoning-is-disabled-test
-  (testing "anthropic deployments get no thinking config and reasoning parts are stripped"
+(defn- captured-body!
+  "The decoded request body `azure-raw` would send for `opts`, with a stock user message."
+  [opts]
+  (json/decode+kw (:body (captured-raw-request! (merge {:input [{:role :user :content "hi"}]} opts)))))
+
+(deftest reasoning-request-config-test
+  (testing "anthropic deployments named after reasoning models request adaptive summarized thinking, and only that"
+    (let [body (captured-body! {:model "anthropic/claude-opus-4-8"})]
+      (is (=? {:thinking {:type "adaptive" :display "summarized"}} body))
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include)))))
+  (testing "openai deployments named after reasoning models request reasoning summaries with encrypted-content replay, and only that"
+    (let [body (captured-body! {:model "openai/gpt-5.4"})]
+      (is (=? {:reasoning {:summary "auto"}
+               :include   ["reasoning.encrypted_content"]}
+              body))
+      (is (not (contains? body :thinking)))))
+  (testing "deployments that do not stream reasoning get no thinking config"
+    (is (not (contains? (captured-body! {:model "anthropic/claude-haiku-4-5"}) :thinking)))
+    (is (not (contains? (captured-body! {:model "anthropic/my-claude-deployment"}) :thinking))))
+  (testing ":reasoning? false suppresses both families"
+    (is (not (contains? (captured-body! {:model "anthropic/claude-opus-4-8" :reasoning? false}) :thinking)))
+    (let [body (captured-body! {:model "openai/gpt-5.4" :reasoning? false})]
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include)))))
+  (testing "structured output suppresses thinking for the anthropic family only"
+    (is (not (contains? (captured-body! {:model  "anthropic/claude-opus-4-8"
+                                         :schema {:type "object"}})
+                        :thinking)))
+    (is (=? {:reasoning {:summary "auto"}
+             :include   ["reasoning.encrypted_content"]}
+            (captured-body! {:model "openai/gpt-5.4" :schema {:type "object"}})))))
+
+(deftest reasoning-replay-test
+  (testing "signed reasoning parts replay as a thinking block merged into the assistant turn"
     (let [body (json/decode+kw
                 (:body (captured-raw-request!
                         {:model "anthropic/claude-opus-4-8"
-                         :input [{:type :reasoning :id "r1" :text ""
+                         :input [{:type :reasoning :id "r1" :text "first "}
+                                 {:type :reasoning :id "r1" :text "second"}
+                                 {:type :reasoning :id "r1" :text ""
                                   :provider-metadata {:anthropic {:signature "abc"}}}
                                  {:type :tool-input :id "call-1" :function "search" :arguments {}}]})))]
-      (is (not (contains? body :thinking)))
-      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
-              (:messages body)))))
-  (testing "openai deployments get no reasoning summary or encrypted-content include"
-    (let [body (json/decode+kw
-                (:body (captured-raw-request! {:model "openai/gpt-5.4"
-                                               :input [{:role :user :content "hi"}]})))]
-      (is (not (contains? body :reasoning)))
-      (is (not (contains? body :include))))))
+      (is (=? [{:role    "assistant"
+                :content [{:type "thinking" :thinking "first second" :signature "abc"}
+                          {:type "tool_use" :id "call-1"}]}]
+              (:messages body))))))
+
+(deftest reasoning-gate-matches-request-config-test
+  (testing "the string the gate reads is the string the body is built from"
+    (doseq [model ["anthropic/claude-opus-4-8" "anthropic/Claude-Opus-5" "openai/GPT-5.4"]]
+      (testing model
+        (is (= (#'azure/model->deployment model)
+               (:model (captured-body! {:model model}))))))))
+
+(deftest ^:parallel reasoning-model?-test
+  (are [model expected] (= expected (azure/reasoning-model? model))
+    "anthropic/claude-opus-5"     true
+    "anthropic/claude-opus-4-8"   true
+    ;; dotted display-name spelling parses the same — deployment names are admin free text
+    "anthropic/claude-opus-4.8"   true
+    "anthropic/claude-sonnet-4.6" true
+    "anthropic/claude-opus-4-6"   true
+    "anthropic/claude-sonnet-4-6" true
+    "anthropic/claude-fable-5"    true
+    "anthropic/claude-opus-4-5"   false
+    "anthropic/claude-opus-4.5"   false
+    "anthropic/claude-haiku-4-5"  false
+    "anthropic/claude-sonnet-4-5" false
+    "anthropic/Claude-Opus-5"     true
+    "anthropic/my-claude"         false
+    "anthropic/"                  false
+    "anthropic"                   false
+    "openai/gpt-5.4"              true
+    "openai/GPT-5.4"              true
+    "openai/o3-mini"              true
+    "openai/gpt-4.1-mini"         false
+    "evilai/some-deployment"      false
+    nil                           false))
 
 (deftest fast-mode-is-disabled-test
   (testing "a fast-mode request is stripped before the anthropic body is built"
@@ -269,6 +315,43 @@
           (aisdk-parts-for!
            "openai/gpt-4.1-mini"
            [{:type "response.created" :response {:id "resp_1" :model "gpt-4.1-mini"}}
+            {:type "response.output_item.added" :item {:type "message" :id "item_1"} :id "item_1"}
+            {:type "response.output_text.delta" :delta "pong" :id "item_1"}
+            {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}
+            {:type "response.completed"
+             :response {:id "resp_1" :usage {:input_tokens 3 :output_tokens 2}}}]))))
+
+(deftest anthropic-family-streams-reasoning-test
+  (is (=? [{:type :start :id "msg_1"}
+           {:type :reasoning :text "let me think" :provider-metadata {:anthropic {:signature "sig-1"}}}
+           {:type :text :text "pong"}
+           {:type :usage :usage {:promptTokens 3 :completionTokens 2}}]
+          (aisdk-parts-for!
+           "anthropic/claude-opus-4-8"
+           [{:type "message_start" :message {:id "msg_1" :model "claude-opus-4-8" :usage {:input_tokens 3}}}
+            {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+            {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "let me think"}}
+            {:type "content_block_delta" :index 0 :delta {:type "signature_delta" :signature "sig-1"}}
+            {:type "content_block_stop" :index 0}
+            {:type "content_block_start" :index 1 :content_block {:type "text"}}
+            {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "pong"}}
+            {:type "content_block_stop" :index 1}
+            {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:input_tokens 3 :output_tokens 2}}
+            {:type "message_stop"}]))))
+
+(deftest openai-family-streams-reasoning-test
+  (is (=? [{:type :start :id "resp_1"}
+           {:type :reasoning :text "keeping it short"}
+           {:type :text :text "pong"}
+           {:type :usage :usage {:promptTokens 3 :completionTokens 2}}]
+          (aisdk-parts-for!
+           "openai/gpt-5.4"
+           [{:type "response.created" :response {:id "resp_1" :model "gpt-5.4"}}
+            {:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+            {:type "response.reasoning_summary_part.added" :item_id "rs_1"}
+            {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "keeping it short"}
+            {:type "response.reasoning_summary_text.done"  :item_id "rs_1"}
+            {:type "response.output_item.done" :item {:type "reasoning" :id "rs_1"}}
             {:type "response.output_item.added" :item {:type "message" :id "item_1"} :id "item_1"}
             {:type "response.output_text.delta" :delta "pong" :id "item_1"}
             {:type "response.output_item.done" :item {:type "message" :id "item_1"} :id "item_1"}
