@@ -367,12 +367,12 @@
 (mu/defn collection-ids-in-namespace
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
-  (t2/select-pks-vec :model/Collection :namespace [:auto/param namespace-name]))
+  (t2/select-pks-vec :model/Collection {:where [:= :namespace [:auto/param namespace-name]]}))
 
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
   []
-  (t2/select-pks-vec :model/Collection :is_remote_synced true))
+  (t2/select-pks-vec :model/Collection {:where [:= :is_remote_synced true]}))
 
 (mu/defn unarchived-remote-synced-root-collection-ids
   "The IDs of the unarchived remote-synced root Collections."
@@ -743,4 +743,4 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   ;; `user-ids` admits nil, so coerce element-wise rather than with `mapv long`.
-  (t2/select-pk->fn identity :model/User :id [:in (mapv #(some-> % long) user-ids)]))
+  (t2/select-pk->fn identity :model/User {:where [:in :id (mapv #(some-> % long) user-ids)]}))
