@@ -87,14 +87,23 @@
   [x]
   (or (nil? x) (number? x) (boolean? x)))
 
+(def ^:private print-length
+  "How many elements of a collection [[printed]] keeps; the rest print as `...`."
+  100)
+
+(def ^:private print-level
+  "How deeply [[printed]] descends into nested collections; deeper levels print as `#`."
+  10)
+
 (defn- printed
-  "`x` printed readably with `pr-str`, whatever the caller's print bindings."
+  "`x` printed readably with `pr-str`, whatever the caller's print bindings. Bounded: at most 100 elements per
+   collection and 10 levels of nesting, so an unbounded or huge value prints as a short `...`-marked excerpt."
   [x]
   (binding [*print-readably* true
             *print-dup*      false
             *print-meta*     false
-            *print-length*   nil
-            *print-level*    nil]
+            *print-length*   print-length
+            *print-level*    print-level]
     (pr-str x)))
 
 (defn- quoted-text
@@ -109,7 +118,7 @@
 (mu/defn- clean :- [:maybe [:or :string number? :boolean]]
   "`x` made safe to interpolate into prose. Numbers, booleans, and nil are returned unchanged. A string is quoted and
    escaped: `pr-str`'s escapes, then `\\uXXXX` for invisible, line-breaking, and double-quote-like characters. A
-   keyword is cleaned as its name, with any namespace; anything else is printed with `pr-str` and then cleaned as that
+   keyword is cleaned as its name, with any namespace; anything else is [[printed]], bounded, and then cleaned as that
    string. Independent of the caller's print bindings."
   [x :- ::value]
   (if (unquoted? x)
