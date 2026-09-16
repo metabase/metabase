@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   create-test-plan:
-    name: Plan a DeprecationNotice change
+    name: Plan an AccountHeader change
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -25,13 +25,13 @@ jobs:
         id: compute
         uses: ./.github/actions/create-test-plan
         with:
-          changed-files: frontend/src/metabase/admin/app/components/DeprecationNotice/DeprecationNotice.tsx
-          fe-changed-files: frontend/src/metabase/admin/app/components/DeprecationNotice/DeprecationNotice.tsx
-          be-changed-files: ''
-          unit-infra-touched: 'false'
-          loki-infra-touched: 'false'
-          e2e-infra-touched: 'false'
-          shared-sources-touched: 'false'
+          changed-files: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+          fe-changed-files: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+          be-changed-files: ""
+          unit-infra-touched: "false"
+          loki-infra-touched: "false"
+          e2e-infra-touched: "false"
+          shared-sources-touched: "false"
       - name: Require a nonempty narrowed E2E selection
         run: jq -e '.stats.e2e_specs_to_run_usage > 0 and .stats.e2e_specs_to_run_usage < .stats.e2e_specs_all' test-plan.json
 
