@@ -118,6 +118,17 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+
+      # The matrix builder sized these jobs for the planned specs, so the test plan download has to succeed.
+      - name: Prepare E2E spec selection
+        id: selection
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: e2e
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
+          require-download: true
+
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
@@ -178,16 +189,6 @@ jobs:
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
-
-      # The matrix builder sized these jobs for the planned specs, so the test plan download has to succeed.
-      - name: Prepare E2E spec selection
-        id: selection
-        if: ${{ inputs.test-plan-artifact-id != '' }}
-        uses: ./.github/actions/prepare-test-selection
-        with:
-          suite: e2e
-          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
-          require-download: true
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         id: split-e2e

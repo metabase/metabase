@@ -67,7 +67,7 @@ describe("E2E spec plan", () => {
     return config;
   };
 
-  it("should read the selected spec pattern in the Cypress config process", () => {
+  it("should use the selected specs as Cypress's spec pattern", () => {
     const files = [
       "e2e/test/scenarios/a.cy.spec.js",
       "e2e/test/scenarios/b.cy.spec.js",

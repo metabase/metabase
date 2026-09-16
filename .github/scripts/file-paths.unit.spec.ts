@@ -142,6 +142,7 @@ describe("file-paths.yaml", () => {
 
   it.each([
     "e2e/support/cypress.config.js",
+    "e2e/support/spec-selection.js",
     "e2e/test/scenarios/shared-helper.js",
     "e2e/runner/read-spec-plan.js",
     ".github/workflows/e2e-test.yml",
@@ -175,6 +176,7 @@ describe("file-paths.yaml", () => {
     ".github/workflows/e2e-matrix-builder.yml",
     "e2e/runner/read-spec-plan.js",
     "e2e/support/cypress.config.js",
+    "e2e/support/spec-selection.js",
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
   });

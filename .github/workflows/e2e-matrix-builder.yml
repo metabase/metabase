@@ -37,16 +37,13 @@ jobs:
         with:
           sparse-checkout: |
             .github
+            /.nvmrc
             /package.json
             e2e/runner/read-spec-plan.js
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v6.4.0
-        with:
-          node-version: lts/Jod # 22.x.x
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - name: Prepare Node + Bun environment
         if: ${{ inputs.test-plan-artifact-id != '' }}
-        with:
-          bun-version-file: "package.json"
+        uses: ./.github/actions/prepare-node-bun
       - name: Prepare E2E spec selection
         id: selection
         if: ${{ inputs.test-plan-artifact-id != '' }}

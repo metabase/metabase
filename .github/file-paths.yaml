@@ -126,6 +126,7 @@ ci_scripts:
   - ".storybook/story-files.cjs"
   - "e2e/runner/read-spec-plan.js"
   - "e2e/support/cypress.config.js"
+  - "e2e/support/spec-selection.js"
   - "frontend/lint/module-boundaries.mjs"
   - "frontend/lint/shared-tiers.mjs"
   - "frontend/test/jest-test-paths-filter.ts"

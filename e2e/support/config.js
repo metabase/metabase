@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
@@ -40,13 +39,13 @@ import {
   startMockLlmServer,
   stopMockLlmServer,
 } from "./helpers/e2e-mock-llm-tasks";
+import { setupSpecSelection } from "./spec-selection";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const coverageTask = require("@cypress/code-coverage/task");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
-const cypressSplit = require("cypress-split");
 
 const {
   sideEffectFreeModulesPlugin,
@@ -317,16 +316,9 @@ const defaultConfig = {
      **                          CONFIG                                **
      ********************************************************************/
 
-    // `grepIntegrationFolder` needs to point to the root!
-    // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.expose.grepIntegrationFolder = "../../";
-    config.expose.grepFilterSpecs = true;
-    config.expose.grepOmitFiltered = true;
-
-    cypressGrepPlugin(config);
+    setupSpecSelection(on, config);
 
     if (isCI) {
-      cypressSplit(on, config);
       collectFailingTests(on, config);
     }
 
