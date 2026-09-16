@@ -7,17 +7,21 @@ on:
         required: false
         type: number
         default: 30
-      specs:
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         required: false
         type: string
-        default: "./e2e/test/scenarios/**/*.cy.spec.*"
+        default: ""
     outputs:
       matrix:
         value: ${{ jobs.build-matrix.outputs.matrix }}
       regularChunks:
         value: ${{ jobs.build-matrix.outputs.regularChunks }}
-      isDefaultSpecPattern:
-        value: ${{ jobs.build-matrix.outputs.isDefaultSpecPattern }}
+      hasTests:
+        value: ${{ jobs.build-matrix.outputs.hasTests }}
+      test-plan-artifact-id:
+        description: "The test plan artifact ID when the matrix was built from a narrowed selection, otherwise ''."
+        value: ${{ jobs.build-matrix.outputs.test-plan-artifact-id }}
 
 jobs:
   build-matrix:
@@ -26,25 +30,41 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
-      isDefaultSpecPattern: ${{ steps.matrix.outputs.isDefaultSpecPattern }}
+      hasTests: ${{ steps.matrix.outputs.hasTests }}
+      test-plan-artifact-id: ${{ steps.selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
+            /package.json
+            e2e/runner/read-spec-plan.js
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v6.4.0
         with:
           node-version: lts/Jod # 22.x.x
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        with:
+          bun-version-file: "package.json"
+      - name: Prepare E2E spec selection
+        id: selection
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: e2e
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
       - name: Build e2e matrix
         uses: actions/github-script@v9
         id: matrix
         env:
           chunks: ${{ inputs.chunks }}
+          E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
-            const inputSpecs = "${{ inputs.specs }}";
+            const { readSpecPlan } = require('${{ github.workspace }}/e2e/runner/read-spec-plan.js');
+            const specFiles = readSpecPlan(process.env.E2E_SPEC_PATHS_FILE);
             const inputChunks = Number(process.env.chunks);
             const java = 25;
             const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";
@@ -52,12 +72,11 @@ jobs:
               java,
               defaultRunner,
             };
-            const { config, regularChunks, isDefaultSpecPattern } = buildMatrix(options, inputSpecs, inputChunks);
+            const { config, regularChunks } = buildMatrix(options, specFiles, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
-            core.setOutput("isDefaultSpecPattern", JSON.stringify(isDefaultSpecPattern));
+            core.setOutput("hasTests", config.length > 0);
 
             console.log({ regularChunks });
             console.log("matrix config", config);
-            console.log("isDefaultSpecPattern", isDefaultSpecPattern);
