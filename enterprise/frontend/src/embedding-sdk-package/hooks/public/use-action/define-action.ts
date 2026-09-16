@@ -1,3 +1,5 @@
+import type { DefinedAction } from "./types";
+
 /**
  * Defines a source-controlled data app action. `action` names the generated
  * action the app runs. `copiedActionId` is generated state — synchronization
@@ -8,6 +10,8 @@ export function defineAction<
     action: { id: number; parameters: readonly unknown[] };
     copiedActionId?: number;
   },
->(definition: TDefinition): TDefinition {
-  return definition;
+>(definition: TDefinition): TDefinition & DefinedAction {
+  // `DefinedAction` has no runtime member, so the object is returned as is; the
+  // cast only adds the mark that a data app's `useAction` requires.
+  return definition as TDefinition & DefinedAction;
 }
