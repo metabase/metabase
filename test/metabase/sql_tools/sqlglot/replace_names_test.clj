@@ -88,6 +88,23 @@
                           "SELECT * FROM (SELECT id FROM people) sub"
                           {:tables {{:table "people"} "users"}})))))
 
+(deftest ^:parallel cte-shadows-a-table-test
+  (testing "a bare reference to a CTE names the CTE, not the table the key renames"
+    (is (= "WITH people AS (SELECT 1 AS id) SELECT id FROM people"
+           (replace-names :postgres
+                          "WITH people AS (SELECT 1 AS id) SELECT id FROM people"
+                          {:tables {{:table "people"} "users"}}))))
+  (testing "a real table of another name is still renamed alongside the CTE"
+    (is (= "WITH other AS (SELECT 1 AS id) SELECT id FROM users"
+           (replace-names :postgres
+                          "WITH other AS (SELECT 1 AS id) SELECT id FROM people"
+                          {:tables {{:table "people"} "users"}}))))
+  (testing "a qualified reference names a real table, which a CTE cannot shadow"
+    (is (= "WITH people AS (SELECT 1 AS id) SELECT id FROM public.users"
+           (replace-names :postgres
+                          "WITH people AS (SELECT 1 AS id) SELECT id FROM public.people"
+                          {:tables {{:schema "public" :table "people"} "users"}})))))
+
 (deftest ^:parallel case-sensitive-match-test
   (testing "Case-sensitive matching - must match exact case"
     ;; Lower case matches lower case

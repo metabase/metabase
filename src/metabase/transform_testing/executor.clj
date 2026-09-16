@@ -38,10 +38,7 @@
   [driver :- :keyword
    conn   :- ::transform-testing.schema/connection
    table  :- :string]
-  (let [{:keys [query params]} (transform-testing.compile/compiled
-                                driver
-                                {:select [:*] :from [(keyword table)]
-                                 :where  [:= [:inline 1] [:inline 0]]})]
+  (let [{:keys [query params]} (transform-testing.compile/columns-query driver table)]
     (:columns (driver/query-on-connection driver conn [query params] {:max-rows 1}))))
 
 (mu/defn run-query

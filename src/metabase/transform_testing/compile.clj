@@ -1,40 +1,28 @@
 (ns metabase.transform-testing.compile
-  "Pure SQL: turn a transform test's inputs and transform into queries over temp tables. No I/O — same
-  arguments, same SQL, so everything here is testable with string/data assertions and no warehouse.
+  "Pure SQL for a transform test run: the transform's source rewritten to read temp tables, and every query the run
+  executes against them. No I/O.
 
-  The transform's source is compiled ONCE (`compile-source`, before any replacement) and that one
-  result feeds two consumers, so they can never disagree about what the transform reads:
-  - the validator checks its `:referenced-tables` are all faked (Guard A);
-  - `compile-transform` rewrites that same source's references to the temp tables.
+    parsing  — `compile-source`, `referenced-tables`, `dangling-qualifiers`
+    rewrite  — `table-replacements`, `replace-tables`, `compile-transform`
+    queries  — `compile-input`, `rows-query`, `columns-query`, `row-count-query`, `comparison-query`
 
-  Three things get compiled:
-  - inputs      → `compile-input`      : a query producing each input's fake data (rows or sql);
-  - the source  → `compile-source`     : the transform's SQL + the tables it reads (no replacement);
-  - the rewrite → `compile-transform`  : that source, references remapped to temp tables.
-
-  Remapping is `sql-tools/replace-names` (pure, AST-level) over a `table-replacements` map; the
-  runner supplies the temp-table names. Everything the executor later runs is produced here as
-  plain SQL strings + params.
-
-  Also home to the pieces an expectation type needs to compile its own SQL: literal rows as a
-  relation, and the checks that keep author-supplied text out of the SQL."
+  Every identifier is built with `h2x/identifier` and every cast with `h2x/cast`, which quote what cannot be written
+  bare, and every value is a bound parameter, so nothing an author writes is spliced into the SQL."
   (:require
-   [clojure.string :as str]
-   [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------- Schemas -------------------------------------------------
 
 (mr/def ::compiled-query
   "A compiled native query."
@@ -42,61 +30,83 @@
    [:query  :string]
    [:params [:maybe [:sequential ::lib.schema.common/field-value]]]])
 
-(mr/def ::table
-  "A table by schema and name, as parsed from a query or declared as an input."
-  [:map {:closed true}
-   [:schema [:maybe :string]]
-   [:name   :string]])
-
 (mr/def ::compiled-source
-  "The transform's source compiled to SQL, before any temp-table replacement, plus the tables it
-  reads. Compiled once and threaded to both validation (are all reads faked?) and replacement, so
-  the guard and the rewrite operate on the same tables."
+  "The transform's source compiled to SQL, before any temp-table replacement, with the tables it reads."
   [:map {:closed true}
    [:query             :string]
    [:params            [:maybe [:sequential ::lib.schema.common/field-value]]]
-   [:referenced-tables [:set ::table]]])
+   [:referenced-tables [:set ::transform-testing.schema/table]]])
+
+(mr/def ::table-key
+  "A way a query can refer to a table, as a `sql-tools/replace-names` key."
+  [:map {:closed true}
+   [:schema {:optional true} [:maybe :string]]
+   [:table  :string]])
 
 (mr/def ::table-replacements
   "The `sql-tools/replace-names` `:tables` map from the input and output tables to their temp tables."
   [:map-of
+   ::table-key
    [:map {:closed true}
-    [:schema {:optional true} [:maybe :string]]
-    [:table :string]]
-   [:map {:closed true}
-    [:db [:maybe :string]]
+    [:db     [:maybe :string]]
     [:schema [:maybe :string]]
-    [:table :string]]])
+    [:table  :string]]])
 
-(mu/defn- table-keys :- [:sequential [:map {:closed true}
-                                      [:schema {:optional true} [:maybe :string]]
-                                      [:table :string]]]
-  "The ways a query can refer to the table `table-name` in `schema`: qualified, and bare when `schema` is the default
-  one."
-  [driver     :- :keyword
-   schema     :- [:maybe :string]
-   table-name :- :string]
+;;; ------------------------------------------------- Parsing -------------------------------------------------
+
+(mu/defn referenced-tables :- [:set ::transform-testing.schema/table]
+  "The tables `sql` reads."
+  [driver :- :keyword
+   sql    :- :string]
+  (into #{}
+        (map (fn [{:keys [schema table]}] {:schema schema :name table}))
+        (sql-tools/referenced-tables-raw driver sql {:fail-on-parse-error? true})))
+
+(mu/defn dangling-qualifiers :- [:set :string]
+  "The names qualifying a column in `sql` that are not a FROM-clause table or alias."
+  [driver :- :keyword
+   sql    :- :string]
+  (into #{}
+        (comp (filter (comp #{:missing-table-alias} :type))
+              (map :name))
+        (:errors (sql-tools/field-references driver sql))))
+
+(mu/defn compile-source :- ::compiled-source
+  "The transform's source compiled to SQL, with the tables it reads."
+  [driver    :- :keyword
+   transform :- ::transforms-base.schema/transform]
+  (let [{:keys [query params]} (transforms-base.u/compile-source transform nil)]
+    {:query             query
+     :params            params
+     :referenced-tables (referenced-tables driver query)}))
+
+;;; ------------------------------------------------- Rewrite -------------------------------------------------
+
+(mu/defn table-keys :- [:sequential ::table-key]
+  "The ways a query can refer to the table `table` in `schema`: qualified, and bare when `schema` is the default one."
+  [driver :- :keyword
+   schema :- [:maybe :string]
+   table  :- :string]
   (cond-> []
     schema
-    (conj {:schema schema :table table-name})
+    (conj {:schema schema :table table})
 
     (or (nil? schema) (= schema (sql.normalize/default-schema driver)))
-    (conj {:table table-name})))
+    (conj {:table table})))
 
 (mu/defn table-replacements :- ::table-replacements
-  "The replacements mapping the input tables (and the transform's target table) to their temp tables.
-  `input->temp` maps each input to the temp table built for it — the association the runner owns; the
-  target table maps to `output-temp-table`."
-  [driver            :- :keyword
-   transform         :- ::transforms-base.schema/transform
-   input->temp       :- [:map-of ::transform-testing.schema/input ::lib.schema.common/non-blank-string]
-   output-temp-table :- ::lib.schema.common/non-blank-string]
+  "The replacements mapping each input's table to its temp table in `input->table`, and the transform's target table to
+  `output-table`."
+  [driver       :- :keyword
+   transform    :- ::transforms-base.schema/transform
+   input->table :- [:map-of ::transform-testing.schema/input ::lib.schema.common/non-blank-string]
+   output-table :- ::lib.schema.common/non-blank-string]
   (let [{target-schema :schema target-name :name} (:target transform)]
     (into {}
-          (for [[{:keys [schema name]} temp-table] (conj (mapv (fn [[input temp]] [(:table input) temp]) input->temp)
-                                                         [{:schema target-schema :name target-name} output-temp-table])
-                table-key                          (table-keys driver schema name)]
-            [table-key {:db nil :schema nil :table temp-table}]))))
+          (for [[{:keys [schema name]} table] (conj (mapv (fn [[input table]] [(:table input) table]) input->table)
+                                                    [{:schema target-schema :name target-name} output-table])
+                table-key                    (table-keys driver schema name)]
+            [table-key {:db nil :schema nil :table table}]))))
 
 (mu/defn replace-tables :- :string
   "`sql` reading from the temp tables of `replacements` instead of the tables they replace."
@@ -104,6 +114,94 @@
    sql          :- :string
    replacements :- ::table-replacements]
   (sql-tools/replace-names driver sql {:tables replacements} {:allow-unused? true}))
+
+(mu/defn compile-transform :- ::compiled-query
+  "`compiled-source` reading from the temp tables of `replacements` instead of the tables they replace."
+  [driver          :- :keyword
+   compiled-source :- ::compiled-source
+   replacements    :- ::table-replacements]
+  {:query  (replace-tables driver (:query compiled-source) replacements)
+   :params (:params compiled-source)})
+
+;;; ------------------------------------------------- Queries -------------------------------------------------
+
+(defn- compiled
+  "`honeysql` formatted for `driver` as a compiled query."
+  [driver honeysql]
+  (let [[query & params] (sql.qp/format-honeysql driver honeysql)]
+    {:query query :params (vec params)}))
+
+(defn- from
+  "The temp table `table` as a `:from` entry."
+  [table]
+  [(h2x/identifier :table table)])
+
+(defn- field
+  "`column-name` as a column reference."
+  [column-name]
+  (h2x/identifier :field column-name))
+
+(defn- as
+  "`alias-name` as a column or table alias, also the shape a bare expression takes as a `:select` entry."
+  ([alias-name]
+   [alias-name])
+  ([identifier-type alias-name]
+   [(h2x/identifier identifier-type alias-name)]))
+
+(def ^:private no-rows
+  "A condition no row satisfies."
+  [:= [:inline 1] [:inline 0]])
+
+(mu/defn rows-query :- ::compiled-query
+  "The query returning the literal `rows` over `columns`, each cell cast to its column's `database_type` and named by
+  the matching entry of `sql-names`."
+  [driver    :- :keyword
+   columns   :- [:sequential ::transform-testing.schema/column]
+   sql-names :- [:sequential :string]
+   rows      :- [:sequential ::transform-testing.schema/row]]
+  (let [select-row (fn [row]
+                     {:select (mapv (fn [{:keys [name database_type]} sql-name]
+                                      [(h2x/cast database_type (get row name)) (as :field-alias sql-name)])
+                                    columns
+                                    sql-names)})
+        relation   (if (seq rows)
+                     {:union-all (mapv select-row rows)}
+                     (assoc (select-row {}) :where no-rows))]
+    (compiled driver {:select [:*] :from [[relation (as :table-alias "mb_rows")]]})))
+
+(mu/defn columns-query :- ::compiled-query
+  "The query returning no rows from the temp table `table`, for its columns."
+  [driver :- :keyword
+   table  :- :string]
+  (compiled driver {:select [:*] :from [(from table)] :where no-rows}))
+
+(mu/defn row-count-query :- ::compiled-query
+  "The query counting the rows of the temp table `table`."
+  [driver :- :keyword
+   table  :- :string]
+  (compiled driver {:select [[[:count [:inline 1]] (as :field-alias "__mb_count")]]
+                    :from   [(from table)]}))
+
+(mu/defn comparison-query :- ::compiled-query
+  "The query returning each row over the columns `sql-names` whose count differs between the temp tables `output-table`
+  and `expected-table`, followed by how many more times it appears in `output-table`."
+  [driver         :- :keyword
+   output-table   :- :string
+   expected-table :- :string
+   sql-names      :- [:sequential :string]]
+  (let [columns (mapv field sql-names)
+        src     (field "__mb_src")
+        tagged  (fn [table tag]
+                  {:select (conj (mapv as columns) [[:inline tag] (as :field-alias "__mb_src")])
+                   :from   [(from table)]})]
+    (compiled driver {:select   (conj (mapv as columns) [[:sum src] (as :field-alias "__mb_delta")])
+                      :from     [[{:union-all [(tagged output-table 1)
+                                               (tagged expected-table -1)]}
+                                  (as :table-alias "__mb_comparison")]]
+                      :group-by columns
+                      :having   [:<> [:sum src] [:inline 0]]})))
+
+;;; ------------------------------------------------- Inputs --------------------------------------------------
 
 (defmulti compile-input
   "The query returning the test data of `input`."
@@ -117,153 +215,6 @@
   {:query (:sql input), :params []})
 
 (mu/defmethod compile-input :rows :- ::compiled-query
-  [driver :- :keyword
-   input  :- ::transform-testing.schema/input]
-  (driver/compile-rows-query driver (:columns input) (:rows input)))
-
-(mu/defn compile-source :- ::compiled-source
-  "Compile the transform's source to SQL and parse the tables it reads — *before* any replacement.
-  Compiled once by the runner and fed to both input validation and [[compile-transform]], so the
-  guard checks exactly the tables the rewrite will remap (no second compile, no drift)."
-  [driver    :- :keyword
-   transform :- ::transforms-base.schema/transform]
-  (let [{:keys [query params]} (transforms-base.u/compile-source transform nil)]
-    {:query             query
-     :params            params
-     :referenced-tables (into #{}
-                              (map (fn [{:keys [schema table]}] {:schema schema :name table}))
-                              (sql-tools/referenced-tables-raw driver query {:fail-on-parse-error? true}))}))
-
-(mu/defn referenced-tables :- [:set ::table]
-  "The tables referenced by an arbitrary compiled `sql` string, as `{:schema :name}` maps. Used by
-  Guard B to re-parse the rewritten query and confirm every reference is a temp table (see
-  [[metabase.transform-testing.validator/surviving-tables]]). Same parse as [[compile-source]]."
-  [driver :- :keyword
-   sql    :- :string]
-  (into #{}
-        (map (fn [{:keys [schema table]}] {:schema schema :name table}))
-        (sql-tools/referenced-tables-raw driver sql {:fail-on-parse-error? true})))
-
-(mu/defn dangling-qualifiers :- [:set :string]
-  "The table names used to qualify a column in `sql` that are not a FROM-clause alias — the parser's
-  `:missing-table-alias` field errors. After the rewrite these are references to a real table whose
-  FROM entry was remapped to a temp table (e.g. `people.id` left behind when `FROM people` became a
-  temp table). Guard B ([[metabase.transform-testing.validator/surviving-references]]) rejects them."
-  [driver :- :keyword
-   sql    :- :string]
-  (into #{}
-        (comp (filter (comp #{:missing-table-alias} :type))
-              (map :name))
-        (:errors (sql-tools/field-references driver sql))))
-
-(mu/defn compile-transform :- ::compiled-query
-  "The query transform's `compiled-source` rewritten to read from the temp tables of `replacements`
-  instead of its input tables. Takes the already-compiled source (see [[compile-source]]) rather
-  than recompiling."
-  [driver          :- :keyword
-   compiled-source :- ::compiled-source
-   replacements    :- ::table-replacements]
-  {:query  (replace-tables driver (:query compiled-source) replacements)
-   :params (:params compiled-source)})
-
-;;; ------------------------------------- Literal rows as a SQL relation ---------------------------------------
-
-(def ^:private unsafe-identifier-reasons
-  "Why a column name cannot be rendered as one SQL identifier, by the character that makes it so.
-
-  Cell values are always bound parameters, so a column name is the only author-supplied text that
-  reaches the SQL. HoneySQL quotes it and doubles an embedded quote, and rejects a semicolon
-  outright, but a dot it reads as qualification — `a.b` compiles to `\"a\".\"b\"`, a reference to
-  some other table's column rather than to a column named `a.b`."
-  {\; "it contains a semicolon"
-   \" "it contains a double quote"
-   \. "it contains a dot, which SQL reads as a table qualifier"})
-
-(mu/defn unsafe-identifier-reason :- [:maybe :string]
-  "Why `column-name` cannot be used as a SQL identifier, or nil when it can."
-  [column-name :- :string]
-  (or (some unsafe-identifier-reasons column-name)
-      (when (some #(Character/isISOControl ^char %) column-name)
-        "it contains a control character")))
-
-(defn- parens-balanced?
-  "Does every `)` in `s` close a `(` opened earlier in `s`, and is every `(` closed?
-
-  Depth must never dip below zero, which is a stronger claim than equal counts: `INT)) FROM x ((`
-  balances by count while still closing two parentheses it never opened."
-  [^String s]
-  (loop [depth 0, i 0]
-    (cond
-      (= i (.length s)) (zero? depth)
-      :else             (case (.charAt s i)
-                          \( (recur (inc depth) (inc i))
-                          \) (when (pos? depth) (recur (dec depth) (inc i)))
-                          (recur depth (inc i))))))
-
-(mu/defn unsafe-database-type-reason :- [:maybe :string]
-  "Why `database-type` cannot be used as a cast target, or nil when it can.
-
-  A cast target cannot be a bound parameter — there is no `CAST(? AS ?)` — so a declared type is
-  the one piece of author-supplied text that reaches the SQL as text, sitting inside
-  `CAST(? AS «here»)`."
-  [database-type :- :string]
-  (cond
-    (str/blank? database-type)                                  "it is blank"
-    (str/includes? database-type ";")                           "it contains a semicolon"
-    (str/includes? database-type "'")                           "it contains a quote"
-    (or (str/includes? database-type "--")
-        (str/includes? database-type "/*"))                     "it contains a comment marker"
-    (some #(Character/isISOControl ^char %) database-type)      "it contains a control character"
-    (odd? (count (filter #(= \" %) database-type)))             "it has an unclosed double quote"
-    (not (parens-balanced? database-type))                      "its parentheses are unbalanced"))
-
-(mr/def ::honeysql-query
-  "A HoneySQL query this module builds: a `SELECT` over tables, derived tables, or a `UNION ALL` of such queries."
-  [:map {:closed true}
-   [:select    {:optional true} [:sequential ::h2x/expr]]
-   [:from      {:optional true} [:sequential [:or ::h2x/expr [:tuple [:ref ::honeysql-query] :keyword]]]]
-   [:where     {:optional true} ::h2x/expr]
-   [:group-by  {:optional true} [:sequential ::h2x/expr]]
-   [:having    {:optional true} ::h2x/expr]
-   [:union-all {:optional true} [:sequential [:ref ::honeysql-query]]]])
-
-(mu/defn compiled :- ::compiled-query
-  "`honeysql` formatted for `driver` as a compiled query."
-  [driver   :- :keyword
-   honeysql :- ::honeysql-query]
-  (let [[query & params] (sql.qp/format-honeysql driver honeysql)]
-    {:query query :params (vec params)}))
-
-(defn- cast-target
-  "`database-type` as a cast target, refusing it if it could escape the cast."
-  [database-type]
-  (when-let [reason (unsafe-database-type-reason database-type)]
-    (throw (transform-testing.errors/ex
-            ::transform-testing.errors/unsafe-identifier
-            (tru "The declared database_type {0} cannot be used as a cast target because {1}."
-                 (pr-str database-type) reason)
-            {:database-type database-type})))
-  [:raw database-type])
-
-(mu/defn rows-relation
-  "A HoneySQL relation of the literal `rows`, one `SELECT` per row unioned together, each cell cast
-  to its column's declared `database_type`.
-
-  A cell is looked up by the name the author declared and aliased to `sql-names`, the spelling the
-  table being compared against actually uses. Every cell is a bound parameter — nothing from the
-  author's row data is rendered into the SQL text. The type names are, which is what
-  [[cast-target]] checks."
-  [columns   :- [:sequential ::transform-testing.schema/column]
-   sql-names :- [:sequential :string]
-   rows      :- [:sequential ::transform-testing.schema/row]]
-  ;; Eager, and that matters: [[cast-target]] refuses a type that could escape its cast, and a lazy
-  ;; `for` would defer that refusal until something realized the sequence — inside HoneySQL
-  ;; formatting, well past any caller prepared to catch it. A guard that runs at an unpredictable
-  ;; time is not a guard.
-  {:union-all (mapv (fn [row]
-                      {:select (mapv (fn [{:keys [name database_type]} sql-name]
-                                       [[:cast (get row name) (cast-target database_type)]
-                                        (keyword sql-name)])
-                                     columns
-                                     sql-names)})
-                    rows)})
+  [driver                 :- :keyword
+   {:keys [columns rows]} :- ::transform-testing.schema/input]
+  (rows-query driver columns (mapv :name columns) rows))

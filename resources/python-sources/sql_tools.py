@@ -74,6 +74,20 @@ def unquote_identifier(name: str, dialect: str = None):
         pass
     return (name, False)
 
+def temp_table_prefix(table):
+    """
+    The T-SQL temp table prefix of a table expression: "##" for a global temp table, "#" for a local one, and "" for
+    any other table. SQLGlot keeps the prefix as a flag on the identifier rather than in its name.
+    """
+    identifier = table.this
+    if not isinstance(identifier, exp.Identifier):
+        return ""
+    if identifier.args.get("global_"):
+        return "##"
+    if identifier.args.get("temporary"):
+        return "#"
+    return ""
+
 def table_parts(table):
     """
     Extract (catalog, schema, table) 3-tuple from a table expression.
@@ -82,13 +96,13 @@ def table_parts(table):
     SQLGlot naming:
     - table.catalog → SQL catalog (e.g., BigQuery project, Snowflake database)
     - table.db      → SQL schema (e.g., BigQuery dataset, Postgres schema)
-    - table.name    → table name
+    - table.name    → table name, to which the T-SQL temp table prefix is added (see `temp_table_prefix`)
     """
     name = table.name
     if not isinstance(name, str) or not name:
         # UDTFs and other function-based sources don't have traditional table names
         return None
-    return (table.catalog or None, table.db or None, name)
+    return (table.catalog or None, table.db or None, temp_table_prefix(table) + name)
 
 def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
@@ -430,7 +444,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     8101. Wrapping each base table in a self-UNION breaks that IDENTITY lineage -- the UNION's second
     branch is always empty and gets elided by SQL Server's contradiction detection, so each table is
     still scanned once -- without touching filters, ORDER BY, TOP, or query params. CTEs, derived
-    tables, and table-valued functions are left untouched.
+    tables, table-valued functions, and T-SQL `#`/`##` temp tables are left untouched.
 
     A table with no explicit alias is wrapped under an alias equal to its bare name, and any column
     in the same scope that referenced it via a schema/catalog-qualified name (e.g. `dbo.products.id`,
@@ -461,6 +475,10 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
                 continue
             table_name_only = source.name
             if not table_name_only or table_name_only in cte_names or alias in cte_names:
+                continue
+            # A T-SQL `#`/`##` temp table has no IDENTITY lineage worth breaking, and its derived-table alias would lose
+            # the prefix that qualified column references keep.
+            if temp_table_prefix(source):
                 continue
             if id(source) in seen_ids:
                 continue
@@ -589,6 +607,9 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
     # Names a bare column qualifier may refer to instead of a table: table and subquery aliases and CTE names.
     aliases = {node.alias for node in ast.find_all(exp.Table, exp.Subquery, exp.CTE) if node.alias}
+    # A CTE name shadows a real table of the same name, so an unqualified reference to it names the CTE and must be
+    # left alone — renaming it would point the query at the replacement table and silently skip the CTE.
+    cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
 
     def find_table_replacement(db, schema, table):
         # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
@@ -627,6 +648,8 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
             db, schema, table = node.catalog or None, node.db, node.name
             if schema and schema in schemas:
                 set_identifier(node, "db", schemas[schema])
+            if not db and not schema and table in cte_names:
+                return node
             replacement = find_table_replacement(db, schema, table)
             if replacement:
                 replace_table(node, replacement, "catalog", "db", "this")

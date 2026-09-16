@@ -6,11 +6,17 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.macaw.references]
    [metabase.test :as mt]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.runner :as transform-testing.runner]
    [metabase.transform-testing.validator :as transform-testing.validator]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+;; Guard B parses the rewritten SQL through the namespace that registers its result schema.
+(comment metabase.sql-tools.macaw.references/keep-me)
 
 ;; `sql.normalize/default-schema`, which decides whether a bare table key is registered, dispatches
 ;; on an initialized driver. These tests parse and rewrite SQL only — no connection is needed.
@@ -73,7 +79,7 @@
 (defn- missing-inputs
   "The tables `sql` reads that `inputs` does not declare."
   [inputs sql]
-  (transform-testing.validator/missing-inputs :h2 inputs (declared-refs sql)))
+  (#'transform-testing.validator/missing-inputs :h2 inputs (declared-refs sql)))
 
 ;;; ------------------------------------- Rewrite completeness -------------------------------------
 
@@ -169,17 +175,39 @@
       (is (not-any? #(= :missing-table-alias (:type %)) errors)
           (str "rewritten=" (pr-str rewritten) " errors=" (pr-str errors))))))
 
+(defn- validate
+  "Run [[transform-testing.validator/validate]] over a test declaring `inputs` and `expectations` against a transform
+  reading `sql`. Returns nil when it accepts the test, and throws its refusal when it does not."
+  [inputs expectations sql]
+  (let [replacements (replacements-for inputs)]
+    (transform-testing.validator/validate
+     :h2
+     {:inputs              inputs
+      :expectations        expectations
+      :referenced-tables   (declared-refs sql)
+      :rewritten-transform (rewrite sql replacements)
+      :replacements        replacements})))
+
 (deftest expectation-sql-reads-only-temp-tables-test
-  (testing "an expectation naming an undeclared table must not reach the real one"
-    ;; Expectations are rewritten with the same replacement map as the transform, but input
-    ;; completeness is checked against the transform's references alone — never an expectation's.
-    ;; ORDERS is undeclared, so no temp table stands in for it and this assertion cannot pass; it
-    ;; records the reference surviving into a query that then runs against the warehouse.
-    (let [inputs    [(declared-input "PUBLIC" "PEOPLE")]
-          rewritten (rewrite "SELECT * FROM ORDERS" (replacements-for inputs))]
-      (is (only-temp-tables? (table-refs rewritten))
-          (str "expectation still reads " (pr-str (table-refs rewritten))
-               "; rewritten=" (pr-str rewritten))))))
+  (let [inputs [(declared-input "PUBLIC" "PEOPLE")]
+        source "SELECT ID FROM PUBLIC.PEOPLE"]
+    (testing "an expectation naming a table the test declares no input for is refused, naming both"
+      ;; Input completeness is checked against the transform's references, never an expectation's, so
+      ;; nothing stands in for ORDERS. Guard B covers the expectation's own SQL for exactly this.
+      (is (thrown-with-msg?
+           ExceptionInfo #"(?i)Expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
+           (validate inputs [{:type :empty :name "leaks" :sql "SELECT * FROM ORDERS"}] source))))
+    (testing "an expectation reading the transform's output or a declared input is accepted"
+      (is (nil? (validate inputs
+                          [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
+                           {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]
+                          source))))
+    (testing "an expectation with no SQL of its own is nothing to check"
+      (is (nil? (validate inputs
+                          [{:type    :equals :name "rows" :format :rows
+                            :columns [{:name "ID" :database_type "INTEGER"}]
+                            :rows    [{"ID" 1}]}]
+                          source))))))
 
 ;;; ----------------------------------- Replacement-map construction -----------------------------------
 
@@ -206,15 +234,16 @@
           (str "rewritten=" (pr-str rewritten))))))
 
 (deftest colliding-replacement-keys-test
-  (testing "every declared input gets a replacement entry, even when two share a key"
+  (testing "two declarations a reference cannot tell apart are refused, rather than one winning"
     ;; With PUBLIC the default schema, a bare declaration and an explicit-PUBLIC declaration of the
-    ;; same table both register the key {:table "ORDERS"}. Whichever loses the collision keeps its
-    ;; fixture loaded but unreferenced, and the query reads the other one's data.
-    (let [inputs       [(declared-input nil "ORDERS") (declared-input "PUBLIC" "ORDERS")]
-          replacements (replacements-for inputs)]
-      (is (= #{"TMP_IN_1" "TMP_IN_2" "TMP_OUT"}
-             (set (map :table (vals replacements))))
-          (str "replacements=" (pr-str replacements))))))
+    ;; same table both register the key {:table "ORDERS"}. Whichever lost the collision would keep
+    ;; its fixture loaded but unreferenced, and the query would read the other one's data.
+    (let [inputs [(declared-input nil "ORDERS") (declared-input "PUBLIC" "ORDERS")]]
+      (is (= ["ORDERS" "PUBLIC.ORDERS"]
+             (#'transform-testing.validator/colliding-inputs :h2 inputs)))))
+  (testing "the same table in two schemas is not a collision: a qualified reference tells them apart"
+    (let [inputs [(declared-input "SALES" "ORDERS") (declared-input "ARCHIVE" "ORDERS")]]
+      (is (= [] (#'transform-testing.validator/colliding-inputs :h2 inputs))))))
 
 ;;; ------------------------------- Occurrences that are not references -------------------------------
 

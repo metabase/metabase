@@ -1,11 +1,10 @@
 (ns metabase.transform-testing.models-test
-  "The `:model/TransformTest` column transforms. Expectations are built into records in the model's
-  `:out`, so every reader gets validated values — including a serdes import, which goes through
-  Toucan and never touches an API endpoint."
+  "The `:model/TransformTest` column transforms. Both JSON columns normalize and validate on the way
+  in and normalize on the way out, so every reader gets values the schema has passed — including a
+  serdes import, which goes through Toucan and never touches an API endpoint."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
-   [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [toucan2.core :as t2]))
 
@@ -47,20 +46,22 @@
                                                           :expectations expectations}]
     (f (t2/select-one :model/TransformTest :id test-id))))
 
-;;; --------------------------------------------- Records, not maps ---------------------------------------------
+;;; ------------------------------------------ Normalized, not raw ------------------------------------------
 
-(deftest expectations-read-back-as-records-test
+(deftest expectations-read-back-normalized-test
   (saved-with
    [equals-expectation empty-expectation]
    (fn [transform-test]
      (let [expectations (:expectations transform-test)]
        (is (= 2 (count expectations)))
-       (testing "every expectation a reader gets satisfies the protocol — a record, not a plain map"
+       (testing "a reader gets plain normalized data; the runner is what turns it into records"
          (doseq [e expectations]
-           (is (satisfies? expectations.protocol/Expectation e) (pr-str e))))
-       (testing "the assertion is not vacuous: the same entries as a plain map do not satisfy it"
+           (is (map? e) (pr-str e))
+           (is (not (satisfies? expectations.protocol/Expectation e)) (pr-str e))
+           (is (keyword? (:type e)))))
+       (testing "and every one of them builds into a record that can run"
          (doseq [e expectations]
-           (is (not (satisfies? expectations.protocol/Expectation (into {} e))))))))))
+           (is (satisfies? expectations.protocol/Expectation (expectations.protocol/build e)))))))))
 
 ;;; ------------------------------------------- Round-trip fidelity -------------------------------------------
 
@@ -133,9 +134,6 @@
   [t]
   (take-while some? (iterate ex-cause t)))
 
-(defn- error-type [t]
-  (some (comp :error-type ex-data) (causes t)))
-
 (defn- valid-row [transform-id expectations]
   {:transform_id transform-id
    :creator_id   (mt/user->id :rasta)
@@ -147,25 +145,14 @@
   (testing "the :in transform validates, so a malformed expectation never reaches the column"
     (mt/with-temp [:model/Transform {transform-id :id} {}]
       (try
-        ;; The write goes through the same constructor a read does, so each refusal is the feature's
-        ;; own typed error rather than a bare malli explain — and an unrecognized `:type` is named
-        ;; as such rather than lumped in with everything else the schema rejects.
-        (doseq [[label bad expected]
-                [["no :sql on an empty expectation" {:type "empty" :name "x"}
-                  ::transform-testing.errors/invalid-expectation]
-                 ["no :name"                        {:type "empty" :sql "SELECT 1"}
-                  ::transform-testing.errors/invalid-expectation]
-                 ["a blank :name"                   {:type "empty" :name "" :sql "SELECT 1"}
-                  ::transform-testing.errors/invalid-expectation]
-                 ["an undeclared key"               {:type "empty" :name "x" :sql "SELECT 1" :nope 1}
-                  ::transform-testing.errors/invalid-expectation]
-                 ["an unknown :type"                {:type "nope" :name "x" :sql "SELECT 1"}
-                  ::transform-testing.errors/unknown-expectation-type]]]
+        (doseq [[label bad]
+                [["no :sql on an empty expectation" {:type "empty" :name "x"}]
+                 ["no :name"                        {:type "empty" :sql "SELECT 1"}]
+                 ["a blank :name"                   {:type "empty" :name "" :sql "SELECT 1"}]
+                 ["an undeclared key"               {:type "empty" :name "x" :sql "SELECT 1" :nope 1}]
+                 ["an unknown :type"                {:type "nope" :name "x" :sql "SELECT 1"}]]]
           (testing label
-            (let [e (caught #(t2/insert! :model/TransformTest (valid-row transform-id [bad])))]
-              (is (some? e))
-              (is (= expected (error-type e))
-                  (pr-str (mapv ex-message (causes e)))))))
+            (is (some? (caught #(t2/insert! :model/TransformTest (valid-row transform-id [bad])))))))
         (finally
           ;; Raw: the model's before-delete hook reads the row back, which is the very thing under
           ;; test here. Nothing should have been written, but a leftover row would break the
@@ -173,16 +160,15 @@
           (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]}))))))
 
 (deftest duplicate-expectation-names-test
-  ;; Uniqueness is a property of the vector, so no schema can express it. The `:in` transform
-  ;; therefore goes through the same constructor a read does, and the write is refused outright
-  ;; rather than stored as a value every later read would reject.
+  ;; Uniqueness is a property of the vector rather than of one expectation, so `::expectations`
+  ;; carries it as a predicate over the whole sequence.
   (mt/with-temp [:model/Transform {transform-id :id} {}]
     (try
       (let [dupes [{:type "empty" :name "dup" :sql "SELECT 1"}
                    {:type "empty" :name "dup" :sql "SELECT 2"}]
             e     (caught #(t2/insert! :model/TransformTest (valid-row transform-id dupes)))]
         (is (some? e) "two expectations sharing a name must not be storable")
-        (is (= ::transform-testing.errors/duplicate-expectation-name (error-type e))
+        (is (re-find #"unique" (pr-str (keep (comp :error ex-data) (causes e))))
             (pr-str (mapv ex-message (causes e)))))
       (finally
         (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]})))))
@@ -193,9 +179,7 @@
                    :model/TransformTest {test-id :id}      {:transform_id transform-id
                                                             :inputs       inputs
                                                             :expectations [empty-expectation]}]
-      (let [e (caught #(t2/update! :model/TransformTest test-id {:expectations [{:type "empty" :name "x"}]}))]
-        (is (some? e))
-        (is (= ::transform-testing.errors/invalid-expectation (error-type e))))
+      (is (some? (caught #(t2/update! :model/TransformTest test-id {:expectations [{:type "empty" :name "x"}]}))))
       (testing "and the stored value is unchanged"
         (is (= ["no orphan rows"]
                (mapv :name (:expectations (t2/select-one :model/TransformTest :id test-id)))))))))

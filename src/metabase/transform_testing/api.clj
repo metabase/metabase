@@ -70,17 +70,12 @@
   501 — the test asks for something not built yet."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  ;; The app-db read is inside the `try` on purpose: reading a transform test constructs its
-  ;; expectations, so a stored test that no longer satisfies its own constructor throws at the read, and
-  ;; outside the `try` that escaped untyped and surfaced as a 500.
   (try
     (-> (transform-testing.db/transform-test id)
         api/write-check
         transform-testing.runner/run-transform-test!)
     (catch clojure.lang.ExceptionInfo e
       (if-let [error-type (:error-type (ex-data e))]
-        ;; `api-exception-response` structures a body only for a non-500 status carrying
-        ;; `:error-code`; anything else gets a stacktrace or nothing.
         (throw (ex-info (ex-message e)
                         (assoc (dissoc (ex-data e) :error-type)
                                :status-code (transform-testing.errors/status-code error-type)

@@ -16,10 +16,6 @@
   422 — the test is fine; the transform or its database prevents a run here.
   501 — the test asks for something not built yet."
   {;; 400 — authoring
-   ::duplicate-expectation-name 400  ; Two expectations in one test share a name.
-   ::unknown-expectation-type   400  ; The `:type` names no known expectation.
-   ::invalid-expectation        400  ; The expectation does not match its schema.
-   ::unsafe-identifier          400  ; A name or type cannot be rendered as SQL.
    ::unknown-column             400  ; An expectation names a column the output does not have.
    ::ambiguous-column           400  ; An expectation names a column that matches several, case aside.
    ::missing-inputs             400  ; The transform reads a table with no declared input.

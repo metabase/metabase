@@ -52,10 +52,44 @@
   a table it does not read is refused."
   [:sequential ::input])
 
+(mr/def ::expectation.equals
+  "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :format)}
+   [:sql  [:merge
+           [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+            [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
+            [:name ::lib.schema.common/non-blank-string]]
+           ::sql-data]]
+   [:rows [:merge
+           [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+            [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
+            [:name ::lib.schema.common/non-blank-string]]
+           ::rows-data]]])
+
+(mr/def ::expectation.empty
+  "A check that a SQL query over the transform output returns no rows."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
+   [:name ::lib.schema.common/non-blank-string]
+   [:sql  ::lib.schema.common/non-blank-string]])
+
+(mr/def ::expectation
+  "A check on the output of the transform under test."
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:equals ::expectation.equals]
+   [:empty  ::expectation.empty]])
+
 (mr/def ::expectations
   "The checks run against the transform's output. Names must be unique within a test,
   case-sensitively."
-  [:sequential ::expectation])
+  [:and
+   [:sequential ::expectation]
+   [:fn {:error/message "expectation names must be unique within a test"}
+    (fn [expectations]
+      (let [names (map :name expectations)]
+        (or (empty? names) (apply distinct? names))))]])
 
 (mr/def ::transform-test
   "A saved transform test: the transform it covers, the inputs that stand in for its source
@@ -110,6 +144,13 @@
    [:error   {:optional true} [:map {:closed true}
                                [:type    :keyword]
                                [:message :string]]]])
+
+(mr/def ::expectation-result
+  "What one expectation found. Each type owns the schema of its own result, registered under the key
+  named here."
+  [:multi {:dispatch :type}
+   [:equals :metabase.transform-testing.expectations.equals/result]
+   [:empty  :metabase.transform-testing.expectations.empty/result]])
 
 (mr/def ::run-result
   "The outcome of a transform test run.

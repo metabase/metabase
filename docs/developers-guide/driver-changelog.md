@@ -10,7 +10,6 @@ title: Driver interface changelog
   with this feature implement the new multimethods `metabase.driver/temp-table-name` `[driver]`,
   `metabase.driver/compile-create-temp-table` `[driver {:keys [table query]}]`,
   `metabase.driver/compile-drop-temp-table` `[driver table]`,
-  `metabase.driver/compile-rows-query` `[driver columns rows]`,
   `metabase.driver/do-with-test-connection` `[driver database f]`,
   `metabase.driver/execute-on-connection!` `[driver conn query]` and
   `metabase.driver/query-on-connection` `[driver conn query {:keys [max-rows]}]`.

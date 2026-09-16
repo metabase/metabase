@@ -9,7 +9,7 @@
 
 (deftest missing-inputs-complete-test
   (testing "no missing inputs when every referenced table is declared"
-    (is (= [] (validator/missing-inputs
+    (is (= [] (#'validator/missing-inputs
                :h2
                [(sql-input "PUBLIC" "PEOPLE") (sql-input "PUBLIC" "ORDERS")]
                #{{:schema "PUBLIC" :name "PEOPLE"} {:schema "PUBLIC" :name "ORDERS"}})))))
@@ -17,59 +17,59 @@
 (deftest missing-inputs-undeclared-test
   (testing "an undeclared referenced table is reported"
     (is (= [{:schema "PUBLIC" :name "ORDERS"}]
-           (validator/missing-inputs
+           (#'validator/missing-inputs
             :h2
             [(sql-input "PUBLIC" "PEOPLE")]
             #{{:schema "PUBLIC" :name "PEOPLE"} {:schema "PUBLIC" :name "ORDERS"}}))))
   (testing "with nothing declared, every referenced table is reported"
     (is (= #{{:schema nil :name "PEOPLE"} {:schema nil :name "ORDERS"}}
-           (set (validator/missing-inputs
+           (set (#'validator/missing-inputs
                  :h2 [] #{{:schema nil :name "PEOPLE"} {:schema nil :name "ORDERS"}}))))))
 
 (deftest missing-inputs-schema-defaulting-test
   (testing "a bare reference is covered by a declared input in the driver's default schema"
     ;; H2 default-schema is PUBLIC: bare PEOPLE ⇔ PUBLIC.PEOPLE. This is the case Alex's runner
     ;; test hits (transform reads bare PEOPLE, input declares {:schema PUBLIC}).
-    (is (= [] (validator/missing-inputs
+    (is (= [] (#'validator/missing-inputs
                :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema nil :name "PEOPLE"}}))))
   (testing "a bare reference is NOT covered by a declared input in a non-default schema"
     (is (= [{:schema nil :name "PEOPLE"}]
-           (validator/missing-inputs
+           (#'validator/missing-inputs
             :h2 [(sql-input "OTHER" "PEOPLE")] #{{:schema nil :name "PEOPLE"}}))))
   (testing "an explicitly-schemaed reference requires an exact schema match"
     (is (= [{:schema "ANALYTICS" :name "PEOPLE"}]
-           (validator/missing-inputs
+           (#'validator/missing-inputs
             :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "ANALYTICS" :name "PEOPLE"}})))))
 
 (deftest unused-inputs-test
   (testing "no unused inputs when every declared input is read"
-    (is (= [] (validator/unused-inputs
+    (is (= [] (#'validator/unused-inputs
                :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema nil :name "PEOPLE"}}))))
   (testing "a declared input the transform does not read is reported (stale/typo'd fake)"
     (is (= [{:schema "PUBLIC" :name "ORDERZ"}]
-           (validator/unused-inputs
+           (#'validator/unused-inputs
             :h2 [(sql-input "PUBLIC" "PEOPLE") (sql-input "PUBLIC" "ORDERZ")]
             #{{:schema nil :name "PEOPLE"}}))))
   (testing "matching is one rule shared with missing-inputs: bare read ⇔ default-schema input"
-    (is (= [] (validator/unused-inputs
+    (is (= [] (#'validator/unused-inputs
                :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema nil :name "PEOPLE"}})))))
 
 (deftest surviving-references-test
   (testing "Guard B: empty when every rewritten reference is a temp table and nothing dangles"
-    (is (= [] (validator/surviving-references
+    (is (= [] (#'validator/surviving-references
                #{{:schema nil :name "MB_T1"} {:schema nil :name "MB_T2"}}
                #{"MB_T1" "MB_T2"} #{}))))
   (testing "a real table the rewrite missed is reported, labelled schema.name"
     (is (= ["github_mart.stg_x"]
-           (validator/surviving-references
+           (#'validator/surviving-references
             #{{:schema nil :name "MB_T1"} {:schema "github_mart" :name "stg_x"}}
             #{"MB_T1"} #{}))))
   (testing "a dangling column-qualifier (missing-table-alias) is reported"
     (is (= ["people"]
-           (validator/surviving-references #{{:schema nil :name "MB_T1"}} #{"MB_T1"} #{"people"}))))
+           (#'validator/surviving-references #{{:schema nil :name "MB_T1"}} #{"MB_T1"} #{"people"}))))
   (testing "both survivor kinds combine, deduped and sorted"
     (is (= ["a_table" "people"]
-           (validator/surviving-references
+           (#'validator/surviving-references
             #{{:schema nil :name "MB_T1"} {:schema nil :name "a_table"}}
             #{"MB_T1"} #{"people" "a_table"})))))
 
@@ -80,17 +80,17 @@
 
 (deftest missing-inputs-schema-direction-test
   (testing "a qualified reference matches a declared input in the same explicit schema"
-    (is (= [] (validator/missing-inputs
+    (is (= [] (#'validator/missing-inputs
                :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "PEOPLE"}}))))
   (testing "schema defaulting is one-directional and fails closed: a DEFAULT-SCHEMA-qualified
             reference is NOT covered by a bare-declared input — the author must qualify the input.
             Safe (errs toward rejection, never a false pass); strict by design for LLM authors."
     (is (= [{:schema "PUBLIC" :name "PEOPLE"}]
-           (validator/missing-inputs
+           (#'validator/missing-inputs
             :h2 [(sql-input nil "PEOPLE")] #{{:schema "PUBLIC" :name "PEOPLE"}})))))
 
 (deftest missing-inputs-name-mismatch-test
   (testing "same schema, different name is not a match"
     (is (= [{:schema "PUBLIC" :name "ORDERS"}]
-           (validator/missing-inputs
+           (#'validator/missing-inputs
             :h2 [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "ORDERS"}})))))

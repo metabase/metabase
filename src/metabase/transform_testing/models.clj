@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.transform-testing.db :as transform-testing.db]
-   [metabase.transform-testing.expectations :as transform-testing.expectations]
    [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -29,18 +28,9 @@
   [_original-model _k]
   :model/Transform)
 
-(def ^:private expectations-column
-  "The `:expectations` column, as records. [[metabase.transform-testing.expectations/expectations]]
-  checks them on write and rebuilds them on read.
-
-  The constructor catches what the schema does not: names must be unique across the vector, and a
-  `database_type` must be safe to splice into a cast."
-  {:in  (comp mi/json-in transform-testing.expectations/expectations)
-   :out (comp transform-testing.expectations/expectations mi/json-out-with-keywordization)})
-
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::transform-testing.schema/inputs)
-   :expectations expectations-column})
+   :expectations (json-column ::transform-testing.schema/expectations)})
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.transform-testing.runner-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -44,10 +45,49 @@
 
 (def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
 
-(def ^:private id+name
-  ;; `database_type` is raw SQL, so these have to be spellings every tested engine accepts.
-  [{:name "id" :database_type "INTEGER"}
-   {:name "name" :database_type "VARCHAR"}])
+(defn- cast-types
+  "An integer and a text `database_type` the current driver accepts as a `CAST` target."
+  []
+  (case driver/*driver*
+    :mysql              ["SIGNED" "CHAR(50)"]
+    :sqlserver          ["int" "nvarchar(50)"]
+    ;; ClickHouse casts NULL only to a nullable type
+    :clickhouse         ["Nullable(Int32)" "Nullable(String)"]
+    :bigquery-cloud-sdk ["INT64" "STRING"]
+    ["INTEGER" "VARCHAR(50)"]))
+
+(deftest run-transform-test-rows-input-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (let [mp                   (mt/metadata-provider)
+              id-name              (:name (lib.metadata/field mp (mt/id :people :id)))
+              name-name            (:name (lib.metadata/field mp (mt/id :people :name)))
+              [int-type text-type] (cast-types)
+              output               (str schema ".people_summary")
+              run                  (fn [rows sql]
+                                     (mt/with-temp [:model/TransformTest transform-test
+                                                    {:transform_id transform-id
+                                                     :inputs       [{:table   {:schema schema :name table}
+                                                                     :format  :rows
+                                                                     :columns [{:name id-name :database_type int-type}
+                                                                               {:name name-name :database_type text-type}]
+                                                                     :rows    rows}]
+                                                     :expectations [{:type :empty :name "check" :sql sql}]}]
+                                       (:status (transform-testing.runner/run-transform-test! transform-test))))
+              two-rows             [{id-name 1 name-name "abc"} {id-name 2 name-name "def"}]]
+          (testing "the transform reads the literal rows"
+            (is (= :passed (run two-rows (str "SELECT * FROM " output " WHERE id NOT IN (1, 2) OR name IS NULL"))))
+            (is (= :failed (run two-rows (str "SELECT * FROM " output " WHERE id = 2")))))
+          (testing "no rows stand in for an empty table"
+            (is (= :passed (run [] (str "SELECT * FROM " output))))))))))
+
+(defn- id+name
+  "The `id` and `name` columns of the output, typed as the current driver spells those types."
+  []
+  (let [[int-type text-type] (cast-types)]
+    [{:name "id" :database_type int-type}
+     {:name "name" :database_type text-type}]))
 
 (deftest run-transform-test-empty-expectation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -78,7 +118,7 @@
         (testing "passes when the output matches the expected rows"
           (let [result (run-test! schema table transform-id one-row
                                   [{:type :equals :name "output" :format :rows
-                                    :columns id+name
+                                    :columns (id+name)
                                     :rows    [{"id" 1 "name" "abc"}]}])]
             (is (= :passed (:status result)))
             (is (= [:passed] (mapv :status (:expectations result))))))))))
@@ -90,7 +130,7 @@
         (testing "a single differing cell is reported by column name"
           (let [result   (run-test! schema table transform-id one-row
                                     [{:type :equals :name "output" :format :rows
-                                      :columns id+name
+                                      :columns (id+name)
                                       :rows    [{"id" 1 "name" "xyz"}]}])
                 [expect] (:expectations result)]
             (is (= :failed (:status result)))
@@ -106,7 +146,7 @@
         (testing "a column the expectation does not declare is not compared"
           (let [result (run-test! schema table transform-id one-row
                                   [{:type :equals :name "id only" :format :rows
-                                    :columns [{:name "id" :database_type "INTEGER"}]
+                                    :columns [{:name "id" :database_type (first (cast-types))}]
                                     :rows    [{"id" 1}]}])]
             (is (= :passed (:status result)))))))))
 
@@ -117,9 +157,9 @@
         (testing "a duplicated output row fails against a single expected row"
           ;; Set difference (a plain EXCEPT) passes here; multiset difference must not.
           (let [result   (run-test! schema table transform-id
-                                    (str one-row " UNION ALL SELECT 1 AS id, 'abc' AS name")
+                                    (str "SELECT id, name FROM (" one-row " UNION ALL " one-row ") AS t")
                                     [{:type :equals :name "output" :format :rows
-                                      :columns id+name
+                                      :columns (id+name)
                                       :rows    [{"id" 1 "name" "abc"}]}])
                 [expect] (:expectations result)]
             (is (= :failed (:status result)))
@@ -135,9 +175,9 @@
           ;; `GROUP BY` folds NULLs together. An equality-based difference leaves the row
           ;; uncancelled, reporting it as both missing and extra.
           (let [result (run-test! schema table transform-id
-                                  "SELECT 1 AS id, CAST(NULL AS VARCHAR) AS name"
+                                  (str "SELECT 1 AS id, CAST(NULL AS " (second (cast-types)) ") AS name")
                                   [{:type :equals :name "output" :format :rows
-                                    :columns id+name
+                                    :columns (id+name)
                                     :rows    [{"id" 1 "name" nil}]}])]
             (is (= :passed (:status result)))))))))
 

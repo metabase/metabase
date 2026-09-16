@@ -5,10 +5,18 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.driver :as driver]
-   [metabase.transform-testing.expectations :as transform-testing.expectations]
+   [metabase.lib.core :as lib]
+   [metabase.sql-tools.macaw.references]
+   [metabase.transform-testing.expectations.empty]
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase.transform-testing.expectations.report :as expectations.report]
+   [metabase.transform-testing.schema :as transform-testing.schema]
    [metabase.util :as u]))
+
+;; The expectation under test, and the namespace registering the schema its rewrite guard validates against.
+(comment
+  metabase.sql-tools.macaw.references/keep-me
+  metabase.transform-testing.expectations.empty/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -16,9 +24,10 @@
 (use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (f)))
 
 (defn- empty-expectation
-  "One `empty` record, built through the front door rather than the generated constructor."
+  "One `empty` record, normalized and validated the way the model's `:in` transform does it, rather
+  than built with the generated constructor."
   [m]
-  (first (transform-testing.expectations/expectations [m])))
+  (expectations.protocol/build (lib/normalize ::transform-testing.schema/expectation m)))
 
 (def ^:private an-expectation
   (delay (empty-expectation {:type "empty"

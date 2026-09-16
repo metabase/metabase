@@ -39,6 +39,7 @@
    [metabase.util.performance :as perf :refer [empty? mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
+   (com.microsoft.sqlserver.jdbc ISQLServerConnection)
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
@@ -77,6 +78,7 @@
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
+                              :transforms/testing                     true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -1189,6 +1191,30 @@
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
         modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
     [modified-sql sql-params]))
+
+(defmethod driver/temp-table-name :sqlserver
+  [_driver]
+  (str "#mb_test_" (str/replace (str (random-uuid)) "-" "")))
+
+(defmethod driver/compile-create-temp-table :sqlserver
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword table)))]
+    [(sql-tools/add-into-clause driver sql-query table-name) sql-params]))
+
+(defmethod driver/do-with-test-connection :sqlserver
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^Connection conn]
+     (let [^ISQLServerConnection sqlserver-conn (.unwrap conn ISQLServerConnection)
+           prepare-method                        (.getPrepareMethod sqlserver-conn)]
+       (.setPrepareMethod sqlserver-conn "scopeTempTablesToConnection")
+       (try
+         (f conn)
+         (finally
+           (.setPrepareMethod sqlserver-conn prepare-method)))))))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]

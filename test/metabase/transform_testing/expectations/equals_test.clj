@@ -3,10 +3,12 @@
   `resolve-columns`, over a synthetic list of output-table column names. No warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.expectations :as expectations]
    [metabase.transform-testing.expectations.equals :as expectations.equals]
-   [metabase.transform-testing.expectations.report :as expectations.report])
+   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase.transform-testing.expectations.report :as expectations.report]
+   [metabase.transform-testing.schema :as transform-testing.schema])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -17,16 +19,21 @@
   [{:name "id" :database_type "INTEGER"}
    {:name "name" :database_type "VARCHAR"}])
 
+(defn- build
+  "The record for `m`, normalized and validated the way the model's `:in` transform does it. The
+  generated constructors are forbidden: a record built around the schema is a value nothing checked."
+  [m]
+  (expectations.protocol/build (lib/normalize ::transform-testing.schema/expectation m)))
+
 (defn- equals-rows
-  "An `:equals` record through the front door. The generated constructors are forbidden: a record
-  that skipped `expectations/expectations` is a value nothing normalized or validated."
+  "An `:equals`/`:rows` record."
   ([columns rows] (equals-rows "output" columns rows))
   ([expectation-name columns rows]
-   (first (expectations/expectations [{:type    :equals
-                                       :name    expectation-name
-                                       :format  :rows
-                                       :columns columns
-                                       :rows    rows}]))))
+   (build {:type    :equals
+           :name    expectation-name
+           :format  :rows
+           :columns columns
+           :rows    rows})))
 
 (def ^:private comparison-columns
   "The comparison probe's own column metadata: the resolved output columns, then the delta. The
@@ -53,8 +60,8 @@
   "`interpret` over a synthetic comparison probe: each row is the declared columns followed by the
   signed multiplicity."
   [comparison]
-  (expectations/interpret (equals-rows id+name [{"id" 1 "name" "abc"}])
-                          (probe-results comparison)))
+  (expectations.protocol/interpret (equals-rows id+name [{"id" 1 "name" "abc"}])
+                                   (probe-results comparison)))
 
 (defn- resolve-cols
   "`resolve-columns` over `output-columns`, written as bare names."
@@ -88,7 +95,7 @@
 
 (deftest interpret-row-counts-test
   (let [two-rows [{"id" 1 "name" "abc"} {"id" 2 "name" "def"}]
-        counts   #(:row-counts (expectations/interpret (equals-rows id+name two-rows) %))]
+        counts   #(:row-counts (expectations.protocol/interpret (equals-rows id+name two-rows) %))]
     (testing ":expected counts the declared rows; :actual comes from the row-count probe"
       (is (= {:actual 7 :expected 2} (counts (probe-results [] [[7]])))))
     (testing "a probe count is coerced to a long — JDBC may hand back a BigDecimal"
@@ -157,12 +164,12 @@
   (let [expectation (equals-rows id+name [{"id" 1 "name" "abc"}])]
     (is (= ["ID" "NAME"] (resolve-cols id+name ["ID" "NAME"])))
     (is (= [{"id" 1 "name" "abc"}]
-           (:extra-rows (expectations/interpret expectation (probe-results [[1 "abc" 1]])))))))
+           (:extra-rows (expectations.protocol/interpret expectation (probe-results [[1 "abc" 1]])))))))
 
 (deftest interpret-cell-rendering-test
   (testing "a BigDecimal keeps its scale"
     (let [expectation (equals-rows [{:name "amount" :database_type "DECIMAL(10,2)"}] [{"amount" 1.5}])
-          result      (expectations/interpret
+          result      (expectations.protocol/interpret
                        expectation
                        (probe-results [[1.50M 1] [1.5M -1]] [[1]]
                                       [{:name "AMOUNT" :database_type "NUMERIC"}
@@ -214,31 +221,19 @@
              (dissoc (ex-data e) :error-type)))
       (is (re-find #"matches more than one output column: id, ID" (ex-message e))))))
 
-(deftest resolve-columns-unsafe-identifier-test
-  ;; The backstop is on the resolved name — what actually reaches the SQL as an identifier. A dot
-  ;; would compile to a table qualifier, so `a.b` would silently compare some other table's column.
-  (testing "a resolved name that cannot be written as one identifier is refused"
-    (let [e (caught #(resolve-cols [{:name "a.b" :database_type "INTEGER"}] ["a.b"]))]
-      (is (= ::transform-testing.errors/unsafe-identifier (:error-type (ex-data e))))
-      (is (= {:expectation "cols" :column "a.b"} (dissoc (ex-data e) :error-type)))
-      (is (re-find #"cannot be compared because it contains a dot" (ex-message e)))))
-  (testing "the backstop reads the output's spelling, not the author's"
-    (let [e (caught #(resolve-cols [{:name "A.B" :database_type "INTEGER"}] ["a.b"]))]
-      (is (= "a.b" (:column (ex-data e)))))))
-
 ;;; ------------------------------------------- EqualsSql -------------------------------------------
 
 (deftest equals-sql-is-unimplemented-test
   (testing "the sql form builds, then refuses to produce probes"
-    (let [expectation (first (expectations/expectations [{:type   :equals
-                                                          :name   "sql form"
-                                                          :format :sql
-                                                          :sql    "SELECT 1"}]))
-          e           (caught #(expectations/probes expectation
-                                                    {:driver         :h2
-                                                     :output-table   "t"
-                                                     :output-columns ["id"]
-                                                     :replacements   {}}))]
+    (let [expectation (build {:type   :equals
+                              :name   "sql form"
+                              :format :sql
+                              :sql    "SELECT 1"})
+          e           (caught #(expectations.protocol/probes expectation
+                                                             {:driver         :h2
+                                                              :output-table   "t"
+                                                              :output-columns ["id"]
+                                                              :replacements   {}}))]
       ;; Its own type, not an authoring error: the expectation is well-formed, the feature is
       ;; simply not built. The author is told which form to use instead.
       (is (= ::transform-testing.errors/unsupported-format (:error-type (ex-data e))))

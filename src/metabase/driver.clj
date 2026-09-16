@@ -958,7 +958,7 @@
     ;;
     ;; Does this driver support running transform test suites against temp tables? Drivers with this feature
     ;; implement [[temp-table-name]], [[compile-create-temp-table]], [[compile-drop-temp-table]],
-    ;; [[compile-rows-query]], [[do-with-test-connection]], [[execute-on-connection!]] and [[query-on-connection]].
+    ;; [[do-with-test-connection]], [[execute-on-connection!]] and [[query-on-connection]].
     :transforms/testing
     ;;
     ;; Does this driver support creating an index (in the broad sense -- see the comment above
@@ -1472,12 +1472,6 @@
 (defmulti compile-drop-temp-table
   "Compiles the `[sql params]` statement dropping the temp table `table` if it exists."
   {:added "0.64.0", :arglists '([driver table])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti compile-rows-query
-  "Compiles a `{:query :params}` query returning `rows` with the `columns` of `{:name :database_type}`."
-  {:added "0.64.0", :arglists '([driver columns rows])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

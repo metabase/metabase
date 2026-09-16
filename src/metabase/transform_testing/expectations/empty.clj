@@ -4,7 +4,6 @@
   The query is the author's own SQL, rewritten so the tables it names resolve to the run's temp
   tables rather than to the real ones."
   (:require
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase.transform-testing.expectations.report :as expectations.report]
@@ -13,14 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ---------------------------------------------- Schemas -----------------------------------------------
-
-(mr/def ::expectation
-  "An expectation that a SQL query over the transform output returns no rows."
-  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
-   [:name ::lib.schema.common/non-blank-string]
-   [:sql  ::lib.schema.common/non-blank-string]])
+;;; ---------------------------------------------- Result schema -----------------------------------------
 
 (def ^:private base
   "The shared result keys, pinned to this type."
@@ -49,6 +41,9 @@
 
 (defrecord Empty [type name sql]
   expectations.protocol/Expectation
+  (temp-tables [_this _context]
+    {})
+
   (probes [_this {:keys [driver replacements]}]
     {:violations {:query    (transform-testing.compile/replace-tables driver sql replacements)
                   :params   []
@@ -65,10 +60,9 @@
                :columns   (vec columns)
                :truncated dropped)))))
 
-(defn build
-  "The record for an already-normalized, already-validated `empty` expectation."
+(defmethod expectations.protocol/build :empty
   [m]
-  ;; The linter forbids this constructor everywhere, so that nothing builds an expectation without
-  ;; going through the front door. This is the one place it is the right call.
+  ;; The linter forbids this constructor everywhere, so that an expectation is only ever built from a
+  ;; value the schema has passed. This is the one place it is the right call.
   #_{:clj-kondo/ignore [:discouraged-var]}
   (->Empty :empty (:name m) (:sql m)))

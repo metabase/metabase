@@ -493,7 +493,7 @@
                                         (driver/compile-create-temp-table
                                          driver/*driver*
                                          {:table table
-                                          :query {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id" :params []}}))
+                                          :query {:query "SELECT id FROM (SELECT 1 AS id UNION ALL SELECT 2 AS id) AS t" :params []}}))
          (testing "the temp table is readable on the connection that created it"
            (is (= 2 (count (:rows (select-all-on-connection conn table 10))))))
          (testing "max-rows caps the rows returned"
