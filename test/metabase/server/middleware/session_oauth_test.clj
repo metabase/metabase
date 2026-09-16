@@ -137,25 +137,30 @@
             unrestricted would otherwise be an empty set surviving every hop. /oauth/authorize no longer issues
             one, so these are minted straight into the store."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (oauth-server.tu/with-oauth-client [client-id]
-        (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (doseq [scopes [nil []]]
-            (testing (str "scopes " (pr-str scopes))
-              (let [token (str (random-uuid))]
-                (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                              token (str (mt/user->id :rasta)) client-id scopes (in-one-hour) nil)
-                (testing "the bearer bridge does not authenticate the request"
-                  (let [req (merge-current-user-info (bearer-request token))]
-                    (is (nil? (:metabase-user-id req)))
-                    (is (nil? (:token-scopes req)))
-                    (is (nil? (:authenticated-via-oauth? req)))))
-                (testing "a general API endpoint answers 401"
-                  (client/client :get 401 "user/current"
-                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
-                (testing "an agent API endpoint that declares a scope does not serve it"
-                  (client/client :post 401 "agent/v1/search"
-                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}
-                                 {:term_queries ["orders"]}))))))))))
+      ;; Commit the client row instead of holding `with-temp`'s rollback-only transaction open across the four HTTP
+      ;; round-trips below. The request runs on a conveyed connectable, so anything in its path that commits
+      ;; implicitly -- the app DB creates its search index tables lazily, and DDL commits implicitly on H2 and MySQL
+      ;; -- invalidates the savepoint and the scope exit throws instead of rolling back.
+      (mt/test-helpers-set-global-values!
+        (oauth-server.tu/with-oauth-client [client-id]
+          (mt/with-model-cleanup [:model/OAuthAccessToken]
+            (doseq [scopes [nil []]]
+              (testing (str "scopes " (pr-str scopes))
+                (let [token (str (random-uuid))]
+                  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                                token (str (mt/user->id :rasta)) client-id scopes (in-one-hour) nil)
+                  (testing "the bearer bridge does not authenticate the request"
+                    (let [req (merge-current-user-info (bearer-request token))]
+                      (is (nil? (:metabase-user-id req)))
+                      (is (nil? (:token-scopes req)))
+                      (is (nil? (:authenticated-via-oauth? req)))))
+                  (testing "a general API endpoint answers 401"
+                    (client/client :get 401 "user/current"
+                                   {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
+                  (testing "an agent API endpoint that declares a scope does not serve it"
+                    (client/client :post 401 "agent/v1/search"
+                                   {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                   {:term_queries ["orders"]})))))))))))
 
 (deftest non-oauth-auth-is-unaffected-by-oauth-fail-closed-test
   (testing "GHY-4542: session and API-key requests carry nil `:token-scopes` and must keep passing the scope

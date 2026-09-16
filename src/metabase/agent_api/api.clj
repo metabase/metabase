@@ -1661,6 +1661,15 @@
 
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
 
+(def ^:private jwt-not-configured
+  {:error   "jwt_not_configured"
+   :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."})
+
+(defn- jwt-provider-available?
+  "Whether a `:provider/jwt` implementation is registered with [[auth-identity/authenticate]]."
+  []
+  (auth-identity/isa? :provider/jwt :metabase.auth-identity.provider/provider))
+
 (defn- authenticate-with-jwt
   "Authenticate a request using a stateless JWT. Returns `{:user <user>}` on success, or
    `{:error <type> :message <msg>}` on failure. Does NOT create a session.
@@ -1671,26 +1680,30 @@
    When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
    [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
   [token]
-  (let [result (auth-identity/authenticate :provider/jwt {:token token})]
-    (if (:success? result)
-      ;; JWT is valid - look up user from the email extracted by the JWT provider
-      ;; The provider uses jwt-attribute-email setting to extract the email from claims
-      (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (agent-api.db/active-user-by-email email))]
-        (let [scope-entry (-> result :jwt-data (find :scope))]
-          (cond-> {:user user}
-            scope-entry
-            (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
-        ;; Don't reveal whether the user exists or not - use same error as invalid JWT
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."})
-      ;; Authentication failed - map error to agent API format
-      (case (:error result)
-        :jwt-not-enabled {:error   "jwt_not_configured"
-                          :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
-        ;; Default: use generic invalid JWT message (don't leak details)
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."}))))
+  ;; The JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and `authenticate` has no method
+  ;; to dispatch to. Answer the way a disabled provider does rather than let it throw: this is the last stop for a
+  ;; bearer token the OAuth bridge already declined, and it owes that request a 401 challenge, not a 500.
+  (if-not (jwt-provider-available?)
+    jwt-not-configured
+    (let [result (auth-identity/authenticate :provider/jwt {:token token})]
+      (if (:success? result)
+        ;; JWT is valid - look up user from the email extracted by the JWT provider
+        ;; The provider uses jwt-attribute-email setting to extract the email from claims
+        (if-let [user (when-let [email (get-in result [:user-data :email])]
+                        (agent-api.db/active-user-by-email email))]
+          (let [scope-entry (-> result :jwt-data (find :scope))]
+            (cond-> {:user user}
+              scope-entry
+              (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
+          ;; Don't reveal whether the user exists or not - use same error as invalid JWT
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})
+        ;; Authentication failed - map error to agent API format
+        (case (:error result)
+          :jwt-not-enabled jwt-not-configured
+          ;; Default: use generic invalid JWT message (don't leak details)
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})))))
 
 ;;; -------------------------------------------------- Middleware ----------------------------------------------------
 

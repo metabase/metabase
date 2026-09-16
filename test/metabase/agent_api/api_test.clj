@@ -97,6 +97,20 @@
         ;; is the same either way
         (is (string? (get-in response [:body :message])))))))
 
+(deftest agent-api-401-when-no-jwt-provider-is-registered-test
+  (testing "GHY-4542: the JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and
+            `auth-identity/authenticate` has no method to dispatch to. A bearer token the OAuth bridge declined
+            reaches that dispatch, and the agent API has to answer it with the 401 `invalid_token` challenge rather
+            than let the dispatch throw and serve a 500 carrying a stack trace."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (with-redefs-fn {#'agent-api.api/jwt-provider-available? (constantly false)}
+        (fn []
+          (let [response (client/client-full-response
+                          :get 401 "agent/v1/ping"
+                          {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+            (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+            (is (= "jwt_not_configured" (get-in response [:body :error])))))))))
+
 (deftest agent-api-401-without-bearer-token-carries-plain-challenge-test
   (testing "GHY-4542: RFC 7235 requires every 401 to carry a `WWW-Authenticate` challenge, and RFC 6750 section 3.1
             says one answering a request with no bearer token SHOULD NOT include an error code. So both 401s the
