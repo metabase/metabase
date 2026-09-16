@@ -49,9 +49,9 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
-      expect(
-        matches(name, ".clj-kondo/config/modules/ratchets.edn"),
-      ).toBe(false);
+      expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
+        false,
+      );
       expect(matches(name, ".clj-kondo/config.edn")).toBe(true);
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
     },
@@ -80,12 +80,15 @@ describe("file-paths.yaml", () => {
     ).toBe(true);
   });
 
-  it.each(["jest.config.js", "jest.base.conf.js", "jest.esm-packages.js"])(
-    "runs CI script tests when %s changes",
-    (path) => {
-      expect(matches("ci_scripts", path)).toBe(true);
-    },
-  );
+  it.each([
+    "jest.config.js",
+    "jest.base.conf.js",
+    "jest.esm-packages.js",
+    ".storybook/story-files.cjs",
+    ".github/workflows/loki.yml",
+  ])("runs CI script tests when %s changes", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
 
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
@@ -97,5 +100,43 @@ describe("file-paths.yaml", () => {
         ".clj-kondo/config/modules/ratchets.edn",
       ),
     ).toBe(true);
+  });
+
+  it.each([
+    "loki.config.js",
+    ".storybook/story-files.cjs",
+    ".storybook/preview.tsx",
+    ".loki/reference/chrome.laptop-Button.png",
+    ".github/workflows/loki.yml",
+    ".github/workflows/run-tests.yml",
+    ".github/actions/prepare-frontend/action.yml",
+    "frontend/build/shared/rspack/css-config.js",
+    "frontend/test/__support__/custom-viz-fixtures/calendar-heatmap/index.js",
+    "patches/@loki+browser+0.35.0.patch",
+    "frontend/src/metabase/css/index.module.css",
+    "frontend/src/metabase/css/core/base.module.css",
+    "resources/frontend_client/app/fonts/Lato/lato-v16-latin-regular.woff2",
+    "resources/frontend_client/app/assets/img/no_results.svg",
+    "frontend/src/metabase/ui/components/icons/Icon/icons/warning.svg",
+    "enterprise/frontend/src/metabase-enterprise/google_drive/database-error.svg",
+  ])("runs all Loki stories when %s changes", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(true);
+    expect(matches("frontend_loki_infra", file)).toBe(true);
+  });
+
+  it.each([
+    "frontend/src/metabase/ui/Button.stories.tsx",
+    "frontend/src/metabase/ui/components/feedback/Alert/Alert.module.css",
+    "frontend/build/embedding-sdk/rspack.config.js",
+  ])("allows a change to %s to narrow the Loki run", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(true);
+    expect(matches("frontend_loki_infra", file)).toBe(false);
+  });
+
+  it.each([
+    ".github/workflows/frontend.yml",
+    "frontend/test/metabase/scenarios/Button.unit.spec.tsx",
+  ])("does not run Loki stories when %s changes", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(false);
   });
 });

@@ -430,7 +430,6 @@
                       (or qp process-query-for-card-default-qp))
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                        api/check-404
                         (assoc :viz-settings merged-viz)
                         (update :middleware (fn [middleware]
                                               (merge
