@@ -103,10 +103,10 @@
         thrown? (atom false)]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)]
-      (with-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
-                    kondo-ratchet/config-suppressions (constantly {})
-                    kondo-ratchet/module-escape-hatches (constantly {})
-                    kondo-ratchet/scan          (constantly occurrences)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly (set (keys (:ignore-counts ratchets))))
+                                  kondo-ratchet/config-suppressions (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})
+                                  kondo-ratchet/scan          (constantly occurrences)]
         {:lines   (str/split-lines
                    (with-out-str
                      (try
@@ -193,7 +193,7 @@
                                                :config-counts  {}
                                                :comment-exempt #{}})))]
     (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters (constantly #{:a})]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{:a})]
         (let [out (with-out-str
                     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"names 1 unknown linter: :bogus"
                                           (kondo-ratchet/check))))]

@@ -2,6 +2,7 @@
   "Application database queries for the embedding hub module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn user-added-database?
@@ -19,7 +20,8 @@
 (defn uploaded-table?
   "Whether the database with `database-id` has an active uploaded table."
   [database-id]
-  (t2/exists? :model/Table {:where [:and
+  (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                            :where [:and
                                     [:= :active true]
                                     [:= :is_upload true]
                                     [:= :db_id database-id]]}))

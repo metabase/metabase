@@ -6,6 +6,7 @@
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util :as u]
@@ -26,7 +27,8 @@
   and `:consumed_at` (initially nil)."
   [token :- :string
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}}]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true}
+                                                         [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :consumed_at nil})
@@ -37,8 +39,10 @@
   The `email` parameter is the user's email address. Optional keyword arguments `ip-address` and `user-agent` capture
   request context information. Returns a map with `:email`, `:ip_address`, and `:request_context` (containing
   `:user_agent` and `:timestamp`)."
-  [email :- ms/Email
-   & {:keys [ip-address user-agent]}]
+  [email :- [:maybe ms/Email]
+   & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true}
+                                                 [:ip-address {:optional true} [:maybe :string]]
+                                                 [:user-agent {:optional true} [:maybe :string]]]]]
   {:email email
    :ip_address ip-address
    :request_context {:user_agent user-agent
@@ -53,10 +57,7 @@
   - `:consumed` if the token has already been used
   - `:invalid` if the token doesn't match the stored hash"
   [token :- :string
-   credentials :- [:map
-                   [:token_hash :string]
-                   [:expires_at inst?]
-                   [:consumed_at [:maybe inst?]]]]
+   credentials :- ::auth-identity.schema/auth-identity.credentials.token]
   (cond
     (:consumed_at credentials)
     :consumed
@@ -67,12 +68,12 @@
     :else
     :invalid))
 
-(mu/defn mark-token-consumed :- [:map [:credentials :map]]
+(mu/defn mark-token-consumed :- ::auth-identity.schema/auth-identity
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`
   value in the credentials map."
-  [auth-identity :- [:map [:credentials :map]]]
+  [auth-identity :- ::auth-identity.schema/auth-identity]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
 (mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]

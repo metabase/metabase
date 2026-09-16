@@ -327,6 +327,9 @@
 
     :fixture
     (fn [_ thunk]
+      ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
+      ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
         (thunk)))
 
@@ -582,7 +585,7 @@
 
     :fixture
     (fn [_ thunk]
-      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
         (thunk)))
 
     :assert
@@ -1238,7 +1241,7 @@
                            :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
-              (with-redefs [email.result-attachment/result-attachment result-attachment!]
+              (mt/with-dynamic-fn-redefs [email.result-attachment/result-attachment result-attachment!]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
                        (-> @mt/inbox

@@ -12,7 +12,6 @@ effective_type: type/DateTimeWithLocalTZ
 semantic_type: type/CreationTimestamp
 dimensions: []
 position: 12
-custom_position: 0
 database_position: 12
 serdes/meta:
 - id: Sample Database

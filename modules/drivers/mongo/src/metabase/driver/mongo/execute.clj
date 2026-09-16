@@ -46,7 +46,8 @@
   "Make sure there are no columns coming back from `results` that we weren't expecting. If there are, we did something
   wrong here and the query we generated is off."
   [columns             :- ::mongo.qp/projections
-   first-row-col-names] ; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet` so don't try to Malli it
+   ;; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet`
+   first-row-col-names :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   {:pre [(every? string? columns) (every? string? first-row-col-names)]}
   (when (seq first-row-col-names)
     (let [expected-cols   (set (for [col-name columns]
@@ -84,8 +85,8 @@
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
   [{:keys [mbql? projections]} :- ::mongo.qp/compiled-pipeline-with-collection
-   query
-   first-row-col-names]
+   query                :- ::mongo.qp/pipeline
+   first-row-col-names  :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? (seq projections))

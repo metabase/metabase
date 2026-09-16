@@ -2,9 +2,12 @@
   (:refer-clojure :exclude [ref])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; TODO (Cam 6/12/25) -- update `ref-method` to take an options map instead of needing a dynamic variable for stuff
 ;;; like this.
@@ -20,10 +23,19 @@
   {:arglists '([x])}
   lib.dispatch/dispatch-value)
 
+(mr/def ::referenceable
+  "Something [[ref]] can create a fresh ref for: an MBQL clause, or column, metric, measure, or segment metadata."
+  [:or
+   ::lib.schema.expression/expression
+   ::lib.schema.metadata/column
+   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/measure
+   ::lib.schema.metadata/segment])
+
 (mu/defn ref :- ::lib.schema.ref/ref
   "Create a fresh ref that can be added to a query, e.g. a `:field`, `:aggregation`, or `:expression` reference. Will
   create a new UUID every time this is called."
-  [x :- some?]
+  [x :- ::referenceable]
   (ref-method x))
 
 (mu/defn field-ref-id :- [:maybe ::lib.schema.id/field]

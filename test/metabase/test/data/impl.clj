@@ -12,6 +12,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -56,7 +57,7 @@
   does exactly what it suggests."
   #'get-or-create-default-dataset!)
 
-(mu/defn db :- [:map [:id ::lib.schema.id/database]]
+(mu/defn db :- ::warehouses.schema/database
   []
   (*db-fn*))
 
@@ -192,7 +193,7 @@
 
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
-  [db    :- [:map [:id ::lib.schema.id/database]]
+  [db    :- ::warehouses.schema/database
    thunk :- fn?]
   (binding [*db-fn*                   (constantly db)
             *db-id-fn*                (constantly (u/the-id db))
@@ -216,7 +217,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  [database :- [:or ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table

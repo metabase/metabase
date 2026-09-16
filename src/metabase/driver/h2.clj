@@ -190,8 +190,7 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map
-                                                                                       [:type [:enum :native :query]]]]
+(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- :metabase.lib.util/legacy-query]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
@@ -341,11 +340,7 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map
-                                                                             [:type [:enum :query :native]]
-                                                                             [:native
-                                                                              [:map
-                                                                               [:query string?]]]]]
+(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- :metabase.lib.util/legacy-query]
   (when sql
     (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
@@ -362,10 +357,7 @@
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- [:map
-              [:type   [:= :native]]
-              [:native [:map
-                        [:query :string]]]]]
+   query  :- :metabase.lib.util/legacy-query]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))

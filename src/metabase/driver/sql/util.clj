@@ -2,8 +2,8 @@
   "Utility functions for writing SQL drivers."
   (:require
    [clojure.string :as str]
-   [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.format :as sql.qp.format]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -28,9 +28,9 @@
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
   [driver          :- :keyword
    identifier-type :- h2x/IdentifierType
-   & components]
+   & components    :- [:* {:min 1} [:maybe [:or :keyword :string [:fn h2x/identifier?]]]]]
   (first
-   (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components))))
+   (sql.qp.format/format-honeysql driver (apply h2x/identifier identifier-type components))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |
@@ -205,12 +205,12 @@
   [has-timezone? target-timezone source-timezone]
   (when (and has-timezone? source-timezone)
     (throw (ex-info (tru "input column already has a set timezone. Please remove the source parameter in convertTimezone.")
-                    {:type            driver-api/qp.error-type.invalid-query
+                    {:type            qp.error-type/invalid-query
                      :target-timezone target-timezone
                      :source-timezone source-timezone})))
   (when (and (not has-timezone?) (not source-timezone))
     (throw (ex-info (tru "input column doesn''t have a set timezone. Please set the source parameter in convertTimezone to convert it.")
-                    {:type            driver-api/qp.error-type.invalid-query
+                    {:type            qp.error-type/invalid-query
                      :target-timezone target-timezone
                      :source-timezone source-timezone}))))
 

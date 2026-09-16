@@ -11,15 +11,10 @@
 
 (mr/def ::tenant
   "A Tenant as selected from the app DB: every column of `:tenant`."
-  [:map {:closed true}
-   [:id                   ms/PositiveInt]
-   [:name                 :string]
-   [:slug                 :string]
-   [:is_active            :boolean]
-   [:updated_at           ms/TemporalInstant]
-   [:created_at           ms/TemporalInstant]
-   [:attributes           [:maybe ::tenant.attributes]]
-   [:tenant_collection_id ::lib.schema.id/collection]])
+  [:merge
+   ::tenant.update
+   [:map {:closed true}
+    [:id                   ms/PositiveInt]]])
 
 (mr/def ::tenant.update
   "What an update (or insert) of a Tenant accepts: every column of `:tenant` except `id`, all optional."

@@ -1199,8 +1199,8 @@
 
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
-    (is (= {:parameters []}
-           (#'api.embed.common/enabled-params {:parameters {:slug "foo"}} {})))))
+    (is (= []
+           (#'api.embed.common/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
@@ -1807,18 +1807,20 @@
 
 (deftest apply-slug->value-test
   (testing "For operator filter types treat a lone value as a one-value sequence (#20438)"
-    (is (= (#'api.embed.common/apply-slug->value [{:type    :string/=
+    (is (= (#'api.embed.common/apply-slug->value [{:id      "NAME"
+                                                   :type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
-                                                 {:NAME ["Aaron Hand"]})
-           (#'api.embed.common/apply-slug->value [{:type    :string/=
+                                                 {"NAME" ["Aaron Hand"]})
+           (#'api.embed.common/apply-slug->value [{:id      "NAME"
+                                                   :type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
-                                                 {:NAME "Aaron Hand"})))))
+                                                 {"NAME" "Aaron Hand"})))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
@@ -1872,6 +1874,36 @@
                                          :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
+
+(deftest numeric-parameters-json-query-param-test
+  (testing "Card and dashcard query endpoints accept numeric values in the `parameters` JSON query param"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (-> (lib/native-query (mt/metadata-provider)
+                                                                                                    "SELECT count(*) FROM orders WHERE quantity = {{qty}}")
+                                                                                  (lib/with-template-tags
+                                                                                    {"qty" {:id           "_qty_tag_"
+                                                                                            :name         "qty"
+                                                                                            :display-name "Quantity"
+                                                                                            :type         :number}}))
+                                                            :enable_embedding true
+                                                            :embedding_params {:qty "enabled"}}
+                       :model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_params {:qty "enabled"}
+                                                   :parameters       [{:id "_qty_" :slug "qty" :name "Quantity" :type :number/=}]}
+                       :model/DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
+                                                      :card_id            card-id
+                                                      :parameter_mappings [{:parameter_id "_qty_"
+                                                                            :card_id      card-id
+                                                                            :target       [:variable [:template-tag "qty"]]}]}]
+          (let [expected (mt/rows (client/client :get 202 (card-query-url card "") :qty "1"))]
+            (is (pos? (ffirst expected)))
+            (testing "Card"
+              (is (= expected
+                     (mt/rows (client/client :get 202 (card-query-url card "") :parameters (json/encode {:qty 1}))))))
+            (testing "Dashcard"
+              (is (= expected
+                     (mt/rows (client/client :get 202 (dashcard-url dashcard) :parameters (json/encode {:qty 1}))))))))))))
 
 (deftest biginteger-numeric-param-between-test
   (testing "Embedded numeric params with mixed long and biginteger values in a between filter should be correctly applied"

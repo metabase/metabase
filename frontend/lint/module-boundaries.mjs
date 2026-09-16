@@ -41,6 +41,12 @@ const elements = [
   }),
   createElement({
     type: "lib",
+    name: "redux-core",
+    pattern: "frontend/src/metabase/redux/context.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "lib",
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
   }),
@@ -75,7 +81,7 @@ const elements = [
   // shared
   createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
-  createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
@@ -218,7 +224,6 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
@@ -238,13 +243,9 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
-  createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({
-    type: "shared",
-    name: "querying",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
@@ -398,6 +399,8 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
+    "frontend/src/metabase/ScrollToTop.tsx",
+    "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>

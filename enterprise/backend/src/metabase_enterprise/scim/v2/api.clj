@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -144,14 +145,20 @@
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- hidden-group-ids
+  "IDs of the groups SCIM never exposes or manages: the static Administrators and All Users groups, and the groups
+  data apps own (see [[perms/data-app-group-ids]])."
+  []
+  (into [(:id (perms/all-users-group)) (:id (perms/admin-group))]
+        (perms/data-app-group-ids)))
+
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (scim.db/user-group-memberships (map u/the-id users)
-                                                                                  [(:id (perms/all-users-group))
-                                                                                   (:id (perms/admin-group))]))
+                                                                                  (hidden-group-ids)))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -160,7 +167,7 @@
 
 (mu/defn ^:private mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
-  [user]
+  [user :- ::users.schema/user]
   {:schemas  [user-schema-uri]
    :id       (:entity_id user)
    :userName (:email user)
@@ -181,7 +188,7 @@
 
 (mu/defn ^:private scim-user->mb :- users.schema/NewUser
   "Given a SCIM user, returns a Metabase user."
-  [user]
+  [user :- SCIMUser]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
         {:keys [givenName familyName]} name-obj]
     (merge
@@ -196,7 +203,7 @@
 
 (mu/defn ^:private get-user-by-entity-id
   "Fetches a user by entity ID, or throws a 404"
-  [entity-id]
+  [entity-id :- ms/NonBlankString]
   (or (scim.db/scim-user-by-entity-id entity-id)
       (throw-scim-error 404 "User not found")))
 
@@ -372,14 +379,14 @@
 
 (mu/defn ^:private get-group-by-entity-id
   "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
-  static and cannot be managed via SCIM."
-  [entity-id]
-  (or (scim.db/scim-group-by-entity-id entity-id [(:id (perms/all-users-group)) (:id (perms/admin-group))])
+  static, nor data-app groups, as Metabase manages their membership itself, so none can be managed via SCIM."
+  [entity-id :- ms/NonBlankString]
+  (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
-  [group]
+  [group :- ::permissions.schema/permissions-group]
   {:schemas     [group-schema-uri]
    :id          (:entity_id group)
    :members     (map
@@ -417,7 +424,7 @@
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
-          excluded-ids   [(:id perms/all-users-group) (:id perms/admin-group)]
+          excluded-ids   (hidden-group-ids)
           group-name     (when filter-param (group-filter-name filter-param))
           groups         (scim.db/scim-groups excluded-ids group-name limit offset)
           results-count  (count groups)
