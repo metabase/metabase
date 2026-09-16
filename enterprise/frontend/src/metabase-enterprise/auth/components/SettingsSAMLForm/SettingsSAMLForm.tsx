@@ -233,14 +233,6 @@ export function SettingsSAMLForm() {
                 </Stack>
               </SettingsSection>
 
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <UserProvisioningSection
-                settingKey="saml-user-provisioning-enabled?"
-                providerName="SAML"
-                disabled={!isConfigured}
-                lockedNote={scimNote}
-              />
-
               <CollapsibleSettingsSection
                 title={t`Sign SSO requests`}
                 description={t`Use a keystore to sign authentication requests sent to your identity provider`}
@@ -277,6 +269,14 @@ export function SettingsSAMLForm() {
                   />
                 </Stack>
               </CollapsibleSettingsSection>
+
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="saml-user-provisioning-enabled?"
+                providerName="SAML"
+                disabled={!isConfigured}
+                lockedNote={scimNote}
+              />
 
               <SamlGroupMappingSection
                 data-testid="saml-group-mapping-section"

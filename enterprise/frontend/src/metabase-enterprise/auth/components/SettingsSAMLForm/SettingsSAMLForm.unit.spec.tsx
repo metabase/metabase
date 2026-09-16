@@ -150,8 +150,8 @@ describe("SettingsSAMLForm", () => {
     expect(cardTitles).toEqual([
       "Identity provider (IdP) configuration",
       "Identity provider info",
-      "User provisioning",
       "Sign SSO requests",
+      "User provisioning",
       "Group mapping",
     ]);
   });
