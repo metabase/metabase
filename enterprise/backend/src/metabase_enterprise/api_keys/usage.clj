@@ -21,10 +21,12 @@
    [java-time.api :as t]
    [metabase-enterprise.api-keys.db :as ee.api-keys.db]
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.sdk :as analytics.sdk]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.batch-processing.core :as grouper]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -116,26 +118,38 @@
 
 ;;; ------------------------------------------------- entry point ---------------------------------------------------
 
+(defn- request-user-agent [request] (get-in request [:headers "user-agent"]))
+(defn- request-embedding-client [request] (get-in request [:headers "x-metabase-client"]))
+(defn- request-embedding-hostname [request]
+  (analytics.sdk/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"])))
+
 (defenterprise record-api-key-usage!
   "EE: record one completed API-key-authenticated request. Queues one `api_key_usage_log` row and one
   `last_used_at` event, both via Grouper batches, never synchronously on the request thread.
+
+  Takes the raw `request`/`response` and extracts everything itself, plus `extra-info` for the
+  handful of values only the caller can supply: `route-template` (read from the carrier the caller
+  installed before routing ran — see `metabase.api.macros/route-template-carrier-key`), `duration-ms`
+  (measured by the caller around the whole request), and `occurred-at` (captured on the request
+  thread rather than left for the DB to fill in at INSERT time — the row lands via a Grouper batch, up
+  to the batch interval later, so a DB-computed default would record when the batch flushed, not when
+  the request happened).
 
   `ip_address` and `user_agent` are PII — stored only when `analytics-pii-retention-enabled` is on.
   `client_name` is classified from `user-agent` via [[metabase.api-keys.usage/detect-client]] and
   always recorded — non-PII, mirrors `agent_api_call_log`'s `client_name`. `embedding_client` is the
   raw `X-Metabase-Client` header, passed through unclassified and non-PII, supplementary to
   `client_name`. `embedding_hostname` is the hostname parsed from the embed referrer header, non-PII,
-  always recorded — only meaningful alongside `embedding_client`. `occurred_at` is the caller-supplied
-  request timestamp, not a DB-computed default — the row lands via a Grouper batch, so a DB default
-  would record flush time instead of when the request happened; both writes share this one timestamp.
-  `route_template`, `http_method`, `embedding_client`, and `embedding_hostname` are truncated to their
-  column widths; a row missing a NOT NULL value is dropped rather than queued, so it can't sink the
-  batch it would land in — the `last_used_at` event is queued regardless, since `api-key-id` is
-  always present on an API-key-authenticated request."
+  always recorded — only meaningful alongside `embedding_client`. `route_template`, `http_method`,
+  `embedding_client`, and `embedding_hostname` are truncated to their column widths; a row missing a
+  NOT NULL value is dropped rather than queued, so it can't sink the batch it would land in — the
+  `last_used_at` event is queued regardless, since `api-key-id` is always present on an
+  API-key-authenticated request."
   :feature :none
-  [{:keys [api-key-id user-id tenant-id route-template http-method status duration-ms occurred-at
-           user-agent ip-address embedding-client embedding-hostname]}]
-  (let [occurred-at (or occurred-at (t/offset-date-time))]
+  [request response {:keys [route-template duration-ms occurred-at]}]
+  (let [api-key-id  (:api-key-id request)
+        user-agent  (request-user-agent request)
+        occurred-at (or occurred-at (t/offset-date-time))]
     (when api-key-id
       (try
         (grouper/submit! @last-used-queue {:id api-key-id, :timestamp occurred-at})
@@ -146,20 +160,21 @@
             ;; otherwise). Allowlist the two columns this row has, so a new field on the shared helper
             ;; can't silently start persisting here without a deliberate change.
             pii (some-> (analytics/pii-fields-from {:user-agent user-agent
-                                                    :ip-address ip-address})
+                                                    :ip-address (request/ip-address request)})
                         (select-keys [:user_agent :ip_address])
                         (update :ip_address #(some-> % (u/truncate ip-address-max-length))))
             row (merge {:api_key_id          api-key-id
-                        :user_id             user-id
-                        :tenant_id           tenant-id
+                        :user_id             (:metabase-user-id request)
+                        :tenant_id           (:tenant-id request)
                         :route_template      (some-> route-template (u/truncate route-template-max-length))
-                        :http_method         (some-> http-method (u/truncate http-method-max-length))
-                        :status              status
+                        :http_method         (some-> (:request-method request) name u/upper-case-en
+                                                     (u/truncate http-method-max-length))
+                        :status              (:status response)
                         :duration_ms         duration-ms
                         :occurred_at         occurred-at
                         :client_name         (api-keys.usage/detect-client user-agent)
-                        :embedding_client    (some-> embedding-client (u/truncate embedding-client-max-length))
-                        :embedding_hostname  (some-> embedding-hostname (u/truncate embedding-hostname-max-length))}
+                        :embedding_client    (some-> (request-embedding-client request) (u/truncate embedding-client-max-length))
+                        :embedding_hostname  (some-> (request-embedding-hostname request) (u/truncate embedding-hostname-max-length))}
                        pii)]
         (if-let [missing (not-empty (remove #(some? (get row %)) not-null-columns))]
           (log/warnf "Not recording API key usage log row, missing %s" (pr-str missing))

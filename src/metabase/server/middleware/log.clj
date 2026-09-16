@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics.sdk :as analytics.sdk]
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -211,53 +210,26 @@
   "Record API-key usage analytics for a completed request, then return `info` unchanged so this can sit in the
   `respond` chain next to the logging.
 
-  Every value comes from the request this middleware closed over, from the response, or from the route-template
-  carrier — never from a dynamic binding, which an async `respond` on another thread would not have. The template is
-  nil for a request that matched no endpoint and for raw-Compojure handlers that bypass `defendpoint`
-  (`metabase.api.docs`, `metabase.mcp.api`); the recorder drops those rows, since `route_template` is NOT NULL.
-
-  For streaming and core.async responses `respond` is called when the response object is created rather than when the
-  last byte is written, so `duration-ms` is time-to-response, as it is for the CLI usage log.
+  Hands the recorder the raw `request`/`response` plus the handful of values only this middleware can supply:
+  `route-template` (from the carrier — nil for a request that matched no endpoint and for raw-Compojure handlers that
+  bypass `defendpoint`, since neither ever fills it in; a dynamic binding wouldn't survive an async `respond` on
+  another thread, which is why this is a carrier and not `api/*current-route*` or similar), `duration-ms` (time to
+  `respond`, not to the last byte written — for streaming and core.async responses `respond` is called when the
+  response object is created, so this is time-to-response, as it is for the CLI usage log), and `occurred-at`
+  (captured here on the request thread rather than left for the DB to fill in at INSERT time — the row lands via a
+  Grouper batch, up to the batch interval later, so a DB-computed default would record when the batch flushed, not
+  when the request happened).
 
   Best-effort throughout: the recorders swallow their own failures, and this catches anything else, so usage
-  analytics can never fail a request or alter its response.
-
-  Only the fields below are recorded. The raw URI, the query string, and the request and response bodies are
-  deliberately never passed on — see `metabase.api-keys.usage`.
-
-  `embedding-client` is the raw `X-Metabase-Client` header, supplementary to `client_name` (classified
-  from `user-agent` by the recorder itself, not here) — see `metabase.api-keys.usage`.
-
-  `embedding-hostname` is parsed from the embed referrer header via the same
-  `metabase.analytics.sdk/extract-hostname` helper `view_log`/`query_execution` use, so it is only
-  ever set alongside `embedding-client`.
-
-  `occurred-at` is captured here, on the request thread, rather than left for the DB to fill in at
-  INSERT time — the row lands via a Grouper batch, up to the batch interval later, so a DB-computed
-  default would record when the batch flushed, not when the request happened."
+  analytics can never fail a request or alter its response."
   [{:keys [request response start-time route-template-carrier] :as info}]
   (when (api-key-request? request)
     (try
       (api-keys.usage/record-api-key-usage!
-       {:api-key-id     (:api-key-id request)
-        :user-id        (:metabase-user-id request)
-        ;; the API-key auth query already joined `core_user`, so the tenant rode along on the request. Reading it
-        ;; here rather than from `api/*current-user*` keeps this off dynamic bindings, and rather than from a fresh
-        ;; `SELECT` keeps a per-request DB call out of a path whose writes are batched precisely to avoid them.
-        :tenant-id      (:tenant-id request)
-        :route-template (some-> route-template-carrier deref)
-        :http-method    (some-> (:request-method request) name u/upper-case-en)
-        :status         (:status response)
+       request response
+       {:route-template (some-> route-template-carrier deref)
         :duration-ms    (long (u/since-ms start-time))
-        :occurred-at    (t/offset-date-time)
-        :user-agent     (get-in request [:headers "user-agent"])
-        :ip-address     (request/ip-address request)
-        ;; supplementary to client_name (the primary classification axis) — a plain header read, no
-        ;; carrier needed like route-template, since it's already on the pre-routing request we closed
-        ;; over. Almost always nil for API-key traffic: the SDK/embed.js clients that set it
-        ;; authenticate via JWT/SSO, not API keys.
-        :embedding-client   (get-in request [:headers "x-metabase-client"])
-        :embedding-hostname (analytics.sdk/extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))})
+        :occurred-at    (t/offset-date-time)})
       (catch Throwable e
         (log/warn e "Error recording API key usage"))))
   info)

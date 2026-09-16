@@ -10,9 +10,9 @@
   (`:feature :none`); the `:audit-app` feature gates the surfaces that read these rows, not the
   writing.
 
-  The function takes already-resolved values, never a Ring request: the caller (the `log-api-call`
-  hook) extracts everything on the request thread and hands it over as a plain map, so the write
-  path never reaches back into request state.
+  The function takes the raw Ring `request`/`response` and extracts everything itself; the caller
+  (the `log-api-call` hook) supplies only the handful of values it alone can compute — see
+  `metabase-enterprise.api-keys.usage/record-api-key-usage!`'s docstring for the `extra-info` shape.
 
   PII columns (`ip_address`, `user_agent`) are populated only when `analytics-pii-retention-enabled`
   is on — a setting that is itself `:audit-app`-gated and defaults off, so PII is never collected
@@ -77,5 +77,5 @@
   "Record one completed API-key-authenticated request: write an `api_key_usage_log` row and stamp
   `api_key.last_used_at`. OSS no-op."
   metabase-enterprise.api-keys.usage
-  [_request-info]
+  [_request _response _extra-info]
   nil)

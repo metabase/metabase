@@ -52,7 +52,11 @@
   "Send `request` through [[mw.log/log-api-call]] with a downstream handler that stands in for routing — recording
   `route-template` into the carrier the middleware installed, the way `metabase.api.macros` does — and then responds
   with `response`. Returns what the API-key usage recorder was called with (`::not-called` if it wasn't) plus the
-  final response."
+  final response.
+
+  The recorder now takes the raw `request`/`response` plus a small `extra-info` map — see
+  `metabase-enterprise.api-keys.usage/record-api-key-usage!`. Header/field extraction from `request` is the
+  recorder's job, not this middleware's, so it's exercised in `metabase-enterprise.api-keys.usage-test`, not here."
   [request route-template response]
   (let [recorded       (atom ::not-called)
         final-response (atom ::no-response)
@@ -60,7 +64,9 @@
                          (some-> (get request api.macros/route-template-carrier-key)
                                  (vreset! route-template))
                          (respond response))]
-    (with-redefs [api-keys.usage/record-api-key-usage! #(reset! recorded %)]
+    (mt/with-dynamic-fn-redefs [api-keys.usage/record-api-key-usage!
+                                (fn [request response extra-info]
+                                  (reset! recorded {:request request, :response response, :extra-info extra-info}))]
       ((mw.log/log-api-call handler)
        request
        #(reset! final-response %)
@@ -71,37 +77,15 @@
   (testing "an API-key-authenticated request records one usage event"
     (let [{:keys [recorded]}
           (run-log-api-call! api-key-request "/api/card/:id" {:status 200, :body "ok"})]
-      (is (=? {:api-key-id       7
-               :user-id          3
-               :tenant-id        9
-               :route-template   "/api/card/:id"
-               :http-method      "GET"
-               :status           200
-               :user-agent       "metabase-cli/1.2.3"
-               :ip-address       "203.0.113.7"
-               :embedding-client "embedding-sdk-react"
-               :embedding-hostname "example.com"}
-              recorded))
-      (testing "duration is measured, and nothing from the URI or query string is recorded"
-        (is (int? (:duration-ms recorded)))
-        (is (instance? java.time.OffsetDateTime (:occurred-at recorded)))
-        (is (= #{:api-key-id :user-id :tenant-id :route-template :http-method :status :duration-ms
-                 :occurred-at :user-agent :ip-address :embedding-client :embedding-hostname}
-               (set (keys recorded))))))))
-
-(deftest log-api-call-embedding-client-absent-test
-  (testing "embedding-client is nil when the header is absent — the common case for API-key traffic"
-    (let [{:keys [recorded]}
-          (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-client")
-                             "/api/card/:id" {:status 200, :body "ok"})]
-      (is (nil? (:embedding-client recorded))))))
-
-(deftest log-api-call-embedding-hostname-absent-test
-  (testing "embedding-hostname is nil when the referrer header is absent"
-    (let [{:keys [recorded]}
-          (run-log-api-call! (update api-key-request :headers dissoc "x-metabase-embed-referrer")
-                             "/api/card/:id" {:status 200, :body "ok"})]
-      (is (nil? (:embedding-hostname recorded))))))
+      (testing "the raw request and response are forwarded unchanged"
+        (is (=? api-key-request (:request recorded)))
+        (is (= {:status 200, :body "ok"} (:response recorded))))
+      (testing "extra-info carries only what the middleware alone can supply"
+        (is (= "/api/card/:id" (:route-template (:extra-info recorded))))
+        (is (int? (:duration-ms (:extra-info recorded))))
+        (is (instance? java.time.OffsetDateTime (:occurred-at (:extra-info recorded))))
+        (is (= #{:route-template :duration-ms :occurred-at}
+               (set (keys (:extra-info recorded)))))))))
 
 (deftest log-api-call-records-nothing-for-other-auth-methods-test
   (testing "session-authenticated requests are untouched"
@@ -133,11 +117,13 @@
            metabase-enterprise.api-keys.usage-test."
     (let [{:keys [recorded]}
           (run-log-api-call! api-key-request nil {:status 404, :body "Not found."})]
-      (is (=? {:api-key-id 7, :route-template nil, :status 404} recorded)))))
+      (is (= 7 (:api-key-id (:request recorded))))
+      (is (nil? (:route-template (:extra-info recorded))))
+      (is (= 404 (:status (:response recorded)))))))
 
 (deftest log-api-call-api-key-usage-is-best-effort-test
   (testing "a recorder that throws never breaks the response"
-    (with-redefs [api-keys.usage/record-api-key-usage! (fn [& _] (throw (ex-info "boom" {})))]
+    (mt/with-dynamic-fn-redefs [api-keys.usage/record-api-key-usage! (fn [& _] (throw (ex-info "boom" {})))]
       (let [response (atom ::no-response)]
         ((mw.log/log-api-call (fn [_request respond _raise] (respond {:status 200, :body "ok"})))
          api-key-request
