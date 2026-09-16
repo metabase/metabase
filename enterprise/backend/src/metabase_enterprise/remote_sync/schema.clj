@@ -171,19 +171,10 @@
 
 (mr/def ::remote-sync-object
   "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
-  [:map {:closed true}
-   [:id                  ms/PositiveInt]
-   [:model_type          [:or :keyword :string]]
-   [:model_id            [:maybe :int]]
-   [:status              [:or :keyword :string]]
-   [:status_changed_at   ms/TemporalInstant]
-   [:model_name          :string]
-   [:model_collection_id [:maybe ::lib.schema.id/collection]]
-   [:model_display       [:maybe [:or :keyword :string]]]
-   [:model_table_id      [:maybe ::lib.schema.id/table]]
-   [:model_table_name    [:maybe :string]]
-   [:file_path           [:maybe :string]]
-   [:content_hash        [:maybe :string]]])
+  [:merge
+   ::remote-sync-object.update
+   [:map {:closed true}
+    [:id                  ms/PositiveInt]]])
 
 (mr/def ::remote-sync-object.update
   "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
@@ -202,23 +193,31 @@
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
-  :map)
+  [:multi {:dispatch :kind}
+   ["pulled"       [:map {:closed true}
+                    [:kind   [:= "pulled"]]
+                    [:count  :int]
+                    [:branch [:maybe :string]]]]
+   ["pull-skipped" [:map {:closed true}
+                    [:kind [:= "pull-skipped"]]]]
+   ["pushed"       [:map {:closed true}
+                    [:kind   [:= "pushed"]]
+                    [:count  :int]
+                    [:branch [:maybe :string]]]]
+   ["push-skipped" [:map {:closed true}
+                    [:kind [:= "push-skipped"]]]]
+   ["merged"       [:map {:closed true}
+                    [:kind   [:= "merged"]]
+                    [:pulled :int]
+                    [:pushed :int]
+                    [:branch [:maybe :string]]]]])
 
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
-  [:map {:closed true}
-   [:id                      ms/PositiveInt]
-   [:sync_task_type          [:or :keyword :string]]
-   [:progress                [:maybe number?]]
-   [:cancelled               :boolean]
-   [:started_at              ms/TemporalInstant]
-   [:ended_at                [:maybe ms/TemporalInstant]]
-   [:last_progress_report_at ms/TemporalInstant]
-   [:initiated_by            [:maybe ::lib.schema.id/user]]
-   [:error_message           [:maybe :string]]
-   [:version                 [:maybe :string]]
-   [:conflicts               [:maybe [:sequential :string]]]
-   [:outcome                 [:maybe ::remote-sync-task.outcome]]])
+  [:merge
+   ::remote-sync-task.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]]])
 
 (mr/def ::remote-sync-task.update
   "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
@@ -232,5 +231,5 @@
    [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
    [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]
-   [:conflicts               {:optional true} [:maybe [:sequential :string]]]
+   [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])

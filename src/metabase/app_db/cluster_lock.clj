@@ -416,11 +416,11 @@
   rolled-back deadlock undoes only the db writes, not external calls)."
   [opts :- [:or
             :keyword
-            [:map
+            [:map {:closed true}
              [:lock             {:optional true} :keyword]
              [:locks            {:optional true} [:sequential
                                                   [:or :keyword
-                                                   [:map
+                                                   [:map {:closed true}
                                                     [:lock :keyword]
                                                     [:mode {:optional true} [:enum :exclusive :share]]]]]]
              [:mode             {:optional true} [:enum :exclusive :share]]
@@ -471,7 +471,7 @@
   "Impl for [[with-detached-cluster-lock]]."
   [{:keys [lock timeout-seconds retry-config]
     :or   {timeout-seconds cluster-lock-timeout-seconds}}
-   :- [:map
+   :- [:map {:closed true}
        [:lock            :keyword]
        [:timeout-seconds {:optional true} :int]
        [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]

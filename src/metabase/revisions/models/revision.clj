@@ -1,11 +1,16 @@
 (ns metabase.revisions.models.revision
   (:require
    [clojure.data :as data]
+   [malli.core :as mc]
    [metabase.config.core :as config]
+   [metabase.explorations.schema]
+   [metabase.measures.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :refer [diff-strings*]]
+   [metabase.segments.schema]
+   [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -43,7 +48,7 @@
         ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
         ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
         revert-instance (select-keys serialized-instance valid-columns)]
-    (revisions.db/update-entity! model id revert-instance)))
+    (revisions.db/update-entity! id {:model model :row revert-instance})))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -191,18 +196,30 @@
         (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
+(def ^:private PushRevisionInput
+  (into [:multi {:dispatch :entity}]
+        (conj (vec (for [[model schema] revisions.db/revisioned-model-select-schema]
+                     [model [:map {:closed true}
+                             [:id                            pos-int?]
+                             [:object                        schema]
+                             [:entity                        [:= model]]
+                             [:user-id                       pos-int?]
+                             [:is-creation? {:optional true} [:maybe :boolean]]
+                             [:message      {:optional true} [:maybe :string]]]]))
+              [::mc/default [:map {:closed true}
+                             [:id                            pos-int?]
+                             [:object                        ::revisions.db/unregistered-model-object]
+                             [:entity                        [:fn toucan-model?]]
+                             [:user-id                       pos-int?]
+                             [:is-creation? {:optional true} [:maybe :boolean]]
+                             [:message      {:optional true} [:maybe :string]]]])))
+
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
   [{:keys [id entity user-id object
            is-creation? message]
-    :or   {is-creation? false}}     :- [:map {:closed true}
-                                        [:id                            pos-int?]
-                                        [:object                        :map]
-                                        [:entity                        [:fn toucan-model?]]
-                                        [:user-id                       pos-int?]
-                                        [:is-creation? {:optional true} [:maybe :boolean]]
-                                        [:message      {:optional true} [:maybe :string]]]]
+    :or   {is-creation? false}}     :- PushRevisionInput]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
         last-object (revisions.db/latest-revision-object entity-name id)

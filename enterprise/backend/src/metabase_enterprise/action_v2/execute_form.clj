@@ -1,8 +1,12 @@
 (ns metabase-enterprise.action-v2.execute-form
   (:require
    [metabase-enterprise.action-v2.db :as action-v2.db]
+   [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.actions.core :as actions]
+   [metabase.actions.types :as actions.types]
    [metabase.api.common :as api]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -52,6 +56,15 @@
   [:map {:closed true}
    [:title :string]
    [:parameters [:sequential ::describe-param]]])
+
+(mr/def ::partial-input
+  "A single input row after `apply-mapping-nested`: either mapped to the target table, or, absent a mapping, the raw
+  parameter values it was given."
+  [:or
+   [:map {:closed true}
+    [:table-id {:optional true} ::lib.schema.id/table]
+    [:row      {:optional true} [:maybe [:map-of :string [:ref ::lib.schema.parameter/parameter.value]]]]]
+   [:map-of :string [:ref ::lib.schema.parameter/parameter.value]]])
 
 (defn- field-input-type-ignoring-semantics [create? field field-values]
   (condp #(isa? %2 %1) (:base_type field)
@@ -151,7 +164,9 @@
 
 (mu/defn describe-form :- ::action-description
   "Describe parameters of an unified action."
-  [action-def scope partial-input]
+  [action-def     :- ::action-v2.schema/action-expression
+   scope          :- ::actions.types/scope.hydrated
+   partial-input  :- ::partial-input]
   (cond
     (:action-id action-def)
     (throw (ex-info "We do not currently support execution of Model Actions" {:status-code 400}))

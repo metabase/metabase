@@ -23,7 +23,9 @@ import type {
   Field as ApiField,
   Table as ApiTable,
   Card,
+  DatabaseId,
   FieldId,
+  FieldReference,
   FieldValue,
   Measure,
   Metric,
@@ -35,6 +37,7 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
+  SchemaId,
   Segment,
   TableId,
 } from "metabase-types/api";
@@ -125,6 +128,8 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
+export const getShallowSchemas = getNormalizedSchemas;
+export const getShallowQuestions = getNormalizedQuestions;
 
 const getVisibleTable = (state: MetadataState, tableId: TableId) =>
   getNormalizedTables(state)[tableId];
@@ -172,6 +177,99 @@ export const getShallowTableForeignKeys = createSelector(
       const origin = fields[foreignKey.origin_id];
       return isResolvedField(origin) ? [{ ...foreignKey, origin }] : [];
     }),
+);
+
+// The relations between the store's records need the same resolving the v1
+// `Metadata` object does: a table that arrived without its ids still belongs to
+// its schema, and `original_fields` outranks a table's field ids. Each selector
+// below returns that lookup, memoised on the records behind it, so a caller
+// that only learns the id it wants later still reads a stable function.
+
+const getMetadataForShallowReads = (state: State) => getMetadata(state);
+
+/**
+ * A lookup from a database id to its schemas.
+ */
+export const getShallowDatabaseSchemas = createSelector(
+  [getMetadataForShallowReads, getNormalizedSchemas],
+  (metadata, schemas) =>
+    (databaseId: DatabaseId): NormalizedSchema[] =>
+      (metadata.database(databaseId)?.getSchemas() ?? [])
+        .map((schema) => schemas[schema.id])
+        .filter((schema) => schema != null),
+);
+
+/**
+ * A lookup from a database id to its tables.
+ */
+export const getShallowDatabaseTables = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (databaseId: DatabaseId): NormalizedTable[] =>
+      (metadata.database(databaseId)?.getTables() ?? []).map((table) =>
+        table.getPlainObject(),
+      ),
+);
+
+/**
+ * A lookup from a schema id to its tables.
+ */
+export const getShallowSchemaTables = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (schemaId: SchemaId): NormalizedTable[] =>
+      (metadata.schema(schemaId)?.tables ?? []).map((table) =>
+        table.getPlainObject(),
+      ),
+);
+
+/**
+ * A lookup from a table id to the schema it belongs to. A table the store does
+ * not hold, and a schema it has not loaded, both give nothing.
+ */
+export const getShallowTableSchema = createSelector(
+  [getMetadataForShallowReads, getNormalizedSchemas],
+  (metadata, schemas) =>
+    (tableId: TableId): NormalizedSchema | undefined => {
+      const schemaId = metadata.table(tableId)?.getPlainObject().schema;
+      return schemaId != null ? schemas[schemaId] : undefined;
+    },
+);
+
+/**
+ * A lookup from a table id to its fields.
+ */
+export const getShallowTableFields = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (tableId: TableId): NormalizedField[] =>
+      (metadata.table(tableId)?.getFields() ?? []).map((field) =>
+        field.getPlainObject(),
+      ),
+);
+
+/**
+ * A lookup from a field id, or a field reference, to the field.
+ */
+export const getShallowFieldById = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (fieldId: FieldId | FieldReference): NormalizedField | undefined =>
+      metadata.field(fieldId)?.getPlainObject(),
+);
+
+/**
+ * A lookup from a field to its name, with the names of its parents for a
+ * nested field. A field the store does not hold keeps its own `display_name`.
+ */
+export const getShallowFieldName = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (
+      field: Pick<NormalizedField, "id" | "table_id" | "display_name">,
+    ): string =>
+      metadata.field(field.id, field.table_id)?.displayName() ??
+      field.display_name,
 );
 
 // Takes the whole `State`, not `MetadataState`: it composes `getSettings`,

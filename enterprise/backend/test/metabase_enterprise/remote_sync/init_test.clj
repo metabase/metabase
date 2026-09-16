@@ -25,7 +25,7 @@
   (testing "When remote sync is disabled and no remote-synced collection exists, nothing happens"
     (mt/with-temporary-setting-values [:remote-sync-url nil]
       (let [[calls capture] (capture-async-import!)]
-        (with-redefs [impl/async-import! capture]
+        (mt/with-dynamic-fn-redefs [impl/async-import! capture]
           (#'init/remote-sync-init)
           (is (empty? @calls)))))))
 
@@ -34,7 +34,7 @@
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-only
                                        :remote-sync-branch nil]
-      (with-redefs [remote-sync.object/dirty? (constantly false)]
+      (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly false)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"no branch is set"
                               (#'init/remote-sync-init)))))))
@@ -45,7 +45,7 @@
                                        :remote-sync-type :read-only
                                        :remote-sync-branch "main"
                                        :remote-sync-allow nil]
-      (with-redefs [remote-sync.object/dirty? (constantly true)]
+      (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly true)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"unpublished changes"
                               (#'init/remote-sync-init)))))))
@@ -57,8 +57,8 @@
                                        :remote-sync-branch "main"
                                        :remote-sync-allow "overwrite-unpublished"]
       (let [[calls capture] (capture-async-import!)]
-        (with-redefs [remote-sync.object/dirty? (constantly true)
-                      impl/async-import! capture]
+        (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly true)
+                                    impl/async-import! capture]
           (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
             (#'init/remote-sync-init)
             (is (= [["main" true {}]] @calls))))))))
@@ -70,8 +70,8 @@
                                        :remote-sync-branch "develop"
                                        :remote-sync-allow nil]
       (let [[calls capture] (capture-async-import!)]
-        (with-redefs [remote-sync.object/dirty? (constantly false)
-                      impl/async-import! capture]
+        (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly false)
+                                    impl/async-import! capture]
           ;; Make sure no remote-synced collection exists for the test
           (collection/clear-remote-synced-collection!)
           (#'init/remote-sync-init)
@@ -83,8 +83,8 @@
                                        :remote-sync-type :read-write
                                        :remote-sync-branch nil]
       (let [[calls capture] (capture-async-import!)]
-        (with-redefs [remote-sync.object/dirty? (constantly false)
-                      impl/async-import! capture]
+        (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly false)
+                                    impl/async-import! capture]
           (collection/clear-remote-synced-collection!)
           (#'init/remote-sync-init)
           (is (empty? @calls)))))))
@@ -95,8 +95,8 @@
                                        :remote-sync-type :read-write
                                        :remote-sync-branch "main"]
       (let [[calls capture] (capture-async-import!)]
-        (with-redefs [remote-sync.object/dirty? (constantly false)
-                      impl/async-import! capture]
+        (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly false)
+                                    impl/async-import! capture]
           (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
             (#'init/remote-sync-init)
             (is (empty? @calls))))))))

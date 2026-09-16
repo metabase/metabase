@@ -53,18 +53,24 @@
       (let [metadata-row      (get-metadata-row! pgvector index-metadata index)
             initial-watermark (semantic.gate/resume-watermark metadata-row)
             indexing-state    (semantic.indexer/init-indexing-state metadata-row)
-            {poll-proxy :proxy poll-calls :calls} (semantic.tu/spy semantic.gate/poll)
-            {upsert-proxy :proxy upsert-calls :calls} (semantic.tu/spy semantic.index/upsert-index!)
-            {delete-proxy :proxy delete-calls :calls} (semantic.tu/spy semantic.index/delete-from-index!)
+            ;; capture the unpatched fns: other tests here redefine these vars, and once a var is
+            ;; proxied a bare capture would make the spy call itself
+            {poll-proxy :proxy poll-calls :calls}
+            (semantic.tu/spy (mt/original-fn #'semantic.gate/poll))
+            {upsert-proxy :proxy upsert-calls :calls}
+            (semantic.tu/spy (mt/original-fn #'semantic.index/upsert-index!))
+            {delete-proxy :proxy delete-calls :calls}
+            (semantic.tu/spy (mt/original-fn #'semantic.index/delete-from-index!))
             clear-spies       (fn []
                                 (reset! poll-calls [])
                                 (reset! upsert-calls [])
                                 (reset! delete-calls []))]
         (is (= initial-watermark (:watermark @indexing-state)))
         (testing "gate is empty, poll counts should be zero - and upsert/delete should not be called"
-          (with-redefs [semantic.index/upsert-index!      upsert-proxy
-                        semantic.index/delete-from-index! delete-proxy
-                        semantic.gate/poll                poll-proxy]
+          (mt/with-dynamic-fn-redefs
+            [semantic.index/upsert-index!      upsert-proxy
+             semantic.index/delete-from-index! delete-proxy
+             semantic.gate/poll                poll-proxy]
             (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
             (is (= [] @upsert-calls))
             (is (= [] @delete-calls))
@@ -80,9 +86,10 @@
         (testing "add some data to the gate we should see upsert / delete be called"
           (clear-spies)
           (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1) (delete c2 t2)])
-          (with-redefs [semantic.index/upsert-index!      upsert-proxy
-                        semantic.index/delete-from-index! delete-proxy
-                        semantic.gate/poll                poll-proxy]
+          (mt/with-dynamic-fn-redefs
+            [semantic.index/upsert-index!      upsert-proxy
+             semantic.index/delete-from-index! delete-proxy
+             semantic.gate/poll                poll-proxy]
             (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
             (is (= 1 (count @upsert-calls)))
             (is (= 1 (count @delete-calls)))
@@ -97,9 +104,10 @@
                          (semantic.gate/resume-watermark (get-metadata-row! pgvector index-metadata index)))))))))
         (testing "stepping again with no new data does nothing"
           (clear-spies)
-          (with-redefs [semantic.index/upsert-index!      upsert-proxy
-                        semantic.index/delete-from-index! delete-proxy
-                        semantic.gate/poll                poll-proxy]
+          (mt/with-dynamic-fn-redefs
+            [semantic.index/upsert-index!      upsert-proxy
+             semantic.index/delete-from-index! delete-proxy
+             semantic.gate/poll                poll-proxy]
             (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
             (is (= 0 (count @upsert-calls)))
             (is (= 0 (count @delete-calls)))
@@ -109,9 +117,10 @@
         (testing "add some more data, picked up"
           (clear-spies)
           (semantic.gate/gate-documents! pgvector index-metadata [(version c2 t3)])
-          (with-redefs [semantic.index/upsert-index!      upsert-proxy
-                        semantic.index/delete-from-index! delete-proxy
-                        semantic.gate/poll                poll-proxy]
+          (mt/with-dynamic-fn-redefs
+            [semantic.index/upsert-index!      upsert-proxy
+             semantic.index/delete-from-index! delete-proxy
+             semantic.gate/poll                poll-proxy]
             (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
             (is (= 1 (count @upsert-calls)))
             (is (= 0 (count @delete-calls)))
@@ -121,9 +130,10 @@
           (clear-spies)
           (semantic.gate/gate-documents! pgvector index-metadata [(version c3 t3)])
           (let [previous-state @indexing-state]
-            (with-redefs [semantic.index/upsert-index!      (fn [& _] (throw (Exception. "Boom")))
-                          semantic.index/delete-from-index! delete-proxy
-                          semantic.gate/poll                poll-proxy]
+            (mt/with-dynamic-fn-redefs
+              [semantic.index/upsert-index!      (fn [& _] (throw (Exception. "Boom")))
+               semantic.index/delete-from-index! delete-proxy
+               semantic.gate/poll                poll-proxy]
               (is (thrown-with-msg? Exception #"Boom" (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)))
               (is (= 0 (count @delete-calls)))
               (is (= 1 (count @poll-calls)))
@@ -131,9 +141,10 @@
                 (is (= previous-state @indexing-state)))))
           (testing "exceptions are recovered from"
             (clear-spies)
-            (with-redefs [semantic.index/upsert-index!      upsert-proxy
-                          semantic.index/delete-from-index! delete-proxy
-                          semantic.gate/poll                poll-proxy]
+            (mt/with-dynamic-fn-redefs
+              [semantic.index/upsert-index!      upsert-proxy
+               semantic.index/delete-from-index! delete-proxy
+               semantic.gate/poll                poll-proxy]
               (semantic.indexer/indexing-step pgvector index-metadata index indexing-state)
               (is (= 1 (count @upsert-calls)))
               (is (= 0 (count @delete-calls)))

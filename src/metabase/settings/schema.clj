@@ -5,10 +5,9 @@
 
 (mr/def ::setting
   "A Setting as selected from the app DB: every column of `:setting`."
-  [:map {:closed true}
-   [:key            :string]
-   [:value          :string]
-   [:value_with_aad [:maybe :string]]])
+  [:merge
+   ::setting.update
+   [:map {:closed true}]])
 
 (mr/def ::setting.update
   "What an update (or insert) of a Setting accepts: every column of `:setting` except `id`, all optional."

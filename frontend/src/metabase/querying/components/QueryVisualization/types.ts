@@ -41,6 +41,7 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
   isShowingSummarySidebar?: boolean;
   hideLegend?: boolean;
   noResultsAction?: ReactNode;
+  errorAction?: ReactNode;
 
   // query-builder-specific props injected by callers via `useVisualizationResultQBProps`
   isRawTable?: boolean;

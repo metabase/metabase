@@ -7,11 +7,11 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { getMetadata } from "metabase/metadata-store";
 import {
   type ExpressionError,
   diagnoseAndCompile,
@@ -20,10 +20,9 @@ import {
 } from "metabase/querying/expressions";
 import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import { useSelector } from "metabase/redux";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
 
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
@@ -85,7 +84,10 @@ export function Editor(props: EditorProps) {
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
-  const metadata = useSelector(getMetadata);
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
     useDisclosure();
 
@@ -99,7 +101,7 @@ export function Editor(props: EditorProps) {
     isValidated,
   } = useExpression({
     ...props,
-    metadata,
+    database,
     error,
   });
 
@@ -113,7 +115,7 @@ export function Editor(props: EditorProps) {
       <Tooltip
         query={query}
         stageIndex={stageIndex}
-        metadata={metadata}
+        database={database}
         reportTimezone={reportTimezone}
         expressionMode={expressionMode}
         {...props}
@@ -127,7 +129,7 @@ export function Editor(props: EditorProps) {
     stageIndex,
     availableColumns,
     availableMetrics,
-    metadata,
+    database,
     extensions: [customTooltip],
   });
 
@@ -256,11 +258,11 @@ function useExpression({
   query,
   availableColumns,
   availableMetrics,
-  metadata,
+  database,
   onChange,
   initialClause,
 }: EditorProps & {
-  metadata: Metadata;
+  database: Pick<Database, "features"> | undefined;
 }) {
   const [source, setSource] = useState("");
   const [initialSource, setInitialSource] = useState("");
@@ -326,7 +328,7 @@ function useExpression({
         query,
         stageIndex,
         expressionIndex,
-        metadata,
+        database,
         availableColumns,
         availableMetrics,
       });
@@ -342,7 +344,7 @@ function useExpression({
       stageIndex,
       expressionMode,
       expressionIndex,
-      metadata,
+      database,
       handleChange,
       debouncedOnChange,
       availableColumns,

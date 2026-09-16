@@ -170,12 +170,12 @@
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   (^bytes [rendered-info :- ::body/RenderedPartCard
-           width]
+           width         :- pos-int?]
    (render-html-to-png rendered-info width nil))
 
   (^bytes [{:keys [content]} :- ::body/RenderedPartCard
-           width
-           options]
+           width   :- pos-int?
+           options :- [:maybe ::body/options]]
    (try
      (let [padding-x (or (:channel.render/padding-x options) 0)
            padding-y (or (:channel.render/padding-y options) 0)

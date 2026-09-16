@@ -1254,21 +1254,22 @@
 
 #?(:clj
    (deftest ^:parallel display-name-vm-error-test
-     (testing "a VM Error thrown while computing a display name propagates unwrapped"
-       (let [e (Error. "boom")]
-         (is (identical? e
-                         (try
-                           (lib.metadata.calculation/display-name (lib.tu/venues-query)
-                                                                  {:lib/type ::throws, :throwable e})
-                           nil
-                           (catch Error actual actual))))))
-     (testing "an Exception thrown while computing a display name is wrapped with context"
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+     (mu/disable-enforcement
+       (testing "a VM Error thrown while computing a display name propagates unwrapped"
+         (let [e (Error. "boom")]
+           (is (identical? e
+                           (try
                              (lib.metadata.calculation/display-name (lib.tu/venues-query)
-                                                                    {:lib/type ::throws
-                                                                     :throwable (ex-info "boom" {})}))))
-     (testing "an AssertionError thrown while computing a display name is contained (wrapped), not propagated"
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
-                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
-                                                                    {:lib/type ::throws
-                                                                     :throwable (AssertionError. "boom")}))))))
+                                                                    {:lib/type ::throws, :throwable e})
+                             nil
+                             (catch Error actual actual))))))
+       (testing "an Exception thrown while computing a display name is wrapped with context"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                               (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                      {:lib/type ::throws
+                                                                       :throwable (ex-info "boom" {})}))))
+       (testing "an AssertionError thrown while computing a display name is contained (wrapped), not propagated"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                               (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                      {:lib/type ::throws
+                                                                       :throwable (AssertionError. "boom")})))))))

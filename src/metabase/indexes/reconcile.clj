@@ -4,10 +4,12 @@
   `driver/fetch-table-indexes` to confirm it landed."
   (:require
    [metabase.driver :as driver]
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,38 +27,35 @@
    [:style {:optional true} [:maybe :string]]
    [:key-columns {:optional true} [:sequential [:maybe :string]]]])
 
-(mu/defn match-key :- ::match-key
-  "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
-  [{:keys [kind key-columns] am :access-method nm :name} :- [:map
-                                                             [:kind :keyword]
-                                                             [:key-columns [:sequential [:maybe :string]]]
-                                                             [:access-method {:optional true} [:maybe :string]]
-                                                             [:name {:optional true} [:maybe :string]]]]
+(mu/defn- ->match-key :- ::match-key
+  "The [[::match-key]] for an index of `kind` named `nm` with access method `am` over `key-columns`."
+  [kind        :- :keyword
+   nm          :- [:maybe :string]
+   am          :- [:maybe :string]
+   key-columns :- [:sequential [:maybe :string]]]
   (cond
     (= kind :distkey)                     {:kind :distkey :style am :key-columns key-columns}
     (contains? unnamed-inline-kinds kind) {:kind kind :key-columns key-columns}
     :else                                 {:kind :named :name nm}))
 
+(mu/defn match-key :- ::match-key
+  "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
+  [{:keys [kind key-columns] am :access-method nm :name} :- ::driver/table-index]
+  (->match-key kind nm am key-columns))
+
 (mu/defn index-name :- :string
   "Physical index name for a structured def: a named kind's `:name`, else its `:kind` as a string (one inline key per
   transform)."
-  [structured :- [:map
-                  [:name {:optional true} [:maybe :string]]
-                  [:kind [:or :keyword :string]]]]
+  [structured :- ::indexes.schema/index-structured]
   (or (:name structured) (name (:kind structured))))
 
 (mu/defn managed-match-key :- ::match-key
   "The [[match-key]] for an index request, from its stored structured definition and index name."
-  [{:keys [index_name structured]} :- [:map
-                                       [:index_name [:maybe :string]]
-                                       [:structured :map]]]
+  [{:keys [index_name structured]} :- ::indexes.schema/table-index]
   (let [{:keys [kind style columns]} structured
         ;; only a :key distkey has a meaningful column; :all/:even ignore any stray column the form sent
         key-columns (if (and (= kind :distkey) (not= style :key)) [] (mapv :name columns))]
-    (match-key {:kind          kind
-                :name          index_name
-                :access-method (some-> style name)
-                :key-columns   key-columns})))
+    (->match-key kind index_name (some-> style name) key-columns)))
 
 (defn warehouse-key-set
   "Set of [[match-key]]s for the warehouse indexes, to test managed requests against with [[present-in-warehouse?]]."
@@ -119,8 +118,8 @@
 (mu/defn merge-indexes :- [:sequential :map]
   "Reality-first merged index list: every warehouse index, flagged `:metabase_managed` with its `:request` when a
   TableIndex `row` matches ([[match-key]]), plus any request not yet present, projected from its `:structured`."
-  [rows           :- [:sequential :map]
-   warehouse-maps :- [:sequential :map]]
+  [rows           :- [:sequential ::indexes.schema/table-index]
+   warehouse-maps :- [:sequential ::driver/table-index]]
   (let [by-key       (u/index-by managed-match-key rows)
         present-keys (warehouse-key-set warehouse-maps)
         present      (for [wh warehouse-maps
@@ -141,7 +140,7 @@
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
   Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
   fetch failure from a successful empty index list."
-  [database   :- :map
+  [database   :- :metabase.warehouses.schema/database
    schema     :- [:maybe :string]
    table-name :- :string]
   (try

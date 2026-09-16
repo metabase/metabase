@@ -199,7 +199,9 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
           .find(".cm-panels")
           .should("be.visible");
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .click();
 
         cy.log(
           "the editor search panel must not paint over the modal (metabase#73290)",
@@ -1079,7 +1081,7 @@ LIMIT
       }).as("updateTransformError");
 
       cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
+      getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
 
       cy.log("Wait for the failed request");
       cy.wait("@updateTransformError");
@@ -2138,7 +2140,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {
@@ -2249,7 +2251,7 @@ LIMIT
         );
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a table…")
+          .findByRole("button", { name: "Select a table…" })
           .click();
 
         H.entityPickerModal().within(() => {

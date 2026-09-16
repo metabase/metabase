@@ -10,16 +10,18 @@
 
 (defn- connect-src-for!
   "The `connect-src` directive of the CSP that the security middleware emits for
-   a request to `uri`."
-  [uri]
-  (with-redefs [config/is-dev? false]
-    (let [handler  (mw.security/add-security-headers
-                    (fn [_req respond _raise] (respond {:status 200 :headers {} :body "ok"})))
-          response (handler {:uri uri :headers {}} identity identity)
-          csp      (get-in response [:headers "Content-Security-Policy"])]
-      (->> (str/split csp #";\s*")
-           (filter #(str/starts-with? % "connect-src "))
-           first))))
+   a signed-in request to `uri` (a signed-out one never carries an app's hosts)."
+  ([uri]
+   (connect-src-for! uri {:metabase-user-id (mt/user->id :rasta)}))
+  ([uri request]
+   (with-redefs [config/is-dev? false]
+     (let [handler  (mw.security/add-security-headers
+                     (fn [_req respond _raise] (respond {:status 200 :headers {} :body "ok"})))
+           response (handler (merge {:uri uri :headers {}} request) identity identity)
+           csp      (get-in response [:headers "Content-Security-Policy"])]
+       (->> (str/split csp #";\s*")
+            (filter #(str/starts-with? % "connect-src "))
+            first)))))
 
 (deftest data-app-connect-src-allowed-hosts-test
   (mt/with-premium-features #{:data-apps-preview}
@@ -40,6 +42,9 @@
         (is (not (str/includes? (connect-src-for! "/") "https://api.example.com"))))
       (testing "an unknown app contributes no hosts"
         (is (not (str/includes? (connect-src-for! "/embed/apps/nope")
+                                "api.example.com"))))
+      (testing "a signed-out visitor never gets them, even for a real app"
+        (is (not (str/includes? (connect-src-for! "/embed/apps/boba" {})
                                 "api.example.com")))))))
 
 (deftest data-app-connect-src-hosts-fn-test

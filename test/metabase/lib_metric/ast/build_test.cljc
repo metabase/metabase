@@ -34,6 +34,8 @@
   {:lib/type           :metadata/metric
    :id                 42
    :name               "Total Revenue"
+   :type               :metric
+   :database-id        (meta/id)
    :dimensions         (sample-dimensions)
    :dimension-mappings (sample-mappings)
    :dataset-query      (sample-metric-query)})
@@ -46,6 +48,7 @@
   {:lib/type           :metadata/measure
    :id                 99
    :name               "Order Count"
+   :table-id           (meta/id :orders)
    :dimensions         (sample-dimensions)
    :dimension-mappings (sample-mappings)
    :definition         (sample-measure-query)})

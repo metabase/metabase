@@ -262,9 +262,9 @@
   (let [requested (atom [])
         next-size  (fn [budget max-rows rows]
                      (reset! requested [])
-                     (with-redefs [bigquery/list-sample-page (fn [_bq size _token]
-                                                               (swap! requested conj size)
-                                                               (mock-page nil []))]
+                     (mt/with-dynamic-fn-redefs [bigquery/list-sample-page (fn [_bq size _token]
+                                                                             (swap! requested conj size)
+                                                                             (mock-page nil []))]
                        (binding [bigquery/*page-byte-budget* budget]
                          ((#'bigquery/adaptive-sample-next-page :table max-rows) (mock-page "tok" rows))
                          (first @requested))))
@@ -301,6 +301,9 @@
           sizes     (atom [])
           requests  (atom 0)
           orig-next-page-size @#'bigquery/next-page-size]
+      ;; `next-page-size` takes and returns primitive longs, so compiled callers invoke it through `IFn$LLLLL`.
+      ;; The dynamic-redefs proxy is a plain variadic fn, and would throw ClassCastException there.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [bigquery/next-page-size    (fn ^long [^long budget ^long bytes ^long rows ^long rem]
                                                  (let [n (long (orig-next-page-size budget bytes rows rem))]
                                                    (swap! sizes conj n)
@@ -333,13 +336,13 @@
                      (fn [_cols reducible] (into [] reducible))
                      nil)]
     (testing "a later page that comes back nil is reported, not silently truncated (#47339)"
-      (with-redefs [bigquery/query-results-page (fn [_job _opts] nil)]
+      (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [_job _opts] nil)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Cannot get next page from BigQuery"
                               (consume)))))
     (testing "a later page that throws surfaces the original error"
-      (with-redefs [bigquery/query-results-page (fn [_job _opts]
-                                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {})))]
+      (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [_job _opts]
+                                                                (throw (ex-info "onoes BigQuery failed to fetch a later page" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"onoes BigQuery failed to fetch a later page"
                               (consume)))))))
@@ -1022,7 +1025,7 @@
                            ^com.google.cloud.bigquery.JobInfo _job-info
                            ^"[Lcom.google.cloud.bigquery.BigQuery$JobOption;" _opts]
                           (throw sync-error)))]
-      (with-redefs [bigquery/database-details->client (constantly mock-client)]
+      (mt/with-dynamic-fn-redefs [bigquery/database-details->client (constantly mock-client)]
         (let [ex (try
                    (#'bigquery/execute-bigquery (constantly nil) {} "SELECT 1" [] nil)
                    nil
