@@ -24,10 +24,13 @@ and no code, because the repository and its job logs are public; the findings go
 people with write access read, and nothing is kept as an artifact. Both upload the whole-tree SARIF to GitHub code scanning under
 the category `metabase-security-lint`; code scanning compares a pull request's analysis with its base's and
 annotates the pull request with the alerts it introduced. The job never fails on findings (`--warn-only`):
-whether a new alert blocks a merge is code scanning's decision, in the repository's code security settings. The
-SARIF carries no `security-severity` on purpose, so an alert's severity is the finding's own level -- graded per
-finding by taint, not per rule -- and the threshold for alerts without a security severity, set to *errors*,
-blocks a merge on a new error-level finding and on nothing else. Findings in test code,
+whether a new alert blocks a merge is code scanning's decision, in the repository's code security settings. GitHub
+reads an alert's severity from its rule, and a rule here grades each finding on its own, so the SARIF describes
+every rule once per grade it can produce -- `.../command-injection/error`, `/warning`, `/note` -- each with the
+`security-severity` of that grade: an error is *high*, a warning *medium*, a note *low*. The threshold for
+security alerts, left at its default of *high or higher*, blocks a merge on a new error-graded finding and on
+nothing else, and the severity filter on the alert list, in the API and in the `code_scanning_alert` webhook is
+the finding's own grade. Findings in test code,
 `dev/` and `mage/` are never reported. To iterate in the REPL instead, call `(dev.security-lint/reload!)` and
 then `(dev.security-lint/scan)`; a plain `:reload` picks up only the entry namespace, not an edited rule.
 
@@ -268,7 +271,7 @@ so no actor; the taint origins say who planted what it runs -- and nil when noth
 lowers an `:elevated` finding to at most a warning and a `:superuser` one to at most a note; anonymous, session and
 background findings keep the rule's own grade. The text report prints it as `least privilege: a superuser (POST
 /import in metabase-enterprise.serialization.api)`, SARIF carries it as `minimumPrivilege` and in the message, and the
-level GitHub sees is the capped one, so the error threshold means "reachable without an elevated grant".
+severity GitHub sees is the capped one, so the *high* threshold means "reachable without an elevated grant".
 
 ## Writing a rule
 
@@ -313,9 +316,12 @@ caller; when every caller loops back the farthest one is named instead, and the 
 
 SARIF output is what GitHub code scanning ingests, written compact (`jq` reads it). Every rule is described
 whether or not it fired, so a clean run closes resolved alerts; each links to its source on master as the alert's
-help link. Rules carry a `security` tag and their CWE, and no `security-severity`: the alert's severity is the
-result's level, so a rule that grades by taint grades its alerts one by one. The run records the tool version
-(`sarif/version` -- bump it when the output changes meaning) and when the scan ran. Each result carries a fingerprint over the rule, the file, the whole flagged form with its
+help link. A rule is described once per grade it can produce (`rule/possible-severities`: its worst and every
+grade below it, since a privilege cap lowers and nothing raises), under the id `<rule>/<grade>`, and each result
+points at the variant of its own grade. That is how a rule that grades by taint gets its alerts filed one by one:
+GitHub takes severity from the rule's `security-severity`, so the grade has to be the rule. Rules carry a
+`security` tag and their CWE. The run records the tool version
+(`sarif/version` -- bump it when the output changes meaning) and when the scan ran. Each result carries a fingerprint over the graded rule, the file, the whole flagged form with its
 formatting removed, and which occurrence of that form it is in the file, so an alert survives edits above it and a
 reformat, and two identical forms in one file stay two alerts; an edit to the flagged form itself is a new alert,
 dismissed or not -- what was reviewed is no longer what is there. What the finding *reaches* is deliberately not

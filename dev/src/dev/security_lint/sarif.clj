@@ -22,6 +22,14 @@
   "SARIF levels. Only `error` fails a build; the rest are informational in the security tab."
   {:error "error", :warning "warning", :note "note"})
 
+(def ^:private security-severity
+  "What GitHub buckets an alert's severity from, read off the rule: 9.0 and up is critical, 7.0 high, 4.0 medium,
+  anything above zero low. An error sits at high, so the default merge-blocking threshold for security alerts --
+  high or higher -- fails a pull request on exactly the error-graded findings, as the level threshold did when
+  these carried no security severity; a warning is medium and a note low, so the severity filter on the alert
+  list, in the API and in the `code_scanning_alert` webhook is the finding's own grade."
+  {:error "8.0", :warning "5.0", :note "2.0"})
+
 (def version
   "The tool's version, shown by GitHub on the analysis. Bump it when the output changes meaning -- a rule
   renamed, a fingerprint computed differently -- so an analysis can be told from the ones before it."
@@ -58,28 +66,39 @@
 (defn- artifact-location [root path]
   {:uri (relativize root path) :uriBaseId src-root})
 
-(defn- rule->sarif [{:keys [id name description precision cwe remediation] :as r}]
-  (let [severity (rule/worst-severity r)]
-    (cond->
-     {:id                   (str (symbol id))
-      :name                 name
-      :shortDescription     {:text name}
-      :fullDescription      {:text description}
-      ;; GitHub renders `help.markdown` on the alert page, and these texts are written with backticks around the
-      ;; code they name; the plain text is the same words for a consumer that reads only `text`
-      :help                 {:text     (str description (when remediation (str "\n\nRemediation: " remediation)))
-                             :markdown (str description (when remediation (str "\n\n**Remediation:** " remediation)))}
-      :defaultConfiguration {:level (level severity "warning")}
-      ;; No `security-severity`. GitHub reads that rule-level number to bucket every alert of the rule as
-      ;; critical/high/medium/low, and judges a pull request against it; but a rule here grades each finding
-      ;; by taint, and a `{:tainted :error :otherwise :warning}` rule's warnings would inherit its worst case.
-      ;; Without it the alert's severity is the result's `level`, and the repository's code scanning threshold
-      ;; for "alerts without a security severity" -- errors -- blocks exactly the error-graded findings.
-      :properties           (cond-> {:tags      (cond-> ["security" "metabase"]
-                                                  cwe (conj (str "external/cwe/" (u/lower-case-en cwe))))
-                                     :precision (clojure.core/name (or precision :medium))}
-                              cwe (assoc :cwe cwe))}
-      (rule-source-uri r) (assoc :helpUri (rule-source-uri r)))))
+(defn- graded-id
+  "The SARIF rule id of a rule at one grade: `metabase-security-lint/command-injection/error`."
+  [rule-id severity]
+  (str (symbol rule-id) "/" (clojure.core/name severity)))
+
+(defn- grade
+  "The severity a finding is described at: its own, or a warning when it carries none."
+  [severity]
+  (if (contains? level severity) severity :warning))
+
+(defn- rule->sarif
+  "One rule at one grade. GitHub reads an alert's severity from its rule's `security-severity` and buckets every
+  alert of the rule together; but a rule here grades each finding by taint and by the least privilege that reaches
+  it, so a `{:tainted :error :otherwise :warning}` rule's warnings would be filed as its errors. So a rule is
+  described once per grade it can produce, and each result points at the variant of its own grade: the name and
+  help are the rule's, the id, level and security severity the grade's."
+  [{:keys [id name description precision cwe remediation] :as r} severity]
+  (cond->
+   {:id                   (graded-id id severity)
+    :name                 name
+    :shortDescription     {:text name}
+    :fullDescription      {:text description}
+    ;; GitHub renders `help.markdown` on the alert page, and these texts are written with backticks around the
+    ;; code they name; the plain text is the same words for a consumer that reads only `text`
+    :help                 {:text     (str description (when remediation (str "\n\nRemediation: " remediation)))
+                           :markdown (str description (when remediation (str "\n\n**Remediation:** " remediation)))}
+    :defaultConfiguration {:level (level severity)}
+    :properties           (cond-> {:tags              (cond-> ["security" "metabase"]
+                                                        cwe (conj (str "external/cwe/" (u/lower-case-en cwe))))
+                                   :precision         (clojure.core/name (or precision :medium))
+                                   :security-severity (security-severity severity)}
+                            cwe (assoc :cwe cwe))}
+    (rule-source-uri r) (assoc :helpUri (rule-source-uri r))))
 
 (def ^:private privilege-phrase
   "The least an actor needs, as a reader would say it."
@@ -171,7 +190,8 @@
 
   This hashes four things and no line number:
 
-    - the rule id, so the same form flagged by two rules is two alerts;
+    - the rule id at the finding's grade, so the same form flagged by two rules is two alerts, and so is one
+      that became more or less serious: what was reviewed at one severity is not what is there at another;
     - the file, repository-relative, so the same form in two files is two alerts -- and a moved file re-opens;
     - the whole flagged form with its formatting removed (`ast/normalized-text`: one space between tokens, no
       comments, no commas, no `#_` forms), so the alert survives edits anywhere else in the file and a reformat,
@@ -182,21 +202,23 @@
       rest, closing and re-opening them; identical forms are rare enough that this has not mattered.)
 
   The snippet stands in for the form for a finding that has no form node."
-  [rule-id uri form snippet occurrence]
-  (sha256 (str/join "|" [(str (symbol rule-id)) uri (or form snippet "") occurrence])))
+  [graded-rule-id uri form snippet occurrence]
+  (sha256 (str/join "|" [graded-rule-id uri (or form snippet "") occurrence])))
 
 (defn- finding->result [rule-index root occurrence {:keys [rule-id file row col end-row end-col severity message
                                                            form snippet endpoint-reachable? reachable-from origins callers
                                                            min-privilege privilege-entry]
                                                     :as finding}]
   (let [uri      (relativize root file)
+        severity (grade severity)
+        rule-id* (graded-id rule-id severity)
         cflows   (code-flows root finding)
         sentence (str message (when-not (re-find #"[.!?]$" message) "."))
         text     (str/join " " (remove nil? [sentence (reachability-sentence reachable-from callers)
                                              (privilege-sentence min-privilege privilege-entry) (origins-sentence origins)]))]
-    (cond-> {:ruleId              (str (symbol rule-id))
-             :ruleIndex           (get rule-index rule-id)
-             :level               (level severity "warning")
+    (cond-> {:ruleId              rule-id*
+             :ruleIndex           (get rule-index [rule-id severity])
+             :level               (level severity)
              ;; GitHub renders the markdown when it is there: the same sentences, and the flagged code in a block
              ;; so a reader of the alert list sees the form without opening the file
              :message             {:text     text
@@ -217,7 +239,7 @@
                                    :minimumPrivilege  (some-> min-privilege name)
                                    ;; the boundaries the flagged values crossed: request, app-db/Card, warehouse
                                    :origins           (vec (sort (map #(str (symbol %)) origins)))}
-             :partialFingerprints {:primaryLocationLineHash (fingerprint rule-id uri form snippet occurrence)}}
+             :partialFingerprints {:primaryLocationLineHash (fingerprint rule-id* uri form snippet occurrence)}}
       (seq cflows) (assoc :codeFlows cflows))))
 
 (defn- with-occurrences
@@ -234,17 +256,18 @@
   "Build a SARIF report from `findings`.
 
   `:rules` is the full rule set, not just the ones that fired -- a clean run must still describe every rule so that
-  GitHub closes alerts which no longer reproduce. `:started` and `:ended` are the scan's `Instant`s, for the
-  invocation record GitHub shows with the analysis."
+  GitHub closes alerts which no longer reproduce. Each is described once per grade it can produce (see
+  `rule->sarif`). `:started` and `:ended` are the scan's `Instant`s, for the invocation record GitHub shows with
+  the analysis."
   [findings {:keys [rules root started ended]}]
-  (let [rules      (sort-by :id rules)
-        rule-index (into {} (map-indexed (fn [i r] [(:id r) i]) rules))]
+  (let [graded     (for [r (sort-by :id rules), s (rule/possible-severities r)] [r s])
+        rule-index (into {} (map-indexed (fn [i [r s]] [[(:id r) s] i]) graded))]
     {(keyword "$schema") schema-uri
      :version            "2.1.0"
      :runs               [{:tool    {:driver {:name            "metabase-security-lint"
                                               :semanticVersion version
                                               :informationUri  (str source-base "dev/src/dev/security_lint/README.md")
-                                              :rules           (mapv rule->sarif rules)}}
+                                              :rules           (mapv #(apply rule->sarif %) graded)}}
                            :invocations [(cond-> {:executionSuccessful true}
                                            started (assoc :startTimeUtc (str started))
                                            ended   (assoc :endTimeUtc (str ended)))]
