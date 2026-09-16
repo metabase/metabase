@@ -1,3 +1,4 @@
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 
 import type { VisualizationProps } from "../../types";
@@ -8,7 +9,7 @@ function LineChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
 
-export const LineChart = Object.assign(
+export const LineChart = assignLazily(
   LineChartComponent,
   LINE_CHART_DEFINITION,
 );

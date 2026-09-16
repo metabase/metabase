@@ -288,7 +288,7 @@
 (deftest pivot-make-formatters-inlines-currency-test
   (testing "Pivot value formatters render the currency symbol inline even when currency-in-header is the default (UXW-4499).
             In-app pivot tables always show the currency symbol in the cell because measures have no column header to carry it."
-    (let [col {:name "sum" :base_type :type/Float :effective_type :type/Float :field_ref [:aggregation 0]}]
+    (let [col {:name "sum" :display_name "Sum" :base_type :type/Float :effective_type :type/Float :field_ref [:aggregation 0]}]
       (doseq [[label viz] [["currency-in-header unset (default)"
                             {::mb.viz/column-settings
                              {{::mb.viz/column-name "sum"} {::mb.viz/number-style "currency"

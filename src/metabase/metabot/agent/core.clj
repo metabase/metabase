@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.context :as metabot.context]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
@@ -95,7 +96,7 @@
 
 (mr/def ::content-block
   "A content block in a multi-part message (Claude format, backward-compat)."
-  [:map
+  [:map {:closed true}
    [:type :string]]) ;; "text", "tool_use", "tool_result", etc.
 
 (mr/def ::content
@@ -104,36 +105,36 @@
 
 (mr/def ::tool-call
   "A tool call in an assistant message."
-  [:map
+  [:map {:closed true}
    [:id :string]
    [:name :string]
-   [:arguments [:or :string :map]]])
+   [:arguments :string]])
 
 (mr/def ::user-message
   "A user message: plain text or a sequence of tool_result content blocks."
-  [:map
+  [:map {:closed true}
    [:role [:= :user]]
    [:content ::content]])
 
 (mr/def ::assistant-message
   "An assistant message with optional text and/or tool calls."
-  [:map
+  [:map {:closed true}
    [:role [:= :assistant]]
    [:content {:optional true} [:maybe ::content]]
    [:tool_calls {:optional true} [:maybe [:sequential ::tool-call]]]])
 
 (mr/def ::system-message
   "A system message."
-  [:map
+  [:map {:closed true}
    [:role [:= :system]]
    [:content :string]])
 
 (mr/def ::tool-message
   "A tool result message, referencing a previous tool call by ID."
-  [:map
+  [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
-   [:content [:or :string :map]]])
+   [:content :string]])
 
 (mr/def ::message
   "A single message in the conversation history.
@@ -150,7 +151,7 @@
 
 (mr/def ::context
   "Context information for the agent."
-  [:map-of :keyword :any])
+  ::metabot.context/context)
 
 (mr/def ::profile-id
   "Profile identifier keyword."
@@ -158,7 +159,7 @@
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
-  [:map
+  [:map {:closed true}
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
    [:source              {:optional true} [:maybe :string]]
    [:tag                 {:optional true} [:maybe :string]]])
@@ -441,6 +442,18 @@
    state
    (:user_is_viewing context)))
 
+(defn- client-content-ids
+  "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the
+  agent's own tools wrote. A refusal to present one of these is a real access attempt and gets
+  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh
+  map keeps this to the context of the turn being served, which is where the distinction comes
+  from - the conversation's `:state` carries no provenance."
+  [context]
+  (let [seeded (-> {} (seed-state context) (seed-charts context))]
+    (into (set (keys (:queries seeded)))
+          (map str)
+          (keys (:charts seeded)))))
+
 ;;; Main loop
 
 (def ^:private profile-id->required-permission
@@ -479,7 +492,8 @@
                          (seed-chart-configs context)
                          (seed-charts context))
         memory       (assoc (memory/initialize messages seeded context)
-                            :conversation-id conversation-id)
+                            :conversation-id conversation-id
+                            :client-ids (client-content-ids context))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id
@@ -673,7 +687,7 @@
     (into [] (run-agent-loop opts))
     (transduce xf rf (run-agent-loop opts))
     (into [] (run-agent-loop (assoc opts :debug? true)))  ;; with debug log"
-  [opts :- [:map
+  [opts :- [:map {:closed true}
             [:messages ::messages]
             [:profile-id ::profile-id]
             [:metabot-id {:optional true} [:maybe :string]]

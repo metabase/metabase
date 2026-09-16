@@ -82,6 +82,22 @@
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :assistant :content "real"}] result))))))
 
+(deftest thread->history-blank-user-messages-test
+  (testing "User messages with no text beyond the bot mention name their attachments, or are excluded"
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :text "" :user "U123"
+                                :files [{:name "data.csv"} {:name "more.tsv"}]}
+                               {:ts "1709567890.000002" :text "<@UBOT123>" :user "U123"}
+                               {:ts "1709567890.000003" :text "<@UBOT123> " :user "U123"
+                                :files [{:name "notes.csv"}]}
+                               {:ts "1709567890.000004" :text "" :user "U123" :files [{:id "F1"}]}
+                               {:ts "1709567890.000005" :text "chart it" :user "U123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= [{:role :user :content "Attached files: data.csv, more.tsv"}
+                {:role :user :content "Attached files: notes.csv"}
+                {:role :user :content "chart it"}]
+               result))))))
+
 (deftest thread->history-excludes-soft-deleted-bot-messages-test
   (testing "thread->history excludes bot messages that have been soft-deleted"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history  (constantly {})
@@ -480,7 +496,7 @@
                 (send!)
                 (wait! 2)
                 (testing "the next turn in the same thread picks it up instead of {}"
-                  (is (= {:queries {:q1 {:database 1}}}
+                  (is (= {:queries {"q1" {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
 
 (deftest ^:synchronized slackbot-streaming-records-streamed-error-test

@@ -21,7 +21,7 @@
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
@@ -29,6 +29,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.drop-fields-in-summaries :as qp.drop-fields-in-summaries]
    [metabase.query-processor.middleware.nest-for-pivot :as qp.nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -60,13 +61,16 @@
 (mr/def ::pivot-cols     [:sequential ::pivot.common/index])
 (mr/def ::pivot-measures [:sequential ::pivot.common/index])
 
+(mr/def ::column-sort-order [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]])
+
 (mr/def ::pivot-opts [:maybe
-                      [:map
+                      [:map {:closed true}
                        [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
                        [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
                        [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
                        [:show-row-totals    {:optional true} [:maybe :boolean]]
-                       [:show-column-totals {:optional true} [:maybe :boolean]]]])
+                       [:show-column-totals {:optional true} [:maybe :boolean]]
+                       [:column-sort-order  {:optional true} [:maybe ::column-sort-order]]]])
 
 (mr/def ::pivot.common/breakout-combinations
   [:and
@@ -180,7 +184,7 @@
   "Reduce the results of a single (sub)`query` using `rf` and initial value `init`."
   [query :- ::lib.schema/query
    rf    :- ::qp.schema/rf
-   init  :- :any
+   init  :- ::qp.schema/accumulator
    info  :- [:maybe ::lib.schema.info/info]]
   (if (qp.pipeline/canceled?)
     (ensure-reduced init)
@@ -199,7 +203,7 @@
 
 (mu/defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
-  [init
+  [init    :- ::qp.schema/accumulator
    queries :- [:maybe [:sequential ::lib.schema/query]]
    rf      :- ::qp.schema/rf
    info    :- [:maybe ::lib.schema.info/info]]
@@ -313,9 +317,8 @@
 (mu/defn- column-name-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports column name-based settings only."
-  [query        :- [:map
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings :pivot.show_row_totals true)
         show-column-totals (get viz-settings :pivot.show_column_totals true)
@@ -342,12 +345,11 @@
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
-(mu/defn- column-sort-order :- ::pivot-opts
+(mu/defn- column-sort-order :- [:maybe ::column-sort-order]
   "Looks at the `pivot_table.column_sort_order` key in the card's visualization settings and generates a map from the
   column's index to the setting (either ascending or descending)."
-  [query        :- [:map
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
   (let [metadata-provider  (or (:lib/metadata query)
                                (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
@@ -366,9 +368,8 @@
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
-  [query        :- [:map
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         show-row-totals    (get viz-settings "pivot.show_row_totals" true)
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
@@ -413,9 +414,8 @@
 
   Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
   questions we need to support both old- and new-style settings until they are fully migrated."
-  [query        :- [:map
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
+  [query        :- ::qp.schema/any-query
+   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
   (when viz-settings
     (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
       (merge
@@ -446,7 +446,7 @@
   against the last stage's breakouts in `query`. Returns nil when there is no `:pivot_table.column_split` or when
   neither rows nor columns resolve."
   [query        :- :metabase.lib.schema/query
-   viz-settings :- [:maybe :map]]
+   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
   (when-let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
     (let [row-uuids (resolve-refs-to-uuids query rows)
           col-uuids (resolve-refs-to-uuids query columns)]
@@ -463,7 +463,7 @@
   Returns `query` unchanged when the last stage already has `:pivot`, when `viz-settings` is empty, or when no refs
   resolve."
   [query        :- ::lib.schema/query
-   viz-settings :- [:maybe :map]]
+   viz-settings :- [:maybe :metabase.lib.schema.common/visualization-settings]]
   (let [clause (when (and (not (lib.pivot/has-pivot? query))
                           (seq viz-settings))
                  (build-pivot-clause query viz-settings))]
@@ -539,7 +539,7 @@
                              ::qp.add-remaps/new-field-dimension-id]))))
 
 (mu/defn- remapped-indexes :- ::pivot.common/remapped-indexes
-  [breakouts]
+  [breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]]
   (let [remap-pairs (first
                      (reduce (fn [[m i] breakout]
                                [(reduce-kv (fn [m remap-key id]
@@ -570,7 +570,12 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [remapped-query           (qp.add-remaps/add-remapped-columns query)
+  ;; `drop-fields-in-summaries` mirrors the QP preprocessing step that strips `:fields` from stages that
+  ;; also have `:aggregation`/`:breakout`. Without it, `lib/returned-columns` on such a stage would
+  ;; concat the `:fields` cols with the summary cols and overcount `:qp.pivot/num-remapped-cols` (#81203).
+  (let [remapped-query           (-> query
+                                     qp.drop-fields-in-summaries/drop-fields-in-summaries
+                                     qp.add-remaps/add-remapped-columns)
         remap                    (remapped-indexes (lib/breakouts remapped-query))
         remapped-cols            (lib/returned-columns remapped-query)
         num-remapped-cols        (count remapped-cols)
@@ -805,7 +810,7 @@
   [[*on-parity-mismatch*]]. Parity checking is on by default in clojure.test tests.
 
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (run-pivot-query query nil))
 
   ([query :- ::qp.schema/any-query

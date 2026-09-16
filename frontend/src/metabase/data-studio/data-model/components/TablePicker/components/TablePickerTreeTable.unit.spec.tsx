@@ -268,6 +268,66 @@ describe("handleCheckboxToggle", () => {
         expect(result.lastSelectedRowIndex).toBe(0);
       });
 
+      it("should select all missing children when parents are partially selected", () => {
+        const table1 = createMockTableNode(1, "public", 101);
+        const table2 = createMockTableNode(1, "public", 102);
+        const table3 = createMockTableNode(1, "private", 103);
+        const schema1 = createMockSchemaNode(1, "public", [table1, table2]);
+        const schema2 = createMockSchemaNode(1, "private", [table3]);
+        const database = createMockDatabaseNode(1, [schema1, schema2]);
+        const schemaRow = createCheckboxRow({
+          type: "schema",
+          nodeKey: schema1.key,
+          databaseId: 1,
+        });
+        const databaseRow = createCheckboxRow({
+          type: "database",
+          nodeKey: database.key,
+          databaseId: 1,
+        });
+        const selection: NodeSelection = {
+          tables: new Set([101]),
+          schemas: new Set(),
+          databases: new Set(),
+        };
+        const nodeKeyToOriginal = new Map<string, TreeNode>([
+          [schema1.key, schema1],
+          [database.key, database],
+        ]);
+
+        const schemaResult = changeCheckboxSelection({
+          row: schemaRow,
+          index: 0,
+          isShiftPressed: false,
+          selection,
+          lastSelectedRowIndex: null,
+          rows: [schemaRow, databaseRow],
+          nodeKeyToOriginal,
+        });
+
+        expect(schemaResult.selection.tables).toEqual(new Set([101, 102]));
+        expect(schemaResult.selection.schemas).toEqual(new Set());
+        expect(schemaResult.selection.databases).toEqual(new Set());
+        expect(schemaResult.lastSelectedRowIndex).toBe(0);
+
+        const databaseResult = changeCheckboxSelection({
+          row: databaseRow,
+          index: 1,
+          isShiftPressed: false,
+          selection: schemaResult.selection,
+          lastSelectedRowIndex: schemaResult.lastSelectedRowIndex,
+          rows: [schemaRow, databaseRow],
+          nodeKeyToOriginal,
+        });
+
+        expect(databaseResult.selection.tables).toEqual(
+          new Set([101, 102, 103]),
+        );
+        expect(databaseResult.selection.schemas).toEqual(new Set());
+        expect(databaseResult.selection.databases).toEqual(new Set());
+        expect(databaseResult.lastSelectedRowIndex).toBe(1);
+      });
+
       it("should select empty database without children", () => {
         const database = createMockDatabaseNode(1, []);
         const row = createCheckboxRow({

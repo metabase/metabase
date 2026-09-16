@@ -9,14 +9,17 @@
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
    [metabase.query-processor.util :as qp.util]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.performance :as perf]
    [metabase.util.yaml :as yaml]
-   [metabase.xrays.automagic-dashboards.populate :as populate])
+   [metabase.xrays.automagic-dashboards.populate :as populate]
+   [metabase.xrays.automagic-dashboards.util :as magic.util])
   (:import
    (java.nio.file Files Path)))
 
@@ -37,7 +40,12 @@
 (def ^:private Score
   [:int {:min 0, :max max-score}])
 
-(def ^:private MBQL [:maybe [:sequential :any]])
+(mr/def ::template-clause
+  "A metric or filter clause in a dashboard template: a vector of strings, keywords, numbers, booleans, nils, and nested clauses, whose `[dimension X]` placeholders grounding later resolves."
+  [:sequential [:or :string :keyword number? :boolean :nil [:ref ::template-clause]]])
+
+(def ^:private MBQL
+  [:maybe ::template-clause])
 
 (def ^:private Identifier
   [:string
@@ -69,7 +77,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :metric))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:metric MBQL]
     [:score  Score]
     [:name {:optional true} LocalizedString]]])
@@ -80,7 +88,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :filter))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:filter MBQL]
     [:score  Score]]])
 
@@ -106,7 +114,7 @@
 
 (defn- table-type?
   [t]
-  (isa? t :entity/*))
+  (isa? types/entity-hierarchy t :entity/*))
 
 (def ^:private TableType
   [:and
@@ -142,7 +150,7 @@
     (comp (with-defaults {:score max-score})
           (shorthand-definition :field_type))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:field_type AppliesTo]
     [:score      Score]
     [:links_to        {:optional true} TableType]
@@ -170,7 +178,7 @@
                                           (if (string? x)
                                             x
                                             (u/qualified-name x)))}]
-   [:* :map]])
+   [:* ms/VisualizationSettings]])
 
 (def ^:private Width
   [:int {:min 1, :max populate/grid-width}])
@@ -184,7 +192,7 @@
                                    {x {}}
                                    x))}
    Identifier
-   [:map [:aggregation {:optional true} :string]]])
+   [:map {:closed true} [:aggregation {:optional true} :string]]])
 
 (def ^:private Card
   [:map-of
@@ -194,7 +202,8 @@
                     :height     populate/default-card-height})}
    Identifier
    [:map
-    {:decode/dashboard-template (fn [x]
+    {:closed true
+     :decode/dashboard-template (fn [x]
                                   (if (sequential? x)
                                     (into {} x)
                                     x))}
@@ -223,7 +232,7 @@
                                    x
                                    (apply merge x)))}
    Identifier
-   [:map
+   [:map {:closed true}
     [:title LocalizedString]
     [:score :int]
     [:comparison_title {:optional true} LocalizedString]
@@ -305,7 +314,7 @@
 (def DashboardTemplate
   "Specification defining an automagic dashboard."
   [:and
-   [:map
+   [:map {:closed true}
     [:title                   LocalizedString]
     [:dashboard-template-name :string]
     [:specificity             :int]
@@ -317,7 +326,7 @@
     [:metrics           {:optional true} [:maybe [:sequential Metric]]]
     [:filters           {:optional true} [:maybe [:sequential Filter]]]
     [:groups            {:optional true} Groups]
-    [:indepth           {:optional true} [:maybe [:sequential :any]]]
+    [:indepth           {:optional true} [:maybe [:sequential :string]]]
     [:dashboard_filters {:optional true} [:maybe [:sequential {:decode/dashboard-template u/one-or-many} :string]]]]
    [:fn {:error/message "Valid metrics references"}           valid-metrics-references?]
    [:fn {:error/message "Valid filters references"}           valid-filters-references?]
@@ -334,7 +343,7 @@
 
 (defn- specificity
   [dashboard-template]
-  (transduce (map (comp count ancestors)) + (:applies_to dashboard-template)))
+  (transduce (map magic.util/ancestor-count) + (:applies_to dashboard-template)))
 
 (defn- ensure-default-card-sizes
   "Given a card definition from a template, fill in the card template with default width and height

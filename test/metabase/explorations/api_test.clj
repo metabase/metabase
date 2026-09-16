@@ -14,6 +14,7 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.queues :as explorations.queues]
+   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,6 +29,9 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
+(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (deftest gate-threads-derived-data-forbidden-status-test
   (testing "gate-threads-derived-data stamps forbidden when derived data is not visible"
@@ -2515,10 +2519,10 @@
                           :collection-id (:id coll)
                           :card-id       (:id metric)
                           :database-id   (mt/id)
-                          :dimension-id  "price"
+                          :dimension-id  (duid "price")
                           :metrics       [{:card_id (:id metric)
-                                           :dimension_mappings (venues-dimension-mappings)}]
-                          :dimensions    [{:dimension_id "price" :display_name "Price"}]})
+                                           :dimension_mappings (stored-venues-dimension-mappings)}]
+                          :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})
             filter-spec {:operator      "between"
                          :field_ref     ["field" (mt/id :venues :price) nil]
                          :values        [1 3]

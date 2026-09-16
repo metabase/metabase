@@ -10,7 +10,6 @@ effective_type: type/Integer
 semantic_type: type/FK
 dimensions: []
 position: 15
-custom_position: 0
 database_position: 15
 has_field_values: auto-list
 serdes/meta:

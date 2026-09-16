@@ -9,15 +9,15 @@
    [metabase.test.data.sql-jdbc.load-data :as sql-jdbc.load-data]))
 
 (deftest ^:parallel add-ids-xform-test
-  (is (= [{:name "A", :id 1} {:name "B", :id 2} {:name "C", :id 3} {:name "D", :id 4}]
+  (is (= [{"name" "A", "id" 1} {"name" "B", "id" 2} {"name" "C", "id" 3} {"name" "D", "id" 4}]
          (into []
                (sql-jdbc.load-data/add-ids-xform)
-               [{:name "A"} {:name "B"} {:name "C"} {:name "D"}]))))
+               [{"name" "A"} {"name" "B"} {"name" "C"} {"name" "D"}]))))
 
 (deftest ^:parallel reducible-chunked-rows-test
   (letfn [(reducible-chunks* [chunk-size]
             (#'sql-jdbc.load-data/reducible-chunked-rows
-             [{:a 1} {:b 2} {:c 3} {:d 4}]
+             [{"a" 1} {"b" 2} {"c" 3} {"d" 4}]
              chunk-size
              (sql-jdbc.load-data/add-ids-xform)
              (map (fn [chunk]
@@ -25,22 +25,22 @@
                             (assoc row ::chunk chunk))
                           chunk)))))]
     (testing "unchunked"
-      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:c 3, :id 3, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:d 4, :id 4, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}]]
+      (is (= [[{"a" 1, "id" 1, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"b" 2, "id" 2, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"c" 3, "id" 3, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"d" 4, "id" 4, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}]]
              (into [] (reducible-chunks* nil)))))
     (testing "chunk size = 5"
-      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:c 3, :id 3, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}
-               {:d 4, :id 4, ::chunk [{:a 1, :id 1} {:b 2, :id 2} {:c 3, :id 3} {:d 4, :id 4}]}]]
+      (is (= [[{"a" 1, "id" 1, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"b" 2, "id" 2, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"c" 3, "id" 3, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"d" 4, "id" 4, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2} {"c" 3, "id" 3} {"d" 4, "id" 4}]}]]
              (into [] (reducible-chunks* 5)))))
     (testing "chunk size = 2"
-      (is (= [[{:a 1, :id 1, ::chunk [{:a 1, :id 1} {:b 2, :id 2}]}
-               {:b 2, :id 2, ::chunk [{:a 1, :id 1} {:b 2, :id 2}]}]
-              [{:c 3, :id 3, ::chunk [{:c 3, :id 3} {:d 4, :id 4}]}
-               {:d 4, :id 4, ::chunk [{:c 3, :id 3} {:d 4, :id 4}]}]]
+      (is (= [[{"a" 1, "id" 1, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2}]}
+               {"b" 2, "id" 2, ::chunk [{"a" 1, "id" 1} {"b" 2, "id" 2}]}]
+              [{"c" 3, "id" 3, ::chunk [{"c" 3, "id" 3} {"d" 4, "id" 4}]}
+               {"d" 4, "id" 4, ::chunk [{"c" 3, "id" 3} {"d" 4, "id" 4}]}]]
              (into [] (reducible-chunks* 2)))))))
 
 (driver/register! ::h2-unchunked, :parent :h2)
@@ -69,18 +69,18 @@
                     (#'sql-jdbc.load-data/reducible-chunks driver dbdef tabledef)))]
       (testing ::h2-unchunked
         ;; only one chunk, we took the first 3 rows
-        (is (= [[{:name "African"}
-                 {:name "American"}
-                 {:name "Artisan"}]]
+        (is (= [[{"name" "African"}
+                 {"name" "American"}
+                 {"name" "Artisan"}]]
                (chunks ::h2-unchunked))))
       (testing ::h2-chunked
         ;; many chunks of size 5, we took the first 3 rows from the first 2 chunks.
-        (is (= [[{:name "African"}
-                 {:name "American"}
-                 {:name "Artisan"}]
-                [{:name "Bakery"}
-                 {:name "Bar"}
-                 {:name "Beer Garden"}]]
+        (is (= [[{"name" "African"}
+                 {"name" "American"}
+                 {"name" "Artisan"}]
+                [{"name" "Bakery"}
+                 {"name" "Bar"}
+                 {"name" "Beer Garden"}]]
                (chunks ::h2-chunked)))))))
 
 (driver/register! ::h2-large-chunk-size, :parent :h2)

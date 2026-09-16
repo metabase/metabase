@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { getIn } from "icepick";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { isNetworkError, isStreamInterruptedError } from "metabase/api/client";
@@ -10,7 +11,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -32,6 +32,7 @@ interface VisualizationErrorProps {
   duration: number;
   error: DatasetError;
   errorType?: DatasetErrorType;
+  errorAction?: ReactNode;
 }
 
 export function VisualizationError({
@@ -41,6 +42,7 @@ export function VisualizationError({
   duration,
   error,
   errorType,
+  errorAction,
 }: VisualizationErrorProps) {
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -167,7 +169,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            <FixSqlQueryButton />
+            {errorAction}
           </Flex>
         </Flex>
       </Box>

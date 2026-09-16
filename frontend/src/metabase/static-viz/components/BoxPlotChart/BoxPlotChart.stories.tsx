@@ -1,4 +1,5 @@
 import type { StoryFn } from "@storybook/react";
+import { updateIn } from "icepick";
 
 import {
   measureTextHeight,
@@ -222,6 +223,24 @@ export const MultiSeriesTwoMetricsWithAxisSplitFormatting = {
   args: {
     // Unjustified type cast. FIXME
     rawSeries: data.multiSeriesTwoMetricsWithAxisSplitFormatting as any,
+    renderingContext,
+  },
+};
+
+export const CustomYAxisRangeOffScreen = {
+  render: Template,
+  args: {
+    // Unjustified type cast. FIXME
+    rawSeries: updateIn(
+      data.distributionShapes,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 200,
+        "graph.y_axis.max": 300,
+      }),
+    ) as any,
     renderingContext,
   },
 };

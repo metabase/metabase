@@ -104,12 +104,12 @@
                                 :where [:= :email "nonexistent@example.com"] :limit 1}}))))
   (testing "falls back to :default when dialect not present"
     (is (true? (matching/execute-matching-query!
-                {:some_other_db {:select [1] :from [:core_user]
-                                 :where [:= :email "nonexistent@example.com"] :limit 1}
-                 :default       {:select [1] :from [:core_user] :limit 1}}))))
+                {(first (disj #{:h2 :mysql :postgres} (mdb/db-type))) {:select [1] :from [:core_user]
+                                                                       :where [:= :email "nonexistent@example.com"] :limit 1}
+                 :default                                             {:select [1] :from [:core_user] :limit 1}}))))
   (testing "no dialect match and no default → :error"
     (is (= :error (matching/execute-matching-query!
-                   {:some_other_db {:select [1] :from [:core_user] :limit 1}}))))
+                   {(first (disj #{:h2 :mysql :postgres} (mdb/db-type))) {:select [1] :from [:core_user] :limit 1}}))))
   (testing "query against missing table returns :error"
     (is (= :error (matching/execute-matching-query!
                    {:default {:select [1] :from [:nonexistent_table_xyz] :limit 1}}))))

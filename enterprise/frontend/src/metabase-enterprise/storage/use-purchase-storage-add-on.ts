@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { Api, useListDatabasesQuery } from "metabase/api";
 import { listTag, tag } from "metabase/api/tags";
-import { useTokenRefreshUntil } from "metabase/api/utils";
 import {
   useAttachedDwh,
   useHasTokenFeature,
@@ -11,7 +10,7 @@ import {
 } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
+import { useSetting, useTokenRefreshUntil } from "metabase/settings";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";

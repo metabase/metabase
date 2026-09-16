@@ -29,7 +29,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.typed-schemas.db :as typed-schemas.db]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -120,6 +121,19 @@
   [collection]
   (contains? collection/library-collection-types (:type collection)))
 
+(def ^:private LibraryCollectionRef
+  "References a collection by numeric or entity id."
+  [:or
+   [:map {:closed true} [:id :int]]
+   [:map {:closed true} [:entity-id ms/NonBlankString]]])
+
+(def LibraryScopeOptions
+  "Options accepted by [[library-scope]]."
+  [:map {:closed true}
+   [:library-collection-refs {:optional true} [:maybe [:sequential LibraryCollectionRef]]]
+   [:include-data-library? {:optional true} [:maybe :boolean]]
+   [:include-metric-library? {:optional true} [:maybe :boolean]]])
+
 (defn- library-refs
   "Returns collection references for explicit library refs plus any included
   well-known library roots."
@@ -133,7 +147,7 @@
 (mu/defn library-scope :- [:maybe LibraryScope]
   "Resolves library collection refs and include flags into a [[LibraryScope]],
   or nil when no library scope is requested."
-  [scope-options]
+  [scope-options :- LibraryScopeOptions]
   (when-let [refs (seq (library-refs scope-options))]
     (let [roots       (resolve-collection-refs! refs library-collection?)
           collections (concat roots (collection/descendants-flat-for roots))

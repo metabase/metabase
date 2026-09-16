@@ -15,7 +15,6 @@ dimensions:
   serdes/meta:
   - {id: Q28WWBnVpviA9FlQnjpMo, label: embedding_client, model: Dimension}
 position: 6
-custom_position: 0
 database_position: 6
 has_field_values: auto-list
 serdes/meta:

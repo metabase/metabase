@@ -191,9 +191,9 @@
 (deftest bearer-bridge-precedence-test
   (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
     (let [called? (atom false)]
-      (with-redefs [oauth-server/resolve-access-token (fn [_] (reset! called? true) nil)
-                    ;; pretend an API key authenticated the request
-                    mw.session/current-user-info-for-api-key (fn [_] {:metabase-user-id 99 :is-superuser? false})]
+      (mt/with-dynamic-fn-redefs [oauth-server/resolve-access-token (fn [_] (reset! called? true) nil)
+                                  ;; pretend an API key authenticated the request
+                                  mw.session/current-user-info-for-api-key (fn [_] {:metabase-user-id 99 :is-superuser? false})]
         (let [req (merge-current-user-info {:headers {"authorization" "Bearer anything"
                                                       "x-api-key"     "mb_whatever"}})]
           (is (= 99 (:metabase-user-id req)))

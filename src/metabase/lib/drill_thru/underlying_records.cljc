@@ -41,6 +41,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -140,7 +141,10 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    column-ref   :- ::lib.schema.ref/ref
-   value        :- :any]
+   value        :- [:maybe [:or
+                            ::lib.schema.literal/param-value
+                            [:sequential ::lib.schema.literal/param-value]
+                            #?@(:cljs [[:fn {:error/message "JS array"} array?]])]]]
   (let [filter-column  (lib.drill-thru.common/breakout->filterable-column query stage-number column-ref column)
         values         (non-empty-seq value)
         filter-clauses (or

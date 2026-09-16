@@ -1,6 +1,6 @@
 (ns metabase.bookmarks.db
-  "Application database queries for the bookmarks module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the bookmarks module, plus a thin (model, id, user-id) dispatch tier over them,
+  so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -106,6 +107,53 @@
    user-id        :- ::lib.schema.id/user]
   (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
+;;; Generic (model, id, user-id) tier. The REST API and the MCP `bookmark_content` tool both take the
+;;; model as a runtime string, so they dispatch here rather than naming a per-model fn at the call site.
+
+(defn- unknown-bookmark-model!
+  "Throws a consistent error for a `model` string none of the generic (model, id, user-id) fns recognize."
+  [model]
+  (throw (ex-info (str "Unknown bookmarkable model: " (pr-str model)) {:model model})))
+
+(defn bookmark-exists?
+  "Whether the User with `user-id` has a bookmark on (`model`, `id`). `model` is a bookmarkable model string.
+  Throws for an unrecognized `model`."
+  [model id user-id]
+  (case model
+    "card"        (card-bookmark-exists? id user-id)
+    "dashboard"   (dashboard-bookmark-exists? id user-id)
+    "collection"  (collection-bookmark-exists? id user-id)
+    "document"    (document-bookmark-exists? id user-id)
+    "exploration" (exploration-bookmark-exists? id user-id)
+    (unknown-bookmark-model! model)))
+
+(def ^:private model->bookmark-model+item-key
+  {"card"        [:model/CardBookmark        :card_id]
+   "dashboard"   [:model/DashboardBookmark   :dashboard_id]
+   "collection"  [:model/CollectionBookmark  :collection_id]
+   "document"    [:model/DocumentBookmark    :document_id]
+   "exploration" [:model/ExplorationBookmark :exploration_id]})
+
+(defn insert-bookmark!
+  "Give `user-id` a bookmark on (`model`, `id`) and return it - the existing one when there already is one.
+  Does not read-check the item; callers do. Throws for an unrecognized `model`."
+  [model id user-id]
+  (let [[bookmark-model item-key] (or (model->bookmark-model+item-key model) (unknown-bookmark-model! model))]
+    ;; select-or-insert! rather than insert!: concurrent callers both get the state they asked for instead of
+    ;; one losing to the (user_id, item) unique constraint.
+    (mdb/select-or-insert! bookmark-model {item-key id :user_id user-id} (constantly {}))))
+
+(defn delete-bookmark!
+  "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none. Throws for an unrecognized `model`."
+  [model id user-id]
+  (case model
+    "card"        (delete-card-bookmark! id user-id)
+    "dashboard"   (delete-dashboard-bookmark! id user-id)
+    "collection"  (delete-collection-bookmark! id user-id)
+    "document"    (delete-document-bookmark! id user-id)
+    "exploration" (delete-exploration-bookmark! id user-id)
+    (unknown-bookmark-model! model)))
+
 (mu/defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
@@ -159,19 +207,36 @@
                                                  :created_at]
                                         :from   [:document_bookmark]
                                         :where  [:= :user_id user-id]}]]
-    {:union-all (conj base-queries
-                      ^:allow-subquery {:select [[as-null :card_id]
-                                                 [as-null :dashboard_id]
-                                                 [as-null :collection_id]
-                                                 [as-null :document_id]
-                                                 :exploration_id
-                                                 [:exploration_id :item_id]
-                                                 [(h2x/literal "exploration") :type]
-                                                 :created_at]
-                                        :from   [:exploration_bookmark]
-                                        :where  [:= :user_id user-id]})}))
+    ;; While explorations are disabled, `exploration_bookmark` is left out of the union so residue rows never reach
+    ;; the listing. The `exploration_id` column stays so the joins in [[bookmark-rows-for-user]] resolve.
+    {:union-all base-queries}))
 
-(mu/defn bookmark-rows-for-user
+(mr/def ::bookmark-row
+  "A bookmark row left joined against the Card, Dashboard, Collection, Document, and Exploration tables."
+  [:map {:closed true}
+   [:created_at                (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:type                      [:enum "card" "collection" "dashboard" "document" "exploration"]]
+   [:item_id                   ms/PositiveInt]
+   [:report_card.name          [:maybe :string]]
+   [:report_card.card_type     [:maybe :string]]
+   [:report_card.display       [:maybe :string]]
+   [:report_card.description   [:maybe :string]]
+   [:report_card.archived      [:maybe :boolean]]
+   [:report_dashboard.name        [:maybe :string]]
+   [:report_dashboard.description [:maybe :string]]
+   [:report_dashboard.archived    [:maybe :boolean]]
+   [:collection.name              [:maybe :string]]
+   [:collection.authority_level   [:maybe :string]]
+   [:collection.is_remote_synced  [:maybe :boolean]]
+   [:collection.description       [:maybe :string]]
+   [:collection.archived          [:maybe :boolean]]
+   [:document.name     [:maybe :string]]
+   [:document.archived [:maybe :boolean]]
+   [:exploration.name        [:maybe :string]]
+   [:exploration.description [:maybe :string]]
+   [:exploration.archived    [:maybe :boolean]]])
+
+(mu/defn bookmark-rows-for-user :- [:sequential ::bookmark-row]
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
   tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id` and
   `:is-superuser?`) can still read (re-checked at read time rather than trusted from when the bookmark was created,

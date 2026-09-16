@@ -1,6 +1,5 @@
-import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { query, stageIndex } from "../test/shared";
@@ -12,11 +11,11 @@ describe("diagnostics", () => {
     function setup({
       expression,
       expressionMode = "expression",
-      metadata,
+      database,
     }: {
       expression: string;
       expressionMode?: Lib.ExpressionMode;
-      metadata?: Metadata;
+      database?: Pick<Database, "features">;
     }) {
       return diagnose({
         source: expression,
@@ -24,16 +23,16 @@ describe("diagnostics", () => {
         query,
         stageIndex,
         availableColumns: Lib.expressionableColumns(query, stageIndex),
-        metadata,
+        database,
       });
     }
 
     function err(
       expression: string,
       expressionMode: Lib.ExpressionMode = "expression",
-      metadata?: Metadata,
+      database?: Pick<Database, "features">,
     ) {
-      return setup({ expression, expressionMode, metadata })?.message;
+      return setup({ expression, expressionMode, database })?.message;
     }
 
     it("should catch mismatched parentheses after function", () => {
@@ -272,34 +271,20 @@ describe("diagnostics", () => {
     });
 
     it("should reject unsupported function (metabase#39773)", () => {
-      const metadata = createMockMetadata({
-        databases: [
-          createSampleDatabase({
-            id: 1,
-            features: ["left-join"],
-          }),
-        ],
-      });
+      const database = createSampleDatabase({ features: ["left-join"] });
 
-      expect(err(`percentile(1, 2)`, "expression", metadata)).toBe(
+      expect(err(`percentile(1, 2)`, "expression", database)).toBe(
         "Unsupported function Percentile",
       );
     });
 
     it("should correctly pass along the position of the error", () => {
-      const metadata = createMockMetadata({
-        databases: [
-          createSampleDatabase({
-            id: 1,
-            features: ["left-join"],
-          }),
-        ],
-      });
+      const database = createSampleDatabase({ features: ["left-join"] });
 
       const error = setup({
         expression: `10 + percentile(1, 2)`,
         expressionMode: "expression",
-        metadata,
+        database,
       });
 
       expect(error?.pos).toBe(5);

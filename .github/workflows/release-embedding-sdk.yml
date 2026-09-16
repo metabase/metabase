@@ -382,6 +382,9 @@ jobs:
       - name: Generate SDK package.json in the build directory
         run: bun run embedding-sdk:generate-package
 
+      - name: Smoke test the packed SDK CLI
+        run: node bin/embedding-sdk/test-sdk-package.mjs
+
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v7
         with:

@@ -29,6 +29,7 @@ export function DataModelMeasureDetailPage() {
   return (
     <MeasureDetailPage
       measure={measure}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <DataModelMeasureBreadcrumbs table={table} measure={measure} />

@@ -70,6 +70,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -99,15 +100,29 @@
 
 (mr/def ::constraint
   "Schema for a constraint on a field."
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
-   [:value    :any]
-   [:options  {:optional true} [:maybe map?]]])
+   [:value    [:or ms/FieldValue [:sequential ms/FieldValue] [:set ms/FieldValue]]]
+   [:options  {:optional true} [:maybe [:merge
+                                        ::lib.schema.common/options
+                                        [:map {:closed true}
+                                         [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]]])
 
 (mr/def ::constraints
   "Schema for a list of constraints."
   [:sequential ::constraint])
+
+(mr/def ::table-field-endpoint
+  [:map {:closed true}
+   [:table ::lib.schema.id/table]
+   [:field ::lib.schema.id/field]])
+
+(mr/def ::join-info
+  "Schema for one FK relationship join between a `:lhs` and `:rhs` Table/Field pair."
+  [:map {:closed true}
+   [:lhs ::table-field-endpoint]
+   [:rhs ::table-field-endpoint]])
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
@@ -368,7 +383,7 @@
   two Tables and we generate the appropriate join against the other Table."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
-   joins]
+   joins           :- [:maybe [:sequential ::join-info]]]
   (let [id->field (u/index-by :id (lib.metadata/bulk-metadata query :metadata/column
                                                               (into #{} (mapcat (juxt #(get-in % [:lhs :field])
                                                                                       #(get-in % [:rhs :field])))
@@ -578,7 +593,7 @@
 (mu/defn- cached-field-values
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   {:keys [limit], :as _options}]
+   {:keys [limit], :as _options} :- [:maybe ::options]]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
@@ -615,7 +630,7 @@
   results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   & options]
+   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
@@ -656,6 +671,61 @@
 
       :else
       (unremapped-chain-filter field-id constraints options))))
+
+(mu/defn- chain-filter-range-mbql-query :- ::lib.schema/query
+  "The query behind [[chain-filter-range]]: the same source table, joins and constraint filters
+  [[chain-filter-mbql-query]] builds, aggregated to a single row instead of broken out into values.
+
+  Two deliberate differences from the values query. There is no limit — that is the whole point, since an
+  aggregation reads the entire column and yields the column's real max rather than the last of a capped
+  page. And there is no remapping: a range describes the filtered column itself, and a display label
+  (`category_id` shown as `category.name`) has no min or max worth reporting."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [database-id      (field/field-id->database-id field-id)
+        mp               (lib-be/application-database-metadata-provider database-id)
+        source-table-id  (:table-id (lib.metadata/field mp field-id))
+        joins            (find-all-joins mp database-id source-table-id (set (map :field-id constraints)))
+        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
+        field            (lib.metadata/field mp field-id)]
+    (when (seq joins)
+      (log/tracef "Generating joins and filters for source %s with joins info\n%s"
+                  (name-for-logging :model/Table source-table-id) (pr-str joins)))
+    (-> (lib/query mp (lib.metadata/table mp source-table-id))
+        (assoc-in [:middleware :disable-remaps?] true)
+        (add-joins source-table-id joins)
+        (lib/aggregate (lib/min field))
+        (lib/aggregate (lib/max field))
+        (lib/aggregate (lib/distinct field))
+        (add-filters source-table-id joined-table-ids constraints)
+        schema.metadata-queries/add-required-filters-if-needed
+        ;; Runs LAST for the same reason it does in the values query — see the note there.
+        tighten-join-projections)))
+
+(mu/defn chain-filter-range :- [:map
+                                [:min [:maybe :any]]
+                                [:max [:maybe :any]]
+                                [:distinct-count [:maybe :int]]]
+  "The span of Field `field-id` under the same `constraints` [[chain-filter]] applies, as
+  `{:min :max :distinct-count}`, by aggregating rather than listing.
+
+  For a column whose distinct values are a range to filter inside rather than a set to pick from — dates,
+  above all — this is the answer [[chain-filter]] cannot give: it caps at 1000 values, and since values come
+  back ascending, a capped fetch's last value is the 1000th-earliest rather than the column's max.
+
+  A column with no rows (or none the caller can see) answers with nils and a zero count, not an error."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [mbql-query (chain-filter-range-mbql-query field-id constraints)]
+    (try
+      (let [[lo hi n] (first (:rows (:data (qp/process-query mbql-query))))]
+        {:min lo :max hi :distinct-count (or n 0)})
+      (catch Throwable e
+        (throw (ex-info (tru "Error executing chain filter range query")
+                        {:field-id    field-id
+                         :constraints constraints
+                         :mbql-query  mbql-query}
+                        e))))))
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
@@ -743,7 +813,7 @@
   [field-id     :- ::lib.schema.id/field
    constraints  :- [:maybe ::constraints]
    query-string :- [:maybe ms/NonBlankString]
-   & options]
+   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))

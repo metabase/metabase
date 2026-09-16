@@ -177,6 +177,8 @@ categories:
 
   - name: "Data modeling"
     pages:
+      - name: "Overview"
+        url: "data-modeling/start"
       - name: "Data studio"
         url: "data-modeling/data-studio"
       - name: "Transforms"
@@ -217,6 +219,8 @@ categories:
             url: "data-modeling/semantic-layer/measures"
           - name: "Segments"
             url: "data-modeling/semantic-layer/segments"
+          - name: "Glossary"
+            url: "data-modeling/semantic-layer/glossary"
       - name: "Tools"
         pages:
           - name: "Schema viewer"

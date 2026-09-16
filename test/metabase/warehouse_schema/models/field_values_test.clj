@@ -328,7 +328,9 @@
                                                                        @release))
                              (catch Throwable _ ::threw)))]
       @started
-      (let [stalled-future @(:future-ref (get @registry ::stalled))]
+      ;; the registry entry exists before the fetch starts, but its future is stored just after
+      ;; submission, so `started` can fire before :future-ref is populated
+      (let [stalled-future (tu/poll-until 10000 @(:future-ref (get @registry ::stalled)))]
         ;; backdate the entry's timer so the next call through detached-fetch! sees it as stalled.
         ;; Backdating this one entry rather than shortening the max age keeps the sweep from
         ;; touching fetches other tests may have in flight.
@@ -840,7 +842,7 @@
                    :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
                                                 :parent_id parent-id}]
       (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
-        (with-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
                  (distinct-batch/run-distinct-batch table fields))))))))

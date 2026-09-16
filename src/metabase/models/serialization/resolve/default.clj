@@ -5,7 +5,7 @@
   against the application database."
   (:require
    [metabase.models.db :as models.db]
-   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.path :as serdes.path]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -24,7 +24,7 @@
     (let [model-name (name model)
           entity     (models.db/entity-by-own-pk model id)
           path       (when entity
-                       (mapv :id (serdes/generate-path model-name entity)))]
+                       (mapv :id (serdes.path/generate-path model-name entity)))]
       (cond
         (nil? entity)      (throw (ex-info "FK target not found" {:model model
                                                                   :id    id
@@ -55,7 +55,7 @@
   "Given a numeric field_id, return a portable field reference [db-name schema table-name field-name]."
   [resolver field-id]
   (when field-id
-    (let [fields                      (serdes/field-hierarchy field-id)
+    (let [fields                      (serdes.path/field-hierarchy field-id)
           [db-name schema field-name] (resolve/export-table-fk resolver (:table_id (first fields)))]
       (into [db-name schema field-name] (map :name fields)))))
 
@@ -68,7 +68,7 @@
   [eid model]
   (when eid
     (let [eid    (if (vector? eid) (last eid) eid)
-          entity (serdes/lookup-by-id model eid)]
+          entity (serdes.path/lookup-by-id model eid)]
       (if entity
         (get entity (first (t2/primary-keys model)))
         (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
