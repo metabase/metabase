@@ -21,7 +21,7 @@ import type { ApiKey } from "metabase-types/api";
 
 const getNodeId = (apiKey: ApiKey) => String(apiKey.id);
 
-type ApiKeyLivenessRow = ApiKey;
+type ApiKeyActivityRow = ApiKey;
 
 type Props = {
   title: string;
@@ -31,17 +31,17 @@ type Props = {
 const TABLE_HEIGHT = 500;
 
 /**
- * Per-key liveness table: name, group, and `last_used_at` for every API key, most recently used
+ * Per-key activity table: name, group, and `last_used_at` for every API key, most recently used
  * first — `GET /api/api-key` already returns them in that order, so an admin can spot which keys
  * are still active and which have gone quiet without any client-side sorting. `last_used_at` is a
  * throttled timestamp on the `api_key` table itself (not in `v_api_key_usage`, which only covers
  * request logs), so this queries the regular `/api/api-key` list endpoint rather than the audit
  * database.
  */
-export function ApiKeyLivenessTable({ title, h = TABLE_HEIGHT }: Props) {
+export function ApiKeyActivityTable({ title, h = TABLE_HEIGHT }: Props) {
   const { data: apiKeys, isLoading, error } = useListApiKeysQuery();
 
-  const columns = useMemo<TreeTableColumnDef<ApiKeyLivenessRow>[]>(
+  const columns = useMemo<TreeTableColumnDef<ApiKeyActivityRow>[]>(
     () => [
       {
         id: "name",
@@ -75,7 +75,7 @@ export function ApiKeyLivenessTable({ title, h = TABLE_HEIGHT }: Props) {
     [],
   );
 
-  const treeTableInstance = useTreeTableInstance<ApiKeyLivenessRow>({
+  const treeTableInstance = useTreeTableInstance<ApiKeyActivityRow>({
     data: apiKeys ?? [],
     columns,
     getNodeId,
@@ -89,7 +89,7 @@ export function ApiKeyLivenessTable({ title, h = TABLE_HEIGHT }: Props) {
       <Box
         h="calc(100% - 2rem)"
         style={{ overflow: "auto" }}
-        data-testid="api-key-liveness-table"
+        data-testid="api-key-activity-table"
         aria-busy={isLoading}
       >
         {error ? (

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { SimpleGrid, Stack } from "metabase/ui";
 
-import { ApiKeyLivenessTable } from "./ApiKeyLivenessTable";
+import { ApiKeyActivityTable } from "./ApiKeyActivityTable";
 import { ApiKeyUsageBreakoutChart } from "./ApiKeyUsageBreakoutChart";
 import { ApiKeyUsageCallsTimelineChart } from "./ApiKeyUsageCallsTimelineChart";
 import { useApiKeyUsageContext } from "./context";
@@ -63,7 +63,7 @@ export function ApiKeyUsagePage() {
           breakoutColumn="user_display_name"
           h={500}
         />
-        <ApiKeyLivenessTable title={t`Key activity`} h={500} />
+        <ApiKeyActivityTable title={t`Key activity`} h={500} />
       </SimpleGrid>
     </Stack>
   );
