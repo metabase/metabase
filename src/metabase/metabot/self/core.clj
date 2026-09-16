@@ -256,8 +256,8 @@
                         the derived config and the suppression rules, and :reasoning parts
                         survive into the replayed input.
     :fast?            - When true, request the provider's fast mode where the model
-                        supports it (Anthropic Opus fast mode); adapters without one
-                        ignore it
+                        supports it (direct Anthropic or OpenAI). Direct OpenAI uses
+                        standard serving when false; other adapters ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map {:closed true}

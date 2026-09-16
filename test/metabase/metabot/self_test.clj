@@ -177,6 +177,37 @@
               (run! identity (self/call-llm model-ref nil [{:role :user :content "hi"}] {} {:tag "agent"}))
               (is (str/includes? (str (:url @captured)) url-part)))))))))
 
+(deftest call-llm-fast-mode-capability-test
+  (llm.tu/with-default-connections
+    (mt/with-temporary-setting-values [llm-fast-mode true]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [self/resolve-adapter (fn [_]
+                                                           (fn [opts]
+                                                             (reset! captured opts)
+                                                             []))]
+          (doseq [[model expected] [["openai/gpt-6-astra" true]
+                                    ["openai/gpt-5.4" false]
+                                    ["anthropic/claude-opus-5" true]
+                                    ["google/anthropic/claude-opus-5" false]
+                                    ["azure/openai/gpt-6-astra" false]
+                                    ["bedrock/openai.gpt-6-astra" false]]]
+            (run! identity (self/call-llm model nil [] {} {:tag "agent"}))
+            (is (= expected (:fast? @captured)) model)))))))
+
+(deftest call-llm-openai-fast-mode-test
+  (llm.tu/with-default-connections
+    (mt/with-temporary-setting-values [llm-openai-api-key "sk-test"]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (reset! captured (json/decode+kw (:body opts)))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (doseq [fast? [true false]]
+            (mt/with-temporary-setting-values [llm-fast-mode fast?]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stop"
+                                    (run! identity (self/call-llm "openai/gpt-6-astra" nil [] {} {:tag "agent"}))))
+              (is (= "gpt-6-astra" (:model @captured)))
+              (is (= (if fast? "fast" "default") (:service_tier @captured))))))))))
+
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
     (let [captured (atom nil)]

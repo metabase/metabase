@@ -17,6 +17,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.deepseek :as deepseek]
@@ -507,7 +508,8 @@
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
-                                       :fast?       (metabot.settings/llm-fast-mode)}
+                                       :fast?       (and (metabot.settings/llm-fast-mode)
+                                                         (catalog/supports-fast-mode? provider-and-model))}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)

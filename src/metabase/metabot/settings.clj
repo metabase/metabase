@@ -277,7 +277,7 @@
   :doc        false)
 
 (defsetting llm-fast-mode
-  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  (deferred-tru "Request faster serving of the same model for Metabot, AI explorations, and SQL generation across this instance, at a higher price per token. Provider account restrictions apply; requests may fall back to standard speed. On Anthropic, preview access is required and Priority Tier commitments are not supported. When off, direct OpenAI requests explicitly use standard processing.")
   :type       :boolean
   :default    false
   :visibility :settings-manager

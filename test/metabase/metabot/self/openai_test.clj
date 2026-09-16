@@ -1,11 +1,11 @@
 (ns metabase.metabot.self.openai-test
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
@@ -24,6 +24,117 @@
   (metabot.tu/raw-fixture
    fixture-name
    #(openai/openai-raw (merge {:model "gpt-4.1-mini" :credentials byok-credentials} opts))))
+
+(deftest ^:parallel astra-request-test
+  (let [body (openai/openai-request-body {:model "gpt-6-astra" :input [] :temperature 0.3})]
+    (is (= "gpt-6-astra" (:model body)))
+    (is (= {:summary "auto"} (:reasoning body)))
+    (is (= ["reasoning.encrypted_content"] (:include body)))
+    (is (not (contains? body :temperature)))
+    (is (= 922000 (openai/context-window-tokens "gpt-6-astra")))))
+
+(deftest openai-fast-mode-request-test
+  (let [requests (atom [])
+        opts     {:model "gpt-6-astra" :input [] :credentials byok-credentials
+                  :tools [(metabot.tu/get-time-tool)]}]
+    (mt/with-dynamic-fn-redefs [self.core/sse-reducible (constantly [])
+                                http/request (fn [req]
+                                               (swap! requests conj (json/decode+kw (:body req)))
+                                               {:body ""})]
+      (doseq [fast? [true false nil]]
+        (openai/openai-raw (assoc opts :fast? fast?)))
+      (is (= ["fast" "default" "default"] (map :service_tier @requests)))
+      (is (apply = (map #(dissoc % :service_tier) @requests)))
+      (testing "the common builder does not add a tier for adapters reusing it"
+        (is (not (contains? (openai/openai-request-body (assoc opts :fast? true)) :service_tier))))
+      (testing "unverified models use standard serving"
+        (openai/openai-raw (assoc opts :model "gpt-5.4" :fast? true))
+        (is (= "default" (:service_tier (last @requests)))))
+      (testing "custom and regional endpoints receive no tier override"
+        (doseq [base-url ["https://gateway.example" "https://eu.api.openai.com"]]
+          (openai/openai-raw (-> opts (assoc :fast? true) (assoc-in [:credentials :base-url] base-url)))
+          (is (not (contains? (last @requests) :service_tier))))))))
+
+(defn- rejection-ex
+  [closed? status error]
+  (ex-info "Provider rejected request"
+           {:status status
+            :headers {"content-type" "application/json"}
+            :body   (proxy [java.io.ByteArrayInputStream] [(.getBytes (json/encode {:error error}) "UTF-8")]
+                      (close []
+                        (reset! closed? true)))}))
+
+(deftest openai-fast-mode-fallback-test
+  (doseq [[status error] [[400 {:param "service_tier" :message "Unsupported value"}]
+                          [403 {:message "Your account is not eligible for fast mode"}]]]
+    (testing (str "HTTP " status)
+      (with-redefs [openai/fast-mode-cooldowns (atom {})]
+        (let [requests (atom [])
+              closed?  (atom false)]
+          (mt/with-dynamic-fn-redefs [self.core/sse-reducible (constantly [])
+                                      http/request (fn [req]
+                                                     (let [body (json/decode+kw (:body req))]
+                                                       (swap! requests conj body)
+                                                       (if (= "fast" (:service_tier body))
+                                                         (throw (rejection-ex closed? status error))
+                                                         {:body ""})))]
+            (openai/openai-raw {:model "gpt-6-astra" :input [] :fast? true :credentials byok-credentials})
+            (is (true? @closed?))
+            (is (= ["fast" "default"] (map :service_tier @requests)))
+            (is (apply = (map #(dissoc % :service_tier) @requests)))))))))
+
+(deftest openai-fast-mode-unrelated-errors-test
+  (doseq [[status error] [[400 {:param "input" :message "Invalid input"}]
+                          [401 {:message "Invalid API key"}]
+                          [403 {:message "This project cannot access the model"}]
+                          [429 {:message "Rate limit exceeded"}]
+                          [500 {:message "Internal error"}]]]
+    (testing (str "HTTP " status)
+      (with-redefs [openai/fast-mode-cooldowns (atom {})]
+        (let [requests (atom 0)
+              closed?  (atom false)]
+          (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                                     (swap! requests inc)
+                                                     (throw (rejection-ex closed? status error)))]
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (openai/openai-raw {:model "gpt-6-astra" :input [] :fast? true
+                                             :credentials byok-credentials})))
+            (is (= 1 @requests))
+            (is (true? @closed?))
+            (is (empty? @@#'openai/fast-mode-cooldowns))))))))
+
+(deftest openai-fast-mode-cooldown-test
+  (let [cooldowns (atom {})
+        requests  (atom [])
+        opts      {:model "gpt-6-astra" :input [] :fast? true :credentials byok-credentials}]
+    (with-redefs [openai/fast-mode-cooldowns cooldowns]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible (constantly [])
+                                  http/request (fn [req]
+                                                 (swap! requests conj (json/decode+kw (:body req)))
+                                                 (if (= 1 (count @requests))
+                                                   (throw (rejection-ex (atom false) 400 {:param "service_tier"}))
+                                                   {:body ""}))]
+        (openai/openai-raw opts)
+        (openai/openai-raw opts)
+        (testing "other credentials and models do not inherit the cooldown"
+          (openai/openai-raw (assoc-in opts [:credentials :api-key] "sk-another"))
+          (openai/openai-raw (assoc opts :model "gpt-5.6-sol")))
+        (testing "expired cooldowns allow fast serving again"
+          (swap! cooldowns update-vals (constantly 0))
+          (openai/openai-raw opts))
+        (is (= ["fast" "default" "default" "fast" "fast" "fast"] (map :service_tier @requests)))
+        (is (not (str/includes? (pr-str @cooldowns) "sk-byok")))))))
+
+(deftest openai-fast-mode-failed-fallback-test
+  (with-redefs [openai/fast-mode-cooldowns (atom {})]
+    (let [requests (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (swap! requests conj (json/decode+kw (:body req)))
+                                                 (throw (rejection-ex (atom false) 400 {:param "service_tier"})))]
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (openai/openai-raw {:model "gpt-6-astra" :input [] :fast? true
+                                         :credentials byok-credentials})))
+        (is (= ["fast" "default"] (map :service_tier @requests)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -501,15 +612,16 @@
 
 (deftest temperature-omitted-for-reasoning-models-test
   (let [request-body (fn [opts]
-                       (with-redefs [self.core/sse-reducible             identity
-                                     self.core/reducible-with-api-errors (fn [r _ _] r)
-                                     debug/capture-stream                (fn [r _] r)
-                                     http/request                        (fn [req] {:body req})]
-                         (json/decode+kw (:body (openai/openai-raw
-                                                 (merge {:input       [{:role :user :content "hi"}]
-                                                         :temperature 0.3
-                                                         :credentials byok-credentials}
-                                                        opts))))))]
+                       (let [captured (atom nil)]
+                         (mt/with-dynamic-fn-redefs [self.core/sse-reducible (constantly [])
+                                                     http/request (fn [req]
+                                                                    (reset! captured (json/decode+kw (:body req)))
+                                                                    {:body ""})]
+                           (openai/openai-raw (merge {:input       [{:role :user :content "hi"}]
+                                                      :temperature 0.3
+                                                      :credentials byok-credentials}
+                                                     opts))
+                           @captured)))]
     (testing "temperature is sent for a non-reasoning model"
       (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
     (testing "temperature is omitted for a GPT-5 model"
@@ -524,16 +636,18 @@
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
       (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
         (testing "Uses the connection's own credentials"
-          (with-redefs [self.core/sse-reducible identity
-                        self.core/reducible-with-api-errors (fn [r _ _] r)
-                        debug/capture-stream    (fn [r _] r)
-                        http/request            (fn [req] {:body req})]
-            (is (=? {:method  :post
-                     :url     "https://api.openai.com/v1/responses"
-                     :headers {"Authorization" "Bearer sk-byok"}
-                     :body    string?}
-                    (openai/openai-raw {:input       [{:role :user :content "hi"}]
-                                        :credentials byok-credentials})))))
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible (constantly [])
+                                        http/request (fn [req]
+                                                       (reset! captured req)
+                                                       {:body ""})]
+              (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                  :credentials byok-credentials})
+              (is (=? {:method  :post
+                       :url     "https://api.openai.com/v1/responses"
+                       :headers {"Authorization" "Bearer sk-byok"}
+                       :body    string?}
+                      @captured)))))
         (testing "Does not fall back to ai proxy when the connection carries no key"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
