@@ -16,6 +16,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
@@ -25,7 +26,7 @@
 (def Auth
   "The `{:url ... :headers ...}` pair [[core/request]] sends a request with. A server that takes no key at
   all (vLLM started without `--api-key`) carries no headers."
-  [:map
+  [:map {:closed true}
    [:url     {:optional true} [:maybe :string]]
    [:headers {:optional true} [:maybe [:map-of :string :string]]]])
 
@@ -34,10 +35,10 @@
   `:credentials` and `:ai-proxy?` come from the caller — the latter is the caller asking to be proxied,
   which [[reject-ai-proxy!]] grants only for a provider whose descriptor says `:supports-ai-proxy?`. The
   rest describe the wire. `:body` is already encoded, so a provider that signs over it can."
-  [:map
+  [:map {:closed true}
    [:method                       :keyword]
    [:path                         :string]
-   [:credentials {:optional true} [:maybe :map]]
+   [:credentials {:optional true} [:maybe core/LLMCredentials]]
    [:ai-proxy?   {:optional true} [:maybe :boolean]]
    [:as          {:optional true} [:maybe :keyword]]
    [:headers     {:optional true} [:maybe [:map-of :string :string]]]
@@ -45,7 +46,7 @@
 
 (def ProviderSpec
   "What an adapter hands [[provider]]; see that fn for what each key means."
-  [:map
+  [:map {:closed true}
    [:slug                                :string]
    [:display-name                        :string]
    [:errors             {:optional true} [:maybe [:map-of :int fn?]]]
@@ -57,7 +58,7 @@
   "A built descriptor: a [[ProviderSpec]] with `:auth` defaulted and `:span` and `:error-msg` derived.
   Every helper here takes one as its first argument."
   [:merge ProviderSpec
-   [:map
+   [:map {:closed true}
     [:auth      fn?]
     [:span      :keyword]
     [:error-msg fn?]]])
@@ -65,7 +66,8 @@
 (def SupportedModels
   "An adapter's allow-list of the models it offers in the picker, keyed by model id. A provider that
   publishes no context window for a model (DeepSeek) records only the display name."
-  [:map-of :string [:map
+  [:map-of :string [:map {:closed false, ::mr/deliberately-open true
+                          :description "an allow-list entry; providers add their own flags"}
                     [:display-name                   :string]
                     [:context-window {:optional true} [:maybe :int]]]])
 
@@ -74,28 +76,49 @@
 
   Lives here rather than in the registry: the registry requires the adapters, not the other way round, so
   this is where both ends can name it."
-  [:map
+  [:map {:closed true}
    [:connection-key {:optional true} [:maybe :string]]
    [:type           {:optional true} [:maybe :string]]
    [:model          {:optional true} [:maybe :string]]
-   [:credentials    {:optional true} [:maybe :map]]
+   [:credentials    {:optional true} [:maybe core/LLMCredentials]]
    [:ai-proxy?      {:optional true} [:maybe :boolean]]])
+
+(def ListOpts
+  "What a `list-models` call carries. Not [[core/LLMRequestOpts]]: a listing is not a generation, and the
+  connect path adds `:proposed-model` and `:probe?` — the model it believes the connection serves, and
+  permission to spend a probe verifying it (see [[metabase.llm.api.provider]])."
+  [:map {:closed true}
+   [:credentials    {:optional true} [:maybe core/LLMCredentials]]
+   [:ai-proxy?      {:optional true} [:maybe :boolean]]
+   [:model          {:optional true} [:maybe :string]]
+   [:proposed-model {:optional true} [:maybe :string]]
+   [:probe?         {:optional true} [:maybe :boolean]]])
+
+(def CatalogEntry
+  "One row of a provider's model catalog, as the provider sends it. Open: every provider adds its own
+  fields, and an adapter reads only `:id` and whichever name key its catalog uses."
+  [:map {::mr/deliberately-open true
+         :description "a provider catalog entry"}
+   [:id {:optional true} [:maybe :string]]])
 
 (def ModelListing
   "The model-listing response the admin picker consumes."
-  [:map
-   [:models [:sequential [:map
+  [:map {:closed true}
+   [:models [:sequential [:map {:closed true}
                           [:id           :string]
                           [:display_name [:maybe :string]]]]]])
 
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."
-  [:map
+  [:map {:closed true}
    [:path                              [:or :string fn?]]
-   [:body                              :map]
+   [:body                              [:map {::mr/deliberately-open true
+                                              :description "a provider's composed request body"}]]
    [:headers          {:optional true} [:maybe [:map-of :string :string]]]
-   [:request-options  {:optional true} [:maybe :map]]
-   [:span-attrs       {:optional true} [:maybe :map]]
+   [:request-options  {:optional true} [:maybe [:map {::mr/deliberately-open true
+                                                      :description "extra clj-http request options"}]]]
+   [:span-attrs       {:optional true} [:maybe [:map {::mr/deliberately-open true
+                                                      :description "extra span attributes"}]]]
    [:error-msg        {:optional true} [:maybe fn?]]
    [:wrap-stream      {:optional true} [:maybe fn?]]
    [:on-request-error {:optional true} [:maybe fn?]]])
@@ -157,11 +180,13 @@
   `req` carries the caller's `:credentials` and `:ai-proxy?` alongside the wire details (`:method`,
   `:path`, `:as`, `:headers`, and an already-encoded `:body`); `extra` is merged into the
   [[core/request]] opts, for per-provider timeouts and the like."
-  ([p req]
+  ([p   :- Provider
+    req :- Request]
    (request! p req nil))
   ([{:keys [auth] :as p}                                    :- Provider
     {:keys [method path body as headers ai-proxy?] :as req} :- Request
-    extra                                                   :- [:maybe :map]]
+    extra                                                   :- [:maybe [:map {::mr/deliberately-open true
+                                                                              :description "extra clj-http request options"}]]]
    (reject-ai-proxy! p ai-proxy?)
    (core/request (auth p req)
                  (merge (cond-> {:method  method
@@ -216,10 +241,11 @@
 
   `opts` is the caller's request; `path` is the catalog endpoint relative to the base URL, for a provider
   that does not serve one at `/models`. The descriptor's own `:headers` ride along either way."
-  ([p opts]
+  ([p    :- Provider
+    opts :- ListOpts]
    (fetch-catalog p opts "/models"))
   ([{:keys [display-name] :as p}    :- Provider
-    {:keys [credentials ai-proxy?]} :- core/LLMRequestOpts
+    {:keys [credentials ai-proxy?]} :- ListOpts
     path                            :- :string]
    (try
      (let [res (request! p {:credentials credentials
@@ -242,10 +268,11 @@
   shared code guessing between them: a provider whose catalog grew a second name field would otherwise
   start rendering a different one. Omit it for a catalog that carries no name and the allow-list's name
   is used, which is also what happens when an entry is missing the field."
-  ([supported-models entries]
+  ([supported-models :- SupportedModels
+    entries          :- [:maybe [:sequential CatalogEntry]]]
    (model-listing supported-models entries nil))
   ([supported-models  :- SupportedModels
-    entries           :- [:maybe [:sequential :map]]
+    entries           :- [:maybe [:sequential CatalogEntry]]
     catalog-name-key  :- [:maybe :keyword]]
    {:models (->> entries
                  (filter (comp supported-models :id))
