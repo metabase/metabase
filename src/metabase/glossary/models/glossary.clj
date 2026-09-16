@@ -1,6 +1,7 @@
 (ns metabase.glossary.models.glossary
   (:require
    [metabase.glossary.db :as glossary.db]
+   [metabase.glossary.schema]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]

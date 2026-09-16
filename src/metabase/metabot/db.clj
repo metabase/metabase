@@ -939,7 +939,7 @@
   archived set, and hardcoding `false` here drops every archived hit while the caller's total
   still counts it."
   [document-ids :- [:set ms/PositiveInt]
-   archived?    :- :any]
+   archived?    :- :boolean]
   (t2/select :model/Document :id [:in document-ids] :archived (boolean archived?)))
 
 (mu/defn transforms
@@ -989,9 +989,10 @@
                      :limit    limit}))
 
 (mu/defn user-summary
-  "The ID, email, and names of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :first_name :last_name] user-id))
+  "The ID, email, and names of the User with `user-id`, or nil if `user-id` is nil or matches no User."
+  [user-id :- [:maybe ::lib.schema.id/user]]
+  (when user-id
+    (t2/select-one [:model/User :id :email :first_name :last_name] user-id)))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."

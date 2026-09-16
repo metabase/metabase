@@ -152,7 +152,7 @@
 
 (mu/defn- hm-delete-conn! :- :hm-client/http-reply
   "Delete (presumably a gdrive) connection on HM."
-  [conn-id]
+  [conn-id :- ms/NonBlankString]
   (hm.client/make-request :delete (str "/api/v2/mb/connections/" conn-id)))
 
 (defn- reset-gsheets-status!
@@ -175,7 +175,7 @@
 
 (mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
-  [id]
+  [id :- ms/NonBlankString]
   (when-not id
     (throw (ex-info "Cannot fetch Google Drive connection: ID is nil" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
@@ -196,7 +196,7 @@
 
 (mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
   "Creating a gdrive connection on HM starts the sync w/ drive folder or sheet."
-  [resource-url]
+  [resource-url :- ms/NonBlankString]
   (hm.client/make-request :post "/api/v2/mb/connections" {:type (url-type resource-url) :secret {:resources [resource-url]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -343,7 +343,7 @@
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
   "Sync a (presumably a gdrive) connection on HM."
-  [conn-id]
+  [conn-id :- ms/NonBlankString]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

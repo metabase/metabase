@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { getShallowFields as getFields } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -32,11 +31,9 @@ const mapStateToProps = (
   props: ReferenceRouteProps,
 ) => {
   const entity = getDatabase(state, props) || {};
-  const fields = getFields(state);
 
   return {
     entity,
-    metadataFields: fields,
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),

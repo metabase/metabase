@@ -330,9 +330,9 @@
 
 (deftest forgot-password-support-user-no-active-grant-test
   (testing "POST /api/session/forgot_password - Support user with no active grant gets no email"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User user {:first_name "support"
                                        :last_name "user"
                                        :email "support@example.com"}
@@ -348,14 +348,14 @@
 
 (deftest forgot-password-support-user-active-grant-test
   (testing "POST /api/session/forgot_password - Support user with active grant gets a refreshed token"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User {creator-id :id} {}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
-          (with-redefs [sag.settings/support-access-grant-email (constantly "support-forgot@example.com")
-                        sag.settings/support-access-grant-first-name (constantly "Support")
-                        sag.settings/support-access-grant-last-name (constantly "User")]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-forgot@example.com")
+                                      sag.settings/support-access-grant-first-name (constantly "Support")
+                                      sag.settings/support-access-grant-last-name (constantly "User")]
             (let [grant (grants/create-grant! creator-id 60 "TICKET-FORGOT" "Test forgot password")
                   original-token (:token grant)]
               (is (some? original-token) "Grant should create a token")
@@ -386,14 +386,14 @@
 
 (deftest forgot-password-then-reset-preserves-support-provider-test
   (testing "Consuming a refreshed support-access token via reset_password keeps the support-access-grant provider"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User {creator-id :id} {}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
-          (with-redefs [sag.settings/support-access-grant-email (constantly "support-reset@example.com")
-                        sag.settings/support-access-grant-first-name (constantly "Support")
-                        sag.settings/support-access-grant-last-name (constantly "User")]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-reset@example.com")
+                                      sag.settings/support-access-grant-first-name (constantly "Support")
+                                      sag.settings/support-access-grant-last-name (constantly "User")]
             (let [grant (grants/create-grant! creator-id 60 "TICKET-PROVIDER" "Test provider preservation")]
               (is (some? (:token grant)) "Grant should create a token")
               (mt/with-temporary-setting-values [site-url "http://test.example.com"]

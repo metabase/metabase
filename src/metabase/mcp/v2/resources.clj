@@ -29,7 +29,7 @@
   "Register a v2 MCP data resource, returning its URI. Overwrites any existing entry with the
    same `:uri`. `:render-fn` produces the resource text at read time, so the content is always
    current rather than a snapshot from registration."
-  [resource :- [:map
+  [resource :- [:map {:closed true}
                 [:uri :string]
                 [:name :string]
                 [:description :string]
@@ -42,7 +42,7 @@
 (mu/defn register-ui-resource!
   "Register a v2 MCP Apps UI resource, returning its URI. Overwrites any existing entry with the
    same `:uri`."
-  [resource :- [:map
+  [resource :- [:map {:closed true}
                 [:uri :string]
                 [:name :string]
                 [:description :string]

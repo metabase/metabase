@@ -23,10 +23,36 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(def ^:private honeysql-registry
+  "Registry backing [[HoneySQLExpr]] and [[HoneySQLQuery]]: `::expr` is a column/table keyword, a literal, a
+  (possibly nested) operator clause, or a subquery."
+  {::expr  [:or :keyword :string number? :boolean nil? (ms/InstanceOfClass java.time.temporal.Temporal)
+            [:sequential [:ref ::expr]]
+            [:set [:ref ::expr]]
+            [:ref ::query]]
+   ::query [:map {:closed true}
+            [:select     {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:from       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:where      {:optional true} [:ref ::expr]]
+            [:with       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:join       {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:left-join  {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:inner-join {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:union-all  {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:order-by   {:optional true} [:or [:ref ::expr] [:sequential [:ref ::expr]]]]
+            [:limit      {:optional true} [:ref ::expr]]]})
+
+(def ^:private HoneySQLExpr
+  [:schema {:registry honeysql-registry} [:ref ::expr]])
+
 (def ^:private HoneySQLColumn
   [:or
    :keyword
-   [:tuple :any :keyword]])
+   [:tuple HoneySQLExpr :keyword]])
+
+(def HoneySQLQuery
+  "A partially-built Honey SQL query map for the legacy (index-free) search query."
+  [:schema {:registry honeysql-registry} [:ref ::query]])
 
 (defmethod search.engine/supported-engine? :search.engine/in-place [_]
   true)
@@ -115,11 +141,15 @@
    :data_authority      :text
    :data_layer          :text))
 
+(def ^:private SearchColumn
+  "Enum of every key of [[all-search-columns]]."
+  (into [:enum] (keys all-search-columns)))
+
 (mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
-  [model :- SearchableModel, col-alias->honeysql-clause :- [:map-of :keyword HoneySQLColumn]]
+  [model :- SearchableModel, col-alias->honeysql-clause :- [:map-of SearchColumn HoneySQLColumn]]
   (for [[search-col col-type] all-search-columns
         :let [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
@@ -152,7 +182,7 @@
 (mu/defn- add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- :map id :- [:maybe ms/PositiveInt]]
+  [query :- HoneySQLQuery id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :db_id])
     query))
@@ -160,7 +190,7 @@
 (mu/defn- add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- :map id :- [:maybe ms/PositiveInt]]
+  [query :- HoneySQLQuery id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :database_id])
     query))
@@ -186,7 +216,7 @@
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
-  [honeysql-query :- :map
+  [honeysql-query :- HoneySQLQuery
    model          :- [:maybe :string]
    search-ctx     :- SearchContext]
   (let [collection-id-col      (case model
@@ -215,7 +245,7 @@
   and some of them are dummy column casted to the correct type.
 
   This function then will replace the dummy column with alias is `target-alias` with the `with` column."
-  [query :- :map
+  [query :- HoneySQLQuery
    target-alias :- :keyword
    with :- :keyword]
   (let [selects     (:select query)
@@ -232,7 +262,7 @@
                                                     :with         with})))))
 
 (mu/defn- with-last-editing-info :- :map
-  [query :- :map
+  [query :- HoneySQLQuery
    model :- [:enum "card" "dashboard"]]
   (-> query
       (replace-select :last_editor_id :r.user_id)
@@ -243,7 +273,7 @@
                               [:= :r.model (search-model/search-model->revision-model model)]])))
 
 (mu/defn- with-moderated-status :- :map
-  [query :- :map
+  [query :- HoneySQLQuery
    model :- [:enum "card" "dataset" "dashboard"]]
   (-> query
       (replace-select :moderated_status :mr.status)
@@ -325,10 +355,8 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
-        [:dashboard.name :dashboard_name]
         :dashboard_id
         bookmark-col dashboardcard-count-col
-        :result_metadata
         [:display :display_type]))
 
 (defmethod columns-for-model "document"

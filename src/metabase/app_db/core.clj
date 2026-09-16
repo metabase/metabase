@@ -24,6 +24,7 @@
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
+   [metabase.app-db.value-guard]
    [metabase.config.core :as config]
    [potemkin :as p]))
 
@@ -32,7 +33,8 @@
 (comment metabase.app-db.format/keep-me
          metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
-         metabase.app-db.query-cancelation/keep-me)
+         metabase.app-db.query-cancelation/keep-me
+         metabase.app-db.value-guard/keep-me)
 
 (p/import-vars
  [mdb.connection

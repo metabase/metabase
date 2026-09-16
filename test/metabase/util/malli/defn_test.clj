@@ -24,9 +24,9 @@
   (are [fn-tail expected] (= expected
                              (#'mu.defn/annotated-docstring (mc/parse mx/SchematizedParams fn-tail)))
     '(bar
-      [x :- [:map [:x int?] [:y int?]]]
+      [x :- [:map {:closed true} [:x int?] [:y int?]]]
       (str x))
-    (str "Inputs: [x :- [:map [:x int?] [:y int?]]]\n"
+    (str "Inputs: [x :- [:map {:closed true} [:x int?] [:y int?]]]\n"
          "  Return: :any")
 
     '(bar
@@ -39,7 +39,7 @@
          "           [x :- :int y :- :int])\n"
          "  Return: :int")))
 
-(mu/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
+(mu/defn bar [x :- [:map {:closed true} [:x int?] [:y int?]]] (str x))
 
 (mu/defn baz :- [:map [:x int?] [:y int?]] [] {:x "3"})
 
@@ -59,7 +59,7 @@
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))
 
-(mu/defn- boo :- :int "something very important to remember goes here" [_x])
+(mu/defn- boo :- :int "something very important to remember goes here" [_x :- :int])
 
 (mu/defn qux-1 [])
 (mu/defn qux-2 "Original docstring." [])
@@ -78,9 +78,9 @@
   ([] {:type :sized :size 3})
   ([a :- :int] {:type :sized :size a})
   ([a :- :int b :- :int] {:type :sized :size (+ a b)})
-  ([a b & c :- [:* :int]] {:type :human
-                           :name "Jim"
-                           :address {:street (str  (+ a b (apply + c)) " ln")}}))
+  ([a :- :int b :- :int & c :- [:* :int]] {:type :human
+                                           :name "Jim"
+                                           :address {:street (str  (+ a b (apply + c)) " ln")}}))
 
 (deftest ^:parallel mu-defn-docstrings
   (testing "docstrings are preserved"
@@ -121,7 +121,7 @@
                      ["Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
-                      "           [a b & c :- [:* :int]])"
+                      "           [a :- :int b :- :int & c :- [:* :int]])"
                       "  Return: [:multi"
                       "           {:dispatch :type}"
                       "           [:sized [:map [:type [:= :sized]] [:size int?]]]"
@@ -148,7 +148,7 @@
        [:=> :cat out]
        [:=> [:cat :int] out]
        [:=> [:cat :int :int] out]
-       [:=> [:cat :any :any [:* :int]] out]])))
+       [:=> [:cat :int :int [:* :int]] out]])))
 
 (mu/defn- add-ints :- :int
   ^Integer [x :- :int y :- :int]
@@ -174,15 +174,16 @@
     (testing "returns an instrumented fn"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
-          (is (= '(def f
-                    (clojure.core/let
-                     [&f (clojure.core/fn f_AMPERSAND_ [] "foo")]
-                      (clojure.core/fn
-                        mufn
-                        ([]
-                         (try
-                           (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
-                           (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
+          (is (= `(~'def ~'f
+                         (clojure.core/let
+                          [~'&f (clojure.core/fn ~'f_AMPERSAND_ [] "foo")]
+                           (~(symbol "metabase.util.malli.closed-schemas" "check-args!") '~(symbol (str *ns*) "f") [:cat])
+                           (clojure.core/fn
+                             ~'mufn
+                             ([]
+                              (~'try
+                               (clojure.core/->> (~'&f) (mu.fn/validate-output {:fn-name '~'f} :int))
+                               (~'catch java.lang.Exception ~'error (throw (mu.fn/fixup-stacktrace ~'error))))))))
                  (deanon-fn-names expansion))))))))
 
 (mu/defn- ^:extra-metadata private-foo :- :int

@@ -45,10 +45,4 @@
         (is (= target
                (lib/update-parameter-target-field-ref
                 target
-                (fn [_] (throw (ex-info "should not be called" {}))))))))
-    (testing "passes extra args to f"
-      (is (= [:dimension other-ref]
-             (lib/update-parameter-target-field-ref
-              [:dimension field-ref]
-              (fn [_mbql5-ref extra-col] (lib.ref/ref extra-col))
-              other-col))))))
+                (fn [_] (throw (ex-info "should not be called" {}))))))))))

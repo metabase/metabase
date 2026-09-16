@@ -40,8 +40,8 @@
                           (fn [_request respond _raise]
                             (respond (with-meta {:status 200 :body "ok"}
                                                 {:metabase-user-id 42}))))]
-      (with-redefs [mw.log/log-info (fn [info]
-                                      (deliver logged-user-id (get-in info [:log-context :metabase-user-id])))]
+      (mt/with-dynamic-fn-redefs [mw.log/log-info (fn [info]
+                                                    (deliver logged-user-id (get-in info [:log-context :metabase-user-id])))]
         (handler {:request-method :post :uri "/api/session"}
                  identity
                  identity)
