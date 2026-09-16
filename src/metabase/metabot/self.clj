@@ -45,7 +45,7 @@
   no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
   operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
   [provider]
-  (when-let [models (some-> (registry/optional provider :supported-models) deref)]
+  (when-let [models (registry/optional provider :supported-models)]
     (into {}
           (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
           models)))
