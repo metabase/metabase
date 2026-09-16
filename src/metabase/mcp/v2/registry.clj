@@ -2,17 +2,17 @@
   "The v2 MCP tool registry. Tools are in-code registry entries declared with [[deftool]].
   The v2 surface builds its own manifest and dispatch:
 
-   - `tools/list` ([[list-tools]]) filters by the `mcp-v2-disabled-tools` CSV and the client
-     extensions the caller advertised (a tool needing MCP Apps UI is hidden from a client that
-     can't render an iframe, rather than failing at call time). It does not filter by token
-     scopes: a client can only attempt, and step up for, a tool it can see;
-   - `tools/call` ([[call-tool]]) checks token scopes and re-checks both filters, validates
+   - `tools/list` ([[list-tools]]) filters by the client extensions the caller advertised (a tool
+     needing MCP Apps UI is hidden from a client that can't render an iframe, rather than failing
+     at call time). It does not filter by token scopes: a client can only attempt, and step up
+     for, a tool it can see;
+   - `tools/call` ([[call-tool]]) checks token scopes and re-checks the extension filter, validates
      arguments against the tool's Malli schema with teaching errors, dispatches to the handler
      under the already-bound current user, and logs every outcome through the shared usage path.
 
-  The three call-time checks are not three boundaries. Scopes come from the verified token and the
-  disabled-tools CSV from instance settings, but the extension set is reconstructed from the
-  unsigned capability payload the client echoes back in its session id — a client can claim any
+  The two call-time checks are not two boundaries. Scopes come from the verified token, but the
+  extension set is reconstructed from the unsigned capability payload the client echoes back in
+  its session id — a client can claim any
   extension it likes, and never has to `initialize` to do so. Treat `:required-extensions` as a
   client-declared hint that keeps a tool out of a list where it could not render, and put nothing
   behind it that the tool's `:scope` does not already protect."
@@ -24,7 +24,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
-   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
@@ -213,26 +212,18 @@
   (or @manifest-cache
       (reset! manifest-cache (generate-manifest))))
 
-(defn- disabled-tool-names
-  []
-  (set (mcp.settings/mcp-v2-disabled-tools)))
-
 (defn list-tools
-  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the
-   `mcp-v2-disabled-tools` setting and the client extensions `options` advertises
-   (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that can't render an iframe
-   rather than failing at call time). Token scopes don't filter the list; [[call-tool]] enforces them.
-   The 0-arity assumes full extension support."
+  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the client
+   extensions `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients
+   that can't render an iframe rather than failing at call time). Token scopes don't filter the
+   list; [[call-tool]] enforces them. The 0-arity assumes full extension support."
   ([]
    ;; Full support because [[tools-hash]] has no session, so the hash must not depend on per-session capabilities.
    (list-tools {:supports-mcp-ui? true}))
   ([options]
-   (let [disabled  (disabled-tool-names)
-         supported (mcp.ui-resource/supported-extensions options)]
+   (let [supported (mcp.ui-resource/supported-extensions options)]
      (into []
            (comp
-            ;; no disabled tools
-            (filter #(not (contains? disabled (:name %))))
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
             (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
@@ -241,9 +232,9 @@
 
 (defn tools-hash
   "Stable 8-character hex hash of the listed tools; polled by the GET/SSE keepalive to emit
-   `notifications/tools/list_changed` when the set changes (`mcp-v2-disabled-tools` edits,
-   feature flips). Hashes the JSON encoding of the wire-visible schema, so the result never
-   depends on Clojure's `hash` of non-data leaves."
+   `notifications/tools/list_changed` when the set changes (feature flips). Hashes the JSON
+   encoding of the wire-visible schema, so the result never depends on Clojure's `hash` of
+   non-data leaves."
   []
   (format "%08x"
           (hash (->> (list-tools)
@@ -292,10 +283,7 @@
         missing (mcp.ui-resource/missing-required-extensions
                  tool (mcp.ui-resource/supported-extensions options))]
     (cond
-      ;; Disabled tools are absent from tools/list, so calling one is indistinguishable from
-      ;; calling a tool that never existed.
-      (or (nil? tool)
-          (contains? (disabled-tool-names) tool-name))
+      (nil? tool)
       {:error {:code common/error-code-method-not-found :message (str "Unknown tool: " tool-name)}}
 
       (not (map? (or arguments {})))
@@ -307,7 +295,7 @@
                :insufficient-scope (insufficient-scope-detail tool-name (:scope tool))}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
-      ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
+      ;; scope case it stays listed for capable clients, so name what's missing.
       (seq missing)
       {:error {:code common/error-code-invalid-params :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
 

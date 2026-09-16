@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
-   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
@@ -113,16 +112,6 @@
             (is (= "Internal error" (-> result :content first :text))
                 "the raw exception message must not reach the client")))))))
 
-(deftest disabled-tools-test
-  (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
-    (testing "a disabled tool is hidden from tools/list"
-      (is (not (some #(= "test_echo" (:name %)) (registry/list-tools)))))
-    (testing "and rejected by tools/call as unknown"
-      (let [{:keys [error]} (registry/call-tool nil nil "test_echo" {})]
-        (is (= {:code common/error-code-method-not-found
-                :message "Unknown tool: test_echo"}
-               error))))))
-
 (deftest ^:parallel registered-scopes-test
   (testing "registered-scopes reports the scopes of the landed tools. (It does not feed the DCR grant: that reads
             `mcp.paths/v2-surface-scopes`, and a tool whose :scope is outside that set is unreachable over OAuth
@@ -139,16 +128,6 @@
     (is (set/subset? (set (registry/registered-scopes))
                      #{"agent:content:read" "agent:content:write" "agent:query:run"
                        "agent:sql:run" "agent:delivery:write"}))))
-
-;; not ^:parallel: changes a setting
-(deftest tools-hash-test
-  (testing "tools-hash is a stable 8-char hex string"
-    (is (re-matches #"[0-9a-f]{8}" (registry/tools-hash)))
-    (is (= (registry/tools-hash) (registry/tools-hash))))
-  (testing "it changes when the listed tool set does"
-    (let [before (registry/tools-hash)]
-      (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
-        (is (not= before (registry/tools-hash)))))))
 
 (defn- capture-usage-records!
   "Run `thunk` with `record-mcp-tool-call!` redefed to capture its arg maps into a vector,
@@ -315,6 +294,22 @@
         (reset! tools-atom snapshot)
         (reset! @#'registry/manifest-cache nil)))))
 
+;; not ^:parallel: registers a tool in the shared registry
+(deftest tools-hash-test
+  (testing "tools-hash is a stable 8-char hex string"
+    (is (re-matches #"[0-9a-f]{8}" (registry/tools-hash)))
+    (is (= (registry/tools-hash) (registry/tools-hash))))
+  (testing "it changes when the listed tool set does"
+    (let [before (registry/tools-hash)]
+      (do-with-temp-tool!
+       {:name        "hash_probe"
+        :scope       "agent:content:read"
+        :description "test-only tool that only exists to move the hash"
+        :args        [:map]
+        :handler     (fn [_ _] nil)}
+       (fn []
+         (is (not= before (registry/tools-hash))))))))
+
 (defn- mutating-tools
   "Registered tools that declare they mutate, as `{name tool}`. Enumerated from the registry rather
    than a hand-kept list, so a write tool landing tomorrow is covered the day it registers.
@@ -371,10 +366,7 @@
            (is (contains? (set (map :name (registry/list-tools))) tool-name))
            (is (str/starts-with? (-> (registry/call-tool #{"agent:content:read"} nil tool-name {}) :error :message)
                                  (str "Insufficient scope to call tool: " tool-name "."))))))))
-  (testing "GHY-4543: the non-scope filters still hide tools"
-    (testing "a disabled tool"
-      (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
-        (is (not (contains? (set (map :name (registry/list-tools))) "test_echo")))))
+  (testing "GHY-4543: the extension filter still hides tools"
     (testing "a tool needing a client extension the caller lacks"
       (do-with-temp-tool!
        {:name                "ui_probe"

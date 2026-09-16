@@ -139,7 +139,6 @@ function JobPageBody({
       tabs={<JobTabs jobId={job.id} />}
       readOnly={readOnly}
       isCheckingPermissions={isCheckingPermissions}
-      showMetabotButton
       onNameChange={onNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}

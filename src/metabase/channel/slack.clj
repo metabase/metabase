@@ -366,26 +366,8 @@
          (complete-upload! file filename {:channel-id target} initial-comment))))))
 
 (mr/def ::slack-block
-  "A Slack Block Kit block, element, or legacy `attachments` entry -- self-similar and recursive (blocks nest
-  elements, elements nest elements, and `:text`/`:accessory` nest another block-shaped object).
-  See https://api.slack.com/block-kit."
-  [:map {:closed true}
-   [:type        {:optional true} [:maybe :string]]
-   [:text        {:optional true} [:maybe [:or :string [:ref ::slack-block]]]]
-   [:fields      {:optional true} [:maybe [:sequential [:ref ::slack-block]]]]
-   [:elements    {:optional true} [:maybe [:sequential [:ref ::slack-block]]]]
-   [:accessory   {:optional true} [:maybe [:ref ::slack-block]]]
-   [:block_id    {:optional true} [:maybe :string]]
-   [:image_url   {:optional true} [:maybe :string]]
-   [:alt_text    {:optional true} [:maybe :string]]
-   [:emoji       {:optional true} [:maybe :boolean]]
-   [:color       {:optional true} [:maybe :string]]
-   [:pretext     {:optional true} [:maybe :string]]
-   [:title       {:optional true} [:maybe :string]]
-   [:author_name {:optional true} [:maybe :string]]
-   [:footer      {:optional true} [:maybe :string]]
-   [:fallback    {:optional true} [:maybe :string]]
-   [:ts          {:optional true} [:maybe [:or :string number?]]]])
+  "A Slack Block Kit block or legacy `attachments` entry, whose keys are Slack's (see https://api.slack.com/block-kit)."
+  [:map {:closed false, ::mr/deliberately-open true, :description "Slack Block Kit block"}])
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.

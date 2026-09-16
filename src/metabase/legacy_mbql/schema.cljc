@@ -52,6 +52,35 @@
     (when-let [tag (helpers/effective-clause-tag x)]
       (keyword "metabase.legacy-mbql.schema" (name tag)))))
 
+(defn- normalize-dropping-undeclared-keys
+  "A `:decode/normalize` interceptor for a closed clause options map that applies `normalize-fn` and drops the keys the map does not declare."
+  [normalize-fn]
+  {:compile (fn [schema _options]
+              (let [declared-keys (set (mc/explicit-keys schema))]
+                (fn [m]
+                  (when-let [m (normalize-fn m)]
+                    (reduce-kv (fn [m k _v]
+                                 (cond-> m
+                                   (not (contains? declared-keys k)) (dissoc k)))
+                               m
+                               m)))))})
+
+(def ^:private common-clause-option-entries
+  "The entries of `:metabase.lib.schema.common/options` that converting any MBQL 5 clause to legacy MBQL can leave in its options: the type and name keys and the query processor's internal keys."
+  (into []
+        (filter (fn [[k]]
+                  (or (lib.schema.common/internal-key? k)
+                      (contains? #{:base-type :effective-type :semantic-type :database-type :name :display-name} k))))
+        (-> (mc/schema ::lib.schema.common/options) mc/deref-all mc/children first mc/children)))
+
+(defn- with-common-clause-option-entries
+  "Add the [[common-clause-option-entries]] that closed map schema `map-schema` does not declare itself."
+  [[tag properties & entries :as _map-schema]]
+  (let [own-keys (into #{} (map first) entries)]
+    (-> [tag properties]
+        (into (remove (comp own-keys first)) common-clause-option-entries)
+        (into entries))))
+
 (defn- normalize-mbql-clause [x]
   (when-let [schema (infer-mbql-clause-schema x)]
     (lib.normalize/normalize schema x)))
@@ -254,9 +283,10 @@
 
 (mr/def ::ValueTypeInfo
   [:map
-   {:closed true, :decode/normalize (fn [m]
-                                      (when (map? m)
-                                        (update-keys m (comp keyword u/->snake_case_en))))
+   {:closed true, :decode/normalize (normalize-dropping-undeclared-keys
+                                     (fn [m]
+                                       (when (map? m)
+                                         (update-keys m (comp keyword u/->snake_case_en)))))
     :description      (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
                            " middleware to values in filter clauses based on the Field in the clause.")}
    [:database_type {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -826,8 +856,9 @@
         lib.schema.expression.temporal/datetime-modes))
 
 (mr/def ::DatetimeOptions
-  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
-   [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
+  (with-common-clause-option-entries
+    [:map {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)}
+     [:mode {:optional true} [:ref ::DatetimeOptionsMode]]]))
 
 (defclause datetime
   value   [:ref ::ExpressionArg]
@@ -1081,10 +1112,11 @@
 (defclause not-empty field [:ref ::Emptyable])
 
 (mr/def ::StringFilterOptions
-  [:map
-   {:closed true, :decode/normalize lib.schema.common/normalize-map}
-   ;; default true
-   [:case-sensitive {:optional true} :boolean]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)}
+     ;; default true
+     [:case-sensitive {:optional true} :boolean]]))
 
 (doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
   (defmethod options-style-method (keyword (name clause-keyword)) [_tag] ::options-style.𝕨𝕚𝕝𝕕)
@@ -1104,11 +1136,12 @@
                      "more-strings-or-fields" [:rest [:ref ::StringExpressionArg]])]))
 
 (mr/def ::TimeIntervalOptions
-  [:map
-   {:closed true, :decode/normalize lib.schema.common/normalize-map}
-   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
-   ;; include them.
-   [:include-current {:optional true} :boolean]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)}
+     ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
+     ;; include them.
+     [:include-current {:optional true} :boolean]]))
 
 ;; Filter subclause. Syntactic sugar for specifying a specific time interval.
 ;;
@@ -1208,10 +1241,11 @@
   [:sequential {:min 1} ::CaseSubclause])
 
 (mr/def ::CaseOptions
-  [:map
-   {:closed true, :decode/normalize lib.schema.common/normalize-map
-    :error/message    ":case options"}
-   [:default {:optional true} [:ref ::ExpressionArg]]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)
+      :error/message    ":case options"}
+     [:default {:optional true} [:ref ::ExpressionArg]]]))
 
 (defclause case
   clauses [:ref ::CaseSubclauses], options (optional [:ref ::CaseOptions]))
@@ -1371,19 +1405,19 @@
 
 (mr/def ::AggregationOptionsOptions
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
-  [:map
-   {:closed true, :error/message    ":aggregation-options options"
-    :decode/normalize (fn [m]
-                        (let [m (if (nil? m)
-                                  {}
-                                  m)]
-                          (lib.schema.common/normalize-map m)))}
-   ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
-   [:name         {:optional true} ::lib.schema.common/non-blank-string]
-   ;; user-facing display name for this aggregation instead of the default one
-   [:display-name {:optional true} ::lib.schema.common/non-blank-string]
-   [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
-   [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :error/message    ":aggregation-options options"
+      :decode/normalize (normalize-dropping-undeclared-keys
+                         (fn [m]
+                           (let [m (if (nil? m)
+                                     {}
+                                     m)]
+                             (lib.schema.common/normalize-map m))))}
+     ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
+     [:name         {:optional true} ::lib.schema.common/non-blank-string]
+     ;; user-facing display name for this aggregation instead of the default one
+     [:display-name {:optional true} ::lib.schema.common/non-blank-string]]))
 
 (defclause* aggregation-options
   [:and

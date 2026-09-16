@@ -240,21 +240,6 @@
         (is (= "Unknown tool: nope" (get-in response [:body :error :message])))
         (is (not (contains? (:body response) :result)))))))
 
-(deftest disabled-tools-kill-switch-test
-  (let [[session-id _] (initialize!)]
-    (mt/with-temporary-setting-values [mcp.settings/mcp-v2-disabled-tools ["test_echo"]]
-      (testing "a disabled tool disappears from tools/list"
-        (let [response (mcp-request (jsonrpc-request "tools/list")
-                                    {"mcp-session-id" session-id})]
-          (is (not (some #(= "test_echo" (:name %))
-                         (get-in response [:body :result :tools]))))))
-      (testing "a disabled tool is rejected by tools/call as if it never existed"
-        (let [response (mcp-request (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}})
-                                    {"mcp-session-id" session-id})]
-          (is (= -32601 (get-in response [:body :error :code])))
-          (is (= "Unknown tool: test_echo" (get-in response [:body :error :message])))
-          (is (not (contains? (:body response) :result))))))))
-
 (deftest method-dispatch-fallthrough-test
   (let [[session-id _] (initialize!)]
     (testing "methods the surface can't serve fall through to JSON-RPC method-not-found"

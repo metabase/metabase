@@ -77,8 +77,6 @@
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
-(api-scope/defscope agent-transforms-write "agent:transforms:write"
-  (deferred-tru "Create and edit transforms"))
 
 ;; Snippets
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
