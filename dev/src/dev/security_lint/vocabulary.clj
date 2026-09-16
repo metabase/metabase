@@ -52,8 +52,14 @@
   (boolean (and (symbol? head) (re-find assertion-validator (name head)))))
 
 (def binding-forms
-  "Forms whose first argument is a binding vector of `[name init]` pairs, by the head's name."
-  '#{let when-let if-let if-some when-some loop binding with-open doseq for})
+  "Forms whose first argument is a binding vector of `[name init]` pairs, by the head's name. `for-map` is
+  `metabase.util/for-map`: a `for` whose body is a `[k v]` pair."
+  '#{let when-let if-let if-some when-some loop binding with-open doseq for for-map})
+
+(def seq-binding-forms
+  "The binding forms whose init is a collection and whose name binds one *element* of it: `[[k v] m]` in one of
+  these takes a map apart into its entries, where in a `let` it takes one pair apart."
+  '#{doseq for for-map})
 
 (def binding-form-name
   "Binding forms spelled with a status code: `api/let-404`, `let-400`. Same shape as `let`, and where the object an

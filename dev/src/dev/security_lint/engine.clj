@@ -202,13 +202,40 @@
   [{:keys [at]} row col]
   (get at [row col]))
 
+(def ^:private facade-namespaces
+  "Namespaces that re-export vars defined elsewhere -- potemkin's `import-vars` -- under the name the codebase
+  calls them by. clj-kondo resolves a call through such a re-export to the *defining* namespace when its
+  dependency cache holds the library (`./bin/mage kondo` fills it) and to the facade when it does not; the
+  vocabulary and the rules name the facade. Before a usage was put back there, a populated `.clj-kondo/.cache`
+  made every Toucan sink and origin invisible: a clean local scan and a red CI scan of the same tree."
+  '[toucan2.core])
+
+(def ^:private facade-of
+  "`{[defining-ns name] facade-ns}` for every var a facade re-exports, from the loaded facade itself: each
+  imported var keeps its defining namespace in its metadata."
+  (delay
+    (into {} (for [facade facade-namespaces
+                   :let   [publics (try (require facade) (ns-publics facade) (catch Throwable _ nil))]
+                   [nm v] publics
+                   :let   [src (some-> v meta :ns ns-name)]
+                   :when  (and src (not= src facade))]
+               [[src nm] facade]))))
+
+(defn- refacade
+  "A var usage moved to the facade that re-exports it, when one does."
+  [{:keys [to name] :as usage}]
+  (if-let [facade (get @facade-of [to name])]
+    (assoc usage :to facade)
+    usage))
+
 (defn- run-analysis
   "clj-kondo's analysis for `paths`. We only want the analysis data, so linting output is discarded."
   [paths config-dir]
-  (:analysis
-   (kondo/run! (cond-> {:lint   (vec paths)
-                        :config {:output {:analysis {:var-usages true :locals true} :format :edn}}}
-                 config-dir (assoc :config-dir config-dir)))))
+  (-> (kondo/run! (cond-> {:lint   (vec paths)
+                           :config {:output {:analysis {:var-usages true :locals true} :format :edn}}}
+                    config-dir (assoc :config-dir config-dir)))
+      :analysis
+      (update :var-usages #(mapv refacade %))))
 
 (defn- guard-vouched-positions
   "The positions a validating guard vouches for, `{filename #{[row col]}}`, over every local -- what the

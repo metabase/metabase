@@ -244,6 +244,11 @@
     nil                 a scalar literal: no map at all
     {:ref {...}}        a local, or a call to a function -- the local's shape, or the function's return shape
     {:all [term ...]}   keyed when every term is: `(merge a b)`, the branches of an `if`, a `concat`
+    {:map-vals term}    a map, or a sequence of `[k v]` pairs, whose *values* have the term: what `u/for-map`
+                        and `(into {} (for ... [k v]))` build. Its own keys are values, so handed on whole it is
+                        opaque; taken apart it is not
+    {:vals-of term}     the values of such a map: `(vals m)`, the `v` of a `[k v]` destructured off it in a
+                        `for` or a `doseq`
 
   A form that keeps a map's keys -- `assoc`, a threading form, a `let` -- has its input's term; a collection of
   maps has its element's: the body of a `for`, the function `map` applies, what a named row-builder returns.
@@ -257,13 +262,25 @@
                (let [ts (remove nil? (map term nodes))]
                  (cond (empty? ts)        nil
                        (= 1 (count ts))   (first ts)
-                       :else              {:all (vec ts)})))]
+                       :else              {:all (vec ts)})))
+        ;; `[k v]` as the body of a `for`-like form: a map from the k's to the v's, once collected
+        pair (fn [body]
+               (let [body (some-> body ast/unmeta)]
+                 (if (and body (ast/vector-node? body) (= 2 (count (ast/children body))))
+                   {:map-vals (term (second (ast/children body)))}
+                   :opaque)))]
     (cond
       (ast/literal? a)
       nil
 
       (ast/map-node? a)
       (if (every? (fn [[k _]] (ast/keyword-node? (ast/unmeta k))) (ast/map-entries a)) :keyed :opaque)
+
+      ;; `[{:a 1} {:b 2}]`: a collection of rows, keyed when every row is; any other vector is not a map
+      (ast/vector-node? a)
+      (if (and (seq (ast/children a)) (every? #(ast/map-node? (ast/unmeta %)) (ast/children a)))
+        (all (ast/children a))
+        :opaque)
 
       (ast/symbol-node? a)
       (ref a (n/sexpr a))
@@ -303,8 +320,16 @@
           (= nm "or")
           (all args)
 
+          ;; `(for [...] {...})` is rows; `(for [...] [k v])` is pairs, a map once `into {}` collects them
           (= nm "for")
-          (term (last args))
+          (let [body (some-> (last args) ast/unmeta)]
+            (if (and body (ast/vector-node? body)) (pair body) (term body)))
+
+          (= nm "for-map")
+          (pair (last args))
+
+          (= nm "vals")
+          {:vals-of (term (first args))}
 
           (contains? element-mapping-heads nm)
           (let [f (some-> (first args) ast/unmeta)]
@@ -323,10 +348,10 @@
           (= nm "concat")
           (all args)
 
-          ;; `(into [] rows)` keeps the rows; `(into {} pairs)` builds a map from data
+          ;; `(into [] rows)` keeps the rows; `(into {} pairs)` builds a map whose values are the pairs' seconds,
+          ;; which the pairs' own term already says
           (= nm "into")
-          (let [to (some-> (first args) ast/unmeta)]
-            (if (and to (ast/map-node? to)) :opaque (term (last args))))
+          (term (last args))
 
           (contains? collection-keeping-heads nm)
           (term (last args))
@@ -770,15 +795,41 @@
           (vocab/binding-head? head)
           (when-let [bv (first args)]
             (when (ast/vector-node? bv)
-              (doseq [[b init] (partition 2 (ast/children bv))]
-                (vswap! inits conj {:bind   (assoc (meta b) :filename filename)
-                                    ;; `[cid (:card_id body)]`: a check on `cid` later vouches for `body`'s
-                                    ;; `:card_id`, not for `body`
-                                    :key    (second (ast/accessor (ast/unmeta init)))
-                                    :region (assoc (meta init) :filename filename)
-                                    ;; `[m {:a 1}]`: the local has the literal's shape; `[m other]` its
-                                    ;; init's. Only a plain symbol binds the whole value.
-                                    :shape  (when (ast/symbol-node? (ast/unmeta b)) (arg-shape filename init))}))))
+              (let [seq-form? (contains? vocab/seq-binding-forms (symbol (name head)))
+                    record!   (fn record! [b init]
+                                (let [b* (ast/unmeta b)]
+                                  (cond
+                                    ;; `:let [x 1]` inside a `for`'s binding vector: bindings like a `let`'s
+                                    (and (ast/keyword-node? b*) (= :let (n/sexpr b*)))
+                                    (when (ast/vector-node? (ast/unmeta init))
+                                      (doseq [[b2 init2] (partition 2 (ast/children (ast/unmeta init)))]
+                                        (record! b2 init2)))
+
+                                    ;; `:when x`, `:while x`: no binding
+                                    (ast/keyword-node? b*)
+                                    nil
+
+                                    :else
+                                    (do
+                                      (vswap! inits conj {:bind   (assoc (meta b) :filename filename)
+                                                          ;; `[cid (:card_id body)]`: a check on `cid` later vouches for
+                                                          ;; `body`'s `:card_id`, not for `body`
+                                                          :key    (second (ast/accessor (ast/unmeta init)))
+                                                          :region (assoc (meta init) :filename filename)
+                                                          ;; `[m {:a 1}]`: the local has the literal's shape; `[m other]`
+                                                          ;; its init's. Only a plain symbol binds the whole value.
+                                                          :shape  (when (ast/symbol-node? b*) (arg-shape filename init))})
+                                      ;; `(for [[k v] m] ...)`: `v` is one of `m`'s values. A second record for `v`
+                                      ;; alone, so its shape can be followed; the taint the first record carries to
+                                      ;; both names is unchanged.
+                                      (when (and seq-form? (ast/vector-node? b*) (= 2 (count (ast/children b*))))
+                                        (let [v (second (ast/children b*))]
+                                          (when (ast/symbol-node? (ast/unmeta v))
+                                            (vswap! inits conj {:bind   (assoc (meta v) :filename filename)
+                                                                :region (assoc (meta init) :filename filename)
+                                                                :shape  {:vals-of (arg-shape filename init)}}))))))))]
+                (doseq [[b init] (partition 2 (ast/children bv))]
+                  (record! b init)))))
 
           :else nil)
         ;; a defendpoint parameter vector is the other trust boundary
@@ -1581,6 +1632,28 @@
   are already unusual; the cap is a backstop for graphs the visited set does not cut."
   8)
 
+(defn- wrap-vals
+  "The labels of a map whose values carry `labels`: `#{:shape/keyed}` becomes `#{:shape/vals-keyed}`, and a
+  level deeper for each nesting -- `:shape/vals-vals-keyed` for a map of maps of literal rows."
+  [labels]
+  (into #{} (map #(keyword "shape" (str "vals-" (name %)))) labels))
+
+(defn- unwrap-vals
+  "The labels of one value of a map carrying `labels`: one `vals-` off each; a label with none -- a keyed
+  literal, an opaque map -- says nothing about its values, so the value is opaque."
+  [labels]
+  (into #{} (map (fn [l]
+                   (let [nm (name l)]
+                     (if (str/starts-with? nm "vals-")
+                       (keyword "shape" (subs nm 5))
+                       :shape/opaque))))
+        labels))
+
+(defn- opaque-labels?
+  "Whether shape `labels` say anything but keyed: opaque, or a map whose keys are values."
+  [labels]
+  (boolean (some #(not= :shape/keyed %) labels)))
+
 (defn- param-shapes
   "`{param-id #{:shape/keyed}}`: the shape (see [[arg-shape]]) of what each parameter receives, over every call
   that feeds it. A bare parameter handed on -- `(defn create! [m] (insert! m))` -- passes its own shape along;
@@ -1617,13 +1690,13 @@
                    {:to to :term shape :pos pos :fq (resolve-call call)})
         fed      (into #{} (mapcat :to) feeds)
         ;; `#{}` is not yet known -- a fed parameter whose callers are still being resolved, a cycle -- and a
-        ;; round that meets it waits; nil is no map. Anything opaque in a union makes it opaque: `(merge {:a 1}
-        ;; body)` has body's keys too.
+        ;; round that meets it waits; nil is no map. Anything not keyed in a union makes it opaque: `(merge {:a 1}
+        ;; body)` has body's keys too, and so does a merge with a map whose keys are values.
         combine  (fn [ls]
-                   (cond (empty? ls)                              nil
-                         (some empty? ls)                         #{}
-                         (some #(contains? % :shape/opaque) ls)   #{:shape/opaque}
-                         :else                                    #{:shape/keyed}))
+                   (cond (empty? ls)               nil
+                         (some empty? ls)          #{}
+                         (some opaque-labels? ls)  #{:shape/opaque}
+                         :else                     #{:shape/keyed}))
         resolve-fq (fn [{:keys [filename row col head]}]
                      (or (get resolve {:filename filename :row row :col col})
                          (when-not (qualified-symbol? head)
@@ -1636,6 +1709,8 @@
                           (nil? term)      nil
                           (keyword? term)  #{(keyword "shape" (name term))}
                           (:all term)      (combine (keep #(eval-term % seen) (:all term)))
+                          (:map-vals term) (some-> (eval-term (:map-vals term) seen) wrap-vals)
+                          (:vals-of term)  (some-> (eval-term (:vals-of term) seen) unwrap-vals)
                           :else
                           (let [{:keys [filename row col] :as r} (:ref term)]
                             (if-let [id (get usage-at [filename row col])]
@@ -1662,7 +1737,7 @@
         (if (= m m')
           (let [;; which calls contributed the opaque half, by the parameter they feed
                 direct  (reduce (fn [acc {:keys [to term pos fq]}]
-                                  (if (contains? (eval-term term #{}) :shape/opaque)
+                                  (if (opaque-labels? (eval-term term #{}))
                                     (reduce #(update %1 %2 (fnil conj []) {:pos pos :fq fq :term term}) acc to)
                                     acc))
                                 {}
@@ -1701,7 +1776,11 @@
                                     (into [] (comp (mapcat #(expand % seen depth)) (distinct)) fs))]
                           (swap! cache assoc q out)
                           out)))]
-              {:shapes  (merge m boundary)
+              {;; a map whose keys are values, handed on whole, is opaque to a rule about keys; only the walk
+               ;; above tells its values apart, so the `vals-` labels stop here
+               :shapes  (merge (into {} (for [[id ls] m]
+                                          [id (into #{} (map #(if (str/starts-with? (name %) "vals-") :shape/opaque %)) ls)]))
+                               boundary)
                :feeders (into {} (for [[id fs] direct]
                                    [id (into [] (comp (mapcat #(expand % #{id} 0)) (distinct)) fs)]))}))
           (recur m'))))))

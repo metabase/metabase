@@ -446,6 +446,63 @@
     (testing "an `if` is keyed when both branches are"
       (is (= "(:shape/keyed)" (get by-row 17))))))
 
+(deftest shape-through-comprehensions-test
+  (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+              :triggers '#{t/sink}
+              :detect (fn [{:keys [node] :as ctx}]
+                        {:message (pr-str (sort (taint/shape ctx (ast/arg node 0))))})}
+        ;; the undo pattern: a map of maps of literal rows built with `u/for-map` in one function, taken apart
+        ;; with `[k v]` destructuring in a `for` in another, merged with a literal, and handed to the write.
+        ;; Each case hands its rows to a function of its own, since it is a *parameter's* shape that is
+        ;; evaluated from the argument's term.
+        by-row (into {} (map (juxt :row :message))
+                     (engine/analyze {:paths [(temp! "(ns t (:require [metabase.api.macros :as api.macros] [metabase.util :as u]))
+(defn sink [x] x)
+(defn- nested-rows! [rows] (sink rows))
+(defn- flat-rows! [rows] (sink rows))
+(defn- into-rows! [rows] (sink rows))
+(defn- vals-rows! [rows] (sink rows))
+(defn- doseq-row! [row] (sink row))
+(defn- whole-map! [m] (sink m))
+(defn- opaque-rows! [rows] (sink rows))
+(defn- let-rows! [rows] (sink rows))
+(defn- nested! [table->pk->values]
+  (nested-rows! (for [[table-id updates] table->pk->values
+                      [pk values] updates]
+                  (merge {:table_id table-id :row_pk pk} values))))
+(defn- flat! [pk->values] (flat-rows! (for [[pk values] pk->values] values)))
+(defn- into-map! [pk->values] (into-rows! (for [[_ values] pk->values] values)))
+(defn- values-of! [pk->values] (vals-rows! (vals pk->values)))
+(defn- doseq! [pk->values] (doseq [[_ values] pk->values] (doseq-row! values)))
+(defn- whole! [pk->values] (whole-map! pk->values))
+(defn- opaque-values! [pk->values] (opaque-rows! (for [[_ values] pk->values] values)))
+(defn- with-let! [pk->values] (let-rows! (for [[pk values] pk->values :let [row (assoc values :row_pk pk)]] row)))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q {:keys [diffs before]}]
+  (nested! (u/for-map [[table-id ds] (group-by :table-id diffs)]
+             [table-id (u/for-map [{:keys [pk after]} ds :when after]
+                         [pk {:raw_after after :undoable true}])]))
+  (flat! (u/for-map [d diffs] [(:pk d) {:raw_after (:after d)}]))
+  (into-map! (into {} (for [d diffs] [(:pk d) {:raw_after (:after d)}])))
+  (values-of! (u/for-map [d diffs] [(:pk d) {:raw_after (:after d)}]))
+  (doseq! (u/for-map [d diffs] [(:pk d) {:raw_after (:after d)}]))
+  (whole! (u/for-map [d diffs] [(:pk d) {:raw_after (:after d)}]))
+  (opaque-values! (u/for-map [d diffs] [(:pk d) before]))
+  (with-let! (u/for-map [d diffs] [(:pk d) {:raw_after (:after d)}])))")] :rules [rule]}))]
+    (testing "a `[k v]` destructured off a map built by `u/for-map` from `[k {literal}]` pairs has the literal's
+              shape, and so does a `merge` of it with a literal -- two levels down"
+      (is (= "(:shape/keyed)" (get by-row 3))))
+    (testing "one level down, through `u/for-map`, through `(into {} (for ... [k v]))`, through `vals`, in a `doseq`"
+      (is (= "(:shape/keyed)" (get by-row 4)))
+      (is (= "(:shape/keyed)" (get by-row 5)))
+      (is (= "(:shape/keyed)" (get by-row 6)))
+      (is (= "(:shape/keyed)" (get by-row 7))))
+    (testing "the map of maps itself, handed on whole, is opaque: its keys are values"
+      (is (= "(:shape/opaque)" (get by-row 8))))
+    (testing "values that were a request map stay opaque"
+      (is (= "(:shape/opaque)" (get by-row 9))))
+    (testing "a `:let` inside the `for` binding vector is followed"
+      (is (= "(:shape/keyed)" (get by-row 10))))))
+
 (deftest schema-shape-test
   (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
               :triggers '#{t/sink}
