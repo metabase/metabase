@@ -8,6 +8,7 @@ import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
 import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import {
   Form,
   FormErrorMessage,
@@ -16,7 +17,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type {
