@@ -686,6 +686,15 @@
                                                   (= status :failed)
                                                   (assoc :error_message "Index was not found on the target table after the transform ran."))))))
 
+(defn- mark-indexes-unverifiable!
+  "Fail the still-running `managed` requests with the driver's reason when the warehouse read that verification needs
+  has failed. Only running rows change, so the run's generic `finally` backstop finds nothing left to relabel."
+  [managed schema table-name ^Throwable t]
+  (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s: %s" schema table-name (ex-message t))
+  (table-index/mark-unverified-running-indexes-failed!
+   (into #{} (map :id) managed)
+   (str "Couldn't read the table's indexes to verify this one: " (reconcile/driver-error-message t))))
+
 (defn verify-managed-indexes!
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
   Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
@@ -698,11 +707,13 @@
       (when-let [managed (seq managed)]
         (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))
               {:keys [schema] table-name :name} (:target transform)]
-          (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
+          (when-some [warehouse-indexes (try
+                                          (reconcile/fetch-warehouse-indexes database schema table-name)
+                                          (catch Exception e
+                                            (mark-indexes-unverifiable! managed schema table-name e)
+                                            nil))]
             (apply-index-outcomes!
-             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))
-            (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
-                       schema table-name (count managed))))))))
+             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.

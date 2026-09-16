@@ -39,6 +39,7 @@ type SetupOpts = {
   indexes?: TableIndexEntry[];
   users?: UserListResult[];
   remoteSyncReadOnly?: boolean;
+  warehouseError?: string | null;
 };
 
 function setup({
@@ -46,6 +47,7 @@ function setup({
   indexes = [],
   users = [],
   remoteSyncReadOnly = false,
+  warehouseError = null,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupDatabasesEndpoints([
@@ -58,7 +60,7 @@ function setup({
   setupUsersEndpoints(users);
 
   setupGetTransformEndpoint(transform);
-  setupListTableIndexesEndpoint(transform.id, indexes);
+  setupListTableIndexesEndpoint(transform.id, indexes, warehouseError);
 
   const storeInitialState = createMockState({
     settings: mockSettings({
@@ -188,6 +190,32 @@ describe("TransformIndexesPage", () => {
 
     expect(
       screen.queryByRole("button", { name: "Create index" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns with the warehouse's own error when the indexes could not be read", async () => {
+    const warehouseError =
+      "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)";
+    setup({
+      indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })],
+      warehouseError,
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByText(
+        `Metabase couldn't read the indexes on this table, so statuses may be out of date. The database said: ${warehouseError}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("idx_orders_id")).toBeInTheDocument();
+  });
+
+  it("does not warn when the warehouse read succeeded", async () => {
+    setup({ indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })] });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByTestId("warehouse-error-banner"),
     ).not.toBeInTheDocument();
   });
 

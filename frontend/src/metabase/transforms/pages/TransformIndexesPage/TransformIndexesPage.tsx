@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   skipToken,
@@ -13,10 +13,12 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { Center } from "metabase/ui";
+import { Alert, Center, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, Transform } from "metabase-types/api";
@@ -70,10 +72,12 @@ function TransformIndexesContent({
   readOnly: boolean | undefined;
 }) {
   const {
-    data: indexes = [],
+    data: indexList,
     isLoading,
     error,
   } = useListTableIndexesQuery({ "transform-id": transform.id });
+  const indexes = indexList?.indexes ?? [];
+  const warehouseError = indexList?.warehouseError ?? null;
   const { deleteIndex, confirmationModal } = useDeleteIndex();
   const targetTableExists = transform.table != null;
   const hasRequestableIndexes =
@@ -96,6 +100,9 @@ function TransformIndexesContent({
 
   return (
     <>
+      {warehouseError != null && (
+        <UnreadableWarehouseAlert warehouseError={warehouseError} />
+      )}
       <TitleSection
         actions={
           <IndexPageActions
@@ -127,6 +134,26 @@ function TransformIndexesContent({
       )}
       {confirmationModal}
     </>
+  );
+}
+
+function UnreadableWarehouseAlert({
+  warehouseError,
+}: {
+  warehouseError: string;
+}) {
+  const applicationName = useSelector(getApplicationName);
+
+  return (
+    <Alert
+      size="compact"
+      color="warning"
+      icon={<Icon name="warning" />}
+      data-testid="warehouse-error-banner"
+    >
+      {c("{0} is the application name, {1} is the database's own error message")
+        .t`${applicationName} couldn't read the indexes on this table, so statuses may be out of date. The database said: ${warehouseError}`}
+    </Alert>
   );
 }
 
