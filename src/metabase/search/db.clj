@@ -273,8 +273,9 @@
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(mu/defn delete-pending-index-metadata!
-  "Delete the pending SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
+(mu/defn delete-non-active-index-metadata!
+  "Delete the SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name` in any
+  non-active state (pending or retired)."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string
@@ -284,7 +285,7 @@
               :version version
               :lang_code lang-code
               :index_name index-name
-              :status :pending))
+              :status [:not= :active]))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and

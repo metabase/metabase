@@ -387,7 +387,7 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-pending-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-non-active-index! :appdb (search.spec/index-version-hash) table-name)]
                   (when (pos? deleted)
                     (log/infof "Deleted %d pending indices" deleted))))
               (swap! *indexes* assoc :pending nil))
