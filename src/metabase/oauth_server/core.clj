@@ -96,15 +96,19 @@
   ;; refuse. Applied on read, so a client registered before a scope existed can still request it. Every read sees the
   ;; widened `:scopes`, including the RFC 7592 client read (`GET /oauth/register/:client-id`).
   ;;
-  ;; The MCP scopes are added whatever the setting says: turning registration off blocks new clients, but a client
-  ;; that registered with the baseline must still be able to step up, or its `/authorize` is a bare 400. Each scope
-  ;; still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
+  ;; The MCP scopes are added whatever the *registration* setting says: turning registration off blocks new clients, but
+  ;; a client that registered with the baseline must still be able to step up, or its `/authorize` is a bare 400. Each
+  ;; scope still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
   ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
+  ;;
+  ;; The MCP kill switch is the one thing that stops the widening entirely. Some MCP surface scopes also gate the agent
+  ;; API (`agent:resource:read` is the declared scope of `POST /api/agent/v1/read-resource`), which has its own lever,
+  ;; so widening with MCP off would hand a client a scope its registration never included for a surface still serving.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
       (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
                               (oauth-settings/oauth-server-dynamic-registration-enabled)
-                              (mcp/v2-scopes)
+                              (when (mcp/mcp-enabled?) (mcp/v2-scopes))
                               (default-grant-scopes)))
     (register-client [_ client-config]
       (oidc.proto/register-client client-store client-config))

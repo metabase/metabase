@@ -18,6 +18,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as v2.common]
+   [metabase.mcp.v2.message :as message]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
@@ -48,9 +49,9 @@
   {:jsonrpc "2.0" :id id :result result})
 
 (defn jsonrpc-error
-  "Build a JSON-RPC 2.0 error response for request `id`."
+  "Build a JSON-RPC 2.0 error response for request `id` with error `code` and `message`, [[message/render]]ed."
   [id code message]
-  {:jsonrpc "2.0" :id id :error {:code code :message message}})
+  {:jsonrpc "2.0" :id id :error {:code code :message (message/render message)}})
 
 (defn insufficient-scope
   "Mark `error-response` (a [[jsonrpc-error]]) as a refusal for scopes the token lacks. As the only response to a
@@ -318,7 +319,7 @@
                   (if-let [instance-origin (mw.security/site-origin)]
                     (same-origin-as-instance? origin instance-origin)
                     (same-origin-host? origin (get-in request [:headers "host"]))))
-      (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed")))))
+      (json-response 403 (jsonrpc-error nil -32600 (message/msg ["Origin not allowed"]))))))
 
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
@@ -326,13 +327,13 @@
   [user-id session-id]
   (cond
     (str/blank? session-id)
-    {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
+    {:error (json-response 400 (jsonrpc-error nil -32600 (message/msg ["Missing Mcp-Session-Id header"])))}
 
     (not (mcp.session/valid-id? session-id))
-    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
+    {:error (json-response 404 (jsonrpc-error nil -32600 (message/msg ["Invalid or expired session"])))}
 
     (not (mcp.session/owned-by-user? session-id user-id))
-    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
+    {:error (json-response 404 (jsonrpc-error nil -32600 (message/msg ["Invalid or expired session"])))}
 
     :else
     {:session-id session-id}))
@@ -352,21 +353,21 @@
                                (string? (:method message))))]
     (cond
       (nil? body)
-      (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
+      (json-response 400 (jsonrpc-error nil -32700 (message/msg ["Parse error: empty body"])))
 
       (and (not batch?)
            (or (not (valid-message? body))
                (and (= "initialize" (:method body))
                     (not (contains? body :id)))))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request"))
+      (json-response 400 (jsonrpc-error nil -32600 (message/msg ["Invalid request"])))
 
       ;; JSON-RPC 2.0: empty batch is invalid
       (and batch? (empty? body))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: empty batch"))
+      (json-response 400 (jsonrpc-error nil -32600 (message/msg ["Invalid request: empty batch"])))
 
       ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
       (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
-      (json-response 400 (jsonrpc-error nil -32600 "initialize must not be batched"))
+      (json-response 400 (jsonrpc-error nil -32600 (message/msg ["initialize must not be batched"])))
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
@@ -415,7 +416,7 @@
                 handle-msg      (fn [msg]
                                   (cond
                                     (not (valid-message? msg))
-                                    (jsonrpc-error nil -32600 "Invalid request")
+                                    (jsonrpc-error nil -32600 (message/msg ["Invalid request"]))
 
                                     :else
                                     (let [response (dispatch-request dispatch-method-fn msg session-id
@@ -502,9 +503,9 @@
   "The JSON-RPC error every keepalive refusal carries, whether it goes out as a 429 body or as an SSE frame on a
   stream whose headers are already sent."
   (jsonrpc-error nil -32000
-                 (str "Too many concurrent MCP event streams open for this user "
-                      "(limit " max-concurrent-keepalive-streams
-                      "). Close an existing stream before opening another.")))
+                 (message/msg [(str "Too many concurrent MCP event streams open for this user "
+                                    "(limit %d). Close an existing stream before opening another.")]
+                              max-concurrent-keepalive-streams)))
 
 (defn- at-keepalive-cap?
   "Is `user-id` already holding [[max-concurrent-keepalive-streams]] running streams?
@@ -642,9 +643,9 @@
       (throttle/check mcp-throttler user-id))
     nil
     (catch clojure.lang.ExceptionInfo e
-      (let [message       (ex-message e)
-            retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
-        (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
+      (let [text          (ex-message e)
+            retry-seconds (some->> text (re-find #"(\d+) seconds") second)]
+        (cond-> (json-response 429 (jsonrpc-error nil -32000 (message/msg ["ERROR: %s"] text)))
           retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
@@ -718,7 +719,9 @@
                            (respond (handle-delete user-id request))
 
                            :else
-                           (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                           (respond (json-response 405 (jsonrpc-error nil
+                                                                      -32600
+                                                                      (message/msg ["Method not allowed"]))))))
                        (catch Throwable e
                          (raise e))))))]
          (cond
@@ -743,14 +746,14 @@
            bearer-token
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
            ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
-           (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
+           (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
                                    {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
                                                                                         default-ask-scopes request)
                                                             ", error=\"invalid_token\"")}))
 
            ;; No auth at all — return 401 with discovery
            :else
-           (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
+           (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Authentication required"]))
                                    {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
                                                                                    default-ask-scopes request)}))))))
    (constantly nil)))

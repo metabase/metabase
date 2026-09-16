@@ -1318,6 +1318,38 @@
       (testing "but not for the rest of the ceiling"
         (refused? (authorize "dynamic" false not-mcp))))))
 
+(deftest grant-ceiling-widening-respects-mcp-kill-switch-test
+  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off. `agent:resource:read` is an MCP "
+                "surface scope and also the declared scope of `POST /api/agent/v1/read-resource`, which a separate "
+                "lever (`agent-api-enabled`) gates — so widening onto it with MCP off hands a dynamic client a scope "
+                "its registration never included, and with the agent API on, a live endpoint to spend it at.")
+    (let [authorize (fn [mcp-on?]
+                      (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                                         mcp-enabled?                              mcp-on?
+                                                         ;; off in both cases, so the only widening under test is the
+                                                         ;; unconditional MCP one, not the wider default ceiling
+                                                         oauth-server-dynamic-registration-enabled false]
+                        (t2/with-transaction [_conn nil {:rollback-only true}]
+                          ;; see [[register-then-authorize-mcp!]] for why the session is revalidated first
+                          (mt/user-http-request :crowberto :get 200 "api/user/current")
+                          (let [client-id (:client_id (create-test-client!
+                                                       {:scopes            ["agent:content:read"]
+                                                        :registration_type "dynamic"}))]
+                            (mt/user-http-request-full-response
+                             :crowberto :get "oauth/authorize"
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         "agent:resource:read"
+                             :state         "test-state")))))]
+      (testing "with MCP enabled a dynamic client is widened onto the MCP scopes and reaches consent"
+        (let [response (authorize true)]
+          (is (= 200 (:status response)) (pr-str (:body response)))))
+      (testing "with MCP disabled it is not widened, so the scope is refused"
+        (let [response (authorize false)]
+          (is (= 400 (:status response)))
+          (is (= "invalid_request" (get-in response [:body :error]))))))))
+
 (deftest authorize-rejects-fully-narrowed-scope-test
   (testing "when every requested scope is one the named resource does not accept, answer RFC 6749
             `invalid_scope` rather than dropping the parameter. Dropping it renders a consent screen

@@ -11,10 +11,13 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.urls :as channel.urls]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
@@ -33,11 +36,11 @@
   "JSON-RPC -32603: unexpected server-side failure." -32603)
 
 (defn error-content
-  "Wrap an error message as MCP error content. The JSON-RPC `code` (default: internal error) is
-   carried under the namespaced `::error-code` key for usage logging and stripped from the
-   response before it reaches the client (see the registry's call-tool)."
+  "MCP error content whose text is `message`, [[message/render]]ed. The JSON-RPC `code` (default: internal error) is
+   carried under the namespaced `::error-code` key for usage logging and stripped from the response before it reaches
+   the client (see the registry's call-tool)."
   ([message] (error-content message error-code-internal))
-  ([message code] {:content [{:type "text" :text message}] :isError true ::error-code code}))
+  ([message code] {:content [{:type "text" :text (message/render message)}] :isError true ::error-code code}))
 
 (defn success-content
   "Assemble the two MCP response channels deliberately. When `structuredContent` is present,
@@ -48,10 +51,12 @@
    `text` self-sufficient: everything the model needs to reason or make its next call. Pass
    `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
    and make it a faithful mirror of the text — never a subset, never the sole home of anything
-   the model needs."
+   the model needs. A message or string `text` is [[message/render]]ed; anything else is JSON-encoded."
   ([text] (success-content text nil))
   ([text structured]
-   (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
+   (cond-> {:content [{:type "text" :text (if (or (message/message? text) (string? text))
+                                            (message/render text)
+                                            (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
 (def mcp-apps-meta-key
@@ -73,31 +78,169 @@
   (cond-> result
     (map? (:_meta result)) (update :_meta dissoc mcp-apps-meta-key)))
 
+;;; ------------------------------------------------ Message helpers ----------------------------------------------
+
+(defn- shortened-string
+  [s limit]
+  (if (> (count s) limit)
+    (str (message/string-prefix s limit) "…")
+    s))
+
+(defn- fits?
+  [x limit]
+  (<= (count (message/render x)) limit))
+
+(defn- message-with-shortened-arg
+  "Message `m` with its `i`th argument, a string, cut to the most characters (and an ellipsis) that let `m` render
+   within `limit`, or to just the ellipsis when none do."
+  [m i limit]
+  (let [s       (get-in m [:args i])
+        with-at #(assoc-in m [:args i] (str (message/string-prefix s %) "…"))]
+    ;; Rendering never shrinks as characters are kept, so binary search for the most that fit.
+    (loop [lo 0, hi (dec (count s))]
+      (if (< lo hi)
+        (let [mid (quot (+ lo hi 1) 2)]
+          (if (fits? (with-at mid) limit)
+            (recur mid hi)
+            (recur lo (dec mid))))
+        (with-at lo)))))
+
+(defn- message-with-shortened-args
+  "Message `m` with its string arguments shortened, longest first, until it renders within `limit`, or nil when even
+   all of them shortened to an ellipsis don't fit."
+  [m limit]
+  (let [longest-first (->> (:args m)
+                           (keep-indexed (fn [i arg] (when (and (string? arg) (> (count arg) 1)) i)))
+                           (sort-by #(- (count (get-in m [:args %])))))
+        shortest      (reduce #(assoc-in %1 [:args %2] "…") m longest-first)]
+    (when (fits? shortest limit)
+      (loop [m m, [i & more] longest-first]
+        (if (fits? m limit)
+          m
+          (recur (message-with-shortened-arg m i limit) more))))))
+
+(mu/defn ellipsize :- [:or :string ::message/message]
+  "`x` shortened to fit `limit`, with `…` marking each cut. A message stays a message, rendering within `limit`
+   characters, or `limit` + 2 when a quoted value is cut; anything else becomes its string, cut to `limit` characters
+   plus `…`."
+  [x     :- ::message/value
+   limit :- nat-int?]
+  (cond
+    (not (message/message? x)) (shortened-string (str x) limit)
+    (fits? x limit)            x
+    :else                      (or (message-with-shortened-args x limit)
+                                   (message/truncate x limit))))
+
+(defn- joined-message
+  "One message of `parts`, each cleaned unless it is raw or a message, joined pairwise by `join-two`."
+  [join-two parts]
+  (let [parts (vec parts)]
+    (case (count parts)
+      0 (message/msg [""])
+      1 (message/msg ["%s"] (first parts))
+      ;; Halving keeps the nesting, and so the rendering's recursion, logarithmic in the number of parts.
+      (let [half (quot (count parts) 2)]
+        (join-two (joined-message join-two (subvec parts 0 half))
+                  (joined-message join-two (subvec parts half)))))))
+
+(mu/defn list-message :- ::message/message
+  "A message of `items` separated by commas, each cleaned unless it is raw or a message."
+  [items :- [:sequential ::message/value]]
+  (joined-message #(message/msg ["%s, %s"] %1 %2) items))
+
+(mu/defn lines-message :- ::message/message
+  "A message of `items`, one per line, each cleaned unless it is raw or a message."
+  [items :- [:sequential ::message/value]]
+  (joined-message #(message/msg ["%s" "%s"] %1 %2) items))
+
+(defn- semicolon-list-message
+  [items]
+  (joined-message #(message/msg ["%s; %s"] %1 %2) items))
+
+(defn humanize-detail
+  "Flatten a [[malli.error/humanize]] explanation into a one-line message of `path: expectation`, with the paths
+   and expectations cleaned.
+
+   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
+   multi-element collection names which element it is in; a run of plain strings is a single
+   value's alternative messages and joins without positions."
+  [errors]
+  (cond
+    (map? errors)
+    (semicolon-list-message (map (fn [[k v]] (message/msg ["%s: %s"] (u/qualified-name k) (humanize-detail v)))
+                                 errors))
+
+    (and (sequential? errors) (every? string? errors))
+    (list-message errors)
+
+    (sequential? errors)
+    (semicolon-list-message (keep-indexed (fn [i v]
+                                            (when (some? v)
+                                              (message/msg ["[%d] %s"] i (humanize-detail v))))
+                                          errors))
+
+    :else
+    (message/msg ["%s"] (str errors))))
+
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
+(mu/defn message-ex-info :- (ms/InstanceOfClass clojure.lang.ExceptionInfo)
+  "An `ex-info` whose exception message is the rendering of `msg`, with `data` plus `msg` under `::message` as its
+   `ex-data`, and optional `cause`."
+  ([msg  :- ::message/message
+    data :- [:maybe ms/ExceptionData]]
+   (message-ex-info msg data nil))
+  ([msg   :- ::message/message
+    data  :- [:maybe ms/ExceptionData]
+    cause :- [:maybe (ms/InstanceOfClass Throwable)]]
+   (ex-info (message/render msg) (assoc data ::message msg) cause)))
+
 (defn throw-teaching-error
-  "Throw an `ex-info` whose message is a complete caller-facing sentence naming the fix.
+  "Throw a caller-facing `ex-info` for `msg`, a message or a string: a complete sentence naming the fix. `data` is
+   merged over `{:status-code 400}`. A message is thrown as a [[message-ex-info]]; a string is the exception message.
    Surfaced to the MCP client as `isError` content by [[->mcp-error-content]]."
   ([msg] (throw-teaching-error msg nil))
   ([msg data]
-   (throw (ex-info msg (merge {:status-code 400} data)))))
+   (if (message/message? msg)
+     (throw (message-ex-info msg (merge {:status-code 400} data)))
+     (throw (ex-info msg (merge {:status-code 400} data))))))
+
+(def ^:private not-found-nouns
+  "The server text naming each model keyword's entity type in a not-found error."
+  {:model/Card               (message/raw "Card")
+   :model/Collection         (message/raw "Collection")
+   :model/Dashboard          (message/raw "Dashboard")
+   :model/Database           (message/raw "Database")
+   :model/Document           (message/raw "Document")
+   :model/Field              (message/raw "Field")
+   :model/Measure            (message/raw "Measure")
+   :model/NativeQuerySnippet (message/raw "NativeQuerySnippet")
+   :model/Pulse              (message/raw "Pulse")
+   :model/Segment            (message/raw "Segment")
+   :model/Table              (message/raw "Table")
+   :model/Transform          (message/raw "Transform")
+   :alert                    (message/raw "alert")
+   :collection               (message/raw "collection")
+   :subscription             (message/raw "subscription")})
 
 (defn throw-insufficient-scope!
-  "Throw a 403 with caller-facing `msg`, marked as a refusal for want of `required-scope` so the registry answers it
-   as a scope denial rather than an `isError` result."
+  "Throw a 403 with caller-facing message `msg`, marked as a refusal for want of `required-scope` so the registry
+   answers it as a scope denial rather than an `isError` result."
   [msg required-scope]
-  (throw (ex-info msg {:status-code     403
-                       ::error-code     error-code-invalid-request
-                       ::required-scope required-scope})))
+  (throw (message-ex-info msg {:status-code     403
+                               ::error-code     error-code-invalid-request
+                               ::required-scope required-scope})))
 
 (defn throw-not-found
-  "Throw the collapsed not-found teaching error. Deliberately identical for \"doesn't exist\"
-   and \"exists but not readable\", so responses never form an existence oracle across the
-   permission boundary."
+  "Throw the collapsed not-found teaching error for `model`, a server-declared model keyword, and the caller's `id`.
+   Deliberately identical for \"doesn't exist\" and \"exists but not readable\", so responses never form an
+   existence oracle across the permission boundary."
   [model id]
-  (throw (ex-info (format "%s %s not found — it may not exist, or you may not have access to it."
-                          (name model) id)
-                  {:status-code 404})))
+  (throw-teaching-error (message/msg ["%s %s not found — it may not exist, or you may not have access to it."]
+                                     ;; A keyword missing from the map is quoted, like any value not known to be ours.
+                                     (get not-found-nouns model (name model))
+                                     id)
+                        {:status-code 404}))
 
 (defn- status-code->error-code
   [status-code]
@@ -140,26 +283,44 @@
   (let [{:keys [type fn-name humanized]} (ex-data e)]
     (when (contains? schema-failure-types type)
       (if (= type :metabase.util.malli.fn/invalid-input)
-        (format "Server-side schema check failed in `%s`: %s. This is a bug in Metabase, not something to retry — report it."
-                fn-name (pr-str humanized))
-        (format "Server-side schema check failed in `%s` (on its return value). This is a bug in Metabase, not something to retry — report it."
-                fn-name)))))
+        (message/msg [(str "Server-side schema check failed in %s: %s. This is "
+                           "a bug in Metabase, not something to retry — report it.")]
+                     (str fn-name) (humanize-detail humanized))
+        (message/msg [(str "Server-side schema check failed in %s (on its return value). "
+                           "This is a bug in Metabase, not something to retry — report it.")]
+                     (str fn-name))))))
+
+(def ^:private internal-error
+  (message/msg ["Internal error"]))
+
+(mu/defn exception-message :- [:maybe [:or :string ::message/message]]
+  "The message of exception `e`: the message [[message-ex-info]] stored in its `ex-data` while its exception message
+   is still that message's rendering, else its exception message string, or nil when it has neither."
+  [e :- (ms/InstanceOfClass Throwable)]
+  (let [stored (::message (ex-data e))
+        text   (ex-message e)]
+    (if (and stored (or (nil? text) (= text (message/render stored))))
+      stored
+      text)))
+
+(defn- caller-facing-message
+  "The message of caller-facing exception `e` ([[exception-message]]), else the internal-error message."
+  [e]
+  (or (exception-message e) internal-error))
 
 (defn caller-safe-error-message
-  "The message of `e` when it is deliberately caller-facing, judged the same way as
-   [[->mcp-error-content]]; any other exception is logged server-side and reported to the client
-   as a generic \"Internal error\". This is the sanitizer for response paths that answer with a
-   JSON-RPC error rather than tool content — resource reads, list handlers, and the transport's
-   own catch-all."
+  "The message for `e` in a JSON-RPC error response, sanitized as [[->mcp-error-content]] sanitizes tool content: a
+   deliberately caller-facing `e`'s [[exception-message]], a schema failure's message naming the function, or else
+   the \"Internal error\" message. Logs any `e` that isn't caller-facing."
   [e]
   (cond
-    (caller-facing-error-code e) (or (ex-message e) "Internal error")
+    (caller-facing-error-code e) (caller-facing-message e)
     (schema-failure-message e)   (do
                                    (log/error e "Schema check failed dispatching MCP v2 request")
                                    (schema-failure-message e))
     :else                        (do
                                    (log/error e "Unhandled error dispatching MCP v2 request")
-                                   "Internal error")))
+                                   internal-error)))
 
 (defn ->mcp-error-content
   "Convert a caught exception into MCP error content, and the single point where an exception
@@ -171,47 +332,14 @@
    the real exception is logged server-side for debugging but never returned to the client."
   [e]
   (if-let [code (caller-facing-error-code e)]
-    (error-content (or (ex-message e) "Internal error") code)
+    (error-content (caller-facing-message e) code)
     (if-let [message (schema-failure-message e)]
       (do
         (log/error e "Schema check failed dispatching MCP v2 tool call")
         (error-content message error-code-internal))
       (do
         (log/error e "Unhandled error dispatching MCP v2 tool call")
-        (error-content "Internal error" error-code-internal)))))
-
-;;; ------------------------------------------------ Message helpers ----------------------------------------------
-
-(defn ellipsize
-  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
-  [s limit]
-  (let [s (str s)]
-    (if (> (count s) limit)
-      (str (subs s 0 limit) "…")
-      s)))
-
-(defn humanize-detail
-  "Flatten a [[malli.error/humanize]] explanation into one line of `path: expectation`.
-
-   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
-   multi-element collection names which element it is in; a run of plain strings is a single
-   value's alternative messages and joins without positions."
-  [errors]
-  (cond
-    (map? errors)
-    (str/join "; " (map (fn [[k v]] (str (u/qualified-name k) ": " (humanize-detail v))) errors))
-
-    (and (sequential? errors) (every? string? errors))
-    (str/join ", " errors)
-
-    (sequential? errors)
-    (str/join "; " (keep-indexed (fn [i v]
-                                   (when (some? v)
-                                     (format "[%d] %s" i (humanize-detail v))))
-                                 errors))
-
-    :else
-    (str errors)))
+        (error-content internal-error error-code-internal)))))
 
 ;;; ------------------------------------------------ Response shaping ----------------------------------------------
 
@@ -277,16 +405,18 @@
    (select-fields type response-map fields nil))
   ([type response-map fields {:keys [response-format include]}]
    (when (or response-format include)
-     (throw-teaching-error "Use `fields` OR `response_format`/`include`, not both."))
+     (throw-teaching-error (message/msg ["Use \"fields\" OR \"response_format\"/\"include\", not both."])))
    (when (empty? fields)
-     (throw-teaching-error "`fields` must name at least one path."))
+     (throw-teaching-error (message/msg ["\"fields\" must name at least one path."])))
    (let [catalog (or (projections/catalog type)
-                     (throw-teaching-error (format "`fields` is not supported for type %s." (name type))))]
+                     (throw-teaching-error (message/msg ["\"fields\" is not supported for type %s."]
+                                                        (name type))))]
      (doseq [path fields]
        (when-not (valid-path? path catalog)
-         (throw-teaching-error (format "Unknown field path %s for type %s. Nearest valid paths: %s."
-                                       (pr-str path) (name type)
-                                       (str/join ", " (nearest-paths path catalog))))))
+         (throw-teaching-error (message/msg ["Unknown field path %s for type %s. Nearest valid paths: %s."]
+                                            path
+                                            (name type)
+                                            (list-message (nearest-paths path catalog))))))
      (select-tree response-map (paths->tree fields)))))
 
 (defn response-format
@@ -296,48 +426,56 @@
   (case (get args :response_format)
     (nil "concise") :concise
     "detailed"      :detailed
-    (throw-teaching-error (format "Invalid response_format %s — use \"concise\" or \"detailed\"."
-                                  (pr-str (get args :response_format))))))
+    (throw-teaching-error (message/msg ["Invalid response_format %s — use \"concise\" or \"detailed\"."]
+                                       (get args :response_format)))))
 
 ;;; ------------------------------------------------ List envelopes ------------------------------------------------
 
+(defn- total-message
+  "`total` as a message, read as a lower bound when `total-floor?`."
+  [total total-floor?]
+  (if total-floor?
+    (message/msg ["at least %d"] total)
+    (message/msg ["%d"] total)))
+
 (defn truncation-line
-  "The steering sentence appended to a truncated list response: names the narrowing `param` when
-   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
-   (or `total` is unknown). `:returned` is the actual page size — the caller's ground truth, e.g.
-   `(count data)` — not derived arithmetically, since a post-fetch drop (a stale index hit, an
-   unreadable row) can leave a page shorter than `limit`/`total`/`offset` alone would predict.
-   `:total-floor?` marks `total` as a lower bound rather than an exact count — e.g. a search total
-   capped at the ranking limit — so the sentence reads \"at least N\"."
+  "The steering message appended to a truncated list response: names the narrowing `param` (a
+   server-declared argument keyword) when one narrows this list, and always the next offset.
+   Returns nil when the page isn't truncated (or `total` is unknown). `:returned` is the actual
+   page size — the caller's ground truth, e.g. `(count data)` — not derived arithmetically, since
+   a post-fetch drop (a stale index hit, an unreadable row) can leave a page shorter than
+   `limit`/`total`/`offset` alone would predict. `:total-floor?` marks `total` as a lower bound
+   rather than an exact count — e.g. a search total capped at the ranking limit — so the sentence
+   reads \"at least N\"."
   ;; A list with nothing to narrow by still has to say more exists — without a line the caller
   ;; reads a truncated page as the whole set.
   [{:keys [param offset limit total total-floor? returned]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (let [total-str (str (when total-floor? "at least ") total)
-            next      (+ offset limit)]
+      (let [total-phrase (total-message total total-floor?)
+            next         (+ offset limit)]
         (if param
-          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
-                  returned total-str (name param) next)
-          (format "Returned %d of %s — continue with `offset: %d`."
-                  returned total-str next))))))
+          (message/msg ["Returned %d of %s — narrow with %s, or continue with `offset: %d`."]
+                       returned total-phrase (name param) next)
+          (message/msg ["Returned %d of %s — continue with `offset: %d`."]
+                       returned total-phrase next))))))
 
 (defn- empty-page-line
-  "The steering sentence for a page that returned nothing while `total` says matches exist.
+  "The steering message for a page that returned nothing while `total` says matches exist.
    [[truncation-line]] only fires on arithmetic truncation, so an offset at or past the end — or a
    page whose every row was dropped after the count — otherwise carries no line at all, and an
    empty `data` reads as \"nothing matches\" rather than \"nothing *here*\". Nil when `total` is
    unknown or genuinely zero: that envelope already says it."
   [{:keys [offset total total-floor?]}]
   (when (and total (pos? total))
-    (let [total-str (str (when total-floor? "at least ") total)]
+    (let [total-phrase (total-message total total-floor?)]
       (if (pos? (or offset 0))
-        (format "No results at offset %d — %s available; page back with a smaller `offset`."
-                offset total-str)
+        (message/msg ["No results at offset %d — %s available; page back with a smaller \"offset\"."]
+                     offset total-phrase)
         ;; offset 0 with a positive total: the matches were counted, then dropped downstream
         ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.
-        (format "Returned 0 of %s — the matches found are no longer readable or have been removed."
-                total-str)))))
+        (message/msg ["Returned 0 of %s — the matches found are no longer readable or have been removed."]
+                     total-phrase)))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
@@ -351,7 +489,7 @@
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
    block, with a steering line appended. `data` is already the page; `opts` carries
    `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
-   `:empty-hint` — the domain reason a genuinely empty result set (`total` 0) is empty, never an
+   `:empty-hint` message — the domain reason a genuinely empty result set (`total` 0) is empty, never an
    override of a computed line. Text-only — list data never rides `structuredContent` by reflex."
   [data total {:keys [empty-hint offset] :as opts}]
   (let [envelope (list-envelope data total)
@@ -366,8 +504,9 @@
                    (or (empty-page-line opts)
                        (when (and (= 0 total) (not (pos? (or offset 0)))) empty-hint))
                    (truncation-line opts))]
-    (success-content (cond-> (json/encode envelope)
-                       line (str "\n" line)))))
+    (success-content (if line
+                       (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                       envelope))))
 
 ;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
 

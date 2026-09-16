@@ -8,6 +8,8 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.config.core :as config]
+   [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -60,8 +62,9 @@
   (cond
     ;; The fallback wins when installed: a developer whose worktree has a frontend build would
     ;; otherwise render the built template, and the credential-embedding tests would fail on their
-    ;; machine and pass on CI.
-    @fallback-template
+    ;; machine and pass on CI. Gated on `is-test?` so no production process can ever prefer an
+    ;; inline template over the built one, whatever leaves the atom set.
+    (and config/is-test? @fallback-template)
     (stencil/render-string @fallback-template vars)
 
     (io/resource embed-mcp-template-path)
@@ -156,11 +159,13 @@
   (set/difference (:required-extensions tool #{}) supported-extensions))
 
 (defn missing-extensions-error
-  "Teaching message for a tool call the client can't render."
+  "Teaching message for a call to registered tool `tool-name` from a client missing `missing-extensions`."
   [tool-name missing-extensions]
-  (let [extension-names (str/join ", " (map #(get extension-labels % (name %)) missing-extensions))]
-    (str tool-name " requires a client that supports " extension-names ". "
-         "Reconnect from a client that advertises text/html;profile=mcp-app.")))
+  (let [extension-names (common/list-message (map #(get extension-labels % (name %)) missing-extensions))]
+    (message/msg ["%s requires a client that supports %s."
+                  "Reconnect from a client that advertises text/html;profile=mcp-app."]
+                 tool-name
+                 extension-names)))
 
 (defn embed-render-fn
   "Build a `:render-fn` that serves the MCP Apps iframe shell.
