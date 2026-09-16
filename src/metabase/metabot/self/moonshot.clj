@@ -16,9 +16,10 @@
 (def ^:private default-model "kimi-k3")
 
 (def ^:private provider
-  "Mapping 400 only improves the message text: `metabase.metabot.api`'s `provider-client-error?` renders any 4xx
-  `:api-error` under the admin API-key field, so a generic message sends admins hunting a key problem that does not
-  exist. 429 covers rate limiting *and* an exhausted account balance, which Moonshot reports with the same status."
+  "Mapping 400 only improves the message text: `metabase.llm.api.provider`'s `provider-client-error?` surfaces any
+  4xx `:api-error` verbatim on the connection form, so a generic message sends admins hunting a key problem that
+  does not exist. 429 covers rate limiting *and* an exhausted account balance, which Moonshot reports with the
+  same status."
   (adapter/provider
    {:slug         "moonshot"
     :display-name "Moonshot"
