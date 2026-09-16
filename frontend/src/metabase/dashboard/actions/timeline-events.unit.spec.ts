@@ -17,6 +17,7 @@ import {
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { SimpleEventSchema } from "metabase-types/analytics";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
@@ -105,6 +106,15 @@ const getVisibleEventIds = (store: Store) =>
 
 const getDashCard = (store: Store) =>
   getDashCardById(store.getState(), DASHCARD_ID);
+
+const getReportedVisibilityChanges = () => {
+  const events: SimpleEventSchema[] = trackSimpleEvent.mock.calls.map(
+    ([event]: [SimpleEventSchema]) => event,
+  );
+  return events
+    .filter(({ event }) => event === "dashboard_events_visibility_changed")
+    .map(({ event_detail }) => event_detail);
+};
 
 describe("dashboard timeline events visibility", () => {
   beforeEach(() => {
@@ -207,7 +217,7 @@ describe("dashboard timeline events visibility", () => {
     expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
   });
 
-  it("does not track a toggle that changes nothing", () => {
+  it("keeps the session as it is when a toggle is already applied", () => {
     const store = setup({
       savedVisibility: {
         "timeline.selected_timeline_ids": [timeline.id],
@@ -224,10 +234,11 @@ describe("dashboard timeline events visibility", () => {
       ),
     );
 
-    expect(trackSimpleEvent).not.toHaveBeenCalled();
+    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
+    expect(getReportedVisibilityChanges()).toEqual([]);
   });
 
-  it("does not report creating an event as a visibility change", () => {
+  it("makes a created event visible for the session", () => {
     const store = setup();
     const createdEvent = createMockTimelineEvent({
       id: 102,
@@ -250,6 +261,6 @@ describe("dashboard timeline events visibility", () => {
       "timeline.selected_timeline_ids": [unloadedTimelineId],
       "timeline.excluded_timeline_event_ids": [],
     });
-    expect(trackSimpleEvent).not.toHaveBeenCalled();
+    expect(getReportedVisibilityChanges()).toEqual([]);
   });
 });
