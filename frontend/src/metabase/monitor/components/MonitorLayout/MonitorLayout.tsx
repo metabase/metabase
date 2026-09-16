@@ -25,10 +25,7 @@ import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
 
-// `"api-key-usage"` isn't tracked through `trackMonitorSectionClicked` (see the `AreaTab` below),
-// so it's kept out of the shared `MonitorSection` analytics union and only added here, where it's
-// used solely to drive which nav tab is highlighted.
-type ActiveSection = MonitorSection | "api-key-usage" | null;
+type ActiveSection = MonitorSection | null;
 
 function getActiveSection(pathname: string): ActiveSection {
   return match(pathname)
@@ -182,6 +179,7 @@ export function MonitorLayout() {
             isSelected={activeSection === "api-key-usage"}
             showLabel={isNavbarOpened}
             isGated={!hasAuditAppFeature}
+            onClick={() => trackMonitorSectionClicked("api-key-usage")}
           />
         </AreaTabGroup>
       )}
