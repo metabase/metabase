@@ -868,14 +868,20 @@
         ;; One record per call *site*, for the call graph. This is separate from the per-argument `:calls`
         ;; below on purpose: a nullary call has no arguments and would otherwise vanish from the graph, which
         ;; is exactly what happened to `(b)` before this existed. Definition forms are not calls.
+        ;;
+        ;; A `#(f % x)` literal is keyed one column past the `#` the node starts at: that is where clj-kondo
+        ;; resolves `f`; the `#` itself it reports as `clojure.core/fn*`, and a site keyed there resolved to that
+        ;; and dropped the edge -- every sync step wrapped in a literal read as called by nothing.
         (when (and head (not (defn-head? head)))
           (vswap! sites conj {:head   head
-                              :pos    (assoc (select-keys (meta node) [:row :col]) :filename filename)
+                              :pos    (cond-> (assoc (select-keys (meta node) [:row :col]) :filename filename)
+                                        (= :fn (n/tag node)) (update :col inc))
                               ;; the whole call, so a site resolved to a sanitizer can become a sanitized region
                               :region (assoc (meta node) :filename filename)}))
-        ;; every call, including the binding forms above, contributes argument regions
+        ;; every call, including the binding forms above, contributes argument regions -- keyed as the site is
         (when head
-          (let [pos (assoc (select-keys (meta node) [:row :col]) :filename filename)]
+          (let [pos (cond-> (assoc (select-keys (meta node) [:row :col]) :filename filename)
+                      (= :fn (n/tag node)) (update :col inc))]
             (doseq [[i a] (map-indexed vector args)
                     rec   (arg-records filename head i pos a)]
               (vswap! calls conj rec))))))
@@ -1376,8 +1382,10 @@
   path. When every caller loops back, there is no root and the farthest visited function is named instead, with
   `:cyclic?`. nil for a position outside every function.
 
-  This is what a finding shows in place of a flow when it is unreachable: the linter did see the callers, and a
-  reader wants to know that `apply-transform!` is the end of the line, not that the chain was never looked at."
+  This is what a finding shows in place of a flow when no entry point was found: the linter did see the callers,
+  and a reader wants to know that `apply-transform!` is where the graph ran out, not that the chain was never
+  looked at. A root is where the *analysis* stops -- a call through a var or a multimethod it does not model is
+  invisible here -- so the report words it as callers it cannot follow, not as code nothing calls."
   [{:keys [reverse-edges] :as reach} pos]
   (let [{:keys [hops depth from]} (walk-back reach pos)
         roots (when hops (filter #(empty? (disj (set (get @reverse-edges %)) %)) (keys hops)))
