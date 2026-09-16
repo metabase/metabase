@@ -157,8 +157,6 @@ export function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
       className={cx(S.scrollButton, S[direction])}
       pos="absolute"
       top={0}
-      left={direction === "left" ? 0 : undefined}
-      right={direction === "right" ? 0 : undefined}
       w={rem(48)}
       ta={direction}
       onClick={onClick}

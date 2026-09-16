@@ -13,6 +13,7 @@
 }
 
 .left {
+  left: 0;
   background: linear-gradient(
     to left,
     transparent,
@@ -22,6 +23,7 @@
 }
 
 .right {
+  right: 0;
   background: linear-gradient(
     to right,
     transparent,
