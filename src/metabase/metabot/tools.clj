@@ -18,6 +18,7 @@
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.metabot.tools.explorations :as tools.explorations]
+   [metabase.metabot.tools.external-mcp :as tools.external-mcp]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
@@ -182,3 +183,35 @@
        (assoc acc tool-name tool-def)))
    {}
    tools))
+
+(defn with-external-mcp-tools
+  "Add the tools of the external MCP servers `user-id` is connected to (see
+  [[metabase.metabot.tools.external-mcp/tool-entries]]) to `tools`, a map of tool-name -> tool definition map,
+  along with the `load_mcp_tools` tool that declares them on demand. A built-in tool keeps its name when an
+  external tool would collide with it. Nothing is added, and no server is contacted, when `*current-user-scope*`
+  does not allow calling external MCP tools or the user is connected to no server."
+  [tools user-id]
+  (if-not (api-scope/scope-matches? scope/*current-user-scope* scope/agent-external-mcp-call)
+    tools
+    (let [external (reduce-kv (fn [acc tool-name entry]
+                                (if (contains? tools tool-name)
+                                  (do (log/warnf "External MCP tool %s shadows a built-in tool and is skipped" tool-name)
+                                      acc)
+                                  (assoc acc tool-name entry)))
+                              {}
+                              (tools.external-mcp/tool-entries user-id))
+          scoped   (fn [entry] (update entry :fn wrap-with-scope-check (:tool-name entry) (:scope entry)))]
+      (if (empty? external)
+        tools
+        (-> (merge tools (update-vals external scoped))
+            (assoc tools.external-mcp/load-tool-name (scoped (tools.external-mcp/load-tool-entry external))))))))
+
+(defn declared-tools
+  "The subset of `tools` to declare to the model for a request whose conversation so far is `parts`: every
+  non-deferred tool, plus the deferred tools the model has loaded earlier in the conversation."
+  [tools parts]
+  (let [loaded (tools.external-mcp/loaded-tool-names parts)]
+    (into {}
+          (filter (fn [[tool-name {:keys [deferred]}]]
+                    (or (nil? deferred) (contains? loaded tool-name))))
+          tools)))

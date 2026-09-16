@@ -38,6 +38,7 @@
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
+   [metabase.mcp-client.api]
    [metabase.mcp.callback-api]
    [metabase.mcp.v2.api]
    [metabase.measures.api]
@@ -105,6 +106,7 @@
          metabase.indexes-rest.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
+         metabase.mcp-client.api/keep-me
          metabase.mcp.callback-api/keep-me
          metabase.mcp.v2.api/keep-me
          metabase.oauth-server.api.admin/keep-me
@@ -224,6 +226,7 @@
    ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
    ;; existing clients. See [[metabase.mcp.paths/endpoint-paths]].
    "/mcp"                  (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
+   "/mcp-client"           (+auth metabase.mcp-client.api/routes)
    "/measure"              (+auth 'metabase.measures.api)
    "/metabase-mcp"         (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/metabot"              metabase.metabot.api/routes

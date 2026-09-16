@@ -11,7 +11,6 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -36,6 +35,10 @@
 (def ^:private MalliSchema
   "A malli schema, in schema-form or as a compiled instance."
   [:and :any [:fn {:error/message "a malli schema"} mc/schema]])
+
+(def ^:private JsonSchema
+  "A JSON Schema object, keyed however its author keyed it, sent to the provider verbatim."
+  [:and :any [:fn {:error/message "a JSON Schema object"} map?]])
 
 (def ^:private AnthropicProviderMetadata
   "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
@@ -76,13 +79,20 @@
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
+   ;; A ready-made JSON Schema for the parameters, sent to the provider instead of translating `:schema`.
+   [:parameters {:optional true} [:maybe JsonSchema]]
    [:fn [:fn fn?]]
    [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]
    [:title-fn {:optional true} [:maybe [:fn fn?]]]
    [:system-instructions {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
-   [:scope {:optional true} [:maybe :string]]])
+   [:scope {:optional true} [:maybe :string]]
+   ;; A deferred tool is advertised to the model as a one-line catalog entry (`:group`, `:summary`) and only
+   ;; declared in full once the model has loaded it, so large tool sets do not cost their schemas on every request.
+   [:deferred {:optional true} [:maybe [:map {:closed true}
+                                        [:group :string]
+                                        [:summary :string]]]]])
 
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
@@ -114,11 +124,24 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::tool-call-argument
+  "A JSON-shaped tool argument. Objects at every depth may be keyed by strings (off the wire) or keywords (parsed
+  with keywordized keys), since the LLM's argument JSON is decoded that way before it is replayed to the provider."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::tool-call-argument]]
+   [:map-of {::mr/deliberately-open true, :description "nested tool call argument object"}
+    [:or :string :keyword] [:ref ::tool-call-argument]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::tool-call-argument])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by

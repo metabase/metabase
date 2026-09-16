@@ -141,6 +141,10 @@ export const TOOL_MESSAGES = {
     done: () => t`Got transform details`,
   },
   list_available_fields: { active: () => undefined, done: () => undefined },
+  load_mcp_tools: {
+    active: () => t`Loading external tools`,
+    done: () => t`Loaded external tools`,
+  },
   load_skill: { active: () => undefined, done: () => undefined },
   read_web_page: {
     active: () => t`Reading web page`,

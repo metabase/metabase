@@ -1384,6 +1384,16 @@
                     :model/TransformTag
                     :model/User}}
 
+  mcp-client
+  {:team "Metabot"
+   :api  #{metabase.mcp-client.api metabase.mcp-client.core metabase.mcp-client.init}
+   :uses #{api
+           models
+           settings
+           system
+           util
+           util.config}}
+
   mcp.oauth-server
   {:team "UX West"
    :ns-prefix "metabase.oauth-server"
@@ -1467,6 +1477,7 @@
               lib.be
               lib.metadata
               lib.schema
+              mcp-client
               metabot.llm
               metabot.slackbot
               metrics

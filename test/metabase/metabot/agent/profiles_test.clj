@@ -34,7 +34,8 @@
         (is (> (count (:tools profile)) 5))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))
-        (is (contains? (tool-names profile) "create_chart"))))
+        (is (contains? (tool-names profile) "create_chart"))
+        (is (true? (:external-mcp-tools? profile)))))
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql

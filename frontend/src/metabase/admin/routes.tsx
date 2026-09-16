@@ -153,6 +153,13 @@ const mcpSettings = () =>
     }),
   );
 
+const externalMcpServers = () =>
+  import(
+    /* webpackChunkName: "admin" */ "./ai/external-mcp/ExternalMcpServersPage"
+  ).then(({ ExternalMcpServersPage }) => ({
+    Component: ExternalMcpServersPage,
+  }));
+
 const oauthAuthorizations = () =>
   import(/* webpackChunkName: "admin" */ "./ai/OAuthAuthorizationsPage").then(
     ({ OAuthAuthorizationsPage }) => ({ Component: OAuthAuthorizationsPage }),
@@ -377,6 +384,11 @@ export const getRoutes = (
           <Route key="index-layout" lazy={metabotLayout()}>
             <Route index key="index" lazy={aiSettings} />
             <Route key="mcp" path="mcp" lazy={mcpSettings} />
+            <Route
+              key="mcp-external"
+              path="mcp/external"
+              lazy={externalMcpServers}
+            />
           </Route>
           <Route
             key="mcp-authorizations-layout"

@@ -124,6 +124,23 @@
 
 ;;; High-Level API
 
+(defn deferred-tool-catalog
+  "The catalog the system prompt advertises for the deferred entries of `tools` (see the `:deferred` key of
+  [[metabase.metabot.self.core/ToolEntry]]): `[{:group ... :tools [{:name ... :summary ...} ...]} ...]`, groups
+  and tools in name order. Empty when nothing is deferred."
+  [tools]
+  (->> (vals tools)
+       (filter :deferred)
+       (group-by (comp :group :deferred))
+       (sort-by key)
+       (mapv (fn [[group entries]]
+               {:group group
+                :tools (->> entries
+                            (map (fn [{:keys [tool-name deferred]}]
+                                   {:name tool-name :summary (:summary deferred)}))
+                            (sort-by :name)
+                            vec)}))))
+
 (defn build-system-message-content
   "Build complete system message content from profile and context.
 
@@ -171,6 +188,7 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
+                                  :external_tool_catalog    (not-empty (deferred-tool-catalog tools))
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)

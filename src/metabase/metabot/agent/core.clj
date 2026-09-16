@@ -266,6 +266,7 @@
         system-msg   (messages/build-system-message context profile tools)
         input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
+        tools        (tools/declared-tools tools input-parts)
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
@@ -486,7 +487,9 @@
                             :conversation-id conversation-id
                             :client-ids (client-content-ids context))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+        tools        (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+                       (and (:external-mcp-tools? profile) api/*current-user-id*)
+                       (tools/with-external-mcp-tools api/*current-user-id*))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
