@@ -586,7 +586,8 @@
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in card-ids]))
+  (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema]
+                    {:where [:in :id (mapv long card-ids)]}))
 
 (mu/defn card-database-ids
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
@@ -815,6 +816,9 @@
     (t2/select model
                {:select    [table-wildcard]
                 :from      table-name
+                ;; `id-field` is a column keyword, not a value (rubric 2): marking it would bind the generated key
+                ;; as an identifier and drop the join condition. The lint flags it anyway; it cannot tell the two
+                ;; apart.
                 :left-join [:dependency_status [:and
                                                 [:= :dependency_status.entity_id id-field]
                                                 [:= :dependency_status.entity_type (name entity-type)]]]
@@ -892,6 +896,9 @@
     (t2/select model
                {:select    [table-wildcard]
                 :from      table-name
+                ;; `id-field` is a column keyword, not a value (rubric 2): marking it would bind the generated key
+                ;; as an identifier and drop the join condition. The lint flags it anyway; it cannot tell the two
+                ;; apart.
                 :left-join [:analysis_finding [:and
                                                [:= :analysis_finding.analyzed_entity_id id-field]
                                                [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
@@ -956,9 +963,15 @@
   "The AnalysisFindingErrors caused by the entity `source-type` `source-id`."
   [source-type :- [:maybe :metabase.lib.schema.validate/source-entity-type]
    source-id   :- ms/PositiveInt]
-  ;; `source-type` is a closed `[:enum :table :card :transform]` (rubric 3), and it is `[:maybe ...]`: the kv-arg
-  ;; form compiles a nil to `IS NULL`, whereas `[:= :source_entity_type nil]` never matches. Left as kv-args so a
-  ;; nil `source-type` keeps selecting the rows with no source.
+  ;; Left as kv-args for two independent reasons.
+  ;;
+  ;; `:source_entity_type` carries `mi/transform-keyword`, whose `:in` is `u/qualified-name`. Toucan runs that only
+  ;; via `apply-kv-arg`; a `{:where ...}` map bypasses it, so the keyword `:table` would reach HoneySQL in a value
+  ;; slot and render as the identifier `table` rather than a bound `?`.
+  ;;
+  ;; `source-type` is also `[:maybe ...]`: the kv-arg form compiles a nil to `IS NULL`, whereas
+  ;; `[:= :source_entity_type nil]` never matches, so a nil `source-type` would stop selecting the rows with no
+  ;; source. The value itself needs no marker -- it is the closed `[:enum :table :card :transform]` (rubric 3).
   (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id (long source-id)))
 
 (mu/defn insert-finding-errors!
