@@ -148,9 +148,10 @@
                   only, so the permission never appears on the consent screen"
           (is (re-find #"(?i)reconnecting before a refused call won't offer it" instructions)))
         (testing "and that a permission this connection had can be removed mid-session, so a tool that worked earlier
-                  failing now is not an expired login either"
+                  failing now is not an expired login either. Unticking a permission on one authorization never touches
+                  another live token, so the ways it goes away are a re-authorization without it and a revocation."
           (is (re-find #"(?i)taken away mid-session" instructions))
-          (is (re-find #"(?i)the user or another window unticked it" instructions)))
+          (is (re-find #"(?i)re-authorized this connection without it or revoked it" instructions)))
         (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
       (testing "the retry waits until the user has reconnected"
         (is (re-find #"(?i)retry once they have reconnected" instructions)))
@@ -1186,8 +1187,9 @@
        "tool or resource failed, which permission it needs (each tool's description starts with the permission it "
        "requires), and why, and ask whether to grant it. If they agree, make the call anyway: the refusal is what "
        "makes their client request it, and reconnecting before a refused call won't offer it. A permission can also "
-       "be taken away mid-session, if the user or another window unticked it. Some clients then open the consent "
-       "screen themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; "
+       "be taken away mid-session, if the user re-authorized this connection without it or revoked it. Some clients "
+       "open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, "
+       "Re-authenticate; "
        "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
        "tell them to tick it. Retry once they have reconnected."))
 
