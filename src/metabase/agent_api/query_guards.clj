@@ -201,8 +201,8 @@
 
   The query endpoints declare no `:scope` of their own, so the endpoint scope middleware cannot tell a native
   query apart from any other one: [[metabase.mcp.ui-surface/request-surface]] charges the whole `/api/dataset`
-  tree a single `agent:query:run`, which every credential `refresh_ui_credential` hands a client holding that
-  scope satisfies. Raw SQL costs more, and that difference is spent here: it needs an SQL-execution scope
+  tree a single `agent:query:run`, and every credential minted for a client holding that scope satisfies it.
+  Raw SQL costs more, and that difference is spent here: it needs an SQL-execution scope
   (`agent:sql:run`, or v1's concrete `agent:sql:execute`) off the credential's signed claim, and the
   `mcp-execute-sql-enabled` kill switch.
 

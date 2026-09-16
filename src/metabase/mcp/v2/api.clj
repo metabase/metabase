@@ -97,7 +97,7 @@
      common/error-code-invalid-request
      (registry/insufficient-scope-message (str "read resource: " uri) required-scope token-scopes))
     token-scopes
-    (registry/insufficient-scope uri required-scope)))
+    (registry/insufficient-scope-detail uri required-scope)))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
@@ -170,11 +170,11 @@
        "\"tool execution failed\", the usual cause is a missing permission on this connection, not an expired login. "
        "Tell the user which tool or resource failed and which permission it needs: for a tool, use the name in the "
        "\"Requires the ... permission\" sentence that starts the tool's description, which is how Metabase's consent "
-       "screen names it; for a resource, the scope the error names. To grant it, the user reconnects Metabase in "
-       "their client and clicks Authorize on the consent screen, e.g. in Claude Code: /mcp, select this server, "
-       "Re-authenticate; in Codex: "
+       "screen names it. To grant it, the user reconnects Metabase in their client and clicks Authorize on the "
+       "consent screen, e.g. in Claude Code: /mcp, select this server, Re-authenticate; in Codex: "
        "`codex mcp login <server>`, then start a new session. The consent screen has no per-permission choices, so "
-       "don't ask the user to check or select anything. Don't retry the tool until the user says they have reconnected."))
+       "don't ask the user to check or select anything. Don't retry the tool until the user says they have "
+       "reconnected."))
 
 (def ^:private default-ask-scopes
   "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be

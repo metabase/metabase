@@ -235,7 +235,8 @@
             (filter #(not (contains? disabled (:name %))))
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
-            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :securitySchemes :_meta])))
+            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
+                                  :securitySchemes :_meta])))
            (manifest)))))
 
 (defn tools-hash
@@ -276,7 +277,7 @@
            (str "your token holds " (str/join ", " held) ".")
            "your token holds no scopes."))))
 
-(defn insufficient-scope
+(defn insufficient-scope-detail
   "The `:insufficient-scope` detail of an error refusing `subject`, a tool name or resource URI, for want of
    `required-scope`: `{:required-scope ... :description ...}`."
   [subject required-scope]
@@ -303,7 +304,7 @@
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code               common/error-code-invalid-request
                :message            (insufficient-scope-message (str "call tool: " tool-name) (:scope tool) token-scopes)
-               :insufficient-scope (insufficient-scope tool-name (:scope tool))}}
+               :insufficient-scope (insufficient-scope-detail tool-name (:scope tool))}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
@@ -330,15 +331,20 @@
               (if-let [required-scope (::common/required-scope (ex-data e))]
                 {:error {:code               common/error-code-invalid-request
                          :message            (ex-message e)
-                         :insufficient-scope (insufficient-scope tool-name required-scope)}}
+                         :insufficient-scope (insufficient-scope-detail tool-name required-scope)}}
                 {:result (common/->mcp-error-content e)}))))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the
+   request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can
+   produce an MCP result carrying `:isError`.
 
-   A scope refusal is always an `:error`, whether the registry's own gate or the handler (by throwing with a `::common/required-scope` in its ex-data) refuses, and carries `:insufficient-scope {:required-scope ... :description ...}`.
+   A scope refusal is always an `:error`, whether the registry's own gate or the handler (by throwing with a
+   `::common/required-scope` in its ex-data) refuses, and carries
+   `:insufficient-scope {:required-scope ... :description ...}`.
 
-   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
+   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status,
+   and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {}))
   ([token-scopes session-id tool-name arguments options]

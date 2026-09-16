@@ -134,7 +134,9 @@
   (deferred-tru "Render query visualizations in the MCP UI"))
 (api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
   (deferred-tru "Render drill-through visualizations in the MCP UI"))
-;; The v2 UI resources gate on `agent:query:run`, not a viz scope of their own: rendering a chart
+;; The v2 UI resources declare `agent:query:run`, not a viz scope of their own. The shell itself is
+;; served to any token -- a host reads it alongside the tool call, and it carries no data; the scope
+;; is what the UI credential a shell embeds costs. It is `agent:query:run` because rendering a chart
 ;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
 ;; viz-only grant would run a query the user thought they had declined. Client capability is gated
 ;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a

@@ -803,7 +803,8 @@
 (deftest ^:parallel insufficient-scope-challenge-test
   (let [challenge #'mcp.transport/insufficient-scope-challenge
         url       "http://localhost:3000/.well-known/oauth-protected-resource/api/metabase-mcp"]
-    (testing "GHY-4543: the runtime challenge carries the four parameters the MCP authorization spec names, comma-separated"
+    (testing "GHY-4543: the runtime challenge carries the four parameters the MCP authorization spec names,
+              comma-separated"
       (is (= (str "Bearer error=\"insufficient_scope\", "
                   "scope=\"agent:content:read agent:sql:run\", "
                   "resource_metadata=\"" url "\", "
@@ -852,9 +853,11 @@
                                 tools (get-in r [:body :result :tools])
                                 call  (client/client-full-response :post 403 "metabase-mcp"
                                                                    (headers "mcp-session-id" sid)
-                                                                   (jsonrpc-request "tools/call"
-                                                                                    {:name (:name (first tools)) :arguments {}}
-                                                                                    3))]
+                                                                   (jsonrpc-request
+                                                                    "tools/call"
+                                                                    {:name      (:name (first tools))
+                                                                     :arguments {}}
+                                                                    3))]
                             (is (= 200 (:status r)))
                             (is (seq tools))
                             (is (= 403 (:status call)))

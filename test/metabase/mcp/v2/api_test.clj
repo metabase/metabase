@@ -435,7 +435,7 @@
                          mcp.session/resolve-ui-credential)]
           (is (nil? (:legacy claims)))
           (is (contains? claims :scp))))
-      (testing "it is hidden from clients that cannot render an iframe, like the shells it serves"
+      (testing "it is hidden from clients that cannot render an iframe"
         (is (not (some #(= "refresh_ui_credential" (:name %))
                        (registry/list-tools {:supports-mcp-ui? false}))))
         (is (some #(= "refresh_ui_credential" (:name %))
@@ -559,7 +559,8 @@
                                                        {:headers {"authorization" "Bearer totally-bogus-token"}}}
                                                       (jsonrpc-request "initialize"))]
             (is (= (str "Bearer realm=\"mcp\", "
-                        "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource/api/" path "\", "
+                        "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
+                        "/api/" path "\", "
                         "scope=\"agent:content:read agent:query:run agent:resource:read\", "
                         "error=\"invalid_token\"")
                    (get-in response [:headers "WWW-Authenticate"])))))))
@@ -877,12 +878,12 @@
       (do-with-bearer-token!
        #{"agent:content:read" "agent:delivery:write"}
        (fn [headers]
-         (let [post!    (bearer-session-post! headers)
-               response (post! 403 (jsonrpc-request "tools/call"
-                                                    {:name      "alert_write"
-                                                     :arguments {:method   "create"
-                                                                 :card_id  card-id
-                                                                 :schedule {:schedule_type "daily" :schedule_hour 9}}}))]
+         (let [post!     (bearer-session-post! headers)
+               arguments {:method   "create"
+                          :card_id  card-id
+                          :schedule {:schedule_type "daily" :schedule_hour 9}}
+               response  (post! 403 (jsonrpc-request "tools/call"
+                                                     {:name "alert_write" :arguments arguments}))]
            (is (= 403 (:status response)))
            (is (= (str "Bearer error=\"insufficient_scope\", "
                        "scope=\"agent:content:read agent:query:run agent:delivery:write\", "
@@ -1058,9 +1059,9 @@
                            (do-with-bearer-token!
                             scopes
                             (fn [headers]
-                              (let [response ((bearer-session-post! headers)
-                                              200
-                                              (jsonrpc-request "resources/read" {:uri v2.resources/visualize-query-uri}))]
+                              (let [read     (jsonrpc-request "resources/read"
+                                                              {:uri v2.resources/visualize-query-uri})
+                                    response ((bearer-session-post! headers) 200 read)]
                                 (is (nil? (get-in response [:headers "WWW-Authenticate"])))
                                 (reset! text (-> response (get-in [:body :result :contents]) first :text)))))
                            @text))]
@@ -1097,7 +1098,8 @@
                 (is (string? (embedded-credential query-run)))
                 (is (= 1 @minted))
                 (testing "and the two shells differ in nothing but that credential"
-                  (is (= without-query-run (str/replace query-run #"uiCredential:\s*\"[^\"]*\"" "uiCredential: "))))))))))))
+                  (is (= without-query-run
+                         (str/replace query-run #"uiCredential:\s*\"[^\"]*\"" "uiCredential: "))))))))))))
 
 (deftest refresh-ui-credential-without-query-run-is-a-403-challenge-test
   (testing "GHY-4543: with shell reads open to every token, `refresh_ui_credential` is how the iframe gets a credential.

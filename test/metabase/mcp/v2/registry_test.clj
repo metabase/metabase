@@ -53,10 +53,11 @@
   (testing "GHY-4543: a handler's own scope check — a deferred action needing a scope beyond the tool's — is a scope
             denial like the registry gate's, not an `isError` result, so the transport can answer it with a 403"
     (mt/with-dynamic-fn-redefs [v2.tu/test-echo (fn [_ _]
-                                                  (throw (ex-info "Doing that requires the agent:query:run scope."
-                                                                  {:status-code          403
-                                                                   ::common/error-code   common/error-code-invalid-request
-                                                                   ::common/required-scope "agent:query:run"})))]
+                                                  (throw (ex-info
+                                                          "Doing that requires the agent:query:run scope."
+                                                          {:status-code            403
+                                                           ::common/error-code     common/error-code-invalid-request
+                                                           ::common/required-scope "agent:query:run"})))]
       (let [records (atom [])
             outcome (mt/with-dynamic-fn-redefs [mcp.usage/record-mcp-tool-call! #(swap! records conj %)]
                       (registry/call-tool #{"agent:content:read"} nil "test_echo" {}))]

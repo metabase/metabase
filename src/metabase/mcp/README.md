@@ -59,6 +59,7 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
+| `agent:resource:read` | No tools: it gates reading the `catalog://metabase/fields` data resource (see [Resources](#resources)). |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
@@ -88,8 +89,12 @@ The consent screen grants every scope the client requested, without the opportun
 
 ## Available tools
 
-Generated from the v2 registry (`deftool`); every tool is gated by the single scope named here. `tools/list`
-shows every tool whatever the token holds, and a token missing the scope may not call it.
+Generated from the v2 registry (`deftool`). The scope named here is what the registry checks before the tool
+runs; some handlers check a further scope once they know what the call does - `agent:sql:run` when a source
+resolves to native SQL (`question_write`, `transform_write`), and `agent:query:run` for the execution an
+alert or subscription defers (`alert_write`, `subscription_write`). Those refusals carry the same 403
+`insufficient_scope` challenge. `tools/list` shows every tool whatever the token holds, and a token missing
+the scope may not call it.
 
 | Tool | Scope | Description |
 | ---- | ----- | ----------- |
