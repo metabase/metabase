@@ -77,12 +77,9 @@ export function ApiKeyUsageSectionLayout() {
     dateFilter,
     userId,
     groupId,
-    tenantId,
     groupNoFilterValue,
     userOptions,
     groupOptions,
-    tenantOptions,
-    hasTenants,
   } = useFilterOptions({ date, user, group, tenant });
 
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
@@ -98,8 +95,8 @@ export function ApiKeyUsageSectionLayout() {
     [usageAudit.provider, usageAudit.table, groupMembersAudit.table],
   );
   const chartFilters = useMemo(
-    () => ({ dateFilter, userId, groupId, tenantId }),
-    [dateFilter, groupId, tenantId, userId],
+    () => ({ dateFilter, userId, groupId }),
+    [dateFilter, groupId, userId],
   );
   const sortingOptions = useMemo(
     () => ({ sort_column, sort_direction }),
@@ -130,7 +127,6 @@ export function ApiKeyUsageSectionLayout() {
     () => ({
       dataSources,
       chartFilters,
-      hasTenants,
       hasPii,
       page,
       total: count,
@@ -149,7 +145,6 @@ export function ApiKeyUsageSectionLayout() {
       count,
       dataSources,
       hasPii,
-      hasTenants,
       page,
       patchUrlState,
       sortingOptions,
@@ -169,10 +164,12 @@ export function ApiKeyUsageSectionLayout() {
         onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
         groupOptions={groupOptions}
         groupNoFilterValue={groupNoFilterValue}
-        tenant={tenant}
-        onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-        tenantOptions={tenantOptions}
-        hasTenants={hasTenants}
+        // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
+        // this shared filter bar's tenant support properly optional instead of hardcoded off here.
+        tenant={null}
+        onTenantChange={() => {}}
+        tenantOptions={[]}
+        hasTenants={false}
       />
       <RouteContent
         emptyState={<ApiKeyUsageEmptyState />}

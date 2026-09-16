@@ -84,7 +84,6 @@ function ApiKeyUsageBreakoutChartInner({
   dateFilter,
   userId,
   groupId,
-  tenantId,
   title,
   display,
   breakoutColumn,
@@ -100,7 +99,6 @@ function ApiKeyUsageBreakoutChartInner({
         dateFilter,
         userId,
         groupId,
-        tenantId,
         breakoutColumn,
       }),
     [
@@ -110,7 +108,6 @@ function ApiKeyUsageBreakoutChartInner({
       dateFilter,
       userId,
       groupId,
-      tenantId,
       breakoutColumn,
     ],
   );

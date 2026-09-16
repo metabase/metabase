@@ -20,7 +20,6 @@ export type ApiKeyUsageFilters = {
   dateFilter: DateFilterValue;
   userId?: number;
   groupId?: number;
-  tenantId?: number;
 };
 
 type ApiKeyUsageDataSources = {
@@ -33,22 +32,16 @@ type ApiKeyUsageDataSources = {
 const COUNT_COLUMN = "count";
 
 /**
- * Apply the shared user/group/tenant filters to a query. The group filter joins the audit
+ * Apply the shared user/group filters to a query. The group filter joins the audit
  * `v_group_members` view and filters by `group_id` (a user can belong to several groups); the
- * user and tenant filters are plain `user_id` / `tenant_id` equalities. Each no-ops when its id
- * is unset.
+ * user filter is a plain `user_id` equality. Each no-ops when its id is unset.
  */
 function applyScopeFilters(
   query: Query,
-  {
-    userId,
-    groupId,
-    tenantId,
-  }: Pick<ApiKeyUsageFilters, "userId" | "groupId" | "tenantId">,
+  { userId, groupId }: Pick<ApiKeyUsageFilters, "userId" | "groupId">,
   groupMembersTable: TableMetadata | CardMetadata,
 ): Query {
   query = applyIdFilter(query, "user_id", userId);
-  query = applyIdFilter(query, "tenant_id", tenantId);
   query = groupId != null ? joinGroupMembers(query, groupMembersTable) : query;
   query = groupId != null ? applyIdFilter(query, "group_id", groupId) : query;
   return query;
@@ -56,8 +49,8 @@ function applyScopeFilters(
 
 /**
  * The shared prelude every builder starts from: the view query with the date + scope
- * (user/group/tenant) filters applied. Centralizing it keeps the filter handling — notably
- * `tenantId` — in one place so a builder can't silently drop a filter.
+ * (user/group) filters applied. Centralizing it keeps the filter handling in one place so a
+ * builder can't silently drop a filter.
  */
 function buildBaseQuery({
   provider,
@@ -66,15 +59,10 @@ function buildBaseQuery({
   dateFilter,
   userId,
   groupId,
-  tenantId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
   let query = Lib.queryFromTableOrCardMetadata(provider, table);
   query = applyDateFilter(query, dateFilter, "occurred_at");
-  query = applyScopeFilters(
-    query,
-    { userId, groupId, tenantId },
-    groupMembersTable,
-  );
+  query = applyScopeFilters(query, { userId, groupId }, groupMembersTable);
   return query;
 }
 
@@ -113,7 +101,6 @@ export function buildCountBreakoutQuery({
   dateFilter,
   userId,
   groupId,
-  tenantId,
   breakoutColumn,
 }: CountBreakoutQueryOpts): Query {
   let query = buildBaseQuery({
@@ -123,7 +110,6 @@ export function buildCountBreakoutQuery({
     dateFilter,
     userId,
     groupId,
-    tenantId,
   });
   query = Lib.aggregateByCount(query, 0);
   query = breakoutByColumn(query, breakoutColumn);
@@ -142,7 +128,6 @@ export function buildCallsByDayQuery({
   dateFilter,
   userId,
   groupId,
-  tenantId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
   let query = buildBaseQuery({
     provider,
@@ -151,7 +136,6 @@ export function buildCallsByDayQuery({
     dateFilter,
     userId,
     groupId,
-    tenantId,
   });
   query = Lib.aggregateByCount(query, 0);
   query = breakoutByOccurredAtDay(query);
@@ -169,7 +153,6 @@ export function buildTotalCountQuery({
   dateFilter,
   userId,
   groupId,
-  tenantId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
   let query = buildBaseQuery({
     provider,
@@ -178,7 +161,6 @@ export function buildTotalCountQuery({
     dateFilter,
     userId,
     groupId,
-    tenantId,
   });
   query = Lib.aggregateByCount(query, 0);
   return query;
@@ -196,7 +178,6 @@ export const API_KEY_USAGE_EVENT_SORT_COLUMNS = [
   "client_display_name",
   "embedding_client",
   "embedding_hostname",
-  "tenant_name",
   "ip_address",
 ] as const;
 
@@ -204,7 +185,6 @@ export type ApiKeyUsageEventSortColumn =
   (typeof API_KEY_USAGE_EVENT_SORT_COLUMNS)[number];
 
 export function apiKeyUsageEventColumnKeys(
-  hasTenants: boolean,
   hasPii: boolean,
 ): ApiKeyUsageEventSortColumn[] {
   return [
@@ -219,7 +199,6 @@ export function apiKeyUsageEventColumnKeys(
     "client_display_name",
     "embedding_client",
     "embedding_hostname",
-    ...(hasTenants ? (["tenant_name"] as const) : []),
     ...(hasPii ? (["ip_address"] as const) : []),
   ];
 }
@@ -234,12 +213,8 @@ function orderByColumn(
   return col ? Lib.orderBy(query, 0, col, direction) : query;
 }
 
-function projectToEventColumns(
-  query: Query,
-  hasTenants: boolean,
-  hasPii: boolean,
-): Query {
-  const fields = apiKeyUsageEventColumnKeys(hasTenants, hasPii)
+function projectToEventColumns(query: Query, hasPii: boolean): Query {
+  const fields = apiKeyUsageEventColumnKeys(hasPii)
     .map((name) => findColumn(query, name, Lib.fieldableColumns))
     .filter((column): column is ColumnMetadata => column != null);
   return Lib.withFields(query, 0, fields);
@@ -249,7 +224,6 @@ type EventsQueryOpts = ApiKeyUsageFilters &
   ApiKeyUsageDataSources & {
     sortColumn?: ApiKeyUsageEventSortColumn;
     sortDirection?: SortDirection;
-    hasTenants: boolean;
     hasPii: boolean;
   };
 
@@ -260,10 +234,8 @@ export function buildEventsQuery({
   dateFilter,
   userId,
   groupId,
-  tenantId,
   sortColumn = "occurred_at",
   sortDirection = "desc",
-  hasTenants,
   hasPii,
 }: EventsQueryOpts): Query {
   let query = buildBaseQuery({
@@ -273,12 +245,11 @@ export function buildEventsQuery({
     dateFilter,
     userId,
     groupId,
-    tenantId,
   });
 
   query = orderByColumn(query, sortColumn, sortDirection);
   query = orderByColumn(query, "log_id", "desc");
-  query = projectToEventColumns(query, hasTenants, hasPii);
+  query = projectToEventColumns(query, hasPii);
 
   return query;
 }

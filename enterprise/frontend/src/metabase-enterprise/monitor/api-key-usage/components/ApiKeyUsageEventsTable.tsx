@@ -100,15 +100,11 @@ const EVENT_COLUMN_META: Record<
     title: t`Embedding hostname`,
     sort: "embedding_hostname",
   }),
-  tenant_name: () => ({ title: t`Tenant`, sort: "tenant_name" }),
   ip_address: () => ({ title: t`IP address`, sort: "ip_address" }),
 };
 
-export function eventColumns(
-  hasTenants: boolean,
-  hasPii: boolean,
-): EventColumn[] {
-  return apiKeyUsageEventColumnKeys(hasTenants, hasPii).map((key) => ({
+export function eventColumns(hasPii: boolean): EventColumn[] {
+  return apiKeyUsageEventColumnKeys(hasPii).map((key) => ({
     key,
     ...EVENT_COLUMN_META[key](),
   }));
@@ -147,7 +143,6 @@ type MetadataSources = {
 type BaseProps = ApiKeyUsageFilters &
   PaginationProps &
   SortProps & {
-    hasTenants: boolean;
     hasPii: boolean;
   };
 
@@ -180,8 +175,6 @@ function ApiKeyUsageEventsTableInner({
   dateFilter,
   userId,
   groupId,
-  tenantId,
-  hasTenants,
   hasPii,
   page,
   total,
@@ -189,10 +182,7 @@ function ApiKeyUsageEventsTableInner({
   sortingOptions,
   onSortingOptionsChange,
 }: InnerProps) {
-  const columns = useMemo(
-    () => eventColumns(hasTenants, hasPii),
-    [hasTenants, hasPii],
-  );
+  const columns = useMemo(() => eventColumns(hasPii), [hasPii]);
 
   const { sort_column: sortColumn, sort_direction: sortDirection } =
     sortingOptions;
@@ -214,10 +204,8 @@ function ApiKeyUsageEventsTableInner({
         dateFilter,
         userId,
         groupId,
-        tenantId,
         sortColumn: effectiveSorting.sort_column,
         sortDirection: effectiveSorting.sort_direction,
-        hasTenants,
         hasPii,
       }),
     [
@@ -227,9 +215,7 @@ function ApiKeyUsageEventsTableInner({
       dateFilter,
       userId,
       groupId,
-      tenantId,
       effectiveSorting,
-      hasTenants,
       hasPii,
     ],
   );

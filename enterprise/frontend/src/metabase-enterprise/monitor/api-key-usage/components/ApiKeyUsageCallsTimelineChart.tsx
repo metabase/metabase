@@ -69,7 +69,6 @@ function ApiKeyUsageCallsTimelineChartInner({
   dateFilter,
   userId,
   groupId,
-  tenantId,
   title,
   h,
 }: InnerProps) {
@@ -82,9 +81,8 @@ function ApiKeyUsageCallsTimelineChartInner({
         dateFilter,
         userId,
         groupId,
-        tenantId,
       }),
-    [provider, table, groupMembersTable, dateFilter, userId, groupId, tenantId],
+    [provider, table, groupMembersTable, dateFilter, userId, groupId],
   );
 
   const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);

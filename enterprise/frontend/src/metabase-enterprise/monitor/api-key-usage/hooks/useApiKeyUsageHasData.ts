@@ -40,7 +40,6 @@ export function useApiKeyUsageHasData({
   dateFilter,
   userId,
   groupId,
-  tenantId,
 }: DataSources & ApiKeyUsageFilters): Result {
   const query = useMemo(
     () =>
@@ -52,10 +51,9 @@ export function useApiKeyUsageHasData({
             dateFilter,
             userId,
             groupId,
-            tenantId,
           })
         : null,
-    [provider, table, groupMembersTable, dateFilter, userId, groupId, tenantId],
+    [provider, table, groupMembersTable, dateFilter, userId, groupId],
   );
 
   const { data, isFetching, error } = useAdhocBreakoutQuery(query);
