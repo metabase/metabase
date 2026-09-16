@@ -118,6 +118,24 @@ x.com")
   "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption."
   (thread-interrupt-escalation-timeout-ms))
 
+(defsetting max-request-body-bytes
+  (deferred-tru "Maximum size in bytes of an HTTP request body from an authenticated user. Larger requests are rejected with HTTP 413 before the body is read.")
+  :type       :integer
+  :visibility :internal
+  :setter     :none
+  :export?    false
+  :default    (* 64 1024 1024)
+  :doc "Applies to every request body except `multipart/form-data` uploads, which are bounded per endpoint instead. Requests without a valid session, API key or token are held to the smaller `MB_MAX_UNAUTHENTICATED_REQUEST_BODY_BYTES` instead.")
+
+(defsetting max-unauthenticated-request-body-bytes
+  (deferred-tru "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read.")
+  :type       :integer
+  :visibility :internal
+  :setter     :none
+  :export?    false
+  :default    (* 4 1024 1024)
+  :doc "The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Never larger than `MB_MAX_REQUEST_BODY_BYTES`.")
+
 (defsetting metabot-slack-signing-secret
   (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
   :type       :string
