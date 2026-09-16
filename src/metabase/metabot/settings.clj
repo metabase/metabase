@@ -265,6 +265,15 @@
   :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
+(defsetting llm-metabot-supports-reasoning-effort?
+  "Whether the selected Metabot model accepts a per-request reasoning effort."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(catalog/supports-reasoning-effort? (llm-metabot-provider))
+  :doc        false)
+
 (defsetting llm-metabot-supports-fast-mode?
   "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
   only the admin page reads it, and a public value would tell unauthenticated callers which

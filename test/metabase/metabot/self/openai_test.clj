@@ -487,6 +487,11 @@
         (is (= {:summary "auto"} (reasoning "openai.gpt-5.4"))))
       (testing "non-reasoning models get no reasoning param"
         (is (nil? (reasoning "gpt-4.1"))))))
+  (testing "a requested effort rides along with the summary on reasoning models only"
+    (let [reasoning #(:reasoning (openai/openai-request-body {:model % :input [] :reasoning-effort "xhigh"}))]
+      (is (= {:summary "auto" :effort "xhigh"} (reasoning "gpt-5.4")))
+      (is (= {:summary "auto" :effort "xhigh"} (reasoning "openai.gpt-6-astra")))
+      (is (nil? (reasoning "gpt-4.1")))))
   (testing "reasoning requests ask for encrypted content so items can be replayed"
     (is (= ["reasoning.encrypted_content"]
            (:include (openai/openai-request-body {:model "gpt-5.4" :input []}))))

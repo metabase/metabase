@@ -378,7 +378,7 @@
 
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-effort]
     :or   {model "gpt-5.4" reasoning? true}} :- core/LLMRequestOpts]
   (let [input     (cond->> input
                     (not reasoning?) (remove #(= :reasoning (:type %))))
@@ -404,7 +404,8 @@
       ;; encrypted_content lets us replay reasoning items across tool-call
       ;; round-trips despite store:false — see [[parts->openai-input]]
       (and reasoning? (reasoning-model? model))
-      (assoc :reasoning {:summary "auto"}
+      (assoc :reasoning (cond-> {:summary "auto"}
+                          reasoning-effort (assoc :effort reasoning-effort))
              :include   ["reasoning.encrypted_content"])
 
       (and temperature (model-supports-temperature? model))

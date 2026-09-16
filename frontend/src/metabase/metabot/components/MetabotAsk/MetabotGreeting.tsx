@@ -88,6 +88,7 @@ export const MetabotGreeting = ({
             ) : (
               <MetabotChatEditor
                 attachments={metabot.attachments}
+                reasoningEffort={metabot.reasoningEffort}
                 key={conversationId}
                 allowDictation
                 ref={metabot.promptInputRef}

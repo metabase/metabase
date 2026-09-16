@@ -86,6 +86,7 @@ export const {
   toolCallWebResults,
   setMetabotReqIdOverride,
   setDebugMode,
+  setReasoningEffort,
   createAgent,
   destroyAgent,
   attachAgentToConversation,

@@ -1,8 +1,10 @@
 import { isFulfilled } from "@reduxjs/toolkit";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
+import type { MetabotReasoningEffort } from "metabase-types/api";
 
 import { trackMetabotRequestSent } from "../analytics";
 import type { MetabotProfileId } from "../constants";
@@ -23,8 +25,10 @@ import {
   getMetabotReactionsState,
   getMetabotRequestId,
   getProfileOverride,
+  getReasoningEffort,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
+  setReasoningEffort as setReasoningEffortAction,
   submitInput as submitInputAction,
 } from "../state";
 
@@ -35,6 +39,12 @@ export type SubmitInputOptions = {
   profile?: MetabotProfileId | undefined;
   focusInput?: boolean;
   onBeforeSubmit?: () => void;
+};
+
+export type MetabotReasoningEffortController = {
+  supported: boolean;
+  value: MetabotReasoningEffort | undefined;
+  setValue: (value: MetabotReasoningEffort | undefined) => void;
 };
 
 /**
@@ -73,6 +83,24 @@ export const useMetabotConversation = (conversationId: string) => {
       dispatch(setProfileOverrideAction({ conversationId, profile }));
     },
     [dispatch, conversationId],
+  );
+
+  const supportsReasoningEffort =
+    useSetting("llm-metabot-supports-reasoning-effort?") ?? false;
+  const reasoningEffortValue = useSelector(getReasoningEffort);
+  const setReasoningEffort = useCallback(
+    (value: MetabotReasoningEffort | undefined) => {
+      dispatch(setReasoningEffortAction(value));
+    },
+    [dispatch],
+  );
+  const reasoningEffort: MetabotReasoningEffortController = useMemo(
+    () => ({
+      supported: supportsReasoningEffort,
+      value: reasoningEffortValue,
+      setValue: setReasoningEffort,
+    }),
+    [supportsReasoningEffort, reasoningEffortValue, setReasoningEffort],
   );
 
   const submitInput = useCallback(
@@ -183,6 +211,7 @@ export const useMetabotConversation = (conversationId: string) => {
     promptInputRef,
     setProfileOverride,
     attachments,
+    reasoningEffort,
     submitInput,
     retryMessage,
     cancelRequest,

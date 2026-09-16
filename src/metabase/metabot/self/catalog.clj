@@ -40,6 +40,14 @@
       "zai"        (zai/reasoning-model? model)
       false)))
 
+(defn supports-reasoning-effort?
+  "Whether a model reference names a connection and model that accept a per-request reasoning effort."
+  [model-ref]
+  (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
+    (case type
+      "openai" (and (not ai-proxy?) (openai/reasoning-model? model))
+      false)))
+
 (defn supports-fast-mode?
   "Whether a model reference names a connection and model we can request fast serving from."
   [model-ref]

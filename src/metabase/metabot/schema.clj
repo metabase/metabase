@@ -184,6 +184,9 @@
 (mr/def ::attachments
   [:vector {:max 5} ::uploaded-file])
 
+(mr/def ::reasoning-effort
+  [:enum "low" "medium" "high" "xhigh" "max"])
+
 ;;; ------------------------------- Client message shape -------------------------------
 
 (mr/def ::client-message-part

@@ -594,6 +594,7 @@ interface PublicSettings {
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
   "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-metabot-supports-reasoning-effort?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "mfa-enforcement": MfaEnforcement;
@@ -783,6 +784,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
   "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-metabot-supports-reasoning-effort?"?: boolean | null;
   "llm-metabot-supports-fast-mode?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
   "llm-zai-api-key"?: string | null;

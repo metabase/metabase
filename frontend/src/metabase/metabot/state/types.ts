@@ -8,6 +8,7 @@ import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
+  MetabotReasoningEffort,
   MetabotStateContext,
   MetabotUploadedFile,
 } from "metabase-types/api";
@@ -205,6 +206,7 @@ export interface MetabotState {
   reactions: MetabotReactionsState;
   titlePollingConversationIds: string[];
   debugMode: boolean;
+  reasoningEffort: MetabotReasoningEffort | undefined;
   savedChartCardIds: Record<string, number>;
 }
 

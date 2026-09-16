@@ -43,6 +43,11 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
+export const getReasoningEffort = createSelector(
+  getMetabotState,
+  (state) => state.reasoningEffort,
+);
+
 export const getSavedChartCardId = createSelector(
   [getMetabotState, (_state: State, entityId: string) => entityId],
   (metabotState, entityId): number | undefined =>
@@ -284,14 +289,16 @@ export const getAgentRequestMetadata = createSelector(
       _conversationId: string,
       retryMessageId: string | undefined,
     ) => retryMessageId,
+    getReasoningEffort,
   ],
-  (profile, parentMessageId, retryMessageId) => ({
+  (profile, parentMessageId, retryMessageId, reasoningEffort) => ({
     // a retry regenerates the response to an existing message, so it carries
     // retry_message_id in place of parent_message_id — never both
     ...(retryMessageId
       ? { retry_message_id: retryMessageId }
       : { parent_message_id: parentMessageId }),
     ...(profile ? { profile_id: profile } : {}),
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
   }),
 );
 

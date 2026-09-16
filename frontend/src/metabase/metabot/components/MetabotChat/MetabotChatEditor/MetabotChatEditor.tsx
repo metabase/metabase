@@ -10,7 +10,9 @@ import {
   MetabotPromptInput,
   type MetabotPromptInputProps,
 } from "metabase/metabot/components/MetabotPromptInput";
+import { MetabotReasoningEffort } from "metabase/metabot/components/MetabotReasoningEffort";
 import type { MetabotAttachmentsController } from "metabase/metabot/hooks/use-metabot-attachments";
+import type { MetabotReasoningEffortController } from "metabase/metabot/hooks/use-metabot-conversation";
 import { useMetabotDictation } from "metabase/metabot/hooks/use-metabot-dictation";
 import { UPLOAD_DATA_FILE_TYPES } from "metabase/redux/uploads";
 import { ActionIcon, Box, Icon, Menu, Tooltip } from "metabase/ui";
@@ -31,13 +33,20 @@ type MetabotChatEditorProps = Pick<
   isResponding?: boolean;
   allowDictation?: boolean;
   attachments?: MetabotAttachmentsController;
+  reasoningEffort?: MetabotReasoningEffortController;
 };
 
 export const MetabotChatEditor = forwardRef<
   MetabotPromptInputRef | null,
   MetabotChatEditorProps
 >(function MetabotChatEditor(
-  { isResponding = false, allowDictation = false, attachments, ...props },
+  {
+    isResponding = false,
+    allowDictation = false,
+    attachments,
+    reasoningEffort,
+    ...props
+  },
   ref,
 ) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,6 +219,15 @@ export const MetabotChatEditor = forwardRef<
                 </Menu.Dropdown>
               </Menu>
             </>
+          )
+        }
+        trailingAction={
+          reasoningEffort?.supported && (
+            <MetabotReasoningEffort
+              value={reasoningEffort.value}
+              onChange={reasoningEffort.setValue}
+              disabled={busy}
+            />
           )
         }
         state={dictation.state}

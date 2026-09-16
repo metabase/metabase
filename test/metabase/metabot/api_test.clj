@@ -1422,3 +1422,11 @@
           (mt/user-http-request :rasta :post 404 "metabot/agent-streaming"
                                 (assoc request :attachments [(assoc attachment :card_id Integer/MAX_VALUE)]))
           (is (zero? (t2/count :model/MetabotMessage :conversation_id (:conversation_id request)))))))))
+
+(deftest reasoning-effort-validation-test
+  (with-mock-streaming-provider!
+    (fn []
+      (let [request {:message "hi" :context {} :conversation_id (str (random-uuid))}]
+        (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                              (assoc request :reasoning_effort "bogus"))
+        (is (zero? (t2/count :model/MetabotMessage :conversation_id (:conversation_id request))))))))

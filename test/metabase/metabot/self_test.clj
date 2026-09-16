@@ -194,6 +194,24 @@
             (run! identity (self/call-llm model nil [] {} {:tag "agent"}))
             (is (= expected (:fast? @captured)) model)))))))
 
+(deftest call-llm-reasoning-effort-test
+  (llm.tu/with-default-connections
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [self/resolve-adapter (fn [_]
+                                                         (fn [opts]
+                                                           (reset! captured opts)
+                                                           []))]
+        (doseq [[model expected] [["openai/gpt-6-astra" "xhigh"]
+                                  ["openai/gpt-5.4" "xhigh"]
+                                  ["anthropic/claude-opus-5" nil]
+                                  ["azure/openai/gpt-6-astra" nil]
+                                  ["bedrock/openai.gpt-6-astra" nil]]]
+          (run! identity (self/call-llm model nil [] {} {:tag "agent"} {:reasoning-effort "xhigh"}))
+          (is (= expected (:reasoning-effort @captured)) model))
+        (testing "no effort is requested when the caller sets none"
+          (run! identity (self/call-llm "openai/gpt-6-astra" nil [] {} {:tag "agent"}))
+          (is (not (contains? @captured :reasoning-effort))))))))
+
 (deftest call-llm-openai-fast-mode-test
   (llm.tu/with-default-connections
     (mt/with-temporary-setting-values [llm-openai-api-key "sk-test"]

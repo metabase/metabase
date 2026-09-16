@@ -13,9 +13,14 @@ import type {
 import { logout } from "metabase/redux/auth";
 import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { MetabotCodeEdit, MetabotStateContext } from "metabase-types/api";
+import type {
+  MetabotCodeEdit,
+  MetabotReasoningEffort,
+  MetabotStateContext,
+} from "metabase-types/api";
 
 import type { MetabotProfileId } from "../constants";
+import { writeStoredReasoningEffort } from "../reasoning-effort";
 import { isContextWindowFull } from "../utils/context-usage";
 
 import { sendAgentRequest } from "./actions";
@@ -129,6 +134,13 @@ export const metabot = createSlice({
     },
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
+    },
+    setReasoningEffort: (
+      state,
+      action: PayloadAction<MetabotReasoningEffort | undefined>,
+    ) => {
+      state.reasoningEffort = action.payload;
+      writeStoredReasoningEffort(action.payload);
     },
     markChartSaved: (
       state,

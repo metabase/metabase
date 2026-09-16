@@ -9,6 +9,7 @@
    [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -267,6 +268,8 @@
     :fast?            - When true, request the provider's fast mode where the model
                         supports it (direct Anthropic or OpenAI). Direct OpenAI uses
                         standard serving when false; other adapters ignore it
+    :reasoning-effort - Requested reasoning effort level; honored by direct OpenAI
+                        reasoning models, other adapters ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map {:closed true}
@@ -283,6 +286,7 @@
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
+   [:reasoning-effort {:optional true} [:maybe ::metabot.schema/reasoning-effort]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid

@@ -244,6 +244,27 @@
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
 
+(deftest metabot-supports-reasoning-effort-test
+  (with-connections [(connection "anthropic" "anthropic")
+                     (connection "bedrock" "bedrock")
+                     (connection "openai" "openai")
+                     (connection "azure" "azure")
+                     (connection "router" "openrouter")]
+    (doseq [[model-ref expected]
+            {"openai/gpt-5.4"                 true
+             "openai/gpt-6-astra"             true
+             "openai/gpt-5.5"                 true
+             "openai/gpt-4.1"                 false
+             "openai"                         false
+             "anthropic/claude-opus-5"        false
+             "bedrock/openai.gpt-6-astra"     false
+             "azure/openai/gpt-6-astra"       false
+             "router/openai/gpt-6-astra"      false
+             "missing/gpt-6-astra"            false}]
+      (testing model-ref
+        (with-selected-model model-ref
+          (is (= expected (metabot.settings/llm-metabot-supports-reasoning-effort?))))))))
+
 (deftest metabot-supports-fast-mode-test
   (testing "only supported direct connections and models report support"
     (with-connections [(connection "anthropic" "anthropic")

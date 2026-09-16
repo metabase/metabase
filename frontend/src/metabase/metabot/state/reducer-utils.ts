@@ -7,6 +7,7 @@ import {
   METABOT_PROFILE_OVERRIDES,
   getToolMessage,
 } from "metabase/metabot/constants";
+import { readStoredReasoningEffort } from "metabase/metabot/reasoning-effort";
 import { uuid } from "metabase/utils/uuid";
 
 import {
@@ -480,6 +481,7 @@ export const getMetabotInitialState = (): MetabotState => {
     },
     titlePollingConversationIds: [],
     debugMode: false,
+    reasoningEffort: readStoredReasoningEffort(),
     savedChartCardIds: {},
   };
 };

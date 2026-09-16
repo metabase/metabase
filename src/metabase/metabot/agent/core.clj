@@ -261,14 +261,15 @@
 
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
-  [memory context profile tools iteration tracking-opts link-registry-atom]
+  [memory context profile tools iteration tracking-opts link-registry-atom reasoning-effort]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
         input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
         tools        (tools/declared-tools tools input-parts)
         llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+                       (:required-tool-call? profile) (assoc :tool-choice "required")
+                       reasoning-effort               (assoc :reasoning-effort reasoning-effort))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
@@ -470,7 +471,7 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
+  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id reasoning-effort]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -494,17 +495,18 @@
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
-    {:profile       profile
-     :tools         tools
-     :context       context
-     :memory-atom   memory-atom
-     :tracking-opts (merge {:profile-id          profile-id
-                            :request-id          (str (random-uuid))
-                            :source              "metabot_agent"
-                            :tag                 "agent"
-                            :required-permission (or (profile-id->required-permission profile-id)
-                                                     :permission/metabot)}
-                           tracking-opts)}))
+    {:profile          profile
+     :tools            tools
+     :context          context
+     :memory-atom      memory-atom
+     :reasoning-effort reasoning-effort
+     :tracking-opts    (merge {:profile-id          profile-id
+                               :request-id          (str (random-uuid))
+                               :source              "metabot_agent"
+                               :tag                 "agent"
+                               :required-permission (or (profile-id->required-permission profile-id)
+                                                        :permission/metabot)}
+                              tracking-opts)}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -557,7 +559,7 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+    (let [{:keys [profile tools context memory-atom tracking-opts reasoning-effort]} agent
           max-iter           (:max-iterations profile 15)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
@@ -574,7 +576,7 @@
           result'            (ait/with-llm-call {:ai/iteration iteration
                                                  :ai/model     (:model profile)}
                                (let [llm-call       (call-llm memory context profile tools iteration
-                                                              tracking-opts link-registry-atom)
+                                                              tracking-opts link-registry-atom reasoning-effort)
                                      reduced-result (reduce (xf rf) result llm-call)]
                                  (when (ait/capture-active?)
                                    (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
@@ -697,6 +699,7 @@
             [:eval-session-id {:optional true}
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
+            [:reasoning-effort {:optional true} [:maybe ::metabot.schema/reasoning-effort]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities]
                                                  capabilities/enforce-permissions)

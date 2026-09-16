@@ -350,7 +350,7 @@
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts   (assoc opts :model model :fast? false)
+  (let [opts   (assoc opts :model model :fast? false :reasoning-effort nil)
         family (model->family model)
         {:keys [path headers req]}
         (case family

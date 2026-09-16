@@ -205,7 +205,7 @@
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
+           eval-session-id reasoning-effort assistant-msg-id external-id user-external-id title-job]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
@@ -240,7 +240,8 @@
                                :eval-session-id eval-session-id
                                :memory-atom     memory-atom
                                :tracking-opts   {:session-id conversation-id}}
-                        debug? (assoc :debug? true))))
+                        debug?           (assoc :debug? true)
+                        reasoning-effort (assoc :reasoning-effort reasoning-effort))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
@@ -303,7 +304,7 @@
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
   [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id
-           user_message_id assistant_message_id attachments]} request-info]
+           user_message_id assistant_message_id attachments reasoning_effort]} request-info]
   (let [message    (cond-> (metabot.envelope/user-message message)
                      (seq attachments) (assoc :attachments (attachments/validate! attachments)))
         _          (api/check-400 (or (seq attachments) (not (str/blank? (:content message))))
@@ -374,6 +375,7 @@
         :state            state
         :debug?           debug?
         :eval-session-id  eval_session_id
+        :reasoning-effort reasoning_effort
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id
         :user-external-id user-external-id
@@ -414,6 +416,7 @@
             [:metabot_id {:optional true} :string]
             [:message :string]
             [:attachments {:optional true} ::metabot.schema/attachments]
+            [:reasoning_effort {:optional true} [:maybe ::metabot.schema/reasoning-effort]]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
             [:parent_message_id {:optional true} [:maybe ms/UUIDString]]

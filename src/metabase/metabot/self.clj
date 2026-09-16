@@ -496,7 +496,7 @@
   (`\"ai_usage_limit_reached\"` and `\"permission_denied\"` respectively)."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
-  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice reasoning-effort]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
    (or (when-let [limit-msg (usage/check-usage-limits!)]
          (error-reducible limit-msg "ai_usage_limit_reached"))
@@ -513,6 +513,9 @@
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
+                                (and reasoning-effort
+                                     (catalog/supports-reasoning-effort? provider-and-model))
+                                (assoc :reasoning-effort reasoning-effort)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)

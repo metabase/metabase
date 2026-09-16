@@ -160,8 +160,19 @@ export type MetabotUploadedFile = {
   media_type: "text/csv" | "text/tab-separated-values";
 };
 
+export const METABOT_REASONING_EFFORTS = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type MetabotReasoningEffort = (typeof METABOT_REASONING_EFFORTS)[number];
+
 export type MetabotAgentRequest = {
   attachments?: MetabotUploadedFile[];
+  reasoning_effort?: MetabotReasoningEffort;
   message: string;
   context: MetabotChatContext;
   conversation_id: string; // uuid

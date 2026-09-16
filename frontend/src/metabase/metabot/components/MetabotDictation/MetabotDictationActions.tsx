@@ -18,6 +18,7 @@ import S from "./MetabotDictation.module.css";
 
 type Props = {
   leadingAction?: ReactNode;
+  trailingAction?: ReactNode;
   state: DictationState;
   available: boolean;
   isResponding: boolean;
@@ -64,6 +65,7 @@ function Control({
 
 export function MetabotDictationActions({
   leadingAction,
+  trailingAction,
   state,
   available,
   isResponding,
@@ -136,6 +138,7 @@ export function MetabotDictationActions({
           </>
         ) : (
           <>
+            {trailingAction}
             {available && (
               <Control
                 label={t`Dictate`}

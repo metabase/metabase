@@ -1,0 +1,149 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.75rem;
+  padding-inline: 0.5rem 0.375rem;
+  border-radius: var(--mantine-radius-default);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--mb-color-text-disabled);
+  background-color: transparent;
+  transition:
+    color 100ms ease,
+    background-color 100ms ease;
+
+  &:hover:not(:disabled),
+  &[data-expanded] {
+    color: var(--mb-color-text-secondary);
+    background-color: var(--mb-color-background_page-secondary);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.dropdown {
+  padding: 0.875rem 0.875rem 0.75rem;
+}
+
+.title {
+  margin-bottom: 0.375rem;
+}
+
+.slider {
+  --slider-color: var(--mb-color-core-brand);
+
+  height: var(--slider-thumb-size);
+  padding-inline: calc(var(--slider-thumb-size) / 2);
+}
+
+.slider .trackContainer {
+  height: var(--slider-thumb-size);
+}
+
+.slider .track {
+  --track-bg: var(--mb-color-background_surface-secondary);
+}
+
+/* Mantine pads the track and the filled bar by a full track-size on each end so a
+   thumb no larger than the track stays inside them. Our thumb is bigger, so size
+   both caps to half the thumb instead and the bar ends flush with the thumb's edge. */
+.slider .track::before {
+  inset-inline: calc(var(--slider-thumb-size) / -2);
+}
+
+.slider .bar {
+  inset-inline-start: calc(
+    var(--slider-bar-offset) + var(--slider-size) - var(--slider-thumb-size) / 2
+  );
+  width: calc(
+    var(--slider-bar-width) - 2 * var(--slider-size) + var(--slider-thumb-size)
+  );
+}
+
+.slider[data-max] .bar {
+  overflow: hidden;
+  animation: max-glow 1.8s ease-in-out infinite;
+}
+
+.slider[data-max] .bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    var(--mb-color-background_surface-primary) 50%,
+    transparent 65%
+  );
+  opacity: 0.7;
+  animation: max-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes max-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes max-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  50% {
+    box-shadow: 0 0 0.75rem 0 var(--mb-color-core-brand);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slider[data-max] .bar,
+  .slider[data-max] .bar::after {
+    animation: none;
+  }
+}
+
+.slider .thumb {
+  border: 2px solid var(--mb-color-core-brand);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-md);
+  cursor: grab;
+
+  &[data-dragging] {
+    cursor: grabbing;
+  }
+}
+
+.slider .mark {
+  position: relative;
+  top: calc(var(--slider-size) / 2);
+  left: calc(var(--slider-size) / 2);
+  width: 0.375rem;
+  height: 0.375rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--mb-color-text-tertiary);
+  transform: translate(-50%, -50%);
+  transition: opacity 300ms ease;
+
+  &[data-filled] {
+    background-color: var(--mb-color-background_surface-primary);
+    opacity: 0.6;
+  }
+}
+
+/* Keep this below the base mark rule: it must win the cascade over the filled state. */
+.slider[data-max] .mark {
+  opacity: 0;
+}

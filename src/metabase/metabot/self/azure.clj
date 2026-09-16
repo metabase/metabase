@@ -222,7 +222,7 @@
   throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
-        opts   (assoc opts :model (model->deployment model) :fast? false)
+        opts   (assoc opts :model (model->deployment model) :fast? false :reasoning-effort nil)
         {:keys [path headers req]}
         (case family
           :anthropic {:path    "/v1/messages"
