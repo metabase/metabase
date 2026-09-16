@@ -307,6 +307,16 @@
   []
   (t2/select [:model/Glossary :id :term]))
 
+(mu/defn untracked-glossary-entries
+  "The `:id` and `:term` of every Glossary entry with no RemoteSyncObject."
+  []
+  (t2/select [:model/Glossary :id :term]
+             {:where [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [:remote_sync_object]
+                                                      :where  [:and
+                                                               [:= :remote_sync_object.model_type "Glossary"]
+                                                               [:= :remote_sync_object.model_id :glossary.id]]}]]}))
+
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."
   [collections]

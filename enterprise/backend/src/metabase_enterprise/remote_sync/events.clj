@@ -27,9 +27,9 @@
    [toucan2.core :as t2]))
 
 (defn- glossary-tracking-rows
-  "A 'create' ledger row for every glossary entry."
-  [timestamp]
-  (for [entry (remote-sync.db/glossary-entries)]
+  "A 'create' ledger row for each of the glossary `entries`."
+  [entries timestamp]
+  (for [entry entries]
     {:model_type        "Glossary"
      :model_id          (:id entry)
      :model_name        (:term entry)
@@ -54,20 +54,18 @@
                       :model_collection_id (:collection_id snippet)
                       :status              "create"
                       :status_changed_at   timestamp})
-                   (glossary-tracking-rows timestamp))]
+                   (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))))
 
 (defn backfill-glossary-tracking!
-  "Insert 'create' ledger rows for every glossary entry when none is tracked yet, so an instance upgraded with the
-  Library already synced still pushes its entries. Returns the number of rows inserted."
+  "Insert a 'create' ledger row for every glossary entry that has none, so an instance upgraded with the Library
+  already synced still pushes its entries. Returns the number of rows inserted."
   []
-  (if (remote-sync.db/rso-of-type-exists? "Glossary")
-    0
-    (let [rows (vec (glossary-tracking-rows (t/offset-date-time)))]
-      (when (seq rows)
-        (remote-sync.db/insert-rsos! rows))
-      (count rows))))
+  (let [rows (vec (glossary-tracking-rows (remote-sync.db/untracked-glossary-entries) (t/offset-date-time)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
 
 (defn disable-library-tracking!
   "Remove all snippet, snippets-namespace collection, and glossary tracking entries."

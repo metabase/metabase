@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -118,8 +119,8 @@
     (mt/with-model-cleanup [:model/RemoteSyncObject]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (t2/delete! :model/RemoteSyncObject :model_type "Glossary")
-        (with-redefs [impl/async-import! (constantly nil)
-                      remote-sync.object/dirty? (constantly false)]
+        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                    remote-sync.object/dirty? (constantly false)]
           (f entry))))))
 
 (deftest remote-sync-init-backfills-glossary-tracking-test
@@ -136,8 +137,8 @@
            (#'init/remote-sync-init)
            (is (= 1 (glossary-rso-count)))))))))
 
-(deftest remote-sync-init-glossary-backfill-skips-when-already-tracked-test
-  (testing "An existing Glossary ledger row means the ledger is authoritative, so nothing is inserted"
+(deftest remote-sync-init-glossary-backfill-tracks-only-untracked-entries-test
+  (testing "A partially tracked glossary gets ledger rows for the untracked entries only; tracked rows are left alone"
     (collections.tu/with-library-synced
       (do-with-untracked-glossary-entry!
        :read-write
@@ -146,8 +147,21 @@
            (t2/insert! :model/RemoteSyncObject {:model_type "Glossary" :model_id (:id tracked) :model_name "MRR"
                                                 :status "synced" :status_changed_at (t/offset-date-time)})
            (#'init/remote-sync-init)
-           (is (= 1 (glossary-rso-count)))
-           (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry))))))))))
+           (is (= 2 (glossary-rso-count)))
+           (is (=? {:status "create" :model_name "ARR"}
+                   (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry))))
+           (is (=? {:status "synced" :model_name "MRR"}
+                   (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :model_id (:id tracked))))))))))
+
+(deftest backfill-glossary-tracking-returns-inserted-count-test
+  (testing "the backfill returns how many ledger rows it inserted, and zero once every entry is tracked"
+    (collections.tu/with-library-synced
+      (do-with-untracked-glossary-entry!
+       :read-write
+       (fn [_entry]
+         (is (= 1 (rs-events/backfill-glossary-tracking!)))
+         (is (= 0 (rs-events/backfill-glossary-tracking!)))
+         (is (= 1 (glossary-rso-count))))))))
 
 (deftest remote-sync-init-glossary-backfill-skips-read-only-test
   (testing "A read-only instance is not backfilled"
