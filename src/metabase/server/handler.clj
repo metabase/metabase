@@ -121,9 +121,21 @@
         ]
        (remove nil?)))
 
+(def ^:private Options
+  "Explicit middleware configuration. `:cors` carries the origin callbacks the application supplies."
+  [:maybe
+   [:map
+    {:closed true}
+    [:cors {:optional true}
+     [:maybe
+      [:map
+       {:closed true}
+       [:origins-fn         {:optional true} fn?]
+       [:sandbox-origin?-fn {:optional true} fn?]]]]]])
+
 (mu/defn- apply-middleware :- ::api.macros/handler
   [handler :- ::api.macros/handler
-   options]
+   options :- Options]
   (reduce
    (fn [handler middleware-fn]
      (middleware-fn handler))
@@ -134,7 +146,7 @@
 ;;; changes.
 (mu/defn- dev-handler :- ::api.macros/handler
   [server-routes :- ::api.macros/handler
-   options]
+   options       :- Options]
   (let [middleware (middleware options)
         handler    (atom (apply-middleware server-routes options))]
     (doseq [varr  (concat [#'middleware
@@ -154,7 +166,7 @@
   ([server-routes :- ::api.macros/handler]
    (make-handler server-routes nil))
   ([server-routes :- ::api.macros/handler
-    options]
+    options       :- Options]
    (if config/is-dev?
      (dev-handler server-routes options)
      (apply-middleware server-routes options))))
