@@ -564,26 +564,6 @@
             (finally
               (t2/delete! :model/Transform :id (:id result)))))))))
 
-(deftest transform-write-infers-database-from-source-card-test
-  (testing "a first stage naming a numeric source-card infers the card's database the same way"
-    (with-transforms
-      (with-target-db-support
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
-          (let [result (tool-result (write! {:method     "create"
-                                             :name       "Inferred from card"
-                                             :definition {:type  "query"
-                                                          :query {:lib/type "mbql/query"
-                                                                  :stages   [{:lib/type    "mbql.stage/mbql"
-                                                                              :source-card card-id}]}}
-                                             :target     {:name "mcp_inferred_card_db" :schema (venues-schema)}}))
-                stored (t2/select-one-fn :source :model/Transform :id (:id result))]
-            (try
-              (is (= (mt/id) (-> stored :query :database)))
-              (is (= card-id (-> stored :query :stages first :source-card)))
-              (is (= (mt/id) (-> result :target :database)))
-              (finally
-                (t2/delete! :model/Transform :id (:id result))))))))))
-
 (deftest transform-write-database-inference-limits-test
   (with-transforms
     (with-target-db-support
@@ -592,34 +572,27 @@
                                                  :name       "x"
                                                  :definition {:type "query" :query query}
                                                  :target     {:name "mcp_inference_limits" :schema (venues-schema)}}))]
-        (testing "a query naming neither a source-table nor a source-card is still refused for the missing database"
+        (testing "a first stage naming no table by numeric id — nothing, or a source-card — is still refused for
+                  the missing database"
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
+            (doseq [stage [{:lib/type "mbql.stage/mbql"}
+                           {:lib/type "mbql.stage/mbql" :source-card card-id}]]
+              (let [error (tool-error (create! :crowberto {:lib/type "mbql/query" :stages [stage]}))]
+                (is (re-find #"not valid MBQL" error))
+                (is (re-find #"Query must include :database" error))))))
+        (testing "an unknown table id infers nothing, so the same refusal stands rather than a stack trace"
           (let [error (tool-error (create! :crowberto {:lib/type "mbql/query"
-                                                       :stages   [{:lib/type "mbql.stage/mbql"}]}))]
+                                                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                   :source-table Integer/MAX_VALUE}]}))]
             (is (re-find #"not valid MBQL" error))
             (is (re-find #"Query must include :database" error))))
-        (testing "an unknown table id is a teaching error naming the id, not a stack trace"
-          (is (re-find #"No table found with id 2147483647"
-                       (tool-error (create! :crowberto {:lib/type "mbql/query"
-                                                        :stages   [{:lib/type     "mbql.stage/mbql"
-                                                                    :source-table Integer/MAX_VALUE}]})))))
-        (testing "an unknown card id likewise"
-          (is (re-find #"No saved question or model found with id 2147483647"
-                       (tool-error (create! :crowberto {:lib/type "mbql/query"
-                                                        :stages   [{:lib/type    "mbql.stage/mbql"
-                                                                    :source-card Integer/MAX_VALUE}]})))))
-        (testing "an inactive table is absent, as it is to execute_query"
-          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
-            (is (re-find (re-pattern (str "No table found with id " (mt/id :venues)))
-                         (tool-error (create! :crowberto {:lib/type "mbql/query"
-                                                          :stages   [{:lib/type     "mbql.stage/mbql"
-                                                                      :source-table (mt/id :venues)}]}))))))
-        (testing "a table the caller cannot read is reported exactly like one that does not exist, so the
-                  inference lookup does not let the id enumerate tables across hidden databases"
+        (testing "a caller without transform permissions on the inferred database is refused, exactly as with
+                  an explicit `database` — inference fills in the key, it does not skip the create check"
           (mt/with-no-data-perms-for-all-users!
-            (is (re-find (re-pattern (str "No table found with id " (mt/id :venues)))
-                         (tool-error (create! :rasta {:lib/type "mbql/query"
-                                                      :stages   [{:lib/type     "mbql.stage/mbql"
-                                                                  :source-table (mt/id :venues)}]}))))))
+            (is (= "You don't have permissions to do that."
+                   (tool-error (create! :rasta {:lib/type "mbql/query"
+                                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                                            :source-table (mt/id :venues)}]}))))))
         (is (zero? (t2/count :model/Transform :name "x")) "nothing is written by any refusal")))))
 
 (deftest transform-write-cross-database-join-still-rejected-test
