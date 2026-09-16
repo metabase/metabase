@@ -395,3 +395,41 @@
             (#'ee-usage/flush-last-used-at!)
             (is (= later (last-used-at api-key-id)) "the retried write kept the newer of the two timestamps")
             (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
+;;; -------------------------------------------- concurrency --------------------------------------------
+;; Real threads, not `synchronous-batch-updates` — exercising the actual concurrent paths (many request
+;; threads racing the in-memory queues, then a flush) rather than simulating them serially.
+
+(deftest concurrent-last-used-at-stamps-keep-the-newest-timestamp-test
+  (testing "many concurrent stamps for one key never lose the newest timestamp to a race"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_5555555555"
+                                                     :name                   (mt/random-name)
+                                                     :user_id                (mt/user->id :crowberto)
+                                                     :creator_id             (mt/user->id :crowberto)
+                                                     :updated_by_id          (mt/user->id :crowberto)}]
+        (let [route      (unique-route)
+              ;; truncated to microseconds to match real DB storage precision; H2 alone preserves nanoseconds.
+              base       (-> (t/instant) (t/truncate-to :micros) (t/offset-date-time (t/zone-offset 0)))
+              n          50
+              timestamps (mapv #(t/plus base (t/seconds %)) (range n))
+              latest     (last timestamps)]
+          (try
+            (run! deref
+                  (mapv (fn [ts] (future (record! (request-info route :api-key-id api-key-id :occurred-at ts))))
+                        (shuffle timestamps)))
+            (#'ee-usage/flush-last-used-at!)
+            (is (= latest (last-used-at api-key-id)))
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
+
+(deftest concurrent-usage-log-offers-do-not-lose-rows-test
+  (testing "many concurrent usage-log rows below capacity are never lost to a race in the pending queue"
+    (mt/with-premium-features #{:audit-app}
+      (let [api-key-id 636363
+            n          50
+            routes     (mapv #(str (unique-route) "-" %) (range n))]
+        (try
+          (run! deref (mapv (fn [route] (future (record! (request-info route :api-key-id api-key-id)))) routes))
+          (#'ee-usage/flush-usage-logs!)
+          (is (= n (t2/count :model/ApiKeyUsageLog :api_key_id api-key-id)))
+          (finally (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id)))))))
