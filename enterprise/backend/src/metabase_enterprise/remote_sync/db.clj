@@ -574,7 +574,7 @@
   [rso-ids   :- [:sequential ms/PositiveInt]
    status    :- :string
    timestamp :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject :id [:in (mapv long rso-ids)] {:status status :status_changed_at timestamp}))
+  (t2/update! :model/RemoteSyncObject {:id [:in (mapv long rso-ids)]} {:status status :status_changed_at timestamp}))
 
 (mu/defn mark-all-rsos-synced!
   "Mark every RemoteSyncObject as synced as of `timestamp`."

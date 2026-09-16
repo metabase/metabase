@@ -5,7 +5,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -109,3 +110,13 @@
       (is (true? (remote-sync.db/rso-exists? "Collection" -1)))
       (testing "and a `model-type` that looks like SQL still matches nothing at the sentinel"
         (is (nil? (remote-sync.db/rso sql-ish -1)))))))
+
+(deftest set-rsos-status!-filters-on-the-ids-it-is-given
+  (testing "the conditions map filters, rather than being read as a column named :where"
+    (mt/with-temp [:model/RemoteSyncObject {a :id} {:model_type "Card" :model_id 1 :model_name "One"
+                                                    :status "pending" :status_changed_at (t/offset-date-time)}
+                   :model/RemoteSyncObject {b :id} {:model_type "Card" :model_id 2 :model_name "Two"
+                                                    :status "pending" :status_changed_at (t/offset-date-time)}]
+      (is (= 1 (remote-sync.db/set-rsos-status! [a] "synced" (t/offset-date-time))))
+      (is (= "synced" (t2/select-one-fn :status :model/RemoteSyncObject :id a)))
+      (is (= "pending" (t2/select-one-fn :status :model/RemoteSyncObject :id b))))))
