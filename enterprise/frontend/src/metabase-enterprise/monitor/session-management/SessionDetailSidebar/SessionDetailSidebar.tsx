@@ -34,7 +34,10 @@ export const SessionDetailSidebar = ({
   sessionFromPage,
   prevSessionId,
   nextSessionId,
+  isRevoking,
   onNavigate,
+  onRevokeSession,
+  onRevokeUserSessions,
   onClose,
 }: SessionDetailSidebarProps) => {
   // There is no fetch-by-id endpoint, so a session that isn't on the current page is looked up with the ids filter
@@ -61,7 +64,10 @@ export const SessionDetailSidebar = ({
           session={session}
           prevSessionId={prevSessionId}
           nextSessionId={nextSessionId}
+          isRevoking={isRevoking}
           onNavigate={onNavigate}
+          onRevokeSession={onRevokeSession}
+          onRevokeUserSessions={onRevokeUserSessions}
           onClose={onClose}
         />
         <SidebarBody
