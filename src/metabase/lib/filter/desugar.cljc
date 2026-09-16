@@ -149,8 +149,8 @@
 
 (mu/defn- desugar-during :- ::clause
   "Transform a `:during` expression to an `:and` expression."
-  [time-config :- [:map [:start-of-week :keyword]]
-   expr         :- ::clause]
+  [time-config :- ::lib.schema.common/time-config
+   expr        :- ::clause]
   (match/replace expr
     [:during opts arg value unit]
     (let [lower-bound (u.time/truncate time-config value unit)
@@ -300,7 +300,7 @@
 
 (mu/defn- temporal-case-expression :- :mbql.clause/case
   "Creates a `:case` expression with a condition for each value of the given unit."
-  [time-config :- [:map [:start-of-week :keyword]]
+  [time-config :- ::lib.schema.common/time-config
    expr        :- ::clause
    opts        :- ::lib.schema.common/options
    unit        :- :keyword
@@ -320,8 +320,8 @@
 
   Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
   the query itself. Filtering should be done based on the number, rather than the name."
-  [time-config :- [:map [:start-of-week :keyword]]
-   expression   :- ::clause]
+  [time-config :- ::lib.schema.common/time-config
+   expression  :- ::clause]
   (match/replace expression
     [:month-name   opts expr] (&recur (temporal-case-expression time-config expr opts :month-of-year   12))
     [:quarter-name opts expr] (&recur (temporal-case-expression time-config expr opts :quarter-of-year  4))
@@ -330,8 +330,8 @@
 (mu/defn- desugar-expression :- ::clause
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [time-config :- [:map [:start-of-week :keyword]]
-   expression   :- ::clause]
+  [time-config :- ::lib.schema.common/time-config
+   expression  :- ::clause]
   ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
   ;; Safari.
   (let [desugar-host-and-domain* #?(:clj  lib.filter.desugar.jvm/desugar-host-and-domain
@@ -344,8 +344,8 @@
                                 desugar-host-and-domain*))))
 
 (mu/defn- maybe-desugar-expression :- ::clause
-  [time-config :- [:map [:start-of-week :keyword]]
-   clause       :- ::clause]
+  [time-config :- ::lib.schema.common/time-config
+   clause      :- ::clause]
   (if (or (lib.util/clause-of-type? clause :field)
           (mr/validate ::lib.schema.expression/expression clause))
     (desugar-expression time-config clause)
@@ -355,7 +355,7 @@
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types."
-  [time-config  :- [:map [:start-of-week :keyword]]
+  [time-config  :- ::lib.schema.common/time-config
    filter-clause :- ::clause]
   (let [filter-clause (-> filter-clause
                           desugar-current-relative-datetime

@@ -458,7 +458,7 @@
 (mu/defn describe-temporal-pair :- :string
   "Return a string describing the temporal pair.
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
-  [time-config    :- [:map [:start-of-week :keyword]]
+  [time-config    :- ::lib.schema.common/time-config
    temporal-column :- Bucketable
    temporal-value :- [:or :int :string]]
   (u.time/format-unit time-config temporal-value (:unit (temporal-bucket temporal-column))))

@@ -220,7 +220,11 @@
 
 (def ^:private TimeConfig
   [:map
+   {:closed true}
    [:start-of-week [:enum :monday :tuesday :wednesday :thursday :friday :saturday :sunday]]])
+
+(def ^:private ComparisonType
+  [:enum := :< :<= :> :>=])
 
 (let [m (u.date.common/static-instances DayOfWeek)]
   (defn- day-of-week*
@@ -422,18 +426,29 @@
     (comparison-range {:start-of-week :sunday}
                       (t/local-date \"2019-11-18\") :month := {:resolution :day})
     ;; -> {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}"
-  ([time-config unit comparison-type]
+  ([time-config     :- TimeConfig
+    unit            :- (into [:enum] truncate-units)
+    comparison-type :- ComparisonType]
    (comparison-range time-config (t/zoned-date-time) unit comparison-type))
 
-  ([time-config t unit comparison-type]
+  ([time-config     :- TimeConfig
+    t               :- TemporalInstance
+    unit            :- (into [:enum] truncate-units)
+    comparison-type :- ComparisonType]
    (comparison-range time-config t unit comparison-type nil))
 
-  ([time-config :- TimeConfig
-    t unit comparison-type
+  ([time-config     :- TimeConfig
+    t               :- TemporalInstance
+    unit            :- (into [:enum] truncate-units)
+    comparison-type :- ComparisonType
     {:keys [start end resolution]
      :or   {start      :inclusive
             end        :exclusive
-            resolution :millisecond}}]
+            resolution :millisecond}}
+    :- [:maybe [:map {:closed true}
+                [:start      {:optional true} [:enum :inclusive :exclusive]]
+                [:end        {:optional true} [:enum :inclusive :exclusive]]
+                [:resolution {:optional true} (into [:enum] add-units)]]]]
    (case comparison-type
      :<  {:end (case end
                  :inclusive (add (truncate time-config t unit) resolution -1)
