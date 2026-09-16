@@ -96,14 +96,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { block: 0, from: 1, to: 31 }
-          - { block: 1, from: 30, to: 60 }
-          - { block: 2, from: 59, to: 89 }
-          - { block: 3, from: 88, to: 114 }
+          - { block: 0, from: 1, to: 16 }
+          - { block: 1, from: 14, to: 29 }
+          - { block: 2, from: 27, to: 42 }
+          - { block: 3, from: 40, to: 55 }
+          - { block: 4, from: 53, to: 68 }
+          - { block: 5, from: 66, to: 81 }
+          - { block: 6, from: 79, to: 94 }
+          - { block: 7, from: 92, to: 107 }
+          - { block: 8, from: 105, to: 114 }
     env:
       MB_JETTY_PORT: "4000"
       SITE: http://localhost:4000
       RUNS: "8"
+      LOCALES: "de en"
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out the code
@@ -162,9 +168,21 @@ jobs:
             # `measure.ts` waits on the debugging WebSocket without a bound, so a
             # Chrome that dies there hangs the whole backfill. One commit takes
             # about six minutes, so cap it well above that and move on.
+            # Both locales here, on this machine, so the difference between them
+            # for a commit is the locale rather than the runner. Runners of the
+            # same class differ by up to 30%.
             local status=0
-            timeout 900 env SESSION_COOKIE="$session" bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
-              > "artifacts/${sha}.json" || status=1
+            for locale in $LOCALES; do
+              curl -sS -X PUT -o /dev/null \
+                -H "X-Metabase-Session: ${session}" \
+                -H "content-type: application/json" \
+                -d "{\"value\":\"${locale}\"}" \
+                "$SITE/api/setting/site-locale"
+              curl -sS -o /dev/null "$SITE/"
+              timeout 900 env SESSION_COOKIE="$session" \
+                bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
+                > "artifacts/${sha}-${locale}.json" || status=1
+            done
 
             kill "$java_pid"
             wait "$java_pid" 2>/dev/null || true

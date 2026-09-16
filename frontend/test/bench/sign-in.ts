@@ -17,10 +17,9 @@ const url = process.argv[2] || "http://localhost:4000";
 const EMAIL = "bench@example.com";
 // The setup endpoint rejects a password that is short or common.
 const PASSWORD = "Benchmark-Passw0rd!";
-// English, to pair with the German rows already in the table. `en` gets a tiny
-// fallback catalogue rather than a real one, so the difference between the two
-// rows for a commit is what the translation costs.
-const SITE_LOCALE = "en";
+// The locale the instance starts in. The backfill switches it per measurement,
+// so this only decides which one is measured first.
+const SITE_LOCALE = "de";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
