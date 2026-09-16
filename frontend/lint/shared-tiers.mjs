@@ -39,7 +39,6 @@ const SHARED_UTILS_LEVELS = [
   // U6 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
   [
-    "shared/hoc",
     "shared/upsells",
     "shared/route-guards",
     "shared/redux-store",
