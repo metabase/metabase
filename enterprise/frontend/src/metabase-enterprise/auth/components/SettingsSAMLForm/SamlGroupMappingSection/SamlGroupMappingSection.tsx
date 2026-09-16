@@ -35,11 +35,13 @@ import S from "./SamlGroupMappingSection.module.css";
 type SamlGroupMappingSectionProps = {
   children: React.ReactNode;
   disabled?: boolean;
+  onToggle?: (enabled: boolean) => void;
 } & BoxProps;
 
 export function SamlGroupMappingSection({
   children,
   disabled = false,
+  onToggle,
   ...boxProps
 }: SamlGroupMappingSectionProps) {
   const inputId = useId();
@@ -52,13 +54,18 @@ export function SamlGroupMappingSection({
     updateSetting,
     updateSettingResult,
     isLoading,
+    isFetching: isAdminSettingsFetching,
   } = useAdminSetting("saml-group-sync");
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
-  // the env lock is only known once the settings list has loaded
+  // the env lock is only known once the settings list has loaded, and a refetch still in flight could overwrite a new click
   const isDisabled =
-    disabled || envName != null || isLoading || updateSettingResult.isLoading;
+    disabled ||
+    envName != null ||
+    isLoading ||
+    isAdminSettingsFetching ||
+    updateSettingResult.isLoading;
   const isChecked = value ?? false;
 
   const handleChange = async (enabled: boolean) => {
@@ -77,10 +84,11 @@ export function SamlGroupMappingSection({
     });
     if (error) {
       patch.undo();
+    } else {
+      onToggle?.(enabled);
     }
   };
 
-  // the card sits inside the page form, so Enter must not reach its submit button
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -105,7 +113,6 @@ export function SamlGroupMappingSection({
               {t`Group mapping`}
             </Text>
           </Title>
-          {/* the env line sits inside the description, so assistive tech hears why the switch is locked */}
           <Box id={descriptionId}>
             <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
               {t`Automatically assign people to ${applicationName} groups based on groups from your SAML identity provider`}

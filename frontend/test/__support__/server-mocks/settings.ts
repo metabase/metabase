@@ -44,16 +44,19 @@ export function setupUpdateSettingEndpoint(
  * Stateful settings mocks for save-then-read tests: PUT /api/setting(/:key)
  * mutate a shared store that GET /api/session/properties returns, so the
  * post-save refetch reflects the write instead of the pre-save snapshot.
+ * `updateDelay` answers the writes late and `readDelay` the properties reads, so in-flight states can be asserted.
  * Returns the mutable store for assertions.
  */
 export function setupStatefulSettingsEndpoints(
   initialSettings: Partial<EnterpriseSettings> | Record<string, unknown>,
+  { updateDelay, readDelay }: { updateDelay?: number; readDelay?: number } = {},
 ) {
   const store: Record<string, unknown> = { ...initialSettings };
 
   fetchMock.removeRoute("get-session-properties");
   fetchMock.get("path:/api/session/properties", () => ({ ...store }), {
     name: "get-session-properties",
+    delay: readDelay,
   });
 
   fetchMock.removeRoute("update-setting");
@@ -65,7 +68,7 @@ export function setupStatefulSettingsEndpoints(
       store[key] = value;
       return { status: 204 };
     },
-    { name: "update-setting" },
+    { name: "update-setting", delay: updateDelay },
   );
 
   fetchMock.removeRoute("update-settings");
@@ -75,7 +78,7 @@ export function setupStatefulSettingsEndpoints(
       Object.assign(store, JSON.parse(String(options.body)));
       return { status: 204 };
     },
-    { name: "update-settings" },
+    { name: "update-settings", delay: updateDelay },
   );
 
   return store;

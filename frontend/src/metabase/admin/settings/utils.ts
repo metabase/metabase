@@ -32,6 +32,10 @@ export const getExtraFormFieldProps = (setting?: SettingDefinition) => {
   };
 };
 
+/** Spread after a field's own props: a setting managed by an env var turns readOnly and shows "Using MB_..." instead of its description */
+export const getEnvNoticeProps = (setting?: SettingDefinition) =>
+  setting?.is_env_setting ? getExtraFormFieldProps(setting) : {};
+
 // env-locked settings show the readOnly notice instead of a placeholder
 export const getDefaultPlaceholder = (
   setting?: SettingDefinition,

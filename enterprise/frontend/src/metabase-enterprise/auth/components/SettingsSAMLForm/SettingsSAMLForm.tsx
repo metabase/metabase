@@ -6,6 +6,7 @@ import * as Yup from "yup";
 import {
   SETTINGS_FIELD_DESCRIPTION_PROPS,
   getDefaultPlaceholder,
+  getEnvNoticeProps,
   getExtraFormFieldProps,
 } from "metabase/admin/settings/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
@@ -37,7 +38,6 @@ import { useUpdateSamlMutation } from "metabase-enterprise/api";
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type {
   EnterpriseSettings,
-  SettingDefinition,
   SettingDefinitionMap,
 } from "metabase-types/api";
 
@@ -62,9 +62,6 @@ export type SAMLFormSettings = Pick<
 const SAML_FORM_SCHEMA = Yup.object({
   "saml-attribute-group": Yup.string().nullable().default(null),
 });
-
-const getEnvNoticeProps = (setting: SettingDefinition | undefined) =>
-  setting?.is_env_setting ? getExtraFormFieldProps(setting) : {};
 
 export function SettingsSAMLForm() {
   const { data: settingDetails, isLoading: isLoadingDetails } =
@@ -110,15 +107,6 @@ export function SettingsSAMLForm() {
     </Markdown>
   );
 
-  // the backend copy for the issuer predates the design, so the page supplies its own description
-  const issuerSetting = settingDetails["saml-identity-provider-issuer"];
-  const issuerFieldProps = issuerSetting?.is_env_setting
-    ? getExtraFormFieldProps(issuerSetting)
-    : {
-        ...getExtraFormFieldProps(issuerSetting),
-        description: t`This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'.`,
-      };
-
   return (
     <SettingsPageWrapper title={t`SAML`}>
       <FormProvider
@@ -127,7 +115,7 @@ export function SettingsSAMLForm() {
         validationSchema={SAML_FORM_SCHEMA}
         enableReinitialize
       >
-        {({ dirty }) => (
+        {({ dirty, initialValues, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -226,9 +214,13 @@ export function SettingsSAMLForm() {
                   <FormTextInput
                     name="saml-identity-provider-issuer"
                     label={t`SAML identity provider issuer`}
+                    description={t`This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'.`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="http://www.example.com/141xkex604w0Q5PN724v"
                     required
-                    {...issuerFieldProps}
+                    {...getEnvNoticeProps(
+                      settingDetails["saml-identity-provider-issuer"],
+                    )}
                   />
                 </Stack>
               </SettingsSection>
@@ -281,6 +273,15 @@ export function SettingsSAMLForm() {
               <SamlGroupMappingSection
                 data-testid="saml-group-mapping-section"
                 disabled={!isConfigured}
+                onToggle={(enabled) => {
+                  // the attribute field hides with the switch, so an unsaved edit must not ride along on the next save
+                  if (!enabled) {
+                    setFieldValue(
+                      "saml-attribute-group",
+                      initialValues["saml-attribute-group"],
+                    );
+                  }
+                }}
               >
                 <FormTextInput
                   name="saml-attribute-group"
@@ -321,22 +322,19 @@ const getFormValues = (
     "saml-identity-provider-uri",
     "saml-identity-provider-issuer",
     "saml-identity-provider-certificate",
-    "saml-application-name",
     "saml-keystore-password",
     "saml-keystore-alias",
     "saml-keystore-path",
     "saml-attribute-group",
   ]);
 
-  // cast undefined to null
-  const values = _.mapObject(
-    samlSettings,
-    (val) => val ?? null,
-  ) as SAMLFormSettings;
-  // read from the admin list, so an untouched application name shows its default as the placeholder
   const applicationNameSetting = settingDetails["saml-application-name"];
-  if (!applicationNameSetting?.is_env_setting) {
-    values["saml-application-name"] = applicationNameSetting?.value ?? null;
-  }
-  return values;
+
+  // mapObject widens every value to one union, so the shape is narrowed back to the form's
+  return {
+    ..._.mapObject(samlSettings, (val) => val ?? null),
+    "saml-application-name": applicationNameSetting?.is_env_setting
+      ? (settingValues["saml-application-name"] ?? null)
+      : (applicationNameSetting?.value ?? null),
+  } as SAMLFormSettings;
 };

@@ -5,9 +5,10 @@ import {
   findRequests,
   setupSettingsEndpoints,
   setupStatefulSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -24,33 +25,36 @@ const GROUPS = [
 const SAML_GROUP_PLACEHOLDER = "Enter SAML group...";
 const ISSUER_EXAMPLE = "http://www.example.com/141xkex604w0Q5PN724v";
 
+type SetupOptions = { updateDelay?: number; readDelay?: number };
+
 const setup = async (
   settingValues?: Partial<EnterpriseSettings>,
   settingDefinitions: SettingDefinition[] = [],
+  { updateDelay, readDelay }: SetupOptions = {},
 ) => {
   const settings = createMockSettings(settingValues ?? {});
   setupSettingsEndpoints(settingDefinitions);
   // the switches and the mappings read their values back after saving, so the properties mock has to remember writes
-  const settingsStore = setupStatefulSettingsEndpoints(settings);
+  setupStatefulSettingsEndpoints(settings, { updateDelay, readDelay });
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
   fetchMock.put("path:/api/saml/settings", { status: 204 });
 
-  const { store } = renderWithProviders(<SettingsSAMLForm />, {
-    withUndos: true,
-    storeInitialState: createMockState({
-      settings: createMockSettingsState(settings),
-    }),
-  });
+  renderWithProviders(<SettingsSAMLForm />, { withUndos: true });
 
   await screen.findByText("Identity provider (IdP) configuration");
-  return { store, settingsStore };
 };
 
 const setupConfigured = (
   settingValues?: Partial<EnterpriseSettings>,
   settingDefinitions?: SettingDefinition[],
-) => setup({ "saml-configured": true, ...settingValues }, settingDefinitions);
+  options?: SetupOptions,
+) =>
+  setup(
+    { "saml-configured": true, ...settingValues },
+    settingDefinitions,
+    options,
+  );
 
 // Unjustified type cast. FIXME
 const fields = [
@@ -59,9 +63,8 @@ const fields = [
   { label: /SAML Identity Provider Issuer/i, value: "example.test.sso" },
 ] as { label: RegExp; value: string }[];
 
-const CONFIGURED = {
+const IDP_SETTINGS = {
   "saml-enabled": true,
-  "saml-configured": true,
   "saml-identity-provider-uri": "https://example.test",
   "saml-identity-provider-certificate": fields[1].value,
   "saml-identity-provider-issuer": fields[2].value,
@@ -70,10 +73,12 @@ const CONFIGURED = {
 const groupMappingSwitch = () =>
   screen.getByRole("switch", { name: "Group mapping" });
 
-const findMappingRow = (name: string) =>
+const queryMappingRow = (name: string) =>
   screen
     .queryAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
+
+const getMappingRow = (name: string) => checkNotNull(queryMappingRow(name));
 
 describe("SettingsSAMLForm", () => {
   it("Can enable SAML via form input", async () => {
@@ -142,7 +147,7 @@ describe("SettingsSAMLForm", () => {
   });
 
   it("lays the cards out in the designed order", async () => {
-    await setup(CONFIGURED);
+    await setupConfigured();
 
     const cardTitles = screen
       .getAllByRole("heading", { level: 2 })
@@ -274,13 +279,10 @@ describe("SettingsSAMLForm", () => {
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
       ).toBeDisabled();
-      expect(
-        screen.getByRole("switch", { name: "Group mapping" }),
-      ).toBeDisabled();
     });
 
     it("comes alive once the identity provider is set up", async () => {
-      await setup(CONFIGURED);
+      await setupConfigured();
 
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
@@ -288,7 +290,10 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("saves right away without touching the page form", async () => {
-      await setup({ ...CONFIGURED, "saml-user-provisioning-enabled?": true });
+      await setupConfigured({
+        ...IDP_SETTINGS,
+        "saml-user-provisioning-enabled?": true,
+      });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeEnabled();
       expect(toggle).toBeChecked();
@@ -309,8 +314,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("locks the switch while SCIM manages provisioning", async () => {
-      await setup({
-        ...CONFIGURED,
+      await setupConfigured({
         "scim-enabled": true,
         "saml-user-provisioning-enabled?": false,
       });
@@ -327,9 +331,8 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("shows the SCIM note instead of the env line when both apply", async () => {
-      await setup(
+      await setupConfigured(
         {
-          ...CONFIGURED,
           "scim-enabled": true,
           "saml-user-provisioning-enabled?": false,
         },
@@ -365,9 +368,10 @@ describe("SettingsSAMLForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("keeps the mappings and the group attribute hidden while group mapping is off", async () => {
+    it("comes alive once the identity provider is set up, with the mappings still hidden", async () => {
       await setupConfigured();
 
+      expect(groupMappingSwitch()).toBeEnabled();
       expect(groupMappingSwitch()).not.toBeChecked();
       expect(
         screen.queryByText("Manual group mappings"),
@@ -397,18 +401,8 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("shows the new value and holds the switch while the write is in flight", async () => {
-      const { settingsStore } = await setupConfigured();
       // the properties mock answers the write late, so the in-flight state can be seen
-      fetchMock.removeRoute("update-setting");
-      fetchMock.put(
-        new RegExp("/api/setting/(.+)"),
-        ({ url, options }) => {
-          const key = decodeURIComponent(url.split("/api/setting/")[1]);
-          settingsStore[key] = JSON.parse(String(options.body)).value;
-          return { status: 204 };
-        },
-        { name: "update-setting", delay: 200 },
-      );
+      await setupConfigured({}, [], { updateDelay: 200 });
 
       await userEvent.click(groupMappingSwitch());
 
@@ -420,12 +414,22 @@ describe("SettingsSAMLForm", () => {
       expect(await findRequests("PUT")).toHaveLength(1);
     });
 
+    it("holds the switch until the settings refetch after the write lands", async () => {
+      // the properties mock answers reads late, so the refetch the write triggers can be seen
+      await setupConfigured({}, [], { readDelay: 200 });
+
+      await userEvent.click(groupMappingSwitch());
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+
+      expect(groupMappingSwitch()).toBeChecked();
+      expect(groupMappingSwitch()).toBeDisabled();
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupMappingSwitch()).toBeChecked();
+    });
+
     it("puts the old value back when the write fails", async () => {
       await setupConfigured();
-      fetchMock.removeRoute("update-setting");
-      fetchMock.put(new RegExp("/api/setting/(.+)"), 500, {
-        name: "update-setting",
-      });
+      setupUpdateSettingEndpoint({ status: 500 });
 
       await userEvent.click(groupMappingSwitch());
 
@@ -463,9 +467,9 @@ describe("SettingsSAMLForm", () => {
       expect(puts[0].body).toEqual({
         "saml-group-mappings": { engineering: [4] },
       });
-      const row = findMappingRow("engineering");
-      expect(row).toBeDefined();
-      expect(within(row!).getByText("bar")).toBeInTheDocument();
+      expect(
+        within(getMappingRow("engineering")).getByText("bar"),
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
@@ -492,11 +496,11 @@ describe("SettingsSAMLForm", () => {
       expect(body).toEqual({ "saml-group-mappings": {} });
       expect(groupMappingSwitch()).toBeChecked();
       expect(screen.getByText("No mappings yet")).toBeInTheDocument();
-      expect(findMappingRow("engineering")).toBeUndefined();
+      expect(queryMappingRow("engineering")).toBeUndefined();
     });
 
     it("saves the group attribute with the page form", async () => {
-      await setupConfigured({ ...CONFIGURED, "saml-group-sync": true });
+      await setupConfigured({ ...IDP_SETTINGS, "saml-group-sync": true });
 
       await userEvent.type(
         screen.getByRole("textbox", { name: /Group attribute name/ }),
@@ -512,6 +516,31 @@ describe("SettingsSAMLForm", () => {
       expect(puts[0].url).toMatch(/api\/saml\/settings/);
       expect(puts[0].body["saml-attribute-group"]).toBe("memberOf");
       expect(puts[0].body).not.toHaveProperty("saml-group-sync");
+    });
+
+    it("drops an unsaved group attribute edit when group mapping is turned off", async () => {
+      await setupConfigured({
+        ...IDP_SETTINGS,
+        "saml-group-sync": true,
+        "saml-attribute-group": "groups",
+      });
+      const saveButton = () =>
+        screen.getByRole("button", { name: "Save changes" });
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /Group attribute name/ }),
+        "X",
+      );
+      expect(saveButton()).toBeEnabled();
+
+      await userEvent.click(groupMappingSwitch());
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+
+      expect(saveButton()).toBeDisabled();
+      await userEvent.click(groupMappingSwitch());
+      expect(
+        await screen.findByRole("textbox", { name: /Group attribute name/ }),
+      ).toHaveValue("groups");
     });
 
     it("locks the mappings to the ones an env var sets", async () => {
@@ -532,9 +561,9 @@ describe("SettingsSAMLForm", () => {
       expect(
         screen.getByText("Using MB_SAML_GROUP_MAPPINGS"),
       ).toBeInTheDocument();
-      const row = findMappingRow("engineering");
-      expect(row).toBeDefined();
-      expect(await within(row!).findByText("foo")).toBeInTheDocument();
+      expect(
+        await within(getMappingRow("engineering")).findByText("foo"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "New" }),
       ).not.toBeInTheDocument();

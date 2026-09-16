@@ -155,7 +155,7 @@ export const SettingsLdapForm = () => {
         validationSchema={schema}
         enableReinitialize
       >
-        {({ dirty }) => (
+        {({ dirty, initialValues, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -281,6 +281,22 @@ export const SettingsLdapForm = () => {
               <LdapGroupMappingSection
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
+                onToggle={(enabled) => {
+                  // the group fields hide with the switch, so unsaved edits must not ride along on the next save
+                  if (!enabled) {
+                    setFieldValue(
+                      "ldap-group-base",
+                      initialValues["ldap-group-base"],
+                    );
+                    // the membership filter only exists on EE, so the key can be missing from the form
+                    if ("ldap-group-membership-filter" in initialValues) {
+                      setFieldValue(
+                        "ldap-group-membership-filter",
+                        initialValues["ldap-group-membership-filter"],
+                      );
+                    }
+                  }
+                }}
               >
                 <FormTextInput
                   name="ldap-group-base"

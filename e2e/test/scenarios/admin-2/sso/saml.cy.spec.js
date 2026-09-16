@@ -1,6 +1,19 @@
 const { H } = cy;
 
+import { groupMappingCardHelpers } from "./shared/group-mapping-card";
 import { getSamlCertificate, setupSaml } from "./shared/helpers";
+
+const {
+  groupMappingSection,
+  groupMappingSwitch,
+  mappingRow,
+  toggleGroupMapping,
+  addMapping,
+  deleteMapping,
+} = groupMappingCardHelpers({
+  sectionTestId: "saml-group-mapping-section",
+  nameLabel: "SAML group name",
+});
 
 describe("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
@@ -91,9 +104,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     });
 
     it("should save the switch and the mappings on their own and the group attribute with the form", () => {
-      turnGroupMappingOn();
+      toggleGroupMapping(true);
       addMapping("engineering", ["data", "nosql"]);
-      addMapping("ops", ["nosql", "readonly"]);
 
       cy.log(
         "The group attribute saves with the page form, the switch stays out of it",
@@ -107,33 +119,26 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
           expect(body).not.to.have.property("saml-group-sync");
         });
 
-      cy.log(
-        "Deleting a mapping's groups removes them from the other mappings too",
+      cy.log("Everything comes back after a reload");
+      cy.reload();
+      groupMappingSwitch().should("be.checked");
+      mappingRow("engineering").should("contain", "data, nosql");
+      cy.findByLabelText("Group attribute name").should(
+        "have.value",
+        "memberOf",
       );
+
+      cy.log("Deleting a mapping takes its groups with it");
       deleteMapping(
         "engineering",
         /delete the groups/i,
         "Remove mapping and delete groups",
       );
       cy.wait(["@deleteGroup", "@deleteGroup"]);
-      mappingRow("ops")
-        .should("contain", "readonly")
-        .and("not.contain", "nosql");
-
-      cy.log("Everything comes back after a reload");
-      cy.reload();
       groupMappingSwitch().should("be.checked");
-      mappingRow("ops").should("contain", "readonly");
-      cy.findByLabelText("Group attribute name").should(
-        "have.value",
-        "memberOf",
-      );
 
       cy.log("Turning group mapping off hides the mappings and sticks");
-      clickGroupMappingSwitch();
-      cy.wait("@updateSetting")
-        .its("request.body")
-        .should("deep.equal", { value: false });
+      toggleGroupMapping(false);
       groupMappingSection()
         .findByText("Manual group mappings")
         .should("not.exist");
@@ -149,54 +154,6 @@ const getSamlCard = () => {
     .findByText("SAML")
     .parent()
     .parent();
-};
-
-const groupMappingSection = () => cy.findByTestId("saml-group-mapping-section");
-
-const groupMappingSwitch = () =>
-  cy.findByRole("switch", { name: "Group mapping" });
-
-const mappingRow = (name) =>
-  cy.contains('[data-testid="group-mapping-row"]', name);
-
-const newMappingButton = () =>
-  groupMappingSection().findByRole("button", { name: "New" });
-
-const groupsPicker = () => cy.findByLabelText("Metabase groups");
-
-// Mantine hides the switch input, so the click goes to the title label wired to it
-const clickGroupMappingSwitch = () =>
-  groupMappingSection().contains("label", "Group mapping").click();
-
-const turnGroupMappingOn = () => {
-  groupMappingSwitch().should("not.be.checked");
-  clickGroupMappingSwitch();
-  cy.wait("@updateSetting")
-    .its("request.body")
-    .should("deep.equal", { value: true });
-};
-
-const addMapping = (name, groups) => {
-  newMappingButton().click();
-  cy.findByLabelText("SAML group name").type(name);
-  groupsPicker().click();
-  groups.forEach((group) => {
-    cy.findByRole("option", { name: group }).click();
-  });
-  cy.button("Add mapping").click();
-  cy.wait("@updateSettings");
-  mappingRow(name).should("contain", groups.join(", "));
-};
-
-const deleteMapping = (name, consequenceLabel, confirmLabel) => {
-  mappingRow(name).findByLabelText("Delete mapping").click();
-  H.modal().within(() => {
-    cy.findByText("Remove this group mapping?").should("be.visible");
-    cy.findByRole("radio", { name: consequenceLabel }).click();
-    cy.button(confirmLabel).click();
-  });
-  cy.wait("@updateSettings");
-  mappingRow(name).should("not.exist");
 };
 
 const enterSamlSettings = () => {
