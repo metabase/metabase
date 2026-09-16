@@ -237,22 +237,22 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :partition/total 3
-              :partition/index 0
+            partition-index: 0
+            partition-total: 3
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :partition/total 3
-              :partition/index 1
+            partition-index: 1
+            partition-total: 3
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 3)
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :partition/total 3
-              :partition/index 2
+            partition-index: 2
+            partition-total: 3
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
 
     services:
@@ -314,8 +314,13 @@ jobs:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
           artifact-suffix: ${{ matrix.job.name }}
+          # Legs that set `partition-total` run their shard of the suite; the Enterprise leg sets
+          # neither key and runs whole. The guard is on `partition-total` rather than
+          # `partition-index` on purpose: index 0 is falsy in a GitHub expression, so guarding on it
+          # would silently hand Part 1 the entire suite.
           test-args: >-
             ${{ matrix.job.test-args }}
+            ${{ matrix.job.partition-total && format(':partition/total {0} :partition/index {1}', matrix.job.partition-total, matrix.job.partition-index) || '' }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
 
   be-tests-postgres:
