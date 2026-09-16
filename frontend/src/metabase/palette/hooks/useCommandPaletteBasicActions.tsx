@@ -24,13 +24,12 @@ import {
   setOpenModalWithProps,
 } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
-import { useColorScheme } from "metabase/ui";
-import * as Urls from "metabase/urls";
-
 import {
   type RegisterShortcutProps,
   useRegisterShortcut,
-} from "./useRegisterShortcut";
+} from "metabase/shortcuts";
+import { useColorScheme } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 /**
  * Default ordering for the basic actions. kbar ranks matches by search

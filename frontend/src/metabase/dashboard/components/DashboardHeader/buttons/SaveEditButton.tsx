@@ -3,10 +3,10 @@ import { msgid, ngettext, t } from "ttag";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { useMaybeLocation } from "metabase/router";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 

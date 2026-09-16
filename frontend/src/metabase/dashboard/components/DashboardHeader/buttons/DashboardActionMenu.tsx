@@ -5,9 +5,9 @@ import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useLocation } from "metabase/router";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Icon, Menu } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
 

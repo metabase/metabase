@@ -3,7 +3,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 

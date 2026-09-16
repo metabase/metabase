@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderUIControls } from "metabase/redux/store";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Button, Group } from "metabase/ui";
 
 import {

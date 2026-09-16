@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
+import { useRegisterShortcut } from "metabase/shortcuts";
 
 export const AddFilterParameterButton = () => {
   const {

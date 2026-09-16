@@ -5,7 +5,7 @@ import {
 } from "metabase/api";
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { useDashboardContext } from "metabase/dashboard/context/context";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
 import { trackDashboardBookmarked } from "../analytics";

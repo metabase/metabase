@@ -8,7 +8,6 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type {
   LegacyStaticEmbeddingModalProps,
   SdkIframeEmbedSetupModalProps,
@@ -19,6 +18,7 @@ import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useLocation, useNavigate, useParams } from "metabase/router";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";

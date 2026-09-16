@@ -5,8 +5,8 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useSelector } from "metabase/redux";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import type { ActionIconProps } from "metabase/ui";
 
 export const DashboardInfoButton = (

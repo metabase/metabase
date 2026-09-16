@@ -9,8 +9,8 @@ import { TabRow } from "metabase/common/components/TabRow";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SelectedTabId } from "metabase/redux/store";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { ActionIcon, Flex, Icon, List } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 

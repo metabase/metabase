@@ -20,7 +20,7 @@ import {
 import {
   type RegisterShortcutProps,
   useRegisterShortcut,
-} from "metabase/palette/hooks/useRegisterShortcut";
+} from "metabase/shortcuts";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";

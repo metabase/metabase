@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Icon, SegmentedControl } from "metabase/ui";
 
 import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";

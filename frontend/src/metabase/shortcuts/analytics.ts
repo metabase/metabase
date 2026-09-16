@@ -1,6 +1,6 @@
 import { trackSimpleEvent } from "metabase/analytics";
 
-import type { KeyboardShortcutId } from "../shortcuts";
+import type { KeyboardShortcutId } from "./definitions";
 
 export const trackKeyboardShortcutPerformed = (id: KeyboardShortcutId) =>
   trackSimpleEvent({

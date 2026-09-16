@@ -5,8 +5,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Styles from "metabase/css/core/index.css";
-import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
-import type { ShortcutDef, ShortcutGroup } from "metabase/palette/types";
+import {
+  shortcuts as ALL_SHORTCUTS,
+  ELLIPSIS,
+  GROUP_LABELS,
+  type ShortcutDef,
+  type ShortcutGroup,
+} from "metabase/shortcuts";
 import {
   Group,
   KeyboardShortcut,
@@ -16,8 +21,6 @@ import {
   Tabs,
   Text,
 } from "metabase/ui";
-
-import { ELLIPSIS, GROUP_LABELS } from "../../constants";
 
 // Built when the modal opens rather than at import: a shortcut's `name` and
 // `keywords` are getters so they translate when read, and spreading them at

@@ -2,26 +2,6 @@ import { t } from "ttag";
 
 import type { Settings } from "metabase-types/api";
 
-export const GROUP_LABELS = {
-  get global() {
-    return t`General`;
-  },
-  get dashboard() {
-    return t`Dashboards`;
-  },
-  get question() {
-    return t`Questions`;
-  },
-  get collection() {
-    return t`Collections`;
-  },
-  get admin() {
-    return t`Admin`;
-  },
-};
-
-export const ELLIPSIS = "...";
-
 export const METABASE_DOCS_LABELS = {
   get section() {
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.

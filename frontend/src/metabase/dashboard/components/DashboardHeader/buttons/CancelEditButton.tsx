@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Button } from "metabase/ui";
 
 export const CancelEditButton = (props: { onClick: () => void }) => {

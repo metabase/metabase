@@ -5,12 +5,12 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { getUserIsAdmin } from "metabase/current-user";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";

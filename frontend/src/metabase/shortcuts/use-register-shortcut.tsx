@@ -1,10 +1,9 @@
 import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
 
-import { type KeyboardShortcutId, shortcuts } from "../shortcuts";
-import type { ShortcutAction } from "../types";
-
 import { trackKeyboardShortcutPerformed } from "./analytics";
+import { type KeyboardShortcutId, shortcuts } from "./definitions";
+import type { ShortcutAction } from "./types";
 
 export type RegisterShortcutProps = {
   id: KeyboardShortcutId;

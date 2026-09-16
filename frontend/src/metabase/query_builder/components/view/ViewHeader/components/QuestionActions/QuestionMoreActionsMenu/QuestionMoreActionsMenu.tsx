@@ -8,11 +8,11 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   useUserAcknowledgement,
 } from "metabase/current-user";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

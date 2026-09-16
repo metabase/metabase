@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { QueryBuilderMode } from "metabase/redux/store";
+import { useRegisterShortcut } from "metabase/shortcuts";
 import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

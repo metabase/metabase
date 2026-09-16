@@ -5,8 +5,6 @@ import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, ModerationReviewStatus } from "metabase-types/api";
 
-import type { GROUP_LABELS } from "./constants";
-
 interface PaletteActionExtras {
   extra?: {
     /** isVerified: If true, will show a verified badge next to the item name */
@@ -37,25 +35,3 @@ export type PaletteActionImpl = ActionImpl &
     icon?: IconName;
     iconUrl?: string;
   };
-
-export type ShortcutGroup = keyof typeof GROUP_LABELS;
-
-export type ShortcutAction = Action & {
-  shortcut: string[];
-  hide?: boolean;
-  shortcutGroup: ShortcutGroup;
-  shortcutContext?: string;
-  shortcutDisplay?: string[];
-  dynamic?: boolean;
-};
-
-export type ShortcutDef = Pick<
-  ShortcutAction,
-  | "id"
-  | "name"
-  | "hide"
-  | "shortcut"
-  | "shortcutGroup"
-  | "shortcutContext"
-  | "shortcutDisplay"
->;
