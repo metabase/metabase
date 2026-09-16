@@ -190,6 +190,10 @@
    skip-archived? :- [:maybe :boolean]
    filter-column  :- [:maybe :keyword]
    filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  ;; `trash-collection-type` is a compile-time literal -- `(def ^:constant trash-collection-type ...)` in
+  ;; `collections.schema` -- so no request value reaches this slot. The lint reports any bare symbol in a
+  ;; value slot and cannot see through the var to the string.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/reducible-select :model/Collection
                        {:where    [:and
                                    (when skip-archived? [:not :archived])
@@ -322,7 +326,7 @@
 (mu/defn clear-remote-synced-flags!
   "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
   []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+  (t2/update! :model/Collection {:is_remote_synced true} {:is_remote_synced false}))
 
 (mu/defn archive-descendant-collections!
   "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location
@@ -541,7 +545,7 @@
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (let [table-ids (published-table-ids-in-collections collection-ids)]
     (when (seq table-ids)
-      (t2/update! :model/TableUserSettings :table_id [:in (mapv long table-ids)]
+      (t2/update! :model/TableUserSettings {:table_id [:in (mapv long table-ids)]}
                   {:collection_id nil, :is_published false}))
     (t2/update! :model/Table {:collection_id [:in (mapv long collection-ids)]}
                 {:collection_id nil, :is_published false})))

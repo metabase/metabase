@@ -5,7 +5,8 @@
    [clojure.test :refer :all]
    [metabase.collections.db :as collections.db]
    [metabase.collections.schema :as collections.schema]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest collection-of-type-test
   (testing "the type is compared as a value"
@@ -57,3 +58,11 @@
         (is (contains? (collections.db/child-collection-ids location trash false) (:id child))))
       (testing "a location that looks like SQL matches nothing"
         (is (empty? (collections.db/child-collection-ids "/1/' OR '1'='1" trash false)))))))
+
+(deftest update!-conditions-maps-filter-rather-than-naming-a-where-column
+  (testing "clear-remote-synced-flags! clears only the remote-synced rows"
+    (mt/with-temp [:model/Collection {a :id} {:is_remote_synced true}
+                   :model/Collection {b :id} {:is_remote_synced false}]
+      (is (pos? (collections.db/clear-remote-synced-flags!)))
+      (is (false? (boolean (t2/select-one-fn :is_remote_synced :model/Collection :id a))))
+      (is (false? (boolean (t2/select-one-fn :is_remote_synced :model/Collection :id b)))))))
