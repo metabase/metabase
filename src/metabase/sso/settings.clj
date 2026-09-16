@@ -72,7 +72,8 @@
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default    "givenName"
+  ;; kept in the getter's lower case, so an untouched value reads as the default it is
+  :default    "givenname"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
   :encryption :when-encryption-key-set
   :audit      :getter)
@@ -116,7 +117,10 @@
                     (doseq [k (keys new-value)]
                       (when-not (instance? DN k) ; handle DN-encoded keys like we get from the `:getter`
                         (when-not (DN/isValidDN (u/qualified-name k))
-                          (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k)))))))
+                          (throw (ex-info (tru "{0} is not a valid DN. Example: {1}"
+                                               (u/qualified-name k)
+                                               "cn=people,ou=groups,dc=example,dc=org")
+                                          {:status-code 400})))))
                     (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?

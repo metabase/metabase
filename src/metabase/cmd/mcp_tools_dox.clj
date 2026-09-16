@@ -54,9 +54,9 @@
 
   Reads [[v2.registry/all-tool-entries]] rather than [[v2.registry/list-tools]]. The two agree on which tools
   exist and on the `:inputSchema` and `:annotations` each publishes, but `list-tools` answers for one session:
-  it strips `:scope`, which is half of what this page is for; it hides the MCP Apps tools from a client that
-  can't render them; and it drops whatever an admin listed in `mcp-v2-disabled-tools`. None of those are
-  reasons for a tool to be missing from the reference. Being [[app-only?]] is."
+  it strips `:scope`, which is half of what this page is for, and it hides the MCP Apps tools from a client
+  that can't render them. Neither is a reason for a tool to be missing from the reference. Being
+  [[app-only?]] is."
   []
   (remove app-only? (v2.registry/all-tool-entries)))
 

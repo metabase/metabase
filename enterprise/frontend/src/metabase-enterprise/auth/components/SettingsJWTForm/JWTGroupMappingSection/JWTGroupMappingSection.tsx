@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  useGroupLookup,
+  withMappingEntry,
+} from "metabase/admin/settings/auth/components/GroupMappings";
 import { DeleteGroupMappingModal } from "metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal";
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { useSelector } from "metabase/redux";
@@ -11,14 +14,12 @@ import { Button, Flex, Icon, SegmentedControl, Stack, Text } from "metabase/ui";
 
 import { type EditorState, MappingEditorRow } from "./MappingEditorRow";
 import { MappingRow } from "./MappingRow";
-import { useGroupMappingMode } from "./use-group-mapping-mode";
-import { useGroupMappingSettings } from "./use-group-mapping-settings";
-import { useMappingDeletion } from "./use-mapping-deletion";
 import {
   type JWTGroupSyncMode,
-  createGroupLookup,
-  withMappingEntry,
-} from "./utils";
+  useGroupMappingMode,
+} from "./use-group-mapping-mode";
+import { useGroupMappingSettings } from "./use-group-mapping-settings";
+import { useMappingDeletion } from "./use-mapping-deletion";
 
 export function JWTGroupMappingSection({
   isServerConfigured,
@@ -30,8 +31,7 @@ export function JWTGroupMappingSection({
   lockedEnvNames?: string[];
 }) {
   const applicationName = useSelector(getApplicationName);
-  const { data: groups = [] } = useListPermissionsGroupsQuery({});
-  const groupLookup = useMemo(() => createGroupLookup(groups), [groups]);
+  const groupLookup = useGroupLookup();
   const groupMapping = useGroupMappingSettings();
   const deletion = useMappingDeletion({ groupMapping, groupLookup });
   const modeSwitch = useGroupMappingMode(groupMapping);

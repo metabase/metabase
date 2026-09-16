@@ -619,7 +619,7 @@ interface PublicSettings {
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
-  "ldap-group-membership-filter"?: string;
+  "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;

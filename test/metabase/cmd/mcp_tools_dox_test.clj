@@ -209,7 +209,6 @@
         (is (string? scope) (str "no scope for " name))
         (is (api-scope/registered-scope? scope) (str name " uses unregistered scope " (pr-str scope)))))
     (testing "the page covers everything a fully-authorized client can be offered to a model"
-      ;; the manifest is the superset: `list-tools` also drops whatever `mcp-v2-disabled-tools` names
       (is (every? (set (map :name tools))
                   (->> (v2.registry/list-tools nil {:supports-mcp-ui? true})
                        (remove #'mcp-tools-dox/app-only?)

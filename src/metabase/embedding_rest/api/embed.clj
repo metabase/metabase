@@ -103,7 +103,7 @@
      :card card
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params (:embedding_params card)
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :qp qp
      :constraints constraints
      :options options)))
@@ -202,7 +202,7 @@
      :card card
      :embedding-params (:embedding_params dashboard)
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :constraints constraints
      :qp qp
      :middleware middleware)))

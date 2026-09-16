@@ -478,8 +478,6 @@
    [:name {:optional true}
     [:maybe (mu/with documents/DocumentName
                      {:json-schema {:type        "string"
-                                    :minLength   1
-                                    :maxLength   254
                                     :description "Document title. Required on create; on update, renames it."}})]]
    [:content_markdown {:optional true}
     [:maybe [:string {:description (str "The full body in Metabase-flavored Markdown: CommonMark plus card "

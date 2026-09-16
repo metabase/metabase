@@ -7,7 +7,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
@@ -163,9 +162,7 @@ saved later when it is ready."
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
   [result-metadata-future :- ::future
-   card                   :- [:map {:closed true}
-                              [:id            ::lib.schema.id/card]
-                              [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
+   card                   :- ::queries.schema/card]
   (let [id (u/the-id card)]
     (future
       (try

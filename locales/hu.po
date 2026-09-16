@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-01 05:46+0000\n"
+"POT-Creation-Date: 2026-09-08 05:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Hungarian\n"
 "Language: hu_HU\n"
-"PO-Revision-Date: 2026-09-08 05:40\n"
+"PO-Revision-Date: 2026-09-15 05:40\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -80,7 +80,6 @@ msgstr "Csoportosítva  szerint"
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarContainer.tsx
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardToast/MoveCardToast.tsx
 #: metabase/server/middleware/exceptions.clj
@@ -176,7 +175,7 @@ msgstr "Válassz adatbázist"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 msgid "Select a table"
 msgstr "Tábla kiválasztása"
 
@@ -260,7 +259,7 @@ msgstr "Kapcsolat szerkesztése"
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/SidebarHeader.tsx
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
 #: frontend/src/metabase/transforms/components/RunInfo/RunInfo.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/SidebarHeader/SidebarHeader.tsx
@@ -703,9 +702,9 @@ msgstr "Hozzáférés eltávolítása az összes csoportból"
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/hooks/useCommandPalette.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
 #: frontend/src/metabase/transforms/components/TransformHeader/TransformTabs.tsx
 #: frontend/src/metabase/visualizer/components/Footer/Footer.tsx
 msgid "Settings"
@@ -1340,6 +1339,12 @@ msgid "JWT"
 msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Server settings"
+msgstr "Szerverbeállítások"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
 msgid "JWT Identity Provider URI"
 msgstr "JWT Identity Provider URI"
@@ -1349,31 +1354,45 @@ msgid "String used by the JWT signing key"
 msgstr "A JWT aláírókulcs által használt karakterlánc"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Email attribute"
-msgstr "E-mail attribútum"
+msgid "User attribute configuration"
+msgstr "Felhasználói attribútum konfiguráció"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "You can send additional user attributes to {0} by adding the attributes as key/value pairs to your JWT"
+msgstr "További felhasználói attribútumokat küldhetsz a(z) {0} számára úgy, hogy az attribútumokat kulcs/érték párokként hozzáadod a JWT-dhez"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Email attribute key"
+msgstr "E-mail attribútumkulcs"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "First name attribute key"
+msgstr "Keresztnév attribútumkulcs"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Last name attribute key"
+msgstr "Vezetéknév attribútumkulcs"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Group assignment attribute key"
+msgstr "Csoport-hozzárendelési attribútumkulcs"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Tenant assignment attribute key"
+msgstr "Bérlő-hozzárendelési attribútumkulcs"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "First name attribute"
-msgstr "Keresztnév attribútum"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Last name attribute"
-msgstr "Vezetéknév attribútum"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Group assignment attribute"
-msgstr "Csoporthozzárendelési attribútum"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tenant assignment attribute"
-msgstr "Bérlő-hozzárendelési attribútum"
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Group mapping"
+msgstr "Csoportleképezés"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "Lets you assign users to custom {0} groups based on their JWT attributes"
+msgstr "Lehetővé teszi, hogy a felhasználókat egyéni {0}-csoportokhoz rendeld a JWT-attribútumaik alapján"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Group Name"
@@ -1400,6 +1419,7 @@ msgstr "Mentés és engedélyezés"
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
 #: frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/EditWebhookModal.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx
@@ -1470,10 +1490,6 @@ msgid "OpenID Connect"
 msgstr "OpenID Connect"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Server settings"
-msgstr "Szerverbeállítások"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributeMappingEditor.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
@@ -1541,10 +1557,6 @@ msgstr "Hagyd üresen az aktuális érték megtartásához"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Synchronize group membership with your SSO"
-msgstr "Csoporttagság szinkronizálása az SSO-val"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
 msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
 msgstr "Ennek engedélyezéséhez megfeleltetéseket kell létrehoznod, hogy a(z) {0} tudja, mely csoport(ok)ba kerüljenek a felhasználóid az alapján, hogy melyik SSO-csoportban vannak."
@@ -1577,6 +1589,21 @@ msgstr "Attribútumleképezés"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
 msgstr "OIDC claim-ek leképezése felhasználói attribútumokra. Használd a szabványos OIDC claim neveket vagy a szolgáltatód egyedi claim-jeit."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Email attribute"
+msgstr "E-mail attribútum"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "First name attribute"
+msgstr "Keresztnév attribútum"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Last name attribute"
+msgstr "Vezetéknév attribútum"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
@@ -1623,10 +1650,6 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Set up SAML-based SSO"
-msgstr "SAML-alapú SSO beállítása"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #, javascript-format
 msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
 msgstr "Az alábbi beállításokkal konfigurálhatja az SSO-t SAML-en keresztül. Ha kérdése van, nézze meg a(z) {0} oldalunkat."
@@ -1642,8 +1665,9 @@ msgid "Configure your identity provider (IdP)"
 msgstr "Identitásszolgáltató (IdP) konfigurálása"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Your identity provider will need the following info about Metabase."
-msgstr "Az identitásszolgáltatónak a következő információkra lesz szüksége a Metabase-ről."
+#, javascript-format
+msgid "Your identity provider will need the following info about {0}."
+msgstr "Az identitásszolgáltatódnak a következő információkra lesz szüksége a(z) {0} kapcsán."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1674,12 +1698,18 @@ msgid "User's last name attribute"
 msgstr "A felhasználó vezetéknevének attribútuma"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tell Metabase about your identity provider"
-msgstr "Tájékoztassa a Metabase-t az identitásszolgáltatójáról"
+msgid "Tenant assignment attribute"
+msgstr "Bérlő-hozzárendelési attribútum"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Metabase will need the following info about your provider."
-msgstr "A Metabase-nek a következő információkra lesz szüksége a szolgáltatójáról."
+#, javascript-format
+msgid "Tell {0} about your identity provider"
+msgstr "Tájékoztasd a(z) {0}-t az identitásszolgáltatódról"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "{0} will need the following info about your provider."
+msgstr "A(z) {0} számára a következő információkra lesz szükség a szolgáltatódról."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
@@ -1716,12 +1746,6 @@ msgstr "Pszt..."
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore alias"
 msgstr "SAML kulcstároló alias"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
-"be added to based on the SSO group they're in."
-msgstr "Ennek engedélyezéséhez hozzárendeléseket kell létrehoznia, hogy megmondja a Metabase-nek, mely csoport(ok)ba kerüljenek a felhasználói\n"
-"az SSO-csoportjuk alapján."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]"
@@ -2427,6 +2451,7 @@ msgstr "Állíts be egy dev szerver URL-t, hogy a plugin kódját a git repó he
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
@@ -2559,6 +2584,7 @@ msgstr "Nézd meg az SDK változásnaplóját"
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 msgid "Enabled"
@@ -2592,6 +2618,7 @@ msgid "Add"
 msgstr "Hozzáadás"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
 #: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
 #: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
@@ -2627,6 +2654,11 @@ msgstr "SDK 1.x verzióval készült, de ezt a Metabase-verziót az SDK {0}-val 
 #, javascript-format
 msgid "Requires Metabase {0}, but this instance is on {1}."
 msgstr "Metabase {0}-t igényel, de ez a példány {1}-et futtat."
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/warning-messages.ts
+#, javascript-format
+msgid "The identifier \"{0}\" contains \":\", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without \":\"."
+msgstr "A(z) \"{0}\" azonosító tartalmazza a(z) \":\" karaktert, ami már nem engedélyezett, ezért ez a vizualizáció nem kerül kiszolgálásra a megtekintőknek. Töröld, és töltsd fel a bundle-t \":\" nélküli név alatt."
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/custom-viz-plugins.tsx
 msgid "Plugin bundle must have a default export that is a factory function"
@@ -2866,7 +2898,7 @@ msgstr "Az adatokat nem sikerült megfelelően lekérni: {0}"
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
@@ -3261,14 +3293,12 @@ msgid "Move table to…"
 msgstr "Tábla áthelyezése ide…"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table name"
 msgstr "Nem sikerült frissíteni a tábla nevét"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table name updated"
 msgstr "Tábla neve frissítve"
 
@@ -3347,14 +3377,12 @@ msgid "New measure"
 msgstr "Új mérték"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table description"
 msgstr "Nem sikerült frissíteni a tábla leírását"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table description updated"
 msgstr "Tábla leírása frissítve"
 
@@ -3752,7 +3780,7 @@ msgid "The following tables will be replicated."
 msgstr "A következő táblák replikálva lesznek."
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #, javascript-format
 msgid "{0} rows"
 msgstr "{0} sor"
@@ -4002,7 +4030,7 @@ msgstr "Adatbázisokat API-n keresztül is hozzáadhatsz programból."
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 #: frontend/src/metabase/admin/upsells/UpsellRemoteSync.tsx
@@ -4013,8 +4041,8 @@ msgstr "Adatbázisokat API-n keresztül is hozzáadhatsz programból."
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
 #: frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/HelpText/HelpText.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 msgid "Learn more"
 msgstr "Tudj meg többet"
 
@@ -4504,8 +4532,8 @@ msgstr "Modell"
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Table"
 msgstr "Tábla"
@@ -5299,7 +5327,7 @@ msgstr "Ellenőrzés eltávolítása"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts
 #: frontend/src/metabase/common/components/RevisionHistoryTimeline/utils.ts
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionItem.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "You"
 msgstr "Te"
 
@@ -6100,8 +6128,8 @@ msgstr "Profil"
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 msgid "Date"
 msgstr "Dátum"
@@ -7191,6 +7219,7 @@ msgid "No collections found"
 msgstr "Nem találhatók gyűjtemények"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TopLevelCollectionsList/TopLevelCollectionsList.tsx
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 msgid "Failed to load collections"
 msgstr "Nem sikerült betölteni a gyűjteményeket"
 
@@ -7255,6 +7284,7 @@ msgid "Something went wrong. Please try again."
 msgstr "Valami félrement. Próbáld újra."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/collections/constants.ts
 #: frontend/src/metabase/common/collections/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
@@ -7718,6 +7748,7 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Ez az attribútum a bérlőtől öröklődik, de felülírhatod az értékét"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
 msgid "Attributes"
@@ -8898,7 +8929,9 @@ msgstr "és"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "tábla"
+msgid_plural "tables"
+msgstr[0] "tábla"
+msgstr[1] "táblák"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9004,6 +9037,7 @@ msgid "Items cannot be saved directly to the tenant root collection. Please sele
 msgstr "Az elemeket nem lehet közvetlenül a bérlő gyökérgyűjteményébe menteni. Kérjük, válassz egy algyűjteményt."
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-root-items.ts
 #: frontend/src/metabase/dashboard/components/QuestionPicker/utils/tenant-collections.ts
 #: frontend/src/metabase/reference/databases/DatabaseList.tsx
@@ -10142,7 +10176,7 @@ msgstr "Színek"
 #: frontend/src/metabase/metadata/components/FieldSection/FieldSection.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStep.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
 #: frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.tsx
 msgid "Preview"
@@ -10587,9 +10621,17 @@ msgid "The analytics server is undergoing maintenance. {0}."
 msgstr "Az analitikai szerver karbantartás alatt áll. {0}."
 
 #: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "All collections"
+msgstr "Összes gyűjtemény"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableCollection.tsx
 msgid "You don't have access to this collection"
 msgstr "Nincs hozzáférésed ehhez a gyűjteményhez"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "There are no collections to show"
+msgstr "Nincsenek megjeleníthető gyűjtemények"
 
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "Something's gone wrong"
@@ -10608,6 +10650,11 @@ msgstr "Új kérdés létrehozásához távozás előtt el kell mentened a módo
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "You can't save questions in Guest Embed mode"
 msgstr "Guest beágyazás módban nem tudsz kérdéseket menteni"
+
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
+#: frontend/src/metabase/common/collections/utils.ts
+msgid "Your personal collection"
+msgstr "Saját gyűjteményed"
 
 #: frontend/src/embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token.ts
 msgid "JWT tokens cannot be passed as id. Use the token prop instead."
@@ -11817,7 +11864,7 @@ msgstr "Belül"
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
 msgid "Number"
 msgstr "Szám"
@@ -11909,7 +11956,7 @@ msgstr "String"
 #: frontend/src/metabase-lib/v1/parameters/constants.ts
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Boolean"
 msgstr "Boolean"
 
@@ -12167,7 +12214,7 @@ msgstr "Ez véglegesen törli a sort. Ezt nem lehet visszavonni, ezért kérjük
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddHeadingOrTextButton.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Text"
@@ -12279,7 +12326,7 @@ msgstr "Kötelező"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Default value"
 msgstr "Alapértelmezett érték"
 
@@ -12433,6 +12480,14 @@ msgstr "Alapértelmezett modell"
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Metabot, AI explorations and SQL generation all run on this model."
 msgstr "A Metabot, az MI-adatfeltárások és az SQL-generálás mind ezen a modellen futnak."
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Fast mode"
+msgstr "Gyors mód"
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment."
+msgstr "Gyorsabb válaszok a default modellen, tokenenként magasabb áron. Anthropic esetén ehhez fast mode research preview-ra felvett fiók szükséges, és Priority Tier commitmenttel nem érhető el."
 
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Mini model"
@@ -12892,7 +12947,7 @@ msgstr "Teljesítmény"
 #: frontend/src/metabase/admin/app/reducers.ts
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Súgó"
 
@@ -15214,10 +15269,10 @@ msgstr "Valószínűleg érdemes ezt a beállítást {0} értékre módosítanod
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "Nincs"
@@ -15357,6 +15412,10 @@ msgid "Password"
 msgstr "Jelszó"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "User schema"
+msgstr "Felhasználói séma"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User search base"
 msgstr "Felhasználókeresés alap DN-je"
 
@@ -15390,6 +15449,12 @@ msgstr "Vizualizációk kezelése"
 #: frontend/src/metabase/palette/constants.ts
 msgid "General"
 msgstr "Általános"
+
+#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: frontend/src/metabase/palette/constants.ts
+msgid "Domains"
+msgstr "Domainek"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/WebhooksSettingsPage.tsx
@@ -15470,8 +15535,8 @@ msgid "Turn on \"Restrict image domains\" in {0} before enabling custom visualiz
 msgstr "Kapcsold be a(z) \"Restrict image domains\" beállítást itt: {0}, mielőtt engedélyezed az egyéni vizualizációkat."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
-msgid "General settings"
-msgstr "Általános beállítások"
+msgid "Domains settings"
+msgstr "Domainbeállítások"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Custom chart types"
@@ -15504,6 +15569,56 @@ msgstr "Teljes kontroll"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Enable, disable, and manage custom visualization plugins"
 msgstr "Egyéni vizualizációs pluginok engedélyezése, letiltása és kezelése"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for iframes in dashboards"
+msgstr "Az irányítópultokban lévő iframe-ekhez engedélyezett domainek"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
+msgstr "Győződj meg róla, hogy megbízható forrásokat engedsz a felhasználóidnak az irányítópultokba beágyazni. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict image domains"
+msgstr "Képdomének korlátozása"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
+msgstr "Az Egyéni vizualizációkhoz kötelező. Kapcsold ki a(z) {0} beállítást, mielőtt kikapcsolod ezt a beállítást."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Custom Visualizations"
+msgstr "Egyéni vizualizációk"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
+msgstr "Korlátozd a böngésző Content Security Policy-jét úgy, hogy a képek csak erről a Metabase példányról vagy az alább felsorolt domainekről tölthessenek be. Az Egyéni vizualizációk engedélyezéséhez kötelező. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
+msgstr "Korlátozd a böngésző Content Security Policy-jét úgy, hogy a képek csak erről a Metabase példányról vagy az alább felsorolt domainekről tölthessenek be."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for images"
+msgstr "Képekhez engedélyezett domainek"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "Domainek, ahonnan képek betölthetők az irányítópult szövegében, entitásleírásokban és egyéni vizualizációkban. Hagyd üresen, ha csak az erről a Metabase példányról hosztolt képeket engedélyeznéd. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "Domainek, ahonnan képek betölthetők az irányítópult szövegében és entitásleírásokban. Hagyd üresen, ha csak az erről a Metabase példányról hosztolt képeket engedélyeznéd. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
+msgstr "Kapcsold be a fenti \"Képdomének korlátozása\" beállítást, hogy érvényesítsd ezt az engedélyezési listát."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx
 msgid "From Name"
@@ -15554,8 +15669,8 @@ msgid "Email address for help requests"
 msgstr "Segítségkérésekhez használt email-cím"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Tables, X-Rays and domains"
-msgstr "Táblák, X-Rayek és domainek"
+msgid "Tables and X-Rays"
+msgstr "Táblák és röntgenek"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Friendly table and field names"
@@ -15568,56 +15683,6 @@ msgstr "Aláhúzások és kötőjelek cseréje szóközre"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Enable X-Ray features"
 msgstr "X-Ray funkciók engedélyezése"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for iframes in dashboards"
-msgstr "Az irányítópultokban lévő iframe-ekhez engedélyezett domainek"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
-msgstr "Győződj meg róla, hogy megbízható forrásokat engedsz a felhasználóidnak az irányítópultokba beágyazni. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict image domains"
-msgstr "Képdomének korlátozása"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
-msgstr "Az Egyéni vizualizációkhoz kötelező. Kapcsold ki a(z) {0} beállítást, mielőtt kikapcsolod ezt a beállítást."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Custom Visualizations"
-msgstr "Egyéni vizualizációk"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
-msgstr "Korlátozd a böngésző Content Security Policy-jét úgy, hogy a képek csak erről a Metabase példányról vagy az alább felsorolt domainekről tölthessenek be. Az Egyéni vizualizációk engedélyezéséhez kötelező. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
-msgstr "Korlátozd a böngésző Content Security Policy-jét úgy, hogy a képek csak erről a Metabase példányról vagy az alább felsorolt domainekről tölthessenek be."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for images"
-msgstr "Képekhez engedélyezett domainek"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "Domainek, ahonnan képek betölthetők az irányítópult szövegében, entitásleírásokban és egyéni vizualizációkban. Hagyd üresen, ha csak az erről a Metabase példányról hosztolt képeket engedélyeznéd. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "Domainek, ahonnan képek betölthetők az irányítópult szövegében és entitásleírásokban. Hagyd üresen, ha csak az erről a Metabase példányról hosztolt képeket engedélyeznéd. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
-msgstr "Kapcsold be a fenti \"Képdomének korlátozása\" beállítást, hogy érvényesítsd ezt az engedélyezési listát."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
@@ -15891,8 +15956,8 @@ msgstr "Mintaértékek:"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Select…"
 msgstr "Válassz…"
 
@@ -16542,12 +16607,12 @@ msgid "Create custom chart types tailored to your data using the Custom visualiz
 msgstr "Hozz létre egyedi diagramtípusokat, a Custom visualizations SDK-val a saját adataidhoz szabva."
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Build apps on your data"
-msgstr "Építs appokat az adataidra"
+msgid "Build custom data apps"
+msgstr "Egyéni adat appok készítése"
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Ship interactive apps powered by your data, served right inside Metabase."
-msgstr "Szállíts adatvezérelt interaktív appokat, közvetlenül a Metabase-en belül."
+msgid "Build custom user interfaces, forms, and other tools that write back to your database. Automate chores, manage back-office work, and set up workflows to act on your data, all built with AI on top of your semantic layer."
+msgstr "Készíts egyéni felhasználói felületeket, űrlapokat és egyéb eszközöket, amelyek visszaírnak az adatbázisodba. Automatizáld a feladatokat, kezeld a back-office munkát, és állíts be workflow-kat, hogy a data alapján történjenek műveletek — mindezt MI-vel, a szemantikai rétegedre építve."
 
 #: frontend/src/metabase/admin/upsells/UpsellDevInstances.tsx
 msgid "Get a development instance"
@@ -17609,10 +17674,6 @@ msgstr "Irányítópult kiválasztása"
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVUpload.tsx
 msgid "Select this collection"
 msgstr "Gyűjtemény kiválasztása"
-
-#: frontend/src/metabase/common/collections/utils.ts
-msgid "Your personal collection"
-msgstr "Saját gyűjteményed"
 
 #: frontend/src/metabase/common/components/AccordionList/AccordionListCell.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.tsx
@@ -18875,7 +18936,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "Perc"
 msgstr[1] "{0} perc"
 
@@ -19555,7 +19616,7 @@ msgstr "Kutatás"
 #: frontend/src/metabase/common/utils/timelines.ts
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Note"
 msgstr "Megjegyzés"
 
@@ -20810,7 +20871,7 @@ msgid "For Native Questions use {0} to make Linked Filters available here."
 msgstr "Natív kérdéseknél használd a(z) {0} funkciót, hogy itt elérhetők legyenek az Összekapcsolt szűrők."
 
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
 msgid "Field Filters"
 msgstr "Mezőszűrők"
 
@@ -20867,7 +20928,7 @@ msgid "Filter or parameter type"
 msgstr "Szűrő- vagy paramétertípus"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
 msgid "Time grouping options"
 msgstr "Idő szerinti csoportosítás beállításai"
 
@@ -20876,24 +20937,24 @@ msgid "How should people filter on this column?"
 msgstr "Hogyan szűrjenek az emberek erre az oszlopra?"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "People can pick"
 msgstr "Az emberek választhatnak"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "Multiple values"
 msgstr "Több értéket"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "A single value"
 msgstr "Egyetlen értéket"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/utils/errors/validation.ts
 msgid "required"
 msgstr "kötelező"
@@ -20915,7 +20976,7 @@ msgstr "Ahhoz, hogy mindig kötelező legyen egy érték, először menj a beág
 "irányítópultot, majd térj vissza erre az oldalra."
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
@@ -21145,7 +21206,7 @@ msgstr "Dátumtartomány, konkrét dátum…"
 
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionTimeGroupingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Time grouping"
 msgstr "Idő szerinti csoportosítás"
 
@@ -21595,16 +21656,6 @@ msgstr "Nincs megjeleníthető adat"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Failed to update field order"
-msgstr "Nem sikerült frissíteni a mezők sorrendjét"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Field order updated"
-msgstr "Mezők sorrendje frissítve"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 msgid "Give this table a description"
 msgstr "Adj leírást ennek a táblának"
 
@@ -21847,7 +21898,7 @@ msgstr "létrehozta ezt a mértéket"
 
 #: frontend/src/metabase/data-studio/measures/components/MeasureRevisionHistory/MeasureRevisionHistory.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "reverted to a previous version"
 msgstr "visszaállított egy korábbi verzióra"
 
@@ -24129,14 +24180,13 @@ msgid "AI can make mistakes. Double check your plan and modify it as needed."
 msgstr "Az MI tévedhet. Ellenőrizd a tervedet, és módosítsd szükség szerint."
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
 #: frontend/src/metabase/status/components/StatusLarge/StatusLarge.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 msgid "Collapse"
 msgstr "Összecsukás"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
+#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 #: frontend/src/metabase/visualizer/components/DataImporter/ColumnsList/ColumnsList.tsx
 msgid "Expand"
@@ -24301,11 +24351,6 @@ msgstr "Titkos kulcs beállítása"
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Copy to clipboard"
 msgstr "Másolás a vágólapra"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
-#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
-msgid "Preview the query"
-msgstr "Lekérdezés előnézete"
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Secret key copied to clipboard"
@@ -25262,6 +25307,11 @@ msgstr "Beküldés"
 msgid "Copy chart"
 msgstr "Diagram másolása"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
+msgid "Run query"
+msgstr "Lekérdezés futtatása"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineDashboardLink.tsx
 msgid "Open dashboard"
 msgstr "Irányítópult megnyitása"
@@ -26050,6 +26100,14 @@ msgstr "Válaszd ki, hogy kibontsa-e a JSON-t"
 #: frontend/src/metabase/metadata/components/UserInput.tsx
 msgid "Pick someone, or type an email"
 msgstr "Válassz valakit, vagy írj be egy email-címet"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Failed to update field order"
+msgstr "Nem sikerült frissíteni a mezők sorrendjét"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Field order updated"
+msgstr "Mezők sorrendje frissítve"
 
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
@@ -27565,6 +27623,15 @@ msgstr "Kezdőlap"
 msgid "Other users' personal collections"
 msgstr "Más felhasználók személyes gyűjteményei"
 
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+#, javascript-format
+msgid "You can also {0} when there are some results."
+msgstr "{0} is, amikor van néhány eredmény."
+
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+msgid "get an alert"
+msgstr "értesítést kérni"
+
 #: frontend/src/metabase/notifications/channels/RecipientPicker.tsx
 msgid "Enter user names or email addresses"
 msgstr "Add meg a felhasználóneveket vagy email-címeket"
@@ -28169,9 +28236,9 @@ msgid "Format custom expression or native query"
 msgstr "Egyéni kifejezés vagy natív lekérdezés formázása"
 
 #: frontend/src/metabase/parameters/components/ParameterDropdownWidget.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.tsx
 #: frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Enter a default value…"
 msgstr "Adj meg egy alapértelmezett értéket…"
 
@@ -28182,6 +28249,171 @@ msgstr "Mindig kérjen meg egy értéket"
 #: frontend/src/metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.tsx
 msgid "When enabled, people can change the value or reset it, but can't clear it entirely."
 msgstr "Ha engedélyezve van, az értéket lehet módosítani vagy alaphelyzetbe állítani, de teljesen törölni nem lehet."
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+#, javascript-format
+msgid "{0} active filter"
+msgid_plural "{0} active filters"
+msgstr[0] "{0} aktív szűrő"
+msgstr[1] "{0} aktív szűrő"
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+msgid "Filters"
+msgstr "Szűrők"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Example:"
+msgstr "Példa:"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Try it"
+msgstr "Próbáld ki"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "What's this for?"
+msgstr "Mire jó ez?"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
+msgstr "A natív lekérdezésekben a változókkal dinamikusan cserélhetsz értékeket a lekérdezéseidben szűrőwidgetekkel vagy az URL-en keresztül."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
+msgid "Variables"
+msgstr "Változók"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
+msgstr "A(z) {0} létrehoz egy „variable_name” nevű változót ebben a lekérdezéssablonban. A változók típusai az oldalsó panelen adhatók meg, ami megváltoztatja a viselkedésüket. A „Field Filter” kivételével minden változótípus automatikusan elhelyez egy szűrőwidgetet ezen a kérdésen; a Field Filter esetén ez opcionális. Amikor ezt a szűrőwidgetet kitöltöd, az érték lecseréli a változót a lekérdezéssablonban."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
+msgstr "Ha egy változónak a „Field Filter” típust adod, összelinkelheted a kérdéseket az irányítópult szűrőwidgetjeivel, vagy többféle szűrőwidgetet használhatsz az SQL-kérdéseden. A Field Filter változó olyan SQL-t szúr be, mint amit a GUI lekérdezésszerkesztő generál, amikor meglévő oszlopokra szűrőket adsz hozzá."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
+msgstr "Field Filter változó hozzáadásakor hozzá kell rendelned egy konkrét mezőhöz. Ezután dönthetsz úgy, hogy megjelenítesz egy szűrőwidgetet a kérdéseden, de ha nem teszed, akkor is hozzá tudod rendelni a Field Filter változódat egy irányítópultszűrőhöz, amikor ezt a kérdést irányítópultra teszed. A Field Filtereket egy „WHERE” záradékon belül kell használni."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Optional Clauses"
+msgstr "Opcionális záradékok"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
+msgstr "A {0} körüli zárójelek opcionális záradékot hoznak létre a sablonban. Ha a „variable” be van állítva, akkor a teljes záradék bekerül a sablonba. Ha nincs, akkor a teljes záradék figyelmen kívül marad."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
+msgstr "Több opcionális záradék használatához felvehetsz legalább egy nem opcionális WHERE záradékot, majd az opcionális záradékokat „AND”-del kezdve."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
+msgstr "Field Filter használatakor az oszlopnév ne szerepeljen az SQL-ben. Ehelyett a változót rendeld hozzá egy mezőhöz az oldalsó panelen."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Read the full documentation"
+msgstr "A teljes dokumentáció elolvasása"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "Variable name"
+msgstr "Változó neve"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "How should users filter on this variable?"
+msgstr "Hogyan szűrjenek a felhasználók erre a változóra?"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Select a default value…"
+msgstr "Válassz alapértelmezett értéket…"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "This filter is set to disabled in an embedded question."
+msgstr "Ez a szűrő le van tiltva egy beágyazott kérdésben."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "To always require a value, first visit embedding settings,\n"
+"make this filter editable or locked, re-publish the\n"
+"question, then return to this page."
+msgstr "Ahhoz, hogy mindig legyen kötelező érték, először nyisd meg a beágyazási beállításokat,\n"
+"állítsd ezt a szűrőt szerkeszthetőre vagy zároltra, publikáld újra a\n"
+"kérdést, majd térj vissza erre az oldalra."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default parameter widget value"
+msgstr "Paraméter widget alapértelmezett értéke"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default filter widget value"
+msgstr "Szűrőwidget alapértelmezett értéke"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+msgid "Table and field alias"
+msgstr "Tábla- és mezőalias"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+#, javascript-format
+msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
+msgstr "Csak akkor szükséges, ha a lekérdezés aliast használ a leképezett mező táblájára való hivatkozáshoz. Például, ha a változót a(z) {0} mezőhöz rendeled, de a lekérdezés a(z) {1} táblát {2} aliasként használja, akkor a(z) {3} értéket írd be."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+msgid "Field to map to"
+msgstr "Leképezés erre a mezőre"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "(required)"
+msgstr "(kötelező)"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Parameter widget label"
+msgstr "Paraméter widget címkéje"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Filter widget label"
+msgstr "Szűrő widget címkéje"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "Filter widget type"
+msgstr "Szűrő widget típusa"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "There aren't any filter widgets for this type of field yet."
+msgstr "Ehhez a mezőtípushoz még nincsenek szűrő widgetek."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#, javascript-format
+msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
+msgstr "A legtöbbször egy {0} záradékkal érdemes használni, például: {1}"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Table to map to"
+msgstr "Hozzárendelendő tábla"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Use variable name as alias"
+msgstr "Változónév használata aliasként"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "You can refer to this table by the variable name in other parts of the query."
+msgstr "A lekérdezés más részeiben a változónévvel hivatkozhatsz erre a táblára."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Field Filter"
+msgstr "Mezőszűrő"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Variable type"
+msgstr "Változó típusa"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Variables and parameters"
+msgstr "Változók és paraméterek"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
+msgstr "Adj hozzá egy változót a lekérdezésedhez, például {{variable_name}}, hogy itt tudd beállítani."
 
 #: frontend/src/metabase/parameters/components/UpdateFilterButton/getUpdateButtonProps.ts
 msgid "Set to default"
@@ -29070,6 +29302,31 @@ msgstr "{0} betöltődött."
 msgid "Data Reference"
 msgstr "Adatreferencia"
 
+#: frontend/src/metabase/querying/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
+#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
+#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
+msgid "Combine columns"
+msgstr "Oszlopok összevonása"
+
+#: frontend/src/metabase/querying/click-actions/actions/CopyValueAction/CopyValueAction.tsx
+msgid "Copy value"
+msgstr "Érték másolása"
+
+#: frontend/src/metabase/querying/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
+msgid "Extract part of column"
+msgstr "Oszlop részének kinyerése"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "Save"
+msgstr "Mentés"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+#, javascript-format
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "{0} this question to drill-through."
+msgstr "{0} ezt a kérdést a lefúráshoz."
+
 #: frontend/src/metabase/querying/common/components/AggregationPicker/AggregationPicker.tsx
 msgid "Basic functions"
 msgstr "Alap függvények"
@@ -29373,18 +29630,13 @@ msgid "Run selected text"
 msgstr "Kijelölt szöveg futtatása"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
-msgid "Run query"
-msgstr "Lekérdezés futtatása"
-
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
 #, javascript-format
 msgid "({0} + enter)"
 msgstr "({0} + enter)"
 
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables"
-msgstr "Változók"
+#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+msgid "Preview the query"
+msgstr "Lekérdezés előnézete"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/RightClickPopover/RightClickPopover.tsx
 msgid "Run selection"
@@ -29477,28 +29729,8 @@ msgid "This may be the answer you’re looking for. If not, try removing or chan
 msgstr "Lehet, hogy ez a keresett válasz. Ha nem, próbálja meg eltávolítani vagy módosítani a szűrőket, hogy kevésbé legyenek specifikusak."
 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-#, javascript-format
-msgid "You can also {0} when there are some results."
-msgstr "{0} is, amikor van néhány eredmény."
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-msgid "get an alert"
-msgstr "értesítést kérni"
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Vissza az előző eredményekhez"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-#, javascript-format
-msgid "{0} active filter"
-msgid_plural "{0} active filters"
-msgstr[0] "{0} aktív szűrő"
-msgstr[1] "{0} aktív szűrő"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-msgid "Filters"
-msgstr "Szűrők"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -29621,12 +29853,6 @@ msgid "{0} to navigate. {1} to select."
 msgstr "{0} a navigáláshoz. {1} a kiválasztáshoz."
 
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
-#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
-#: frontend/src/metabase/visualizations/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
-msgid "Combine columns"
-msgstr "Oszlopok összevonása"
-
-#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 msgid "Extract columns"
 msgstr "Oszlopok kinyerése"
 
@@ -29690,155 +29916,6 @@ msgstr "Adj nevet a szűrődnek…"
 #: frontend/src/metabase/querying/components/expressions/NameInput/utils.ts
 msgid "Give your expression a name…"
 msgstr "Adj nevet a kifejezésednek…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Example:"
-msgstr "Példa:"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Try it"
-msgstr "Próbáld ki"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "What's this for?"
-msgstr "Mire jó ez?"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
-msgstr "A natív lekérdezésekben a változókkal dinamikusan cserélhetsz értékeket a lekérdezéseidben szűrőwidgetekkel vagy az URL-en keresztül."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
-msgstr "A(z) {0} létrehoz egy „variable_name” nevű változót ebben a lekérdezéssablonban. A változók típusai az oldalsó panelen adhatók meg, ami megváltoztatja a viselkedésüket. A „Field Filter” kivételével minden változótípus automatikusan elhelyez egy szűrőwidgetet ezen a kérdésen; a Field Filter esetén ez opcionális. Amikor ezt a szűrőwidgetet kitöltöd, az érték lecseréli a változót a lekérdezéssablonban."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "Ha egy változónak a „Field Filter” típust adod, összelinkelheted a kérdéseket az irányítópult szűrőwidgetjeivel, vagy többféle szűrőwidgetet használhatsz az SQL-kérdéseden. A Field Filter változó olyan SQL-t szúr be, mint amit a GUI lekérdezésszerkesztő generál, amikor meglévő oszlopokra szűrőket adsz hozzá."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "Field Filter változó hozzáadásakor hozzá kell rendelned egy konkrét mezőhöz. Ezután dönthetsz úgy, hogy megjelenítesz egy szűrőwidgetet a kérdéseden, de ha nem teszed, akkor is hozzá tudod rendelni a Field Filter változódat egy irányítópultszűrőhöz, amikor ezt a kérdést irányítópultra teszed. A Field Filtereket egy „WHERE” záradékon belül kell használni."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Optional Clauses"
-msgstr "Opcionális záradékok"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr "A {0} körüli zárójelek opcionális záradékot hoznak létre a sablonban. Ha a „variable” be van állítva, akkor a teljes záradék bekerül a sablonba. Ha nincs, akkor a teljes záradék figyelmen kívül marad."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
-msgstr "Több opcionális záradék használatához felvehetsz legalább egy nem opcionális WHERE záradékot, majd az opcionális záradékokat „AND”-del kezdve."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr "Field Filter használatakor az oszlopnév ne szerepeljen az SQL-ben. Ehelyett a változót rendeld hozzá egy mezőhöz az oldalsó panelen."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Read the full documentation"
-msgstr "A teljes dokumentáció elolvasása"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "Variable name"
-msgstr "Változó neve"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "How should users filter on this variable?"
-msgstr "Hogyan szűrjenek a felhasználók erre a változóra?"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Select a default value…"
-msgstr "Válassz alapértelmezett értéket…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "This filter is set to disabled in an embedded question."
-msgstr "Ez a szűrő le van tiltva egy beágyazott kérdésben."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "To always require a value, first visit embedding settings,\n"
-"make this filter editable or locked, re-publish the\n"
-"question, then return to this page."
-msgstr "Ahhoz, hogy mindig legyen kötelező érték, először nyisd meg a beágyazási beállításokat,\n"
-"állítsd ezt a szűrőt szerkeszthetőre vagy zároltra, publikáld újra a\n"
-"kérdést, majd térj vissza erre az oldalra."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default parameter widget value"
-msgstr "Paraméter widget alapértelmezett értéke"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default filter widget value"
-msgstr "Szűrőwidget alapértelmezett értéke"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-msgid "Table and field alias"
-msgstr "Tábla- és mezőalias"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-#, javascript-format
-msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
-msgstr "Csak akkor szükséges, ha a lekérdezés aliast használ a leképezett mező táblájára való hivatkozáshoz. Például, ha a változót a(z) {0} mezőhöz rendeled, de a lekérdezés a(z) {1} táblát {2} aliasként használja, akkor a(z) {3} értéket írd be."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-msgid "Field to map to"
-msgstr "Leképezés erre a mezőre"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "(required)"
-msgstr "(kötelező)"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Parameter widget label"
-msgstr "Paraméter widget címkéje"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Filter widget label"
-msgstr "Szűrő widget címkéje"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "Filter widget type"
-msgstr "Szűrő widget típusa"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "There aren't any filter widgets for this type of field yet."
-msgstr "Ehhez a mezőtípushoz még nincsenek szűrő widgetek."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
-#, javascript-format
-msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
-msgstr "A legtöbbször egy {0} záradékkal érdemes használni, például: {1}"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Table to map to"
-msgstr "Hozzárendelendő tábla"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Use variable name as alias"
-msgstr "Változónév használata aliasként"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "You can refer to this table by the variable name in other parts of the query."
-msgstr "A lekérdezés más részeiben a változónévvel hivatkozhatsz erre a táblára."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Field Filter"
-msgstr "Mezőszűrő"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Variable type"
-msgstr "Változó típusa"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Variables and parameters"
-msgstr "Változók és paraméterek"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
-msgstr "Adj hozzá egy változót a lekérdezésedhez, például {{variable_name}}, hogy itt tudd beállítani."
 
 #: frontend/src/metabase/querying/drills/utils/automatic-insights-drill.tsx
 msgid "X-ray"
@@ -30210,18 +30287,6 @@ msgstr "Ismeretlen oszlop, Aggregálás, Mérték vagy Mutató: {0}"
 msgid "Unknown column: {0}"
 msgstr "Ismeretlen oszlop: {0}"
 
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Search for a column…"
-msgstr "Oszlop keresése…"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Add all"
-msgstr "Összes hozzáadása"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Remove all"
-msgstr "Összes eltávolítása"
-
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterSubmitButton/FilterSubmitButton.tsx
 msgid "Apply filter"
 msgstr "Szűrő alkalmazása"
@@ -30260,8 +30325,8 @@ msgid "Pick columns"
 msgstr "Oszlopok kiválasztása"
 
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+#: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
 msgid "Add filters to narrow your answer"
 msgstr "Adj hozzá szűrőket a válasz pontosításához"
 
@@ -30383,34 +30448,6 @@ msgstr "Irány váltása"
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx
 msgid "Formula"
 msgstr "Képlet"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Filtered by"
-msgstr "Szűrve e szerint"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Add filters"
-msgstr "Szűrők hozzáadása"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "created"
-msgstr "létrehozta"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the title"
-msgstr "szerkesztette a címet"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the description"
-msgstr "szerkesztette a leírást"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the "
-msgstr "szerkesztette a(z) "
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "made some changes"
-msgstr "végzett néhány módosítást"
 
 #: frontend/src/metabase/questions/components/ArchiveCardModal/ArchiveCardModal.tsx
 msgid "This question will be removed from its dashboard and any alerts using it."
@@ -30885,6 +30922,34 @@ msgstr " típus kiválasztva"
 #, javascript-format
 msgid "Results for \"{0}\""
 msgstr "Találatok erre: \"{0}\""
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Filtered by"
+msgstr "Szűrve e szerint"
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Add filters"
+msgstr "Szűrők hozzáadása"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "created"
+msgstr "létrehozta"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the title"
+msgstr "szerkesztette a címet"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the description"
+msgstr "szerkesztette a leírást"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the "
+msgstr "szerkesztette a(z) "
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "made some changes"
+msgstr "végzett néhány módosítást"
 
 #: frontend/src/metabase/settings/use-admin-setting.ts
 #, javascript-format
@@ -33206,28 +33271,9 @@ msgstr "24 órás formátum"
 msgid "Column formatting"
 msgstr "Oszlopformázás"
 
-#: frontend/src/metabase/visualizations/click-actions/actions/CopyValueAction/CopyValueAction.tsx
-msgid "Copy value"
-msgstr "Érték másolása"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
-msgid "Extract part of column"
-msgstr "Oszlop részének kinyerése"
-
 #: frontend/src/metabase/visualizations/click-actions/actions/HideColumnAction/HideColumnAction.tsx
 msgid "Hide column"
 msgstr "Oszlop elrejtése"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "Save"
-msgstr "Mentés"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-#, javascript-format
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "{0} this question to drill-through."
-msgstr "{0} ezt a kérdést a lefúráshoz."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
@@ -33480,7 +33526,6 @@ msgid "Rows {0}-{1} of first {2}"
 msgstr "Sorok {0}–{1} az első {2} közül"
 
 #: frontend/src/metabase/visualizations/components/TrendInfo/TrendInfo.tsx
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
 #: metabase/channel/render/body.clj
 msgid "No change"
 msgstr "Nincs változás"
@@ -33633,6 +33678,18 @@ msgstr "Oszlopok hozzáadása vagy eltávolítása"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/ChartSettingTableColumns.tsx
 msgid "Done picking columns"
 msgstr "Kész az oszlopok kiválasztása"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Search for a column…"
+msgstr "Oszlop keresése…"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Add all"
+msgstr "Összes hozzáadása"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Remove all"
+msgstr "Összes eltávolítása"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleDescription.tsx
 msgid "Cells in this column will be tinted based on their values."
@@ -34380,11 +34437,6 @@ msgstr "Pont"
 msgid "scatter plot"
 msgstr "pontdiagram"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/PreviousValueComparison/DetailCandidate.tsx
-#, javascript-format
-msgid "{0}: {1}"
-msgstr "{0}: {1}"
-
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 msgid "Value from another column"
 msgstr "Érték egy másik oszlopból"
@@ -34420,6 +34472,26 @@ msgstr "vs. {0}"
 msgid "N/A"
 msgstr "N/A"
 
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "DoD"
+msgstr "NaP"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "WoW"
+msgstr "H/H"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "MoM"
+msgstr "H/Hó"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "QoQ"
+msgstr "N/N"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "YoY"
+msgstr "É/É"
+
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Primary number"
 msgstr "Elsődleges szám"
@@ -34435,6 +34507,10 @@ msgstr "Pozitív / negatív színek felcserélése?"
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Compact number"
 msgstr "Kompakt szám"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
+msgid "Show comparison value"
+msgstr "Összehasonlítási érték megjelenítése"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Trend"
@@ -36088,8 +36164,8 @@ msgstr "Szabályozza, hogy mely hosttípusok engedélyezettek HTTP-csatorna cél
 "- allow-all (nincs korlátozás, a localhostot is beleértve).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Érvénytelen http-channel-host-strategy! Csak az external-only, allow-private és allow-all értékek engedélyezettek."
+msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Érvénytelen http-channel-allowed-networks! Csak az external-only, allow-private és allow-all értékek engedélyezettek."
 
 #: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
@@ -37471,6 +37547,10 @@ msgstr "Érvénytelen paraméterértékek"
 #: metabase/embedding_rest/api/common.clj
 msgid "Invalid query params: could not determine slug for parameter with ID {0}"
 msgstr "Érvénytelen query paramok: nem sikerült slugot meghatározni a(z) {0} ID-jú paraméterhez"
+
+#: metabase/embedding_rest/api/common.clj
+msgid "The parameter {0} does not exist on this dashboard."
+msgstr "A(z) {0} paraméter nem létezik ezen az Irányítópulton."
 
 #: metabase/embedding_rest/api/common.clj
 msgid "Cannot search for values: {0} is not an enabled parameter."
@@ -39182,6 +39262,14 @@ msgid "Access key ID"
 msgstr "Hozzáférési kulcs azonosítója"
 
 #: metabase/llm/provider.clj
+msgid "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile)."
+msgstr "Hagyd üresen a kulcsokat, hogy az AWS default credentials chainnel hitelesíts (IRSA, EKS Pod Identity vagy instance profile)."
+
+#: metabase/llm/provider.clj
+msgid "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+msgstr "A Metabase Cloudban a Bedrock mindig a saját AWS-kulcsaiddal hitelesít."
+
+#: metabase/llm/provider.clj
 msgid "Secret access key"
 msgstr "Titkos hozzáférési kulcs"
 
@@ -39228,6 +39316,10 @@ msgstr "Érvénytelen {0} ehhez: {1}."
 #: metabase/llm/provider.clj
 msgid "{0} needs one of: {1}."
 msgstr "{0} az alábbiak egyikét igényli: {1}."
+
+#: metabase/llm/provider.clj
+msgid "{0} takes {1} only together with {2}."
+msgstr "A(z) {0} csak a(z) {2} mellett fogadja el a(z) {1} értéket."
 
 #: metabase/llm/settings.clj
 msgid "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server."
@@ -39322,12 +39414,12 @@ msgid "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive 
 msgstr "A Gemini Enterprise Agent Platform API base URL-je. Hagyd üresen, hogy a rendszer a hely alapján származtassa."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Access Key ID for Amazon Bedrock."
-msgstr "Az AWS Access Key ID az Amazon Bedrockhoz."
+msgid "The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "Az AWS Access Key ID az Amazon Bedrockhoz. Saját üzemeltetésű Metabase esetén hagyd megadatlannak a secret access key-jel együtt, hogy az AWS default credentials chainnel hitelesíts (IRSA, EKS Pod Identity vagy instance profile); Metabase Cloudban mindkét kulcs kötelező."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Secret Access Key for Amazon Bedrock."
-msgstr "Az AWS Secret Access Key az Amazon Bedrockhoz."
+msgid "The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "Az AWS Secret Access Key az Amazon Bedrockhoz. Saját üzemeltetésű Metabase esetén hagyd megadatlannak az access key ID-vel együtt, hogy az AWS default credentials chainnel hitelesíts (IRSA, EKS Pod Identity vagy instance profile); Metabase Cloudban mindkét kulcs kötelező."
 
 #: metabase/llm/settings.clj
 msgid "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials."
@@ -39448,6 +39540,14 @@ msgid "Whether the MCP server is enabled."
 msgstr "Az MCP-szerver engedélyezve van-e."
 
 #: metabase/mcp/settings.clj
+msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+msgstr "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+
+#: metabase/mcp/settings.clj
+msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
+msgstr "Hány óráig marad meg egy tárolt MCP query handle, mielőtt az ütemezett GC feladat törli."
+
+#: metabase/mcp/settings.clj
 msgid "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode)."
 msgstr "CORS-ra engedélyezett népszerű MCP kliensek, CSV klienskulcsokként tárolva (pl. claude, vscode)."
 
@@ -39527,6 +39627,26 @@ msgstr "Lekérdezések összeállítása"
 #: metabase/metabot/scope.clj
 msgid "Execute queries"
 msgstr "Lekérdezések futtatása"
+
+#: metabase/metabot/scope.clj
+msgid "See your Metabase content and data structure"
+msgstr "A Metabase-tartalmaid és adatstruktúrád megtekintése"
+
+#: metabase/metabot/scope.clj
+msgid "Create, edit and trash Metabase content"
+msgstr "Metabase-tartalmak létrehozása, szerkesztése és kukába helyezése"
+
+#: metabase/metabot/scope.clj
+msgid "Run queries against your connected databases and see the results"
+msgstr "Lekérdezések futtatása a csatlakoztatott adatbázisokon, és az eredmények megtekintése"
+
+#: metabase/metabot/scope.clj
+msgid "Write and run its own raw SQL on your connected databases"
+msgstr "Saját nyers SQL írása és futtatása a csatlakoztatott adatbázisokon"
+
+#: metabase/metabot/scope.clj
+msgid "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"
+msgstr "Adataid ütemezett kézbesítésének beállítása az általa választott e-mail-címekre és Slack-csatornákra"
 
 #: metabase/metabot/scope.clj
 msgid "Create saved questions"
@@ -39689,12 +39809,28 @@ msgid "Azure API error (HTTP {0})"
 msgstr "Azure API-hiba (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
+msgstr "Az AWS Bedrock nem kapott hitelesítő adatokat az AWS default credentials chainből. Nézd meg a Metabase logjait, hogy mit jelentett az egyes provider."
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported."
+msgstr "Az AWS Bedrock nem tudta frissíteni az AWS hitelesítő adatait. Nézd meg a Metabase logjait, hogy mit jelzett az AWS."
+
+#: metabase/metabot/self/bedrock.clj
 msgid "Invalid AWS Bedrock region {0}"
 msgstr "Érvénytelen AWS Bedrock-régió: {0}"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock credentials are not configured"
-msgstr "Az AWS Bedrock hitelesítő adatai nincsenek beállítva"
+msgid "AWS Bedrock cannot use a session token without its access key pair"
+msgstr "Az AWS Bedrock nem tud session tokent használni access key pár nélkül"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock on Metabase Cloud requires an access key pair"
+msgstr "Az AWS Bedrock a Metabase Cloudban access key párt igényel"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain"
+msgstr "Az AWS Bedrocknak vagy mind az access key ID, mind a secret access key kell, vagy egyik sem, hogy a default credentials chain használható legyen"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AI proxy is not supported for AWS Bedrock"
@@ -40237,6 +40373,10 @@ msgid "The AI provider connection and model used for quick background tasks, suc
 msgstr "A gyors háttérfeladatokhoz (például a Metabot-beszélgetések elnevezéséhez) használt MI-szolgáltatói kapcsolat és modell, ugyanabban a connection-key/model-name formátumban, mint a `llm-metabot-provider`. Alapértelmezés: a Metabot által használt kapcsolat által kínált leggyorsabb modell."
 
 #: metabase/metabot/settings.clj
+msgid "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment."
+msgstr "Futtasd a Metabotot a szolgáltató gyors módjában, ha a kiválasztott modell támogatja. A gyors mód tokenenként magasabb áron gyorsabban válaszol; Anthropic esetén fast-mode research preview-ra felvett fiók szükséges, és Priority Tier commitmenttel nem érhető el."
+
+#: metabase/metabot/settings.clj
 msgid "Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely."
 msgstr "A napok száma, ameddig meg kell őrizni a sorokat az ai_usage_log, metabot_conversation és metabot_message táblákban. A minimum érték 30; állítsd 0-ra az adatok korlátlan idejű megőrzéséhez."
 
@@ -40253,7 +40393,6 @@ msgid "Multiple databases share the name `{0}` (ids: {1}). The agent has no way 
 msgstr "Több adatbázis is a(z) `{0}` nevet viseli (ids: {1}). Az agent nem tudja egyértelműsíteni; kérd meg a felhasználót, hogy nevezze át az egyik adatbázist, vagy használj pontosabb azonosítót."
 
 #: metabase/metabot/tools/construct.clj
-#: metabase/models/serialization/resolve/mp.clj
 msgid "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
 msgstr "Nem található mentett kérdés vagy modell {0} entity_id-vel. Ne találj ki és ne tippelj entity_id-ket: először hívd meg a `read_resource`-t a `metabase://question/<numeric id>` vagy `metabase://model/<numeric id>` használatával, majd másold a válaszból a pontos `portable_entity_id`-t a `source-card:` mezőbe."
 
@@ -40454,24 +40593,24 @@ msgid "To make table and field names more human-friendly, Metabase will replace 
 msgstr "Hogy a táblák és mezők nevei emberbarátabbak legyenek, a Metabase a kötőjeleket és aláhúzásokat szóközökre cseréli. Közben minden szót nagybetűvel kezdünk, így a „last_visited_at” „Last Visited At” lesz."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-msgstr "Nem található tábla a portable FK {0} alapján. Hívd meg a `read_resource`-t a `metabase://database/<numeric id>/tables` útvonallal az elérhető táblák és sémák listázásához, majd próbáld újra a válaszból származó pontos portable FK-val."
+msgid "No table found matching portable FK {0}."
+msgstr "Nem található a(z) {0} portable FK-hoz illeszkedő tábla."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable table FK references database {0}, but metadata provider is for {1}."
 msgstr "A portable tábla FK a(z) {0} adatbázisra hivatkozik, de a metadataprovider a(z) {1}-hez tartozik."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
-msgstr "Egyértelműtlen portable tábla-FK {0}: {1} jelölt. Hívd meg a `read_resource`-t a `metabase://database/<numeric id>/tables` útvonallal az elérhető táblák listázásához, majd próbáld újra egy pontosabb portable FK-val."
+msgid "Ambiguous portable table FK {0}: {1} candidates."
+msgstr "Nem egyértelmű portable tábla FK {0}: {1} jelölt."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable field FK {0} must have at least 4 elements."
 msgstr "A hordozható mező FK {0} legalább 4 elemből kell álljon."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
-msgstr "Nincs {0} oszlop a(z) {1}.{2}.{3} táblán. Hívd meg a `read_resource`-t a `metabase://table/<numeric id>/fields` hívással a tábla oszlopainak listázásához."
+msgid "No column {0} on table {1}.{2}.{3}."
+msgstr "Nincs {0} oszlop a(z) {1}.{2}.{3} táblán."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Ambiguous column {0} on table {1}.{2}.{3}."
@@ -40494,20 +40633,24 @@ msgid "No saved question, model, or metric found with id {0}."
 msgstr "Nem található mentett kérdés, modell vagy mutató {0} azonosítóval."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-msgstr "A mentett kérdés / modell / mutató {0} azonosítója a(z) {1} adatbázishoz tartozik, de ez a feloldó a(z) {2} adatbázist célozza."
+msgid "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+msgstr "A mentett kérdés / modell / mutató azonosítója {0} a(z) {1} adatbázishoz tartozik, de ez a lekérdezés a(z) {2} adatbázist célozza. A keresztadatbázisos lekérdezések nem támogatottak."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "A mentett kérdés, modell vagy mutató {0} azonosítójának nincs entity_id-ja, ezért nem exportálható hordozható reprezentációként."
 
 #: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with entity_id {0}."
+msgstr "Nem található mentett kérdés vagy modell a(z) {0} entity_id-val."
+
+#: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
 msgstr "A mentett kérdés / modell {0} a(z) {1} adatbázishoz tartozik, de ez a lekérdezés a(z) {2} adatbázist célozza. A keresztadatbázisos lekérdezések nem támogatottak."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-msgstr "Nem található mérték {0} entity_id-vel. Ne találj ki és ne tippelj entity_id-ket: olvasd be a mértéket birtokló táblát a `read_resource`-szal (`metabase://table/<numeric id>`), és másold ki a pontos `portable_entity_id`-t a `<measure>` tagből."
+msgid "No measure found with entity_id {0}."
+msgstr "Nem található mérték a(z) {0} entity_id-val."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
@@ -40518,8 +40661,8 @@ msgid "No measure found with id {0}."
 msgstr "Nem található mérték {0} azonosítóval."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Measure id {0} belongs to a table outside this metadata provider''s database."
-msgstr "A mértékazonosító {0} olyan táblához tartozik, amely kívül esik ennek a metadataprovidernek az adatbázisán."
+msgid "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "A(z) {0} mértékazonosító olyan táblához tartozik, amely egy másik adatbázisban van, mint ez a lekérdezés. A keresztadatbázisos lekérdezések nem támogatottak."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
@@ -40530,28 +40673,28 @@ msgid "No segment found with id {0}."
 msgstr "Nem található szegmens {0} id-val."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Segment id {0} belongs to a table outside this metadata provider''s database."
-msgstr "A szegmensazonosító {0} olyan táblához tartozik, amely kívül esik ennek a metadataprovidernek az adatbázisán."
+msgid "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "A(z) {0} szegmensazonosító olyan táblához tartozik, amely egy másik adatbázisban van, mint ez a lekérdezés. A keresztadatbázisos lekérdezések nem támogatottak."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "A szegmensazonosító {0} nem rendelkezik entity_id-val, ezért nem exportálható hordozható reprezentációként."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-msgstr "Nem található szegmens {0} entity_id-vel. Ne találj ki és ne tippelj entity_id-ket: olvasd be a szegmenst birtokló táblát a `read_resource`-szal (`metabase://table/<numeric id>`), és másold ki a pontos `portable_entity_id`-t a `<segment>` tagből."
+msgid "No segment found with entity_id {0}."
+msgstr "Nem található szegmens a(z) {0} entity_id-val."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
 msgstr "A(z) {0} szegmens egy másik adatbázisban lévő táblához tartozik, mint ez a lekérdezés (target database id {1}). A keresztadatbázisos lekérdezések nem támogatottak."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table with id {0} in metadata provider."
-msgstr "Nincs {0} id-jú tábla a metadata providerben."
+msgid "No table found with id {0}."
+msgstr "Nem található tábla a(z) {0} azonosítóval."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No field with id {0} in metadata provider."
-msgstr "Nincs {0} id-jú mező a metadata providerben."
+msgid "No field found with id {0}."
+msgstr "Nem található mező a(z) {0} azonosítóval."
 
 #: metabase/mq/settings.clj
 msgid "Maximum number of times a failed queue message will be retried before being dropped."
@@ -41013,6 +41156,10 @@ msgid "An error occurred while running the query."
 msgstr "Hiba történt a lekérdezés futtatása közben."
 
 #: metabase/pulse/api/pulse.clj
+msgid "Invalid :cards: each entry must be a card reference."
+msgstr "Érvénytelen :cards: minden bejegyzésnek kártyahivatkozásnak kell lennie."
+
+#: metabase/pulse/api/pulse.clj
 msgid "Non-admin users without subscription permissions are not allowed to add recipients"
 msgstr "A nem admin felhasználók subscription jogosultság nélkül nem adhatnak hozzá címzetteket"
 
@@ -41075,6 +41222,10 @@ msgstr "Nincs jogosultságod megtekinteni ezt a gyorsítótárazott eredményt."
 #: metabase/queries/card.clj
 msgid "Card does not have a parameter with the ID {0}"
 msgstr "A Kártyának nincs {0} ID-jú paramétere"
+
+#: metabase/queries/card.clj
+msgid "The parameter {0} does not exist on this card."
+msgstr "A(z) {0} paraméter nem létezik ezen a kártyán."
 
 #: metabase/queries/models/card.clj
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
@@ -41158,8 +41309,8 @@ msgid "You do not have permissions to view Card {0}."
 msgstr "Nincs jogosultságod a(z) {0} Kártya megtekintéséhez."
 
 #: metabase/query_permissions/impl.clj
-msgid "You must have data permissions to add a parameter referencing the Table {0}."
-msgstr "A(z) {0} táblára hivatkozó paraméter hozzáadásához adathozzáférési jogosultság szükséges."
+msgid "You must have data permissions to add a parameter referencing this Field."
+msgstr "A mezőre hivatkozó paraméter hozzáadásához adatjogosultságokkal kell rendelkezned."
 
 #: metabase/query_permissions/impl.clj
 msgid "You cannot save this Question because you do not have permissions to run its query."
@@ -41757,7 +41908,7 @@ msgstr "A keresési debug nem támogatott az indexed-entity modellhez."
 
 #: metabase/search/filter.clj metabase/search/in_place/filter.clj
 #: metabase/task_history/api.clj metabase/transforms/models/util.clj
-#: metabase_enterprise/metabot_analytics/conversations.clj
+#: metabase_enterprise/metabot_analytics/db.clj
 msgid "Failed to parse datetime value: {0}"
 msgstr "Nem sikerült értelmezni a dátum/idő értéket: {0}"
 
@@ -41824,8 +41975,8 @@ msgid "Failed to load template ''{0}''. Did you remember to build the Metabase f
 msgstr "Nem sikerült betölteni a(z) ''{0}'' sablont. Nem felejtetted el buildelni a Metabase frontendjét?"
 
 #: metabase/server/settings.clj
-msgid "Allowed iframe hosts"
-msgstr "Engedélyezett iframe hosztok"
+msgid "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list."
+msgstr "Engedélyezett iframe hostok. Alapértelmezés szerint népszerű hostok listáját tartalmazza; állítsd '' '' értékre az alapértelmezett lista kikapcsolásához."
 
 #: metabase/server/settings.clj
 msgid "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations."
@@ -42338,8 +42489,16 @@ msgid "Query failed"
 msgstr "A lekérdezés sikertelen"
 
 #: metabase/tiles/settings.clj
+msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Érvénytelen map-tile-server-allowed-networks! Csak az external-only, allow-private és allow-all értékek engedélyezettek."
+
+#: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
 msgstr "A térkép-vizualizációkban használt csempe-kiszolgáló URL-sablonja, például OpenStreetMaps vagy MapBox esetén."
+
+#: metabase/tiles/settings.clj
+msgid "Invalid map tile server URL: must be a relative path, or an http:// or https:// URL whose host is resolvable and permitted by map-tile-server-allowed-networks."
+msgstr "Érvénytelen map tile server URL: relatív útvonalnak kell lennie, vagy olyan http:// vagy https:// URL-nek, amelynek hostja feloldható és a map-tile-server-allowed-networks engedélyezi."
 
 #: metabase/timeline/api/timeline_event.clj
 msgid "Timeline with id {0} not found"
@@ -43026,9 +43185,25 @@ msgstr "Nem lehet frissíteni a FieldValues mező field_id, type vagy hash_key �
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ":values-nak jelen kell lennie a :human_readable_values lekéréséhez"
 
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out fetching field values."
+msgstr "Időtúllépés a mezőértékek lekérése közben."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Too many field values fetches are already running. Please try again shortly."
+msgstr "Túl sok mezőérték-lekérés fut már. Kérjük, próbáld meg újra rövidesen."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out waiting for field values."
+msgstr "Időtúllépés a mezőértékekre várakozás közben."
+
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid "Incompatible coercion strategy."
 msgstr "Nem kompatibilis kényszerítési stratégia."
+
+#: metabase/warehouse_schema_rest/api/field.clj
+msgid "Failed to scan field values. Check the server logs for the underlying error."
+msgstr "Nem sikerült beolvasni a mezőértékeket. Ellenőrizd a szerverlogokat az alapul szolgáló hibáért."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
