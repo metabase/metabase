@@ -2289,9 +2289,7 @@
                (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
                (is (malli= [:map
                             [:status [:= "failed"]]
-                            [:error_type [:= "missing-required-permissions"]]
-                            [:ex-data [:map
-                                       [:permissions-error? [:= true]]]]]
+                            [:error_type [:= "missing-required-permissions"]]]
                            (mt/user-http-request :rasta
                                                  :post 403
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)

@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.response :as api.response]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
@@ -30,6 +31,8 @@
   [^Throwable e _request]
   (let [{:keys [status-code], :as info} (ex-data e)
         other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
+        response-data                   (api.response/ex-data->response-data other-info)
+        withheld                        (apply dissoc other-info (keys response-data))
         body                            (cond
                                           (and status-code (not= status-code 500) (empty? other-info))
                                           ;; If status code was specified (but not a 500 -- an unexpected error, and
@@ -38,28 +41,28 @@
                                           (.getMessage e)
 
                                           ;; if the response includes `:errors`, (e.g., it's something like a generic
-                                          ;; parameter validation exception), just return the `other-info` from the
-                                          ;; ex-data.
+                                          ;; parameter validation exception), just return the errors from the ex-data.
                                           (and status-code (:errors other-info))
-                                          other-info
+                                          response-data
 
                                           ;; a machine-readable error code means the throw site authored this as an
-                                          ;; API response; return it as-is, without a stacktrace
+                                          ;; API response; return it without a stacktrace
                                           (and status-code (not= status-code 500) (:error-code other-info))
-                                          (merge {:message (ex-message e)} other-info)
+                                          (merge {:message (ex-message e)} response-data)
 
                                           ;; allow administrators to configure their instances to suppress stacktraces
                                           ;; returns 500 with a generic message
                                           (server.settings/hide-stacktraces)
                                           {:message (tru "Something went wrong")}
 
-                                          ;; Otherwise return the full `Throwable->map` representation with Stacktrace
-                                          ;; and ex-data
+                                          ;; Otherwise return the `Throwable->map` representation with the stacktrace
                                           :else
                                           (merge
-                                           (Throwable->map e)
+                                           (api.response/throwable->response-map e)
                                            {:message (.getMessage e)}
-                                           other-info))]
+                                           response-data))]
+    (when (seq withheld)
+      (log/debugf "ex-data withheld from the API error response for %s: %s" (ex-message e) (pr-str withheld)))
     (when (nil? status-code)
       (analytics/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)

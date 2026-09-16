@@ -30,7 +30,6 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.util :as perms.u]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -1557,18 +1556,32 @@
             (is (some? (create-card! :crowberto 200))))
           (testing "non-admin should get an error"
             (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-              (is (malli= [:map
-                           [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                           [:query          [:map
-                                             [:lib/type [:= "mbql/query"]]
-                                             [:stages [:sequential
-                                                       {:min 1, :max 1}
-                                                       [:map
-                                                        [:source-table [:= (mt/id :venues)]]]]]]]
-                           [:required-perms :map]
-                           [:actual-perms   [:sequential perms.u/PathSchema]]
-                           [:trace          [:sequential :any]]]
-                          (create-card! :rasta 403))))))))))
+              (let [body (create-card! :rasta 403)]
+                (is (malli= [:map
+                             [:message [:= "You cannot save this Question because you do not have permissions to run its query."]]
+                             [:trace   [:sequential :any]]]
+                            body))
+                (testing "but the ex-data -- the (preprocessed) query, which inlines source Cards the user may not read, and the permissions -- stays server-side"
+                  (is (empty? (select-keys body [:query :required-perms :actual-perms])))
+                  (is (not (contains? body :data))))))))))))
+
+(deftest create-card-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "POST /api/card"
+    (testing "the 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+      (mt/with-temp [:model/Card {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection
+                                                                            (mt/user->id :crowberto)))
+                                                  :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+        (let [body (mt/with-model-cleanup [:model/Card]
+                     (mt/user-http-request :rasta :post 403 "card"
+                                           (merge (mt/with-temp-defaults :model/Card)
+                                                  {:dataset_query (mt/mbql-query nil {:source-table (str "card__" secret-id)})
+                                                   :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)})))]
+          (is (= "You cannot save this Question because you do not have permissions to run its query."
+                 (:message body)))
+          (is (not (contains? body :query)))
+          (is (not (contains? (:data body) :query)))
+          (is (not (str/includes? (pr-str body) "sec_1173_marker")))
+          (is (not (str/includes? (pr-str body) "stage-metadata"))))))))
 
 (deftest create-card-parameter-permissions-generic-error-test
   (testing "POST /api/card"
@@ -2283,17 +2296,14 @@
                         (update-card! :rasta 200 {:name "Updated name"}))))
               (testing "should *not* be allowed to update query"
                 (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                  (is (malli= [:map
-                               [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                               [:query          [:map
-                                                 [:stages [:sequential
-                                                           {:min 1, :max 1}
-                                                           [:map
-                                                            [:source-table [:= (mt/id :users)]]]]]]]
-                               [:required-perms :map]
-                               [:actual-perms   [:sequential perms.u/PathSchema]]
-                               [:trace          [:sequential :any]]]
-                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
+                  (let [body (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)})]
+                    (is (malli= [:map
+                                 [:message [:= "You cannot save this Question because you do not have permissions to run its query."]]
+                                 [:trace   [:sequential :any]]]
+                                body))
+                    (testing "but the ex-data -- the (preprocessed) query, which inlines source Cards the user may not read, and the permissions -- stays server-side"
+                      (is (empty? (select-keys body [:query :required-perms :actual-perms])))
+                      (is (not (contains? body :data))))))
                 (testing "make sure query hasn't changed in the DB"
                   (is (=? {:lib/type :mbql/query
                            :stages   [{:source-table (mt/id :checkins)}]}

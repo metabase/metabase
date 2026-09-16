@@ -257,6 +257,7 @@
           metabase.api.macros.defendpoint.tools-manifest
           metabase.api.macros.scope
           metabase.api.open-api
+          metabase.api.response
           metabase.api.routes.common
           metabase.api.settings
           metabase.api.util

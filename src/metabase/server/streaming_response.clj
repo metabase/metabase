@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [compojure.response]
    [metabase.api.common.internal]
+   [metabase.api.response :as api.response]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
@@ -41,7 +42,9 @@
    (.write os ba offset len)))
 
 (defn- format-exception [e]
-  (cond-> (Throwable->map e)
+  ;; the ex-data stays out of the body except for the keys clients read; see [[api.response/ex-data->response-data]]
+  (cond-> (merge (api.response/throwable->response-map e)
+                 (api.response/ex-data->response-data (ex-data e)))
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
 (def ^:dynamic *response*
