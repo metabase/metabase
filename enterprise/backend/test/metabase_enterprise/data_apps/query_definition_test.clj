@@ -38,9 +38,10 @@
   (is (not (mr/validate ::query-definition/query-definition {:stages []})))
   (is (not (mr/validate ::query-definition/query-definition {:stages [{}]}))))
 
-(deftest ^:parallel internal-column-schemas-remain-open-test
+(deftest ^:parallel column-unit-only-allowed-with-bucketing-test
   (let [column {:type :column :name "DATE" :unit :month}]
-    (is (mr/validate ::test-spec/test-column-spec column))
+    (is (not (mr/validate ::test-spec/test-column-spec column)))
+    (is (mr/validate ::test-spec/test-breakout-spec column))
     (is (not (mr/validate ::query-definition/column column)))
     (is (mr/validate ::query-definition/breakout column))))
 

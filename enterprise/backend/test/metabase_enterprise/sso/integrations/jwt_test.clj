@@ -14,6 +14,7 @@
    [metabase.appearance.settings :as appearance.settings]
    [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -238,6 +239,22 @@
           (is
            (= {"extra" "keypairs", "are" "also present"}
               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest login-with-existing-session-test
+  (testing "a JWT login from a client that already carries a Metabase session succeeds"
+    (with-jwt-default-setup!
+      (let [response (client/client-real-response (test.users/username->token :rasta)
+                                                  :get 302 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                                                  :return_to default-redirect-uri
+                                                  :jwt
+                                                  (jwt/sign
+                                                   {:email      "rasta@metabase.com"
+                                                    :first_name "Rasta"
+                                                    :last_name  "Toucan"}
+                                                   default-jwt-secret))]
+        (is (sso.test-setup/successful-login? response))
+        (is (= default-redirect-uri
+               (get-in response [:headers "Location"])))))))
 
 (deftest request-jwt-test
   (let [token "some.jwt.token"]
@@ -1053,7 +1070,7 @@
 (deftest jwt-token-sdk-idp-url-test
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (let [result (client/client-real-response
                       :get 200 "/auth/sso"
                       {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})]
@@ -1064,7 +1081,7 @@
 (deftest jwt-token-sdk-session-token-test
   (testing "should return a session token when a JWT token and sdk headers are passed"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign
@@ -1105,7 +1122,7 @@
        jwt-identity-provider-uri nil
        jwt-shared-secret        nil
        slack-connect-enabled    false]
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign
@@ -1125,7 +1142,7 @@
 (deftest jwt-token-embedding-disabled-test
   (testing "should not return a session token when embedding is disabled"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk false]
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign
@@ -1145,7 +1162,7 @@
 (deftest jwt-token-no-hash-test
   (testing "should not return a session token when token=false"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign

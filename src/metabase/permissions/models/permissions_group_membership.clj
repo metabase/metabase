@@ -5,6 +5,7 @@
    [metabase.events.core :as events]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -119,13 +120,11 @@
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
-            [:map
+            [:map {:closed true}
              [:group [:or
                       pos-int?
-                      [:map [:id pos-int?]]]]
-             [:user [:or
-                     pos-int?
-                     [:map [:id pos-int?]]]]
+                      ::permissions.schema/permissions-group]]
+             [:user [:or pos-int? :metabase.users.schema/user]]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

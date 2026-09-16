@@ -1,14 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  CollapsibleSettingsSection,
-  SETTINGS_CARD_DESCRIPTION_PROPS,
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -21,12 +13,21 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import type { SettingsJWTFormProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   useAdminSetting,
   useGetAdminSettingsDetailsQuery,
 } from "metabase/settings";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Box, Flex, Stack } from "metabase/ui";
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type {
@@ -62,7 +63,9 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-tenant"
 >;
 
-export const SettingsJWTForm = () => {
+export const SettingsJWTForm = ({
+  title = t`JWT`,
+}: SettingsJWTFormProps = {}) => {
   const {
     data: settingDetails,
     isLoading: isLoadingDetails,
@@ -140,7 +143,7 @@ export const SettingsJWTForm = () => {
   );
 
   return (
-    <SettingsPageWrapper title={t`JWT`}>
+    <SettingsPageWrapper title={title}>
       <FormProvider
         initialValues={getFormValues(settingDetails)}
         onSubmit={saveSettings}

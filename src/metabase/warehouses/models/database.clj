@@ -16,11 +16,12 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -29,6 +30,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -238,9 +240,8 @@
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    ;; this is done this way to avoid circular dependencies
     (when (should-auto-sync? database)
-      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
+      (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
 
@@ -362,7 +363,7 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
+    (sync-databases-trigger/unschedule-tasks-for-db! database)
     (catch Throwable e
       (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
@@ -405,6 +406,7 @@
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
+           (:id database)
            (driver.impl/registered? driver))
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
@@ -447,8 +449,7 @@
           (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
           (warehouses.db/card-ids-for-database-reducible id)))
        (run! (fn [batch]
-               ;; damn circular deps
-               ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
+               (search/delete! :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try
@@ -632,9 +633,11 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-    (let [driver (driver.u/database->driver database)]
+    (let [driver (if-let [engine (:engine database)]
+                   (keyword engine)
+                   (driver.u/database->driver (:id database)))]
       (if (some? driver)
-        (driver.u/sensitive-fields (driver.u/database->driver database))
+        (driver.u/sensitive-fields driver)
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 

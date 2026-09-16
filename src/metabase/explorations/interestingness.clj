@@ -45,7 +45,7 @@
   (extraction-units (lib/raw-temporal-bucket lib-col)))
 
 (defn- start-of-week-day ^DayOfWeek []
-  (-> ((requiring-resolve 'metabase.settings.core/get) :start-of-week)
+  (-> (lib-be/start-of-week)
       (or :sunday)
       name
       (u/upper-case-en)

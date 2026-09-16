@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -410,7 +411,7 @@
    :lo                         values in the source table must be > this :value.
    :hi                         values in the source table must be <= this :value.
    :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
-  [{:keys [source] :as transform}]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform]
   (let [{:keys [checkpoint-filter-field-id lookback]} (:source-incremental-strategy source)]
     (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
@@ -482,7 +483,7 @@
 
 (mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
-  [{:keys [source]}]
+  [{:keys [source]} :- ::transforms-base.schema/transform]
   (case (keyword (:type source))
     :query
     (try
@@ -583,19 +584,20 @@
 ;;; ------------------------------------------------- Table DDL -------------------------------------------------
 
 (mr/def ::column-definition
-  [:map
+  [:map {:closed true}
    [:name :string]
    [:type ::lib.schema.common/base-type]
-   [:nullable? {:optional true} :boolean]])
+   [:nullable? {:optional true} :boolean]
+   [:database-type {:optional true} [:maybe :string]]])
 
 (mr/def ::table-definition
-  [:map
+  [:map {:closed true}
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]
    ;; Inline indexes to apply at table creation (e.g. a Redshift sortkey). Passed through to `create-table!`;
    ;; drivers that don't inline anything ignore it. Populated from a transform's declared indexes by the manager.
-   [:indexes {:optional true} [:sequential :map]]])
+   [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]])
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"
@@ -797,11 +799,13 @@
   (and (map? v) (nil? (:table_id v))))
 
 (mr/def ::source-table-entry
-  "A source table entry in the array format. Combines alias with table reference."
+  "A source table entry in the array format. Combines alias with table reference. Callers may supply just
+  `:table_id` (looked up to fill in `:database_id`/`:schema`/`:table`) or just
+  `:database_id`/`:schema`/`:table` (looked up to fill in `:table_id`), so only `:alias` is required."
   [:map {:closed true}
    [:alias :string]
-   [:database_id :int]
-   [:schema [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
    [:table_id {:optional true} [:maybe :int]]])
 
@@ -811,7 +815,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential [:map [:alias :string]]]]
+  [source-tables :- [:sequential ::source-table-entry]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
@@ -869,7 +873,13 @@
   Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`.
   Accepts both keyword and string keys for alias.
   Enriches entries with full metadata via [[normalize-source-tables]]."
-  [m :- [:map-of [:or :string :keyword] [:or :int :map]]]
+  [m :- [:map-of :string
+         [:or :int
+          [:map {:closed true}
+           [:database_id {:optional true} [:maybe :int]]
+           [:schema      {:optional true} [:maybe :string]]
+           [:table       {:optional true} [:maybe :string]]
+           [:table_id    {:optional true} [:maybe :int]]]]]]
   (normalize-source-tables
    (mapv (fn [[alias v]]
            (if (int? v)

@@ -6,7 +6,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -135,7 +134,8 @@
   and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
+  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
+  ;; published. Publishing itself stays gated.
   (queries-rest.db/embeddable-cards))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -264,7 +264,7 @@
   (map #(update-keys % u/->kebab-case-en) cols))
 
 (mu/defn- source-cols
-  [card
+  [card   :- ::queries.schema/card
    source :- [:enum ::breakouts ::aggregations]]
   (if-let [names (get-in card [:visualization_settings (case source
                                                          ::breakouts    :graph.dimensions
@@ -342,7 +342,7 @@
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card    :- :map
+  [card    :- ::queries.schema/card
    {:keys [query last-cursor page-size exclude-ids] :as _options}
    :- [:map {:closed true}
        [:query       {:optional true} [:maybe ms/NonBlankString]]
@@ -550,8 +550,8 @@
                                 (contains? card-updates :dashboard_id))
                         (queries/actual-collection-id card-updates))]
     (cond-> card-updates
-      (or (api/column-will-change? :dashboard_id card-before-update card-updates)
-          (api/column-will-change? :collection_id card-before-update card-updates))
+      (or (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
+          (api/column-will-change? (:collection_id card-before-update) (get card-updates :collection_id ::api/not-provided)))
       (assoc :collection_id collection-id))))
 
 (mu/defn update-card!
@@ -589,9 +589,8 @@
                                                                  (not (= :list (keyword (get card-updates :display)))))
                                                         {:display :table})
                                                       (when (and
-                                                             (api/column-will-change? :dashboard_id
-                                                                                      card-before-update
-                                                                                      card-updates)
+                                                             (api/column-will-change? (:dashboard_id card-before-update)
+                                                                                      (get card-updates :dashboard_id ::api/not-provided))
                                                              (:dashboard_id card-updates))
                                                         (api/check-400
                                                          (not (:archived card-updates)))

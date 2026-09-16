@@ -2,8 +2,8 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
+   [malli.util :as mut]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock
@@ -22,11 +22,11 @@
 (def ^:private MergeableProperties
   [:map
    {:closed true}
-   [:database {:optional true} [:maybe :map]]
-   [:tables   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/table]]]]]
-   [:fields   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/field]]]]]
-   [:cards    {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]]
-   [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
+   [:database {:optional true} [:maybe (mut/optional-keys ::lib.schema.metadata/database)]]
+   [:tables   {:optional true} [:maybe [:sequential (mut/optional-keys ::lib.schema.metadata/table)]]]
+   [:fields   {:optional true} [:maybe [:sequential (mut/optional-keys ::lib.schema.metadata/column.map)]]]
+   [:cards    {:optional true} [:maybe [:sequential (mut/optional-keys ::lib.schema.metadata/card)]]]
+   [:segments {:optional true} [:maybe [:sequential (mut/optional-keys ::lib.schema.metadata/segment)]]]])
 
 (mu/defn- merged-metadata-map :- ::lib.tu.metadata-providers.mock/mock-metadata
   [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider

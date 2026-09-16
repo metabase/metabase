@@ -6,25 +6,18 @@
 
 (mr/def ::custom-viz-plugin.manifest
   "The `:manifest` column of a CustomVizPlugin, decoded."
-  :map)
+  [:map {:closed true}
+   [:name     {:optional true} [:maybe :string]]
+   [:icon     {:optional true} [:maybe :string]]
+   [:metabase {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]
+   [:sdk      {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::custom-viz-plugin
   "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:identifier       :string]
-   [:display_name     :string]
-   [:status           [:or :keyword :string]]
-   [:error_message    [:maybe :string]]
-   [:bundle           [:maybe [:or bytes? :string]]]
-   [:bundle_hash      [:maybe :string]]
-   [:created_at       ms/TemporalInstant]
-   [:updated_at       ms/TemporalInstant]
-   [:enabled          :boolean]
-   [:icon             [:maybe :string]]
-   [:manifest         [:maybe ::custom-viz-plugin.manifest]]
-   [:metabase_version [:maybe :string]]
-   [:dev_bundle_url   [:maybe :string]]])
+  [:merge
+   ::custom-viz-plugin.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::custom-viz-plugin.update
   "What an update (or insert) of a CustomVizPlugin accepts: every column of `:custom_viz_plugin` except `id`, all optional."

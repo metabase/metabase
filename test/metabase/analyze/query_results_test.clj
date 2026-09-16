@@ -38,7 +38,7 @@
   "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."
   [{:keys [rows], :as result}]
   {:pre [(map? result) (:cols result)]}
-  (add-insights rows result))
+  (add-insights rows (select-keys result [:cols])))
 
 (defn- query->result-metadata
   [query-map]
@@ -131,8 +131,8 @@
 
 (deftest error-resilience-test
   (testing "Data should come back even if there is an error during fingerprinting"
-    (is (= 36 (with-redefs [fingerprinters/earliest test.sync/crash-fn]
+    (is (= 36 (mt/with-dynamic-fn-redefs [fingerprinters/earliest test.sync/crash-fn]
                 (-> (timeseries-dataset) :rows count)))))
   (testing "Data should come back even if there is an error when calculating insights"
-    (is (= 36 (with-redefs [insights/change test.sync/crash-fn]
+    (is (= 36 (mt/with-dynamic-fn-redefs [insights/change test.sync/crash-fn]
                 (-> (timeseries-dataset) :rows count))))))

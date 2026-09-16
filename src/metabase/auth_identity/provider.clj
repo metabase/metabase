@@ -56,10 +56,13 @@
    [java-time.api :as t]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.session :as auth-session]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.schema :as request.schema]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -254,15 +257,70 @@
     provider)
   :hierarchy #'auth-identity.hierarchy/hierarchy)
 
+(def ^:private DeviceInfo
+  "Device information for session tracking, as attached to a login request."
+  [:map {:closed true}
+   [:device_id {:optional true} [:maybe ms/NonBlankString]]
+   [:device_description {:optional true} [:maybe ms/NonBlankString]]
+   [:ip_address {:optional true} [:maybe ms/NonBlankString]]
+   [:embedded {:optional true} :boolean]
+   [:token_exchange {:optional true} :boolean]])
+
+(def ^:private UserData
+  "SSO provider-produced data used to create or update a User during login."
+  [:map {:closed true}
+   [:email :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:sso_source {:optional true} :keyword]
+   [:is_active {:optional true} :boolean]
+   [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+   [:groups {:optional true} [:maybe [:sequential :string]]]])
+
+(def ^:private login-pipeline-entries
+  "Malli map entries every provider adds to the Ring request threaded through [[apply-inactive-check]] and
+  [[create-session!]] as the login pipeline map."
+  [[:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
+   [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
+   [:claims {:optional true} [:maybe ms/JWTClaims]]
+   [:code {:optional true} [:maybe :string]]
+   [:device-info {:optional true} [:maybe DeviceInfo]]
+   [:email {:optional true} [:maybe :string]]
+   [:error {:optional true} [:maybe :keyword]]
+   [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
+   [:oidc-nonce {:optional true} [:maybe :string]]
+   [:oidc-provider {:optional true} [:maybe :keyword]]
+   [:oidc-provider-key {:optional true} [:maybe :string]]
+   [:password {:optional true} [:maybe :string]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:redirect-uri {:optional true} [:maybe :string]]
+   [:redirect-url {:optional true} [:maybe :string]]
+   [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
+   [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
+   [:state {:optional true} [:maybe :string]]
+   [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
+   [:tenant-attributes {:optional true} [:maybe ms/TenantAttributes]]
+   [:tenant-slug {:optional true} [:maybe :string]]
+   [:token {:optional true} [:maybe :string]]
+   [:user-data {:optional true} [:maybe UserData]]
+   [:user-id {:optional true} [:maybe :int]]
+   [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:username {:optional true} [:maybe :string]]])
+
 (mu/defn- apply-inactive-check
   "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
-  [request :- [:map
-               [:user {:optional true} [:maybe [:map
-                                                [:id ms/PositiveInt]
-                                                [:is_active :boolean]]]]]]
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
   (cond-> request
     (and (nil? (:error request))
          (:user request)
@@ -273,21 +331,24 @@
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
-  [request :- [:map
-               [:user [:map
-                       [:id ms/PositiveInt]
-                       [:is_active :boolean]]]
-               [:device-info {:optional true} [:maybe [:map
-                                                       [:device_id {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:device_description {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:ip_address {:optional true} [:maybe ms/NonBlankString]]]]]]
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user ::users.schema/user]]
+                     login-pipeline-entries)]
    provider :- :keyword]
   (if-not (get-in request [:user :is_active])
     (assoc request :success? false
            :error disabled-account-snippet
            :message disabled-account-message)
-    (let [{:keys [user device-info]} request
-          session (auth-session/create-session-with-auth-tracking! user device-info provider)]
+    (let [{:keys [user device-info saml-data]} request
+          session (auth-session/create-session-with-auth-tracking!
+                   user device-info provider nil
+                   ;; SAML logins carry the IdP's own identifiers; single logout needs them to
+                   ;; name the session and subject to end. Other providers have none and store NULL.
+                   {:saml-session-index  (:session-index saml-data)
+                    :saml-name-id        (:name-id saml-data)
+                    :saml-name-id-format (:name-id-format saml-data)})]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider
@@ -364,17 +425,9 @@
 
 (mu/defn update-user!
   "Updates a user from user-data in the request"
-  [{user-id :id} :- [:map [:id ms/PositiveInt]]
-   user-data :- [:map
-                 [:email :string]
-                 [:first_name {:optional true} [:maybe :string]]
-                 [:last_name {:optional true} [:maybe :string]]
-                 [:sso_source {:optional true} :keyword]
-                 [:is_active {:optional true} :boolean]
-                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]]
-   provider :- :keyword]
+  [{user-id :id} :- ::users.schema/user
+   user-data     :- UserData
+   provider      :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
@@ -388,16 +441,8 @@
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "
-  [user-data :- [:map
-                 [:email :string]
-                 [:first_name {:optional true} [:maybe :string]]
-                 [:last_name {:optional true} [:maybe :string]]
-                 [:sso_source {:optional true} :keyword]
-                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]
-                 [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
-   provider :- :keyword]
+  [user-data :- UserData
+   provider  :- :keyword]
   (let [insert-fields (sso-user-fields)]
     ;; The tenant flow upstream validated the tenant claim and stamped :tenant_id into user-data. If
     ;; the field list would strip it here (e.g. a premium-feature check flapped mid-request, or the

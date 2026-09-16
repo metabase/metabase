@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -10,12 +11,7 @@
 
 (def ^:private ChannelRow
   "A whole Channel row for insert or update."
-  [:map {:closed true}
-   [:name        {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:type        {:optional true} [:maybe [:or :keyword :string]]]
-   [:details     {:optional true} [:maybe :map]]
-   [:active      {:optional true} [:maybe :boolean]]])
+  ::channel.schema/channel.update)
 
 (mu/defn channels
   "Every Channel."

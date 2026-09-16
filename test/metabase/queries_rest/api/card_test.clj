@@ -761,11 +761,10 @@
                              :effective_type :type/DateTime
                              :display_name "Timestamp"
                              :name "timestamp"
-                             :unit "week"}
+                             :unit :week}
                             {:base_type :type/Integer
                              :display_name "count"
-                             :name "severity"
-                             :semantic_type :type/Number}]})
+                             :name "severity"}]})
 
 (deftest series-are-compatible-test
   (testing "area-line-bar charts"
@@ -1091,7 +1090,7 @@
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-modular enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1105,7 +1104,7 @@
     (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+        (mt/with-temporary-setting-values [enable-embedding-modular embedding-type]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:embedding_type nil}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1270,6 +1269,33 @@
                       :collection_position 1))
               (is (= 1
                      @called)))))))))
+
+(deftest save-card-metadata-asynchronously-test
+  (testing "POST and PUT /api/card save result metadata that is not ready within the sync wait once it is computed"
+    (let [orig    (mt/original-fn #'card.metadata/legacy-result-metadata-future)
+          release (atom (promise))
+          mp      (mt/metadata-provider)]
+      (mt/with-dynamic-fn-redefs [card.metadata/legacy-result-metadata-future (fn [query]
+                                                                                (let [gate     @release
+                                                                                      metadata (orig query)]
+                                                                                  (future @gate @metadata)))]
+        (mt/with-model-cleanup [:model/Card]
+          (let [saved-names (fn [card-id n]
+                              (map norm (u/poll {:thunk       #(t2/select-one-fn :result_metadata :model/Card :id card-id)
+                                                 :done?       #(= n (count %))
+                                                 :timeout-ms  10000
+                                                 :interval-ms 50})))
+                card        (mt/user-http-request :crowberto :post 200 "card"
+                                                  (card-with-name-and-query (mt/random-name)
+                                                                            (lib/native-query mp "SELECT count(*) AS n FROM venues")))]
+            (is (empty? (:result_metadata card)))
+            (deliver @release true)
+            (is (= ["N"] (saved-names (:id card) 1)))
+            (reset! release (promise))
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                  {:dataset_query (lib/native-query mp "SELECT count(*) AS n, max(price) AS p FROM venues")})
+            (deliver @release true)
+            (is (= ["N" "P"] (saved-names (:id card) 2)))))))))
 
 (deftest ^:parallel updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
@@ -1944,11 +1970,11 @@
   (testing "PUT /api/card/:id"
     (mt/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding-static false]
+        (mt/with-temporary-setting-values [enable-embedding-modular false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -1962,7 +1988,7 @@
 (deftest update-embedding-type-to-nil-test
   (testing "PUT /api/card/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (mt/with-temp [:model/Card card {:enable_embedding true
                                          :embedding_type "static-legacy"}]
           (testing "Verify initial state has embedding_type set"
@@ -3352,11 +3378,17 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (mt/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
-                 (m/map-vals boolean (select-keys card [:name :id])))))))))
+                 (m/map-vals boolean (select-keys card [:name :id])))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
+        (mt/with-temp [:model/Card _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
+                   (m/map-vals boolean (select-keys card [:name :id]))))))))))
 
 (deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
