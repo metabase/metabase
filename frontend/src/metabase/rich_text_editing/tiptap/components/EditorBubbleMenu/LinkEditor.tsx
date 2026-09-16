@@ -55,7 +55,7 @@ export const LinkEditor = ({
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t`Enter URL...`}
-          size="xs"
+          size="md"
           styles={{ input: { fontSize: "0.875rem" } }}
           miw="18rem"
           onKeyDown={(e) => {

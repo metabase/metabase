@@ -1,6 +1,13 @@
+.root {
+  &:has(input:disabled) .label {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
 .wrapper {
-  --input-height-md: rem(40px);
-  --input-height-xs: rem(32px);
+  --input-height-sm: rem(24px);
+  --input-height-md: rem(32px);
+  --input-height-lg: rem(40px);
   --inset-inline-end: 0;
 
   line-height: 1rem;
@@ -15,58 +22,54 @@
 }
 
 .input {
+  --input-border-color: var(--mb-color-border-neutral-strongest);
+  --input-ring-width: 0.5px;
+  --input-ring: 0 0 0 0 transparent;
+
   display: block;
+  border: 0.5px solid var(--input-border-color);
+  border-radius: var(--input-radius);
   color: var(--mb-color-text-primary);
-  border-radius: var(--mantine-radius-xxs);
-  background-color: var(--mb-color-background_page-primary);
+  background-color: var(--mb-color-input-background);
+  font-size: var(--mantine-font-size-md);
+  box-shadow: var(--input-ring);
 
   &::placeholder {
     color: var(--mb-color-text-disabled);
   }
 
-  &:disabled {
-    background-color: var(--mb-color-background_surface-disabled);
-    color: var(--mb-color-text-disabled);
-  }
+  /*
+   * `:focus-within` rather than `:focus` so it also covers components whose
+   * `.input` is a wrapper around the real field (PasswordInput, PillsInput).
+   */
+  &:focus-within {
+    --input-border-color: var(--mb-color-border-highlight);
+    --input-ring: inset 0 0 0 var(--input-ring-width) var(--input-border-color);
 
-  &[data-size="xs"] {
-    font-size: var(--mantine-font-size-sm);
-    line-height: var(--mantine-line-height);
-  }
-
-  &[data-size="md"] {
-    font-size: var(--mantine-font-size-md);
-    line-height: 1.5rem;
-  }
-
-  &[data-variant="default"] {
-    border-color: var(--mb-color-border-neutral);
-
-    &:hover:not(:disabled) {
-      border-color: var(--mb-color-core-brand);
-    }
-
-    &:focus {
-      border-color: var(--mb-color-core-brand);
-    }
-
-    &[data-error] {
-      border-color: var(--mb-color-feedback-negative);
-    }
+    background-color: var(--mb-color-background_surface-primary);
   }
 
   &[data-error] {
-    color: var(--mb-color-feedback-negative);
-    border-color: var(--mb-color-feedback-negative);
+    --input-border-color: var(--mb-color-feedback-negative-strong);
+    --input-ring: inset 0 0 0 var(--input-ring-width) var(--input-border-color);
 
-    &::placeholder {
-      color: var(--mb-color-feedback-negative);
+    &:focus-within {
+      --input-border-color: var(--mb-color-border-highlight);
     }
   }
 }
 
+.wrapper .input:disabled,
+.wrapper .input[data-disabled] {
+  --input-border-color: transparent;
+
+  color: var(--mb-color-text-disabled);
+  background-color: var(--mb-color-background_surface-disabled);
+  opacity: 1;
+}
+
 .section {
-  color: var(--mb-color-text-primary);
+  color: var(--mb-color-icon-primary);
 }
 
 .label {
@@ -74,7 +77,12 @@
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: var(--mantine-line-height-md);
-  margin-bottom: var(--mantine-spacing-xxs);
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+.root[data-size="sm"] .label {
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
 }
 
 .description {
@@ -85,10 +93,10 @@
 }
 
 .error {
-  color: var(--mb-color-feedback-negative);
+  color: var(--mb-color-feedback-negative-strong);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
-  margin-top: var(--mantine-spacing-sm);
+  margin-top: var(--mantine-spacing-xs);
 
   &::first-letter {
     text-transform: capitalize;
@@ -96,5 +104,13 @@
 }
 
 .required {
-  color: var(--mb-color-feedback-negative);
+  color: var(--mb-color-feedback-negative-strong);
+}
+
+@media (max-resolution: 1.99dppx) {
+  /* Devices with DPR of 1 can't render 0.5px border and round it to 1px. Because of this
+  we also decrease ring size so in focused state border doesn't look too bulky */
+  .input {
+    --input-ring-width: 0.25px;
+  }
 }

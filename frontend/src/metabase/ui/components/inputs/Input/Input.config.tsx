@@ -2,10 +2,12 @@ import { Input, InputWrapper, rem } from "@mantine/core";
 
 import Styles from "./Input.module.css";
 
-const PADDING = 12;
-const DEFAULT_ICON_WIDTH = 40;
-const UNSTYLED_ICON_WIDTH = 28;
-const BORDER_WIDTH = 1;
+const ICON_SIZE = 12;
+const PADDING: Record<string, number> = { sm: 6, md: 8, lg: 12 };
+const RADIUS: Record<string, string> = { sm: "xs", md: "xs", lg: "sm" };
+
+const paddingFor = (size: string) => PADDING[size] ?? PADDING.md;
+const sectionWidth = (size: string) => rem(paddingFor(size) * 2 + ICON_SIZE);
 
 export const inputOverrides = {
   Input: Input.extend({
@@ -18,32 +20,35 @@ export const inputOverrides = {
       section: Styles.section,
     },
     vars: (
-      theme,
-      { radius, leftSection, rightSection, rightSectionWidth, variant },
+      _theme,
+      { size = "md", radius, leftSection, rightSection, rightSectionWidth },
     ) => ({
       wrapper: {
-        "--input-border-radius": radius ?? theme.radius.xxs,
+        "--input-radius":
+          radius == null
+            ? `var(--mantine-radius-${RADIUS[size] ?? RADIUS.md})`
+            : undefined,
         "--input-padding-inline-start": leftSection
-          ? rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH)
-          : rem(PADDING - BORDER_WIDTH),
+          ? sectionWidth(size)
+          : rem(paddingFor(size)),
         "--input-padding-inline-end": rightSection
-          ? rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH)
-          : rem(PADDING - BORDER_WIDTH),
+          ? sectionWidth(size)
+          : rem(paddingFor(size)),
+        "--input-left-section-width": sectionWidth(size),
         "--input-right-section-width":
           typeof rightSectionWidth === "string"
             ? rightSectionWidth
-            : variant === "unstyled"
-              ? rem(UNSTYLED_ICON_WIDTH)
-              : rem(DEFAULT_ICON_WIDTH),
+            : sectionWidth(size),
       },
     }),
   }),
   InputWrapper: InputWrapper.extend({
     defaultProps: {
       size: "md",
-      inputWrapperOrder: ["label", "description", "error", "input"],
+      inputWrapperOrder: ["label", "description", "input", "error"],
     },
     classNames: {
+      root: Styles.root,
       label: Styles.label,
       description: Styles.description,
       error: Styles.error,
