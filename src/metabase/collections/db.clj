@@ -101,18 +101,21 @@
 (mu/defn collections-by-id
   "A map of ID to ::collections.schema/collection for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity :model/Collection :id [:in (mapv long collection-ids)]))
+  (t2/select-pk->fn identity :model/Collection
+                    {:where [:in :id (mapv long collection-ids)]}))
 
 (mu/defn collection-columns-by-id
   "A map of ID to the `columns` of the Collections with `collection-ids`."
   [columns        :- [:sequential :keyword]
    collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity (into [:model/Collection] columns) :id [:in (mapv long collection-ids)]))
+  (t2/select-pk->fn identity (into [:model/Collection] columns)
+                    {:where [:in :id (mapv long collection-ids)]}))
 
 (mu/defn collection-archived-flags
   "A map of ID to `:archived` for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn :archived :model/Collection :id [:in (mapv long collection-ids)]))
+  (t2/select-pk->fn :archived :model/Collection
+                    {:where [:in :id (mapv long collection-ids)]}))
 
 (mu/defn collections-in-namespace
   "The Collections in the namespace named `namespace-name`."
@@ -287,7 +290,8 @@
 (mu/defn personal-collection-ids-by-owner
   "A map of owner User ID to personal ::collections.schema/collection ID for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-fn->pk :personal_owner_id :model/Collection :personal_owner_id [:in (mapv long user-ids)]))
+  (t2/select-fn->pk :personal_owner_id :model/Collection
+                    {:where [:in :personal_owner_id (mapv long user-ids)]}))
 
 (defn other-users-personal-collection-ids
   "The IDs of the personal Collections owned by Users other than `user-id`."
@@ -664,6 +668,9 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User {:where [:and
                                           [:in :id (mapv long user-ids)]
-                                          [:not= :type :api-key]]}))
+                                          ;; `:model/User`'s `:type` transform runs on kv-args but not
+                                          ;; inside a `:where` map, so the post-transform string is
+                                          ;; written out explicitly here.
+                                          [:not= :type [:auto/param "api-key"]]]}))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
