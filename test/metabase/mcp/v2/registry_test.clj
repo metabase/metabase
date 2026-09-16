@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
@@ -474,6 +475,8 @@
       (try
         (reset! @#'registry/manifest-cache nil)
         (mt/with-user-locale "zz"
+          (testing "the mocked bundle really translates that label, or an English description proves nothing"
+            (is (= "ZZ CONTENT READ" (str (api-scope/scope-description "agent:content:read")))))
           (is (str/starts-with? (get (published-descriptions) "test_echo") test-echo-permission-text)))
         (is (str/starts-with? (get (published-descriptions) "test_echo") test-echo-permission-text))
         (finally

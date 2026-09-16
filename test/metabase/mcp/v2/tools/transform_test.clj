@@ -36,6 +36,10 @@
    it the tool answers with the GHY-4217 minimal ack instead of the row."
   #{"agent:content:write" "agent:content:read"})
 
+(def ^:private sql-write-scopes
+  "[[write-scopes]] plus the scope storing native SQL additionally demands."
+  (conj write-scopes "agent:sql:run"))
+
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` with bearer-style `scopes` (nil = internal
    caller, which bypasses the scope gate). `session-id` is fresh per call unless the caller threads
@@ -291,7 +295,7 @@
                                            session-id)
                                tool-result
                                :query_handle)
-                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                result     (tool-result (call-tool! :crowberto sql-write-scopes "transform_write"
                                                     {:method       "create"
                                                      :name         "from a handle"
                                                      :query_handle handle
@@ -351,10 +355,6 @@
             (testing "and the target follows the handle's database"
               (is (= {:type "table" :schema (venues-schema) :name "mcp_from_handle" :database (mt/id)}
                      (:target result))))))))))
-
-(def ^:private sql-write-scopes
-  "[[write-scopes]] plus the scope storing native SQL additionally demands."
-  (conj write-scopes "agent:sql:run"))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table, and mt/with-temporary-setting-values on
 ;; the shared kill-switch setting
@@ -416,6 +416,56 @@
               (testing "and the fields the call didn't name are untouched"
                 (is (= "mcp_handle_swap" (-> result :target :name)))
                 (is (= (venues-schema) (-> result :target :schema)))))))))))
+
+(defn- update-scope-error
+  "The registry `:error` of a `transform_write` update of transform `id` with `args` under `scopes`, asserting no
+   handler result came back."
+  [scopes id args session-id]
+  (let [{:keys [error result]} (mt/with-current-user (mt/user->id :crowberto)
+                                 (registry/call-tool scopes session-id "transform_write"
+                                                     (assoc args :method "update" :id id)))]
+    (is (nil? result))
+    error))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table, and mt/with-temporary-setting-values on
+;; the shared kill-switch setting
+(deftest transform-write-update-native-source-gates-test
+  (testing "GHY-4543: update resolves its source through the same gates as create, so swapping a stored MBQL source
+            for native SQL needs agent:sql:run and the mcp-execute-sql-enabled kill switch whichever way the SQL
+            arrives"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/McpQueryHandle]
+          (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_update_native_gates")]
+            (let [still-mbql?  #(= :mbql (t2/select-one-fn :source_type :model/Transform :id id))
+                  handle-args  (fn [session-id]
+                                 {:query_handle (mint-handle! session-id (native-handle-query))})
+                  definition   {:definition (native-definition)}]
+              (testing "a native query_handle under the content write scope alone is a scope denial"
+                (let [session-id (str (random-uuid))
+                      error      (update-scope-error write-scopes id (handle-args session-id) session-id)]
+                  (is (= "agent:sql:run" (get-in error [:insufficient-scope :required-scope])))
+                  (is (re-find #"agent:sql:run" (:message error)))
+                  (is (still-mbql?))))
+              (testing "a native definition under the content write scope alone is a scope denial"
+                (let [session-id (str (random-uuid))
+                      error      (update-scope-error write-scopes id definition session-id)]
+                  (is (= "agent:sql:run" (get-in error [:insufficient-scope :required-scope])))
+                  (is (still-mbql?))))
+              (testing "with the SQL scope, the kill switch still refuses"
+                (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+                  (testing "a native query_handle"
+                    (let [session-id (str (random-uuid))
+                          response   (call-tool! :crowberto sql-write-scopes "transform_write"
+                                                 (assoc (handle-args session-id) :method "update" :id id)
+                                                 session-id)]
+                      (is (re-find #"mcp-execute-sql-enabled" (tool-error response)))
+                      (is (still-mbql?))))
+                  (testing "a native definition"
+                    (let [response (call-tool! :crowberto sql-write-scopes "transform_write"
+                                               (assoc definition :method "update" :id id))]
+                      (is (re-find #"mcp-execute-sql-enabled" (tool-error response)))
+                      (is (still-mbql?)))))))))))))
 
 (deftest transform-write-unknown-query-handle-test
   (testing "GHY-4240: a handle the caller doesn't own (or that has expired) is a teaching error naming
@@ -648,7 +698,7 @@
                                              session-id)
                                  tool-result
                                  :query_handle)
-                  result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                  result     (tool-result (call-tool! :crowberto sql-write-scopes "transform_write"
                                                       {:method "update" :id id :query_handle handle}
                                                       session-id))]
               (is (= "native" (:source_type result)))
