@@ -4,7 +4,6 @@
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -63,12 +62,11 @@
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
     (contains? app :table_ids)     (update :table_ids #(or % []))))
 
-;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
-;; endpoints mean reaching a read check already implies authentication. See the
-;; README's permissions section for why this is safe.
 (defmethod mi/can-read? :model/DataApp
-  ([_instance]   true)
-  ([_model _pk]  true))
+  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([_model pk]
+   (or api/*is-superuser?*
+       (contains? (data-apps.db/accessible-app-ids api/*current-user-id*) pk))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -86,10 +84,3 @@
   "Never include the raw bundle bytes in JSON."
   [data-app json-generator]
   (next-method (dissoc data-app :bundle) json-generator))
-
-(defenterprise data-app-group-ids
-  "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch
-   their membership."
-  :feature :none
-  []
-  (data-apps.db/data-app-group-ids))

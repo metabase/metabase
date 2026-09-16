@@ -145,11 +145,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- hidden-group-ids
-  "IDs of the groups SCIM never exposes or manages: the static Administrators and All Users groups, and the groups
-  data apps own (see [[perms/data-app-group-ids]])."
+  "IDs of the static groups that SCIM never exposes or manages."
   []
-  (into [(:id (perms/all-users-group)) (:id (perms/admin-group))]
-        (perms/data-app-group-ids)))
+  [(:id (perms/all-users-group)) (:id (perms/admin-group))])
 
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships

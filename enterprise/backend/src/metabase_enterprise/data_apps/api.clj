@@ -10,15 +10,17 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.group-access :as data-app.group-access]
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
-   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
@@ -68,9 +70,8 @@
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id [:maybe ms/PositiveInt]]
-   [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
-   [:has_user_permission_warnings {:optional true} :boolean]
+   [:has_group_permission_warnings {:optional true} :boolean]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -121,7 +122,7 @@
 
 (def ^:private PermissionWarningsRequest
   [:map {:closed true}
-   [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+   [:group_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
 
 (def ^:private MissingTable
   [:map {:closed true}
@@ -133,7 +134,7 @@
 
 (def ^:private PermissionWarning
   [:map {:closed true}
-   [:user_id ms/PositiveInt]
+   [:group_id ms/PositiveInt]
    [:missing_tables [:sequential MissingTable]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
@@ -194,19 +195,14 @@
   [warning-group-ids app]
   (cond-> (data-app-response app)
     api/*is-superuser?*
-    (assoc :has_user_permission_warnings
-           (contains? warning-group-ids (:permission_group_id app)))))
+    (assoc :has_group_permission_warnings
+           (contains? warning-group-ids (:id app)))))
 
 (defn- read-check-data-app
-  "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection. An app with no linked resource collection has not been published yet: it is
-   not viewable by anyone through this endpoint (an admin must publish it first), signalled with a
-   409 so the client can show a dedicated \"not published\" screen rather than leaking metadata or
-   the bundle to every signed-in user."
+  "Require an assignment, then distinguish an unpublished app from an inaccessible app."
   [app]
   (api/read-check app)
-  (if-let [collection-id (:resource_collection_id app)]
-    (api/read-check :model/Collection collection-id)
+  (when-not (:resource_collection_id app)
     (throw (ex-info (tru "This data app has not been published yet.")
                     {:status-code 409})))
   app)
@@ -216,10 +212,12 @@
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (let [apps (->> (data-apps.db/non-blob-data-apps available)
-                  (mapv api/read-check))
+  (let [accessible-ids (when-not api/*is-superuser?*
+                         (data-apps.db/accessible-app-ids api/*current-user-id*))
+        apps (->> (data-apps.db/non-blob-data-apps available)
+                  (filterv #(or api/*is-superuser?* (contains? accessible-ids (:id %)))))
         warning-group-ids (when api/*is-superuser?*
-                            (data-app.user-access/groups-with-permission-warnings apps))]
+                            (data-app.group-access/apps-with-permission-warnings apps))]
     (mapv (partial data-app-list-response warning-group-ids) apps)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
@@ -262,21 +260,43 @@
     (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
     (data-apps.db/non-blob-data-app (:id app))))
 
-(api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
-  :- [:sequential PermissionWarning]
-  "Return warnings for users who cannot access every table used by a data app."
+(def ^:private AssignedGroup
+  [:map
+   [:id ms/PositiveInt]
+   [:name :string]
+   [:member_count ms/IntGreaterThanOrEqualToZero]])
+
+(api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+  "List the groups assigned to a data app."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))))
+
+(api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+  "Assign a batch of internal groups atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   {user-ids :user_ids} :- PermissionWarningsRequest]
+   {group-ids :group_ids} :- PermissionWarningsRequest]
   (api/check-superuser)
-  (let [app   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
-        users (data-apps.db/users-for-permission-warnings user-ids)]
-    (api/check-404 (= (count users) (count user-ids)))
-    (api/check-400 (every? :is_active users)
-                   (tru "Deactivated users cannot be added to data apps."))
-    (api/check-400 (every? (comp nil? :tenant_id) users)
-                   (tru "Tenant users cannot be added to data apps."))
-    (data-app.user-access/permission-warnings (:table_ids app) users)))
+  (premium-features/assert-has-feature :data-apps-preview (tru "Data Apps"))
+  (data-app.group-access/add-groups! (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug)) group-ids))
+
+(api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
+  "Remove a group's assignment and collection access."
+  [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (data-app.group-access/remove-group! (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug)) group-id))
+
+(api.macros/defendpoint :post ["/:slug/group-permission-warnings" :slug slug-regex]
+  :- [:sequential PermissionWarning]
+  "Return advisory data-access warnings for internal groups."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+   _query-params
+   {group-ids :group_ids} :- PermissionWarningsRequest]
+  (api/check-superuser)
+  (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
+    (data-app.group-access/check-groups group-ids)
+    (data-app.group-access/permission-warnings (:table_ids app) group-ids)))
 
 (defn- query-table-ids
   "The tables a query reads, including ones it reaches only through an implicit join."
@@ -402,6 +422,16 @@
     (catch Throwable e
       (raise e))))
 
+(defn- +check-feature
+  [handler]
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (when-not (and (#{:get :delete} (:request-method request))
+                    (re-matches #"/api/apps/[^/]+/groups(?:/[0-9]+)?" (:uri request)))
+       (premium-features/assert-has-feature :data-apps-preview (tru "Data Apps")))
+     (handler request respond raise))
+   (fn [prefix] (open-api/open-api-spec handler prefix))))
+
 (def routes
-  "`/api/apps` routes."
-  (api.macros/ns-handler *ns* +auth))
+  "`/api/apps` routes. Group inspection and revocation remain available after feature expiry."
+  (api.macros/ns-handler *ns* +auth +check-feature))

@@ -22,7 +22,6 @@
    [:updated_at      ms/TemporalInstant]
    [:description     [:maybe :string]]
    [:resource_collection_id [:maybe ms/PositiveInt]]
-   [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids              [:sequential ms/PositiveInt]]
    [:draft                  :boolean]])
 
@@ -43,6 +42,5 @@
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:description     {:optional true} [:maybe :string]]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:draft                  {:optional true} [:maybe :boolean]]])

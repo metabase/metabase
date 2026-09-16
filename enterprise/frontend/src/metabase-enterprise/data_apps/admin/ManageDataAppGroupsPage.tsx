@@ -1,32 +1,28 @@
-import { skipToken } from "@reduxjs/toolkit/query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import {
-  useCreateMembershipMutation,
-  useDeleteMembershipMutation,
-  useGetPermissionsGroupQuery,
-} from "metabase/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { isApiKeyGroupMember } from "metabase/common/utils/groups";
 import { useParams } from "metabase/router";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Button, Stack, Text } from "metabase/ui";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
-import type { Group, Member } from "metabase-types/api";
+import {
+  useAddDataAppGroupsMutation,
+  useGetDataAppGroupsQuery,
+  useGetDataAppQuery,
+  useRemoveDataAppGroupMutation,
+} from "metabase-enterprise/api";
+import type { DataAppGroup } from "metabase-types/api";
 
-import { DataAppUserList } from "./components/DataAppUserList/DataAppUserList";
+import { DataAppGroupList } from "./components/DataAppGroupList/DataAppGroupList";
 
-export const ManageDataAppUsersPage = () => {
+export const ManageDataAppGroupsPage = () => {
   const { slug = "" } = useParams<{ slug: string }>();
   const appRequest = useGetDataAppQuery(slug);
 
-  const groupRequest = useGetPermissionsGroupQuery(
-    appRequest.data?.permission_group_id ?? skipToken,
-  );
+  const groupRequest = useGetDataAppGroupsQuery(slug);
 
   const error = appRequest.error ?? groupRequest.error;
   const isLoading = appRequest.isLoading || groupRequest.isLoading;
@@ -35,10 +31,10 @@ export const ManageDataAppUsersPage = () => {
     <SettingsPageWrapper>
       <LoadingAndErrorWrapper error={error} loading={isLoading}>
         {appRequest.data && groupRequest.data && (
-          <DataAppUsers
+          <DataAppGroups
             appName={slug}
             appTitle={appRequest.data.display_name}
-            group={groupRequest.data}
+            groups={groupRequest.data}
           />
         )}
       </LoadingAndErrorWrapper>
@@ -46,51 +42,38 @@ export const ManageDataAppUsersPage = () => {
   );
 };
 
-const DataAppUsers = ({
+const DataAppGroups = ({
   appName,
   appTitle,
-  group,
+  groups,
 }: {
   appName: string;
   appTitle: string;
-  group: Group;
+  groups: DataAppGroup[];
 }) => {
   const [sendToast] = useToast();
   const [isAdding, setIsAdding] = useState(false);
 
-  const [createMembership] = useCreateMembershipMutation();
-  const [deleteMembership] = useDeleteMembershipMutation();
+  const [addGroups] = useAddDataAppGroupsMutation();
+  const [removeGroup] = useRemoveDataAppGroupMutation();
 
-  const members = useMemo(
-    () => group.members.filter((member) => !isApiKeyGroupMember(member)),
-    [group.members],
-  );
-
-  const handleAddUsers = async (userIds: number[]) => {
-    const results = await Promise.allSettled(
-      userIds.map((userId) =>
-        createMembership({ group_id: group.id, user_id: userId }).unwrap(),
-      ),
-    );
-
-    const failedUserIds = userIds.filter(
-      (_, index) => results[index].status === "rejected",
-    );
-
-    if (failedUserIds.length > 0) {
-      sendToast({ message: t`Failed to add users`, icon: "warning" });
-    } else {
-      setIsAdding(false);
-    }
-
-    return failedUserIds;
-  };
-
-  const handleRemoveUser = async (member: Member) => {
-    const { error } = await deleteMembership(member);
+  const handleAddGroups = async (groupIds: number[]) => {
+    const { error } = await addGroups({ name: appName, group_ids: groupIds });
 
     if (error) {
-      sendToast({ message: t`Failed to remove user`, icon: "warning" });
+      sendToast({ message: t`Failed to add groups`, icon: "warning" });
+      return false;
+    }
+
+    setIsAdding(false);
+    return true;
+  };
+
+  const handleRemoveGroup = async (group: DataAppGroup) => {
+    const { error } = await removeGroup({ name: appName, group_id: group.id });
+
+    if (error) {
+      sendToast({ message: t`Failed to remove group`, icon: "warning" });
     }
 
     return !error;
@@ -108,7 +91,7 @@ const DataAppUsers = ({
       <AdminPaneLayout
         title={
           <Text component="span" fz="2rem" lh="2rem">
-            {t`Manage access to this app`}
+            {t`Manage access to ${appTitle}`}
           </Text>
         }
         titleActions={
@@ -117,17 +100,17 @@ const DataAppUsers = ({
             onClick={() => setIsAdding(true)}
             disabled={isAdding}
           >
-            {t`Add users`}
+            {t`Add groups`}
           </Button>
         }
       >
-        <DataAppUserList
+        <DataAppGroupList
           appName={appName}
           isAdding={isAdding}
-          members={members}
-          onAddUsers={handleAddUsers}
+          groups={groups}
+          onAddGroups={handleAddGroups}
           onCancelAdd={() => setIsAdding(false)}
-          onRemoveUser={handleRemoveUser}
+          onRemoveGroup={handleRemoveGroup}
         />
       </AdminPaneLayout>
     </Stack>

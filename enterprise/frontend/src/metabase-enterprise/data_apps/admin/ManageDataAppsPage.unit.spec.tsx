@@ -47,6 +47,18 @@ const openActionsMenu = async (displayName: string) =>
   );
 
 describe("ManageDataAppsPage", () => {
+  it("links an assigned-group warning to group access management", async () => {
+    setup({
+      apps: [createMockDataApp({ has_group_permission_warnings: true })],
+    });
+
+    expect(
+      await screen.findByRole("link", {
+        name: "Some groups are missing data access",
+      }),
+    ).toHaveAttribute("href", "/admin/settings/apps/sales/groups");
+  });
+
   describe("empty states", () => {
     it("shows the generic empty state, and no duplicate 'no repository' message, when no repo is connected", async () => {
       setup({ configured: false });

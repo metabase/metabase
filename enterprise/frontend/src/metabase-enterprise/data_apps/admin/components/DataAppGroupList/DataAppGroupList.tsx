@@ -8,6 +8,7 @@ import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import Animation from "metabase/css/core/animation.module.css";
 import {
   Alert,
@@ -19,106 +20,109 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { getFullName } from "metabase/utils/user";
-import { useGetDataAppUserPermissionWarningsQuery } from "metabase-enterprise/api";
-import type { DataAppUserPermissionWarning, Member } from "metabase-types/api";
+import { useGetDataAppGroupPermissionWarningsQuery } from "metabase-enterprise/api";
+import type {
+  DataAppGroup,
+  DataAppGroupPermissionWarning,
+} from "metabase-types/api";
 
-import { AddDataAppUsers } from "../AddDataAppUsers/AddDataAppUsers";
+import { AddDataAppGroups } from "../AddDataAppGroups/AddDataAppGroups";
 import { DataAppDataAccessWarning } from "../DataAppDataAccessWarning/DataAppDataAccessWarning";
 
-import S from "./DataAppUserList.module.css";
+import S from "./DataAppGroupList.module.css";
 
 const PAGE_SIZE = 25;
 
 type Props = {
   appName: string;
   isAdding: boolean;
-  members: Member[];
-  onAddUsers: (userIds: number[]) => Promise<number[]>;
+  groups: DataAppGroup[];
+  onAddGroups: (groupIds: number[]) => Promise<boolean>;
   onCancelAdd: () => void;
-  onRemoveUser: (member: Member) => Promise<boolean>;
+  onRemoveGroup: (group: DataAppGroup) => Promise<boolean>;
 };
 
-export const DataAppUserList = ({
+export const DataAppGroupList = ({
   appName,
   isAdding,
-  members,
-  onAddUsers,
+  groups,
+  onAddGroups,
   onCancelAdd,
-  onRemoveUser,
+  onRemoveGroup,
 }: Props) => {
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
-  const lastPage = Math.max(0, Math.ceil(members.length / PAGE_SIZE) - 1);
+  const lastPage = Math.max(0, Math.ceil(groups.length / PAGE_SIZE) - 1);
 
   // make sure user does not stay in an empty page if the
-  // removed member is the last one in the page
+  // removed group is the last one in the page
   useEffect(() => {
     setPage((page) => Math.min(page, lastPage));
   }, [lastPage, setPage]);
 
-  const visibleMembers = useMemo(
-    () => members.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [members, page],
+  const visibleGroups = useMemo(
+    () => groups.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [groups, page],
   );
 
-  const visibleMemberIds = useMemo(
-    () => visibleMembers.map(({ user_id }) => user_id),
-    [visibleMembers],
+  const visibleGroupIds = useMemo(
+    () => visibleGroups.map(({ id }) => id),
+    [visibleGroups],
   );
 
-  const warnings = useDataAppUserWarnings(appName, visibleMemberIds);
+  const warnings = useDataAppGroupWarnings(appName, visibleGroupIds);
 
   return (
-    <Stack data-testid="user-management-sections" gap="lg">
+    <Stack data-testid="group-management-sections" gap="lg">
       {warnings.isError && <WarningRequestError />}
 
       <Box
         className={cx(
-          S.userListContent,
-          !isAdding && S.transitioningUserListContent,
+          S.groupListContent,
+          !isAdding && S.transitioningGroupListContent,
         )}
       >
-        {(isAdding || members.length > 0) && (
+        {(isAdding || groups.length > 0) && (
           <Box
-            data-testid="data-app-users-card"
-            bd={members.length > 0 ? "1px solid var(--mb-color-border)" : 0}
+            data-testid="data-app-groups-card"
+            bd={groups.length > 0 ? "1px solid var(--mb-color-border)" : 0}
             bdrs="md"
             bg="background-primary"
             style={{ overflow: "hidden" }}
           >
             {isAdding && (
-              <AddDataAppUsers
-                hasCurrentUsers={members.length > 0}
-                members={members}
-                onAddUsers={onAddUsers}
+              <AddDataAppGroups
+                appName={appName}
+                hasCurrentGroups={groups.length > 0}
+                groups={groups}
+                onAddGroups={onAddGroups}
                 onCancel={onCancelAdd}
               />
             )}
 
-            {members.length > 0 && (
+            {groups.length > 0 && (
               <AdminContentTable
-                className={cx(S.userTable, Animation.fadeIn)}
+                className={cx(S.groupTable, Animation.fadeIn)}
                 columnTitles={[]}
               >
-                {visibleMembers.map((member) => (
-                  <MemberRow
-                    key={member.membership_id}
-                    member={member}
-                    warning={warnings.byUserId.get(member.user_id)}
-                    onRemove={onRemoveUser}
+                {visibleGroups.map((group) => (
+                  <GroupRow
+                    key={group.id}
+                    group={group}
+                    warning={warnings.byGroupId.get(group.id)}
+                    onRemove={onRemoveGroup}
                   />
                 ))}
               </AdminContentTable>
             )}
 
-            {members.length > PAGE_SIZE && (
+            {groups.length > PAGE_SIZE && (
               <Flex align="center" justify="flex-end" p="md">
                 <PaginationControls
                   page={page}
                   pageSize={PAGE_SIZE}
-                  itemsLength={visibleMembers.length}
-                  total={members.length}
+                  itemsLength={visibleGroups.length}
+                  total={groups.length}
                   onNextPage={handleNextPage}
                   onPreviousPage={handlePreviousPage}
                 />
@@ -128,26 +132,26 @@ export const DataAppUserList = ({
         )}
 
         <Collapse
-          in={members.length === 0}
+          in={groups.length === 0}
           transitionDuration={150}
           transitionTimingFunction="ease-out"
         >
-          <DataAppUsersEmptyState />
+          <DataAppGroupsEmptyState />
         </Collapse>
       </Box>
     </Stack>
   );
 };
 
-const DataAppUsersEmptyState = () => (
+const DataAppGroupsEmptyState = () => (
   <Box
-    data-testid="data-app-users-empty-state"
+    data-testid="data-app-groups-empty-state"
     bg="background-secondary"
     bdrs="md"
     py="5rem"
   >
     <EmptyState
-      title={t`No one has access yet`}
+      title={t`No groups have access yet`}
       spacing="sm"
       illustrationElement={
         <img
@@ -155,40 +159,42 @@ const DataAppUsersEmptyState = () => (
           alt={t`No results`}
           width={120}
           height={120}
-          data-testid="data-app-users-empty-state-icon"
+          data-testid="data-app-groups-empty-state-icon"
         />
       }
     />
   </Box>
 );
 
-const useDataAppUserWarnings = (appName: string, userIds: number[]) => {
-  const request = useGetDataAppUserPermissionWarningsQuery(
-    userIds.length > 0 ? { name: appName, user_ids: userIds } : skipToken,
+const useDataAppGroupWarnings = (appName: string, groupIds: number[]) => {
+  const request = useGetDataAppGroupPermissionWarningsQuery(
+    groupIds.length > 0 ? { name: appName, group_ids: groupIds } : skipToken,
   );
 
-  const warningByUserId = useMemo(
+  const warningByGroupId = useMemo(
     () =>
-      new Map(request.data?.map((warning) => [warning.user_id, warning]) ?? []),
+      new Map(
+        request.data?.map((warning) => [warning.group_id, warning]) ?? [],
+      ),
     [request.data],
   );
 
   return {
-    byUserId: warningByUserId,
+    byGroupId: warningByGroupId,
     isError: request.isError,
   };
 };
 
-const MemberRow = ({
-  member,
+const GroupRow = ({
+  group,
   warning,
   onRemove,
 }: {
-  member: Member;
-  warning?: DataAppUserPermissionWarning;
-  onRemove: (member: Member) => void;
+  group: DataAppGroup;
+  warning?: DataAppGroupPermissionWarning;
+  onRemove: (group: DataAppGroup) => void;
 }) => {
-  const name = getFullName(member) ?? member.email;
+  const name = getGroupNameLocalized(group);
 
   return (
     <tr>
@@ -196,11 +202,11 @@ const MemberRow = ({
         <Text fw={700}>{name}</Text>
       </td>
 
-      <td>{member.email}</td>
+      <td>{group.member_count}</td>
 
       <Box component="td" w="1%" style={{ whiteSpace: "nowrap" }}>
         <Flex
-          data-testid="data-app-user-actions"
+          data-testid="data-app-group-actions"
           align="center"
           justify="flex-end"
           gap="lg"
@@ -208,15 +214,12 @@ const MemberRow = ({
           style={{ minWidth: "max-content" }}
         >
           {warning && (
-            <DataAppDataAccessWarning
-              warning={warning}
-              userName={member.first_name || name}
-            />
+            <DataAppDataAccessWarning warning={warning} groupName={name} />
           )}
 
           <UnstyledButton
             aria-label={t`Remove ${name}`}
-            onClick={() => onRemove(member)}
+            onClick={() => onRemove(group)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -233,6 +236,6 @@ const MemberRow = ({
 
 const WarningRequestError = () => (
   <Alert color="warning" icon={<Icon name="warning" />}>
-    {t`We couldn't check data access for some users. You can still update access to this data app.`}
+    {t`We couldn't check data access for some groups. You can still update access to this data app.`}
   </Alert>
 );

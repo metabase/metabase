@@ -26,12 +26,12 @@ export const DataAppListItem = ({ app, canRemove = false }: Props) => (
     <Group flex="0 0 auto" gap="lg" wrap="nowrap" align="center">
       <DataAppStatusBadge app={app} />
 
-      {app.has_user_permission_warnings && (
-        <Tooltip label={t`Some users are missing data access.`}>
+      {app.has_group_permission_warnings && (
+        <Tooltip label={t`Some groups are missing data access`}>
           <ActionIcon
-            aria-label={t`Some users are missing data access.`}
+            aria-label={t`Some groups are missing data access`}
             component={Link}
-            to={`/admin/settings/apps/${app.name}/users`}
+            to={`/admin/settings/apps/${encodeURIComponent(app.name)}/groups`}
             bg="background_surface-warning-strong"
             c="text-primary"
             bdrs="sm"

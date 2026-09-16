@@ -1,8 +1,7 @@
 (ns metabase-enterprise.data-apps.resources
-  "Lifecycle for the permission group and resource collection owned by a data app."
+  "Lifecycle for the resource collection owned by a data app."
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase-enterprise.data-apps.permissions :as data-app.permissions]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]))
@@ -11,17 +10,6 @@
 
 (defn- resource-name [app]
   (format "Data App: %s" (:name app)))
-
-(defn- create-permission-group! [app]
-  (let [group (data-apps.db/insert-permission-group! {:name (resource-name app)
-                                                      :is_data_app_group true})]
-    (data-apps.db/update-data-app! (:id app) {:permission_group_id (:id group)})
-    group))
-
-(defn- permission-group! [app]
-  (or (some->> (:permission_group_id app)
-               (data-apps.db/permission-group))
-      (create-permission-group! app)))
 
 (defn- restore-trashed-collection!
   "Bring `collection` back out of the trash, with everything archived alongside it.
@@ -40,26 +28,23 @@
       (collection/archive-or-unarchive-collection! collection
                                                    {:archived false, :parent_id nil}))))
 
-(defn- apply-collection-permissions!
-  "Gives the group read access. Preserves permission grants that are already correct."
-  [group collection]
-  (let [read-path (perms/collection-read-path collection)
+(defn reconcile-collection-permissions!
+  "Restore read-only collection grants from the app assignments. Preserve correct rows."
+  [app collection]
+  (let [group-ids (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))
+        read-path (perms/collection-read-path collection)
         write-path (perms/collection-readwrite-path collection)
         permissions-by-group (group-by :group_id
                                        (data-apps.db/permissions-for-paths-excluding-group
-                                        ["/" read-path write-path] (:id (perms/admin-group))))
-        app-read-only? (= #{read-path} (set (map :object (get permissions-by-group (:id group)))))]
-    ;; Remove write grants and access from other groups
+                                        [read-path write-path] (:id (perms/admin-group))))
+        read-only? (fn [group-id]
+                     (= #{read-path} (set (map :object (get permissions-by-group group-id)))))]
     (doseq [group-id (keys permissions-by-group)
-            :when (not (and (= group-id (:id group)) app-read-only?))]
+            :when (not (and (group-ids group-id) (read-only? group-id)))]
       (perms/revoke-collection-permissions! group-id collection))
-    (when-not app-read-only?
-      (perms/grant-collection-read-permissions! group collection))))
-
-(defn- apply-resource-permissions!
-  [group collection]
-  (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
-  (apply-collection-permissions! group collection))
+    (doseq [group-id group-ids
+            :when (not (read-only? group-id))]
+      (perms/grant-collection-read-permissions! group-id collection))))
 
 (defn- create-resource-collection! [app]
   (let [collection (data-apps.db/insert-resource-collection! {:name (resource-name app)
@@ -77,21 +62,15 @@
   [app]
   (perms/with-global-permissions-lock
     (let [app        (data-apps.db/non-blob-data-app (:id app))
-          group      (permission-group! app)
           collection (resource-collection! app)]
-      (data-apps.db/update-permission-group! (:id group)
-                                             {:name (resource-name app)})
       (data-apps.db/update-resource-collection! (:id collection)
                                                 {:name (resource-name app)})
       (restore-trashed-collection! collection)
-      (apply-resource-permissions! group collection)
-      {:permission_group_id    (:id group)
-       :resource_collection_id (:id collection)})))
+      (reconcile-collection-permissions! app collection)
+      {:resource_collection_id (:id collection)})))
 
 (defn delete-resources!
-  "Delete the generated collection and permission group referenced by `app`."
-  [{:keys [permission_group_id resource_collection_id]}]
+  "Delete the resource collection owned by the app. Assigned groups remain independent."
+  [{:keys [resource_collection_id]}]
   (when resource_collection_id
-    (data-apps.db/delete-resource-collection! resource_collection_id))
-  (when permission_group_id
-    (data-apps.db/delete-permission-group! permission_group_id)))
+    (data-apps.db/delete-resource-collection! resource_collection_id)))

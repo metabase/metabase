@@ -2,11 +2,11 @@ import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
+  assignDataAppTestGroup,
   buildDataAppHostApp,
   createDataAppApiKey,
   createSecondDataApp,
   dataAppHostAppRoot,
-  dataAppPermissionGroupId,
   declareDataAppQueries,
   removeDataAppQueryDeclaration,
   resetDataAppHostAppSources,
@@ -437,7 +437,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   describe("the app's lifecycle", () => {
     it("takes the collection and the group with it when the app is removed", () => {
       syncOneQuery().then((card) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
             cy.request("DELETE", `/api/apps/${APP_SLUG}`);
 
@@ -509,12 +509,11 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         });
 
         cy.request(`/api/apps/${OTHER_SLUG}`).then(({ body: otherApp }) => {
-          dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+          assignDataAppTestGroup(APP_SLUG).then((groupId) => {
             expect(
               otherApp.resource_collection_id,
               "each app gets its own collection",
             ).not.to.eq(null);
-            expect(otherApp.permission_group_id).not.to.eq(groupId);
 
             // Joining one app's group must not reach the other app's copy.
             addUserToGroup(groupId, USERS.normal.email);
@@ -580,7 +579,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   describe("permissions", () => {
     /** Puts the normal user in the app's group, as granting app access does. */
     const joinAppGroup = () =>
-      dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+      assignDataAppTestGroup(APP_SLUG).then((groupId) => {
         addUserToGroup(groupId, USERS.normal.email);
         return cy.wrap(groupId, { log: false });
       });
@@ -690,7 +689,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     // own group, which holds read on the app's collection and nothing else.
     it("lets the app's group read the copy while the rest of the instance cannot", () => {
       syncOneQuery().then((card) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           cy.signInAsNormalUser();
           cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
             .its("status")

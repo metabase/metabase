@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getDatabaseFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { Link } from "metabase/router";
 import {
   Anchor,
@@ -13,18 +13,18 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type {
+  DataAppGroupPermissionWarning,
   DataAppMissingTable,
-  DataAppUserPermissionWarning,
 } from "metabase-types/api";
 
 import S from "./DataAppDataAccessWarning.module.css";
 
 interface Props {
-  warning: DataAppUserPermissionWarning;
-  userName: string;
+  warning: DataAppGroupPermissionWarning;
+  groupName: string;
 }
 
-export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
+export const DataAppDataAccessWarning = ({ warning, groupName }: Props) => {
   const label = t`Missing data access`;
 
   return (
@@ -59,7 +59,7 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
       >
         <Stack gap="lg">
           <Text size="sm">
-            {t`${userName} doesn’t have permission to view these tables used in this app:`}
+            {t`${groupName} doesn’t have permission to view these tables used in this app:`}
           </Text>
 
           <Stack
@@ -71,7 +71,7 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
             style={{ listStyle: "none" }}
           >
             {warning.missing_tables.map((table) => {
-              const parts = getMissingTableSegments(table);
+              const parts = getMissingTableSegments(table, warning.group_id);
 
               return (
                 <Flex
@@ -82,7 +82,7 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
                   wrap="wrap"
                 >
                   {parts.map((part, index) => (
-                    <Flex key={part.url} align="center" gap={4}>
+                    <Flex key={index} align="center" gap={4}>
                       <Anchor
                         component={Link}
                         to={part.url}
@@ -114,10 +114,13 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
   );
 };
 
-const getMissingTableSegments = (table: DataAppMissingTable) => [
+const getMissingTableSegments = (
+  table: DataAppMissingTable,
+  groupId: number,
+) => [
   {
     label: table.database_name,
-    url: getDatabaseFocusPermissionsUrl({
+    url: getGroupFocusPermissionsUrl(groupId, {
       databaseId: table.database_id,
     }),
   },
@@ -125,7 +128,7 @@ const getMissingTableSegments = (table: DataAppMissingTable) => [
     ? [
         {
           label: table.schema,
-          url: getDatabaseFocusPermissionsUrl({
+          url: getGroupFocusPermissionsUrl(groupId, {
             databaseId: table.database_id,
             schemaName: table.schema,
           }),
@@ -134,10 +137,9 @@ const getMissingTableSegments = (table: DataAppMissingTable) => [
     : []),
   {
     label: table.name,
-    url: getDatabaseFocusPermissionsUrl({
+    url: getGroupFocusPermissionsUrl(groupId, {
       databaseId: table.database_id,
       schemaName: table.schema ?? undefined,
-      tableId: table.id,
     }),
   },
 ];

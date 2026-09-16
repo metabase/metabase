@@ -1,9 +1,9 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addUserToGroup,
+  assignDataAppTestGroup,
   createDataAppApiKey,
   dataAppHostAppRoot,
-  dataAppPermissionGroupId,
   declareDataAppActions,
   moveDataAppModelToCollection,
   removeDataAppActionDeclaration,
@@ -266,7 +266,7 @@ describe(
 
     describe("permissions", () => {
       const joinAppGroup = () =>
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           addUserToGroup(groupId, USERS.normal.email);
           return cy.wrap(groupId, { log: false });
         });

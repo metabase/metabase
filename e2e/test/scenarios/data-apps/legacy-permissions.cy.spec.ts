@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ALL_USERS_GROUP_ID,
@@ -20,7 +20,7 @@ const APP_NAME = "legacy-permission-test";
 
 // Exercise real queries: preserving the permission graph alone does not prove that data still loads.
 describe("scenarios > data apps > legacy view data permissions", () => {
-  describe("preserves 'no self-service' access level when a user is added to data app group", () => {
+  describe("preserves 'no self-service' access level when their group is assigned to a data app", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -116,13 +116,8 @@ function assertAccessSurvivesAppMembership() {
     .its("body")
     .as("app");
 
-  cy.log("assign the no data user to the data app group");
-  cy.get<DataApp>("@app").then(({ permission_group_id }) => {
-    if (permission_group_id === null) {
-      throw new Error("data app must have a permission group");
-    }
-
-    H.addUserToGroup(permission_group_id, USERS.nodata.email);
+  cy.request("POST", `/api/apps/${APP_NAME}/groups`, {
+    group_ids: [COLLECTION_GROUP_ID],
   });
 
   cy.log("the same saved question must still load after app membership");
