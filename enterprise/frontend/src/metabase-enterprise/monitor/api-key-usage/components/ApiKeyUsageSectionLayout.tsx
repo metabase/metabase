@@ -34,18 +34,14 @@ import {
 
 type RouteContentProps = {
   children: ReactNode;
-  emptyState: ReactNode;
   error: unknown;
   isInitialLoading: boolean;
-  showEmpty: boolean;
 };
 
 function RouteContent({
   children,
-  emptyState,
   error,
   isInitialLoading,
-  showEmpty,
 }: RouteContentProps) {
   if (error !== undefined && error !== null) {
     return (
@@ -63,7 +59,7 @@ function RouteContent({
     );
   }
 
-  return showEmpty ? emptyState : children;
+  return children;
 }
 
 export function ApiKeyUsageSectionLayout() {
@@ -171,15 +167,14 @@ export function ApiKeyUsageSectionLayout() {
         tenantOptions={[]}
         hasTenants={false}
       />
-      <RouteContent
-        emptyState={<ApiKeyUsageEmptyState />}
-        error={error}
-        isInitialLoading={isInitialLoading}
-        showEmpty={showEmpty}
-      >
-        <ApiKeyUsageContextProvider value={outletContext}>
-          <Outlet />
-        </ApiKeyUsageContextProvider>
+      <RouteContent error={error} isInitialLoading={isInitialLoading}>
+        {showEmpty ? (
+          <ApiKeyUsageEmptyState />
+        ) : (
+          <ApiKeyUsageContextProvider value={outletContext}>
+            <Outlet />
+          </ApiKeyUsageContextProvider>
+        )}
       </RouteContent>
     </>
   );
