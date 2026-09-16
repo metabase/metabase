@@ -312,9 +312,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.popover().within(() => {
       cy.findByText("Select all").click();
-      cy.findByLabelText("ID").should("be.disabled");
+      cy.findByLabelText("ID").should("have.attr", "aria-disabled", "true");
       cy.findByText("Tax").click();
-      cy.findByLabelText("ID").should("be.enabled").click();
+      cy.findByLabelText("ID").should("not.have.attr", "aria-disabled").click();
     });
 
     cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
