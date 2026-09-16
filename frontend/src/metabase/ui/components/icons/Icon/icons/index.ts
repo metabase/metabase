@@ -173,6 +173,7 @@ import message_circle_component from "./message_circle.svg?component";
 import metabot_component from "./metabot.svg?component";
 import metabot_sad_component from "./metabot_sad.svg?component";
 import metric_component from "./metric.svg?component";
+import microphone_component from "./microphone.svg?component";
 import mode_component from "./mode.svg?component";
 import model_component from "./model.svg?component";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -254,6 +255,7 @@ import star_filled_component from "./star_filled.svg?component";
 import stepped_component from "./stepped.svg?component";
 import sticky_note_component from "./sticky-note.svg?component";
 import stop_component from "./stop.svg?component";
+import stop_outline_component from "./stop_outline.svg?component";
 import store_component from "./store.svg?component";
 import straight_component from "./straight.svg?component";
 import string_component from "./string.svg?component";
@@ -479,6 +481,7 @@ export const Icons: Record<IconName, React.VFC> = {
   model: model_component,
   model_with_badge: model_with_badge_component,
   moon: moon_component,
+  microphone: microphone_component,
   move: move_component,
   move_card: move_card_component,
   network: network_component,
@@ -560,6 +563,7 @@ export const Icons: Record<IconName, React.VFC> = {
   star_filled: star_filled_component,
   star: star_component,
   stop: stop_component,
+  stop_outline: stop_outline_component,
   store: store_component,
   string: string_component,
   sun: sun_component,

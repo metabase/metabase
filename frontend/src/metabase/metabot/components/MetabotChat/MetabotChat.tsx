@@ -7,6 +7,7 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
@@ -213,13 +214,17 @@ export const MetabotChat = ({
                 )}
               >
                 <MetabotChatEditor
+                  key={conversationId}
                   ref={metabot.promptInputRef}
+                  allowDictation={
+                    metabot.metabotId === FIXED_METABOT_IDS.DEFAULT
+                  }
                   value={metabot.prompt}
                   autoFocus
                   isResponding={metabot.isDoingScience}
                   placeholder={t`How can I help? Type @ to mention items.`}
                   onChange={metabot.setPrompt}
-                  onSubmit={() => metabot.submitInput(metabot.prompt)}
+                  onSubmit={(value) => metabot.submitInput(value)}
                   onStop={metabot.cancelRequest}
                   suggestionConfig={{
                     suggestionModels: config.suggestionModels,

@@ -405,6 +405,7 @@ export function setup(
     "path:/api/metabot/permissions/user-permissions",
     createMockUserMetabotPermissions(),
   );
+  fetchMock.get("path:/api/metabot/dictation", { enabled: false });
   setupDatabaseListEndpoint([]);
   setupListMetabotConversationsEndpoint(conversations);
   setupGetMetabotConversationTitleEndpoint(

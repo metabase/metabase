@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
-import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import {
   useMetabotConversation,
   useUserMetabotPermissions,
@@ -66,10 +66,6 @@ export const MetabotGreeting = ({
   );
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
 
-  const handleSubmit = () => metabot.submitInput(metabot.prompt);
-  const inputDisabled =
-    metabot.prompt.trim().length === 0 || metabot.isDoingScience;
-
   return (
     <Box className={S.page}>
       <Stack gap="xl" className={S.inputWrapper}>
@@ -90,34 +86,36 @@ export const MetabotGreeting = ({
                 onConfigureAi={openAiProviderConfigurationModal}
               />
             ) : (
-              <MetabotPromptInput
+              <MetabotChatEditor
+                key={conversationId}
+                allowDictation
                 ref={metabot.promptInputRef}
                 value={metabot.prompt}
                 autoFocus
-                disabled={metabot.isDoingScience}
+                isResponding={metabot.isDoingScience}
                 placeholder={t`Ask about your data, and type @ to mention an item`}
                 onChange={metabot.setPrompt}
-                onSubmit={handleSubmit}
+                onSubmit={(value) => metabot.submitInput(value)}
                 onStop={metabot.cancelRequest}
                 suggestionConfig={{ suggestionModels }}
                 data-testid="metabot-chat-input"
               />
             )}
           </Box>
-          <Box className={S.inputActions}>
-            <ActionIcon
-              className={S.sendButton}
-              variant="filled"
-              size="2rem"
-              disabled={!canUseNlq || inputDisabled}
-              loading={metabot.isDoingScience}
-              onClick={handleSubmit}
-              data-testid="metabot-send-message"
-              aria-label={t`Send`}
-            >
-              <Icon name="arrow_up" />
-            </ActionIcon>
-          </Box>
+          {!canUseNlq && (
+            <Box className={S.inputActions}>
+              <ActionIcon
+                className={S.sendButton}
+                variant="filled"
+                size="2rem"
+                disabled
+                data-testid="metabot-send-message"
+                aria-label={t`Send`}
+              >
+                <Icon name="arrow_up" />
+              </ActionIcon>
+            </Box>
+          )}
         </Paper>
 
         <Box

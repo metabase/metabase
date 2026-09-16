@@ -36,8 +36,9 @@ export interface MetabotPromptInputProps {
   placeholder?: string;
   autoFocus?: boolean;
   disabled: boolean;
+  readOnly?: boolean;
   onChange: (value: string) => void;
-  onSubmit?: () => void;
+  onSubmit?: (value: string) => void;
   onStop: () => void;
   suggestionConfig: {
     suggestionModels: SuggestionModel[];
@@ -54,6 +55,7 @@ export const MetabotPromptInput = forwardRef<
       placeholder = t`How can I help? Type @ to mention items.`,
       autoFocus,
       disabled,
+      readOnly = false,
       suggestionConfig,
       onChange,
       onSubmit,
@@ -64,6 +66,8 @@ export const MetabotPromptInput = forwardRef<
   ) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const serializedRef = useRef(value);
+    const readOnlyRef = useRef(readOnly);
+    readOnlyRef.current = readOnly;
 
     // editorProps closures are baked into the editor at creation and are not
     // refreshed by tiptap when useEditor has a dependency array, so they must
@@ -122,6 +126,9 @@ export const MetabotPromptInput = forwardRef<
             },
             cut: (view: EditorView, e: ClipboardEvent) => {
               e.preventDefault();
+              if (readOnlyRef.current) {
+                return true;
+              }
               const { from, to } = view.state.selection;
               const slice = view.state.doc.slice(from, to);
               const doc = view.state.schema.topNodeType.create(
@@ -140,6 +147,9 @@ export const MetabotPromptInput = forwardRef<
             },
           },
           handleKeyDown: (view, event) => {
+            if (readOnlyRef.current) {
+              return false;
+            }
             if (event.key === "Escape" || event.key === "Enter") {
               // Defer enter handling to mention UI if open
               const mentionState = MetabotMentionPluginKey.getState(view.state);
@@ -158,7 +168,9 @@ export const MetabotPromptInput = forwardRef<
 
               if (!isModifiedKeyPress && onSubmitRef.current) {
                 event.preventDefault();
-                onSubmitRef.current();
+                onSubmitRef.current(
+                  serializeTiptapToMetabotMessage(view.state.doc.toJSON()),
+                );
                 return true;
               }
             }
@@ -204,6 +216,36 @@ export const MetabotPromptInput = forwardRef<
         focus: () => editor.commands.focus("end"),
         clear: () => editor.commands.clearContent(),
         getValue: () => serializeTiptapToMetabotMessage(editor.getJSON()),
+        captureDictationSelection: () => {
+          const { selection, doc } = editor.state;
+          const restore = () => {
+            if (!editor.isDestroyed && editor.state.doc.eq(doc)) {
+              editor.commands.setTextSelection(selection);
+              editor.commands.focus();
+            }
+          };
+          return {
+            restore,
+            insert: (text: string) => {
+              if (editor.isDestroyed || !editor.state.doc.eq(doc)) {
+                return null;
+              }
+              const content = text
+                .split("\n")
+                .flatMap((line, index) => [
+                  ...(index > 0 ? [{ type: "hardBreak" }] : []),
+                  ...(line ? [{ type: "text", text: line }] : []),
+                ]);
+              editor
+                .chain()
+                .setTextSelection(selection)
+                .insertContent(content)
+                .focus()
+                .run();
+              return serializeTiptapToMetabotMessage(editor.getJSON());
+            },
+          };
+        },
         get scrollHeight() {
           return editor.view.dom.scrollHeight;
         },
@@ -212,6 +254,10 @@ export const MetabotPromptInput = forwardRef<
         },
       });
     }, [editor]);
+
+    useEffect(() => {
+      editor?.setEditable(!readOnly, false);
+    }, [editor, readOnly]);
 
     // Sync external value changes to editor
     useEffect(() => {

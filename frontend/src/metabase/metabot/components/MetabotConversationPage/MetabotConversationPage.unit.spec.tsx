@@ -85,6 +85,7 @@ const setup = ({
   setupEnterprisePlugins();
   setupUserMetabotPermissionsEndpoint();
   setupDatabaseListEndpoint([]);
+  fetchMock.get("path:/api/metabot/dictation", { enabled: false });
   setupListMetabotConversationsEndpoint([]);
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,

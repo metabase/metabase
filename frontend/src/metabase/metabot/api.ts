@@ -8,6 +8,8 @@ import type {
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
   MetabotConversationTitleResponse,
+  MetabotDictationAvailability,
+  MetabotDictationResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -36,6 +38,24 @@ export type MetabotConversationDetail = {
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getMetabotDictation: builder.query<MetabotDictationAvailability, void>({
+      query: () => "/api/metabot/dictation",
+      providesTags: ["session-properties"],
+    }),
+    transcribeMetabotDictation: builder.mutation<
+      MetabotDictationResponse,
+      Blob
+    >({
+      query: (recording) => {
+        const body = new FormData();
+        const extension = recording.type.startsWith("audio/mp4")
+          ? "mp4"
+          : "webm";
+        body.append("file", recording, `dictation.${extension}`);
+        return { method: "POST", url: "/api/metabot/dictation", body };
+      },
+      extraOptions: { retry: false },
+    }),
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
@@ -196,6 +216,8 @@ export const metabotApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetMetabotDictationQuery,
+  useTranscribeMetabotDictationMutation,
   useGetMetabotConversationQuery,
   useForkMetabotConversationMutation,
   useListMetabotConversationsQuery,

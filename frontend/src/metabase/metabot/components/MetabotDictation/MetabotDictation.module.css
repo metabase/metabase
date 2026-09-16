@@ -1,0 +1,30 @@
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+  width: 100%;
+}
+
+.waveform {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  height: 1.75rem;
+  color: var(--mb-color-core-brand);
+}
+
+.status {
+  flex: 1;
+  min-width: 0;
+}
+
+.recordingStatus {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

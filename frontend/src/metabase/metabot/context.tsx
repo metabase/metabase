@@ -30,6 +30,10 @@ export type DeregisterChatContextProviderFn = () => void;
 export type MetabotPromptInputRef = {
   focus: () => void;
   getValue?: () => string;
+  captureDictationSelection?: () => {
+    insert: (text: string) => string | null;
+    restore: () => void;
+  };
   scrollHeight: number;
   scrollTop: number;
 };

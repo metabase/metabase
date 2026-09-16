@@ -443,3 +443,10 @@ export type MetabotTenantLimit = {
   tenant_id: number;
   max_usage: number | null;
 };
+export interface MetabotDictationAvailability {
+  enabled: boolean;
+}
+
+export interface MetabotDictationResponse {
+  text: string;
+}
