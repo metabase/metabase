@@ -308,7 +308,7 @@
 (def ^:private invalid-authorization-request-description "The authorization request is invalid.")
 
 (defn- authorization-error-code
-  "The RFC 6749 section 4.1.2.1 or RFC 8707 error code for the ex-data of an exception thrown while validating an
+  "The RFC 6749 section 4.1.2.1 (or RFC 8707) `error` code for the ex-data of an exception thrown while validating an
    authorization request."
   [{:keys [oauth-error error] :as data}]
   (or oauth-error
@@ -321,10 +321,9 @@
         :else                           "invalid_request")))
 
 (defn- authorization-consent-response
-  "Validate the authorization request `query-params` from `client` and return the consent page response, which sets
-   the CSRF cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and
-   `:error-description`."
-  [provider client query-params request]
+  "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
+   cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and `:error-description`."
+  [provider query-params request]
   (let [;; oidc-provider's own resource check throws a URISyntaxException, not an ex-info, for these.
         _            (when (unparseable-resource? (:resource query-params))
                        (throw (ex-info "resource is not a URI"
@@ -360,6 +359,7 @@
                                                                 "the requested resource.")
                                         :resource          (:resource parsed)})))
         parsed       (assoc parsed :scope narrowed)
+        client       (proto/get-client (:client-store provider) (:client_id parsed))
         csrf-token   (generate-csrf-token)
         oauth-params (select-keys parsed oauth-param-keys)
         params-sig   (sign-oauth-params csrf-token oauth-params)]
@@ -396,30 +396,20 @@
      :headers {"Location" (login-redirect-url request)}
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
-          (let [client-id    (:client_id query-params)
-                redirect-uri (:redirect_uri query-params)
-                client       (when (string? client-id)
-                               (proto/get-client (:client-store provider) client-id))]
-            ;; RFC 6749 section 4.1.2.1: never redirect an error until the client and its redirect_uri are validated.
-            (if-not (and client (some #{redirect-uri} (:redirect-uris client)))
-              (do
-                (log/warn "OAuth authorize request has an unknown client or unregistered redirect_uri")
+          (try
+            (authorization-consent-response provider query-params request)
+            (catch ExceptionInfo e
+              (log/warnf "OAuth authorize request failed: %s" (ex-message e))
+              ;; Reported to the user in their own browser, never by redirecting to the client's redirect URI.
+              ;; Dynamic registration is unauthenticated, so a client can register any redirect URI it likes, and
+              ;; redirecting errors there would turn a link on this host into a zero-click open redirector
+              ;; (RFC 9700 section 4.11).
+              (let [data (ex-data e)]
                 {:status  400
                  :headers {"Content-Type" "application/json"}
-                 :body    {:error             "invalid_request"
-                           :error_description invalid-authorization-request-description}})
-              (try
-                (authorization-consent-response provider client query-params request)
-                (catch ExceptionInfo e
-                  (log/warnf "OAuth authorize request failed: %s" (ex-message e))
-                  (let [data (ex-data e)]
-                    {:status  302
-                     :headers {"Location" (oidc/deny-authorization
-                                           provider
-                                           {:redirect_uri redirect-uri, :state (:state query-params)}
-                                           (authorization-error-code data)
-                                           (or (:error-description data) invalid-authorization-request-description))}
-                     :body    ""}))))))
+                 :body    {:error             (authorization-error-code data)
+                           :error_description (or (:error-description data)
+                                                  invalid-authorization-request-description)}}))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"
