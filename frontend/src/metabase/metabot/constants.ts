@@ -163,6 +163,7 @@ export const TOOL_MESSAGES = {
   },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },
+  show_entity: { active: () => t`Showing item`, done: () => t`Showed item` },
   search_data_sources: {
     active: () => t`Checking available data sources`,
     done: () => t`Checked available data sources`,

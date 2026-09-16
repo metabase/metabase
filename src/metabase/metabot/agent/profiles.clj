@@ -121,6 +121,7 @@
   :prompt-template "internal.selmer"
   :max-iterations  15
   :tools           [#'tools/search-tool
+                    #'tools/show-entity-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/read-resource-tool
                     #'tools/create-sql-query-tool
@@ -177,15 +178,16 @@
                         #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
 
-;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
-;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
-;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
-;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
+;; :nlq and :nlq-fallback both search and show saved content. When the library index can serve queries,
+;; :nlq also offers retrieve_library_entities for discovering query sources; otherwise it falls back to
+;; general NLQ search. The redirect keeps the external profile-id :nlq for telemetry / recent-views / skills.
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  15
   :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/nlq-search-tool
+                    #'tools/show-entity-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool
@@ -197,6 +199,7 @@
   :prompt-template "natural-language-querying-fallback.selmer"
   :max-iterations  15
   :tools           [#'tools/nlq-search-tool
+                    #'tools/show-entity-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool

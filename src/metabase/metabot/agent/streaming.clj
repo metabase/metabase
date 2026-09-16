@@ -18,6 +18,7 @@
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
+(def shown-entity-type "AI-SDK data type for inline existing entities." "shown_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
@@ -139,6 +140,13 @@
   [entity]
   {:type :data
    :data-type generated-entity-type
+   :data entity})
+
+(defn shown-entity-part
+  "Create a persisted inline reference to an existing entity with `:type`, `:id`, `:title`, and `:url`."
+  [entity]
+  {:type :data
+   :data-type shown-entity-type
    :data entity})
 
 (defn entity-saved-part

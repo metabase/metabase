@@ -148,11 +148,15 @@
 (deftest ^:parallel messages->client-messages-data-parts-test
   (testing "data parts are converted to data_part message parts"
     (let [blocks [{:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}
+                  {:type "data-shown_entity" :data {:type "question" :id 42 :title "Birds" :url "/question/42"}}
                   {:type "data-todo_list"   :data [{:id "t1"}]}
                   {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}]]
       (is (=? [{:role "agent" :type "data_part"
                 :part {:type "data-generated_entity"
                        :data {:type "dashboard" :url "/auto/dashboard/table/1"}}}
+               {:role "agent" :type "data_part"
+                :part {:type "data-shown_entity"
+                       :data {:type "question" :id 42 :title "Birds" :url "/question/42"}}}
                {:role "agent" :type "data_part"
                 :part {:type "data-todo_list" :data [{:id "t1"}]}}
                {:role "agent" :type "data_part"
