@@ -18,9 +18,15 @@
   (t2/count :model/ApiKey :scope nil))
 
 (mu/defn unscoped-api-keys
-  "The ApiKeys without a scope."
+  "The ApiKeys without a scope, most recently used first (nulls last — a key never used sorts after
+  every key that has been)."
   []
-  (t2/select :model/ApiKey :scope nil))
+  (t2/select :model/ApiKey :scope nil
+             {:order-by [[:last_used_at (case (mdb/db-type)
+                                          ;; NULLS LAST isn't valid MySQL syntax, but MySQL already sorts
+                                          ;; NULLs last on DESC by default (it treats NULL as the lowest value).
+                                          (:postgres :h2) :desc-nulls-last
+                                          :mysql          :desc)]]}))
 
 (mu/defn api-key
   "The ApiKey with `id`, or nil."
