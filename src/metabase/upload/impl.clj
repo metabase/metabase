@@ -31,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
@@ -188,7 +189,7 @@
          (t/format time-format (strictly-monotonic-now)))))
 
 (mu/defn- database-type
-  [driver
+  [driver      :- :keyword
    column-type :- (into [:enum] upload-types/column-types)]
   (let [external-type (keyword "metabase.upload" (name column-type))]
     (driver/upload-type->database-type driver external-type)))
@@ -205,9 +206,7 @@
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
-   :- [:map
-       [:schema {:optional true} [:maybe :string]]
-       [:name :string]]]
+   :- [:or :metabase.warehouse-schema.schema/table :metabase.warehouse-schema.schema/table.update]]
   (if (str/blank? schema)
     name
     (str schema "." name)))
@@ -618,7 +617,7 @@
   - `schema-name`: the name of the schema to create the table in (optional).
   - `table-prefix`: the prefix to use for the table name (optional)."
   [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
-   :- [:map
+   :- [:map {:closed true}
        [:collection-id [:maybe ms/PositiveInt]]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
@@ -779,7 +778,7 @@
 (defn- invalidate-cached-models!
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
-  ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
+  ;; NOTE: It is important that this logic is kept in sync with `models-based-on-upload`
   (when-let [model-ids (->> (upload.db/unarchived-models-for-table (:id table))
                             (filter (comp #{(:id table)} only-table-id))
                             (map :id)
@@ -976,7 +975,7 @@
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
   [{:keys [filename ^File file table-id action]}
-   :- [:map
+   :- [:map {:closed true}
        [:table-id ms/PositiveInt]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
@@ -1000,16 +999,26 @@
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 
-(mu/defn model-hydrate-based-on-upload
-  "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
-  [models :- [:sequential [:map
-                           ;; query_type and dataset_query can be null in tests, so we make them nullable here.
-                           ;; they should never be null in production
-                           [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-                           [:query_type    [:maybe [:or :string :keyword]]]
-                           [:table_id      [:maybe ms/PositiveInt]]
-                           ;; is_upload can be provided for an optional optimization
-                           [:is_upload {:optional true} [:maybe :any]]]]]
+(mr/def ::based-on-upload-input
+  "The columns of a model Card that decide its `:based_on_upload`."
+  [:map {:closed true}
+   [:id            ms/PositiveInt]
+   ;; query_type and dataset_query can be null in tests, so we make them nullable here.
+   ;; they should never be null in production
+   [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:query_type    [:maybe [:or :string :keyword]]]
+   [:table_id      [:maybe ms/PositiveInt]]
+   ;; is_upload can be provided for an optional optimization
+   [:is_upload {:optional true} [:maybe :boolean]]])
+
+(def based-on-upload-input-keys
+  "The keys of a model that [[models-based-on-upload]] reads."
+  [:id :dataset_query :query_type :table_id :is_upload])
+
+(mu/defn models-based-on-upload
+  "The `:based_on_upload` table id of each of `models` that has one, keyed by model id. Assumes each item of `models`
+  represents a model."
+  [models :- [:sequential ::based-on-upload-input]]
   (let [table-ids             (->> models
                                    ;; as an optimization when listing collection items (GET /api/collection/items),
                                    ;; we might already know that the table is not an upload if is_upload=false. We
@@ -1018,11 +1027,14 @@
                                    (keep :table_id)
                                    set)
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
-    (for [model models]
-      ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
-      ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
-      (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
-                                             (only-table-id model))))))
+    (into {}
+          (keep (fn [model]
+                  ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
+                  ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
+                  (when-let [table-id (when (has-uploadable-table? model)
+                                        (only-table-id model))]
+                    [(:id model) table-id])))
+          models)))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
@@ -1037,6 +1049,8 @@
   Excluding checking the users write permissions for the card, `:based_on_upload` reflects the user's
   ability to upload to the underlying table through the card."
   [cards]
-  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))
-        card->maybe-model (comp id->model :id)]
-    (map #(or (card->maybe-model %) %) cards)))
+  (let [id->table-id (models-based-on-upload (into []
+                                                   (comp (filter #(= (:type %) :model))
+                                                         (map #(select-keys % based-on-upload-input-keys)))
+                                                   cards))]
+    (map #(m/assoc-some % :based_on_upload (id->table-id (:id %))) cards)))

@@ -86,7 +86,10 @@
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
-  [attributes :- [:map-of :keyword [:maybe SimpleAttributes]]
+  [attributes :- [:map {:closed true}
+                  [:jwt    {:optional true} [:maybe SimpleAttributes]]
+                  [:tenant {:optional true} [:maybe SimpleAttributes]]
+                  [:user   {:optional true} [:maybe SimpleAttributes]]]
    system :- [:maybe SystemAttributes]]
   (letfn [(value-map [s f vs] (into {}
                                     (for [[k v] vs]

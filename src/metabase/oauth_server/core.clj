@@ -54,7 +54,8 @@
 
 (defn mcp-resource-advertised-scopes
   "The RFC 9728 `scopes_supported` for the MCP resource at `path`: the baseline a client requests on first connect, a
-  subset of [[mcp-resource-scopes]]. The rest is reached by a 403 `insufficient_scope` step-up."
+  subset of [[mcp-resource-scopes]]."
+  ;; Narrower than what the resource accepts: a client reaches the rest by a 403 `insufficient_scope` step-up.
   [_path]
   (vec (mcp/v2-baseline-scopes)))
 
@@ -74,19 +75,37 @@
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
   (into (sorted-set) (supported-scopes)))
 
-(defn- with-default-grant-ceiling
-  "Wrap `client-store` so a dynamically-registered client's `:scopes` always include [[default-grant-scopes]].
+(defn- widen-to-grant-ceiling
+  "`client` with the scopes it lacks from `mcp-scopes` appended to its `:scopes` when it is dynamically registered,
+   and those it lacks from `ceiling` too while `registration-enabled?`. Any other `client`, nil included, is returned
+   unchanged."
+  [client registration-enabled? mcp-scopes ceiling]
+  (cond-> client
+    (= "dynamic" (:registration-type client))
+    (update :scopes (fn [scopes]
+                      (into (vec scopes)
+                            (comp (remove (set scopes)) (distinct))
+                            (cond-> mcp-scopes registration-enabled? (concat ceiling)))))))
 
-  A registration `scope` can only widen what the client may later request, never narrow it: MCP clients register with
-  the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would refuse.
-  Computed on read, so a client registered before a scope existed can still request it. Static clients are unchanged."
+(defn- with-default-grant-ceiling
+  "Wrap `client-store` so that reading a client applies [[widen-to-grant-ceiling]] with the MCP surface's scopes,
+   [[default-grant-scopes]], and the dynamic-registration setting. Writes pass through unchanged."
   [client-store]
+  ;; A registration `scope` can only widen what a client may later request, never narrow it: MCP clients register with
+  ;; the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would
+  ;; refuse. Applied on read, so a client registered before a scope existed can still request it. Every read sees the
+  ;; widened `:scopes`, including the RFC 7592 client read (`GET /oauth/register/:client-id`).
+  ;;
+  ;; The MCP scopes are added whatever the setting says: turning registration off blocks new clients, but a client
+  ;; that registered with the baseline must still be able to step up, or its `/authorize` is a bare 400. Each scope
+  ;; still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
+  ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
-      (let [client (oidc.proto/get-client client-store client-id)]
-        (cond-> client
-          (= "dynamic" (:registration-type client))
-          (update :scopes #(into (vec %) (remove (set %)) (default-grant-scopes))))))
+      (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
+                              (oauth-settings/oauth-server-dynamic-registration-enabled)
+                              (mcp/v2-scopes)
+                              (default-grant-scopes)))
     (register-client [_ client-config]
       (oidc.proto/register-client client-store client-config))
     (update-client [_ client-id updated-config]

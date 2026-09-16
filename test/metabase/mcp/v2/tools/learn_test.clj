@@ -77,7 +77,7 @@
         (is (not (str/includes? text leaked)))))))
 
 (defn- tool-descriptions
-  "Every registered tool's description. `nil` token-scopes sees the whole surface."
+  "Every registered tool's description, as `tools/list` publishes them to every caller."
   []
   (keep :description (registry/list-tools)))
 

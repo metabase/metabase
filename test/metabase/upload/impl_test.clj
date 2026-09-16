@@ -331,7 +331,18 @@
          auxiliary-sync-steps     :never
          csv-file-prefix          "example csv file"}
     :as options}
-   f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
+   :- [:map {:closed true}
+       [:table-prefix          {:optional true} [:maybe :string]]
+       [:collection-id         {:optional true} [:maybe ::lib.schema.id/collection]]
+       [:grant-permission?     {:optional true} [:maybe :boolean]]
+       [:uploads-enabled       {:optional true} [:maybe :boolean]]
+       [:user-id               {:optional true} [:maybe ::lib.schema.id/user]]
+       [:db-id                 {:optional true} [:maybe ::lib.schema.id/database]]
+       [:auxiliary-sync-steps  {:optional true} [:maybe [:enum :asynchronous :synchronous :never]]]
+       [:csv-file-prefix       {:optional true} [:maybe :string]]
+       [:file                  {:optional true} [:maybe [:fn #(instance? File %)]]]
+       [:schema-name           {:optional true} [:maybe :string]]]
+   f :- fn?]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})

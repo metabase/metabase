@@ -1328,7 +1328,7 @@
             :is-creation? true
             :object       (merge {:id id}
                                  (when (= model :model/Card)
-                                   {:type "question"}))}))
+                                   {:type :question}))}))
         (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search"
                                            :q search-term
@@ -1468,7 +1468,7 @@
           :is-creation? true
           :object       (merge {:id id}
                                (when (= model :model/Card)
-                                 {:type "question"}))}))
+                                 {:type :question}))}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today"
                                          :calculate_available_models true)]
@@ -1494,7 +1494,7 @@
             :is-creation? true
             :object       (merge {:id id}
                                  (when (= model :model/Card)
-                                   {:type "question"}))}))
+                                   {:type :question}))}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta)
                                          :calculate_available_models true)
@@ -1593,13 +1593,13 @@
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
-        :object       {:id card-id-1 :type "question"}})
+        :object       {:id card-id-1 :type :question}})
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2
         :is-creation? true
-        :object       {:id card-id-2 :type "question"}})
+        :object       {:id card-id-2 :type :question}})
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
                  ;; for user that doesn't have first_name or last_name, should fall backs to email

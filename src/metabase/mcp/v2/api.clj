@@ -12,6 +12,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
+   [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
@@ -46,13 +47,15 @@
     (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})})))
 
 (defn- step-up-scopes
-  "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that `token-scopes` holds or `required`
-   names, in `surface-scopes` order, then any `required` scope outside the surface, sorted. No scope repeats."
+  "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
+   `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
   [surface-scopes token-scopes required]
-  ;; The held scopes ride along because a client may replace its grant with the challenged scope.
-  (let [wanted (into (set (filter string? token-scopes)) required)]
-    (into (filterv wanted surface-scopes)
-          (sort (distinct (remove (set surface-scopes) required))))))
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
+  ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
+  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  (let [held (set (filter string? token-scopes))]
+    (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
+      (not (some #{required} surface-scopes)) (conj required))))
 
 (defn- step-up-description
   "The `insufficient_scope` challenge's `error_description`: `description`, which names the missing permission, then a
@@ -61,6 +64,14 @@
   ;; The note covers a permission never granted and one the user unticked mid-session, so it doesn't say the
   ;; permission starts unticked. Printable ASCII without `\"` or `\\`: what RFC 6750 allows in `error_description`.
   (str description ". The user must tick this permission on the consent screen."))
+
+(defn- with-step-up-challenge
+  "`error-response` marked with [[transport/insufficient-scope]] for the scope an `insufficient-scope` detail names,
+   asking for [[step-up-scopes]] over `token-scopes`, with [[step-up-description]] as the `error_description`."
+  [error-response token-scopes {:keys [required-scope description]}]
+  (transport/insufficient-scope error-response
+                                (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
+                                (step-up-description description)))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
@@ -79,11 +90,7 @@
                              :request-context  request-context})]
     (if-let [{:keys [code message insufficient-scope]} error]
       (cond-> (transport/jsonrpc-error id code message)
-        insufficient-scope (transport/insufficient-scope
-                            (step-up-scopes mcp.paths/v2-surface-scopes
-                                            token-scopes
-                                            [(:required-scope insufficient-scope)])
-                            (step-up-description (:description insufficient-scope))))
+        insufficient-scope (with-step-up-challenge token-scopes insufficient-scope))
       (transport/jsonrpc-response id result))))
 
 (defn- handle-resources-list [id _params]
@@ -93,17 +100,13 @@
   "The JSON-RPC error refusing request `id` a read of `uri` because `token-scopes` lack `required-scope`, marked with
    [[transport/insufficient-scope]]."
   [id uri token-scopes required-scope]
-  (let [held (sort (filter string? token-scopes))]
-    (transport/insufficient-scope
-     (transport/jsonrpc-error id -32600 (str "Insufficient scope to read resource: " uri ". Requires " required-scope "; "
-                                             (if (seq held)
-                                               (str "your token holds " (str/join ", " held) ".")
-                                               "your token holds no scopes.")))
-     (step-up-scopes mcp.paths/v2-surface-scopes token-scopes [required-scope])
-     (step-up-description
-      (str uri " requires " required-scope
-           (when-let [label (registry/english-scope-label required-scope)]
-             (str " (" label ")")))))))
+  (with-step-up-challenge
+    (transport/jsonrpc-error
+     id
+     common/error-code-invalid-request
+     (registry/insufficient-scope-message (str "read resource: " uri) required-scope token-scopes))
+    token-scopes
+    (registry/insufficient-scope-detail uri required-scope)))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
@@ -169,19 +172,20 @@
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
        "query_handle from execute_query or execute_sql when you have one); don't draw the chart yourself.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
-       ;; The refused call is what makes a client save the step-up scope: a model that refuses up front leaves the
-       ;; user's re-authentication asking for the baseline again. The consent screen starts that permission unticked,
-       ;; so a user told nothing clicks Authorize and the step-up grants nothing.
+       ;; Must match what the consent screen shows: a tick box per permission, the ones this connection lacks left
+       ;; unticked. The refused call is what makes a client save the step-up scope: a model that refuses up front
+       ;; leaves the user's re-authentication asking for the baseline again, so a user told nothing clicks Authorize
+       ;; and the step-up grants nothing.
        "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
-       "execution failed\") usually means a missing permission, not an expired login. When a tool needs a permission "
-       "this connection lacks (a call failed, or the list below says so), tell the user which one (each tool's "
-       "description starts with the permission it requires) and why, and ask whether to grant it. If they agree, make "
-       "the call anyway: the refusal is what makes their client request it, and reconnecting before a refused call "
-       "won't offer it. A permission can also be taken away mid-session, if the user or another window unticked it. "
-       "Some clients then open the consent screen "
-       "themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; Codex: "
-       "`codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; tell them to "
-       "tick it. Retry once they have reconnected."))
+       "execution failed\") usually means a missing permission, not an expired login. When a tool call or resource "
+       "read needs a permission this connection lacks (it failed, or the list below says so), tell the user which "
+       "tool or resource failed, which permission it needs (each tool's description starts with the permission it "
+       "requires), and why, and ask whether to grant it. If they agree, make the call anyway: the refusal is what "
+       "makes their client request it, and reconnecting before a refused call won't offer it. A permission can also "
+       "be taken away mid-session, if the user or another window unticked it. Some clients then open the consent "
+       "screen themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, Re-authenticate; "
+       "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
+       "tell them to tick it. Retry once they have reconnected."))
 
 (defn- connection-permissions
   "Sentences telling the model which of `surface-scopes`, by scope ID in their order, `token-scopes` grants and which
@@ -206,16 +210,13 @@
                 (str "\n"))))
 
 (def ^:private default-ask-scopes
-  "The `scope` of the 401 challenge: [[metabase.mcp.paths/v2-baseline-scopes]], which an uninstructed client requests
-  on first connect.
-
-  Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
-  `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
-  `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
-  surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]].
-
-  Every scope here must be inside the OAuth server's default grant ceiling, or a client that follows the challenge
-  is answered \"Invalid scope\"."
+  "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
+  inside the OAuth server's default grant ceiling."
+  ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
+  ;; `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
+  ;; `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
+  ;; surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered
+  ;; "Invalid scope" for a client that follows the challenge.
   mcp.paths/v2-baseline-scopes)
 
 (def ^{:arglists '([request respond raise])} handler

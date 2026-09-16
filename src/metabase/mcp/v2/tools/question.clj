@@ -135,12 +135,11 @@
    unrestricted sentinel, which matches everything)."
   [token-scopes]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
-    (throw (ex-info (format (str "Saving a native (SQL) query requires the %s scope — this token can "
-                                 "write content but not author raw SQL.")
-                            metabot.scope/agent-sql-run)
-                    {:status-code            403
-                     ::common/error-code     common/error-code-invalid-request
-                     ::common/required-scope metabot.scope/agent-sql-run})))
+    (common/throw-insufficient-scope!
+     (format (str "Saving a native (SQL) query requires the %s scope — this token can "
+                  "write content but not author raw SQL.")
+             metabot.scope/agent-sql-run)
+     metabot.scope/agent-sql-run))
   (v2.queries/check-execute-sql-enabled! "Saving a native (SQL) query"))
 
 (defn- resolve-query-source
@@ -388,7 +387,7 @@
    the dashboard whenever `:dashboard_id` is present, independent of `:archived`."
   [card-before card-updates]
   (cond-> card-updates
-    (and (api/column-will-change? :dashboard_id card-before card-updates)
+    (and (api/column-will-change? (:dashboard_id card-before) (get card-updates :dashboard_id ::api/not-provided))
          (:dashboard_id card-updates))
     (as-> updates
           (do

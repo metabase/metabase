@@ -269,7 +269,10 @@
                     :when (int? (:id card))]
                 (-> (api/read-check card)
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id dashcard-id :dashboard_id (:id dashboard))))]
+                    (assoc :dashboard_card_id dashcard-id
+                           :dashboard_id      (:id dashboard)
+                           :include_csv       false
+                           :include_xls       false)))]
     (when (empty? cards)
       (common/throw-teaching-error
        "This dashboard has no cards to send — a subscription needs at least one saved question, model, or metric on the dashboard."))
@@ -429,12 +432,11 @@
    which matches everything). Mirrors alert_write's check of the same scope."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
-    (throw (ex-info (format (str "%s runs the dashboard's questions and delivers the results, which requires the "
-                                 "%s scope — this token can manage subscriptions but not execute queries.")
-                            action metabot.scope/agent-query-run)
-                    {:status-code            403
-                     ::common/error-code     common/error-code-invalid-request
-                     ::common/required-scope metabot.scope/agent-query-run}))))
+    (common/throw-insufficient-scope!
+     (format (str "%s runs the dashboard's questions and delivers the results, which requires the "
+                  "%s scope — this token can manage subscriptions but not execute queries.")
+             action metabot.scope/agent-query-run)
+     metabot.scope/agent-query-run)))
 
 (defn- execute-scope-trigger
   "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update

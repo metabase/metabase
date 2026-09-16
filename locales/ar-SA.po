@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-01 05:46+0000\n"
+"POT-Creation-Date: 2026-09-08 05:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Arabic, Saudi Arabia\n"
 "Language: ar_SA\n"
-"PO-Revision-Date: 2026-09-08 05:41\n"
+"PO-Revision-Date: 2026-09-15 05:40\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -80,7 +80,6 @@ msgstr "مجموعة حسب "
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarContainer.tsx
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardToast/MoveCardToast.tsx
 #: metabase/server/middleware/exceptions.clj
@@ -176,7 +175,7 @@ msgstr "حدد قاعدة بيانات"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 msgid "Select a table"
 msgstr "حدد جدول"
 
@@ -260,7 +259,7 @@ msgstr "تحرير الاتصال"
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/SidebarHeader.tsx
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
 #: frontend/src/metabase/transforms/components/RunInfo/RunInfo.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/SidebarHeader/SidebarHeader.tsx
@@ -703,9 +702,9 @@ msgstr "أزِل الوصول من كل المجموعات"
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/hooks/useCommandPalette.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
 #: frontend/src/metabase/transforms/components/TransformHeader/TransformTabs.tsx
 #: frontend/src/metabase/visualizer/components/Footer/Footer.tsx
 msgid "Settings"
@@ -1348,6 +1347,12 @@ msgid "JWT"
 msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Server settings"
+msgstr "إعدادات الخادم"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
 msgid "JWT Identity Provider URI"
 msgstr "مزود هوية JWT URI"
@@ -1357,31 +1362,45 @@ msgid "String used by the JWT signing key"
 msgstr "السلسلة المستخدمة بواسطة مفتاح توقيع JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Email attribute"
-msgstr "سمة البريد الإلكتروني"
+msgid "User attribute configuration"
+msgstr "إعداد سمات المستخدم"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "You can send additional user attributes to {0} by adding the attributes as key/value pairs to your JWT"
+msgstr "تقدر ترسل سمات مستخدم إضافية إلى {0} بإضافة السمات كأزواج مفتاح/قيمة إلى JWT حقك"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Email attribute key"
+msgstr "مفتاح سمة البريد الإلكتروني"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "First name attribute key"
+msgstr "مفتاح سمة الاسم الأول"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Last name attribute key"
+msgstr "مفتاح سمة اسم العائلة"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Group assignment attribute key"
+msgstr "مفتاح سمة تعيين المجموعة"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Tenant assignment attribute key"
+msgstr "مفتاح سمة تعيين المستأجر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "First name attribute"
-msgstr "سمة الاسم الأول"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Last name attribute"
-msgstr "سمة اسم العائلة"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Group assignment attribute"
-msgstr "سمة إسناد المجموعة"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tenant assignment attribute"
-msgstr "سمة تعيين المستأجر"
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Group mapping"
+msgstr "ربط المجموعات"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "Lets you assign users to custom {0} groups based on their JWT attributes"
+msgstr "يتيح لك تعيين المستخدمين في مجموعات {0} مخصصة بناءً على سمات JWT لديهم"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Group Name"
@@ -1408,6 +1427,7 @@ msgstr "احفظ وفعّل"
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
 #: frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/EditWebhookModal.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx
@@ -1478,10 +1498,6 @@ msgid "OpenID Connect"
 msgstr "OpenID Connect"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Server settings"
-msgstr "إعدادات الخادم"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributeMappingEditor.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
@@ -1549,10 +1565,6 @@ msgstr "اتركه فارغًا للاحتفاظ بالقيمة الحالية"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Synchronize group membership with your SSO"
-msgstr "مزامنة عضوية المجموعة مع SSO الخاص بك"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
 msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
 msgstr "لتفعيل ذلك، ستحتاج إلى إنشاء تعيينات لإخبار {0} بأي مجموعة (أو مجموعات) يجب إضافة المستخدمين إليها بناءً على مجموعة SSO التي ينتمون إليها."
@@ -1585,6 +1597,21 @@ msgstr "تعيين السمات"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
 msgstr "اربط claims في OIDC بسمات المستخدم. استخدم أسماء claims القياسية في OIDC أو claims المخصصة لدى موفّرك."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Email attribute"
+msgstr "سمة البريد الإلكتروني"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "First name attribute"
+msgstr "سمة الاسم الأول"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Last name attribute"
+msgstr "سمة اسم العائلة"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
@@ -1631,10 +1658,6 @@ msgid "SAML"
 msgstr "سمل"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Set up SAML-based SSO"
-msgstr "قم بإعداد SSO المستند إلى SAML"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #, javascript-format
 msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
 msgstr "استخدم الإعدادات أدناه لتكوين SSO عبر SAML. إذا كان لديك أي أسئلة ، تحقق من {0}."
@@ -1650,8 +1673,9 @@ msgid "Configure your identity provider (IdP)"
 msgstr "قم بتكوين مزود هويتك (IDP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Your identity provider will need the following info about Metabase."
-msgstr "سيحتاج مزود هويتك إلى المعلومات التالية حول Metabase."
+#, javascript-format
+msgid "Your identity provider will need the following info about {0}."
+msgstr "مزود الهوية لديك بيحتاج المعلومات التالية عن {0}."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1682,12 +1706,18 @@ msgid "User's last name attribute"
 msgstr "سمة الاسم الأخير للمستخدم"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tell Metabase about your identity provider"
-msgstr "أخبر Metabase عن مزود هويتك"
+msgid "Tenant assignment attribute"
+msgstr "سمة تعيين المستأجر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Metabase will need the following info about your provider."
-msgstr "سوف تحتاج Metabase إلى المعلومات التالية حول مزودك."
+#, javascript-format
+msgid "Tell {0} about your identity provider"
+msgstr "عرّف {0} على مزود الهوية لديك"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "{0} will need the following info about your provider."
+msgstr "{0} بيحتاج المعلومات التالية عن مزودك."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
@@ -1724,12 +1754,6 @@ msgstr "شه..."
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore alias"
 msgstr "الاسم المستعار لمخزن مفاتيح SAML"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
-"be added to based on the SSO group they're in."
-msgstr "لتمكين ذلك ، ستحتاج إلى إنشاء تعيينات لإخبار Metabase بالجماعة (المجموعات) التي يجب على المستخدمين\n"
-"يضاف إلى مجموعة SSO التي هم فيها."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]"
@@ -2448,6 +2472,7 @@ msgstr "عيّن عنوان URL لخادم التطوير لتحميل كود ا
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
@@ -2580,6 +2605,7 @@ msgstr "اطّلع على سجل تغييرات SDK"
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 msgid "Enabled"
@@ -2613,6 +2639,7 @@ msgid "Add"
 msgstr "إضافة"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
 #: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
 #: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
@@ -2648,6 +2675,11 @@ msgstr "تم بناؤه بإصدار SDK 1.x، لكن هذا الإصدار من
 #, javascript-format
 msgid "Requires Metabase {0}, but this instance is on {1}."
 msgstr "يتطلب Metabase {0}، لكن هذا المثيل يعمل على {1}."
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/warning-messages.ts
+#, javascript-format
+msgid "The identifier \"{0}\" contains \":\", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without \":\"."
+msgstr "المعرّف \"{0}\" يحتوي على \":\"، وهذا لم يعد مسموحًا به، لذلك ما يتم عرض هذا التصور للمشاهدين. احذفه وارفع الباندل باسم بدون \":\"."
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/custom-viz-plugins.tsx
 msgid "Plugin bundle must have a default export that is a factory function"
@@ -2887,7 +2919,7 @@ msgstr "تعذر جلب البيانات بشكل صحيح: {0}"
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
@@ -3286,14 +3318,12 @@ msgid "Move table to…"
 msgstr "انقل الجدول إلى…"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table name"
 msgstr "فشل تحديث اسم الجدول"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table name updated"
 msgstr "تم تحديث اسم الجدول"
 
@@ -3372,14 +3402,12 @@ msgid "New measure"
 msgstr "مقياس جديد"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table description"
 msgstr "فشل تحديث وصف الجدول"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table description updated"
 msgstr "تم تحديث وصف الجدول"
 
@@ -3781,7 +3809,7 @@ msgid "The following tables will be replicated."
 msgstr "سيتم نسخ الجداول التالية."
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #, javascript-format
 msgid "{0} rows"
 msgstr "{0} صفوف"
@@ -4031,7 +4059,7 @@ msgstr "يمكنك أيضًا إضافة قواعد بيانات برمجيًا 
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 #: frontend/src/metabase/admin/upsells/UpsellRemoteSync.tsx
@@ -4042,8 +4070,8 @@ msgstr "يمكنك أيضًا إضافة قواعد بيانات برمجيًا 
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
 #: frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/HelpText/HelpText.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 msgid "Learn more"
 msgstr "اعرف المزيد"
 
@@ -4585,8 +4613,8 @@ msgstr "نموذج"
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Table"
 msgstr "جدول"
@@ -5416,7 +5444,7 @@ msgstr "إزالة التحقق"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts
 #: frontend/src/metabase/common/components/RevisionHistoryTimeline/utils.ts
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionItem.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "You"
 msgstr "أنت"
 
@@ -6237,8 +6265,8 @@ msgstr "الملف الشخصي"
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 msgid "Date"
 msgstr "التاريخ"
@@ -7356,6 +7384,7 @@ msgid "No collections found"
 msgstr "لم يتم العثور على مجموعات"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TopLevelCollectionsList/TopLevelCollectionsList.tsx
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 msgid "Failed to load collections"
 msgstr "فشل تحميل المجموعات"
 
@@ -7420,6 +7449,7 @@ msgid "Something went wrong. Please try again."
 msgstr "حدث خطأ ما. الرجاء المحاولة مرة أخرى."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/collections/constants.ts
 #: frontend/src/metabase/common/collections/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
@@ -7899,6 +7929,7 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "هذه السمة موروثة من المستأجر، لكن يمكنك تجاوز قيمتها"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
 msgid "Attributes"
@@ -9095,7 +9126,13 @@ msgstr "و"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "جدول"
+msgid_plural "tables"
+msgstr[0] "جداول"
+msgstr[1] "جدول"
+msgstr[2] "جداول"
+msgstr[3] "جداول"
+msgstr[4] "جداول"
+msgstr[5] "جداول"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9201,6 +9238,7 @@ msgid "Items cannot be saved directly to the tenant root collection. Please sele
 msgstr "لا يمكن حفظ العناصر مباشرةً في المجموعة الجذرية للمستأجر. يرجى اختيار مجموعة فرعية."
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-root-items.ts
 #: frontend/src/metabase/dashboard/components/QuestionPicker/utils/tenant-collections.ts
 #: frontend/src/metabase/reference/databases/DatabaseList.tsx
@@ -10363,7 +10401,7 @@ msgstr "الألوان"
 #: frontend/src/metabase/metadata/components/FieldSection/FieldSection.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStep.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
 #: frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.tsx
 msgid "Preview"
@@ -10809,9 +10847,17 @@ msgid "The analytics server is undergoing maintenance. {0}."
 msgstr "خادم التحليلات تحت الصيانة. {0}."
 
 #: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "All collections"
+msgstr "كل المجموعات"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableCollection.tsx
 msgid "You don't have access to this collection"
 msgstr "ليس لديك صلاحية الوصول إلى هذه المجموعة"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "There are no collections to show"
+msgstr "ما فيه مجموعات لعرضها"
 
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "Something's gone wrong"
@@ -10830,6 +10876,11 @@ msgstr "بتحتاج تحفظ تغييراتك قبل المغادرة لإنش�
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "You can't save questions in Guest Embed mode"
 msgstr "لا يمكنك حفظ الأسئلة في وضع Embedding للضيوف"
+
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
+#: frontend/src/metabase/common/collections/utils.ts
+msgid "Your personal collection"
+msgstr "مجموعتك الشخصية"
 
 #: frontend/src/embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token.ts
 msgid "JWT tokens cannot be passed as id. Use the token prop instead."
@@ -12039,7 +12090,7 @@ msgstr "داخل"
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
 msgid "Number"
 msgstr "رقم"
@@ -12131,7 +12182,7 @@ msgstr "سلسلة"
 #: frontend/src/metabase-lib/v1/parameters/constants.ts
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Boolean"
 msgstr "منطقي (boolean)"
 
@@ -12389,7 +12440,7 @@ msgstr "سيؤدي ذلك إلى حذف الصف بشكل دائم. لا يوج�
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddHeadingOrTextButton.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Text"
@@ -12501,7 +12552,7 @@ msgstr "مطلوب"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Default value"
 msgstr "القيمة الافتراضية"
 
@@ -12655,6 +12706,14 @@ msgstr "النموذج الافتراضي"
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Metabot, AI explorations and SQL generation all run on this model."
 msgstr "يعمل Metabot واستكشافات الذكاء الاصطناعي وتوليد SQL جميعها على هذا النموذج."
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Fast mode"
+msgstr "الوضع السريع"
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment."
+msgstr "احصل على ردود أسرع من النموذج الافتراضي بسعر أعلى لكل توكن. في Anthropic، هذا يتطلب حسابًا مسجلًا في fast mode research preview، وما هو متاح مع التزام Priority Tier."
 
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Mini model"
@@ -13114,7 +13173,7 @@ msgstr "الأداء"
 #: frontend/src/metabase/admin/app/reducers.ts
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "المساعدة"
 
@@ -15488,10 +15547,10 @@ msgstr "يجب عليك على الأرجح تغيير هذا الإعداد إ�
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "لا شيء"
@@ -15631,6 +15690,10 @@ msgid "Password"
 msgstr "كلمة المرور"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "User schema"
+msgstr "مخطط المستخدم"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User search base"
 msgstr "قاعدة بحث المستخدمين"
 
@@ -15664,6 +15727,12 @@ msgstr "إدارة التصورات"
 #: frontend/src/metabase/palette/constants.ts
 msgid "General"
 msgstr "عام"
+
+#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: frontend/src/metabase/palette/constants.ts
+msgid "Domains"
+msgstr "النطاقات"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/WebhooksSettingsPage.tsx
@@ -15744,8 +15813,8 @@ msgid "Turn on \"Restrict image domains\" in {0} before enabling custom visualiz
 msgstr "فعّل \"Restrict image domains\" في {0} قبل تفعيل المرئيات المخصصة."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
-msgid "General settings"
-msgstr "الإعدادات العامة"
+msgid "Domains settings"
+msgstr "إعدادات النطاقات"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Custom chart types"
@@ -15778,6 +15847,56 @@ msgstr "تحكم كامل"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Enable, disable, and manage custom visualization plugins"
 msgstr "فعّل وعطّل وأدر بلجنات التصورات المخصصة"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for iframes in dashboards"
+msgstr "النطاقات المسموح بها لـ iframes في لوحات المعلومات"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
+msgstr "تأكد إنك تثق بالمصادر اللي تسمح لمستخدميك بتضمينها في لوحات المعلومات. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict image domains"
+msgstr "تقييد نطاقات الصور"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
+msgstr "مطلوب للمرئيات المخصصة. عطّل {0} قبل تعطيل هذا الإعداد."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Custom Visualizations"
+msgstr "التصورات المخصصة"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
+msgstr "قيّد Content Security Policy في المتصفح بحيث ما تنحمل الصور إلا من مثيل Metabase هذا أو من النطاقات اللي تذكرها أدناه. مطلوب لتفعيل المرئيات المخصصة. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
+msgstr "قيّد Content Security Policy في المتصفح بحيث ما تنحمل الصور إلا من مثيل Metabase هذا أو من النطاقات اللي تذكرها أدناه."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for images"
+msgstr "النطاقات المسموح بها للصور"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "النطاقات اللي تقدر الصور تنحمل منها في نص لوحة المعلومات، وأوصاف الكيانات، والمرئيات المخصصة. اتركها فارغة عشان تسمح فقط بالصور المستضافة على مثيل Metabase هذا. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "النطاقات اللي تقدر الصور تنحمل منها في نص لوحة المعلومات وأوصاف الكيانات. اتركها فارغة عشان تسمح فقط بالصور المستضافة على مثيل Metabase هذا. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
+msgstr "فعّل إعداد \"Restrict image domains\" أعلاه لتطبيق قائمة السماح هذه."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx
 msgid "From Name"
@@ -15828,8 +15947,8 @@ msgid "Email address for help requests"
 msgstr "عنوان البريد الإلكتروني لطلبات المساعدة"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Tables, X-Rays and domains"
-msgstr "الجداول وX-Rays والنطاقات"
+msgid "Tables and X-Rays"
+msgstr "الجداول و X-Rays"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Friendly table and field names"
@@ -15842,56 +15961,6 @@ msgstr "استبدال الساحرة والشرطات بالمساحات"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Enable X-Ray features"
 msgstr "فعّل ميزات X-Ray"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for iframes in dashboards"
-msgstr "النطاقات المسموح بها لـ iframes في لوحات المعلومات"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
-msgstr "تأكد إنك تثق بالمصادر اللي تسمح لمستخدميك بتضمينها في لوحات المعلومات. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict image domains"
-msgstr "تقييد نطاقات الصور"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
-msgstr "مطلوب للمرئيات المخصصة. عطّل {0} قبل تعطيل هذا الإعداد."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Custom Visualizations"
-msgstr "التصورات المخصصة"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
-msgstr "قيّد Content Security Policy في المتصفح بحيث ما تنحمل الصور إلا من مثيل Metabase هذا أو من النطاقات اللي تذكرها أدناه. مطلوب لتفعيل المرئيات المخصصة. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
-msgstr "قيّد Content Security Policy في المتصفح بحيث ما تنحمل الصور إلا من مثيل Metabase هذا أو من النطاقات اللي تذكرها أدناه."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for images"
-msgstr "النطاقات المسموح بها للصور"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "النطاقات اللي تقدر الصور تنحمل منها في نص لوحة المعلومات، وأوصاف الكيانات، والمرئيات المخصصة. اتركها فارغة عشان تسمح فقط بالصور المستضافة على مثيل Metabase هذا. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "النطاقات اللي تقدر الصور تنحمل منها في نص لوحة المعلومات وأوصاف الكيانات. اتركها فارغة عشان تسمح فقط بالصور المستضافة على مثيل Metabase هذا. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
-msgstr "فعّل إعداد \"Restrict image domains\" أعلاه لتطبيق قائمة السماح هذه."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
@@ -16165,8 +16234,8 @@ msgstr "قيم نموذجية:"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Select…"
 msgstr "حدّد…"
 
@@ -16816,12 +16885,12 @@ msgid "Create custom chart types tailored to your data using the Custom visualiz
 msgstr "أنشئ أنواع مخططات مخصصة ملائمة لبياناتك باستخدام SDK التصورات المخصصة."
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Build apps on your data"
-msgstr "أنشئ تطبيقات على بياناتك"
+msgid "Build custom data apps"
+msgstr "أنشئ تطبيقات بيانات مخصصة"
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Ship interactive apps powered by your data, served right inside Metabase."
-msgstr "أطلق تطبيقات تفاعلية مدعومة ببياناتك، ومُتاحة مباشرة داخل Metabase."
+msgid "Build custom user interfaces, forms, and other tools that write back to your database. Automate chores, manage back-office work, and set up workflows to act on your data, all built with AI on top of your semantic layer."
+msgstr "أنشئ واجهات مستخدم مخصصة، ونماذج، وأدوات أخرى تكتب رجوعًا إلى قاعدة بياناتك. أتمت المهام الروتينية، وأدر أعمال الـ back-office، واضبط سير عمل للتصرف بناءً على بياناتك — كلها مبنية بالذكاء الاصطناعي فوق semantic layer حقك."
 
 #: frontend/src/metabase/admin/upsells/UpsellDevInstances.tsx
 msgid "Get a development instance"
@@ -17907,10 +17976,6 @@ msgstr "حدد لوحة المعلومات هذه"
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVUpload.tsx
 msgid "Select this collection"
 msgstr "حدد هذه المجموعة"
-
-#: frontend/src/metabase/common/collections/utils.ts
-msgid "Your personal collection"
-msgstr "مجموعتك الشخصية"
 
 #: frontend/src/metabase/common/components/AccordionList/AccordionListCell.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.tsx
@@ -19201,7 +19266,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "{0} دقيقة"
 msgstr[1] "دقيقة"
 msgstr[2] "دقيقتين"
@@ -19889,7 +19954,7 @@ msgstr "بحث"
 #: frontend/src/metabase/common/utils/timelines.ts
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Note"
 msgstr "ملاحظة"
 
@@ -21168,7 +21233,7 @@ msgid "For Native Questions use {0} to make Linked Filters available here."
 msgstr "لـ Native Questions استخدم {0} لجعل Linked Filters متاحة هنا."
 
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
 msgid "Field Filters"
 msgstr "مرشحات الحقل"
 
@@ -21225,7 +21290,7 @@ msgid "Filter or parameter type"
 msgstr "نوع الفلتر أو المعامل"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
 msgid "Time grouping options"
 msgstr "خيارات تجميع الوقت"
 
@@ -21234,24 +21299,24 @@ msgid "How should people filter on this column?"
 msgstr "كيف ينبغي للناس تصفية هذا العمود؟"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "People can pick"
 msgstr "يمكن للناس الاختيار"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "Multiple values"
 msgstr "قيم متعددة"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "A single value"
 msgstr "قيمة واحدة"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/utils/errors/validation.ts
 msgid "required"
 msgstr "مطلوب"
@@ -21273,7 +21338,7 @@ msgstr "لإلزام قيمة دائمًا، انتقل أولًا لإعداد�
 "لوحة المعلومات، ثم ارجع لهذه الصفحة."
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
@@ -21510,7 +21575,7 @@ msgstr "نطاق تاريخ، تاريخ محدد…"
 
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionTimeGroupingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Time grouping"
 msgstr "تجميع الوقت"
 
@@ -21960,16 +22025,6 @@ msgstr "لا توجد بيانات لعرضها"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Failed to update field order"
-msgstr "فشل تحديث ترتيب الحقول"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Field order updated"
-msgstr "تم تحديث ترتيب الحقول"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 msgid "Give this table a description"
 msgstr "أعطِ هذا الجدول وصفًا"
 
@@ -22212,7 +22267,7 @@ msgstr "أنشأ هذا المقياس"
 
 #: frontend/src/metabase/data-studio/measures/components/MeasureRevisionHistory/MeasureRevisionHistory.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "reverted to a previous version"
 msgstr "تم الرجوع إلى إصدار سابق"
 
@@ -24498,14 +24553,13 @@ msgid "AI can make mistakes. Double check your plan and modify it as needed."
 msgstr "قد يخطئ الذكاء الاصطناعي. تحقّق من خطتك مرة أخرى وعدّلها حسب الحاجة."
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
 #: frontend/src/metabase/status/components/StatusLarge/StatusLarge.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 msgid "Collapse"
 msgstr "طيّ"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
+#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 #: frontend/src/metabase/visualizer/components/DataImporter/ColumnsList/ColumnsList.tsx
 msgid "Expand"
@@ -24670,11 +24724,6 @@ msgstr "أعد إعداد المفتاح السري"
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Copy to clipboard"
 msgstr "انسخ إلى الحافظة"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
-#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
-msgid "Preview the query"
-msgstr "معاينة الاستعلام"
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Secret key copied to clipboard"
@@ -25643,6 +25692,11 @@ msgstr "أرسل"
 msgid "Copy chart"
 msgstr "انسخ المخطط"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
+msgid "Run query"
+msgstr "تشغيل الاستعلام"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineDashboardLink.tsx
 msgid "Open dashboard"
 msgstr "افتح لوحة المعلومات"
@@ -26439,6 +26493,14 @@ msgstr "اختر ما إذا كنت تريد فك طي JSON"
 #: frontend/src/metabase/metadata/components/UserInput.tsx
 msgid "Pick someone, or type an email"
 msgstr "اختر شخصًا، أو اكتب بريدًا إلكترونيًا"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Failed to update field order"
+msgstr "فشل تحديث ترتيب الحقول"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Field order updated"
+msgstr "تم تحديث ترتيب الحقول"
 
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
@@ -27966,6 +28028,15 @@ msgstr "الرئيسية"
 msgid "Other users' personal collections"
 msgstr "المجموعات الشخصية للمستخدمين الآخرين"
 
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+#, javascript-format
+msgid "You can also {0} when there are some results."
+msgstr "يمكنك أيضًا {0} عندما تكون هناك بعض النتائج."
+
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+msgid "get an alert"
+msgstr "احصل على تنبيه"
+
 #: frontend/src/metabase/notifications/channels/RecipientPicker.tsx
 msgid "Enter user names or email addresses"
 msgstr "أدخل أسماء المستخدمين أو عناوين البريد الإلكتروني"
@@ -28574,9 +28645,9 @@ msgid "Format custom expression or native query"
 msgstr "نسّق التعبير المخصص أو الاستعلام الأصلي"
 
 #: frontend/src/metabase/parameters/components/ParameterDropdownWidget.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.tsx
 #: frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Enter a default value…"
 msgstr "أدخل قيمة افتراضية…"
 
@@ -28587,6 +28658,175 @@ msgstr "الزم قيمة دائمًا"
 #: frontend/src/metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.tsx
 msgid "When enabled, people can change the value or reset it, but can't clear it entirely."
 msgstr "عند التفعيل، يقدر الأشخاص يغيرون القيمة أو يعيدون ضبطها، لكن ما يقدرون يفرغونها بالكامل."
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+#, javascript-format
+msgid "{0} active filter"
+msgid_plural "{0} active filters"
+msgstr[0] "{0} عوامل تصفية نشطة"
+msgstr[1] "{0} عامل تصفية نشط"
+msgstr[2] "{0} عاملان تصفية نشطان"
+msgstr[3] "{0} عوامل تصفية نشطة"
+msgstr[4] "{0} عوامل تصفية نشطة"
+msgstr[5] "{0} عوامل تصفية نشطة"
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+msgid "Filters"
+msgstr "الفلاتر"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Example:"
+msgstr "مثال:"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Try it"
+msgstr "جربها"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "What's this for?"
+msgstr "لاي شيئ يستخدم؟"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
+msgstr "تتيح لك المتغيرات في الاستعلامات الأصلية استبدال القيم ديناميكيًا في استفساراتك باستخدام أداة التصفية أو من خلال عنوان URL."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
+msgid "Variables"
+msgstr "المتغيرات"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
+msgstr "{0} ينشئ متغيرًا في قالب الاستعلام هذا يسمى \"variable_name\". يمكن إعطاء المتغيرات أنواعًا في اللوحة الجانبية، والتي تغير سلوكها. جميع أنواع المتغيرات بخلاف \"مرشح الحقل\" ستتسبب تلقائيًا في وضع عنصر واجهة مستخدم للمرشح على هذا السؤال؛ مع مرشحات الحقل، هذا اختياري. عندما يتم ملء أداة التصفية هذه، تحل هذه القيمة محل المتغير في قالب الاستعلام."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
+msgstr "يتيح لك إعطاء متغير نوع \"مرشح الحقل\" ربط الأسئلة بعناصر الويدجت مرشحات لوحة القيادة أو استخدام المزيد من أنواع عناصر الويدجت التصفية على سؤال SQL الخاص بك. يقوم متغير مرشح الحقل بإدراج SQL مماثل لتلك التي تم إنشاؤها بواسطة منشئ استعلام واجهة المستخدم الرسومية عند إضافة مرشحات على الأعمدة الموجودة."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
+msgstr "عند إضافة متغير مرشح الحقل ، ستحتاج إلى تعيينه إلى حقل معين. يمكنك بعد ذلك اختيار عرض أداة تصفية على سؤالك ، ولكن حتى لو لم تقم بذلك ، يمكنك الآن تعيين متغير مرشح الحقل الخاص بك إلى مرشح لوحة القيادة عند إضافة هذا السؤال إلى لوحة معلومات. يجب استخدام مرشحات الحقل داخل جملة \"حيث\"."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Optional Clauses"
+msgstr "بنود اختيارية"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
+msgstr "أقواس حول {0} إنشاء شرط اختياري في القالب. إذا تم تعيين \"المتغير\" ، فسيتم وضع البند بأكمله في القالب. إذا لم يكن كذلك ، يتم تجاهل البند بأكمله."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
+msgstr "لاستخدام جمل اختيارية متعددة ، يمكنك تضمين واحد على الأقل غير خيالي WHERE يتبعه جمل اختيارية تبدأ بـ \"AND\"."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
+msgstr "عند استخدام مرشح الحقل ، لا ينبغي تضمين اسم العمود في SQL. بدلاً من ذلك ، يجب تعيين المتغير إلى حقل في اللوحة الجانبية."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Read the full documentation"
+msgstr "اقرأ الوثائق الكاملة"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "Variable name"
+msgstr "اسم المتغير"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "How should users filter on this variable?"
+msgstr "كيف يجب على المستخدمين التصفية حسب هذا المتغير؟"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Select a default value…"
+msgstr "حدّد قيمة افتراضية…"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "This filter is set to disabled in an embedded question."
+msgstr "تم ضبط هذا الفلتر على معطّل في سؤال مضمن."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "To always require a value, first visit embedding settings,\n"
+"make this filter editable or locked, re-publish the\n"
+"question, then return to this page."
+msgstr "لإلزام قيمة دائمًا، انتقل أولًا لإعدادات التضمين،\n"
+"واجعل هذا الفلتر قابلًا للتعديل أو مقفلاً، وأعد نشر\n"
+"السؤال، ثم ارجع لهذه الصفحة."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default parameter widget value"
+msgstr "القيمة الافتراضية لـ Widget المعلمة"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default filter widget value"
+msgstr "قيمة عنصر واجهة مستخدم المرشح الافتراضي"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+msgid "Table and field alias"
+msgstr "اسم مستعار للجدول والحقل"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+#, javascript-format
+msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
+msgstr "مطلوب فقط إذا كان الاستعلام يستخدم alias للإشارة إلى جدول الحقل المرتبط. على سبيل المثال، إذا ربطت المتغير بحقل {0}، لكن الاستعلام سمّى جدول {1} كـ {2}، فستدخل {3}."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+msgid "Field to map to"
+msgstr "حقل لارسم الخريطة ل"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "(required)"
+msgstr "(مطلوب)"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Parameter widget label"
+msgstr "تسمية Widget المعلمة"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Filter widget label"
+msgstr "تصفية تسمية عنصر واجهة المستخدم"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "Filter widget type"
+msgstr "تصفية نوع القطعة"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "There aren't any filter widgets for this type of field yet."
+msgstr "لا يوجد أي مصغرة مرشح لهذا النوع من الحقل حتى الآن."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#, javascript-format
+msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
+msgstr "غالبًا بتحتاج تستخدم هذا مع شرط {0}، مثل {1}"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Table to map to"
+msgstr "جدول للربط به"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Use variable name as alias"
+msgstr "استخدم اسم المتغير كاسم مستعار"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "You can refer to this table by the variable name in other parts of the query."
+msgstr "يمكنك الإشارة إلى هذا الجدول باسم المتغير في أجزاء أخرى من الاستعلام."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Field Filter"
+msgstr "مرشح الحقل"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Variable type"
+msgstr "نوع متغير"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Variables and parameters"
+msgstr "المتغيرات والمعلمات"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
+msgstr "أضِف متغيرًا إلى استعلامك، مثل {{variable_name}}، لتهيئته هنا."
 
 #: frontend/src/metabase/parameters/components/UpdateFilterButton/getUpdateButtonProps.ts
 msgid "Set to default"
@@ -29492,6 +29732,31 @@ msgstr "{0} يتم تحميله."
 msgid "Data Reference"
 msgstr "مرجع البيانات"
 
+#: frontend/src/metabase/querying/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
+#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
+#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
+msgid "Combine columns"
+msgstr "ادمج الأعمدة"
+
+#: frontend/src/metabase/querying/click-actions/actions/CopyValueAction/CopyValueAction.tsx
+msgid "Copy value"
+msgstr "انسخ القيمة"
+
+#: frontend/src/metabase/querying/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
+msgid "Extract part of column"
+msgstr "استخرج جزءًا من العمود"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "Save"
+msgstr "حفظ"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+#, javascript-format
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "{0} this question to drill-through."
+msgstr "{0} هذا السؤال للتعمّق (Drill-through)."
+
 #: frontend/src/metabase/querying/common/components/AggregationPicker/AggregationPicker.tsx
 msgid "Basic functions"
 msgstr "دوال أساسية"
@@ -29807,18 +30072,13 @@ msgid "Run selected text"
 msgstr "تشغيل نص محدد"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
-msgid "Run query"
-msgstr "تشغيل الاستعلام"
-
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
 #, javascript-format
 msgid "({0} + enter)"
 msgstr "({0} + enter)"
 
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables"
-msgstr "المتغيرات"
+#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+msgid "Preview the query"
+msgstr "معاينة الاستعلام"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/RightClickPopover/RightClickPopover.tsx
 msgid "Run selection"
@@ -29911,32 +30171,8 @@ msgid "This may be the answer you’re looking for. If not, try removing or chan
 msgstr "قد يكون هذا هو الإجابة التي تبحث عنها. إذا لم يكن الأمر كذلك ، فحاول إزالة أو تغيير المرشحات لجعلها أقل تحديدًا."
 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-#, javascript-format
-msgid "You can also {0} when there are some results."
-msgstr "يمكنك أيضًا {0} عندما تكون هناك بعض النتائج."
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-msgid "get an alert"
-msgstr "احصل على تنبيه"
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "العودة إلى النتائج السابقة"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-#, javascript-format
-msgid "{0} active filter"
-msgid_plural "{0} active filters"
-msgstr[0] "{0} عوامل تصفية نشطة"
-msgstr[1] "{0} عامل تصفية نشط"
-msgstr[2] "{0} عاملان تصفية نشطان"
-msgstr[3] "{0} عوامل تصفية نشطة"
-msgstr[4] "{0} عوامل تصفية نشطة"
-msgstr[5] "{0} عوامل تصفية نشطة"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-msgid "Filters"
-msgstr "الفلاتر"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -30059,12 +30295,6 @@ msgid "{0} to navigate. {1} to select."
 msgstr "{0} للتنقل. {1} للتحديد."
 
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
-#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
-#: frontend/src/metabase/visualizations/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
-msgid "Combine columns"
-msgstr "ادمج الأعمدة"
-
-#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 msgid "Extract columns"
 msgstr "استخرج الأعمدة"
 
@@ -30128,155 +30358,6 @@ msgstr "امنح الفلتر اسمًا…"
 #: frontend/src/metabase/querying/components/expressions/NameInput/utils.ts
 msgid "Give your expression a name…"
 msgstr "امنح التعبير اسمًا…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Example:"
-msgstr "مثال:"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Try it"
-msgstr "جربها"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "What's this for?"
-msgstr "لاي شيئ يستخدم؟"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
-msgstr "تتيح لك المتغيرات في الاستعلامات الأصلية استبدال القيم ديناميكيًا في استفساراتك باستخدام أداة التصفية أو من خلال عنوان URL."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
-msgstr "{0} ينشئ متغيرًا في قالب الاستعلام هذا يسمى \"variable_name\". يمكن إعطاء المتغيرات أنواعًا في اللوحة الجانبية، والتي تغير سلوكها. جميع أنواع المتغيرات بخلاف \"مرشح الحقل\" ستتسبب تلقائيًا في وضع عنصر واجهة مستخدم للمرشح على هذا السؤال؛ مع مرشحات الحقل، هذا اختياري. عندما يتم ملء أداة التصفية هذه، تحل هذه القيمة محل المتغير في قالب الاستعلام."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "يتيح لك إعطاء متغير نوع \"مرشح الحقل\" ربط الأسئلة بعناصر الويدجت مرشحات لوحة القيادة أو استخدام المزيد من أنواع عناصر الويدجت التصفية على سؤال SQL الخاص بك. يقوم متغير مرشح الحقل بإدراج SQL مماثل لتلك التي تم إنشاؤها بواسطة منشئ استعلام واجهة المستخدم الرسومية عند إضافة مرشحات على الأعمدة الموجودة."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "عند إضافة متغير مرشح الحقل ، ستحتاج إلى تعيينه إلى حقل معين. يمكنك بعد ذلك اختيار عرض أداة تصفية على سؤالك ، ولكن حتى لو لم تقم بذلك ، يمكنك الآن تعيين متغير مرشح الحقل الخاص بك إلى مرشح لوحة القيادة عند إضافة هذا السؤال إلى لوحة معلومات. يجب استخدام مرشحات الحقل داخل جملة \"حيث\"."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Optional Clauses"
-msgstr "بنود اختيارية"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr "أقواس حول {0} إنشاء شرط اختياري في القالب. إذا تم تعيين \"المتغير\" ، فسيتم وضع البند بأكمله في القالب. إذا لم يكن كذلك ، يتم تجاهل البند بأكمله."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
-msgstr "لاستخدام جمل اختيارية متعددة ، يمكنك تضمين واحد على الأقل غير خيالي WHERE يتبعه جمل اختيارية تبدأ بـ \"AND\"."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr "عند استخدام مرشح الحقل ، لا ينبغي تضمين اسم العمود في SQL. بدلاً من ذلك ، يجب تعيين المتغير إلى حقل في اللوحة الجانبية."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Read the full documentation"
-msgstr "اقرأ الوثائق الكاملة"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "Variable name"
-msgstr "اسم المتغير"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "How should users filter on this variable?"
-msgstr "كيف يجب على المستخدمين التصفية حسب هذا المتغير؟"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Select a default value…"
-msgstr "حدّد قيمة افتراضية…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "This filter is set to disabled in an embedded question."
-msgstr "تم ضبط هذا الفلتر على معطّل في سؤال مضمن."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "To always require a value, first visit embedding settings,\n"
-"make this filter editable or locked, re-publish the\n"
-"question, then return to this page."
-msgstr "لإلزام قيمة دائمًا، انتقل أولًا لإعدادات التضمين،\n"
-"واجعل هذا الفلتر قابلًا للتعديل أو مقفلاً، وأعد نشر\n"
-"السؤال، ثم ارجع لهذه الصفحة."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default parameter widget value"
-msgstr "القيمة الافتراضية لـ Widget المعلمة"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default filter widget value"
-msgstr "قيمة عنصر واجهة مستخدم المرشح الافتراضي"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-msgid "Table and field alias"
-msgstr "اسم مستعار للجدول والحقل"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-#, javascript-format
-msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
-msgstr "مطلوب فقط إذا كان الاستعلام يستخدم alias للإشارة إلى جدول الحقل المرتبط. على سبيل المثال، إذا ربطت المتغير بحقل {0}، لكن الاستعلام سمّى جدول {1} كـ {2}، فستدخل {3}."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-msgid "Field to map to"
-msgstr "حقل لارسم الخريطة ل"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "(required)"
-msgstr "(مطلوب)"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Parameter widget label"
-msgstr "تسمية Widget المعلمة"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Filter widget label"
-msgstr "تصفية تسمية عنصر واجهة المستخدم"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "Filter widget type"
-msgstr "تصفية نوع القطعة"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "There aren't any filter widgets for this type of field yet."
-msgstr "لا يوجد أي مصغرة مرشح لهذا النوع من الحقل حتى الآن."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
-#, javascript-format
-msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
-msgstr "غالبًا بتحتاج تستخدم هذا مع شرط {0}، مثل {1}"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Table to map to"
-msgstr "جدول للربط به"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Use variable name as alias"
-msgstr "استخدم اسم المتغير كاسم مستعار"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "You can refer to this table by the variable name in other parts of the query."
-msgstr "يمكنك الإشارة إلى هذا الجدول باسم المتغير في أجزاء أخرى من الاستعلام."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Field Filter"
-msgstr "مرشح الحقل"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Variable type"
-msgstr "نوع متغير"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Variables and parameters"
-msgstr "المتغيرات والمعلمات"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
-msgstr "أضِف متغيرًا إلى استعلامك، مثل {{variable_name}}، لتهيئته هنا."
 
 #: frontend/src/metabase/querying/drills/utils/automatic-insights-drill.tsx
 msgid "X-ray"
@@ -30664,18 +30745,6 @@ msgstr "عمود أو تجميع أو مقياس أو Metric غير معروف: 
 msgid "Unknown column: {0}"
 msgstr "عمود غير معروف: {0}"
 
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Search for a column…"
-msgstr "ابحث عن عمود…"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Add all"
-msgstr "إضافة الكل"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Remove all"
-msgstr "إزالة الكل"
-
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterSubmitButton/FilterSubmitButton.tsx
 msgid "Apply filter"
 msgstr "طبّق الفلتر"
@@ -30714,8 +30783,8 @@ msgid "Pick columns"
 msgstr "اختيار الأعمدة"
 
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+#: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
 msgid "Add filters to narrow your answer"
 msgstr "أضف فلتر لحصر إجاباتك"
 
@@ -30837,34 +30906,6 @@ msgstr "تغيير الاتجاه"
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx
 msgid "Formula"
 msgstr "صيغة"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Filtered by"
-msgstr "تم ترشيحه بواسطة"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Add filters"
-msgstr "أضف فلاتر"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "created"
-msgstr "أنشأ"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the title"
-msgstr "عدّل العنوان"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the description"
-msgstr "عدّل الوصف"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the "
-msgstr "عدّل "
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "made some changes"
-msgstr "أجرى بعض التغييرات"
 
 #: frontend/src/metabase/questions/components/ArchiveCardModal/ArchiveCardModal.tsx
 msgid "This question will be removed from its dashboard and any alerts using it."
@@ -31343,6 +31384,34 @@ msgstr " أنواع محددة"
 #, javascript-format
 msgid "Results for \"{0}\""
 msgstr "نتائج \"{0}\""
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Filtered by"
+msgstr "تم ترشيحه بواسطة"
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Add filters"
+msgstr "أضف فلاتر"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "created"
+msgstr "أنشأ"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the title"
+msgstr "عدّل العنوان"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the description"
+msgstr "عدّل الوصف"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the "
+msgstr "عدّل "
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "made some changes"
+msgstr "أجرى بعض التغييرات"
 
 #: frontend/src/metabase/settings/use-admin-setting.ts
 #, javascript-format
@@ -33712,28 +33781,9 @@ msgstr "ساعة 24"
 msgid "Column formatting"
 msgstr "تنسيق العمود"
 
-#: frontend/src/metabase/visualizations/click-actions/actions/CopyValueAction/CopyValueAction.tsx
-msgid "Copy value"
-msgstr "انسخ القيمة"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
-msgid "Extract part of column"
-msgstr "استخرج جزءًا من العمود"
-
 #: frontend/src/metabase/visualizations/click-actions/actions/HideColumnAction/HideColumnAction.tsx
 msgid "Hide column"
 msgstr "إخفاء العمود"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "Save"
-msgstr "حفظ"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-#, javascript-format
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "{0} this question to drill-through."
-msgstr "{0} هذا السؤال للتعمّق (Drill-through)."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
@@ -33986,7 +34036,6 @@ msgid "Rows {0}-{1} of first {2}"
 msgstr "الصفوف {0}-{1} من الأول {2}"
 
 #: frontend/src/metabase/visualizations/components/TrendInfo/TrendInfo.tsx
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
 #: metabase/channel/render/body.clj
 msgid "No change"
 msgstr "ما فيه تغيير"
@@ -34139,6 +34188,18 @@ msgstr "إضافة أو إزالة الأعمدة"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/ChartSettingTableColumns.tsx
 msgid "Done picking columns"
 msgstr "تم الانتهاء من اختيار الأعمدة"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Search for a column…"
+msgstr "ابحث عن عمود…"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Add all"
+msgstr "إضافة الكل"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Remove all"
+msgstr "إزالة الكل"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleDescription.tsx
 msgid "Cells in this column will be tinted based on their values."
@@ -34890,11 +34951,6 @@ msgstr "مبعثر"
 msgid "scatter plot"
 msgstr "مؤامرة مبعثرة"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/PreviousValueComparison/DetailCandidate.tsx
-#, javascript-format
-msgid "{0}: {1}"
-msgstr "{0}: {1}"
-
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 msgid "Value from another column"
 msgstr "قيمة من عمود آخر"
@@ -34930,6 +34986,26 @@ msgstr "مقارنة بـ {0}"
 msgid "N/A"
 msgstr "لايوجد"
 
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "DoD"
+msgstr "يوم بيوم"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "WoW"
+msgstr "أسبوع بأسبوع"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "MoM"
+msgstr "شهر بشهر"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "QoQ"
+msgstr "ربع بربع"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "YoY"
+msgstr "سنوياً"
+
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Primary number"
 msgstr "الرقم الأساسي"
@@ -34945,6 +35021,10 @@ msgstr "تبديل الألوان الإيجابية / السلبية؟"
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Compact number"
 msgstr "رقم مختصر"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
+msgid "Show comparison value"
+msgstr "اعرض قيمة المقارنة"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Trend"
@@ -36612,8 +36692,8 @@ msgstr "يتحكم في أنواع المستضيفين المسموح بها ك
 "- allow-all (بدون قيود بما في ذلك localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "http-channel-host-strategy غير صالح! يُسمح فقط بالقيم external-only وallow-private وallow-all."
+msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "قيمة http-channel-allowed-networks غير صالحة! القيم المسموح بها فقط هي external-only و allow-private و allow-all."
 
 #: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
@@ -37999,6 +38079,10 @@ msgstr "قيم معلمات غير صالحة"
 #: metabase/embedding_rest/api/common.clj
 msgid "Invalid query params: could not determine slug for parameter with ID {0}"
 msgstr "معاملات استعلام غير صالحة: لا يمكن تحديد Slug للمعلمة مع معرف {0}"
+
+#: metabase/embedding_rest/api/common.clj
+msgid "The parameter {0} does not exist on this dashboard."
+msgstr "المعامل {0} غير موجود في لوحة المعلومات هذه."
 
 #: metabase/embedding_rest/api/common.clj
 msgid "Cannot search for values: {0} is not an enabled parameter."
@@ -39838,6 +39922,14 @@ msgid "Access key ID"
 msgstr "معرّف مفتاح الوصول"
 
 #: metabase/llm/provider.clj
+msgid "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile)."
+msgstr "اترك المفاتيح فارغة للمصادقة باستخدام سلسلة بيانات اعتماد AWS الافتراضية (IRSA، EKS Pod Identity، أو instance profile)."
+
+#: metabase/llm/provider.clj
+msgid "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+msgstr "في Metabase Cloud، Bedrock دائمًا يصدّق باستخدام مفاتيح AWS الخاصة بك."
+
+#: metabase/llm/provider.clj
 msgid "Secret access key"
 msgstr "مفتاح الوصول السري"
 
@@ -39884,6 +39976,10 @@ msgstr "{0} غير صالح لـ {1}."
 #: metabase/llm/provider.clj
 msgid "{0} needs one of: {1}."
 msgstr "{0} يحتاج أحد الخيارات التالية: {1}."
+
+#: metabase/llm/provider.clj
+msgid "{0} takes {1} only together with {2}."
+msgstr "{0} يقبل {1} فقط مع {2}."
 
 #: metabase/llm/settings.clj
 msgid "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server."
@@ -39978,12 +40074,12 @@ msgid "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive 
 msgstr "عنوان URL الأساسي لواجهة API لمنصة Gemini Enterprise Agent Platform. اتركه غير مُعيَّن لاشتقاقه من الموقع."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Access Key ID for Amazon Bedrock."
-msgstr "AWS Access Key ID لـ Amazon Bedrock."
+msgid "The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "AWS Access Key ID لـ Amazon Bedrock. في Metabase المستضاف ذاتيًا، اتركه غير معيّن مع secret access key للمصادقة باستخدام سلسلة بيانات اعتماد AWS الافتراضية (IRSA، EKS Pod Identity، أو instance profile)؛ وفي Metabase Cloud المفتاحان مطلوبان."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Secret Access Key for Amazon Bedrock."
-msgstr "AWS Secret Access Key لـ Amazon Bedrock."
+msgid "The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "AWS Secret Access Key لـ Amazon Bedrock. في Metabase المستضاف ذاتيًا، اتركه غير معيّن مع access key ID للمصادقة باستخدام سلسلة بيانات اعتماد AWS الافتراضية (IRSA، EKS Pod Identity، أو instance profile)؛ وفي Metabase Cloud المفتاحان مطلوبان."
 
 #: metabase/llm/settings.clj
 msgid "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials."
@@ -40104,6 +40200,14 @@ msgid "Whether the MCP server is enabled."
 msgstr "ما إذا كان خادم MCP مفعّلًا."
 
 #: metabase/mcp/settings.clj
+msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+msgstr "أسماء أدوات v2 MCP لتعطيلها، محفوظة كـ CSV. الأدوات المعطلة تكون مخفية من tools/list ويتم رفضها بواسطة tools/call."
+
+#: metabase/mcp/settings.clj
+msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
+msgstr "عدد الساعات اللي يتم الاحتفاظ فيها بـ MCP query handle المخزن قبل ما تحذفه مهمة GC المجدولة."
+
+#: metabase/mcp/settings.clj
 msgid "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode)."
 msgstr "عملاء MCP الشائعون المفعّلون لـ CORS، مخزّنون كمفاتيح عملاء CSV (مثال: claude، vscode)."
 
@@ -40183,6 +40287,26 @@ msgstr "بناء الاستعلامات"
 #: metabase/metabot/scope.clj
 msgid "Execute queries"
 msgstr "تنفيذ الاستعلامات"
+
+#: metabase/metabot/scope.clj
+msgid "See your Metabase content and data structure"
+msgstr "اطّلع على محتوى Metabase وبنية البيانات لديك"
+
+#: metabase/metabot/scope.clj
+msgid "Create, edit and trash Metabase content"
+msgstr "إنشاء محتوى Metabase وتعديله ونقله لسلة المهملات"
+
+#: metabase/metabot/scope.clj
+msgid "Run queries against your connected databases and see the results"
+msgstr "تشغيل الاستعلامات على قواعد البيانات المتصلة وعرض النتائج"
+
+#: metabase/metabot/scope.clj
+msgid "Write and run its own raw SQL on your connected databases"
+msgstr "كتابة وتشغيل SQL خام خاص فيه على قواعد البيانات المتصلة"
+
+#: metabase/metabot/scope.clj
+msgid "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"
+msgstr "إعداد تسليم مجدول لبياناتك إلى عناوين بريد إلكتروني وقنوات Slack يختارها"
 
 #: metabase/metabot/scope.clj
 msgid "Create saved questions"
@@ -40345,12 +40469,28 @@ msgid "Azure API error (HTTP {0})"
 msgstr "خطأ Azure API (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
+msgstr "AWS Bedrock ما حصل على أي بيانات اعتماد من سلسلة بيانات اعتماد AWS الافتراضية. راجع سجلات Metabase لمعرفة ما الذي أبلغ به كل مزوّد."
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported."
+msgstr "AWS Bedrock ما قدر يحدّث بيانات اعتماد AWS. راجع سجلات Metabase لمعرفة ما الذي أبلغت به AWS."
+
+#: metabase/metabot/self/bedrock.clj
 msgid "Invalid AWS Bedrock region {0}"
 msgstr "منطقة AWS Bedrock غير صالحة {0}"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock credentials are not configured"
-msgstr "اعتمادات AWS Bedrock غير مُعدّة"
+msgid "AWS Bedrock cannot use a session token without its access key pair"
+msgstr "AWS Bedrock ما يقدر يستخدم session token بدون زوج مفاتيح الوصول الخاص به"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock on Metabase Cloud requires an access key pair"
+msgstr "AWS Bedrock على Metabase Cloud يتطلب زوج مفاتيح وصول"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain"
+msgstr "AWS Bedrock يحتاج كلًا من access key ID و secret access key، أو ولا واحد منها لاستخدام سلسلة بيانات الاعتماد الافتراضية"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AI proxy is not supported for AWS Bedrock"
@@ -40893,6 +41033,10 @@ msgid "The AI provider connection and model used for quick background tasks, suc
 msgstr "اتصال مزوّد الذكاء الاصطناعي والنموذج المستخدمان للمهام الخلفية السريعة، مثل تسمية محادثات Metabot، وبنفس تنسيق connection-key/model-name مثل `llm-metabot-provider`. الإعداد الافتراضي هو أسرع نموذج يقدّمه الاتصال الذي يعمل عليه Metabot."
 
 #: metabase/metabot/settings.clj
+msgid "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment."
+msgstr "شغّل Metabot في الوضع السريع الخاص بالمزوّد لما يكون النموذج المحدد يدعمه. الوضع السريع يرد أسرع بسعر أعلى لكل توكن؛ وفي Anthropic يتطلب حسابًا مسجلًا في fast-mode research preview وما هو متاح مع التزام Priority Tier."
+
+#: metabase/metabot/settings.clj
 msgid "Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely."
 msgstr "عدد الأيام للاحتفاظ بالصفوف في جداول ai_usage_log وmetabot_conversation وmetabot_message. الحد الأدنى هو 30؛ اضبطه على 0 للاحتفاظ بالبيانات إلى أجل غير مسمى."
 
@@ -40909,7 +41053,6 @@ msgid "Multiple databases share the name `{0}` (ids: {1}). The agent has no way 
 msgstr "تشارك عدة قواعد بيانات الاسم `{0}` (المعرّفات: {1}). لا توجد لدى العامل طريقة لإزالة الالتباس؛ اطلب من المستخدم إعادة تسمية إحدى قواعد البيانات أو استخدام معرّف أكثر تحديدًا."
 
 #: metabase/metabot/tools/construct.clj
-#: metabase/models/serialization/resolve/mp.clj
 msgid "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
 msgstr "لم يتم العثور على سؤال محفوظ أو نموذج بالـ entity_id {0}. لا تختلق أو تخمّن entity_ids: استدعِ `read_resource` مع `metabase://question/<numeric id>` أو `metabase://model/<numeric id>` أولًا، ثم انسخ `portable_entity_id` الدقيق من الاستجابة إلى `source-card:`."
 
@@ -41110,24 +41253,24 @@ msgid "To make table and field names more human-friendly, Metabase will replace 
 msgstr "لجعل أسماء الجدول والحقل أكثر ملاءمة للإنسان، سوف تقوم Metabase باستبدال الشرطات السفلية والشرطات في الأسماء بمسافات. سيتم تحويل كل كلمة إلى الحرف الأول الكبير، لذا سيصبح \"last_visited_at\" \"Last Visited At\"."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-msgstr "لم يتم العثور على أي جدول يطابق portable FK {0}. استدعِ `read_resource` مع `metabase://database/<numeric id>/tables` لعرض الجداول والـ schemas المتاحة، ثم أعد المحاولة باستخدام portable FK مطابق تمامًا من الاستجابة."
+msgid "No table found matching portable FK {0}."
+msgstr "ما تم العثور على جدول يطابق portable FK {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable table FK references database {0}, but metadata provider is for {1}."
 msgstr "FK جدول محمول يشير إلى قاعدة البيانات {0}، لكن موفّر البيانات الوصفية مخصّص لـ {1}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
-msgstr "portable table FK {0} ملتبس: {1} مرشّحًا. استدعِ `read_resource` مع `metabase://database/<numeric id>/tables` لعرض الجداول المتاحة وأعِد المحاولة باستخدام portable FK أكثر تحديدًا."
+msgid "Ambiguous portable table FK {0}: {1} candidates."
+msgstr "portable table FK {0} ملتبس: {1} مرشّحين."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable field FK {0} must have at least 4 elements."
 msgstr "يجب أن يحتوي FK الحقل القابل للنقل {0} على 4 عناصر على الأقل."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
-msgstr "لا يوجد عمود {0} في الجدول {1}.{2}.{3}. استدعِ `read_resource` مع `metabase://table/<numeric id>/fields` لعرض أعمدة هذا الجدول."
+msgid "No column {0} on table {1}.{2}.{3}."
+msgstr "ما فيه عمود {0} في الجدول {1}.{2}.{3}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Ambiguous column {0} on table {1}.{2}.{3}."
@@ -41150,20 +41293,24 @@ msgid "No saved question, model, or metric found with id {0}."
 msgstr "لم يتم العثور على سؤال محفوظ أو نموذج أو مقياس بالمعرّف {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-msgstr "معرّف السؤال المحفوظ / النموذج / المقياس {0} يتبع لقاعدة البيانات {1}، لكن هذا المُحلِّل يستهدف قاعدة البيانات {2}."
+msgid "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+msgstr "معرّف السؤال المحفوظ / النموذج / المقياس {0} يتبع قاعدة البيانات {1}، لكن هذا الاستعلام يستهدف قاعدة البيانات {2}. الاستعلامات عبر قواعد بيانات غير مدعومة."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "معرّف السؤال المحفوظ أو النموذج أو المقياس {0} لا يحتوي على entity_id، لذلك لا يمكن تصديره كتمثيل قابل للنقل."
 
 #: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with entity_id {0}."
+msgstr "ما تم العثور على سؤال محفوظ أو نموذج بالـ entity_id {0}."
+
+#: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
 msgstr "السؤال/النموذج المحفوظ {0} ينتمي إلى قاعدة البيانات {1}، لكن هذا الاستعلام يستهدف قاعدة البيانات {2}. الاستعلامات عبر قواعد البيانات غير مدعومة."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-msgstr "لم يتم العثور على مقياس بالـ entity_id {0}. لا تختلق أو تخمّن entity_ids: اقرأ الجدول الذي يملك المقياس باستخدام `read_resource` (`metabase://table/<numeric id>`) وانسخ `portable_entity_id` الدقيق من وسم `<measure>` الخاص به."
+msgid "No measure found with entity_id {0}."
+msgstr "ما تم العثور على مقياس بالـ entity_id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
@@ -41174,8 +41321,8 @@ msgid "No measure found with id {0}."
 msgstr "لم يتم العثور على مقياس بالمعرّف {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Measure id {0} belongs to a table outside this metadata provider''s database."
-msgstr "معرّف المقياس {0} يتبع لجدول خارج قاعدة بيانات موفّر البيانات الوصفية هذا."
+msgid "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "معرّف المقياس {0} يتبع جدولًا في قاعدة بيانات مختلفة عن هذا الاستعلام. الاستعلامات عبر قواعد بيانات غير مدعومة."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
@@ -41186,28 +41333,28 @@ msgid "No segment found with id {0}."
 msgstr "لم يتم العثور على شريحة بالمعرّف {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Segment id {0} belongs to a table outside this metadata provider''s database."
-msgstr "معرّف الشريحة {0} يتبع لجدول خارج قاعدة بيانات موفّر البيانات الوصفية هذا."
+msgid "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "معرّف الشريحة {0} يتبع جدولًا في قاعدة بيانات مختلفة عن هذا الاستعلام. الاستعلامات عبر قواعد بيانات غير مدعومة."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "الشريحة بالمعرّف {0} لا تحتوي على entity_id، لذلك لا يمكن تصديرها كتمثيل قابل للنقل."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-msgstr "لم يتم العثور على شريحة بالـ entity_id {0}. لا تختلق أو تخمّن entity_ids: اقرأ الجدول الذي يملك الشريحة باستخدام `read_resource` (`metabase://table/<numeric id>`) وانسخ `portable_entity_id` الدقيق من وسم `<segment>` الخاص به."
+msgid "No segment found with entity_id {0}."
+msgstr "ما تم العثور على شريحة بالـ entity_id {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
 msgstr "الشريحة {0} تتبع لجدول في قاعدة بيانات مختلفة عن هذا الاستعلام (معرّف قاعدة البيانات المستهدفة {1}). الاستعلامات عبر قواعد بيانات متعددة غير مدعومة."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table with id {0} in metadata provider."
-msgstr "لا يوجد جدول بالمعرّف {0} في موفّر الميتاداتا."
+msgid "No table found with id {0}."
+msgstr "ما تم العثور على جدول بالمعرّف {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No field with id {0} in metadata provider."
-msgstr "لا يوجد حقل بالمعرّف {0} في موفّر الميتاداتا."
+msgid "No field found with id {0}."
+msgstr "ما تم العثور على حقل بالمعرّف {0}."
 
 #: metabase/mq/settings.clj
 msgid "Maximum number of times a failed queue message will be retried before being dropped."
@@ -41669,6 +41816,10 @@ msgid "An error occurred while running the query."
 msgstr "حدث خطأ أثناء تشغيل الاستعلام."
 
 #: metabase/pulse/api/pulse.clj
+msgid "Invalid :cards: each entry must be a card reference."
+msgstr "قيمة <b>:cards:</b> غير صالحة: لازم كل إدخال يكون مرجع بطاقة."
+
+#: metabase/pulse/api/pulse.clj
 msgid "Non-admin users without subscription permissions are not allowed to add recipients"
 msgstr "لا يُسمح للمستخدمين من غير الأوتمين دون أذونات الاشتراك بإضافة المستلمين"
 
@@ -41731,6 +41882,10 @@ msgstr "ليس لديك أذونات لعرض هذه النتيجة المخزّ
 #: metabase/queries/card.clj
 msgid "Card does not have a parameter with the ID {0}"
 msgstr "لا تحتوي البطاقة على معلمة بالمعرف {0}"
+
+#: metabase/queries/card.clj
+msgid "The parameter {0} does not exist on this card."
+msgstr "المعامل {0} غير موجود في هذه البطاقة."
 
 #: metabase/queries/models/card.clj
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
@@ -41814,8 +41969,8 @@ msgid "You do not have permissions to view Card {0}."
 msgstr "ليس لديك أذونات لعرض البطاقة {0}."
 
 #: metabase/query_permissions/impl.clj
-msgid "You must have data permissions to add a parameter referencing the Table {0}."
-msgstr "يجب أن يكون لديك أذونات بيانات لإضافة معلمة تشير إلى الجدول {0}."
+msgid "You must have data permissions to add a parameter referencing this Field."
+msgstr "لازم تكون عندك أذونات بيانات لإضافة معامل يشير إلى هذا الحقل."
 
 #: metabase/query_permissions/impl.clj
 msgid "You cannot save this Question because you do not have permissions to run its query."
@@ -42429,7 +42584,7 @@ msgstr "تصحيح أخطاء البحث غير مدعوم لنموذج indexed-
 
 #: metabase/search/filter.clj metabase/search/in_place/filter.clj
 #: metabase/task_history/api.clj metabase/transforms/models/util.clj
-#: metabase_enterprise/metabot_analytics/conversations.clj
+#: metabase_enterprise/metabot_analytics/db.clj
 msgid "Failed to parse datetime value: {0}"
 msgstr "فشل تحليل قيمة datetime: {0}"
 
@@ -42496,8 +42651,8 @@ msgid "Failed to load template ''{0}''. Did you remember to build the Metabase f
 msgstr "فشل في تحميل قالب ''{0}''. هل تذكرت بناء الواجهة الأمامية؟"
 
 #: metabase/server/settings.clj
-msgid "Allowed iframe hosts"
-msgstr "مضيفات iframe المسموح بها"
+msgid "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list."
+msgstr "مضيفو iframe المسموح بهم. يتضمن افتراضيًا قائمة بمضيفين شائعين؛ عيّنه إلى '' '' لتعطيل القائمة الافتراضية."
 
 #: metabase/server/settings.clj
 msgid "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations."
@@ -43010,8 +43165,16 @@ msgid "Query failed"
 msgstr "فشل الاستعلام"
 
 #: metabase/tiles/settings.clj
+msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "قيمة map-tile-server-allowed-networks غير صالحة! القيم المسموح بها فقط هي external-only و allow-private و allow-all."
+
+#: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
 msgstr "قالب عنوان URL لخادم MAP Tile Server المستخدم في تصورات MAP ، على سبيل المثال من OpenStreetMaps أو MapBox."
+
+#: metabase/tiles/settings.clj
+msgid "Invalid map tile server URL: must be a relative path, or an http:// or https:// URL whose host is resolvable and permitted by map-tile-server-allowed-networks."
+msgstr "عنوان URL لخادم map tile غير صالح: لازم يكون مسارًا نسبيًا، أو عنوان URL بـ http:// أو https:// يكون مضيفه قابلًا للحل ومسموحًا به بواسطة map-tile-server-allowed-networks."
 
 #: metabase/timeline/api/timeline_event.clj
 msgid "Timeline with id {0} not found"
@@ -43712,9 +43875,25 @@ msgstr "لا يمكن تحديث field_id أو type أو hash_key لـ FieldValu
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ": يجب أن تكون القيم موجودة لجلب :human_readable_values"
 
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out fetching field values."
+msgstr "انتهت المهلة أثناء جلب قيم الحقل."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Too many field values fetches are already running. Please try again shortly."
+msgstr "هناك عدد كبير جدًا من عمليات جلب قيم الحقول قيد التشغيل بالفعل. فضلاً جرّب مرة ثانية بعد قليل."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out waiting for field values."
+msgstr "انتهت المهلة أثناء انتظار قيم الحقل."
+
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid "Incompatible coercion strategy."
 msgstr "استراتيجية coercion غير متوافقة."
+
+#: metabase/warehouse_schema_rest/api/field.clj
+msgid "Failed to scan field values. Check the server logs for the underlying error."
+msgstr "فشل فحص قيم الحقل. تحقّق من سجلات الخادم لمعرفة الخطأ الأساسي."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj

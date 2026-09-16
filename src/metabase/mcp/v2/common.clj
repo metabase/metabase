@@ -82,6 +82,14 @@
   ([msg data]
    (throw (ex-info msg (merge {:status-code 400} data)))))
 
+(defn throw-insufficient-scope!
+  "Throw a 403 with caller-facing `msg`, marked as a refusal for want of `required-scope` so the registry answers it
+   as a scope denial rather than an `isError` result."
+  [msg required-scope]
+  (throw (ex-info msg {:status-code     403
+                       ::error-code     error-code-invalid-request
+                       ::required-scope required-scope})))
+
 (defn throw-not-found
   "Throw the collapsed not-found teaching error. Deliberately identical for \"doesn't exist\"
    and \"exists but not readable\", so responses never form an existence oracle across the

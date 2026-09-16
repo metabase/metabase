@@ -1,6 +1,7 @@
 (ns metabase.analytics.llm-token-usage
   "LLM token usage tracking for Snowplow and Prometheus."
   (:require
+   [malli.util :as mut]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.event :as analytics.event]
    [metabase.analytics.util :as analytics.util]
@@ -9,8 +10,13 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private snowplow-arg-keys
+  [:request-id :model-id :total-tokens :prompt-tokens :completion-tokens :estimated-costs-usd
+   :cache-creation-tokens :cache-read-tokens :user-id :duration-ms :source :tag :session-id :profile
+   :hashed-metabase-license-token])
+
 (def ^:private SnowplowArgs
-  [:map
+  [:map {:closed true}
    [:request-id                                     :string]
    [:model-id                                       :string]
    [:total-tokens                                   ms/IntGreaterThanOrEqualToZero]
@@ -53,8 +59,11 @@
                                  :profile                       profile}
                                 user-id))
 
+(def ^:private prometheus-arg-keys
+  [:model-id :tag :prompt-tokens :completion-tokens :cache-creation-tokens :cache-read-tokens])
+
 (def ^:private PrometheusArgs
-  [:map
+  [:map {:closed true}
    [:model-id                              :string]
    [:tag                                   :string]
    [:prompt-tokens                         ms/IntGreaterThanOrEqualToZero]
@@ -76,6 +85,27 @@
       (analytics/inc! :metabase-metabot/llm-cache-read-tokens labels cache-read-tokens))
     (analytics/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
 
+(def ^:private TrackTokenUsageGates
+  "The `:snowplow`/`:prometheus` gate keys of [[track-token-usage!]]."
+  [:map {:closed true}
+   [:snowplow   :boolean]
+   [:prometheus :boolean]])
+
+(def ^:private UntrackedSnowplowArgs
+  "The Snowplow-only keys a Prometheus-only [[track-token-usage!]] call may still carry, possibly nil."
+  (mut/merge (mut/optional-keys SnowplowArgs)
+             [:map {:closed true}
+              [:request-id          {:optional true} [:maybe :string]]
+              [:total-tokens        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+              [:estimated-costs-usd {:optional true} [:maybe number?]]]))
+
+(def ^:private TrackTokenUsageArgs
+  "The gate keys plus the keys of whichever of [[track-snowplow!]] and [[track-prometheus!]] the gates enable."
+  [:multi {:dispatch (juxt :snowplow :prometheus)}
+   [[true false] (mut/merge TrackTokenUsageGates SnowplowArgs)]
+   [[false true] (mut/merge (mut/merge TrackTokenUsageGates UntrackedSnowplowArgs) PrometheusArgs)]
+   [[true true]  (mut/merge (mut/merge TrackTokenUsageGates SnowplowArgs) PrometheusArgs)]])
+
 (mu/defn track-token-usage!
   "Convenience wrapper that fires Snowplow and/or Prometheus token tracking.
 
@@ -83,17 +113,11 @@
     - `:snowplow`   (required boolean) — pass `false` to suppress Snowplow
     - `:prometheus` (required boolean) — pass `false` to suppress Prometheus"
   [{:keys [snowplow prometheus] :as opts}
-   :- [:merge
-       [:map
-        [:snowplow    [:boolean {:default true}]]
-        [:prometheus  [:boolean {:default true}]]]
-       [:multi {:dispatch (juxt :snowplow :prometheus)}
-        [[true  false] SnowplowArgs]
-        [[false true]  PrometheusArgs]
-        [[true  true]  [:merge SnowplowArgs PrometheusArgs]]
-        [[false false] [:fn {:error/message "at least one of :snowplow or :prometheus must be true"}
-                        (constantly false)]]]]]
+   :- [:and
+       [:fn {:error/message "at least one of :snowplow or :prometheus must be true"}
+        (fn [{:keys [snowplow prometheus]}] (or snowplow prometheus))]
+       TrackTokenUsageArgs]]
   (when snowplow
-    (track-snowplow! opts))
+    (track-snowplow! (select-keys opts snowplow-arg-keys)))
   (when prometheus
-    (track-prometheus! opts)))
+    (track-prometheus! (select-keys opts prometheus-arg-keys))))

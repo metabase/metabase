@@ -6,14 +6,10 @@
 
 (mr/def ::cloud-migration
   "A CloudMigration as selected from the app DB: every column of `:cloud_migration`."
-  [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:external_id :string]
-   [:upload_url  :string]
-   [:state       [:or :keyword :string]]
-   [:progress    :int]
-   [:created_at  ms/TemporalInstant]
-   [:updated_at  ms/TemporalInstant]])
+  [:merge
+   ::cloud-migration.update
+   [:map {:closed true}
+    [:id          ms/PositiveInt]]])
 
 (mr/def ::cloud-migration.update
   "What an update (or insert) of a CloudMigration accepts: every column of `:cloud_migration` except `id`, all optional."

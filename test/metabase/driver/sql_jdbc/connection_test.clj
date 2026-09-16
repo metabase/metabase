@@ -342,6 +342,7 @@
                                          :value      (.getBytes "super secret")
                                          :creator_id (mt/user->id :crowberto)}]
       (let [db {:lib/type :metadata/database
+                :id       1
                 :engine   :postgres
                 :details  {:ssl                      true
                            :ssl-mode                 "verify-ca"

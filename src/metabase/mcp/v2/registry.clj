@@ -2,17 +2,17 @@
   "The v2 MCP tool registry. Tools are in-code registry entries declared with [[deftool]].
   The v2 surface builds its own manifest and dispatch:
 
-   - `tools/list` ([[list-tools]]) filters by the `mcp-v2-disabled-tools` CSV and the client
-     extensions the caller advertised (a tool needing MCP Apps UI is hidden from a client that
-     can't render an iframe, rather than failing at call time). It does not filter by token
-     scopes: a client can only attempt, and step up for, a tool it can see;
-   - `tools/call` ([[call-tool]]) checks token scopes and re-checks both filters, validates
+   - `tools/list` ([[list-tools]]) filters by the client extensions the caller advertised (a tool
+     needing MCP Apps UI is hidden from a client that can't render an iframe, rather than failing
+     at call time). It does not filter by token scopes: a client can only attempt, and step up
+     for, a tool it can see;
+   - `tools/call` ([[call-tool]]) checks token scopes and re-checks the extension filter, validates
      arguments against the tool's Malli schema with teaching errors, dispatches to the handler
      under the already-bound current user, and logs every outcome through the shared usage path.
 
-  The three call-time checks are not three boundaries. Scopes come from the verified token and the
-  disabled-tools CSV from instance settings, but the extension set is reconstructed from the
-  unsigned capability payload the client echoes back in its session id — a client can claim any
+  The two call-time checks are not two boundaries. Scopes come from the verified token, but the
+  extension set is reconstructed from the unsigned capability payload the client echoes back in
+  its session id — a client can claim any
   extension it likes, and never has to `initialize` to do so. Treat `:required-extensions` as a
   client-declared hint that keeps a tool out of a list where it could not render, and put nothing
   behind it that the tool's `:scope` does not already protect."
@@ -24,7 +24,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.mcp.scope :as mcp.scope]
-   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
@@ -165,9 +164,10 @@
    :openWorldHint   false})
 
 (defn- with-required-permission
-  "`description` preceded by a sentence naming the permission `scope` requires, so clients that truncate long
-   descriptions keep it. `scope-label` is the scope's consent-screen description, or nil when it has none."
+  "`description` preceded by a sentence naming the permission `scope` requires. `scope-label` is the scope's
+   consent-screen description, or nil when it has none."
   [description scope scope-label]
+  ;; First, so clients that truncate long descriptions keep it.
   (str "Requires the "
        (if scope-label
          (str "\"" scope-label "\" permission (" scope ").")
@@ -212,37 +212,29 @@
   (or @manifest-cache
       (reset! manifest-cache (generate-manifest))))
 
-(defn- disabled-tool-names
-  []
-  (set (mcp.settings/mcp-v2-disabled-tools)))
-
 (defn list-tools
-  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the
-   `mcp-v2-disabled-tools` setting and the client extensions `options` advertises
-   (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that can't render an iframe
-   rather than failing at call time). Token scopes don't filter the list; [[call-tool]] enforces them.
-
-   The 0-arity assumes full extension support: it backs [[tools-hash]], whose transport hook
-   has no session, so the hash must not depend on per-session capabilities."
+  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the client
+   extensions `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients
+   that can't render an iframe rather than failing at call time). Token scopes don't filter the
+   list; [[call-tool]] enforces them. The 0-arity assumes full extension support."
   ([]
+   ;; Full support because [[tools-hash]] has no session, so the hash must not depend on per-session capabilities.
    (list-tools {:supports-mcp-ui? true}))
   ([options]
-   (let [disabled  (disabled-tool-names)
-         supported (mcp.ui-resource/supported-extensions options)]
+   (let [supported (mcp.ui-resource/supported-extensions options)]
      (into []
            (comp
-            ;; no disabled tools
-            (filter #(not (contains? disabled (:name %))))
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
-            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :securitySchemes :_meta])))
+            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
+                                  :securitySchemes :_meta])))
            (manifest)))))
 
 (defn tools-hash
   "Stable 8-character hex hash of the listed tools; polled by the GET/SSE keepalive to emit
-   `notifications/tools/list_changed` when the set changes (`mcp-v2-disabled-tools` edits,
-   feature flips). Hashes the JSON encoding of the wire-visible schema, so the result never
-   depends on Clojure's `hash` of non-data leaves."
+   `notifications/tools/list_changed` when the set changes (feature flips). Hashes the JSON
+   encoding of the wire-visible schema, so the result never depends on Clojure's `hash` of
+   non-data leaves."
   []
   (format "%08x"
           (hash (->> (list-tools)
@@ -259,29 +251,29 @@
   (when-let [explanation ((mr/explainer schema) arguments)]
     (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
 
-(defn- insufficient-scope-message
-  "The scope-denial error text. Names the scope the tool requires and the ones the token holds — both are
-   in hand here, and a message that names only the tool leaves the caller with nothing to act on, against
-   the server's own `initialize` instructions promising that a failed call always names its fix.
-
-   `required` is a scope string or a set of alternatives ([[metabase.mcp.scope/matches?]] accepts either);
-   `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
-   scope a caller can request, so only strings are listed back."
-  [tool-name required token-scopes]
+(defn insufficient-scope-message
+  "The scope-denial error text refusing `action` (e.g. \"call tool: execute_sql\"): names `required`, a scope string
+   or a set of alternatives, and the scope strings `token-scopes` holds."
+  [action required token-scopes]
+  ;; Both scopes are named because a message that names only the tool leaves the caller with nothing to act on,
+  ;; against the server's `initialize` instructions promising that a failed call names its fix. `token-scopes` may
+  ;; carry the `::api.scope/unrestricted` keyword, which is not a scope a caller can request, so only strings are
+  ;; listed back.
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)
                 (str "one of " (str/join ", " (sort required)))
                 (str required))]
-    (str "Insufficient scope to call tool: " tool-name ". Requires " needs "; "
+    (str "Insufficient scope to " action ". Requires " needs "; "
          (if (seq held)
            (str "your token holds " (str/join ", " held) ".")
            "your token holds no scopes."))))
 
-(defn- insufficient-scope
-  "The `:insufficient-scope` detail of an error refusing `tool-name` for want of `required-scope`."
-  [tool-name required-scope]
+(defn insufficient-scope-detail
+  "The `:insufficient-scope` detail of an error refusing `subject`, a tool name or resource URI, for want of
+   `required-scope`: `{:required-scope ... :description ...}`."
+  [subject required-scope]
   {:required-scope required-scope
-   :description    (str tool-name " requires " required-scope
+   :description    (str subject " requires " required-scope
                         (when-let [label (english-scope-label required-scope)]
                           (str " (" label ")")))})
 
@@ -291,10 +283,7 @@
         missing (mcp.ui-resource/missing-required-extensions
                  tool (mcp.ui-resource/supported-extensions options))]
     (cond
-      ;; Disabled tools are absent from tools/list, so calling one is indistinguishable from
-      ;; calling a tool that never existed.
-      (or (nil? tool)
-          (contains? (disabled-tool-names) tool-name))
+      (nil? tool)
       {:error {:code common/error-code-method-not-found :message (str "Unknown tool: " tool-name)}}
 
       (not (map? (or arguments {})))
@@ -302,11 +291,11 @@
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code               common/error-code-invalid-request
-               :message            (insufficient-scope-message tool-name (:scope tool) token-scopes)
-               :insufficient-scope (insufficient-scope tool-name (:scope tool))}}
+               :message            (insufficient-scope-message (str "call tool: " tool-name) (:scope tool) token-scopes)
+               :insufficient-scope (insufficient-scope-detail tool-name (:scope tool))}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
-      ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
+      ;; scope case it stays listed for capable clients, so name what's missing.
       (seq missing)
       {:error {:code common/error-code-invalid-params :message (mcp.ui-resource/missing-extensions-error tool-name missing)}}
 
@@ -330,15 +319,20 @@
               (if-let [required-scope (::common/required-scope (ex-data e))]
                 {:error {:code               common/error-code-invalid-request
                          :message            (ex-message e)
-                         :insufficient-scope (insufficient-scope tool-name required-scope)}}
+                         :insufficient-scope (insufficient-scope-detail tool-name required-scope)}}
                 {:result (common/->mcp-error-content e)}))))))))
 
 (defn call-tool
-  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can produce an MCP result carrying `:isError`.
+  "Dispatch a v2 MCP `tools/call`. Returns `{:error {:code ... :message ...}}` when the registry rejects the
+   request before dispatch, or `{:result mcp-content}` after handler execution. Only an executed handler can
+   produce an MCP result carrying `:isError`.
 
-   A scope refusal is always an `:error`, whether the registry's own gate or the handler (by throwing with a `::common/required-scope` in its ex-data) refuses, and carries `:insufficient-scope {:required-scope ... :description ...}`.
+   A scope refusal is always an `:error`, whether the registry's own gate or the handler (by throwing with a
+   `::common/required-scope` in its ex-data) refuses, and carries
+   `:insufficient-scope {:required-scope ... :description ...}`.
 
-   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
+   Every call is recorded to `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status,
+   and on error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {}))
   ([token-scopes session-id tool-name arguments options]

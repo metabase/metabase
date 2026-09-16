@@ -36,6 +36,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
+   [metabase.warehouses.schema :as warehouses.schema]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
@@ -135,7 +136,7 @@
     (= driver :mysql)))
 
 (mu/defn- database-flavor :- [:maybe :string]
-  ^String [database :- [:maybe :map]]
+  ^String [database :- [:maybe [:or driver-api/schema.metadata.database ::warehouses.schema/database ::warehouses.schema/database.update]]]
   ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
   (when-let [k (some #(when (contains? database %)
                         %)

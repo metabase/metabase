@@ -23,7 +23,7 @@
    ;; The same scope as the UI tools the iframe renders. Any token can read the shells, so this scope, not the
    ;; shell read, is what keeps a credential from a token that could not call those tools.
    :scope               metabot.scope/agent-query-run
-   ;; Hidden from clients that cannot render an iframe, exactly like the shells — otherwise a model in a
+   ;; Hidden from clients that cannot render an iframe, like the UI tools it serves. Otherwise a model in a
    ;; text-only client sees a tool whose whole output is a credential it must not handle.
    :required-extensions #{:mcp-app-ui}
    :annotations         {:readOnlyHint true :idempotentHint true}

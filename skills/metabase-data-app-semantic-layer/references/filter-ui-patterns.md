@@ -127,21 +127,59 @@ Style this to match the app. If accessibility, keyboard behavior, or popover pos
 
 Date ranges should use ISO `YYYY-MM-DD` strings for query values. Never use `type="date"`.
 
-For custom date pickers:
+Include a Custom range option in date preset bars by default. Omit it only when the user explicitly asks for fixed presets only or no date range control. Order presets as durations first, then All time, then Custom last.
 
-- Include a Custom range option in date preset bars by default. Omit it only when the user explicitly asks for fixed presets only or no date range control. Order presets as durations first, then All time, then Custom last.
-- First check whether the repo already has a date picker component or component library. If it does, use the existing component.
-- If the repo has no existing date picker, install `react-datepicker`. The default data-app template only includes React, React DOM, and the Metabase SDK.
-- Do not install a large UI suite just for one data-app date filter.
-- Type strict `react-datepicker` callbacks explicitly, for example `onChange={(date: Date | null) => ...}` for single-date pickers.
-- For custom date ranges, use `selectsRange` with local `Date | null` start/end state, but only commit the query range when both dates are selected.
-- If the custom range control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.
-- Convert selected dates to ISO `YYYY-MM-DD` strings with local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()`.
-- For date-picker `selected` props, parse saved strings defensively and pass `null` for empty or invalid values. Never pass `new Date("")`.
-- Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.
+### Use the built-in `DateRangePopover`
 
-Install `react-datepicker` only when the repo does not already have a date picker:
+`DateRangePopover` wraps the app's own trigger and opens a Metabase-styled range calendar under it. The trigger is yours — a button styled exactly like the preset buttons beside it — and the SDK owns the calendar, the popover positioning, outside-click and Escape. No dependency to install, no CSS to import.
+
+```tsx
+import {
+  DateRangePopover,
+  useDateFormatter,
+} from "@metabase/embedding-sdk-react/data-app";
+
+const { formatDateRange } = useDateFormatter();
+const [range, setRange] = useState<[string | null, string | null]>([
+  null,
+  null,
+]);
+const [start, end] = range;
+
+const dateFilters =
+  start && end
+    ? [filter(ordersTable.fields.createdAt, "between", [start, end])]
+    : [];
+
+<DateRangePopover value={range} onChange={setRange}>
+  <button className="filter-button">
+    {formatDateRange(range) || "Custom"}
+  </button>
+</DateRangePopover>;
+```
+
+Both ends are `YYYY-MM-DD` strings — the same shape `filter(...)` takes, so there is no `Date` conversion and no time zone to get wrong.
+
+- The trigger must be a single DOM element or a `forwardRef` component; the popover attaches a ref and a click handler to it. Give it the same class as the other filter controls so it matches them.
+- Label the trigger with `formatDateRange(range)` from `useDateFormatter()`. It is the same formatter Mantine's date input draws its own label with, in the instance's locale, so the trigger reads exactly as the built-in input would; it returns `""` until the SDK bundle has loaded and re-renders the trigger when it has. Never use `new Date("YYYY-MM-DD")` — a date-only string parses as UTC and shows the previous day west of Greenwich. The three states are `""`, `"September 1, 2026 – "`, and `"September 1, 2026 – September 10, 2026"`; `formatDate` does one end. Options: `format` (a dayjs format) and `separator`.
+- `onChange` fires on every calendar click, so it reports half-picked ranges as `[start, null]`. Build the filter only when both ends are set; a half-picked range means no date filter, not a sentinel date.
+- The popover closes itself once both ends are picked (`closeOnSelect`, default true). Pass `opened` / `onOpenedChange` to drive it yourself.
+- Other props: `defaultValue`, `minDate`, `maxDate` (`YYYY-MM-DD`), `numberOfColumns` (months side by side, default 2), `position` (default `bottom-start`).
+- `DateRangeCalendar` is the same calendar with no popover, for rendering inline in a container the app already has. Same value props, plus `className` / `style`.
+
+### Falling back to a third-party picker
+
+Only for what the SDK calendar does not cover, such as single-date or date-time selection. Nothing else justifies a picker dependency — `react-datepicker`, `react-day-picker`, `flatpickr`, `@mui/x-date-pickers`, `antd` and `rsuite` are all the same mistake for a plain date range. The default data-app template ships React, React DOM, and the Metabase SDK, so this adds a dependency:
 
 ```bash
 npm install react-datepicker
 ```
+
+`react-datepicker` is the default pick; the rest of this section assumes it.
+
+- Do not install a large UI suite just for one data-app date filter.
+- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
+- Type strict `react-datepicker` callbacks explicitly, for example `onChange={(date: Date | null) => ...}` for single-date pickers.
+- Convert selected dates to ISO `YYYY-MM-DD` strings with local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()`.
+- For date-picker `selected` props, parse saved strings defensively and pass `null` for empty or invalid values. Never pass `new Date("")`.
+- Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.

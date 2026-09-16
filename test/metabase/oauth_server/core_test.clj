@@ -22,9 +22,9 @@
 
 (deftest mb-full-is-advertised-nowhere-test
   (testing "GHY-4226: `mb:full` grants full user-equivalent REST access, and advertising it put that
-            in front of every client reading discovery metadata. It is now absent from all three
-            advertised sets and from the default DCR grant, so no client is led toward it and none
-            can request it without having registered for it explicitly."
+            in front of every client reading discovery metadata. It is now absent from both advertised
+            sets, from the set the MCP resource accepts, and from the default DCR grant, so no client is
+            led toward it and none can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-advertised-scopes (mcp/mcp-canonical-path))) "mb:full")))
@@ -54,7 +54,7 @@
             but not SQL, writes or delivery. Every tool is listed whatever the token holds, and a call needing more is
             answered with a 403 `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather
             than a hidden tool."
-    (is (= ["agent:content:read" "agent:query:run" "agent:resource:read"] @#'v2.api/default-ask-scopes))
+    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"} (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                           @#'v2.api/default-ask-scopes))))
@@ -69,22 +69,23 @@
           (is (not (contains? (set @#'v2.api/default-ask-scopes) scope))))))))
 
 (deftest advertised-scopes-are-distinct-test
-  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414), so no scope may be
+  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414, RFC 9728), so no scope may be
             advertised twice.
 
-            Asserted on the sources rather than on the output. Every advertised set is built through
-            a `sorted-set`, which makes the output distinct by construction no matter what goes in --
-            so counting the result can never fail. What can go wrong is upstream: the same scope
-            declared in both `v2-surface-scopes` and a v1 resource scope list, which the sorted-set
-            silently swallows."
-    (doseq [path (mcp/mcp-endpoint-paths)]
-      (testing path
-        (let [scopes (oauth-server/mcp-resource-scopes path)]
-          (is (= (count (distinct scopes)) (count scopes))
-              (str "duplicate scopes: "
-                   (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))))))
-    (testing "the v2 surface literal has no duplicates of its own"
-      (is (= (count (distinct (mcp/v2-scopes))) (count (mcp/v2-scopes)))))))
+            GHY-4543: the protected-resource metadata advertises `mcp-resource-advertised-scopes`, a vector copied
+            from the `v2-baseline-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
+            set, `mcp-resource-scopes`, is built through a `sorted-set` and cannot repeat by construction; it is
+            checked too, alongside the literals both are built from, where a duplicate would be silently swallowed."
+    (let [duplicates (fn [scopes] (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))]
+      (doseq [path (mcp/mcp-endpoint-paths)]
+        (testing path
+          (doseq [[label scopes] {"advertised" (oauth-server/mcp-resource-advertised-scopes path)
+                                  "accepted"   (oauth-server/mcp-resource-scopes path)}]
+            (testing label
+              (is (empty? (duplicates scopes)))))))
+      (testing "the v2 surface and baseline literals have no duplicates of their own"
+        (is (empty? (duplicates (mcp/v2-scopes))))
+        (is (empty? (duplicates (mcp/v2-baseline-scopes))))))))
 
 (deftest rationalized-scopes-are-in-the-default-grant-test
   (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered
@@ -105,7 +106,7 @@
     (doseq [path (mcp/mcp-endpoint-paths)]
       (testing path
         (let [mcp (set (oauth-server/mcp-resource-scopes path))]
-          (testing "the rationalized scopes are advertised"
+          (testing "the rationalized scopes are accepted"
             (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
                            "agent:sql:run" "agent:delivery:write"]]
               (testing scope
@@ -119,6 +120,27 @@
     (testing "every path answers the same set, since every path reaches the same surface"
       (is (= 1 (count (set (map (comp set oauth-server/mcp-resource-scopes)
                                 (mcp/mcp-endpoint-paths)))))))))
+
+(deftest ^:parallel widen-to-grant-ceiling-test
+  (let [widen   #'oauth-server/widen-to-grant-ceiling
+        mcp     ["agent:content:read" "agent:sql:run"]
+        ceiling ["agent:content:read" "agent:sql:run" "agent:question:create"]]
+    (testing "GHY-4543: while registration is enabled, a dynamic client gains every ceiling scope it lacks, after the
+              scopes it registered with"
+      (is (= ["mb:full" "agent:content:read" "agent:sql:run" "agent:question:create"]
+             (:scopes (widen {:registration-type "dynamic" :scopes ["mb:full" "agent:content:read"]}
+                             true mcp ceiling)))))
+    (testing "GHY-4543: while registration is disabled, a dynamic client still gains the MCP scopes, so a client that
+              registered with the baseline can step up, but none of the other ceiling scopes"
+      (is (= ["agent:content:read" "agent:sql:run"]
+             (:scopes (widen {:registration-type "dynamic" :scopes ["agent:content:read"]} false mcp ceiling)))))
+    (testing "a static client is unchanged"
+      (let [client {:registration-type "static" :scopes ["profile"]}]
+        (is (= client (widen client true mcp ceiling)))
+        (is (= client (widen client false mcp ceiling)))))
+    (testing "a missing client stays missing"
+      (is (nil? (widen nil true mcp ceiling)))
+      (is (nil? (widen nil false mcp ceiling))))))
 
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
