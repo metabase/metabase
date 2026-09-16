@@ -4,10 +4,12 @@ import { hasFeature, supportsJoins } from "metabase/databases";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { CardType } from "metabase-types/api";
+import type { CardType, Database } from "metabase-types/api";
 
 import type { NotebookStep, OpenSteps } from "../types";
+
+/** Only the feature list is read, so any shape carrying one will do. */
+type DatabaseFeatures = Pick<Database, "features"> | undefined;
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -16,7 +18,11 @@ import type { NotebookStep, OpenSteps } from "../types";
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
 type NotebookStepDef = Pick<NotebookStep, "type" | "clauseType"> & {
-  valid: (query: Query, stageIndex: number, metadata: Metadata) => boolean;
+  valid: (
+    query: Query,
+    stageIndex: number,
+    database: DatabaseFeatures,
+  ) => boolean;
   active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
   revert: (
@@ -39,8 +45,7 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "join",
     clauseType: "joins",
-    valid: (query, stageIndex, metadata) => {
-      const database = metadata.database(Lib.databaseID(query));
+    valid: (query, stageIndex, database) => {
       return hasData(query) && Boolean(database && supportsJoins(database));
     },
     subSteps: (query, stageIndex) => {
@@ -71,8 +76,7 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "expression",
     clauseType: "expressions",
-    valid: (query, _stageIndex, metadata) => {
-      const database = metadata.database(Lib.databaseID(query));
+    valid: (query, _stageIndex, database) => {
       return (
         hasData(query) &&
         Boolean(database && hasFeature(database, "expressions"))
@@ -197,7 +201,7 @@ const hasData = (query: Lib.Query): boolean => {
  */
 export function getQuestionSteps(
   question: Question,
-  metadata: Metadata,
+  database: DatabaseFeatures,
   openSteps: OpenSteps,
 ) {
   const allSteps: NotebookStep[] = [];
@@ -207,7 +211,6 @@ export function getQuestionSteps(
   // strip empty source queries
   query = Lib.dropEmptyStages(query);
 
-  const database = metadata.database(Lib.databaseID(query));
   const allowsNesting =
     Boolean(database && hasFeature(database, "nested-queries")) &&
     question.type() !== "metric";
@@ -224,7 +227,7 @@ export function getQuestionSteps(
       question,
       query,
       stageIndex,
-      metadata,
+      database,
       openSteps,
     );
     // append actions to last step of previous stage
@@ -250,7 +253,7 @@ function getStageSteps(
   question: Question,
   query: Query,
   stageIndex: number,
-  metadata: Metadata,
+  database: DatabaseFeatures,
   openSteps: OpenSteps,
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
@@ -277,10 +280,10 @@ function getStageSteps(
       itemIndex,
       question,
       query,
-      valid: STEP.valid(query, stageIndex, metadata),
+      valid: STEP.valid(query, stageIndex, database),
       active,
       visible:
-        STEP.valid(query, stageIndex, metadata) &&
+        STEP.valid(query, stageIndex, database) &&
         Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.canRevert(question.type())
