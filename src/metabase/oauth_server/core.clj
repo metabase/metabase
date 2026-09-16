@@ -43,6 +43,15 @@
   [scope]
   (every? api-scope/registered-scope? (api-scope/parse-scopes scope)))
 
+(defn registered-scopes-only
+  "The space-delimited `scope` string with every scope that is not registered via
+  [[metabase.api-scope.core/defscope]] removed, keeping the requested order, or nil when none remain."
+  [scope]
+  (some->> (str/split (str scope) #"\s+")
+           (filter api-scope/registered-scope?)
+           seq
+           (str/join " ")))
+
 (defn- authorization-server-metadata-url
   "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
   []
@@ -53,6 +62,13 @@
   request's scopes."
   []
   (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn no-supported-scopes-description
+  "The `error_description` for an authorization request in which no requested scope is registered. Deliberately does
+  not echo the request's scopes."
+  []
+  (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
        (authorization-server-metadata-url)))
 
 (defn missing-scope-description

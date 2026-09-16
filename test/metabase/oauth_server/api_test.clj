@@ -1449,23 +1449,98 @@
                   :error_description "The requested scopes are not accepted by the requested resource."}
                  (:body response))))))))
 
-(deftest authorize-rejects-unregistered-scopes-test
-  (testing "GHY-4542: a client that registered a wildcard such as `*` before registration validated scopes
-            can still request it, and `scope-matches?` would honor it as a wildcard grant. /authorize
-            rejects any requested scope that is not a registered scope, and tells the client where the
-            supported scopes are listed without echoing what it sent. The check runs on the raw requested
-            scope, before resource narrowing: after it, a client omitting `resource` would get through and
-            one sending it would have `*` silently dropped instead of rejected."
+(deftest authorize-drops-unregistered-scopes-test
+  (testing "GHY-4542: a scope that is not registered via `defscope` is dropped from the request rather than
+            refusing it. A client that registered a wildcard such as `*` before registration validated scopes can
+            still request it, and `scope-matches?` would honor it as a wildcard grant, so it must not survive; but
+            refusing outright strands the user on a JSON error in a browser tab while the client waits, and breaks
+            step-up for a client legitimately holding a scope we have since deprecated (`agent:table:read` and
+            friends shipped in v0.60-v0.61). RFC 6749 section 3.3 allows issuing a narrower scope than was asked
+            for. Filtering happens before resource narrowing, so the two compose."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (doseq [[label registered requested resource expected absent]
+                [["a wildcard alongside a registered scope"
+                  ["agent:content:read" "*"] "agent:content:read *" nil "agent:content:read" []]
+                 ["a hierarchical wildcard alongside a registered scope"
+                  ["agent:content:read" "agent:*"] "agent:* agent:content:read" nil "agent:content:read" []]
+                 ["a scope deprecated since the client registered"
+                  ["agent:content:read" "agent:table:read"] "agent:table:read agent:content:read" nil
+                  "agent:content:read" ["agent:table:read"]]
+                 ["several survivors, keeping the requested order"
+                  ["agent:content:read" "agent:question:create" "agent:table:read"]
+                  "agent:table:read agent:content:read agent:question:create" nil
+                  "agent:content:read agent:question:create" ["agent:table:read"]]
+                 ["a resource indicator narrowing the survivors further"
+                  ["agent:content:read" "agent:question:create" "agent:table:read"]
+                  "agent:table:read agent:content:read agent:question:create"
+                  (str "http://localhost:3000" (mcp/mcp-canonical-path))
+                  "agent:content:read" ["agent:table:read" "agent:question:create"]]]]
+          (testing label
+            (let [client-id (:client_id (create-test-client! {:scopes registered}))
+                  response  (apply authorize-request! 200
+                                   :client_id     client-id
+                                   :redirect_uri  "https://example.com/callback"
+                                   :response_type "code"
+                                   :scope         requested
+                                   :state         "test-state"
+                                   (when resource [:resource resource]))
+                  body      (:body response)]
+              (is (= expected (extract-hidden-field "scope" body))
+                  "the signed scope carries exactly the surviving scopes")
+              (doseq [scope absent]
+                (is (not (str/includes? body scope))
+                    "a dropped scope is nowhere on the consent page")))))))))
+
+(deftest authorize-dropping-unregistered-scopes-never-widens-test
+  (testing "GHY-4542: dropping an unregistered scope must narrow the grant, never widen it. `*` is honored as a
+            wildcard on the granted side by `scope-matches?`, so a token that still carried it would pass every
+            endpoint that declares a scope. Followed through consent, the decision, and the token exchange."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id client_secret]} (create-test-client! {:scopes ["*" "agent:content:read"]})
+              consent-resp (authorize-request! 200
+                                               :client_id     client_id
+                                               :redirect_uri  "https://example.com/callback"
+                                               :response_type "code"
+                                               :scope         "* agent:content:read"
+                                               :state         "test-state")
+              body         (:body consent-resp)
+              granted      (extract-hidden-field "scope" body)]
+          (is (= "agent:content:read" granted))
+          (let [decision (form-post-decision!
+                          :crowberto
+                          {:approved      "true"
+                           :csrf_token    (extract-csrf-token-from-consent body)
+                           :params_sig    (extract-params-sig-from-consent body)
+                           :client_id     client_id
+                           :redirect_uri  "https://example.com/callback"
+                           :response_type "code"
+                           :scope         granted
+                           :state         "test-state"}
+                          302
+                          :csrf-cookie (extract-csrf-cookie consent-resp))
+                code     (extract-query-param (get-in decision [:headers "Location"]) "code")
+                token    (token-request! {:grant_type   "authorization_code"
+                                          :code         code
+                                          :redirect_uri "https://example.com/callback"}
+                                         :authorization (basic-auth-header client_id client_secret))]
+            (is (= "agent:content:read" (:scope token))
+                "the minted token carries only the registered scope")))))))
+
+(deftest authorize-rejects-a-request-whose-scopes-are-all-unregistered-test
+  (testing "GHY-4542: dropping unregistered scopes cannot leave a request with none, because a scope-less token is
+            indistinguishable downstream from scope-unaware auth. When nothing survives the filter the request is
+            refused with `invalid_scope` and a description distinct from the resource-narrowing one, so the two are
+            diagnosable, pointing at the metadata document without echoing what the client sent."
     (doseq [site-url ["http://localhost:3000" "http://localhost:3000/metabase"]]
       (testing (str "site-url " site-url)
         (mt/with-temporary-setting-values [site-url site-url]
           (t2/with-transaction [_conn nil {:rollback-only true}]
-            (doseq [[registered requested rejected]
-                    [[["*"] "*" "*"]
-                     [["agent:*"] "agent:*" "agent:*"]
-                     [["agent:content:read" "*"] "agent:content:read *" "*"]
-                     ;; shipped as a scope in v0.60-v0.61 and since removed, so older DCR clients hold it
-                     [["agent:content:read" "agent:table:read"] "agent:content:read agent:table:read" "agent:table:read"]]
+            (doseq [[registered requested] [[["*"] "*"]
+                                            [["agent:*"] "agent:*"]
+                                            ;; shipped in v0.60-v0.61 and since removed, so older DCR clients hold it
+                                            [["agent:table:read"] "agent:table:read"]]
                     resource [nil (str site-url (mcp/mcp-canonical-path))]]
               (testing (pr-str {:requested requested :resource resource})
                 (let [client-id   (:client_id (create-test-client! {:scopes registered}))
@@ -1478,15 +1553,16 @@
                                          (when resource [:resource resource]))
                       description (str (get-in response [:body :error_description]))]
                   (is (= {:error             "invalid_scope"
-                          :error_description (str "The request contained unsupported scopes. Request only scopes "
+                          :error_description (str "None of the requested scopes are supported. Request only scopes "
                                                   "listed in scopes_supported at " site-url
                                                   "/.well-known/oauth-authorization-server")}
                          (:body response))
                       "the description points at the metadata document, including the site-url subpath")
-                  (is (not (str/includes? description rejected))
-                      "the description does not echo the rejected scope")
+                  (is (not (str/includes? description requested))
+                      "the description does not echo the rejected scopes")
                   (is (re-matches #"[\x20-\x21\x23-\x5B\x5D-\x7E]*" description)
-                      "the description stays within the RFC 6749 section 5.2 error_description character set"))))))))))
+                      "the description stays within the RFC 6749 section 5.2 error_description character set")
+                  (is (nil? (get-in response [:headers "Location"]))))))))))))
 
 (deftest authorize-rejects-missing-scope-test
   (testing "GHY-4542: a request with no scope used to render a consent screen listing no permissions and

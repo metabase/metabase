@@ -339,15 +339,19 @@
                        (throw (ex-info "no scope was requested"
                                        {:oauth-error       "invalid_scope"
                                         :error-description (oauth-server/missing-scope-description)})))
-        ;; Checked on the raw request, before narrowing: narrowing would silently drop an
-        ;; unregistered scope when `resource` is sent and keep it when it is not.
-        _            (when-not (oauth-server/all-scopes-registered? (:scope parsed))
-                       (throw (ex-info "requested scope is not a registered scope"
+        ;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
+        ;; would honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than
+        ;; refusing (RFC 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to
+        ;; re-authorize, and the refusal would reach a browser tab rather than the client program. Filtered
+        ;; before narrowing, so a request is treated the same with and without `resource`.
+        registered   (oauth-server/registered-scopes-only (:scope parsed))
+        _            (when-not registered
+                       (throw (ex-info "no requested scope is a registered scope"
                                        {:oauth-error       "invalid_scope"
-                                        :error-description (oauth-server/unsupported-scopes-description)})))
+                                        :error-description (oauth-server/no-supported-scopes-description)})))
         ;; Narrow before signing: the signature then binds the narrowed scope through the
         ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
-        narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) (:scope parsed))
+        narrowed     (oauth-server/narrow-scope-to-resource (:resource parsed) registered)
         ;; Nothing surviving means the client asked exclusively for scopes this resource does not
         ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
         ;; zero-scope token, which looks like success and leaves an empty `tools/list` with no
