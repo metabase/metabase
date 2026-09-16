@@ -394,7 +394,8 @@
   select or hydrate different subsets."
   [:map {:closed true}
    [:id                    {:optional true} ms/PositiveInt]
-   [:name                  {:optional true} :string]
+   ;; system collections (Trash, Library, ...) carry a `deferred-tru` name until it is rendered
+   [:name                  {:optional true} [:or :string ms/LocalizedString]]
    [:description           {:optional true} [:maybe :string]]
    [:archived              {:optional true} :boolean]
    [:archived_directly     {:optional true} [:maybe :boolean]]
