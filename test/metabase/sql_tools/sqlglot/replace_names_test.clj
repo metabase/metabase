@@ -105,6 +105,40 @@
                           "WITH people AS (SELECT 1 AS id) SELECT id FROM public.people"
                           {:tables {{:schema "public" :table "people"} "users"}})))))
 
+(deftest ^:parallel cte-shadows-a-table-in-any-case-test
+  (testing "a reference to a CTE names the CTE however either is cased"
+    (is (= "WITH orders AS (SELECT 1 AS id) SELECT * FROM ORDERS"
+           (replace-names :postgres
+                          "WITH orders AS (SELECT 1 AS id) SELECT * FROM ORDERS"
+                          {:tables {{:table "orders"} "users"}}))))
+  (testing "a CTE shadows only inside the query that declares it"
+    ;; The outer `orders` is the real table: the CTE belongs to the subquery, and renaming stops at its edge.
+    (is (= (str "SELECT * FROM users UNION ALL "
+                "SELECT * FROM (WITH orders AS (SELECT 1 AS id) SELECT id FROM orders) AS t")
+           (replace-names :postgres
+                          (str "SELECT * FROM orders UNION ALL "
+                               "SELECT * FROM (WITH orders AS (SELECT 1 AS id) SELECT id FROM orders) t")
+                          {:tables {{:table "orders"} "users"}})))))
+
+(deftest ^:parallel alias-shadows-a-qualifier-in-any-case-test
+  (testing "a column qualifier naming a FROM alias is left alone however either is cased"
+    (is (= "SELECT People.id FROM users AS PEOPLE"
+           (replace-names :postgres
+                          "SELECT People.id FROM people PEOPLE"
+                          {:tables {{:table "people"} "users"}})))))
+
+(deftest ^:parallel quoted-reference-is-case-significant-test
+  (testing "a quoted reference matches only a key of the same case: the engine reads it literally"
+    (is (= "SELECT * FROM \"Orders\""
+           (replace-names :postgres
+                          "SELECT * FROM \"Orders\""
+                          {:tables {{:table "orders"} "users"}}))))
+  (testing "and still matches a key spelled the same way"
+    (is (= "SELECT * FROM \"users\""
+           (replace-names :postgres
+                          "SELECT * FROM \"Orders\""
+                          {:tables {{:table "Orders"} "users"}})))))
+
 (deftest ^:parallel case-agnostic-match-test
   (testing "a key matches a reference written in any case"
     ;; Metabase treats every database as case-agnostic (see `macaw-options`): unquoted identifiers are

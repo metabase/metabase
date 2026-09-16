@@ -22,7 +22,8 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
-   [metabase.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [reifyhealth.specmonstah.core :as rs]
@@ -1095,7 +1096,7 @@
 ;;; ---------------------------------- Transform test expectations round trip ----------------------------------
 ;;; Companion to transform-test-round-trip-test above, which covers the `equals`/`sql` and `empty` shapes. This
 ;;; one covers the `equals`/`rows` payload -- the only one carrying author-named columns and row maps -- and the
-;;; claim that import builds expectation records rather than plain maps.
+;;; claim that import normalizes and validates it the way a POST does.
 
 (def ^:private round-trip-expectations
   "An `equals` whose column names are the hazardous ones -- `2024` would come back a number from YAML and a keyword
@@ -1151,9 +1152,9 @@
                 (testing "the transform reference resolves"
                   (is (= (t2/select-one-pk :model/Transform :name "Revenue Report")
                          (:transform_id imported))))
-                (testing "every expectation is a record: serdes import gets the same validation as a POST"
-                  (is (every? #(satisfies? expectations.protocol/Expectation %) expectations))
-                  (testing "and the equivalent plain map is not one, so the check above means something"
-                    (is (not-any? #(satisfies? expectations.protocol/Expectation (into {} %)) expectations))))
+                (testing "serdes import gets the same validation as a POST: what it stored satisfies the schema"
+                  (is (mr/validate ::transform-testing.schema/expectations expectations))
+                  (testing "and normalization ran, so a type arrives as a keyword rather than the YAML's string"
+                    (is (= [:equals :empty] (mapv :type expectations)))))
                 (testing "the payload is unchanged, row keys still strings"
-                  (is (= round-trip-expectations (mapv #(into {} %) expectations))))))))))))
+                  (is (= round-trip-expectations expectations)))))))))))

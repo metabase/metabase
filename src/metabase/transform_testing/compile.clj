@@ -13,6 +13,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase.transform-testing.util :as transform-testing.u]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -92,7 +93,8 @@
     (conj {:schema schema :table table})
 
     (or (nil? schema)
-        (and default-schema (.equalsIgnoreCase ^String schema ^String default-schema)))
+        (= (transform-testing.u/fold-identifier schema)
+           (transform-testing.u/fold-identifier default-schema)))
     (conj {:table table})))
 
 (mu/defn table-replacements :- ::table-replacements

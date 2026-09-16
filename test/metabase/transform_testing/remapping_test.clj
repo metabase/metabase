@@ -202,6 +202,10 @@
                           [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
                            {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]
                           source))))
+    (testing "an expectation whose SQL cannot be parsed is refused as an authoring error, not a parser escape"
+      (is (thrown-with-msg?
+           ExceptionInfo #"Expectation \"broken\" has SQL that could not be parsed"
+           (validate inputs [{:type :empty :name "broken" :sql "SELECT * FROM WHERE ("}] source))))
     (testing "an expectation with no SQL of its own is nothing to check"
       (is (nil? (validate inputs
                           [{:type    :equals :name "rows" :format :rows
@@ -240,6 +244,10 @@
     ;; its fixture loaded but unreferenced, and the query would read the other one's data.
     (let [inputs [(declared-input nil "ORDERS") (declared-input "PUBLIC" "ORDERS")]]
       (is (= ["ORDERS" "PUBLIC.ORDERS"]
+             (#'transform-testing.validator/colliding-inputs inputs "PUBLIC")))))
+  (testing "two declarations differing only in case are the same table to a reference, so they collide"
+    (let [inputs [(declared-input "public" "orders") (declared-input "PUBLIC" "ORDERS")]]
+      (is (= ["public.orders" "PUBLIC.ORDERS"]
              (#'transform-testing.validator/colliding-inputs inputs "PUBLIC")))))
   (testing "the same table in two schemas is not a collision: a qualified reference tells them apart"
     (let [inputs [(declared-input "SALES" "ORDERS") (declared-input "ARCHIVE" "ORDERS")]]

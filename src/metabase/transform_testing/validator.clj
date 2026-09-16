@@ -16,32 +16,34 @@
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
    [clojure.string :as str]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transform-testing.compile :as transform-testing.compile]
    [metabase.transform-testing.errors :as transform-testing.errors]
    [metabase.transform-testing.schema :as transform-testing.schema]
+   [metabase.transform-testing.util :as transform-testing.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- same-name?
-  "Do `a` and `b` name the same thing? Case-agnostic, the rule the rewrite matches by."
-  [^String a ^String b]
-  (boolean (or (= a b)
-               (and a b (.equalsIgnoreCase a b)))))
-
 (mu/defn- table-match? :- :boolean
   "Do a query's referenced table `ref` and a declared input `decl` name the same table? Matches by name, with schema
   equal, or the reference bare (nil schema) against a declared table in `default-schema` — the one-directional
   defaulting `table-replacements` uses when it rewrites (a bare read resolves to the default schema; a bare
-  declaration does not cover a qualified read). Case-agnostic, and the single matching rule for both completeness
-  directions."
+  declaration does not cover a qualified read).
+
+  Names match case-agnostically. The parser reports a reference as a bare string, so nothing here can tell a quoted
+  `\"Orders\"` — which an engine reads literally — from an unquoted `ORDERS`, and counting them as the same table is
+  the safe direction: it can only make this guard accept, and the rewrite's own guard still refuses a reference it
+  did not remap."
   [{ref-schema :schema ref-name :name} :- ::transform-testing.schema/table
    {d-schema :schema d-name :name}     :- ::transform-testing.schema/table
    default-schema                      :- [:maybe :string]]
-  (and (same-name? d-name ref-name)
-       (or (same-name? d-schema ref-schema)
-           (and (nil? ref-schema) (same-name? d-schema default-schema)))))
+  (and (= (transform-testing.u/fold-identifier d-name) (transform-testing.u/fold-identifier ref-name))
+       (or (= (transform-testing.u/fold-identifier d-schema) (transform-testing.u/fold-identifier ref-schema))
+           (and (nil? ref-schema)
+                (= (transform-testing.u/fold-identifier d-schema)
+                   (transform-testing.u/fold-identifier default-schema))))))
 
 (mu/defn table-label :- :string
   "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is
@@ -98,13 +100,20 @@
   "The labels of the declared `inputs` that a query cannot tell apart, and so would be replaced by one another's temp
   table.
 
-  Two inputs collide when a reference could resolve to either: the same table declared twice, or the same table
-  declared once bare and once in the driver's default schema. The rewrite maps each reference to one temp table, so a
-  collision would silently drop one input's fixture and read the other's."
+  Two inputs collide when a reference could resolve to either: the same table declared twice, once in either case, or
+  the same table declared once bare and once in the default schema. The rewrite maps each reference to one temp table,
+  so a collision would silently drop one input's fixture and read the other's.
+
+  Names are compared case-agnostically, which refuses a pair an engine could tell apart — Postgres can hold both
+  `orders` and `\"Orders\"`. Refusing a test whose author can rename its way out is the better failure than running one
+  whose second fixture is never read."
   [inputs         :- ::transform-testing.schema/inputs
    default-schema :- [:maybe :string]]
-  (let [input-keys (fn [{{:keys [schema name]} :table}]
-                     (set (transform-testing.compile/table-keys schema name default-schema)))
+  (let [fold-key   (fn [{:keys [schema table]}]
+                     {:schema (transform-testing.u/fold-identifier schema)
+                      :table  (transform-testing.u/fold-identifier table)})
+        input-keys (fn [{{:keys [schema name]} :table}]
+                     (into #{} (map fold-key) (transform-testing.compile/table-keys schema name default-schema)))
         colliding  (->> (map input-keys inputs)
                         (mapcat identity)
                         frequencies
@@ -135,6 +144,28 @@
                    (str/join ", " surviving)))
             (cond-> {:references (vec surviving)}
               source (assoc :expectation source))))))
+
+(mu/defn- check-expectation-sql
+  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten. Its SQL is the
+  author's, so SQL the parser cannot read is a refusal naming the expectation rather than the parser's own escape."
+  [driver           :- :keyword
+   expectation-name :- :string
+   sql              :- :string
+   replacements     :- ::transform-testing.compile/table-replacements
+   temp-tables      :- [:set :string]]
+  (try
+    (check-rewrite driver
+                   (transform-testing.compile/replace-tables driver sql replacements)
+                   temp-tables
+                   expectation-name)
+    (catch Exception e
+      (if (sql-parsing/parse-error? e)
+        (throw (transform-testing.errors/ex
+                ::transform-testing.errors/unparseable-source
+                (tru "Expectation {0} has SQL that could not be parsed: {1}"
+                     (pr-str expectation-name) (or (some-> (ex-cause e) ex-message) (ex-message e)))
+                {:expectation expectation-name}))
+        (throw e)))))
 
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the transform it tests and every query it will run reads only the
@@ -176,5 +207,5 @@
     (check-rewrite driver rewritten-transform temp-tables nil)
     (doseq [{:keys [name sql]} expectations
             :when              sql]
-      (check-rewrite driver (transform-testing.compile/replace-tables driver sql replacements) temp-tables name)))
+      (check-expectation-sql driver name sql replacements temp-tables)))
   nil)

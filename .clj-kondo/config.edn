@@ -315,12 +315,12 @@
   {metabase-enterprise.entity-retrieval.core/search-unfiltered {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.entity-retrieval.core/search-unfiltered            {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.entity-retrieval.mirror/search-unfiltered          {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
-   metabase.transform-testing.expectations.equals/->EqualsRows    {:message "Use metabase.transform-testing.expectations/expectations — the generated constructors skip validation"}
-   metabase.transform-testing.expectations.equals/map->EqualsRows {:message "Use metabase.transform-testing.expectations/expectations — the generated constructors skip validation"}
-   metabase.transform-testing.expectations.equals/->EqualsSql     {:message "Use metabase.transform-testing.expectations/expectations — the generated constructors skip validation"}
-   metabase.transform-testing.expectations.equals/map->EqualsSql  {:message "Use metabase.transform-testing.expectations/expectations — the generated constructors skip validation"}
-   metabase.transform-testing.expectations.empty/->Empty          {:message "Use metabase.transform-testing.expectations/expectations — the generated constructors skip validation"}
-   metabase.transform-testing.expectations.empty/map->Empty       {:message "Use metabase.transform-testing.expectations/expectations — the generated constructors skip validation"}
+   metabase.transform-testing.expectations.equals/->EqualsRows    {:message "Build an expectation with metabase.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase.transform-testing.expectations.equals/map->EqualsRows {:message "Build an expectation with metabase.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase.transform-testing.expectations.equals/->EqualsSql     {:message "Build an expectation with metabase.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase.transform-testing.expectations.equals/map->EqualsSql  {:message "Build an expectation with metabase.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase.transform-testing.expectations.empty/->Empty          {:message "Build an expectation with metabase.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase.transform-testing.expectations.empty/map->Empty       {:message "Build an expectation with metabase.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
    clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}

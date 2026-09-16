@@ -1,13 +1,13 @@
 (ns ^:mb/driver-tests metabase.transform-testing.runner-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
    [metabase.transform-testing.errors :as transform-testing.errors]
-   [metabase.transform-testing.runner :as transform-testing.runner])
+   [metabase.transform-testing.runner :as transform-testing.runner]
+   [metabase.transform-testing.test-util :as transform-testing.test-util])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -45,17 +45,6 @@
 
 (def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
 
-(defn- cast-types
-  "An integer and a text `database_type` the current driver accepts as a `CAST` target."
-  []
-  (case driver/*driver*
-    :mysql              ["SIGNED" "CHAR(50)"]
-    :sqlserver          ["int" "nvarchar(50)"]
-    ;; ClickHouse casts NULL only to a nullable type
-    :clickhouse         ["Nullable(Int32)" "Nullable(String)"]
-    :bigquery-cloud-sdk ["INT64" "STRING"]
-    ["INTEGER" "VARCHAR(50)"]))
-
 (deftest run-transform-test-rows-input-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (with-people-transform
@@ -63,7 +52,7 @@
         (let [mp                   (mt/metadata-provider)
               id-name              (:name (lib.metadata/field mp (mt/id :people :id)))
               name-name            (:name (lib.metadata/field mp (mt/id :people :name)))
-              [int-type text-type] (cast-types)
+              [int-type text-type] (transform-testing.test-util/cast-types)
               output               (str schema ".people_summary")
               run                  (fn [rows sql]
                                      (mt/with-temp [:model/TransformTest transform-test
@@ -85,7 +74,7 @@
 (defn- id+name
   "The `id` and `name` columns of the output, typed as the current driver spells those types."
   []
-  (let [[int-type text-type] (cast-types)]
+  (let [[int-type text-type] (transform-testing.test-util/cast-types)]
     [{:name "id" :database_type int-type}
      {:name "name" :database_type text-type}]))
 
@@ -146,7 +135,7 @@
         (testing "a column the expectation does not declare is not compared"
           (let [result (run-test! schema table transform-id one-row
                                   [{:type :equals :name "id only" :format :rows
-                                    :columns [{:name "id" :database_type (first (cast-types))}]
+                                    :columns [{:name "id" :database_type (first (transform-testing.test-util/cast-types))}]
                                     :rows    [{"id" 1}]}])]
             (is (= :passed (:status result)))))))))
 
@@ -175,7 +164,7 @@
           ;; `GROUP BY` folds NULLs together. An equality-based difference leaves the row
           ;; uncancelled, reporting it as both missing and extra.
           (let [result (run-test! schema table transform-id
-                                  (str "SELECT 1 AS id, CAST(NULL AS " (second (cast-types)) ") AS name")
+                                  (str "SELECT 1 AS id, CAST(NULL AS " (second (transform-testing.test-util/cast-types)) ") AS name")
                                   [{:type :equals :name "output" :format :rows
                                     :columns (id+name)
                                     :rows    [{"id" 1 "name" nil}]}])]

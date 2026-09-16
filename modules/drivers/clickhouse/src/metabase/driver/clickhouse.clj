@@ -143,7 +143,9 @@
   ;; spelling of `:dbname`, and both are still in the wild.
   (let [details (:details database)]
     (or (first-db-name (:dbname details))
-        (first-db-name (:db details)))))
+        (first-db-name (:db details))
+        ;; Details carrying neither still connect, to the database `default-connection-details` names.
+        (first-db-name (:dbname default-connection-details)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]

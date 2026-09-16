@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transform-testing.test-util :as transform-testing.test-util]
    [toucan2.core :as t2]))
 
 (defmacro ^:private with-transforms-enabled
@@ -49,11 +50,12 @@
                            :name "no null ids"
                            :sql  (str "SELECT * FROM " schema ".people_summary WHERE id IS NULL")}
                   ;; The output row is (1, 'abc'), so this one differs in a single cell.
+                  [int-type text-type] (transform-testing.test-util/cast-types)
                   failing {:type    "equals"
                            :name    "output"
                            :format  "rows"
-                           :columns [{:name "id" :database_type "INTEGER"}
-                                     {:name "name" :database_type "VARCHAR"}]
+                           :columns [{:name "id" :database_type int-type}
+                                     {:name "name" :database_type text-type}]
                            :rows    [{"id" 1 "name" "xyz"}]}
                   created (mt/user-http-request :crowberto :post 200 "transform-test"
                                                 {:transform_id transform-id
