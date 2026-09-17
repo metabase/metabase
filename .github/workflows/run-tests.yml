@@ -21,16 +21,19 @@ jobs:
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       plan: ${{ steps.decide.outputs.plan }}
-      frontend-plan: ${{ steps.compute.outputs.plan }}
+      frontend-plan-id: ${{ steps.compute.outputs.artifact-id }}
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v6
         with:
           # Enough history to diff against the base of the pull request.
           fetch-depth: 0
-      - uses: ./.github/actions/prepare-node-bun
+
+      - uses: ./.github/actions/prepare-frontend
+
       - name: Create test plan
         id: decide
         env:
@@ -67,6 +70,18 @@ jobs:
           loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
           e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
+      
+      - name: Build static-viz frontend
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ee
+      
+      - name: Check for static viz changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: static_viz
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-sources.yaml
 
   upload-affected-tests-stats:
     needs: [should-run]
@@ -91,7 +106,6 @@ jobs:
 
   uberjar:
     needs: [should-run]
-    if: ${{ fromJSON(needs.should-run.outputs.plan).workflows.run-tests.jobs.uberjar.run }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
@@ -114,8 +128,6 @@ jobs:
       edition: ${{ matrix.edition }}
       release: false
 
-  # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
-  # The compile doesn't depend on MB_EDITION.
   e2e-cljs:
     name: Compile CLJS for e2e
     needs: [should-run]
@@ -136,40 +148,7 @@ jobs:
           name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
           path: target/cljs_dev
           if-no-files-found: error
-          # Uploads fail when an artifact of this name already exists in the run
-          # replace it rather than fail on a re-run.
           overwrite: true
-
-  # TODO: integrate with the test plan. This job builds static-viz and then
-  # path-filters `.github/static-viz-sources.yaml`, which the rspack build
-  # emits from the module graph of this very commit — so it is a signal that
-  # only exists after a build, and `should-run` has no way to work it out up
-  # front. Until the plan can express it, a frontend-only change that alters
-  # what static-viz pulls in no longer forces the backend suite to run.
-  #
-  # static-viz-files-changed:
-  #   name: Check whether static-viz files changed
-  #   needs: should-run
-  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-  #   timeout-minutes: 10
-  #   outputs:
-  #     static_viz: ${{ steps.static_viz.outputs.static_viz }}
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #     - name: Prepare front-end environment
-  #       uses: ./.github/actions/prepare-frontend
-  #     - name: Prepare back-end environment
-  #       uses: ./.github/actions/prepare-backend
-  #     - name: Build static-viz frontend
-  #       run: bun run build-static-viz
-  #       env:
-  #         MB_EDITION: ee
-  #     - name: Check for static viz changes
-  #       uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-  #       id: static_viz
-  #       with:
-  #         token: ${{ github.token }}
-  #         filters: .github/static-viz-sources.yaml
 
   backend-tests:
     needs: [should-run]
@@ -201,22 +180,18 @@ jobs:
 
   frontend-tests:
     needs: [should-run]
-    if: ${{ !cancelled() && needs.should-run.result == 'success' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
       plan: ${{ needs.should-run.outputs.plan }}
-      # A skipped/failed planner supplies no artifact, so the suite runs in full.
-      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
+      test-plan-artifact-id: ${{ needs.should-run.outputs.frontend-plan-id }}
 
   loki-tests:
     needs: [should-run]
-    if: ${{ !cancelled() && needs.should-run.result == 'success' }}
     uses: ./.github/workflows/loki.yml
     with:
       plan: ${{ needs.should-run.outputs.plan }}
-      # A skipped/failed planner supplies no artifact, so the suite runs in full.
-      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
+      test-plan-artifact-id: ${{ needs.should-run.outputs.frontend-plan-id }}
 
   e2e-tests:
     needs: [should-run, uberjar]

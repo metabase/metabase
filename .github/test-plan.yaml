@@ -43,14 +43,16 @@
 #    job out of its `needs`. Leave them unlisted until verify can allow for it.
 
 overrides:
-  # The global verdict from run-tests.yml's `should-run` job, in the same
-  # order, since the order is the rule: force-run is checked before force-skip.
-  - id: protected-branch
-    reason: master and release branches test everything
+  - id: protected-branch-master
+    reason: master should test everything
     run:
-      condition: any
       branch:
         - master
+    
+  - id: protected-branch-releases
+    reason: release branches should test everything
+    run:
+      branch:
         - release-x.*
 
   - id: force-run-label
@@ -72,13 +74,19 @@ workflows:
         run:
           # don't run if this isn't a PR
           ignore-overrides:
-            - protected-branch
+            - protected-branch-*
           event:
             - pull_request
       uberjar:
         calls: uberjar
       containerize:
         calls: containerize-jar
+        run:
+          # don't push to Dockerhub for merge to release branches 
+          ignore-overrides:
+            - protected-branch-releases
+          labels:
+            - build-docker-uberjar
       e2e-cljs:
         run:
           paths:
@@ -103,13 +111,32 @@ workflows:
         calls: build-scripts
       bundle-size:
         calls: bundle-size
+        run:
+          ignore-overrides:
+            - protected-branch-*
+          paths:
+            - frontend_sources
+          event:
+            - pull_request
 
   uberjar:
+    run:
+      condition: any
+      paths:
+        - backend_all
+        - frontend_all
+        - e2e_all
     jobs:
       setup:
       build:
 
   containerize-jar:
+    run:
+      condition: any
+      paths:
+        - backend_all
+        - frontend_all
+        - e2e_all
     jobs:
       containerize:
       verify-docker-pull-amd64:
