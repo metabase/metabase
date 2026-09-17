@@ -6,7 +6,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -253,17 +252,11 @@
   can fully or partially edit the data model. If the user does not have data access for any databases, returns only the
   name and ID of these databases, removing all other fields."
   [dbs]
-  (let [filtered-dbs
-        (if-let [f (when config/ee-available?
-                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
-          (f dbs)
-          dbs)]
-    (map
-     (fn [db] (if (mi/can-read? db)
-                db
-                (select-keys db [:id :name :tables])))
-     filtered-dbs)))
+  (map
+   (fn [db] (if (mi/can-read? db)
+              db
+              (select-keys db [:id :name :tables])))
+   (schema.table/filter-databases-by-data-model-perms dbs)))
 
 (defn- check-db-data-model-perms
   "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
@@ -343,8 +336,9 @@
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
-    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
-    Enterprise Edition code is available the advanced-permissions feature is enabled.
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those
+    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,
+    this is admin-only.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
@@ -479,9 +473,9 @@
    returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
    Passing include_editable_data_model will only return tables for which the current user has data model editing
-   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-   and tables, with no additional metadata.
+   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
+   advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
+   DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.
 
    Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
    [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
@@ -588,9 +582,9 @@
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-  and tables, with no additional metadata."
+  permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
+  advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
+  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
