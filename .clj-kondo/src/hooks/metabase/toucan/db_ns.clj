@@ -77,35 +77,43 @@
   (let [f (some-> (first (:children node)) hooks/sexpr)]
     (not (contains? write-fns (some-> f name symbol)))))
 
-(defn- kv-arg-pair
-  "The first `:column value` pair a query call passes after its model, if any.
+(defn- kv-arg-value-nodes
+  "The value nodes of a call written as `:column value` pairs.
 
   `(t2/select :model/X :locale locale)`. Several of these fns take an argument before the model --
   `(t2/select-one-fn :value :model/X :key k)` -- so the pairs do not start at a fixed offset; they
-  start after the `:model/...` keyword. A call that does not name a literal model is not checked."
+  start after the `:model/...` keyword. A call that does not name a literal model is not checked.
+
+  A trailing query map is not a pair, and its values are reached by [[value-nodes]] instead. A
+  value that is itself an operator form -- `:id [:in ids]` -- has its own values walked, so the
+  collection inside is checked rather than the form."
   [args]
   (let [after-model (->> args
                          (drop-while #(not (and (hooks/keyword-node? %)
                                                 (= "model" (namespace (hooks/sexpr %))))))
-                         rest)
-        [k v]       after-model]
-    (when (and k v (hooks/keyword-node? k))
-      k)))
+                         rest)]
+    (->> after-model
+         ;; `partition-all` rather than `partition` so a trailing odd argument (a query map, which
+         ;; is not a pair) is still seen and skipped by the keyword-node? test below.
+         (partition-all 2)
+         (mapcat (fn [[k v]]
+                   (when (and v (hooks/keyword-node? k))
+                     (if-not (hooks/vector-node? v)
+                       [v]
+                       (let [[head & args] (:children v)
+                             op            (some-> head hooks/sexpr)]
+                         (cond
+                           ;; Already marked -- the marker is the value slot.
+                           (marked? v) [v]
 
-(defn- lint-kv-args!
-  "Register a finding for a query written as `:column value` pairs.
+                           ;; `:id [:in ids]`. Toucan folds the column in from the pair key, so
+                           ;; EVERY argument here is a value -- unlike a query-map clause, where
+                           ;; the first argument is the column.
+                           (and (keyword? op)
+                                (contains? value-operators (symbol (name op))))
+                           args
 
-  Toucan builds those into the where clause itself, so the query's shape is not on the page: there
-  is nothing for a reader, this linter, or the `.sql` extraction that follows this project to read.
-  The same call takes a map -- `{:where [:= :locale v]}` for a select, `{:locale v}` for an
-  `update!` -- which is the statement, near enough to read off."
-  [node]
-  (when-let [k (kv-arg-pair (rest (:children node)))]
-    (hooks/reg-finding!
-     (assoc (meta k)
-            :message (format "Pass this query a map rather than `%s ...` pairs, so its shape is on the page."
-                             (hooks/sexpr k))
-            :type :metabase/unsafe-app-db-query))))
+                           :else (value-nodes v))))))))))
 
 (defn- lint-unmarked-values!
   "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
@@ -113,7 +121,9 @@
   Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
   function is out of reach of a check that does not follow it across a call."
   [node]
-  (doseq [value (mapcat value-nodes (rest (:children node)))
+  (doseq [value (let [args (rest (:children node))]
+                  (concat (mapcat value-nodes args)
+                          (kv-arg-value-nodes args)))
           :when (and (hooks/token-node? value)
                      (symbol? (hooks/sexpr value))
                      (not (marked? value)))]
@@ -141,6 +151,5 @@
              (db-namespace? (modules/config input) ns)
              (not (test-file? filename))
              (read-call? node))
-    (lint-unmarked-values! node)
-    (lint-kv-args! node))
+    (lint-unmarked-values! node))
   input)

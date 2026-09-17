@@ -103,24 +103,53 @@
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
                                  'metabase.foo.db "test/metabase/foo/db_test.clj")))))
 
-(deftest ^:parallel kv-arg-style-test
-  (testing "a query written as :column value pairs is flagged whatever the values are"
-    (are [form] (=? [{:type :metabase/unsafe-app-db-query, :message #"Pass this query a map.*"}]
+(deftest ^:parallel kv-arg-style-is-not-flagged-test
+  (testing "call style is not linted: a query written as :column value pairs is left alone"
+    ;; Extraction to a .sql file is semantic rather than a transcription of the HoneySQL shape, so a
+    ;; query map is no closer to that target than kv-args are. Converting also skips Toucan's type
+    ;; transforms, which only run in kv-arg position -- that bug shipped twice. See
+    ;; docs/developers-guide/value-binding-rubric.md.
+    (are [form] (empty? (filter #(re-find #"Pass this query a map" (str (:message %)))
+                                (lint-query-call form 'metabase.foo.db)))
+      '(t2/select :model/X :locale [:auto/param locale])
+      '(t2/select :model/X :archived false)
+      '(t2/select-one :model/X :id (long id))
+      '(t2/select-one-fn :value :model/Setting :key [:auto/param k])
+      '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})))
+  (testing "an unmarked value in a kv-arg is still flagged -- only the style check went away"
+    (is (=? [{:type :metabase/unsafe-app-db-query, :message #".*reaches a SQL value slot unmarked.*"}]
+            (lint-query-call '(t2/select :model/X :locale locale) 'metabase.foo.db)))))
+
+(deftest ^:parallel kv-arg-values-are-linted-test
+  (testing "an unmarked value in a kv-arg pair is flagged, so dropping the style check left no gap"
+    (are [form] (=? [{:type :metabase/unsafe-app-db-query
+                      :message #".*reaches a SQL value slot unmarked.*"}]
                     (lint-query-call form 'metabase.foo.db))
       '(t2/select :model/X :locale locale)
-      '(t2/select :model/X :archived false)
-      '(t2/select :model/X :locale [:auto/param locale])
-      '(t2/select-one :model/X :id (long id))))
-  (testing "one finding per call, not one per pair"
-    (is (= 1 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
-                                     'metabase.foo.db)))))
-  (testing "a fn with an argument before the model is still recognised"
-    (is (=? [{:message #"Pass this query a map.*"}]
-            (lint-query-call '(t2/select-one-fn :value :model/Setting :key k) 'metabase.foo.db))))
-  (testing "a map query is not flagged"
+      '(t2/select-one :model/X :id id)
+      ;; the pairs do not start at a fixed offset -- :value comes before the model here
+      '(t2/select-one-fn :value :model/Setting :key k)
+      ;; a value inside an operator form is reached, rather than the form being treated as a value
+      '(t2/select :model/X :id [:in ids])))
+  (testing "a marked or coerced kv-arg value is not flagged"
     (are [form] (empty? (lint-query-call form 'metabase.foo.db))
-      '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})
-      '(t2/update! :model/X {:locale [:auto/param locale]} {:msgstr "x"}))))
+      '(t2/select :model/X :locale [:auto/param locale])
+      '(t2/select-one :model/X :id (long id))
+      '(t2/select :model/X :id [:in (mapv long ids)])
+      '(t2/select :model/X :id [:in [:auto/param ids]])))
+  (testing "a literal kv-arg value is not flagged"
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X :archived false)
+      '(t2/select :model/X :status "pending")
+      '(t2/select :model/X :engine :appdb)))
+  (testing "one unmarked value per pair is reported"
+    (is (= 2 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
+                                     'metabase.foo.db)))))
+  (testing "a call mixing kv-args with a trailing query map reports each value exactly once"
+    ;; The two walkers run over the same arguments, so this pins that they do not double-report.
+    (is (= 2 (count (lint-query-call
+                     '(t2/select :model/X :locale locale {:where [:= :other other]})
+                     'metabase.foo.db))))))
 
 (deftest ^:parallel write-calls-are-not-linted-for-values-test
   (testing "an insert's values are written, not filtered on, so they are not flagged"
