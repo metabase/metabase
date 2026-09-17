@@ -2,11 +2,14 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Flex, Stack, Text } from "metabase/ui";
 import { useListSessionsQuery } from "metabase-enterprise/api";
 import type { AdminSession } from "metabase-types/api";
 
 import { SessionDetails } from "./SessionDetails";
+import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import type { SessionDetailSidebarProps } from "./types";
 
@@ -45,6 +48,11 @@ export const SessionDetailSidebar = ({
     sessionFromPage ? skipToken : { ids: [sessionId] },
   );
   const session = sessionFromPage ?? currentData?.data[0];
+  const currentUser = useSelector(getUser);
+
+  const canRevokeSession = session !== undefined && !session.current;
+  const canRevokeUserSessions =
+    session !== undefined && session.user.id !== currentUser?.id;
 
   return (
     <Flex
@@ -58,16 +66,19 @@ export const SessionDetailSidebar = ({
       bg="background_page-primary"
       data-testid="session-detail-sidebar"
     >
-      <Stack h="100%" p="xl" gap="xl" style={{ overflowY: "auto" }}>
+      <Stack
+        flex="1 1 auto"
+        mih={0}
+        p="xl"
+        gap="xl"
+        style={{ overflowY: "auto" }}
+      >
         <SidebarHeader
           sessionId={sessionId}
           session={session}
           prevSessionId={prevSessionId}
           nextSessionId={nextSessionId}
-          isRevoking={isRevoking}
           onNavigate={onNavigate}
-          onRevokeSession={onRevokeSession}
-          onRevokeUserSessions={onRevokeUserSessions}
           onClose={onClose}
         />
         <SidebarBody
@@ -76,6 +87,16 @@ export const SessionDetailSidebar = ({
           isLoaded={currentData !== undefined}
         />
       </Stack>
+      {session && (canRevokeSession || canRevokeUserSessions) && (
+        <SidebarFooter
+          session={session}
+          isRevoking={isRevoking}
+          canRevokeSession={canRevokeSession}
+          canRevokeUserSessions={canRevokeUserSessions}
+          onRevokeSession={onRevokeSession}
+          onRevokeUserSessions={onRevokeUserSessions}
+        />
+      )}
     </Flex>
   );
 };
