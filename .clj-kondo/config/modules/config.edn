@@ -359,7 +359,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
-           task
+           task.secure-delegate
            util
            util.classloader
            util.config}
@@ -2759,13 +2759,12 @@
 
   task
   {:team "UX West"
-   :module-exports #{task.history}
-   :api  #{metabase.task.core metabase.task.secure-delegate}
+   :module-exports #{task.history task.secure-delegate}
+   :api  #{metabase.task.core}
    :uses #{app-db
            tracing
            util
-           util.classloader
-           util.config}}
+           util.classloader}}
 
   task.history
   {:team "UX West"
@@ -2787,6 +2786,11 @@
            util.config}
    :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
+
+  task.secure-delegate
+  {:team "UX West"
+   :api  #{metabase.task.secure-delegate.core}
+   :uses #{util util.classloader util.config}}
 
   testing-api
   {:team "DevEx"

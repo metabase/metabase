@@ -4,7 +4,7 @@
   (:require
    [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
-   [metabase.task.secure-delegate :as secure-delegate]
+   [metabase.task.secure-delegate.core :as secure-delegate]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -78,7 +78,7 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)
 
-  Installs Metabase's per-DB `DriverDelegate` (see [[metabase.task.secure-delegate]]): a
+  Installs Metabase's per-DB `DriverDelegate` (see [[metabase.task.secure-delegate.core]]): a
   `StdJDBCDelegate`/`PostgreSQLDelegate` subclass that reads BLOB columns through a class allow-list, so
   Quartz reconstructs only the plain-data classes Metabase's job data is made of. Then runs any setters
   registered via [[register-jdbc-property-setter!]]. A registered setter that throws is logged and
