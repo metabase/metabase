@@ -11,6 +11,7 @@
 (def ^:private parse-pr-node @#'mage.owner-approval/parse-pr-node)
 (def ^:private valid-cached-review? @#'mage.owner-approval/valid-cached-review?)
 (def ^:private path-owners @#'mage.owner-approval/path-owners)
+(def ^:private parse-codeowners @#'mage.owner-approval/parse-codeowners)
 (def ^:private enforced-for? @#'mage.owner-approval/enforced-for?)
 (def ^:private no-team-label @#'mage.owner-approval/no-team-label)
 (def ^:private no-team-bucket @#'mage.owner-approval/no-team-bucket)
@@ -83,8 +84,9 @@
 (deftest path-owners-last-line-wins-test
   (testing "a broad rule written after a specific one governs the specific path too, as GitHub applies it"
     (is (= #{"@metabase/graphy"}
-           (path-owners [["src/metabase" #{"@metabase/graphy"}]
-                         ["src/metabase/analytics/prometheus.clj" #{"@metabase/cloud-ops"}]]
+           (path-owners (parse-codeowners (str "/src/metabase/analytics/prometheus.clj @metabase/cloud-ops\n"
+                                               "# generated\n"
+                                               "src/metabase/ @metabase/graphy\n"))
                         "src/metabase/analytics/prometheus.clj")))))
 
 (deftest enforced-for?-owner-aware-with-no-team-fallback-test

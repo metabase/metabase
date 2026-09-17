@@ -411,24 +411,29 @@
   [ref]
   (read-team-assignees-blob (git-str "rev-parse" (str ref ":" team-path))))
 
-(defn- codeowners-rules
-  "Active CODEOWNERS entries at `ref` as `[normalized-path #{owner-handle ...}]`, last line first, so the
+(defn- parse-codeowners
+  "Active entries of CODEOWNERS `text` as `[normalized-path #{owner-handle ...}]`, last line first, so the
   first ancestor match is the line GitHub applies: it resolves a path to its last matching line, which is
-  not always the deepest. An entry with no owners (an exclusion line, path
-  followed only by a comment) keeps an empty owner set, so a specific exclusion overrides a broad owner."
+  not always the deepest. An entry with no owners (an exclusion line, path followed only by a comment)
+  keeps an empty owner set, so a later exclusion overrides a broad owner."
+  [text]
+  (->> (str/split-lines text)
+       (map str/trim)
+       (remove #(or (str/blank? %) (str/starts-with? % "#")))
+       (keep (fn [line]
+               (let [toks   (str/split line #"\s+")
+                     path   (-> (first toks) (str/replace #"^/" "") (str/replace #"/$" ""))
+                     owners (into #{}
+                                  (comp (take-while #(not (str/starts-with? % "#")))
+                                        (filter #(str/starts-with? % "@")))
+                                  (rest toks))]
+                 (when (seq path) [path owners]))))
+       reverse))
+
+(defn- codeowners-rules
+  "[[parse-codeowners]] of the CODEOWNERS file at `ref`."
   [ref]
-  (let [rules (->> (str/split-lines (git-str "show" (str ref ":.github/CODEOWNERS")))
-                   (map str/trim)
-                   (remove #(or (str/blank? %) (str/starts-with? % "#")))
-                   (keep (fn [line]
-                           (let [toks (str/split line #"\s+")
-                                 path (-> (first toks) (str/replace #"^/" "") (str/replace #"/$" ""))
-                                 owners (into #{}
-                                              (comp (take-while #(not (str/starts-with? % "#")))
-                                                    (filter #(str/starts-with? % "@")))
-                                              (rest toks))]
-                             (when (seq path) [path owners]))))
-                   reverse)
+  (let [rules (parse-codeowners (git-str "show" (str ref ":.github/CODEOWNERS")))
         globs (filter #(re-find #"[*?\[]" (first %)) rules)]
     ;; path-owners matches by directory prefix, so a glob rule (e.g. *.clj) would silently mis-resolve.
     ;; CODEOWNERS has none today; warn loudly if one ever lands rather than report a wrong number.
@@ -651,7 +656,7 @@
 </style>
 <h1>Owner approval audit</h1>
 <p class=meta><b>" n-total "</b> merged PRs &nbsp;·&nbsp; " (subs (:merged_at (first rows)) 0 10) " to " (subs (:merged_at (last rows)) 0 10) " &nbsp;·&nbsp; captured " (subs (str (:captured_at (first rows))) 0 10) "</p>
-<label class=toggle><input type=checkbox onchange=\"document.getElementById('graphs').dataset.mode=this.checked?'assessable':'all'\"> Owner approval only <span class=hint>(drop n/a &amp; no-owner; normalize to the " n-assess " assessable PRs)</span></label>
+<label class=toggle><input type=checkbox onchange=\"document.getElementById('graphs').dataset.mode=this.checked?'assessable':'all'\"> Owner approval only <span class=hint>(drop n/a, no-pr &amp; no-owner; normalize to the " n-assess " assessable PRs)</span></label>
 <div id=graphs data-mode=all>
 <h2>Merged PRs by owner approval</h2>
 <div class=g-all>" (rail status-cats all-counts n-total) "</div>
@@ -699,7 +704,7 @@ Close by giving the team a team.json assignee, then generating its rules.</p>
     ;; terminal glimpse: full composition over all PRs, then the rate among assessable
     (println (format "\n%s merged PRs (%s assessable)\n" n-total n-assess))
     (doseq [[s color-fn] [["full" c/green] ["partial" c/yellow] ["none" c/red]
-                          ["n/a" c/gray] ["no-owner" c/dark]]]
+                          ["n/a" c/gray] ["no-pr" c/gray] ["no-owner" c/dark]]]
       (println (bar s (get by-status s 0) n-total color-fn)))
     ;; Snapshot the current checkout (HEAD): the assignees + generated CODEOWNERS the metric measures live
     ;; on the working branch, so origin/master reads 0% until the work merges.
