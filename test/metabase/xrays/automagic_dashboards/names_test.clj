@@ -15,7 +15,7 @@
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
-(deftest ^:parallel temporal-humanization-test
+(defn- assert-temporal-humanization! []
   (testing "Timestamp handling"
     (let [dt      #t "1990-09-09T12:30"
           t-str   "1990-09-09T12:30:00"
@@ -41,6 +41,10 @@
         (testing (format "unit = %s" unit)
           (is (= (str expected)
                  (str (#'names/humanize-datetime t-str unit)))))))))
+
+(deftest temporal-humanization-test
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (assert-temporal-humanization!)))
 
 (deftest temporal-humanization-test-2
   (testing "Extracted unit handling"

@@ -61,6 +61,12 @@
       "vscode-webview://" (vscode-webview-enabled?)
       false)))
 
+(def cors
+  "CORS callbacks shared by every assembled Metabase HTTP handler. Vars keep setting lookups live and make the
+   callbacks compatible with Malli's function schema."
+  {:origins-fn         #'cors-origins
+   :sandbox-origin?-fn #'sandbox-origin?})
+
 (defn all-scopes
   "All supported OAuth scopes, as a sorted set: those declared on agent-api endpoints via defendpoint metadata, plus
    every scope the v2 MCP surface accepts ([[v2-scopes]])."

@@ -1,5 +1,6 @@
 (ns metabase.lib.js-test
   (:require
+   ["dayjs" :as dayjs]
    [clojure.test :refer [are deftest is testing]]
    [goog.object :as gobject]
    [medley.core :as m]
@@ -14,12 +15,20 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.time.impl :as u.time.impl]))
 
 (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 
 (deftest ^:parallel format-relative-date-range-defaults-start-of-week-test
   (is (string? (lib.js/format-relative-date-range 0 "week" nil nil #js {}))))
+
+(deftest ^:synchronized format-relative-date-range-uses-start-of-week-test
+  (with-redefs [u.time.impl/now (fn [] (dayjs "2023-01-01T12:00:00"))]
+    (is (= "Jan 1–7, 2023"
+           (lib.js/format-relative-date-range 0 "week" nil nil #js {"start-of-week" "sunday"})))
+    (is (= "Dec 26, 2022 – Jan 1, 2023"
+           (lib.js/format-relative-date-range 0 "week" nil nil #js {"start-of-week" "monday"})))))
 
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]

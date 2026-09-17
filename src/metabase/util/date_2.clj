@@ -254,7 +254,7 @@
     ;; -> 5
 
   Values are returned as numbers (currently, always and integers, but this may change if we add support for
-  `:fraction-of-second` in the future.)"
+  `:fraction-of-second` in the future.) `time-config` controls the first day used by week-based fields."
   ([time-config :- TimeConfig
     unit        :- (into [:enum] (conj extract-units :day-of-week-iso))]
    (extract time-config (t/zoned-date-time) unit))
@@ -337,7 +337,7 @@
 (mu/defn truncate :- TemporalInstance
   "Truncate a temporal value `t` to the beginning of `unit`, e.g. `:hour` or `:day`. Not all truncation units are
   supported on all subclasses of `Temporal` — for example, you can't truncate a `LocalTime` to `:month`, for obvious
-  reasons."
+  reasons. `time-config` controls the beginning of a week."
   ([time-config :- TimeConfig
     unit        :- (into [:enum] truncate-units)]
    (truncate time-config (t/zoned-date-time) unit))
@@ -365,7 +365,9 @@
 
     (group-by #(bucket {:start-of-week :sunday} % :quarter-of-year)
               (map t/local-date [\"2019-01-01\" \"2019-01-02\" \"2019-01-04\"]))
-    ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}"
+    ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}
+
+  `time-config` controls week-based extraction and truncation."
   ([time-config :- TimeConfig
     unit        :- (into [:enum] cat [extract-units truncate-units])]
    (bucket time-config (t/zoned-date-time) unit))
@@ -388,7 +390,9 @@
     (range {:start-of-week :sunday} (t/zoned-date-time \"2019-11-01T15:29:00Z[UTC]\") :week)
     ->
     {:start (t/zoned-date-time \"2019-10-27T00:00Z[UTC]\")
-     :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}"
+     :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}
+
+  `time-config` controls the beginning of a week."
   ([time-config :- TimeConfig
     unit        :- (into [:enum] add-units)]
    (range time-config (t/zoned-date-time) unit))
@@ -425,7 +429,9 @@
     ;; Generate range off instants that have the same MONTH as Nov 18th
     (comparison-range {:start-of-week :sunday}
                       (t/local-date \"2019-11-18\") :month := {:resolution :day})
-    ;; -> {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}"
+    ;; -> {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}
+
+  `time-config` controls the beginning of week-based ranges."
   ([time-config     :- TimeConfig
     unit            :- (into [:enum] truncate-units)
     comparison-type :- ComparisonType]
