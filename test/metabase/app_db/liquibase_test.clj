@@ -906,9 +906,14 @@
               (is (= ["v64.legacy-version-tracking" "v65.legacy-version-tracking"] (rows)))
               (is (= 65 (liquibase/latest-applied-major-version conn db))
                   "older binaries read the highest, i.e. the current major"))
-            (testing "the dev major is skipped -- no older binaries to protect"
-              (liquibase/record-legacy-version-tracking! db liquibase/dev-major "d65")
-              (is (= ["v64.legacy-version-tracking" "v65.legacy-version-tracking"] (rows))))))))))
+            (testing "a dev deployment gets a marker too: a pre-version-less binary pointed at a dev DB must refuse
+                      cleanly (its id scan reads v9999) instead of picking the legacy changelog off the version-less
+                      id and crashing on re-running changeset 1"
+              (insert-changelog-row! conn ct "devmig" "d9999" 3)
+              (liquibase/record-legacy-version-tracking! db liquibase/dev-major "d9999")
+              (is (= ["v64.legacy-version-tracking" "v65.legacy-version-tracking" "v9999.legacy-version-tracking"] (rows)))
+              (is (= liquibase/dev-major (liquibase/latest-applied-major-version conn db))
+                  "older binaries read the dev major and refuse"))))))))
 
 (deftest legacy-version-tracking-removed-by-rollback-test
   (testing "rolling back several majors (65 -> 63) removes the v64 and v65 rows with their deployments, leaving v63"

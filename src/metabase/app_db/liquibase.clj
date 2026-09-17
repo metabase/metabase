@@ -652,9 +652,13 @@
 
   Rows for earlier majors are deliberately left in place, so that after rolling back the later deployments the earlier
   deployment's row is once again the highest -- e.g. rolling 65 -> 63 removes the v64 and v65 rows with their
-  deployments and leaves v63."
+  deployments and leaves v63.
+
+  Dev deployments record a `v9999.` marker too: a pre-version-less binary pointed at a dev-written DB then refuses
+  cleanly ('migrations from v9999') instead of taking the version-less id of the latest changeset for a pre-4.2
+  install, loading the legacy changelog and crashing on re-running changeset 1."
   [^Database database major deployment-id]
-  (when (and major (not (synthetic-dev-major? major)) deployment-id)
+  (when (and major deployment-id)
     (let [conn      (.. database getConnection getUnderlyingConnection)
           changelog (.getDatabaseChangeLogTableName database)
           wanted    (format "v%d.%s" major legacy-version-tracking-suffix)
@@ -707,7 +711,7 @@
          (when backfill
            (insert-version backfill))
          (insert-version {:deployment-id deployment-id, :version version})
-         (when (and major (not (synthetic-dev-major? major)))
+         (when major
            (format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id, comments) "
                         "SELECT 'v%d.%s', '%s', '%s', CURRENT_TIMESTAMP, COALESCE(MAX(orderexecuted), 0) + 1, "
                         "'EXECUTED', '%s', '%s' FROM %s;\n")

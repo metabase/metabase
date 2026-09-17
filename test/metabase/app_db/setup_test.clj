@@ -283,14 +283,15 @@
                 (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_version" sql))
                 (is (false? (versions-table-exists?* conn))
                     "`migrate print` must not mutate the database"))))))))
-  (testing "a dev build's SQL records its synthetic version but never a marker"
+  (testing "a dev build's SQL records the dev version and a v9999 marker, like any other version"
     (mt/with-temp-empty-app-db [conn :h2]
       (update-to-changelog-id "v45.00-001" conn)
       (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
         (liquibase/with-liquibase [liquibase conn]
           (let [sql (liquibase/migrations-sql liquibase)]
             (is (re-find #"(?i)INSERT INTO databasechangelog_version" sql))
-            (is (not (re-find #"legacy-version-tracking" sql)))
+            (is (re-find #"'x\.9999\.0\.0'" sql))
+            (is (re-find #"v9999\.legacy-version-tracking" sql))
             (is (false? (versions-table-exists?* conn))
                 "computing the dev synthetic version on the print path must not create the table")))))))
 
