@@ -57,10 +57,10 @@
 (mu/defn rebuild-context :- ::search.schema/rebuild-context
   "Capture the identity and destination of an app-db rebuild."
   [table :- :keyword]
-  {:engine    :appdb
-   :version   (index-version)
-   :lang-code (i18n/site-locale-string)
-   :table     table})
+  {:coordinate {:engine    :appdb
+                :lang-code (i18n/site-locale-string)
+                :version   (index-version)}
+   :table      table})
 
 (declare exists?)
 
@@ -250,8 +250,9 @@
 (mu/defn activate-table! :- :boolean
   "Make the pending index active if it exists. Returns true if it did so."
   ([] (activate-table! nil))
-  ([{:keys [table version lang-code] :as rebuild} :- [:maybe ::search.schema/rebuild-context]]
-   (let [expected-table table]
+  ([{:keys [coordinate table] :as rebuild} :- [:maybe ::search.schema/rebuild-context]]
+   (let [{:keys [lang-code version]} coordinate
+         expected-table            table]
      (when (and rebuild (not= [version lang-code] [(index-version) (i18n/site-locale-string)]))
        (throw (ex-info "Rebuild coordinate changed before activation" {:rebuild rebuild})))
      ;; Check before sync-tracking-atoms! can replace this process's current-locale tracking with the old coordinate.
@@ -267,7 +268,7 @@
           (when-let [pending (:pending @*indexes*)]
             (analyze-table! pending)
             (search.lease/assert-current!)
-            (reset! *indexes* {:pending nil, :active pending}) true))
+            (reset! *indexes* {:active pending, :pending nil}) true))
          ;; Ensure the metadata is updated and pruned.
          (let [pending (or expected-table (:pending (sync-tracking-atoms!)))]
            (log/infof "Activating pending index %s" pending)
@@ -282,8 +283,8 @@
                  ;; transaction; the table we built is left for orphan cleanup.
                  (sync-tracking-atoms!)
                  (throw (ex-info "Pending index was replaced before it could be activated"
-                                 {:pending pending, :active active})))
-               (reset! *indexes* {:pending nil :active active})
+                                 {:active active, :pending pending})))
+               (reset! *indexes* {:active active, :pending nil})
                (log/infof "Activated pending index %s" active)))
            ;; Clean up while we're here
            (delete-obsolete-tables!)

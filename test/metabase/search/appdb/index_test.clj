@@ -30,13 +30,19 @@
 
 (deftest ^:parallel lease-and-metadata-identity-test
   (is (= (search.index/index-version)
-         (:version (search.lease/coordinates :search.engine/appdb)))))
+         (:version (search.lease/coordinates :search.engine/appdb))))
+  (let [claim (search.lease/coordinates :search.engine/appdb)]
+    (is (= {:coordinate {:engine    :appdb
+                         :lang-code (:lang_code claim)
+                         :version   (:version claim)}
+            :table      :rebuild-destination}
+           (search.index/rebuild-context :rebuild-destination)))))
 
 (deftest strict-document-construction-test
   (mt/with-dynamic-fn-redefs [search.ingestion/->document (fn [_] (throw (ex-info "bad document" {})))]
     (binding [search.ingestion/*fail-on-error* true]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bad document"
-                            (into [] (#'search.ingestion/query->documents [{:model "card", :id 1}])))))))
+                            (into [] (#'search.ingestion/query->documents [{:id 1, :model "card"}])))))))
 
 (deftest strict-batch-failure-test
   (t2/with-connection [conn]
