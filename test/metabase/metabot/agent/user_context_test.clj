@@ -534,6 +534,23 @@
             (is (str/includes? out "notebook editor"))
             (is (not (str/includes? out "source-table")))))))))
 
+(deftest adhoc-viewing-context-unpermissionable-native-source-test
+  (testing "native SQL under a later stage is withheld when its permissions cannot be calculated"
+    (let [query {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type      :mbql.stage/native
+                             :native        "SELECT * FROM {{snip}}"
+                             :template-tags {"snip" {:type         :snippet
+                                                     :name         "snip"
+                                                     :display-name "snip"
+                                                     :snippet-id   Integer/MAX_VALUE}}}
+                            {:lib/type :mbql.stage/mbql}]}]
+      (mt/with-test-user :rasta
+        (is (:unchecked? (shared.content-store/query-for-export query true)))
+        (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+          (is (str/includes? out "notebook editor"))
+          (is (not (str/includes? out "SELECT"))))))))
+
 (deftest adhoc-viewing-context-virtual-database-id-gates-real-database-test
   (let [viewing (fn [card-id]
                   {:user_is_viewing [{:type  "adhoc"

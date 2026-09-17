@@ -24,21 +24,26 @@
                     (contains? node "native"))))
          (tree-seq coll? seq query))))
 
+(defn export->text
+  "Render what [[shared.content-store/query-for-export]] returned, through `store`.
+  Nil when the permission check could not be made and the query is native: a structured query still
+  prints then, resolving nothing, but native SQL spells its table and column names out in the text."
+  [{:keys [query mp unchecked?]} store]
+  (when-not (and unchecked? (native-query? query))
+    (llm-shape/export-gated-query-for-llm query mp store)))
+
 (defn- source-query-text
   "A transform's stored source query as the model should see it, or nil when it must not be shown
   at all. Rendering happens here so it uses the query and provider the permission check already
   produced, rather than normalizing and resolving a second time."
   [query]
-  (when-let [{:keys [query mp unchecked?]} (shared.content-store/query-for-export query false)]
+  (when-let [{:keys [query mp unchecked?] :as export} (shared.content-store/query-for-export query false)]
     (cond
       ;; A cleared query renders the way it always has: native SQL verbatim, anything else through
       ;; the provider the check already built.
       mp         (or (metabot.u/extract-sql-content query)
                      (llm-shape/export-gated-query-for-llm query mp shared.content-store/default-store))
-      ;; The check could not be made. A structured query still prints, resolving nothing, but
-      ;; native SQL spells its table and column names out in the text, so it stays out entirely.
-      unchecked? (when-not (native-query? query)
-                   (llm-shape/export-gated-query-for-llm query nil shared.content-store/default-store))
+      unchecked? (export->text export shared.content-store/default-store)
       ;; Nothing to check: no database, or the database is gone and its metadata with it. An
       ;; orphaned transform still shows its source, which is what admins repair it from.
       :else      (llm-shape/transform-query->text query))))
