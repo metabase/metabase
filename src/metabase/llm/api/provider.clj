@@ -67,7 +67,8 @@
    [:usable :boolean]
    [:env_vars [:sequential :string]]
    [:env_fields [:sequential :string]]
-   [:config [:map-of :keyword [:maybe :string]]]])
+   [:config [:map-of :keyword [:maybe :string]]]
+   [:in_use_message [:maybe :string]]])
 
 (def ^:private llm-model-response-schema
   [:map
@@ -120,17 +121,25 @@
    :requires      (into {} (map (fn [[k deps]] [(name k) (mapv name deps)])) requires)
    :fields        (mapv field-response fields)})
 
+(defenterprise connection-in-use-message
+  "Why the connection `conn-key` can't be removed, when a feature other than Metabot sends its requests through it.
+  OSS has no such features."
+  metabase-enterprise.semantic-search.core
+  [_conn-key]
+  nil)
+
 (defn- connection-response
   [{conn-key :key conn-name :name :keys [type source config env-vars env-fields] :as conn}]
-  {:key        conn-key
-   :type       type
-   :name       conn-name
-   :source     (name (or source :db))
-   :usable     (llm.provider/config-complete? type config)
-   :env_vars   (vec env-vars)
+  {:key            conn-key
+   :type           type
+   :name           conn-name
+   :source         (name (or source :db))
+   :usable         (llm.provider/config-complete? type config)
+   :env_vars       (vec env-vars)
    ;; the config keys the environment owns; the form disables exactly these inputs
-   :env_fields (mapv name env-fields)
-   :config     (or (:config (llm.provider/redact conn)) {})})
+   :env_fields     (mapv name env-fields)
+   :config         (or (:config (llm.provider/redact conn)) {})
+   :in_use_message (connection-in-use-message conn-key)})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
 
@@ -504,6 +513,8 @@
   (let [conn (llm.provider/connection conn-key)]
     (api/check-404 conn)
     (check-not-env-connection! conn)
+    (when-let [in-use-message (connection-in-use-message conn-key)]
+      (throw (ex-info in-use-message {:status-code 400})))
     (when (llm.provider/managed-type? (:type conn))
       ;; removing the managed connection cancels the Store subscription behind it, and everything else that can
       ;; cancel add-ons is superuser-only — settings access must not be enough to end a paid contract
