@@ -7,7 +7,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as api.scope]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
@@ -160,11 +159,11 @@
   "Wrap routes so they may only be accessed when the MCP server is enabled."
   mcp.validation/+mcp-enabled)
 
-(def ^:private general-instructions
-  "The part of the `initialize` instructions every caller gets. It points at the `learn` skills once, settles the
-  routing choices a model makes before reading any tool description closely (structured queries are the default, raw
-  SQL the escape hatch, `visualize_query` for charts when listed), and explains the scope-denial failures that clients
-  rewrite before the model sees them."
+(def ^:private server-instructions
+  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
+  at the `learn` skills once, settles the routing choices a model makes before reading any tool description closely
+  (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts when listed), and
+  explains the scope-denial failures that clients rewrite before the model sees them."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, a multi-stage or joined "
        "query, visualization settings — read the matching skill unless it is already in context.\n"
@@ -173,43 +172,19 @@
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
        "query_handle from execute_query or execute_sql when you have one); don't draw the chart yourself.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
-       ;; Must match what the consent screen shows: a tick box per permission, the ones this connection lacks left
-       ;; unticked. The refused call is what makes a client save the step-up scope: a model that refuses up front
-       ;; leaves the user's re-authentication asking for the baseline again, so a user told nothing clicks Authorize
-       ;; and the step-up grants nothing.
+       ;; Must match what the consent screen shows: a tick box per permission, every optional one unticked, so the
+       ;; user has to re-tick what the connection already had. Naming this connection's permissions here backfired:
+       ;; with that list in context the model sometimes refused a write without calling the tool, and a call that
+       ;; never 403s leaves the client no step-up scope to ask for.
        "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
        "execution failed\") usually means a missing permission, not an expired login. When a tool call or resource "
-       "read needs a permission this connection lacks (it failed, or the list below says so), tell the user which "
-       "tool or resource failed, which permission it needs (each tool's description starts with the permission it "
-       "requires), and why, and ask whether to grant it. If they agree, make the call anyway: the refusal is what "
-       "makes their client request it, and reconnecting before a refused call won't offer it. A permission can also "
-       "be taken away mid-session, if the user re-authorized this connection without it or revoked it. Some clients "
-       "open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, "
-       "Re-authenticate; "
+       "read needs a permission this connection lacks, tell the user which tool or resource failed, which permission "
+       "it needs (each tool's description starts with the permission it requires), and why, and ask whether to grant "
+       "it. Some clients open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, "
+       "select this server, Re-authenticate; "
        "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
-       "tell them to tick it. Retry once they have reconnected."))
-
-(defn- connection-permissions
-  "Sentences telling the model which of `surface-scopes`, by scope ID in their order, `token-scopes` grants and which
-   it lacks, or nil when `token-scopes` is unrestricted (nil or holding the unrestricted sentinel)."
-  [surface-scopes token-scopes]
-  (when-not (or (nil? token-scopes) (contains? token-scopes ::api.scope/unrestricted))
-    (let [{granted true missing false} (group-by #(mcp.scope/matches? token-scopes %) surface-scopes)]
-      (str/join " " (cond-> []
-                      (seq granted) (conj (str "This connection has: " (str/join ", " granted) "."))
-                      (seq missing) (conj (str (if (seq granted) "It lacks: " "This connection lacks: ")
-                                               (str/join ", " missing) ". Missing means not requested yet or left "
-                                               "unticked; don't assume which. If a call succeeds, trust that over this "
-                                               "list.")))))))
-
-(defn- server-instructions
-  "The `initialize` result's `instructions` for a caller holding `token-scopes` — the only channel that reaches the
-   model before any tool call. A scoped caller is also told which [[mcp.paths/v2-surface-scopes]] it holds."
-  [token-scopes]
-  ;; Built per call, never cached: the permission list belongs to one token.
-  (str general-instructions
-       (some->> (connection-permissions mcp.paths/v2-surface-scopes token-scopes)
-                (str "\n"))))
+       "tell them to tick it. Every other permission also starts unticked, so tell them to re-tick the ones they "
+       "want to keep. Retry once they have reconnected."))
 
 (def ^:private default-ask-scopes
   "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
@@ -229,7 +204,7 @@
    {:dispatch-method-fn dispatch-method
     ;; No :prompts — a surface must not advertise methods it answers with method-not-found.
     :capabilities       {:tools {:listChanged true} :resources {}}
-    :instructions-fn    server-instructions
+    :instructions       server-instructions
     :tools-hash-fn      registry/tools-hash
     :endpoint-paths     mcp.paths/endpoint-paths
     :default-path       mcp.paths/canonical-path

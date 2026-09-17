@@ -94,12 +94,11 @@ another step-up in clients that support it. Other clients may require manual rea
 `error_description` ends with a note that the user must tick the permission on the consent screen.
 
 Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
-`instructions` explain scope failures to the model too. For an OAuth token, they also list which v2 scopes the
-connection holds and which it lacks, by scope ID (`agent:content:read` and the like), so the model can ask the user
-before a tool needs a missing one. They also warn that a permission the connection had can be taken away mid-session,
-when the user re-authorizes without it or revokes the connection, so the model doesn't read a newly failing tool as an
-expired login. The instructions are built per `initialize` from the calling token's scopes and never cached. A cookie
-session gets no list.
+`instructions` explain scope failures to the model too: an auth error usually means a missing permission rather than an
+expired login, the model should name the failed tool or resource and the permission it requires, and the user grants it
+by reconnecting and ticking permissions on the consent screen. Because every optional permission starts unticked, the
+instructions tell the model to have the user tick every permission they want, not only the new one. The instructions
+are one static string, the same for every caller: there is no per-connection permission list.
 
 ## Available tools
 

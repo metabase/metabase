@@ -141,27 +141,19 @@
         (is (re-find #"(?i)re-?authenticate|reconnect" instructions))
         (is (str/includes? instructions "/mcp"))
         (is (str/includes? instructions "codex mcp login")))
-      (testing "GHY-4555: once the user agrees, the model makes the call anyway — without the refusal a client saves no
-                step-up scope, and re-authenticating asks for the baseline again"
-        (is (re-find #"(?i)if they agree, make the call anyway" instructions))
-        (is (re-find #"(?i)the refusal is what makes their client request it" instructions))
-        (testing "and not to send the user to reconnect first: with no refused call, reconnecting asks for the baseline
-                  only, so the permission never appears on the consent screen"
-          (is (re-find #"(?i)reconnecting before a refused call won't offer it" instructions)))
-        (testing "and that a permission this connection had can be removed mid-session, so a tool that worked earlier
-                  failing now is not an expired login either. Unticking a permission on one authorization never touches
-                  another live token, so the ways it goes away are a re-authorization without it and a revocation."
-          (is (re-find #"(?i)taken away mid-session" instructions))
-          (is (re-find #"(?i)re-authorized this connection without it or revoked it" instructions)))
-        (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
       (testing "the retry waits until the user has reconnected"
-        (is (re-find #"(?i)retry once they have reconnected" instructions)))
+        (is (re-find #"(?i)retry once they have reconnected" instructions))
+        (is (not (re-find #"(?i)(don't|do not) retry" instructions))))
       (testing "GHY-4555: the consent screen shows a newly requested permission unticked, so the model tells the user
                 to tick it, and asks rather than sending them through consent unprompted"
         (is (not (re-find #"(?i)no per-permission" instructions)))
         (is (re-find #"(?i)unticked" instructions))
         (is (re-find #"(?i)tell them to tick it" instructions))
-        (is (re-find #"(?i)ask whether to grant it" instructions)))
+        (is (re-find #"(?i)ask whether to grant it" instructions))
+        (testing "and that every other permission starts unticked too, so a step-up doesn't silently drop one the
+                  connection already had"
+          (is (re-find #"(?i)every other permission also starts unticked" instructions))
+          (is (re-find #"(?i)re-tick the ones they want to keep" instructions))))
       (testing "the skills guidance is kept"
         (is (re-find #"learn\(\)" instructions))))))
 
@@ -1174,97 +1166,34 @@
          (is (nil? (get-in response [:headers "WWW-Authenticate"])))
          (is (= "served" (-> response :body :result :content first :text))))))))
 
-(defn- bearer-instructions!
-  "The `initialize` result's `instructions` for a Bearer token holding `scopes`."
-  [scopes]
-  ;; An atom because `do-with-bearer-token!` does not return `f`'s value.
-  (let [instructions (atom nil)]
-    (do-with-bearer-token!
-     scopes
-     (fn [headers]
-       (reset! instructions (-> (client/client-full-response :post 200 endpoint
-                                                             {:request-options {:headers headers}}
-                                                             (jsonrpc-request "initialize" {:capabilities {}}))
-                                (get-in [:body :result :instructions])))))
-    @instructions))
-
-(def ^:private baseline-connection-sentence
-  (str "This connection has: agent:content:read, agent:query:run, agent:resource:read. "
-       "It lacks: agent:content:write, agent:sql:run, agent:delivery:write."))
-
-(def ^:private missing-permission-caveat
-  "Missing means not requested yet or left unticked; don't assume which. If a call succeeds, trust that over this list.")
-
 (def ^:private scope-failure-paragraph
   (str "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
        "execution failed\") usually means a missing permission, not an expired login. When a tool call or resource "
-       "read needs a permission this connection lacks (it failed, or the list below says so), tell the user which "
-       "tool or resource failed, which permission it needs (each tool's description starts with the permission it "
-       "requires), and why, and ask whether to grant it. If they agree, make the call anyway: the refusal is what "
-       "makes their client request it, and reconnecting before a refused call won't offer it. A permission can also "
-       "be taken away mid-session, if the user re-authorized this connection without it or revoked it. Some clients "
-       "open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, select this server, "
-       "Re-authenticate; "
+       "read needs a permission this connection lacks, tell the user which tool or resource failed, which permission "
+       "it needs (each tool's description starts with the permission it requires), and why, and ask whether to grant "
+       "it. Some clients open the consent screen themselves; otherwise the user reconnects (Claude Code: /mcp, "
+       "select this server, Re-authenticate; "
        "Codex: `codex mcp login <server>`, then a new session). The permission is unticked on the consent screen; "
-       "tell them to tick it. Retry once they have reconnected."))
+       "tell them to tick it. Every other permission also starts unticked, so tell them to re-tick the ones they "
+       "want to keep. Retry once they have reconnected."))
 
 (deftest initialize-instructions-say-each-thing-once-test
-  (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is stated once
-            and the per-connection paragraph carries only the facts the general one lacks"
-    (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
-      (is (str/ends-with? baseline
-                          (str "\n" scope-failure-paragraph "\n" baseline-connection-sentence " "
-                               missing-permission-caveat))
-          baseline)
-      (doseq [[phrase most] [["ask whether to grant it" 1] ["make the call anyway" 1] ["retry" 1]
-                             ["the usual cause is" 0] ["e.g." 0]]]
+  (testing "GHY-4555: every connection pays for the instructions in tokens, so the scope-failure guidance is one
+            paragraph, the same for every caller, saying each thing once"
+    (let [[_ response]  (initialize!)
+          instructions (get-in response [:body :result :instructions])]
+      (is (str/ends-with? instructions (str "\n" scope-failure-paragraph)) instructions)
+      (doseq [[phrase most] [["ask whether to grant it" 1] ["retry" 1] ["the usual cause is" 0] ["e.g." 0]]]
         (testing phrase
-          (is (>= most (count (re-seq (re-pattern (str "(?i)" (java.util.regex.Pattern/quote phrase))) baseline)))))))))
+          (is (>= most (count (re-seq (re-pattern (str "(?i)" (java.util.regex.Pattern/quote phrase)))
+                                      instructions)))))))))
 
 (deftest initialize-instructions-fit-claude-code-truncation-test
   (testing "GHY-4555: Claude Code truncates server instructions at 2048 characters, which cut off the end of the
-            per-connection permission paragraph, so the whole string fits for every kind of caller"
-    (let [[_ response] (initialize!)]
-      (doseq [[caller instructions] {"no surface scope" (bearer-instructions! #{"agent:question:create"})
-                                     "baseline"         (bearer-instructions! (set mcp.paths/v2-baseline-scopes))
-                                     "all six"          (bearer-instructions! (set mcp.paths/v2-surface-scopes))
-                                     "unrestricted"     (get-in response [:body :result :instructions])}]
-        (testing caller
-          (is (<= (count instructions) 2048) (str (count instructions) " characters")))))))
-
-(deftest initialize-instructions-list-the-connection-permissions-test
-  (testing "GHY-4555: the consent screen lets the user leave a requested permission unticked, and Claude Code and Codex
-            drop the 403's error_description, so the instructions tell the model which of the surface's permissions
-            this connection holds, by scope ID (the tool descriptions carry the consent-screen names)"
-    (let [baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes))]
-      (testing "a baseline token lists what it has and what it lacks, in surface order"
-        (is (str/ends-with? baseline (str "\n" baseline-connection-sentence " " missing-permission-caveat)) baseline))
-      (testing "the general guidance is kept"
-        (is (re-find #"learn\(\)" baseline))
-        (is (re-find #"(?i)not an expired login" baseline)))
-      (testing "a token holding every surface scope lists nothing missing"
-        (let [all-six (bearer-instructions! (set mcp.paths/v2-surface-scopes))]
-          (is (str/ends-with? all-six (str "\nThis connection has: " (str/join ", " mcp.paths/v2-surface-scopes) "."))
-              all-six)
-          (is (not (str/includes? all-six "lacks:")))
-          (is (not (str/includes? all-six "don't assume which")))
-          (testing "and one token's list is never served to another"
-            (is (not= baseline all-six))
-            (is (= baseline (bearer-instructions! (set mcp.paths/v2-baseline-scopes)))))))
-      (testing "a token holding none of the surface scopes lists only what it lacks"
-        (let [none (bearer-instructions! #{"agent:question:create"})]
-          (is (str/ends-with? none (str "\nThis connection lacks: " (str/join ", " mcp.paths/v2-surface-scopes) ". "
-                                        missing-permission-caveat))
-              none)
-          (is (not (str/includes? none "This connection has")))))
-      (testing "an unrestricted cookie session gets no list"
-        (let [[_ response] (initialize!)
-              cookie       (get-in response [:body :result :instructions])]
-          (is (re-find #"learn\(\)" cookie))
-          (is (not (str/includes? cookie "This connection has")))
-          (is (not (str/includes? cookie "lacks:")))
-          (testing "and a cookie session after a scoped token still gets none"
-            (is (not= baseline cookie))))))))
+            scope-failure guidance, so the whole string has to fit"
+    (let [[_ response]  (initialize!)
+          instructions (get-in response [:body :result :instructions])]
+      (is (<= (count instructions) 2048) (str (count instructions) " characters")))))
 
 ;;; ------------------------------------- Native saves and the SQL scope -------------------------------------------
 
