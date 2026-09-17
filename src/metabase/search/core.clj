@@ -182,7 +182,7 @@
   (check-for-removed-env-vars!))
 
 (defn init-index!
-  "Ensure there is an index ready to be populated."
+  "Ensure there is an index ready to be populated. A contended force-reset request throws `::index-busy`."
   [& {:as opts}]
   (search.engine/log-resolution!)
   (when-let [engines (seq (search.engine/active-engines))]
@@ -193,8 +193,12 @@
         (try
           (let [timer    (u/start-timer)
                 outcomes (for [engine engines]
-                           (with-engine-lease engine "initialization"
-                             #(search.engine/init! engine opts)))
+                           (let [outcome (with-engine-lease engine "initialization"
+                                           #(search.engine/init! engine opts))]
+                             (when (and (:force-reset? opts) (not (:acquired? outcome)))
+                               (throw (ex-info "Search index reset is busy; retry after the current operation finishes"
+                                               {:engine engine, :type ::index-busy})))
+                             outcome))
                 acquired? (some :acquired? outcomes)
                 report   (reduce (partial merge-with max)
                                  nil

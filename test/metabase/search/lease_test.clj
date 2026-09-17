@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.schema-migrations-test.impl :as migrations.impl]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
@@ -21,8 +22,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- with-current-schema! [f]
-  (mt/with-empty-h2-app-db!
-    (f)))
+  (if (= :h2 (mdb/db-type))
+    (mt/with-empty-h2-app-db!
+      (f))
+    (migrations.impl/with-temp-empty-app-db [_conn (mdb/db-type)]
+      (mdb/setup-db! :create-sample-content? false)
+      (f))))
 
 ;; These tests exercise a new table, so isolate them in an app DB migrated from the current changelog.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
@@ -520,6 +525,70 @@
                            :lang_code (:lang_code coordinate) :version (:version coordinate))))
       (finally
         (delete-coordinate! coordinate)))))
+
+(deftest release-retries-interruption-during-restore-wait-test
+  (let [coordinate (coordinate)
+        claim      (lease/try-acquire! coordinate)
+        ^ReentrantReadWriteLock lock (:lock (mdb/app-db))
+        interrupted (promise)
+        worker-thread (promise)
+        lifecycle (dynamic-redefs/original-fn #'lease/do-with-lifecycle-connection)]
+    (.. lock writeLock lock)
+    (mt/with-dynamic-fn-redefs [lease/do-with-lifecycle-connection
+                                (fn [& args]
+                                  (try
+                                    (apply lifecycle args)
+                                    (catch InterruptedException e
+                                      (deliver interrupted true)
+                                      (throw e))))]
+      (let [worker (future
+                     (deliver worker-thread (Thread/currentThread))
+                     (try
+                       (let [released? (lease/release! claim)]
+                         {:interrupted? (Thread/interrupted), :released? released?})
+                       (catch Exception e e)))]
+        (try
+          (let [thread (deref worker-thread 5000 nil)]
+            (is (some? thread))
+            (when thread
+              (tu/poll-until 5000 (.hasQueuedThread lock thread))
+              (.interrupt ^Thread thread)))
+          (is (true? (deref interrupted 5000 false)) "interrupt occurred inside the lifecycle lock wait")
+          (is (= ::waiting (deref worker 50 ::waiting)) "release retries while restore still owns the lock")
+          (.. lock writeLock unlock)
+          (is (= {:interrupted? true, :released? true} (deref worker 5000 ::timeout)))
+          (is (not (t2/exists? :search_index_lease :engine (:engine coordinate)
+                               :lang_code (:lang_code coordinate) :version (:version coordinate))))
+          (finally
+            (when (.isWriteLockedByCurrentThread lock)
+              (.. lock writeLock unlock))
+            (deref worker 5000 nil)
+            (delete-coordinate! coordinate)))))))
+
+(deftest explicit-reset-reports-lease-contention-test
+  (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                              search/with-engine-lease (fn [& _] {:acquired? false})]
+    (is (nil? (search/init-index!)) "ordinary startup can reuse an index while another initializer works")
+    (is (= {:engine :search.engine/appdb, :type ::search/index-busy}
+           (ex-data (try
+                      (search/init-index! :force-reset? true)
+                      (catch Exception e e)))))))
+
+(deftest release-restore-wait-is-bounded-test
+  (let [coordinate (coordinate)
+        claim      (lease/try-acquire! coordinate)
+        ^ReentrantReadWriteLock lock (:lock (mdb/app-db))]
+    (.. lock writeLock lock)
+    (let [worker (future
+                   (try
+                     (lease/release! claim)
+                     (catch Exception e (:type (ex-data e)))))]
+      (try
+        (is (= ::lease/release-timeout (deref worker 10000 ::timeout)))
+        (finally
+          (.. lock writeLock unlock)
+          (deref worker 5000 nil)
+          (delete-coordinate! coordinate))))))
 
 (deftest restore-waits-for-checked-out-lifecycle-operation-test
   (let [coordinate (coordinate)
