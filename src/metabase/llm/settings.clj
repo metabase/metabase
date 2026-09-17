@@ -29,6 +29,7 @@
   llm-request-opts
   llm-url-problem
   llm-url-syntax-problem
+  network-policies
   network-policy
   rethrow-if-llm-network-policy-error!
   set-llm-providers!

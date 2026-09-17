@@ -64,7 +64,7 @@
 
 ;;; ------------------------------------------------- Network policy ---------------------------------------------
 
-(def ^:private network-policies
+(def network-policies
   "The `llm-allowed-networks` policies, loosest last."
   [:external-only :allow-private :allow-all])
 

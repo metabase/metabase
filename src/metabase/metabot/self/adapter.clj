@@ -24,11 +24,12 @@
 ;;; -------------------------------------------------- Schemas ---------------------------------------------------
 
 (def Auth
-  "The `{:url ... :headers ...}` pair [[core/request]] sends a request with. A server that takes no key at
-  all (vLLM started without `--api-key`) carries no headers."
+  "What [[core/request]] sends a request with. A server that takes no key at all (vLLM started without
+  `--api-key`) carries no headers."
   [:map {:closed true}
-   [:url     {:optional true} [:maybe :string]]
-   [:headers {:optional true} [:maybe [:map-of :string :string]]]])
+   [:url                  {:optional true} [:maybe :string]]
+   [:headers              {:optional true} [:maybe [:map-of :string :string]]]
+   [:network-policy-floor {:optional true} [:maybe core/NetworkPolicyFloor]]])
 
 (def Request
   "One HTTP request to a provider, as [[request!]] performs it and a descriptor's `:auth` sees it.

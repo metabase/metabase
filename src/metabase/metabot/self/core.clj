@@ -1232,6 +1232,12 @@
            {:api-error  true
             :error-code :api-key-missing}))
 
+(def NetworkPolicyFloor
+  "The `:network-policy-floor` [[resolve-auth]] may put on an auth map, as the set of policies
+  [[metabase.llm.settings/network-policy]] ranks. Derived from that list rather than spelled out again, so
+  a policy added there cannot leave this behind."
+  (into [:enum] llm/network-policies))
+
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
