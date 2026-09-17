@@ -1,11 +1,8 @@
 (ns metabase.search.models
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.app-db.dml-capture :as dml-capture]
    [metabase.search.core :as search]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 ;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
@@ -47,16 +44,6 @@
              (search/supports-index?))
     (search.spec/hook-where-fields model)))
 
-(defn- submit-handoff!
-  [model op thunk]
-  (let [run #(try
-               (thunk)
-               (catch Throwable e
-                 (log/errorf e "Failed search-index handoff for %s %s" model op)))]
-    (if search.ingestion/*force-sync*
-      (run)
-      (future (run)))))
-
 ;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything
 ;; but `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
 (defmethod dml-capture/dependents :hook/search-index-delete
@@ -69,8 +56,7 @@
     ;; Capture rows are plain raw-value maps; search-models-to-update needs the model attached. Do not hand the
     ;; re-derivation off until the outer transaction commits; Metabase discards the callback on rollback.
     (let [instances (mapv #(t2/instance model %) rows)]
-      (mdb/do-after-commit
-       #(submit-handoff! model op
-                         (fn []
-                           (search/bulk-update! instances)
-                           (search/reconcile-cascading-documents! dependents)))))))
+      (search/after-commit! (format "%s %s" model op)
+                            (fn []
+                              (search/bulk-update! instances)
+                              (search/reconcile-cascading-documents! dependents))))))
