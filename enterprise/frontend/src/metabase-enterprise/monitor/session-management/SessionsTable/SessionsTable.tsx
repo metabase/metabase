@@ -42,6 +42,7 @@ type SessionsTableProps = {
   rowSelection: RowSelectionState;
   selectedSessionId: AdminSessionId | undefined;
   sorting: SortingState;
+  emptyLabel: string;
   onSortingChange: (sorting: SortingState) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onRowClick: (sessionId: AdminSessionId) => void;
@@ -49,8 +50,10 @@ type SessionsTableProps = {
 
 const getNodeId = (session: AdminSession) => session.id;
 
-// Revoking the caller's own session is done by logging out, not from this page
-const canSelectSession = (row: Row<AdminSession>) => !row.original.current;
+// Revoking the caller's own session is done by logging out, not from this page, and the endpoint only ever ends
+// live ones — an ended session has nothing left to revoke
+const canSelectSession = (row: Row<AdminSession>) =>
+  !row.original.current && row.original.status === "live";
 
 const DateCell = ({ value }: { value: string }) => (
   <Ellipsified>
@@ -67,6 +70,7 @@ export const SessionsTable = ({
   rowSelection,
   selectedSessionId,
   sorting,
+  emptyLabel,
   onSortingChange,
   onRowSelectionChange,
   onRowClick,
@@ -214,7 +218,7 @@ export const SessionsTable = ({
             ariaLabel={t`Sessions`}
             onRowClick={handleRowActivate}
             getRowProps={getRowProps}
-            emptyState={<MonitorEmptyState label={t`No active sessions`} />}
+            emptyState={<MonitorEmptyState label={emptyLabel} />}
           />
         </>
       )}

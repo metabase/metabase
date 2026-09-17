@@ -50,7 +50,9 @@ export const SessionDetailSidebar = ({
   const session = sessionFromPage ?? currentData?.data[0];
   const currentUser = useSelector(getUser);
 
-  const canRevokeSession = session !== undefined && !session.current;
+  // An ended session has nothing left to revoke, and the endpoint rejects it
+  const canRevokeSession =
+    session !== undefined && !session.current && session.status === "live";
   const canRevokeUserSessions =
     session !== undefined && session.user.id !== currentUser?.id;
 
