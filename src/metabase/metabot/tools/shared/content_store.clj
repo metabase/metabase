@@ -240,10 +240,10 @@
                               database is gone and the metadata with it, so rendering it in full
                               reveals nothing. This is what master did.
     `{:query q :unchecked? true}`
-                              the database is there but the check could not be made at all: a
-                              query that will not parse, permissions that will not calculate. Not
-                              a refusal, so the query still reaches the model, but nothing in it
-                              may be resolved to a name."
+                              the check could not be made at all: a database id that will not
+                              resolve, a query that will not parse, permissions that will not
+                              calculate. Not a refusal, so the caller may still render the query,
+                              but nothing in it may be resolved to a name."
   [query audited?]
   (if-not (and (map? query) (:database query))
     {:query query}
@@ -259,4 +259,4 @@
                                            :mp    (lib-be/application-database-metadata-provider
                                                    (:database normalized))}))
            {:query resolved})
-         {:query query})))))
+         {:query query :unchecked? true})))))

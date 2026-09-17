@@ -26,7 +26,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
@@ -296,6 +298,16 @@
       (let [malformed {:lib/type :mbql/query :type :query :database (mt/id) :stages []}]
         (is (= {:query malformed :unchecked? true}
                (shared.content-store/query-for-export malformed false)))))))
+
+(deftest unresolvable-database-is-unchecked-test
+  (testing "a database id that will not resolve is a check that could not be made, so native SQL on it
+            is withheld like any other unchecked query"
+    (mt/with-test-user :rasta
+      (doseq [database-id [lib.schema.id/saved-questions-virtual-database-id 0]]
+        (let [query (test-util/unpermissionable-native-query database-id)]
+          (is (= {:query query :unchecked? true}
+                 (shared.content-store/query-for-export query false))
+              (str database-id)))))))
 
 (deftest native-query-needs-database-wide-native-access-test
   (testing "a native query is withheld unless the user may write native queries against the whole database"
