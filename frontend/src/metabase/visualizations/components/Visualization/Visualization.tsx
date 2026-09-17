@@ -173,6 +173,7 @@ type VisualizationOwnProps = {
   timelineEvents?: TimelineEvent[];
   timelineEventsVisibility?: TimelineEventsVisibility;
   onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -705,6 +706,7 @@ class Visualization extends PureComponent<
       onSelectTimelineEvents,
       onSeeAllEvents,
       onTimelineEventsShown,
+      onTimelineEventsEnabledChange,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -974,6 +976,9 @@ class Visualization extends PureComponent<
                       timelineEvents={timelineEvents}
                       timelineEventsVisibility={timelineEventsVisibility}
                       onTimelineEventsShown={onTimelineEventsShown}
+                      onTimelineEventsEnabledChange={
+                        onTimelineEventsEnabledChange
+                      }
                       totalNumGridCols={totalNumGridCols}
                       visualizationIsClickable={this.visualizationIsClickable}
                       width={width}
