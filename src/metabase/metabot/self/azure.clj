@@ -195,6 +195,7 @@
   falls back to what `llm-metabot-provider` names for *that* connection."
   ([] (list-models {}))
   ([{:keys [credentials model ai-proxy?]}]
+   (adapter/reject-ai-proxy! provider ai-proxy?)
    (when-let [model (not-empty model)]
      (try
        (case (model->family model)

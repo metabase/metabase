@@ -263,7 +263,13 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"AI proxy is not supported for Azure"
-           (azure/list-models {:model "openai/gpt-4.1-mini" :ai-proxy? true}))))))
+           (azure/list-models {:model "openai/gpt-4.1-mini" :ai-proxy? true})))))
+  (testing "ai-proxy? throws even with no model, where there is no request to refuse it"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Azure"
+           (azure/list-models {:ai-proxy? true}))))))
 
 (deftest azure-raw-forwards-credentials-test
   (testing "credentials passed to azure-raw reach the request, without requiring saved settings"
