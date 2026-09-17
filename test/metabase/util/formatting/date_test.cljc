@@ -26,6 +26,14 @@
 (defn- format-datetime-with-unit [value options]
   (date/format-datetime-with-unit time-config value options))
 
+(deftest ^:parallel time-config-validation-test
+  (doseq [format-fn [date/format-for-parameter
+                     date/format-range-with-unit
+                     date/format-datetime-with-unit]]
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                          #"valid :start-of-week"
+                          (format-fn nil "2022-12-19T12:03:19" {:unit :day})))))
+
 (deftest ^:parallel format-for-parameter-test
   (testing "some units have custom formatting"
     (are [exp date unit] (= exp (format-for-parameter (u.time/coerce-to-timestamp date)

@@ -280,9 +280,7 @@
   (try
     ;; launch embedded webserver
     (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
-          cors           {:origins-fn         #'mcp/cors-origins
-                          :sandbox-origin?-fn #'mcp/sandbox-origin?}
-          handler        (server/make-handler server-routes {:cors cors})]
+          handler       (server/make-handler server-routes {:cors mcp/cors})]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)

@@ -284,5 +284,29 @@ describe("isOutOfBounds", () => {
     expect(isOutOfBounds(timeConfig, currentWeek, new Date(2026, 0, 26))).toBe(
       true,
     );
+
+    const sundayWeekEnd = new Date(2026, 0, 31, 23, 59, 59, 999);
+    expect(
+      isOutOfBounds(
+        { "start-of-week": "monday" },
+        currentWeek,
+        undefined,
+        sundayWeekEnd,
+      ),
+    ).toBe(true);
+    expect(
+      isOutOfBounds(timeConfig, currentWeek, undefined, sundayWeekEnd),
+    ).toBe(false);
+  });
+
+  it("rejects an invalid start of week", () => {
+    expect(() =>
+      // Deliberately bypass the type constraint to exercise the runtime boundary.
+      isOutOfBounds({ "start-of-week": "noday" } as TimeConfig, {
+        type: "relative",
+        value: 0,
+        unit: "week",
+      }),
+    ).toThrow("Invalid start of week: noday");
   });
 });

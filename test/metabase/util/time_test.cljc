@@ -340,6 +340,7 @@
                                               n unit nil nil
                                               {:include-current include-current}))
       "Jan 1 – Dec 31, 2022" 0 :year true
+      "Jan 1 – Dec 31, 2022" 0 :year false
 
       "Jan 1, 2022 – Dec 31, 2023" 1 :year true
       "Jan 1 – Dec 31, 2023" 1 :year false

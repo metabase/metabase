@@ -35,7 +35,6 @@ function setup({
   const settings = createMockSettingsState({ "start-of-week": "sunday" });
 
   if (!settingsLoaded) {
-    settings.loading = true;
     Reflect.deleteProperty(settings.values, "start-of-week");
   }
 
