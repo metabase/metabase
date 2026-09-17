@@ -40,7 +40,7 @@
 (deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
     (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5" "anthropic.claude-opus-4-8"
-                "anthropic.claude-sonnet-5" "openai.gpt-5.5"]]
+                "anthropic.claude-sonnet-5" "openai.gpt-5.5" "openai.gpt-6-astra"]]
       (is (contains? bedrock/supported-models id) id)))
   (testing "non-whitelisted models are not supported, even for supported vendors"
     (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"

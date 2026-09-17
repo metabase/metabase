@@ -6,6 +6,7 @@
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
@@ -252,6 +253,14 @@
                                  :edits [{:old_str "gamma" :new_str "gamma gamma" :replace_all true}]})]
               (is (= "gamma gamma one\n\ngamma gamma two" (:content_markdown updated))))))))))
 
+(deftest ^:parallel snippet-keeps-surrogate-pairs-whole-test
+  (testing "GHY-4544: cutting an old_str for an error message never splits a surrogate pair"
+    (let [prefix (apply str (repeat 76 "a"))]
+      (is (= (str prefix "…")
+             (#'v2.document/snippet (str prefix "😀" (apply str (repeat 10 "b"))))))
+      (is (= (str prefix "b…")
+             (#'v2.document/snippet (str prefix "b" (apply str (repeat 10 "b")))))))))
+
 (deftest edit-replacement-parses-markdown-test
   (testing "replacement text is parsed as Markdown"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -324,7 +333,7 @@
    that went through can never satisfy an assertion about a refusal."
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)))
 
 (defn- write-error
@@ -338,7 +347,8 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
       (fn [created!]
-        (let [message "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}."
+        (let [message (str "Markdown tables are not supported. Save the query as a question with `display: table` "
+                           "and embed it with {% card id=… %}.")
               table   "| Table | Rows |\n|---|---|\n| users | 5,000 |"
               created (created! (call {:method "create" :name "Table test" :content_markdown "No table"}))
               doc-id  (:id created)]
@@ -380,7 +390,8 @@
                       {"entityId" secret-id "model" "collection" "label" nil "href" "/"}]
                      (written-smart-link-attrs
                       created!
-                      (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                      (format (str "{%% entity id=\"%d\" model=\"dashboard\" %%} and "
+                                   "{%% entity id=\"%d\" model=\"collection\" %%}")
                               hidden-id secret-id)))))
             (testing "a readable target still resolves its label and href"
               (is (= [{"entityId" readable-id "model" "card" "label" "Open Question"
@@ -406,9 +417,10 @@
                   (mt/with-temporary-setting-values [user-visibility :none]
                     (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" nil "href" "/"}
                             {"entityId" (mt/user->id :rasta) "model" "user" "label" "Rasta Toucan" "href" "/"}]
-                           (written-smart-link-attrs created!
-                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
-                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
+                           (written-smart-link-attrs
+                            created!
+                            (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                    (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{"entityId" hidden-id "model" "dashboard" "label" "CONFIDENTIAL Layoffs"
@@ -701,16 +713,17 @@
   (testing "a dynamically-registered client can discover and call document_write. Registration is
             not enough on its own: the tool's scope also has to reach the DCR default grant, or the
             client lists a tool every call then 403s on."
-    (let [grant (set (registry/registered-scopes))
-          named (fn [scopes] (some #(= "document_write" (:name %)) (registry/list-tools scopes)))]
+    (let [grant (set (registry/registered-scopes))]
       (testing "its scope is in the default grant"
         (is (contains? grant "agent:content:write")))
-      (testing "so a default-grant client sees it"
-        (is (named grant)))
-      (testing "and it is hidden from a token holding only the read scope"
-        (is (not (named #{"agent:content:read"}))))
+      (testing "GHY-4543: it is listed whatever the token's scopes"
+        (is (some #(= "document_write" (:name %)) (registry/list-tools))))
+      (testing "a token holding only the read scope is refused at call time"
+        (is (str/starts-with? (message/render (-> (registry/call-tool #{"agent:content:read"} nil "document_write" {})
+                                                  :error :message))
+                              "Insufficient scope to call tool: \"document_write\".")))
       (testing "the manifest carries a description and an input schema that advertises `clear`"
-        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
+        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools)))]
           (is (seq (:description tool)))
           (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
           (is (get-in tool [:inputSchema :properties :clear])))))))

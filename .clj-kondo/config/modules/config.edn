@@ -349,11 +349,12 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO FIXME
+   :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
+           metabase.app-db.sql-errors
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
@@ -1105,6 +1106,7 @@
            events
            lib.schema
            models
+           remote-sync
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
@@ -1329,6 +1331,7 @@
    :uses #{activity-feed
            ai-tracing
            api
+           api-scope
            api.eid-translation
            app-db
            bookmarks
@@ -1489,12 +1492,10 @@
               task
               timeline
               transforms
-              transforms.base
               util
               util.config
               warehouse-schema-overlay
-              warehouses
-              warehouses.schema}
+              warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -3707,10 +3708,7 @@
   enterprise/dependencies
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
-   :api  #{metabase-enterprise.dependencies.api
-           metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init
-           metabase-enterprise.dependencies.models.dependency}
+   :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{api
            app-db
            collections
@@ -3867,7 +3865,6 @@
                      metabase-enterprise.metabot.api.routes
                      metabase-enterprise.metabot.init}
    :uses           #{api
-                     lib.be
                      lib.schema
                      metabot
                      metabot.llm
@@ -3877,14 +3874,8 @@
                      settings
                      task
                      util
-                     enterprise/cloud.add-ons
-                     enterprise/dependencies
-                     enterprise/transforms.python}
-   :model-imports #{:model/AiUsageLog
-                    :model/Card
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/Transform}}
+                     enterprise/cloud.add-ons}
+   :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
 
   enterprise/metabot.agent-api
   {:team "Metabot"
@@ -4113,6 +4104,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
