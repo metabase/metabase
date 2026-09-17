@@ -20,7 +20,9 @@
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
-   [metabase.test :as mt]))
+   [metabase.premium-features.core :as premium-features]
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -185,6 +187,19 @@
            (captured-counts! {:input [{:role :user :content "hi"}
                                      {:type :text :text "one"}
                                      {:type :text :text "two"}]})))))
+
+(deftest bearer-auth-under-the-proxy-conforms-to-the-auth-schema-test
+  (testing "`bearer-auth` carries a `:- Auth` return schema, and `resolve-auth` adds `:network-policy-floor`
+            when the proxy URL comes from the environment. `Auth` is closed, so an undeclared floor would
+            fail output validation the first time a `bearer-auth` provider supported the proxy — which no
+            provider does today, so nothing else exercises this"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temp-env-var-value! [mb-llm-proxy-base-url "http://proxy.internal/"]
+        (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+          (let [proxyable (adapter/provider {:slug "deepseek" :display-name "DeepSeek" :supports-ai-proxy? true})
+                auth      (adapter/bearer-auth proxyable {:method :get :path "/models" :ai-proxy? true})]
+            (is (= :allow-private (:network-policy-floor auth)))
+            (is (nil? (mr/explain adapter/Auth auth)))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Descriptor headers

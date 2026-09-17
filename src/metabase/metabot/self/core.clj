@@ -14,6 +14,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1231,6 +1232,12 @@
   (ex-info (tru "No {0} API key is set" llm-type)
            {:api-error  true
             :error-code :api-key-missing}))
+
+(def NetworkPolicyFloor
+  "The `:network-policy-floor` [[resolve-auth]] may put on an auth map, as the set of policies
+  [[metabase.llm.settings/network-policy]] ranks. Derived from that list rather than spelled out again, so
+  a policy added there cannot leave this behind."
+  (into [:enum] u.http/configurable-network-policies))
 
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
