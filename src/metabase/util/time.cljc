@@ -93,9 +93,11 @@
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
   If unit is nil, formats the full date/time.
 
-  `time-config` must include `:start-of-week`. If `:locale` is provided, it will be used for localizing the formatter."
-  [time-config temporal-value unit]
-  (internal/format-unit (require-time-config time-config) temporal-value unit))
+  `time-config` must include `:start-of-week`. `format-options` may include `:locale` to localize the formatter."
+  ([time-config temporal-value unit]
+   (format-unit time-config temporal-value unit {}))
+  ([time-config temporal-value unit format-options]
+   (internal/format-unit (require-time-config time-config) temporal-value unit format-options)))
 
 (defn parse-unit
   "Parses a string given the unit of time to parse by."
