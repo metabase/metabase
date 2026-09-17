@@ -12,7 +12,7 @@
    it can do because it owns the prompt. Here the description is the only channel that reaches the
    model unprompted, so it carries the instruction to call and nothing else."
   (:require
-   [metabase.glossary.db :as glossary.db]
+   [metabase.glossary.core :as glossary]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
@@ -33,11 +33,6 @@
 (def ^:private max-limit
   "The largest page a caller may ask for, matching the other v2 listings' ceiling."
   500)
-
-(defn- entries
-  "Every glossary entry, in term order."
-  []
-  (glossary.db/glossary-entries nil))
 
 (defn- entry-message
   [{:keys [term definition]}]
@@ -70,7 +65,7 @@
                                  :description (str "Number of entries to skip, for paging (default 0). "
                                                    "Ignored with \"term\".")}]]]]}
   [{:keys [term limit offset]} _context]
-  (let [entries (entries)]
+  (let [entries (glossary/entries)]
     (if term
       (common/success-content
        (if-let [matches (seq (find-entries entries term))]

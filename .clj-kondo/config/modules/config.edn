@@ -1079,7 +1079,7 @@
 
   glossary
   {:team "Gadget"
-   :api  #{metabase.glossary.api metabase.glossary.db}
+   :api  #{metabase.glossary.api metabase.glossary.core}
    :uses #{api
            events
            lib.schema
