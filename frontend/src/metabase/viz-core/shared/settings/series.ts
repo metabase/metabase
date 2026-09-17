@@ -100,26 +100,15 @@ const getRawSeries = (series: Series): Series =>
 const hasInsights = (single: SingleSeries | undefined) =>
   (single?.data.insights?.length ?? 0) > 0;
 
-/**
- * Breakout series are grouped on the client, so charts with more than one
- * dimension cannot draw trend lines.
- */
 const hasMultipleDimensions = (settings: ComputedVisualizationSettings) =>
   (settings["graph.dimensions"] ?? []).length > 1;
 
-/**
- * Trend lines need server-computed insights, which only exist on the raw
- * series. The chart-wide check reads the first card, like the Display tab.
- */
 export const isTrendLineUnavailable = (
   series: Series,
   settings: ComputedVisualizationSettings,
 ) => hasMultipleDimensions(settings) || !hasInsights(getRawSeries(series)[0]);
 
-/**
- * Per-series check for charts that combine several cards: a series' trend
- * line depends on the insights of its own source card.
- */
+// unlike isTrendLineUnavailable, reads the insights of the series' own card
 export const isSeriesTrendLineUnavailable = (
   single: SingleSeries,
   series: Series,
