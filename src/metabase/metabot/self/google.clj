@@ -243,10 +243,11 @@
                      :error-code  :invalid-project-id}))))
 
 (defn- location-path
-  "Returns the URL path to the project's location resource.
+  "Returns the URL path to the project's location resource in API version `api-version`.
   This is the parent of every resource that we call."
-  [credentials]
-  (format "/v1/projects/%s/locations/%s" (effective-project-id credentials) (effective-location credentials)))
+  [credentials api-version]
+  (format "/%s/projects/%s/locations/%s"
+          api-version (effective-project-id credentials) (effective-location credentials)))
 
 (def ^:private max-model-segment-length
   "The longest publisher or model ID that belongs in a request path.
@@ -321,10 +322,6 @@
   "The verb that serves Gemini models, asking for its stream as SSE rather than a JSON array."
   ":streamGenerateContent?alt=sse")
 
-(def ^:private chat-completions-method
-  "The route that serves a Model Garden endpoint, whose payload is the Chat Completions API."
-  "/chat/completions")
-
 (defn reasoning-model?
   "Whether a publisher-qualified `model` streams its reasoning back to us.
 
@@ -356,11 +353,11 @@
 (defn- model-resource-path
   "Returns the URL path to a publisher model or endpoint resource, without the `:method` verb at the end.
   The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash` or
-  `endpoints/1234567890123456789`.
+  `endpoints/1234567890123456789`. The path is in API version `v1` unless `api-version` names another.
 
   Both segments become path segments of the request URL, so a character that does not belong in one is rejected here.
   [[model->family]] has already settled the publisher by this point; the model ID is still free text."
-  [credentials model]
+  [credentials model & {:keys [api-version] :or {api-version "v1"}}]
   (let [publisher (model-publisher model)
         model-id  (model-id model)]
     (when (str/blank? model-id)
@@ -374,8 +371,14 @@
                        :status-code 400
                        :error-code  :invalid-model})))
     (if (= :chat-completions (model-families publisher))
-      (format "%s/endpoints/%s" (location-path credentials) model-id)
-      (format "%s/publishers/%s/models/%s" (location-path credentials) publisher model-id))))
+      (format "%s/endpoints/%s" (location-path credentials api-version) model-id)
+      (format "%s/publishers/%s/models/%s" (location-path credentials api-version) publisher model-id))))
+
+(defn- chat-completions-path
+  "Returns the URL path of the `chat/completions` route of the endpoint `model` names.
+  Google defines the route in `v1beta1` only, while the endpoint resource itself is read from `v1`."
+  [credentials model]
+  (str (model-resource-path credentials model :api-version "v1beta1") "/chat/completions"))
 
 (defn- fetch-endpoint
   "Returns the Endpoint resource at `endpoint-path`.
@@ -538,7 +541,8 @@
 
 (def ^:private endpoint-probe-body
   "The smallest Chat Completions request for the connect-time check of an endpoint: one token, no stream."
-  {:messages   [{:role "user" :content "hi"}]
+  {:model      ""
+   :messages   [{:role "user" :content "hi"}]
    :max_tokens 1})
 
 (defn- validate-endpoint-surface!
@@ -561,7 +565,7 @@
                        :error-code  :endpoint-has-no-model})))
     (core/request (assoc auth :url (endpoint-host credentials endpoint))
                   {:method  :post
-                   :url     (str path chat-completions-method)
+                   :url     (chat-completions-path credentials model)
                    :headers {"Content-Type" "application/json"}
                    :body    (json/encode endpoint-probe-body)})))
 
@@ -609,12 +613,8 @@
                    :anthropic        (raw-predict/request-body (model-id model) opts)
                    ;; pass the defaulted model down: the thinking directive keys off it
                    :google           (stream-generate-content/request-body (assoc opts :model model))
-                   ;; the endpoint serves one model and Google's own samples name none in the body
-                   :chat-completions (dissoc (vllm/vllm-request-body opts) :model))
-        method   (case family
-                   :anthropic        raw-predict-method
-                   :google           generate-content-method
-                   :chat-completions chat-completions-method)
+                   ;; the endpoint serves one model, and Model Garden's OpenAI client samples send an empty `model`
+                   :chat-completions (assoc (vllm/vllm-request-body opts) :model ""))
         res->msg (google-res->msg credentials)]
     (with-span :info {:name       :metabot.google/request
                       :model      model
@@ -625,7 +625,10 @@
               path     (model-resource-path credentials model)
               auth     (cond-> auth
                          (= family :chat-completions) (assoc :url (cached-endpoint-host credentials path)))
-              url      (str path method)
+              url      (case family
+                         :anthropic        (str path raw-predict-method)
+                         :google           (str path generate-content-method)
+                         :chat-completions (chat-completions-path credentials model))
               response (core/request auth
                                      {:method  :post
                                       :url     url

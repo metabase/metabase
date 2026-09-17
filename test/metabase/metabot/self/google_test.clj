@@ -1302,20 +1302,19 @@
                :headers {"Authorization" (str "Bearer " token)}}
               get-req))
       (is (=? {:method  :post
-               :url     (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project/locations/us-central1"
-                             "/endpoints/" endpoint "/chat/completions")
+               :url     (str "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/my-project"
+                             "/locations/us-central1/endpoints/" endpoint "/chat/completions")
                :headers {"Authorization" (str "Bearer " token)
                          "Content-Type"  "application/json"}
                :as      :stream}
               post-req))
-      (testing "the body is a Chat Completions request that names no model, since the endpoint serves one"
-        (let [body (json/decode+kw (:body post-req))]
-          (is (=? {:stream         true
-                   :stream_options {:include_usage true}
-                   :messages       [{:role "user" :content "hi"}]
-                   :max_tokens     pos-int?}
-                  body))
-          (is (not (contains? body :model))))))))
+      (testing "the body is a Chat Completions request with an empty model, since the endpoint serves one"
+        (is (=? {:model          ""
+                 :stream         true
+                 :stream_options {:include_usage true}
+                 :messages       [{:role "user" :content "hi"}]
+                 :max_tokens     pos-int?}
+                (json/decode+kw (:body post-req))))))))
 
 (deftest google-raw-dedicated-endpoint-host-test
   (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses, also when the base URL names Google's host for the location"
@@ -1328,7 +1327,7 @@
                                                        (endpoint-resource endpoint dns) 1 :base-url base-url)]
             (is (str/starts-with? (:url get-req) "https://us-central1-aiplatform.googleapis.com/")
                 "the resource itself is read from the shared host")
-            (is (= (str "https://" host "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint
+            (is (= (str "https://" host "/v1beta1/projects/my-project/locations/us-central1/endpoints/" endpoint
                         "/chat/completions")
                    (:url post-req)))))))))
 
@@ -1362,7 +1361,7 @@
                                                  (endpoint-resource endpoint (str endpoint ".us-central1-123456789.prediction.vertexai.goog"))
                                                  1 :base-url proxy)]
       (is (str/starts-with? (:url get-req) (str proxy "/")))
-      (is (= (str proxy "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint "/chat/completions")
+      (is (= (str proxy "/v1beta1/projects/my-project/locations/us-central1/endpoints/" endpoint "/chat/completions")
              (:url post-req))))))
 
 (defn- endpoint-parts-for!
@@ -1437,10 +1436,10 @@
                                   "/locations/us-central1/endpoints/" endpoint)
                     :headers {"Authorization" (str "Bearer " token)}}
                    {:method  :post
-                    :url     (str "https://" host "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint
-                                  "/chat/completions")
+                    :url     (str "https://" host "/v1beta1/projects/my-project/locations/us-central1/endpoints/"
+                                  endpoint "/chat/completions")
                     :headers {"Authorization" (str "Bearer " token)}
-                    :body    (json/encode {:messages [{:role "user" :content "hi"}] :max_tokens 1})}]
+                    :body    (json/encode {:model "" :messages [{:role "user" :content "hi"}] :max_tokens 1})}]
                   @calls)))))))
 
 (deftest list-models-endpoint-without-predict-permission-rejected-test
