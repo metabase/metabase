@@ -438,13 +438,21 @@
 
 (deftest metabot-weights-test
   (testing "with Metabot weights, metrics outrank questions and models, including recently viewed models"
-    (let [now      (Instant/now)
-          long-ago (.minus now 365 ChronoUnit/DAYS)]
-      (with-index-contents
-        [{:model "dataset" :id 1 :name "foo model"    :last_viewed_at now}
-         {:model "card"    :id 2 :name "foo question" :last_viewed_at long-ago}
-         {:model "metric"  :id 3 :name "foo metric"   :last_viewed_at long-ago}]
-        (is (= [3 2 1] (map second (search-results* "foo" :context :metabot)))))))
+    ;; Create the index table outside `with-temp`'s transaction; see [[user-recency-test]].
+    (search.tu/with-temp-index-table
+      (let [user-id  (mt/user->id :crowberto)
+            now      (Instant/now)
+            long-ago (.minus now 365 ChronoUnit/DAYS)]
+        (mt/with-temp [:model/Card        {model-id :id} {}
+                       :model/Card        {question-id :id} {}
+                       :model/Card        {metric-id :id} {}
+                       :model/RecentViews _ {:model "card" :model_id model-id :user_id user-id :timestamp now}]
+          (with-index-contents
+            [{:model "dataset" :id model-id    :name "foo model"    :last_viewed_at now}
+             {:model "card"    :id question-id :name "foo question" :last_viewed_at long-ago}
+             {:model "metric"  :id metric-id   :name "foo metric"   :last_viewed_at long-ago}]
+            (is (= [metric-id question-id model-id]
+                   (map second (search-results* "foo" :context :metabot :current-user-id user-id)))))))))
   (testing "with Metabot weights, a metric outranks a final-layer table"
     (with-index-contents
       [{:model "table"  :id 1 :name "foo table"  :data_layer "final"}
@@ -465,13 +473,14 @@
         (is (= #{3 4} (set (take 2 ids))))
         (is (= [2 1] (drop 2 ids))))))
   (testing "with Metabot weights, library membership outranks type weights"
-    (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
-      (with-index-contents
-        [{:model "metric"  :id 1 :name "foo metric"}
-         {:model               "dataset"
-          :id                  2
-          :name                "foo model"
-          :collection_id       (:id lib)
-          :collection_location (:location lib)
-          :collection_type     "library"}]
-        (is (= [2 1] (map second (search-results* "foo" :context :metabot))))))))
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
+        (with-index-contents
+          [{:model "metric"  :id 1 :name "foo metric"}
+           {:model               "dataset"
+            :id                  2
+            :name                "foo model"
+            :collection_id       (:id lib)
+            :collection_location (:location lib)
+            :collection_type     "library"}]
+          (is (= [2 1] (map second (search-results* "foo" :context :metabot)))))))))
