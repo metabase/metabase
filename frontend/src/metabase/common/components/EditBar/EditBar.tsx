@@ -1,10 +1,8 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Group, Icon } from "metabase/ui";
+import { Group } from "metabase/ui";
 
-import styles from "./EditBar.module.css";
+import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
 
 type Props = {
   title: string;
@@ -23,21 +21,18 @@ export function EditBar({
   className,
   "data-testid": dataTestId,
 }: Props) {
-  const isBrand = !admin;
-
   return (
-    <FullWidthContainer
-      className={cx(styles.root, { [styles.brand]: isBrand }, className)}
+    <Root
+      className={className}
+      admin={admin}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <Icon name="pencil" size={12} className={styles.editIcon} />
-        <span className={styles.title}>{title}</span>
+        <EditIcon name="pencil" size={12} />
+        <Title>{title}</Title>
       </Group>
       {center && <div>{center}</div>}
-      <div className={cx(styles.buttonsContainer, { [styles.brand]: isBrand })}>
-        {buttons}
-      </div>
-    </FullWidthContainer>
+      <ButtonsContainer admin={admin}>{buttons}</ButtonsContainer>
+    </Root>
   );
 }
