@@ -45,7 +45,7 @@
   ([conn engine version index-name]
    ;; Clear out any expired records
    (search.db/delete-expired-pending-index-metadata! conn
-                                                     {:engine engine, :version version, :lang-code (i18n/site-locale-string)}
+                                                     {:engine engine, :lang-code (i18n/site-locale-string), :version version}
                                                      (t/minus (t/offset-date-time) pending-table-cut-off))
    (boolean
     (when-not (search.db/pending-index-metadata-exists? conn engine version (i18n/site-locale-string))

@@ -7,13 +7,13 @@
 (mr/def ::index-coordinate
   [:map {:closed true}
    [:engine :keyword]
-   [:version :string]
-   [:lang-code :string]])
+   [:lang-code :string]
+   [:version :string]])
 
 (mr/def ::rebuild-context
-  [:merge ::index-coordinate
-   [:map {:closed true}
-    [:table :keyword]]])
+  [:map {:closed true}
+   [:coordinate ::index-coordinate]
+   [:table :keyword]])
 
 (mr/def ::document-source
   [:maybe [:or (ms/InstanceOfClass clojure.lang.IReduceInit)
