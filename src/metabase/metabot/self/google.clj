@@ -449,9 +449,10 @@
   (contains? #{404 501} status))
 
 (defn- google-res->msg
-  "The `res->message` callback for [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]]."
-  [credentials]
-  (let [endpoint (delay (try (api-base-url credentials) (catch Exception _ nil)))]
+  "The `res->message` callback for [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]].
+  The message names `host` when given, and [[api-base-url]] otherwise."
+  [credentials host]
+  (let [endpoint (delay (or host (try (api-base-url credentials) (catch Exception _ nil))))]
     (fn [res]
       (cond-> (google-error-msg res)
         (and (include-endpoint-in-msg? (:status res)) @endpoint)
@@ -461,15 +462,20 @@
   "Rethrows a Google HTTP exception like [[core/rethrow-api-error!]], with two changes:
 
   - For a status that satisfies [[include-endpoint-in-msg?]], the message includes the endpoint URL.
-  - For 404s include a hint to check that the provided location is correct."
-  [credentials e]
+  - For 404s include a hint to check that the provided location is correct.
+
+  `host` is the host an endpoint's resource named, for a request that failed there. The message names it, and there is
+  no hint, since the resource resolved in that location. An exception that is already translated is left as it is."
+  [credentials host e]
   (let [data     (ex-data e)
         location (:location credentials)
         known?   (conj multi-region-locations global-location)]
     (core/rethrow-api-error!
      "google"
-     (google-res->msg credentials)
+     (google-res->msg credentials host)
      (if (and location
+              (not host)
+              (not (:api-error data))
               (= 404 (:status data))
               (not (known? location))
               (not (json-content? data)))
@@ -563,11 +569,15 @@
                       {:api-error   true
                        :status-code 400
                        :error-code  :endpoint-has-no-model})))
-    (core/request (assoc auth :url (endpoint-host credentials endpoint))
-                  {:method  :post
-                   :url     (chat-completions-path credentials model)
-                   :headers {"Content-Type" "application/json"}
-                   :body    (json/encode endpoint-probe-body)})))
+    (let [host (endpoint-host credentials endpoint)]
+      (try
+        (core/request (assoc auth :url host)
+                      {:method  :post
+                       :url     (chat-completions-path credentials model)
+                       :headers {"Content-Type" "application/json"}
+                       :body    (json/encode endpoint-probe-body)})
+        (catch Exception e
+          (rethrow-google-api-error! credentials host e))))))
 
 (defn- validate-model!
   "Validates `model` against the surface that serves it, and discards the response."
@@ -596,7 +606,7 @@
          (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
            (validate-model! auth credentials model))
          (catch Exception e
-           (rethrow-google-api-error! credentials e)))
+           (rethrow-google-api-error! credentials nil e)))
        (cond-> {:models []}
          probe? (assoc :learned-config {:probed-model model})))
      {:models []})))
@@ -614,8 +624,7 @@
                    ;; pass the defaulted model down: the thinking directive keys off it
                    :google           (stream-generate-content/request-body (assoc opts :model model))
                    ;; the endpoint serves one model, and Model Garden's OpenAI client samples send an empty `model`
-                   :chat-completions (assoc (vllm/vllm-request-body opts) :model ""))
-        res->msg (google-res->msg credentials)]
+                   :chat-completions (assoc (vllm/vllm-request-body opts) :model ""))]
     (with-span :info {:name       :metabot.google/request
                       :model      model
                       :msg-count  (count input)
@@ -623,26 +632,29 @@
       (try
         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)
               path     (model-resource-path credentials model)
-              auth     (cond-> auth
-                         (= family :chat-completions) (assoc :url (cached-endpoint-host credentials path)))
+              host     (when (= family :chat-completions)
+                         (cached-endpoint-host credentials path))
               url      (case family
                          :anthropic        (str path raw-predict-method)
                          :google           (str path generate-content-method)
                          :chat-completions (chat-completions-path credentials model))
-              response (core/request auth
-                                     {:method  :post
-                                      :url     url
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"}
-                                      :body    (json/encode req)})]
+              response (try
+                         (core/request (cond-> auth host (assoc :url host))
+                                       {:method  :post
+                                        :url     url
+                                        :as      :stream
+                                        :headers {"Content-Type" "application/json"}
+                                        :body    (json/encode req)})
+                         (catch Exception e
+                           (rethrow-google-api-error! credentials host e)))]
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "google"
                                      :model    model
                                      :url      url
                                      :request  req})
-              (core/reducible-with-api-errors "google" res->msg)))
+              (core/reducible-with-api-errors "google" (google-res->msg credentials host))))
         (catch Exception e
-          (rethrow-google-api-error! credentials e))))))
+          (rethrow-google-api-error! credentials nil e))))))
 
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."

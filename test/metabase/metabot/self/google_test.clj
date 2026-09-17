@@ -1479,3 +1479,28 @@
                      :status-code 400
                      :error-code  :endpoint-has-no-model}
                     (ex-data e)))))))))
+
+(deftest endpoint-host-failure-names-that-host-test
+  (testing "a failure on an endpoint's own host names that host and shows its body, with no location hint"
+    (let [endpoint "9012345678901234567"
+          host     (str endpoint ".us-central1-123456789.prediction.vertexai.goog")]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            "us-central1"]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [method]}]
+                                                   (if (= :get method)
+                                                     {:status 200 :body (endpoint-resource endpoint host)}
+                                                     (throw (ex-info "clj-http: status 404"
+                                                                     {:status  404
+                                                                      :headers {"content-type" "text/html"}
+                                                                      :body    (java.io.ByteArrayInputStream.
+                                                                                (.getBytes html-404-body))}))))]
+          (doseq [[entry-point call] {"connect" #(list-models {:model (str "endpoints/" endpoint) :probe? true})
+                                      "request" #(google-raw {:model (str "endpoints/" endpoint)
+                                                              :input [{:role :user :content "hi"}]})}]
+            (testing entry-point
+              (let [message (ex-message (try (call) nil (catch Exception e e)))]
+                (is (str/starts-with? message (str "Google API endpoint is unavailable or the model was not found "
+                                                   "(endpoint: https://" host ")")))
+                (is (str/ends-with? message html-404-body))))))))))
