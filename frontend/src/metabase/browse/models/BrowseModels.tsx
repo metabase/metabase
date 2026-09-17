@@ -87,7 +87,7 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-primary" id={titleId}>
+            <Title order={1} c="text-primary" id={titleId}>
               <Group gap="sm">
                 <Icon size={24} c="icon-brand" name="model" />
                 {t`Models`}
@@ -130,10 +130,13 @@ export const BrowseModels = () => {
                 )}
                 <Stack gap="xxs" maw="28rem">
                   <Title
-                    order={3}
+                    order={2}
                     ta="center"
                   >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                  <Text
+                    ta="center"
+                    lh="1.25rem"
+                  >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
                   <Button variant="subtle" p={0}>

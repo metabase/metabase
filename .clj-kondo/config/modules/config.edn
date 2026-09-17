@@ -349,11 +349,12 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO FIXME
+   :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
+           metabase.app-db.sql-errors
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
@@ -956,28 +957,6 @@
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingTheme}}
 
-  embedding-hub
-  {:team "Embedding"
-   :api  #{metabase.embedding-hub.api}
-   :uses #{api
-           appearance
-           audit-app
-           embedding
-           metabot
-           permissions
-           premium-features
-           util.config
-           warehouse-schema-overlay}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/ConnectionImpersonation
-                    :model/Dashboard
-                    :model/Database
-                    :model/DatabaseRouter
-                    :model/EmbeddingTheme
-                    :model/Sandbox
-                    :model/Table
-                    :model/Tenant}}
 
   embedding.rest
   {:team "Embedding"
@@ -1105,6 +1084,7 @@
            events
            lib.schema
            models
+           remote-sync
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
@@ -1615,10 +1595,7 @@
               system
               upload
               util}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
-                    :model/Database
-                    :model/MetabotMessage}}
+   :model-imports #{:model/AuthIdentity :model/Card :model/MetabotMessage}}
 
   metrics
   {:team "UX West"
@@ -2133,6 +2110,7 @@
    :uses #{api
            api.eid-translation
            collections
+           embedding
            events
            lib
            lib.be
@@ -3228,13 +3206,11 @@
            sync
            upload
            util
-           util.classloader
            util.config
            warehouse-schema-overlay
            warehouses
            warehouses.schema
-           warehouses.secrets
-           enterprise/permissions}
+           warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3277,11 +3253,8 @@
            settings
            sync.analyze
            util
-           util.classloader
-           util.config
            warehouse-schema-overlay
-           warehouses
-           enterprise/permissions}
+           warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
@@ -3801,8 +3774,13 @@
   enterprise/embedding
   {:team "Embedding"
    :ns-prefix "metabase-enterprise.embedding-hub"
-   :api #{}
-   :uses #{lib.schema
+   :api #{metabase-enterprise.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           lib.schema
+           permissions
            premium-features
            util
            warehouse-schema-overlay
@@ -4103,6 +4081,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
