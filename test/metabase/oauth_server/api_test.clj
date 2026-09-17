@@ -1764,7 +1764,7 @@
             (is (seq body-nonce) "the page has a nonce'd script tag")
             (is (= header-nonce body-nonce))))))))
 
-;;; ------------------------------------------ Pre-ticking held scopes -------------------------------------------
+;;; ------------------------------------------ Unticking a held scope --------------------------------------------
 
 (defn- register-app-client!
   "Register a confidential DCR client named `client-name` whose only redirect is `redirect-uri` and which may use
@@ -1814,129 +1814,24 @@
    "agent:content:read"  [true true]
    "agent:query:run"     [true true]})
 
-(deftest consent-page-pre-ticks-scopes-the-client-holds-test
-  (testing (str "GHY-4555: a step-up asks for held plus required scopes. A scope a live token of the same client "
-                "already holds starts ticked but can be unticked, so ticking only the new scope does not silently "
-                "drop the held one. The baseline stays locked and everything else starts unticked.")
+(deftest consent-page-does-not-pre-tick-held-scopes-test
+  (testing (str "GHY-4555: a step-up asks for held plus required scopes, and every non-baseline scope is offered "
+                "unticked even when the user already holds it on a live token of the same client. Pre-ticking a held "
+                "scope needs to know which connection is stepping up, which the consent page cannot tell (GHY-4627). "
+                "The baseline stays ticked and locked.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [redirect            "https://example.com/callback"
+              held                (conj v2-baseline-scope-set "agent:content:write")
               {:keys [client_id]} (register-app-client! "Step-up Client" redirect)]
-          (insert-token! :model/OAuthAccessToken :crowberto client_id
-                         (conj v2-baseline-scope-set "agent:content:write"))
+          (insert-token! :model/OAuthAccessToken :crowberto client_id held)
+          (insert-token! :model/OAuthRefreshToken :crowberto client_id held :expiry nil)
           (is (= (merge baseline-locked
-                        {"agent:content:write"  [true false]
+                        {"agent:content:write"  [false false]
                          "agent:sql:run"        [false false]
                          "agent:delivery:write" [false false]})
                  (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
-
-(deftest consent-page-pre-ticks-only-live-tokens-of-this-user-test
-  (testing (str "GHY-4555: only unexpired, unrevoked tokens of the authorizing user count. A live refresh token counts "
-                "even when its access token has expired.")
-    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
-                                       oauth-server-dynamic-registration-enabled true]
-      (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [redirect            "https://example.com/callback"
-              {:keys [client_id]} (register-app-client! "Step-up Client" redirect)
-              an-hour-ago         (.toEpochMilli (.minusSeconds (java.time.Instant/now) 3600))]
-          (insert-token! :model/OAuthAccessToken :crowberto client_id ["agent:content:write"] :expiry an-hour-ago)
-          (insert-token! :model/OAuthRefreshToken :crowberto client_id ["agent:content:write"] :expiry an-hour-ago)
-          (insert-token! :model/OAuthAccessToken :crowberto client_id ["agent:delivery:write"]
-                         :revoked_at (java.time.OffsetDateTime/now))
-          (insert-token! :model/OAuthRefreshToken :crowberto client_id ["agent:delivery:write"]
-                         :revoked_at (java.time.OffsetDateTime/now))
-          (insert-token! :model/OAuthAccessToken :rasta client_id ["agent:delivery:write" "agent:content:write"])
-          (insert-token! :model/OAuthRefreshToken :crowberto client_id ["agent:sql:run"] :expiry nil)
-          (is (= (merge baseline-locked
-                        {"agent:content:write"  [false false]
-                         "agent:sql:run"        [true false]
-                         "agent:delivery:write" [false false]})
-                 (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
-
-(deftest consent-page-pre-ticks-scopes-the-same-app-holds-test
-  (testing (str "GHY-4555: clients that re-register on every step-up still count as the same app. A new client matches "
-                "a token's client on an exact https redirect, or on a loopback redirect's host, path and client name "
-                "with any port. A name alone never matches.")
-    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
-                                       oauth-server-dynamic-registration-enabled true]
-      (doseq [{:keys [desc holder requester pre-ticked?]}
-              [{:desc        "the Claude connector: a new client on the same https redirect"
-                :holder      ["Claude" "https://claude.ai/api/mcp/auth_callback"]
-                :requester   ["Claude" "https://claude.ai/api/mcp/auth_callback"]
-                :pre-ticked? true}
-               {:desc        "Claude Code: the same loopback host, path and name on a different port"
-                :holder      ["Claude Code (metabase)" "http://localhost:33418/callback"]
-                :requester   ["Claude Code (metabase)" "http://localhost:51234/callback"]
-                :pre-ticked? true}
-               {:desc        "Codex: the same 127.0.0.1 path and name on a different port"
-                :holder      ["Codex" "http://127.0.0.1:1455/callback/Zm9vYmFy"]
-                :requester   ["Codex" "http://127.0.0.1:61000/callback/Zm9vYmFy"]
-                :pre-ticked? true}
-               {:desc        "the same loopback path under a different client name"
-                :holder      ["Claude Code (metabase)" "http://localhost:33418/callback"]
-                :requester   ["Some Other Tool" "http://localhost:51234/callback"]
-                :pre-ticked? false}
-               {:desc        "a client named Claude on a different redirect"
-                :holder      ["Claude" "https://claude.ai/api/mcp/auth_callback"]
-                :requester   ["Claude" "https://example.com/callback"]
-                :pre-ticked? false}]]
-        (testing desc
-          (t2/with-transaction [_conn nil {:rollback-only true}]
-            (let [holder-client    (apply register-app-client! holder)
-                  requester-client (apply register-app-client! requester)]
-              (insert-token! :model/OAuthAccessToken :crowberto (:client_id holder-client)
-                             (conj v2-baseline-scope-set "agent:content:write"))
-              (is (= (merge baseline-locked
-                            {"agent:content:write"  [pre-ticked? false]
-                             "agent:sql:run"        [false false]
-                             "agent:delivery:write" [false false]})
-                     (checkbox-states (consent-page-at! :crowberto (:client_id requester-client)
-                                                        (second requester))))))))))))
-
-(deftest consent-page-pre-ticks-only-the-most-recent-grant-test
-  (testing (str "GHY-4555: pre-ticking follows the app's most recent live grant, not the union of its live tokens. A "
-                "refresh token outlives several authorizations, so a union would let an older, wider grant keep "
-                "re-ticking a scope a later authorization dropped -- silently undoing that decision every time the "
-                "user re-authorizes.")
-    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
-                                       oauth-server-dynamic-registration-enabled true]
-      (let [redirect  "https://claude.ai/api/mcp/auth_callback"
-            days-ago  #(.minusDays (java.time.OffsetDateTime/now) %)
-            wide      (conj v2-baseline-scope-set "agent:content:write" "agent:sql:run")
-            narrowed  (conj v2-baseline-scope-set "agent:content:write")
-            expected  (merge baseline-locked
-                             {"agent:content:write"  [true false]
-                              "agent:sql:run"        [false false]
-                              "agent:delivery:write" [false false]})]
-        (testing "day 1 grants sql:run, day 5 leaves it unticked, day 10 must not offer it pre-ticked again"
-          (t2/with-transaction [_conn nil {:rollback-only true}]
-            (let [day-1 (register-app-client! "Claude" redirect)
-                  day-5 (register-app-client! "Claude" redirect)
-                  day-10 (register-app-client! "Claude" redirect)]
-              ;; day 1's tokens are still live -- that is the whole point: a union would read them
-              (insert-token! :model/OAuthAccessToken :crowberto (:client_id day-1) wide :created_at (days-ago 10))
-              (insert-token! :model/OAuthRefreshToken :crowberto (:client_id day-1) wide
-                             :created_at (days-ago 10) :expiry nil)
-              (insert-token! :model/OAuthAccessToken :crowberto (:client_id day-5) narrowed
-                             :created_at (days-ago 5))
-              (insert-token! :model/OAuthRefreshToken :crowberto (:client_id day-5) narrowed
-                             :created_at (days-ago 5) :expiry nil)
-              (is (= expected (checkbox-states (consent-page-at! :crowberto (:client_id day-10) redirect)))))))
-        (testing "the newest grant still speaks through its refresh token once its access token has expired"
-          (t2/with-transaction [_conn nil {:rollback-only true}]
-            (let [older   (register-app-client! "Claude" redirect)
-                  newer   (register-app-client! "Claude" redirect)
-                  current (register-app-client! "Claude" redirect)]
-              (insert-token! :model/OAuthAccessToken :crowberto (:client_id older) wide :created_at (days-ago 10))
-              (insert-token! :model/OAuthAccessToken :crowberto (:client_id newer) narrowed
-                             :created_at (days-ago 5)
-                             :expiry (.toEpochMilli (.minusSeconds (java.time.Instant/now) 3600)))
-              (insert-token! :model/OAuthRefreshToken :crowberto (:client_id newer) narrowed
-                             :created_at (days-ago 5) :expiry nil)
-              (is (= expected (checkbox-states (consent-page-at! :crowberto (:client_id current) redirect)))))))))))
-
-;;; --------------------------------------- Unticking a held scope -----------------------------------------------
 
 (defn- authorize-at!
   "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` and ticking
@@ -1998,10 +1893,10 @@
               window-b (register-app-client! "Claude" claude-redirect)
               step-up  (str/join " " (conj (sort v2-baseline-scope-set) "agent:content:write" "agent:sql:run"))]
           (is (= held (access-token-scopes token-a)))
-          (is (= [true false] (get (checkbox-states (consent-page-at! :crowberto (:client_id window-b)
-                                                                      claude-redirect step-up))
-                                   "agent:content:write"))
-              "content:write is pre-ticked, so leaving it out is a deliberate untick")
+          (is (= [false false] (get (checkbox-states (consent-page-at! :crowberto (:client_id window-b)
+                                                                       claude-redirect step-up))
+                                    "agent:content:write"))
+              "content:write is offered, unticked and tickable, so leaving it out narrows this authorization")
           (let [token-b (authorize-at! window-b claude-redirect step-up ["agent:sql:run"])]
             (is (= (conj v2-baseline-scope-set "agent:sql:run") (token-scope-set token-b))
                 "the new token carries only what was ticked")
