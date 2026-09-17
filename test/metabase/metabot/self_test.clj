@@ -1652,7 +1652,8 @@
 
 (deftest call-llm-usage-log-test
   (testing "call-llm and call-llm-structured log the provider type and the model as the provider names it"
-    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")]
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")
+                              (llm.tu/connection "metabase")]
       (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
             response  (test-util/mock-llm-response
                        [{:type :start :id "m1"}
@@ -1660,14 +1661,20 @@
                         {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
             logged    (atom [])]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                    self.claude/claude    (constantly response)
                                     usage/log-ai-usage!   #(swap! logged conj %)]
           (run! identity (self/call-llm model-ref nil [] {} {:tag "metabot_agent"}))
           (self/call-llm-structured model-ref [{:role "user" :content "test"}]
                                     {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
-                                    {:tag "metabot_agent"}))
-        (is (=? (repeat 2 {:model      model-ref
-                           :provider   "openrouter"
-                           :model-name "anthropic/claude-sonnet-4.6"})
+                                    {:tag "metabot_agent"})
+          (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+        (is (=? (concat (repeat 2 {:model      model-ref
+                                   :provider   "openrouter"
+                                   :model-name "anthropic/claude-sonnet-4.6"})
+                        [{:model      "metabase/anthropic/claude-haiku-4-5"
+                          :provider   "anthropic"
+                          :model-name "claude-haiku-4-5"
+                          :ai-proxied true}])
                 @logged))))))
 
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
