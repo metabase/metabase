@@ -48,6 +48,8 @@ type EventColumn = {
   sort?: ApiKeyUsageEventSortColumn;
   align?: "right";
   grow?: boolean;
+  /** Overrides the default auto-width cap — for columns whose content doesn't fit in 200px. */
+  maxAutoWidth?: number;
   render?: (value: RowValue) => ReactNode;
 };
 
@@ -59,6 +61,7 @@ const EVENT_COLUMN_META: Record<
   occurred_at: () => ({
     title: t`Occurred at`,
     sort: "occurred_at",
+    maxAutoWidth: 240,
     render: (value) =>
       value == null ? (
         EMPTY_CELL_PLACEHOLDER
@@ -255,7 +258,11 @@ function ApiKeyUsageEventsTableInner({
         header: column.title,
         ...(column.grow
           ? { minWidth: 280 }
-          : { width: "auto" as const, minWidth: 120, maxAutoWidth: 200 }),
+          : {
+              width: "auto" as const,
+              minWidth: 120,
+              maxAutoWidth: column.maxAutoWidth ?? 200,
+            }),
         enableSorting: !!column.sort,
         sortDescFirst: column.sort === "occurred_at",
         accessorFn: (row) => row[column.key],
