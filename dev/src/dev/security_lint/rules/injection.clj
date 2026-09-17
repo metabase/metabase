@@ -76,34 +76,52 @@
   first element of it when it is written as a vector, or the first element of a vector bound to it or returned by
   a branch of it. Looking only here -- rather than anywhere in the subtree -- keeps a `(str ...)` used to build a
   *parameter* from being reported: `[\"... where s = ?\" schema]` binds `schema`, however it was derived.
-  `db-do-commands` is the exception: its vector is a list of statements, and every element is SQL."
+  `db-do-commands` is the exception: its vector is a list of statements, and every element is SQL.
+
+  A map is a HoneySQL query, whose values bind as parameters, and is never text. Toucan's query functions take
+  one far more often than a string, so a *bare* argument to them counts only when it visibly builds text -- a
+  `str`, a `format`, a `join` -- or is a local bound to one, or a parameter; a call to anything else, and a
+  local bound to one, is a query map. Inside a `[sql & params]` vector the first element is text by position,
+  whatever built it."
   [ctx node]
-  (let [every-element? (= 'clojure.java.jdbc/db-do-commands (:trigger (:site ctx)))]
-    (letfn [(texts [a seen]
+  (let [trigger        (:trigger (:site ctx))
+        every-element? (= 'clojure.java.jdbc/db-do-commands trigger)
+        ;; the functions that take a HoneySQL map as readily as SQL text
+        map-or-text?   (contains? query-last trigger)]
+    (letfn [(texts [a seen bare?]
               (let [a (ast/unmeta a)]
                 (cond
                   (nil? a) nil
+                  ;; a HoneySQL map: its values bind as parameters, and a `:raw` in it is another rule's
+                  (ast/map-node? a) nil
                   (ast/vector-node? a) (if every-element?
-                                         (mapcat #(texts % seen) (ast/children a))
-                                         (some-> (first (ast/children a)) (texts seen)))
-                  ;; `(into [sql] params)`: the vector's own first element
-                  (= 'into (some-> (ast/head-sym a) name symbol)) (texts (ast/arg a 0) seen)
+                                         (mapcat #(texts % seen false) (ast/children a))
+                                         (some-> (first (ast/children a)) (texts seen false)))
+                  ;; `(into [sql] params)`, `(cons sql params)`: the text is the first thing in
+                  (contains? '#{into cons} (some-> (ast/head-sym a) name symbol)) (texts (ast/arg a 0) seen bare?)
                   (contains? branching (some-> (ast/head-sym a) name symbol))
                   (let [args (ast/args a)
                         branches (case (name (ast/head-sym a))
                                    ("if" "if-not" "if-let") (rest args)
                                    "cond" (take-nth 2 (rest args))
                                    [(last args)])]
-                    (mapcat #(texts % seen) branches))
-                  ;; a local bound to a vector: its first element is the text
+                    (mapcat #(texts % seen bare?) branches))
+                  ;; a local bound to a vector: its first element is the text. Bound to a map, or -- as a bare
+                  ;; argument to a Toucan query function -- to a call that does not build text, it is a query.
                   (and (ast/symbol-node? a) (not (contains? seen a)))
                   (if-let [init (get (:local-inits ctx) ((juxt :row :col) (meta a)))]
-                    (if (ast/vector-node? (ast/unmeta init))
-                      (texts init (conj seen a))
-                      [a])
+                    (let [init* (ast/unmeta init)]
+                      (cond
+                        (ast/vector-node? init*)                          (texts init (conj seen a) false)
+                        (ast/map-node? init*)                             nil
+                        (and bare? map-or-text? (ast/call? init*)
+                             (not (ast/dynamic-string? init*)))           nil
+                        :else                                             [a]))
                     [a])
+                  ;; a bare call handed to a Toucan query function is text only when it visibly builds text
+                  (and bare? map-or-text? (ast/call? a) (not (ast/dynamic-string? a))) nil
                   :else [a])))]
-      (texts (sql-arg ctx node) #{}))))
+      (texts (sql-arg ctx node) #{} true))))
 
 (defrule sql-injection
   {:name        "SQL built by string interpolation"
