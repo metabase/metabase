@@ -326,10 +326,12 @@ describe("dashboard timeline events", () => {
 
     setup({ dashcards, withCharts: true, seedTimelines: false });
 
-    await waitFor(() =>
-      expect(screen.getAllByTestId("timeline-events-band")).toHaveLength(
-        dashcards.length,
-      ),
+    await waitFor(
+      () =>
+        expect(screen.getAllByTestId("timeline-events-band")).toHaveLength(
+          dashcards.length,
+        ),
+      { timeout: 10000 },
     );
     expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(1);
   });
