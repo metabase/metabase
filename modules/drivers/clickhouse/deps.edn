@@ -1,6 +1,6 @@
 {:paths ["src" "resources"]
  :deps
- {com.clickhouse/clickhouse-jdbc {:mvn/version "0.9.8"
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.10.0-rc1"
                                   :exclusions [org.apache.commons/commons-lang3
                                                org.lz4/lz4-java
                                                ;; pinned in and resolved from /deps.edn
