@@ -1445,7 +1445,7 @@
             (is (= [:get] (mapv :method @calls)))))))))
 
 (deftest list-models-endpoint-without-predict-permission-rejected-test
-  (testing "a credential that can read the endpoint but not run it is refused, with Google's 403 message"
+  (testing "a credential that can read the endpoint but not run it is refused at connect as lacking permissions"
     (let [endpoint "8901234567890123456"]
       (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
                                          llm.settings/llm-google-service-account-key nil
