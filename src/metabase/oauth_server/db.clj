@@ -198,10 +198,6 @@
   [opts]
   (u.query/opts->args opts {:set-columns revocable-set-columns}))
 
-(defn- oauth-authorization-code-kv-args
-  [opts]
-  (u.query/opts->kv-args opts {:set-columns revocable-set-columns}))
-
 (mu/defn select-one-oauth-authorization-code :- [:maybe ::oauth-server.schema/oauth-authorization-code.partial]
   "The first OAuthAuthorizationCode matching `opts`, or nil."
   [opts :- [:maybe ::oauth-authorization-code-opts]]

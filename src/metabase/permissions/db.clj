@@ -203,14 +203,6 @@
    [:limit    {:optional true} ms/PositiveInt]
    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]])
 
-(defn- ->permissions-revision-model
-  [columns]
-  (u.query/model-with-columns :model/PermissionsRevision (with-id columns)))
-
-(defn- permissions-revision-args
-  [opts]
-  (u.query/opts->args opts))
-
 (mr/def ::application-permissions-revision-opts
   "The columns to select and the order to return them in for an ApplicationPermissionsRevision query.
   ApplicationPermissionsRevision rows are never filtered by column, only read in full or by id."
@@ -222,14 +214,6 @@
                                              [:tuple ::permissions.schema/application-permissions-revision.column [:enum :asc :desc]]]]]
    [:limit    {:optional true} ms/PositiveInt]
    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]])
-
-(defn- ->application-permissions-revision-model
-  [columns]
-  (u.query/model-with-columns :model/ApplicationPermissionsRevision (with-id columns)))
-
-(defn- application-permissions-revision-args
-  [opts]
-  (u.query/opts->args opts))
 
 (mr/def ::collection-permission-graph-revision-filters
   "Which CollectionPermissionGraphRevisions a query applies to."
@@ -247,14 +231,6 @@
                                               [:tuple ::permissions.schema/collection-permission-graph-revision.column [:enum :asc :desc]]]]]
     [:limit    {:optional true} ms/PositiveInt]
     [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
-
-(defn- ->collection-permission-graph-revision-model
-  [columns]
-  (u.query/model-with-columns :model/CollectionPermissionGraphRevision (with-id columns)))
-
-(defn- collection-permission-graph-revision-args
-  [opts]
-  (u.query/opts->args opts))
 
 ;;; ------------------------------------------------------ Reads ---------------------------------------------------
 

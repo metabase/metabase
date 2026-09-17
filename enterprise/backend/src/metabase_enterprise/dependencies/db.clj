@@ -822,7 +822,6 @@
    [:map {:closed true}
     [:columns {:optional true} [:sequential ::dependencies.schema/analysis-finding.column]]]])
 
-(defn- analysis-finding-model [columns] (u.query/model-with-columns :model/AnalysisFinding columns))
 (defn- analysis-finding-args [opts] (u.query/opts->args opts))
 (defn- analysis-finding-kv-args [opts] (u.query/opts->kv-args opts))
 

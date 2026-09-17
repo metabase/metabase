@@ -8,7 +8,6 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.channel.db :as channel.db]
-   [metabase.channel.db :as channel.db]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
