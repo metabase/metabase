@@ -18,7 +18,8 @@ export interface SortableDragHandle {
   dragHandleRef: MutableRefObject<HTMLElement | null>;
   dragHandleListeners: SyntheticListenerMap | undefined;
   /** dnd-kit's activator attributes: tabIndex, role and the aria wiring that lets a KeyboardSensor pick the
-   * item up from the keyboard. Spread them on the drag handle along with the listeners. */
+   * item up from the keyboard. Only for consumers that set `attributesOnDragHandle`; the others keep them on the
+   * wrapper. */
   dragHandleAttributes: DraggableAttributes;
 }
 
@@ -31,6 +32,7 @@ export interface SortableProps {
   style?: CSSProperties;
   draggingStyle?: CSSProperties;
   role?: string;
+  attributesOnDragHandle?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export function Sortable({
   style,
   draggingStyle,
   role = "button",
+  attributesOnDragHandle = false,
 }: SortableProps) {
   const dragHandleRef = useRef(null);
 
@@ -82,7 +85,9 @@ export function Sortable({
       }}
       data-is-dragging={isDragging}
       ref={setNodeRef}
-      {...(disabled || childrenAsFunction ? {} : attributes)}
+      {...(disabled || (childrenAsFunction && attributesOnDragHandle)
+        ? {}
+        : attributes)}
       {...(!childrenAsFunction && listeners)}
       role={role}
     >
