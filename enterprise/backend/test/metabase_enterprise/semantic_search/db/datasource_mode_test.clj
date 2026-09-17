@@ -130,35 +130,40 @@
                 mdb/db-type (constantly :postgres)]
     (testing "nothing cached (and mode :unavailable) before the app db is set up"
       (with-support-cache nil
-        (with-redefs [mdb/db-is-set-up? (constantly false)
-                      semantic.db.datasource/check-app-db-pgvector-support
-                      (fn [] (throw (AssertionError. "must not probe before the app db is set up")))]
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up? (constantly false)
+           semantic.db.datasource/check-app-db-pgvector-support
+           (fn [] (throw (AssertionError. "must not probe before the app db is set up")))]
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))))
     (testing "check runs exactly once; its result is cached for subsequent calls"
       (with-support-cache nil
         (let [calls (atom 0)]
-          (with-redefs [mdb/db-is-set-up? (constantly true)
-                        semantic.db.datasource/check-app-db-pgvector-support (fn [] (swap! calls inc) true)]
+          (mt/with-dynamic-fn-redefs
+            [mdb/db-is-set-up? (constantly true)
+             semantic.db.datasource/check-app-db-pgvector-support (fn [] (swap! calls inc) true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))
             (is (= 1 @calls))
             (is (true? @semantic.db.datasource/app-db-pgvector-support))))))
     (testing "a failed probe reads as unavailable, does NOT latch, and backs off before retrying"
       (with-support-cache nil
-        (with-redefs [mdb/db-is-set-up? (constantly true)
-                      semantic.db.datasource/check-app-db-pgvector-support (fn [] (throw (ex-info "boom" {})))]
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up? (constantly true)
+           semantic.db.datasource/check-app-db-pgvector-support (fn [] (throw (ex-info "boom" {})))]
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))
         (testing "within the backoff window the check must not run again"
-          (with-redefs [mdb/db-is-set-up? (constantly true)
-                        semantic.db.datasource/check-app-db-pgvector-support
-                        (fn [] (throw (AssertionError. "must not re-probe during backoff")))]
+          (mt/with-dynamic-fn-redefs
+            [mdb/db-is-set-up? (constantly true)
+             semantic.db.datasource/check-app-db-pgvector-support
+             (fn [] (throw (AssertionError. "must not re-probe during backoff")))]
             (is (= :unavailable (semantic.db.datasource/pgvector-mode)))))
         (testing "once the window clears, the next call re-probes"
           (reset! semantic.db.datasource/probe-cooldown-timer nil)
-          (with-redefs [mdb/db-is-set-up? (constantly true)
-                        semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
+          (mt/with-dynamic-fn-redefs
+            [mdb/db-is-set-up? (constantly true)
+             semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
     ;; This exercises the false->true transition with the probe mocked.
     ;; The real thing (an app-db role reads unsupported, an admin runs CREATE EXTENSION out-of-band, the
@@ -168,30 +173,35 @@
     ;; would be flaky against the database shared with other tests between runs.
     (testing "an unsupported probe is NOT latched — it re-probes after the cooldown, so a runtime install is picked up"
       (with-support-cache nil
-        (with-redefs [mdb/db-is-set-up? (constantly true)
-                      semantic.db.datasource/check-app-db-pgvector-support (constantly false)]
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up? (constantly true)
+           semantic.db.datasource/check-app-db-pgvector-support (constantly false)]
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support))
           (testing "within the cooldown the check must not run again"
-            (with-redefs [mdb/db-is-set-up? (constantly true)
-                          semantic.db.datasource/check-app-db-pgvector-support
-                          (fn [] (throw (AssertionError. "must not re-probe during cooldown")))]
+            (mt/with-dynamic-fn-redefs
+              [mdb/db-is-set-up? (constantly true)
+               semantic.db.datasource/check-app-db-pgvector-support
+               (fn [] (throw (AssertionError. "must not re-probe during cooldown")))]
               (is (= :unavailable (semantic.db.datasource/pgvector-mode))))))
         (testing "cooldown elapsed: pgvector installed at runtime is now picked up (no restart)"
           (reset! semantic.db.datasource/probe-cooldown-timer nil)
-          (with-redefs [mdb/db-is-set-up? (constantly true)
-                        semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
+          (mt/with-dynamic-fn-redefs
+            [mdb/db-is-set-up? (constantly true)
+             semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
     (testing "a confirmed true latches for the JVM lifetime; tests/REPL reset it"
       (with-support-cache nil
-        (with-redefs [mdb/db-is-set-up? (constantly true)
-                      semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
+        (mt/with-dynamic-fn-redefs
+          [mdb/db-is-set-up? (constantly true)
+           semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
           (is (= :app-db (semantic.db.datasource/pgvector-mode)))
           (is (true? @semantic.db.datasource/app-db-pgvector-support)))
         (testing "latched: a now-failing check is never consulted"
-          (with-redefs [mdb/db-is-set-up? (constantly true)
-                        semantic.db.datasource/check-app-db-pgvector-support
-                        (fn [] (throw (AssertionError. "must not re-probe after a confirmed true")))]
+          (mt/with-dynamic-fn-redefs
+            [mdb/db-is-set-up? (constantly true)
+             semantic.db.datasource/check-app-db-pgvector-support
+             (fn [] (throw (AssertionError. "must not re-probe after a confirmed true")))]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))))
 
 (deftest unlicensed-availability-check-does-not-probe-test

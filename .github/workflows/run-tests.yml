@@ -57,11 +57,10 @@ jobs:
       build_scripts: ${{ steps.changes.outputs.build_scripts }}
       embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
-      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
+      frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
@@ -261,6 +260,10 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
+      smoke-only: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+         !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
+        }}
 
   app-db-tests:
     if: |
@@ -316,7 +319,7 @@ jobs:
         needs.files-changed.outputs.ci_scripts != 'true' }}
 
   loki-tests:
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, create-test-plan]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -325,9 +328,9 @@ jobs:
     with:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_ci != 'true' &&
-        needs.files-changed.outputs.frontend_sources != 'true' &&
-        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
+        needs.files-changed.outputs.frontend_loki_all != 'true' }}
+      # A skipped/failed planner supplies no artifact, so the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 
   e2e-tests:
     needs: [should-run, files-changed, uberjar]

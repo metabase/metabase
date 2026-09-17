@@ -8,6 +8,7 @@
    [metabase.documents.test-util :as documents.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.duplicate :as tools.duplicate]
@@ -38,7 +39,7 @@
 (defn- tool-result
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+    (throw (ex-info (str "tool call rejected: " (message/render (:message error))) {:error error})))
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
@@ -47,7 +48,7 @@
 (defn- tool-error
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)
     :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
@@ -75,6 +76,22 @@
           (is (= :question (:type copy)))
           (is (= (:dataset_query (t2/select-one :model/Card :id card-id))
                  (:dataset_query copy))))))))
+
+(deftest duplicate-question-default-name-is-localized-test
+  (testing "GHY-4544: the default copy name is translated into the user's locale, like the REST copy endpoints"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Umsatz"
+                                                :type          :question
+                                                :dataset_query (venues-query)}]
+        ;; Mock bundle: compiled translations aren't on the test classpath.
+        (mt/with-mock-i18n-bundles! {"de" {:messages {"Copy of {0}" ["Kopie von {0}"]}}}
+          (mt/with-current-user (mt/user->id :crowberto)
+            ;; Inside, because binding the current user rebinds the locale to the user's own.
+            (mt/with-user-locale "de"
+              (let [result (tool-result (registry/call-tool nil nil "duplicate_content"
+                                                            {:type "question" :id card-id}))]
+                (is (= "Kopie von Umsatz" (:name result)))
+                (is (= "Kopie von Umsatz" (t2/select-one-fn :name :model/Card :id (:id result))))))))))))
 
 (deftest duplicate-question-new-name-and-collection-test
   (testing "GHY-4151: new_name and collection_id override the defaults"
@@ -194,7 +211,7 @@
   (testing "GHY-4151: a model or metric passed as a question is a teaching error saying so, rather than
             silently copying it as a question — the other card flavors aren't supported yet"
     (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (venues-query)}]
-      (is (= (format "Card %d is a model — duplicate_content supports type \"question\" only." card-id)
+      (is (= (format "Card %d has type \"model\" — duplicate_content supports type \"question\" only." card-id)
              (tool-error (call-tool! :crowberto {:type "question" :id card-id})))))))
 
 (deftest duplicate-archived-source-test
@@ -391,7 +408,7 @@
                                                        :collection_id coll-id
                                                        :is_deep_copy  false})))))
         (testing "an explicit true is still a teaching error on a non-dashboard"
-          (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating a question."
+          (is (= "\"is_deep_copy\" applies to dashboards only — omit it when duplicating type \"question\"."
                  (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))))
 
 (deftest duplicate-dashboard-shallow-with-dashboard-questions-test
@@ -411,7 +428,7 @@
 (deftest duplicate-deep-copy-wrong-type-test
   (testing "GHY-4151: is_deep_copy is dashboards-only and says so"
     (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (venues-query)}]
-      (is (= "`is_deep_copy` applies to dashboards only — omit it when duplicating a question."
+      (is (= "\"is_deep_copy\" applies to dashboards only — omit it when duplicating type \"question\"."
              (tool-error (call-tool! :crowberto {:type "question" :id card-id :is_deep_copy true})))))))
 
 ;;; -------------------------------------------------- document ----------------------------------------------------
@@ -505,7 +522,7 @@
 (deftest scope-test
   (testing "GHY-4151: the tool itself requires agent:content:write"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
-      (is (re-find #"^Insufficient scope to call tool: duplicate_content\."
+      (is (re-find #"^Insufficient scope to call tool: \"duplicate_content\"\."
                    (tool-error (call-tool! :crowberto #{metabot.scope/agent-content-read}
                                            {:type "dashboard" :id dash-id}))))))
   ;; GHY-4225 folded duplicate_content's per-type create scopes into the single

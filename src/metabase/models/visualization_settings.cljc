@@ -28,6 +28,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -37,12 +38,12 @@
 
 ;;; -------------------------------------------------- Specs --------------------------------------------------
 
-(def ^:private field-metadata-schema [:maybe map?])
+(def ^:private field-metadata-schema [:maybe ::lib.schema.common/visualization-settings])
 ;; field-str - a field reference that is a string, which could be a reference to some named field (ex: output of an
 ;; aggregation) or to a fully qualified field name (in the context of serialization); we won't attempt to interpret it
 ;; here, only report that it's a string and set it in the ref map appropriately
 (def ^:private column-ref-schema
-  [:map
+  [:map {:closed true}
    [::field-id {:optional true} ::lib.schema.id/field]
    [::column-name {:optional true} string?]
    [::field-str {:optional true} string?]
@@ -55,17 +56,17 @@
             [:tuple
              [:= "field"]
              [:orn [:field-id ::lib.schema.id/field] [:field-str string?]]
-             [:orn [:field-metadata map?] [:nil nil?]]]]]
+             [:orn [:field-metadata ::lib.schema.common/visualization-settings] [:nil nil?]]]]]
    [:expression [:tuple [:= "ref"] [:tuple [:= "expression"] string?]]]
    [:column-name [:tuple [:= "name"] string?]]])
 
 ;; TODO: add more specific shape for this one
-(def ^:private parameter-mapping-schema [:maybe map?])
+(def ^:private parameter-mapping-schema [:maybe ::lib.schema.common/visualization-settings])
 
 (def ^:private click-behavior-schema
-  [:map
+  [:map {:closed true}
    [::click-behavior-type {:optional true} keyword?]
-   [::link-type {:optional true} :any]
+   [::link-type {:optional true} [:or [:= ::card] [:= ::dashboard] [:= ::url]]]
    [::parameter-mapping {:optional true} parameter-mapping-schema]
    [::link-template {:optional true} string?]
    [::link-text {:optional true} string?]
@@ -236,7 +237,7 @@
   passed the output of another fn (including, currently, `visualization-settings`). If the given `from-field-id`
   already has a click action, it will be replaced."
   {:added "0.40.0"}
-  [settings :- map?, col-key :- column-ref-schema, action :- click-behavior-schema]
+  [settings :- ::lib.schema.common/visualization-settings, col-key :- column-ref-schema, action :- click-behavior-schema]
   (-> settings
       with-col-settings
       (update ::column-settings assoc col-key {::click-behavior action})))
@@ -247,7 +248,7 @@
   (including, currently, `visualization-settings`). If the given `from-field-id` already has a click action, it will
   be replaced."
   {:added "0.40.0"}
-  [settings :- map?
+  [settings :- ::lib.schema.common/visualization-settings
    from-field-id :- ::lib.schema.id/field
    to-entity-type :- entity-type-schema
    to-entity-id :- pos-int?

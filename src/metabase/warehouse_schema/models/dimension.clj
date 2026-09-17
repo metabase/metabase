@@ -5,6 +5,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

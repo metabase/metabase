@@ -125,6 +125,22 @@
             (is (= [{:version "0.58.11" :url "https://downloads.example.com/metabase.jar"}]
                    (:download_jar_urls row)))))))))
 
+(deftest fetch-advisory-with-unknown-entry-fields-test
+  (testing "fields the store adds to version ranges and download JARs don't stop advisory sync"
+    (let [advisory (make-json-advisory "SC-DL-002"
+                                       "affected_versions" [{"min" "0.58.0" "fixed" "0.58.11" "cve" "CVE-2026-0001"}]
+                                       "download_jar_urls" [{"version" "0.58.11"
+                                                             "url"     "https://downloads.example.com/metabase.jar"
+                                                             "sha256"  "abc123"}])]
+      (mt/with-model-cleanup [:model/SecurityAdvisory]
+        (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
+                      premium-features/premium-embedding-token                    (constantly "fake-token")
+                      premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
+          (fetch/sync-advisories!)
+          (is (=? {:affected_versions [{:min "0.58.0" :fixed "0.58.11"}]
+                   :download_jar_urls [{:version "0.58.11" :url "https://downloads.example.com/metabase.jar"}]}
+                  (t2/select-one :model/SecurityAdvisory :advisory_id "SC-DL-002"))))))))
+
 (deftest sync-advisories-stores-updated-at-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]
     (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store

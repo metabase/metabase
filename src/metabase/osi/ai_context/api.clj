@@ -7,6 +7,7 @@
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.osi.db :as osi.db]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
+   [metabase.osi.schema :as osi.schema]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -17,23 +18,11 @@
   measures/segments keep their type. A plain question never matches an index doc, so it's rejected."
   #{"table" "metric" "model" "measure" "segment"})
 
-(def ^:private max-item-len
-  "Cap on each synonym/example string — these are short phrases or questions, not prose. They become
-  embedded index docs, so this also keeps a single value under the embedding provider's token limit."
-  1000)
-
-(def ^:private max-list-len
-  "Cap on the synonyms/examples list length — a curated entity needs a handful, not hundreds."
-  50)
-
 (def ^:private AiContext
   "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
   String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
   the agent prompt."
-  [:map {:closed true}
-   [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
-   [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
-   [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
+  ::osi.schema/osi-ai-context.ai-context)
 
 (def ^:private AiContextInput
   "Accepted write shape for `ai_context` — the OSI `AIContext` oneOf.

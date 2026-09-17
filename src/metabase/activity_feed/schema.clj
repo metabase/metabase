@@ -7,13 +7,10 @@
 
 (mr/def ::recent-views
   "A RecentViews as selected from the app DB: every column of `:recent_views`."
-  [:map {:closed true}
-   [:id        ms/PositiveInt]
-   [:user_id   ::lib.schema.id/user]
-   [:model     [:or :keyword :string]]
-   [:model_id  [:maybe :int]]
-   [:timestamp ms/TemporalInstant]
-   [:context   [:or :keyword :string]]])
+  [:merge
+   ::recent-views.update
+   [:map {:closed true}
+    [:id        ms/PositiveInt]]])
 
 (mr/def ::recent-views.update
   "What an update (or insert) of a RecentViews accepts: every column of `:recent_views` except `id`, all optional."

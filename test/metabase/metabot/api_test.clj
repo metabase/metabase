@@ -139,18 +139,19 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
           stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
-      (with-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
         (is (= "Orders by Month" (generate-title!)))
         (is (= "Orders by Month" (stored-title))))
-      (with-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
         (is (nil? (generate-title!)))
         (is (= "Orders by Month" (stored-title)))))))
 
 (deftest conversation-title-generation-skips-existing-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)
                                                                    :title   "Existing Title"}]
-    (with-redefs [metabot.self/call-llm-structured (fn [& _]
-                                                     (throw (ex-info "should not generate" {})))]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured (fn [& _]
+                                          (throw (ex-info "should not generate" {})))]
       (is (= {:status :ready :title "Existing Title"}
              (conversation-title/ensure-title! conversation-id "default" "Show orders by month")))
       (is (= {:status "ready" :title "Existing Title"}
@@ -160,10 +161,11 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [gate       (promise)
           call-count (atom 0)]
-      (with-redefs [metabot.self/call-llm-structured (fn [& _]
-                                                       (swap! call-count inc)
-                                                       @gate
-                                                       {:title "Recovered Title"})]
+      (mt/with-dynamic-fn-redefs
+        [metabot.self/call-llm-structured (fn [& _]
+                                            (swap! call-count inc)
+                                            @gate
+                                            {:title "Recovered Title"})]
         (let [future-1 (conversation-title/submit! conversation-id "default" "Show orders by month")
               future-2 (conversation-title/submit! conversation-id "default" "Use a different prompt")]
           (is (some? future-1))
@@ -314,18 +316,19 @@
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [stored-parts  (atom nil)
               stored-kwargs (atom nil)]
-          (with-redefs [;; Pre-reducible throw: this is the exact escape path the new
-                        ;; catch covers. The agent loop's own (catch Exception) is
-                        ;; inside the reify, so a throw from `run-agent-loop` itself
-                        ;; bypasses it entirely.
-                        agent/run-agent-loop
-                        (fn [_opts]
-                          (throw (ex-info "agent setup exploded"
-                                          {:status 503 :provider :test})))
-                        metabot.persistence/finalize-assistant-turn!
-                        (fn [_pk parts & kwargs]
-                          (reset! stored-parts parts)
-                          (reset! stored-kwargs (apply hash-map kwargs)))]
+          (mt/with-dynamic-fn-redefs
+            [;; Pre-reducible throw: this is the exact escape path the new
+             ;; catch covers. The agent loop's own (catch Exception) is
+             ;; inside the reify, so a throw from `run-agent-loop` itself
+             ;; bypasses it entirely.
+             agent/run-agent-loop
+             (fn [_opts]
+               (throw (ex-info "agent setup exploded"
+                               {:status 503 :provider :test})))
+             metabot.persistence/finalize-assistant-turn!
+             (fn [_pk parts & kwargs]
+               (reset! stored-parts parts)
+               (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
@@ -783,9 +786,10 @@
     (let [title-requests (atom [])]
       (with-mock-streaming-provider!
         (fn []
-          (with-redefs [conversation-title/ensure-title! (fn [& args]
-                                                           (swap! title-requests conj args)
-                                                           {:status :missing})]
+          (mt/with-dynamic-fn-redefs
+            [conversation-title/ensure-title! (fn [& args]
+                                                (swap! title-requests conj args)
+                                                {:status :missing})]
             (let [conversation-id (str (random-uuid))
                   first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                         (agent-request conversation-id "first prompt"))
@@ -831,21 +835,22 @@
               turn-states   (atom [{:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
                                    {:queries {"q_1" {:database 1} "q_2" {:database 2}} :todos [{:id "b" :status "done"}]}
                                    nil])]
-          (with-redefs [agent/run-agent-loop
-                        (fn [{:keys [state memory-atom]}]
-                          (swap! seeded-states conj state)
-                          (let [[turn-state] @turn-states]
-                            (swap! turn-states subvec 1)
-                            ;; mirror the real loop: populate the caller's atom so
-                            ;; finalize can persist this turn's state
-                            (some-> memory-atom
-                                    (reset! {:turn-state (or turn-state {})}))
-                            (cond-> [{:type :start :id "msg-1"}
-                                     {:type :text :text "ok"}]
-                              turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
+          (mt/with-dynamic-fn-redefs
+            [agent/run-agent-loop
+             (fn [{:keys [state memory-atom]}]
+               (swap! seeded-states conj state)
+               (let [[turn-state] @turn-states]
+                 (swap! turn-states subvec 1)
+                 ;; mirror the real loop: populate the caller's atom so
+                 ;; finalize can persist this turn's state
+                 (some-> memory-atom
+                         (reset! {:turn-state (or turn-state {})}))
+                 (cond-> [{:type :start :id "msg-1"}
+                          {:type :text :text "ok"}]
+                   turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
               (let [conversation-id (str (random-uuid))
-                    turn-1-state    {:queries {:q_1 {:database 1}} :todos [{:id "a" :status "pending"}]}
+                    turn-1-state    {:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
                     first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                           {:message         "make a query"
                                                            :context         {}
@@ -862,7 +867,7 @@
                 (is (= {} (first @seeded-states))
                     "a new conversation seeds the loop with empty state")
                 (is (= turn-1-state (second @seeded-states))
-                    "the follow-up turn is seeded from the DB partial, keywordized — no client echo")
+                    "the follow-up turn is seeded from the DB partial, normalized — no client echo")
                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                       {:message          "another"
                                        :context          {}
@@ -952,13 +957,13 @@
   (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
     (let [msg (start-and-finalize-with-provider! "metabase/anthropic/claude-sonnet-4-6")]
       (is (true? (:ai_proxied msg)))
-      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+      (is (= {"claude-sonnet-4-6" {:prompt 100 :completion 50}}
              (:usage msg))
           "usage keys should be bare model names, not metabase/anthropic/...")))
   (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
     (let [msg (start-and-finalize-with-provider! "anthropic/claude-sonnet-4-6")]
       (is (false? (:ai_proxied msg)))
-      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+      (is (= {"claude-sonnet-4-6" {:prompt 100 :completion 50}}
              (:usage msg))))))
 
 (deftest finalize-assistant-turn-data-part-filtering-test
@@ -981,10 +986,10 @@
                 {:type :data :data-type "transform_suggestion" :version 1 :data {}}
                 {:type :data :data-type "adhoc_viz" :version 1 :data {:query {} :link "/q"}}
                 {:type :data :data-type "static_viz" :version 1 :data {:entity_id 1}}
-                {:type :data :data-type "state" :data {:step 1}}
+                {:type :data :data-type "state" :data {:todos [{:id "1"}]}}
                 {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
                 {:type :finish}]
-               :turn-state {:step 1})
+               :turn-state {:todos [{:id "1"}]})
               (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
                     part-types (into #{} (map :type) (:data msg))
                     data-types (into #{}
@@ -997,7 +1002,7 @@
                     "text parts survive")
                 (is (not-any? part-types #{"start" "usage" "finish"})
                     "stream metadata is dropped")
-                (is (= {:step 1} (:state msg))
+                (is (= {:todos [{:id "1"}]} (:state msg))
                     "the turn's partial state lands on the message row"))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
@@ -1075,16 +1080,21 @@
               :result {:structured-output {:some "data"}}}])))))
 
 (defn- legacy-query
-  "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
+  "A legacy inner-query-style map suitable for [[upgrade-viewing-queries]]."
   []
   {:database (mt/id)
    :query    {:source-table (mt/id :orders)}
    :type     :query})
 
+(defn- upgrade-viewing-queries
+  "Decodes `items` the way the `/agent-streaming` endpoint does, then runs [[api/upgrade-viewing-queries]] on them."
+  [items]
+  (#'api/upgrade-viewing-queries (lib/normalize [:vector metabot.context/ViewingItemSchema] items)))
+
 (deftest upgrade-viewing-queries-upgradable-types-test
   (doseq [item-type ["adhoc" "question" "metric" "model"]]
     (testing (str "upgrades query for type=" item-type)
-      (let [result (#'api/upgrade-viewing-queries [{:type item-type :query (legacy-query)}])
+      (let [result (upgrade-viewing-queries [{:type item-type :query (legacy-query)}])
             q      (:query (first result))]
         (is (= :mbql/query (:lib/type q)))
         (is (= (mt/id) (:database q)))))))
@@ -1095,7 +1105,7 @@
                 :query         lq
                 :chart_configs [{:query lq}
                                 {:query lq}]}
-        result (first (#'api/upgrade-viewing-queries [item]))]
+        result (first (upgrade-viewing-queries [item]))]
     (is (= :mbql/query (:lib/type (:query result))))
     (is (every? #(= :mbql/query (:lib/type (:query %)))
                 (:chart_configs result)))))
@@ -1103,9 +1113,9 @@
 (deftest upgrade-viewing-queries-missing-keys-test
   (testing "items without :query are unchanged"
     (let [item {:type "adhoc"}]
-      (is (= [item] (#'api/upgrade-viewing-queries [item])))))
+      (is (= [item] (upgrade-viewing-queries [item])))))
   (testing "items without :chart_configs keep no chart_configs"
-    (let [result (first (#'api/upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
+    (let [result (first (upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
       (is (nil? (:chart_configs result))))))
 
 (deftest upgrade-viewing-queries-mixed-items-test
@@ -1113,7 +1123,7 @@
         items [{:type "adhoc" :query lq}
                {:type "dashboard"}
                {:type "model" :query lq :chart_configs [{:query lq}]}]
-        result (#'api/upgrade-viewing-queries items)]
+        result (upgrade-viewing-queries items)]
     (is (=? [{:query {:lib/type :mbql/query}}
              {}
              {:query {:lib/type :mbql/query}
@@ -1126,7 +1136,7 @@
         items [{:type "adhoc" :query q}
                {:type "dashboard"}
                {:type "model" :query q :chart_configs [{:query q}]}]
-        result (#'api/upgrade-viewing-queries items)]
+        result (upgrade-viewing-queries items)]
     (is (=? [{:type "adhoc" :query q}
              {:type "dashboard"}
              {:type "model" :query q :chart_configs [{:query q}]}]
@@ -1140,7 +1150,7 @@
           items  [{:type "adhoc" :query legacy}
                   {:type "dashboard"}
                   {:type "model" :query legacy :chart_configs [{:query legacy}]}]
-          result (#'api/upgrade-viewing-queries items)]
+          result (upgrade-viewing-queries items)]
       (is (=? [{:type "adhoc" :query native}
                {:type "dashboard"}
                {:type "model" :query native :chart_configs [{:query native}]}]

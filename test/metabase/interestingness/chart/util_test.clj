@@ -224,6 +224,13 @@
    :std-dev 2.0
    :range   9.0})
 
+(def ^:private sample-series-config
+  {:x            {:name "X" :type "string"}
+   :y            {:name "Y" :type "number"}
+   :x_values     ["a"]
+   :y_values     [1]
+   :display_name "Test"})
+
 (def ^:private sample-categorical-series
   {"s1" {:summary        sample-summary
          :data-points    5
@@ -253,12 +260,12 @@
              :series-count  1
              :series        sample-categorical-series
              :correlations  (symbol "nil #_\"key is not present.\"")}
-            (stats.u/make-chart-result :categorical {"s1" {}} sample-categorical-series nil)))))
+            (stats.u/make-chart-result :categorical {"s1" sample-series-config} sample-categorical-series nil)))))
 
 (deftest ^:parallel make-chart-result-with-correlations-test
   (testing "includes correlations when provided"
     (let [corrs [{:series-a "a" :series-b "b" :coefficient 0.9
-                  :strength :strong :direction :positive}]
+                  :strength :strong :direction :positive :aligned-sample-size 10}]
           series {"a" {:summary        sample-summary
                        :data-points    2
                        :category-count 2
@@ -269,10 +276,12 @@
                        :category-count 2
                        :top-categories []
                        :outliers       []}}
-          result (stats.u/make-chart-result :categorical {"a" {} "b" {}} series corrs)]
+          result (stats.u/make-chart-result :categorical
+                                            {"a" sample-series-config "b" sample-series-config}
+                                            series corrs)]
       (is (= corrs (:correlations result))))))
 
 (deftest ^:parallel make-chart-result-nil-correlations-test
   (testing "omits correlations when nil"
     (is (=? {:correlations (symbol "nil #_\"key is not present.\"")}
-            (stats.u/make-chart-result :histogram {"s1" {}} sample-histogram-series nil)))))
+            (stats.u/make-chart-result :histogram {"s1" sample-series-config} sample-histogram-series nil)))))
