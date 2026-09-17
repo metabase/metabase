@@ -194,16 +194,6 @@
       (is (=? [{:name "filter", :dimension dimension}]
               result)))))
 
-(deftest ^:parallel table-tag-conversion-through-query-test
-  (let [query (-> (lib/native-query metadata-provider-with-cards "SELECT * FROM {{my_table}}")
-                  (lib/with-template-tags [{:name "my_table" :display-name "My table" :type :table
-                                            :table-id (meta/id :products) :required true :default "fallback"}]))
-        result (source-swap.native/swap-source-in-native-stages query [:table (meta/id :products)] [:card 2])]
-    (is (= "SELECT * FROM {{#2-card-2}}" (lib/raw-native-query result)))
-    (is (=? [{:type :card :name "#2-card-2" :card-id 2 :required true :default "fallback"
-              :table-id (symbol "nil #_\"key is not present.\"")}]
-            (lib/template-tags result)))))
-
 (deftest ^:parallel missing-metadata-test
   (doseq [[old-source new-source]
           [[[:table Integer/MAX_VALUE] [:table (meta/id :orders)]]

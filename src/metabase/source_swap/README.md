@@ -12,7 +12,7 @@ The runner finishes the first phase before starting the second. Sharing the trav
 - `compatibility` reports column mismatches using the shared column names/aliases in `util`.
 - `mbql` resolves field references, then swaps sources and remaps fields. Upgrade and swap use the same clause traversal and resolution fallback. Only fields, breakouts, orderings, and join fields are deduplicated.
 - `native` resolves metadata once and selects one of four table/card conversions.
-- `tags` owns tag conversion, card slugs, and dimension matching. Converted tags are installed before SQL re-extraction to avoid retaining attributes from the old tag type.
+- `tags` owns tag conversion, card slugs, and dimension matching.
 - `sql` owns token rendering and AST table replacement. Parameters become temporary identifiers and optional clauses become comment markers during AST replacement; both are restored afterward.
 
 Compatibility checks remain separate from transformation: callers decide whether to accept reported mismatches. Query upgrades preserve unresolved refs and expression names. Parameter upgrades use the target's stage. Native card swaps do not require the old card's metadata.
@@ -25,4 +25,4 @@ The surrounding replacement job persists changes incrementally. It does not prov
 
 Run `./bin/test-agent :module lib.source-swap` for module tests. Downstream coverage lives in `metabase-enterprise.replacement.source-swap-test`, `runner-test`, and `api-test`. Run `./bin/mage project-tests modules` for repository boundary checks.
 
-Tests cover join, expression, temporal, deduplication, parameter, SQL-comment, optional-clause, and schema-qualification behavior. Public table-tag conversion also checks required/default preservation and removal of table-only attributes.
+Tests cover join, expression, temporal, deduplication, parameter, SQL-comment, optional-clause, and schema-qualification behavior.

@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.parameters.parse :as lib.params.parse]
-   [metabase.lib.util :as lib.util]
    [metabase.source-swap.sql :as source-swap.sql]
    [metabase.source-swap.tags :as source-swap.tags]))
 
@@ -15,9 +14,7 @@
 
 (defn- with-sql-and-tags
   [query sql tags]
-  ;; Install converted tags before extraction, so a table→card rename cannot retain table-only attributes.
   (-> query
-      (lib.util/update-query-stage 0 assoc :template-tags (vec tags))
       (lib/with-native-query sql)
       (lib/with-template-tags (vec tags))))
 
@@ -38,7 +35,10 @@
                                                (source-swap.sql/template-ref (:name new-tag)))
         {:keys [sql template-tags]} (source-swap.tags/table->card
                                      sql (lib/template-tags query) (:id old-table) (:id new-card) (:name new-card))]
-    (with-sql-and-tags query sql template-tags)))
+    (with-sql-and-tags query sql
+      (mapv (fn [tag]
+              (if (= (:name tag) (:name new-tag)) new-tag tag))
+            template-tags))))
 
 (defn- swap-card->table
   [query driver old-card-id {:keys [name schema]}]
