@@ -22,6 +22,7 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
+import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -124,6 +125,7 @@ export function App() {
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <EmbedSetupModals />
               <Metabot
                 hide={
                   isAdminApp ||

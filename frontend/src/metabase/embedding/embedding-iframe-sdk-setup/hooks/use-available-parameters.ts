@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import {
   paramFieldsFetched,
   useQuestionFromCard,
