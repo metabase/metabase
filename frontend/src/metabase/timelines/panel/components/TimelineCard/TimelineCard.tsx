@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { getTimelineName } from "metabase/common/utils/timelines";
 import { Box, Checkbox, Ellipsified, Flex, Icon } from "metabase/ui";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventCard from "../EventCard";
@@ -157,7 +158,7 @@ const TimelineCardInner = ({
 
 const getEvents = (events: TimelineEvent[] = []) => {
   return _.chain(events)
-    .sortBy((e) => e.timestamp)
+    .sortBy((e) => parseTimestamp(e.timestamp))
     .reverse()
     .value();
 };
