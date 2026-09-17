@@ -1165,7 +1165,7 @@ Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipa
 ### `MB_LDAP_ATTRIBUTE_FIRSTNAME`
 
 - Type: string
-- Default: `givenName`
+- Default: `givenname`
 - [Configuration file name](./config-file.md): `ldap-attribute-firstname`
 
 Attribute to use for the user's first name. (usually 'givenName').
