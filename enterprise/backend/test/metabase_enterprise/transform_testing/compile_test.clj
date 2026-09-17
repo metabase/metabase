@@ -25,7 +25,7 @@
     ;; is a bare `?`.
     (let [hostile                "'); DROP TABLE users; --"
           {:keys [query params]} (rows-query :postgres
-                                             [{:name "note" :database_type "VARCHAR(255)"}]
+                                             [{:name "note" :cast_type "VARCHAR(255)"}]
                                              ["NOTE"]
                                              [{"note" hostile}])]
       (is (= [hostile] params))
@@ -39,14 +39,14 @@
     ;; `a.b` as a bare identifier would compile to `\"a\".\"b\"` — a reference to some other table's
     ;; column rather than to the column the author named.
     (let [{:keys [query]} (rows-query :postgres
-                                      [{:name "a.b" :database_type "INTEGER"}]
+                                      [{:name "a.b" :cast_type "INTEGER"}]
                                       ["a.b"]
                                       [{"a.b" 1}])]
       (is (str/includes? query "AS \"a.b\"") (pr-str query))
       (is (not (str/includes? query "\"a\".\"b\"")) (pr-str query))))
   (testing "a quote in the name is escaped by doubling rather than closing the identifier"
     (let [{:keys [query]} (rows-query :postgres
-                                      [{:name "a\"b" :database_type "INTEGER"}]
+                                      [{:name "a\"b" :cast_type "INTEGER"}]
                                       ["a\"b"]
                                       [{"a\"b" 1}])]
       (is (str/includes? query "AS \"a\"\"b\"") (pr-str query)))))
@@ -56,7 +56,7 @@
     ;; The database then refuses it as an unknown type, which is the point: the text never becomes
     ;; SQL of its own.
     (let [{:keys [query]} (rows-query :postgres
-                                      [{:name "a" :database_type "INT) FROM secrets; --"}]
+                                      [{:name "a" :cast_type "INT) FROM secrets; --"}]
                                       ["A"]
                                       [{"a" 1}])]
       (is (str/includes? query "CAST(? AS \"INT) FROM secrets; --\")") (pr-str query))
@@ -67,7 +67,7 @@
     ;; The two differ whenever the engine folded the identifier — upper on H2 and Snowflake, lower on
     ;; Postgres. A row carrying both spellings pins which one the lookup uses.
     (let [{:keys [query params]} (rows-query :postgres
-                                             [{:name "name" :database_type "VARCHAR(255)"}]
+                                             [{:name "name" :cast_type "VARCHAR(255)"}]
                                              ["NAME"]
                                              [{"name" "by-declared-name"
                                                "NAME" "by-sql-name"}])]
@@ -78,15 +78,15 @@
 (deftest nil-cell-is-sql-null-test
   (testing "a nil cell renders as NULL rather than as a parameter"
     (let [{:keys [query params]} (rows-query :postgres
-                                             [{:name "a" :database_type "INTEGER"}]
+                                             [{:name "a" :cast_type "INTEGER"}]
                                              ["A"]
                                              [{"a" nil}])]
       (is (str/includes? query "CAST(NULL AS INTEGER)") (pr-str query))
       (is (= [] params))))
   (testing "a column the row omits is NULL too — a short row is not an error"
     (let [{:keys [query params]} (rows-query :postgres
-                                             [{:name "a" :database_type "INTEGER"}
-                                              {:name "b" :database_type "INTEGER"}]
+                                             [{:name "a" :cast_type "INTEGER"}
+                                              {:name "b" :cast_type "INTEGER"}]
                                              ["A" "B"]
                                              [{"a" 1}])]
       (is (str/includes? query "CAST(NULL AS INTEGER)") (pr-str query))
@@ -95,8 +95,8 @@
 (deftest no-rows-is-an-empty-result-with-the-declared-columns-test
   (testing "an empty rows list still names every column, and returns nothing"
     (let [{:keys [query params]} (rows-query :postgres
-                                             [{:name "id" :database_type "INTEGER"}
-                                              {:name "name" :database_type "VARCHAR(255)"}]
+                                             [{:name "id" :cast_type "INTEGER"}
+                                              {:name "name" :cast_type "VARCHAR(255)"}]
                                              ["ID" "NAME"]
                                              [])]
       (is (str/includes? query "CAST(NULL AS INTEGER) AS \"ID\"") (pr-str query))
@@ -107,8 +107,8 @@
 (deftest several-rows-are-unioned-test
   (testing "one SELECT per row, joined with UNION ALL, parameters in row-major order"
     (let [{:keys [query params]} (rows-query :postgres
-                                             [{:name "id" :database_type "INTEGER"}
-                                              {:name "name" :database_type "VARCHAR(255)"}]
+                                             [{:name "id" :cast_type "INTEGER"}
+                                              {:name "name" :cast_type "VARCHAR(255)"}]
                                              ["ID" "NAME"]
                                              [{"id" 1 "name" "a"}
                                               {"id" 2 "name" "b"}
@@ -117,7 +117,7 @@
       (is (= [1 "a" 2 "b" 3 "c"] params))))
   (testing "a single row is one SELECT with no set operation"
     (let [{:keys [query]} (rows-query :postgres
-                                      [{:name "id" :database_type "INTEGER"}]
+                                      [{:name "id" :cast_type "INTEGER"}]
                                       ["ID"]
                                       [{"id" 1}])]
       (is (not (str/includes? query "UNION")) (pr-str query)))))
@@ -125,9 +125,9 @@
 (deftest declared-database-type-is-the-cast-target-test
   (testing "each cell is cast to the type its column declares"
     (let [{:keys [query]} (rows-query :postgres
-                                      [{:name "id" :database_type "INTEGER"}
-                                       {:name "price" :database_type "DECIMAL(10, 2)"}
-                                       {:name "at" :database_type "TIMESTAMP WITH TIME ZONE"}]
+                                      [{:name "id" :cast_type "INTEGER"}
+                                       {:name "price" :cast_type "DECIMAL(10, 2)"}
+                                       {:name "at" :cast_type "TIMESTAMP WITH TIME ZONE"}]
                                       ["ID" "PRICE" "AT"]
                                       [{"id" 1 "price" 2 "at" "2024-01-01"}])]
       (is (str/includes? query "CAST(? AS INTEGER)") (pr-str query))
@@ -139,7 +139,7 @@
     (doseq [driver [:postgres :h2]]
       (testing driver
         (let [{:keys [query params]} (rows-query driver
-                                                 [{:name "note" :database_type "VARCHAR(255)"}]
+                                                 [{:name "note" :cast_type "VARCHAR(255)"}]
                                                  ["NOTE"]
                                                  [{"note" "'); DROP TABLE users; --"}])]
           (is (= ["'); DROP TABLE users; --"] params))
@@ -190,7 +190,7 @@
                                   :postgres
                                   {:table   {:schema "public" :name "people"}
                                    :format  :rows
-                                   :columns [{:name "id" :database_type "INTEGER"}]
+                                   :columns [{:name "id" :cast_type "INTEGER"}]
                                    :rows    [{"id" 1}]})]
       (is (str/includes? query "CAST(? AS INTEGER) AS \"id\"") (pr-str query))
       (is (= [1] params)))))

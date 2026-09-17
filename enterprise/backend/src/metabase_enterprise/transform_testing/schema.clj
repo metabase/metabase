@@ -45,10 +45,13 @@
    [:name   ::lib.schema.common/non-blank-string]])
 
 (mr/def ::column
-  "A column of inline test data, with its database native type."
+  "A column of inline test data, with the type its cells are cast to.
+
+  A cast target, which on some engines is not a type name the warehouse ever reports: MySQL takes
+  `SIGNED` and reports `BIGINT`."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:name      ::lib.schema.common/non-blank-string]
-   [:database_type ::lib.schema.common/non-blank-string]])
+   [:cast_type ::lib.schema.common/non-blank-string]])
 
 (mr/def ::result-column
   "A column reported by a test run, with its database native type."

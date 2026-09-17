@@ -4,7 +4,7 @@
    [metabase.driver :as driver]))
 
 (defn cast-types
-  "An integer and a text `database_type` the current driver accepts as a `CAST` target.
+  "An integer and a text `cast_type` the current driver accepts as a `CAST` target.
 
   A test's declared types are raw SQL, so a fixture has to spell them the way the warehouse under test does."
   []

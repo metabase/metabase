@@ -22,7 +22,7 @@
 (defn- equals-rows
   "The wire form of an `equals`/`rows` expectation: string keys and string values, as JSON delivers it."
   ([nm]
-   (equals-rows nm [{"name" "id" "database_type" "INTEGER"}] [{"id" 1}]))
+   (equals-rows nm [{"name" "id" "cast_type" "INTEGER"}] [{"id" 1}]))
   ([nm columns rows]
    {"type" "equals" "name" nm "format" "rows" "columns" columns "rows" rows}))
 
@@ -70,11 +70,11 @@
 (deftest normalizes-the-wire-form-test
   (testing "string keys and values become keywords where the schema says so"
     (is (= [{:type :equals :name "n" :format :rows
-             :columns [{:name "id" :database_type "INTEGER"}]
+             :columns [{:name "id" :cast_type "INTEGER"}]
              :rows    [{"id" 1}]}]
            (normalized [(equals-rows "n")]))))
   (testing "row keys stay strings — a warehouse column can be named 2024 or order-id"
-    (let [[e] (normalized [(equals-rows "n" [{"name" "2024" "database_type" "INTEGER"}] [{"2024" 1}])])]
+    (let [[e] (normalized [(equals-rows "n" [{"name" "2024" "cast_type" "INTEGER"}] [{"2024" 1}])])]
       (is (= [{"2024" 1}] (:rows e)))
       (is (every? string? (mapcat keys (:rows e))))))
   (testing "declared order is kept, across types"
@@ -110,38 +110,38 @@
 
 (deftest rows-must-carry-exactly-the-declared-columns-test
   (testing "a row naming a column that was not declared is refused"
-    (is (not (valid? [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}] [{"id" 1 "nope" 2}])])))
+    (is (not (valid? [(equals-rows "n" [{"name" "id" "cast_type" "INTEGER"}] [{"id" 1 "nope" 2}])])))
     (is (= #{"every row must carry exactly the declared columns; not declared: \"nope\""}
            (explained ::transform-testing.schema/expectations
-                      (normalized [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}]
+                      (normalized [(equals-rows "n" [{"name" "id" "cast_type" "INTEGER"}]
                                                 [{"id" 1 "nope" 2}])])))))
   (testing "a row leaving a declared column out is refused, rather than becoming a null cell"
     (is (= #{"every row must carry exactly the declared columns; missing \"name\""}
            (explained ::transform-testing.schema/expectations
                       (normalized [(equals-rows "n"
-                                                [{"name" "id" "database_type" "INTEGER"}
-                                                 {"name" "name" "database_type" "VARCHAR(5)"}]
+                                                [{"name" "id" "cast_type" "INTEGER"}
+                                                 {"name" "name" "cast_type" "VARCHAR(5)"}]
                                                 [{"id" 1}])])))))
   (testing "the message names what one offending row got wrong, both ways at once"
     (is (= #{"every row must carry exactly the declared columns; missing \"name\"; not declared: \"nope\""}
            (explained ::transform-testing.schema/expectations
                       (normalized [(equals-rows "n"
-                                                [{"name" "id" "database_type" "INTEGER"}
-                                                 {"name" "name" "database_type" "VARCHAR(5)"}]
+                                                [{"name" "id" "cast_type" "INTEGER"}
+                                                 {"name" "name" "cast_type" "VARCHAR(5)"}]
                                                 [{"id" 1 "nope" 2}])])))))
   (testing "a declared column holding a null is carried by the row, not left out"
-    (is (valid? [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}] [{"id" nil}])])))
+    (is (valid? [(equals-rows "n" [{"name" "id" "cast_type" "INTEGER"}] [{"id" nil}])])))
   (testing "no rows at all declares columns and stands for an empty table"
-    (is (valid? [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}] [])])))
+    (is (valid? [(equals-rows "n" [{"name" "id" "cast_type" "INTEGER"}] [])])))
   (testing "and an input's rows answer to its columns the same way"
     (is (mr/validate ::transform-testing.schema/inputs
                      (normalized-inputs [{"table" {"name" "PEOPLE"} "format" "rows"
-                                          "columns" [{"name" "ID" "database_type" "INTEGER"}]
+                                          "columns" [{"name" "ID" "cast_type" "INTEGER"}]
                                           "rows" [{"ID" 1}]}])))
     (is (= #{"every row must carry exactly the declared columns; not declared: \"NOPE\""}
            (explained ::transform-testing.schema/inputs
                       (normalized-inputs [{"table" {"name" "PEOPLE"} "format" "rows"
-                                           "columns" [{"name" "ID" "database_type" "INTEGER"}]
+                                           "columns" [{"name" "ID" "cast_type" "INTEGER"}]
                                            "rows" [{"ID" 1 "NOPE" 2}]}]))))))
 
 (deftest refuses-a-malformed-expectation-test
@@ -172,8 +172,8 @@
   ;; Neither is checked anywhere: `compile/rows-query` writes a column name as one quoted identifier
   ;; and quotes a cast target that is not a plain type name, leaving the database to refuse it.
   (testing "a type that could escape its cast, and a name SQL could not carry unquoted, both store"
-    (is (valid? [(equals-rows "n" [{"name" "id" "database_type" "INT) FROM x; --"}] [{"id" 1}])]))
-    (is (valid? [(equals-rows "n" [{"name" "a.b" "database_type" "INTEGER"}] [{"a.b" 1}])]))))
+    (is (valid? [(equals-rows "n" [{"name" "id" "cast_type" "INT) FROM x; --"}] [{"id" 1}])]))
+    (is (valid? [(equals-rows "n" [{"name" "a.b" "cast_type" "INTEGER"}] [{"a.b" 1}])]))))
 
 ;;; ---------------------------------- Every type owns both of its schemas ----------------------------------
 

@@ -1107,7 +1107,7 @@
                           :name         "My test"
                           :inputs       [{:table   {:schema "PUBLIC" :name "ORDERS"}
                                           :format  :rows
-                                          :columns [{:name "ID" :database_type "INTEGER"}]
+                                          :columns [{:name "ID" :cast_type "INTEGER"}]
                                           :rows    [{"ID" 1}]}]
                           :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
                                          {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}])
@@ -1115,7 +1115,7 @@
           (testing "the file sits under the transform's path, with keywords written as strings"
             (is (=? {:transform_id string?
                      :creator_id   "creator@example.com"
-                     :inputs       [{:format "rows" :columns [{:database_type "INTEGER"}]}]
+                     :inputs       [{:format "rows" :columns [{:cast_type "INTEGER"}]}]
                      :expectations [{:type "equals" :format "sql"} {:type "empty"}]}
                     (yaml/parse-string
                      (slurp (io/file dump-dir "collections" "transforms" "etl" "orders_summary" "my_test.yaml"))))))
@@ -1126,7 +1126,7 @@
                      :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")
                      :inputs       [{:table   {:schema "PUBLIC" :name "ORDERS"}
                                      :format  :rows
-                                     :columns [{:name "ID" :database_type "INTEGER"}]
+                                     :columns [{:name "ID" :cast_type "INTEGER"}]
                                      :rows    [{"ID" 1}]}]
                      :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
                                     {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}]}
@@ -1143,8 +1143,8 @@
   [{:type    :equals
     :name    "rows match"
     :format  :rows
-    :columns [{:name "2024" :database_type "INTEGER"}
-              {:name "order-id" :database_type "VARCHAR"}]
+    :columns [{:name "2024" :cast_type "INTEGER"}
+              {:name "order-id" :cast_type "VARCHAR"}]
     :rows    [{"2024" 7 "order-id" "A-1"}
               {"2024" nil "order-id" "B-2"}]}
    {:type :empty

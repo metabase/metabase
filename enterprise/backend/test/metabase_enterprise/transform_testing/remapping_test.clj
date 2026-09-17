@@ -209,7 +209,7 @@
     (testing "an expectation with no SQL of its own is nothing to check"
       (is (nil? (validate inputs
                           [{:type    :equals :name "rows" :format :rows
-                            :columns [{:name "ID" :database_type "INTEGER"}]
+                            :columns [{:name "ID" :cast_type "INTEGER"}]
                             :rows    [{"ID" 1}]}]
                           source))))))
 

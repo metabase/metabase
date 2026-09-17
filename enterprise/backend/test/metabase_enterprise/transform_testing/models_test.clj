@@ -16,7 +16,7 @@
 (def ^:private inputs
   [{:table   {:schema "PUBLIC" :name "PEOPLE"}
     :format  "rows"
-    :columns [{:name "ID" :database_type "INTEGER"}]
+    :columns [{:name "ID" :cast_type "INTEGER"}]
     :rows    [{"ID" 1}]}
    {:table  {:schema "PUBLIC" :name "ORDERS"}
     :format "sql"
@@ -28,9 +28,9 @@
   {:type    "equals"
    :name    "output matches the fixture"
    :format  "rows"
-   :columns [{:name "ID" :database_type "INTEGER"}
-             {:name "2024" :database_type "VARCHAR(255)"}
-             {:name "order-id" :database_type "BIGINT"}]
+   :columns [{:name "ID" :cast_type "INTEGER"}
+             {:name "2024" :cast_type "VARCHAR(255)"}
+             {:name "order-id" :cast_type "BIGINT"}]
    :rows    [{"ID" 1 "2024" "jan" "order-id" 7}
              {"ID" 2 "2024" nil "order-id" 8}]})
 
@@ -75,9 +75,9 @@
        (is (= :equals (:type e)))
        (is (= :rows (:format e)))
        (testing "columns keep their raw SQL type names"
-         (is (= [{:name "ID" :database_type "INTEGER"}
-                 {:name "2024" :database_type "VARCHAR(255)"}
-                 {:name "order-id" :database_type "BIGINT"}]
+         (is (= [{:name "ID" :cast_type "INTEGER"}
+                 {:name "2024" :cast_type "VARCHAR(255)"}
+                 {:name "order-id" :cast_type "BIGINT"}]
                 (:columns e))))
        (testing "row keys are still strings after the JSON round trip"
          (is (= [{"ID" 1 "2024" "jan" "order-id" 7}
@@ -113,7 +113,7 @@
        (let [[rows-input sql-input] (:inputs transform-test)]
          (is (= {:table   {:schema "PUBLIC" :name "PEOPLE"}
                  :format  :rows
-                 :columns [{:name "ID" :database_type "INTEGER"}]
+                 :columns [{:name "ID" :cast_type "INTEGER"}]
                  :rows    [{"ID" 1}]}
                 rows-input))
          (is (= {:table {:schema "PUBLIC" :name "ORDERS"} :format :sql :sql "SELECT 1 AS ID"}

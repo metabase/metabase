@@ -53,7 +53,7 @@
                         :expectations [{:type    :equals
                                         :name    "total"
                                         :format  :rows
-                                        :columns [{:name "total" :database_type declared}]
+                                        :columns [{:name "total" :cast_type declared}]
                                         :rows    [{"total" 1}]}]}]
           (let [result (transform-testing.runner/run-transform-test! transform-test)]
             (testing "the run passes, so nothing here reaches the author as a problem"

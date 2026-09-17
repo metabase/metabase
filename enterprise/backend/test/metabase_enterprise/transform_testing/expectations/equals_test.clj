@@ -15,9 +15,9 @@
 ;;; -------------------------------------------- Harness --------------------------------------------
 
 (def ^:private id+name
-  ;; `database_type` is raw SQL text — the spelling the warehouse uses, not a Metabase base type.
-  [{:name "id" :database_type "INTEGER"}
-   {:name "name" :database_type "VARCHAR"}])
+  ;; `cast_type` is raw SQL text — a cast target, not a Metabase base type.
+  [{:name "id" :cast_type "INTEGER"}
+   {:name "name" :cast_type "VARCHAR"}])
 
 (defn- build
   "The record for `m`, normalized and validated the way the model's `:in` transform does it. The
@@ -176,7 +176,7 @@
 
 (deftest interpret-cell-rendering-test
   (testing "a BigDecimal keeps its scale"
-    (let [expectation (equals-rows [{:name "amount" :database_type "DECIMAL(10,2)"}] [{"amount" 1.5}])
+    (let [expectation (equals-rows [{:name "amount" :cast_type "DECIMAL(10,2)"}] [{"amount" 1.5}])
           result      (expectations.protocol/interpret
                        expectation
                        {:output-columns [{:name "AMOUNT" :database_type "NUMERIC"}]}
@@ -193,26 +193,26 @@
 
 (deftest resolve-columns-exact-match-test
   (testing "an exact match wins over a case-insensitive one, whatever the order"
-    (is (= ["id"] (resolve-cols [{:name "id" :database_type "INTEGER"}] ["ID" "id"])))
-    (is (= ["ID"] (resolve-cols [{:name "ID" :database_type "INTEGER"}] ["ID" "id"])))))
+    (is (= ["id"] (resolve-cols [{:name "id" :cast_type "INTEGER"}] ["ID" "id"])))
+    (is (= ["ID"] (resolve-cols [{:name "ID" :cast_type "INTEGER"}] ["ID" "id"])))))
 
 (deftest resolve-columns-case-insensitive-test
   (testing "H2 and Snowflake fold an unquoted identifier up"
     (is (= ["ID" "NAME"] (resolve-cols id+name ["ID" "NAME"]))))
   (testing "Postgres folds it down"
-    (is (= ["id" "name"] (resolve-cols [{:name "ID" :database_type "INTEGER"}
-                                        {:name "NAME" :database_type "VARCHAR"}]
+    (is (= ["id" "name"] (resolve-cols [{:name "ID" :cast_type "INTEGER"}
+                                        {:name "NAME" :cast_type "VARCHAR"}]
                                        ["id" "name"])))))
 
 (deftest resolve-columns-preserves-declared-order-test
   (testing "resolved names come back in the order the author declared, not the table's"
-    (is (= ["NAME" "ID"] (resolve-cols [{:name "name" :database_type "VARCHAR"}
-                                        {:name "id" :database_type "INTEGER"}]
+    (is (= ["NAME" "ID"] (resolve-cols [{:name "name" :cast_type "VARCHAR"}
+                                        {:name "id" :cast_type "INTEGER"}]
                                        ["ID" "NAME"])))))
 
 (deftest resolve-columns-unknown-column-test
   (testing "a column the output does not have is refused, listing what it does have"
-    (let [e (caught #(resolve-cols [{:name "nope" :database_type "INTEGER"}] ["id" "name"]))]
+    (let [e (caught #(resolve-cols [{:name "nope" :cast_type "INTEGER"}] ["id" "name"]))]
       (is (= ::transform-testing.errors/unknown-column (:error-type (ex-data e))))
       (is (= {:expectation "cols" :column "nope" :available ["id" "name"]}
              (dissoc (ex-data e) :error-type)))
@@ -224,7 +224,7 @@
   ;; Ambiguity is its own refusal: reporting it as unknown-column would tell the author the output
   ;; "does not have" a column it arguably has twice over, and send them hunting for a typo.
   (testing "two case-insensitive matches refuse rather than pick one"
-    (let [e (caught #(resolve-cols [{:name "Id" :database_type "INTEGER"}] ["id" "ID"]))]
+    (let [e (caught #(resolve-cols [{:name "Id" :cast_type "INTEGER"}] ["id" "ID"]))]
       (is (= ::transform-testing.errors/ambiguous-column (:error-type (ex-data e))))
       (is (= {:expectation "cols" :column "Id" :candidates ["id" "ID"]}
              (dissoc (ex-data e) :error-type)))

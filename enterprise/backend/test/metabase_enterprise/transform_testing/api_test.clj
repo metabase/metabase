@@ -8,7 +8,7 @@
 (def ^:private inputs
   [{:table   {:schema "PUBLIC" :name "PEOPLE"}
     :format  "rows"
-    :columns [{:name "ID" :database_type "INTEGER"}]
+    :columns [{:name "ID" :cast_type "INTEGER"}]
     :rows    [{"ID" 1}]}])
 
 (def ^:private expectations
@@ -64,7 +64,7 @@
                      :creator_id   (mt/user->id :crowberto)
                      :name         "My test"
                      :description  "abc"
-                     :inputs       [{:format "rows" :columns [{:name "ID" :database_type "INTEGER"}] :rows [{:ID 1}]}]
+                     :inputs       [{:format "rows" :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{:ID 1}]}]
                      :expectations expectations}
                     created)))
           (testing "GET returns the test"

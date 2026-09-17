@@ -205,7 +205,7 @@
   ;; value the schema has passed. This is the one place they are the right call.
   #_{:clj-kondo/ignore [:discouraged-var]}
   (case format
-    ;; A declared `database_type` is not checked here, nor anywhere else: `compile/rows-query` quotes
+    ;; A declared `cast_type` is not checked here, nor anywhere else: `compile/rows-query` quotes
     ;; a cast target that is not a plain type name, leaving the database to refuse it.
     :rows (->EqualsRows :equals (:name m) :rows (:columns m) (:rows m))
     :sql  (->EqualsSql :equals (:name m) :sql (:sql m))))

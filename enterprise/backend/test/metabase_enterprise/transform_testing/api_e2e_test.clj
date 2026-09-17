@@ -55,8 +55,8 @@
                   failing {:type    "equals"
                            :name    "output"
                            :format  "rows"
-                           :columns [{:name "id" :database_type int-type}
-                                     {:name "name" :database_type text-type}]
+                           :columns [{:name "id" :cast_type int-type}
+                                     {:name "name" :cast_type text-type}]
                            :rows    [{"id" 1 "name" "xyz"}]}
                   created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
                                                 {:transform_id transform-id

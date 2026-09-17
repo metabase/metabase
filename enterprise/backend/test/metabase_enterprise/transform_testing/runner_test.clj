@@ -59,8 +59,8 @@
                                                     {:transform_id transform-id
                                                      :inputs       [{:table   {:schema schema :name table}
                                                                      :format  :rows
-                                                                     :columns [{:name id-name :database_type int-type}
-                                                                               {:name name-name :database_type text-type}]
+                                                                     :columns [{:name id-name :cast_type int-type}
+                                                                               {:name name-name :cast_type text-type}]
                                                                      :rows    rows}]
                                                      :expectations [{:type :empty :name "check" :sql sql}]}]
                                        (:status (transform-testing.runner/run-transform-test! transform-test))))
@@ -75,8 +75,8 @@
   "The `id` and `name` columns of the output, typed as the current driver spells those types."
   []
   (let [[int-type text-type] (transform-testing.test-util/cast-types)]
-    [{:name "id" :database_type int-type}
-     {:name "name" :database_type text-type}]))
+    [{:name "id" :cast_type int-type}
+     {:name "name" :cast_type text-type}]))
 
 (deftest run-transform-test-empty-expectation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -135,7 +135,7 @@
         (testing "a column the expectation does not declare is not compared"
           (let [result (run-test! schema table transform-id one-row
                                   [{:type :equals :name "id only" :format :rows
-                                    :columns [{:name "id" :database_type (first (transform-testing.test-util/cast-types))}]
+                                    :columns [{:name "id" :cast_type (first (transform-testing.test-util/cast-types))}]
                                     :rows    [{"id" 1}]}])]
             (is (= :passed (:status result)))))))))
 

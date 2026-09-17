@@ -156,15 +156,15 @@
   [:= [:inline 1] [:inline 0]])
 
 (mu/defn rows-query :- ::compiled-query
-  "The query returning the literal `rows` over `columns`, each cell cast to its column's `database_type` and named by
+  "The query returning the literal `rows` over `columns`, each cell cast to its column's `cast_type` and named by
   the matching entry of `sql-names`."
   [driver    :- :keyword
    columns   :- [:sequential ::transform-testing.schema/column]
    sql-names :- [:sequential :string]
    rows      :- [:sequential ::transform-testing.schema/row]]
   (let [select-row (fn [row]
-                     {:select (mapv (fn [{:keys [name database_type]} sql-name]
-                                      [(h2x/cast database_type (get row name)) (as :field-alias sql-name)])
+                     {:select (mapv (fn [{:keys [name cast_type]} sql-name]
+                                      [(h2x/cast cast_type (get row name)) (as :field-alias sql-name)])
                                     columns
                                     sql-names)})
         relation   (if (seq rows)
