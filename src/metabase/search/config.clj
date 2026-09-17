@@ -458,10 +458,13 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    [:is-data-analyst?   :boolean]
+   ;; whether a lens -- sandboxing, impersonation, routing -- narrows what this user may see; see
+   ;; [[metabase.search.permissions/sandboxed-impersonated-or-routed-user?]]
+   [:is-impersonated-user? :boolean]
+   [:is-sandboxed-user?    :boolean]
+   [:is-routed-user?       :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
-   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]

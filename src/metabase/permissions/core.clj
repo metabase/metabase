@@ -138,6 +138,7 @@
   impersonated-user?
   impersonation-enforced-for-db?
   log-permissions-changes
+  routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
   sandboxed-user-for-db?
