@@ -23,7 +23,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  breadcrumbs: ReactNode;
+  breadcrumbs?: ReactNode;
   showAppSwitcher?: boolean;
 }
 
@@ -40,13 +40,15 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xxs" {...rest}>
-      <Flex mb="xl" mt="lg" w="100%" h="xxl">
-        {breadcrumbs}
+      {(breadcrumbs || showAppSwitcher) && (
+        <Flex mb="xl" mt="lg" w="100%" h="xxl">
+          {breadcrumbs}
 
-        <Group ml="auto" gap="lg" className={S.ButtonGroup}>
-          {showAppSwitcher && <AppSwitcher />}
-        </Group>
-      </Flex>
+          <Group ml="auto" gap="lg" className={S.ButtonGroup}>
+            {showAppSwitcher && <AppSwitcher />}
+          </Group>
+        </Flex>
+      )}
       <Group
         className={className}
         gap="sm"

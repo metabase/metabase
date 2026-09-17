@@ -14,6 +14,7 @@ import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { useHeaderCollection } from "metabase/common/hooks/use-header-collection";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { useParams } from "metabase/router";
 import { Button } from "metabase/ui";
@@ -43,6 +44,8 @@ export function ModelAboutPage() {
     [card, buildQuestion],
   );
 
+  useHeaderCollection(card?.collection_id);
+
   const isLoading = isLoadingCard || isLoadingMetadata;
   const error = cardError ?? metadataError;
 
@@ -59,9 +62,8 @@ export function ModelAboutPage() {
       <PaneHeader
         data-testid="model-header"
         icon="model"
-        // The collection lives in the fact rail's "Saved in" row instead, and the account
-        // switcher lives in the app-wide page header.
-        breadcrumbs={null}
+        // The collection breadcrumbs and the account switcher both live in the
+        // app-wide page header.
         showAppSwitcher={false}
         title={<PanelHeaderTitle>{card.name}</PanelHeaderTitle>}
         actions={

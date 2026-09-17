@@ -17,6 +17,4 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  /* keeps the embedded visualization non-interactive (no tooltips/hover) */
-  pointer-events: none;
 }

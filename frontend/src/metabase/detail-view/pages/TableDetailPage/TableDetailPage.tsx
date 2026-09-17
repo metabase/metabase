@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from "react";
-import { useUnmount } from "react-use";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
@@ -10,13 +9,8 @@ import {
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { DetailViewPage } from "metabase/detail-view/components";
-import {
-  filterByPk,
-  getRowName,
-  getTableQuery,
-} from "metabase/detail-view/utils";
-import { useDispatch, useSelector } from "metabase/redux";
-import { setDetailView } from "metabase/redux/app";
+import { filterByPk, getTableQuery } from "metabase/detail-view/utils";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
@@ -59,19 +53,6 @@ export function TableDetailPage() {
 
   const columns = useMemo(() => data?.cols ?? [], [data]);
   const row = useMemo(() => (data?.rows ?? [])[0], [data]);
-  const rowName = getRowName(columns, row) || rowId;
-
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (table) {
-      dispatch(setDetailView({ rowName, table, collectionId: null }));
-    }
-  }, [dispatch, rowName, table]);
-
-  useUnmount(() => {
-    dispatch(setDetailView(null));
-  });
 
   if (!table || !dataset || !row || error || isLoading) {
     const rowError = !row && !isLoading ? t`Row not found` : undefined;

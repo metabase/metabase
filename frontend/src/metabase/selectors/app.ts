@@ -12,8 +12,12 @@ export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
 
-export const getDetailViewState = (state: State) => {
-  return state.app.detailView;
+export const getPageCollection = (state: State) => {
+  return state.app.pageCollection;
+};
+
+export const getPageBackground = (state: State) => {
+  return state.app.pageBackground;
 };
 
 export const getNavSectionOverride = (state: State) => {

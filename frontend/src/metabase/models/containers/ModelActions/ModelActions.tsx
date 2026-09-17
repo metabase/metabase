@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useHeaderCollection } from "metabase/common/hooks/use-header-collection";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import ModelActionsView from "metabase/models/components/ModelActions";
@@ -123,6 +124,8 @@ function ModelActionsLoader(dispatchProps: DispatchProps) {
     () => (card != null ? buildQuestion(card) : undefined),
     [card, buildQuestion],
   );
+
+  useHeaderCollection(card?.collection_id);
 
   if (!model) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

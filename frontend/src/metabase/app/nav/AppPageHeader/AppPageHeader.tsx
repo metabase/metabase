@@ -10,6 +10,7 @@ import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedIt
 import { getQuestion } from "metabase/query_builder";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
+import { getPageBackground } from "metabase/selectors/app";
 import { Box, Flex, Group } from "metabase/ui";
 
 /**
@@ -23,6 +24,7 @@ export function AppPageHeader() {
     getIsCollectionPathVisible(state, { location }),
   );
   const breadcrumbCollectionId = useSelector(getCollectionId);
+  const pageBackground = useSelector(getPageBackground);
 
   const question = useSelector(getQuestion);
   const dashboardId = isQuestionPath(location.pathname)
@@ -41,6 +43,7 @@ export function AppPageHeader() {
       px="xl"
       py="md"
       wrap="nowrap"
+      bg={`background_page-${pageBackground}`}
       data-testid="app-page-header"
     >
       <Box miw={0} style={{ overflow: "hidden" }}>

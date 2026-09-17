@@ -1,16 +1,9 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import {
-  FactCard,
-  FactRow,
-  FactRowLink,
-  FactSection,
-  MaintainerFact,
-} from "metabase/common/components/EntityFactRail";
+import { MaintainerFact } from "metabase/common/components/EntityFactRail";
 import { Markdown } from "metabase/common/components/Markdown";
 import { Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
 export type ModelFactRailProps = {
@@ -31,17 +24,6 @@ export function ModelFactRail({ card }: ModelFactRailProps) {
         createdAt={card.created_at}
         lastEditInfo={card["last-edit-info"]}
       />
-      {card.collection && (
-        <FactSection title={t`Saved in`}>
-          <FactCard>
-            <FactRow icon="folder">
-              <FactRowLink to={Urls.collection(card.collection)}>
-                {card.collection.name}
-              </FactRowLink>
-            </FactRow>
-          </FactCard>
-        </FactSection>
-      )}
     </Stack>
   );
 }

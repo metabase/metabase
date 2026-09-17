@@ -11,7 +11,7 @@ import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";
 import { getQuestion } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
-import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
+import { type RouterProps, getPageCollection } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 
@@ -69,11 +69,13 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 // Paths where collection identity comes from the URL itself, so breadcrumbs
 // can render without needing a question/dashboard/document in redux state.
 const STANDALONE_COLLECTION_BREADCRUMB_PATHS = [/\/collection\//];
+
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
     getDashboard,
     getCurrentDocument,
+    getPageCollection,
     getRouterPath,
     selectIsWithinIframe,
     getEmbedOptions,
@@ -83,6 +85,7 @@ export const getIsCollectionPathVisible = createSelector(
     question,
     dashboard,
     document,
+    pageCollection,
     path,
     isEmbedded,
     embedOptions,
@@ -92,8 +95,8 @@ export const getIsCollectionPathVisible = createSelector(
       return false;
     }
 
-    const isModelDetail = /\/model\/.*\/detail\/.*/.test(path);
-    if (isModelDetail) {
+    // A page that names its own collection gets breadcrumbs wherever it lives.
+    if (pageCollection) {
       return true;
     }
 
@@ -190,7 +193,7 @@ export const getCollectionId = createSelector(
     getDashboard,
     getDashboardId,
     getCurrentDocument,
-    getDetailViewState,
+    getPageCollection,
     getRouterPath,
     getCurrentExploration,
   ],
@@ -199,12 +202,12 @@ export const getCollectionId = createSelector(
     dashboard,
     dashboardId,
     document,
-    detailView,
+    pageCollection,
     path,
     exploration,
   ) => {
-    if (detailView) {
-      return detailView.collectionId;
+    if (pageCollection) {
+      return pageCollection.collectionId;
     }
 
     if (document) {

@@ -10,7 +10,8 @@ import type {
 } from "metabase/nav/containers/MainNavbar/types";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
-  DetailViewState,
+  PageBackground,
+  PageCollection,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
@@ -66,19 +67,39 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
-export const SET_DETAIL_VIEW = "metabase/app/SET_DETAIL_VIEW";
+export const SET_PAGE_COLLECTION = "metabase/app/SET_PAGE_COLLECTION";
 
-export const setDetailView = createAction<DetailViewState | null>(
-  SET_DETAIL_VIEW,
+/**
+ * Declares which collection the current page lives in, so the app header can
+ * render its breadcrumbs. Pages publish this with the `useHeaderCollection`
+ * hook; `null` clears the claim.
+ */
+export const setPageCollection = createAction<PageCollection | null>(
+  SET_PAGE_COLLECTION,
 );
 
-const detailView = handleActions(
+const pageCollection = handleActions<PageCollection | null>(
   {
-    [SET_DETAIL_VIEW]: {
-      next: (_oldState, { payload: newState }) => newState,
+    [SET_PAGE_COLLECTION]: {
+      next: (_state, { payload }) => payload,
     },
   },
   null,
+);
+
+export const SET_PAGE_BACKGROUND = "metabase/app/SET_PAGE_BACKGROUND";
+
+/** Published by `PageContainer`, which paints the secondary page background. */
+export const setPageBackground =
+  createAction<PageBackground>(SET_PAGE_BACKGROUND);
+
+const pageBackground = handleActions<PageBackground>(
+  {
+    [SET_PAGE_BACKGROUND]: {
+      next: (_state, { payload }) => payload,
+    },
+  },
+  "primary",
 );
 
 export const SET_NAV_SECTION = "metabase/app/SET_NAV_SECTION";
@@ -145,7 +166,8 @@ export const { setTempSetting } = tempStorageSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
-  detailView,
+  pageCollection,
+  pageBackground,
   errorPage,
   navSection,
   openNavItems,
