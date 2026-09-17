@@ -37,10 +37,9 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 
 ## Enabling full app embedding in Metabase
 
-1. Click the **grid** icon in the upper right and select **Embedding hub**.
-2. Go to **Security**.
-3. Toggle on **Full-app embedding**.
-4. Under **Authorized origins for full-app embedding**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`). This section shows up at the bottom of the page once you've turned on full-app embedding.
+1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Security**.
+2. Toggle on **Full-app embedding**.
+3. Under **Authorized origins for full-app embedding** (it appears once you flip the toggle), add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
 ## Setting up embedding on your website
 

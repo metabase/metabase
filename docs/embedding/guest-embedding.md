@@ -15,11 +15,8 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 ## Turning on guest embedding in Metabase
 
-1. Click the **grid** icon in the upper right and select **Embedding hub**.
-2. Go to **Security**.
-3. Toggle on **Enable embedding**. On Pro and Enterprise plans, the toggle is called **Modular embedding and SDK for React**.
-
-There's no separate toggle for guest embeds: this one also turns on modular embedding and the SDK for React.
+1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Security**.
+2. Toggle on **Enable embedding** (called **Modular embedding and SDK for React** on Pro and Enterprise). One switch covers guest embeds, modular embedding, and the SDK.
 
 ## Creating a guest embed
 
@@ -465,7 +462,7 @@ function paramsFor(user, customContext) {
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can find a list of embedded items in **Embedding hub > Security** under **Published guest embeds**. The list only shows up once you've published at least one embed.
+Admins can find a list of embedded items in **Embedding hub > Security** under **Published guest embeds**. You'll only see the list once you've published something.
 
 ## Removing the "Powered by Metabase" banner
 

@@ -42,7 +42,7 @@ A theme is a named set of colors and fonts that the embed wizard can copy into e
 
 ### Manage themes
 
-Click the **grid** icon in the upper right and select **Embedding hub**, then go to **Appearance**.
+Go to **[Embedding hub](./introduction.md#embedding-hub) > Appearance**.
 
 Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well, including removing them like you can any other custom theme).
 
@@ -54,7 +54,7 @@ In the **Themes** section, you can:
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
 - **Delete a theme.** This deletion is eternal.
 
-The **Branding elements** section on the same page sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows for empty results. These are the same settings as [Admin > Settings > Appearance](../configuring-metabase/appearance.md), which also controls your Metabase's logo, colors, and fonts and the look of [full-app embeds](./full-app-embedding.md) (which don't use embedding themes).
+**Branding elements**, on the same page, sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows for empty results. These are the same settings as [Admin > Settings > Appearance](../configuring-metabase/appearance.md). That page also controls your logo, colors, and fonts, and it's what [full-app embeds](./full-app-embedding.md) use instead of embedding themes.
 
 ![Theme editor](./images/theme-editor.png)
 
