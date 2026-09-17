@@ -2073,8 +2073,7 @@
 
 (deftest ^:synchronized multiple-limits-test
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
-    ;; Repeated query-parameter keywords reach Ring as `limit=1&limit=3`, so the mock client exercises the same
-    ;; duplicate-parameter parsing as a real request.
+    ;; The mock client sends repeated `:limit` keys as `limit=1&limit=3`, the same shape a real request would.
     (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
       (mt/with-temp [:model/Card _ {:name (str q " one")}
                      :model/Card _ {:name (str q " two")}]

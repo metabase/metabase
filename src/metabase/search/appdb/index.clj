@@ -254,7 +254,8 @@
 
   Returns the table name written, or nil if no table is tracked or the batch is skipped.
   Throws when the tracked table is missing and the refresh names the same table, when the retry hits a missing
-  table again, and on interruption. Any other failure is logged and the batch is skipped."
+  table again, and on interruption.
+  Any other failure is logged and the batch is skipped."
   [table-type table-name-fn entries]
   (when-let [table-name (table-name-fn)]
     (let [upsert! (fn [t]

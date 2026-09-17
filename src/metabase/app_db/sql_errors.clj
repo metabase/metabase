@@ -6,31 +6,27 @@
 
 (set! *warn-on-reflection* true)
 
-;; The registries name every code we recognize so the classifier reads by intent rather than by bare string.
-;; Keep them cumulative: append newly recognized codes rather than removing entries that temporarily have no caller.
-;; They are the shared app-db SQL vocabulary, not an inventory of what the current change happens to use.
-;; Keep the missing-table states aligned with `impl-table-known-to-not-exist?` in the H2, Postgres, and MySQL
-;; drivers: this module cannot depend on the driver module, so the lists are maintained in both places.
 (def sql-states
   "SQLSTATE codes returned by supported application databases."
-  ;; `undefined_table` (42P01) is PostgreSQL-specific. 42S02 is the ODBC/X-Open state for a missing table; H2 adds
-  ;; two of its own, mapping `TABLE_OR_VIEW_NOT_FOUND_1`, `..._WITH_CANDIDATES_2`, and `..._DATABASE_EMPTY_1` in
-  ;; `org.h2.api.ErrorCode` to 42S02, 42S03, and 42S04. 23000 is the standard integrity-constraint state; 23505 is
-  ;; the PostgreSQL and H2 unique-violation state.
-  {:undefined-table                         "42P01"
+  {;; PostgreSQL, missing table.
+   :undefined-table                         "42P01"
+   ;; MySQL and H2, missing table.
    :table-or-view-not-found                 "42S02"
+   ;; H2, missing table when it can suggest a similar name.
    :table-or-view-not-found-with-candidates "42S03"
+   ;; H2, missing table in an empty database.
    :table-or-view-not-found-database-empty  "42S04"
+   ;; PostgreSQL and H2, duplicate key.
    :unique-violation                        "23505"
+   ;; MySQL, every kind of constraint failure.
    :integrity-constraint-violation          "23000"})
 
 (def error-codes
   "Vendor-specific error codes returned by supported application databases."
-  ;; MySQL and MariaDB use one SQLSTATE for every integrity-constraint failure, so `ER_DUP_ENTRY` identifies
-  ;; duplicate keys. Consult a vendor code only after its SQLSTATE matched: H2 and MySQL both use small integers,
-  ;; so a bare code lookup would classify the other vendor's error.
   {:mysql/duplicate-entry 1062})
 
+;; Keep this in step with `impl-table-known-to-not-exist?` in the H2, Postgres, and MySQL drivers.
+;; This module cannot depend on the driver module, so the states are listed in both places.
 (def ^:private table-not-found-states
   (into #{} (map sql-states) [:undefined-table
                               :table-or-view-not-found
@@ -46,6 +42,8 @@
       (= (sql-states :unique-violation) state)
       :duplicate-key
 
+      ;; MySQL uses 23000 for every constraint failure, so only the vendor code tells a duplicate key apart.
+      ;; Vendor codes mean nothing across vendors, so check the code only once the SQLSTATE has matched.
       (and (= (sql-states :integrity-constraint-violation) state)
            (= (error-codes :mysql/duplicate-entry) (.getErrorCode e)))
       :duplicate-key)))
