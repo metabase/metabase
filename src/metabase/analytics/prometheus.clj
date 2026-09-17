@@ -386,8 +386,8 @@
                           :labels      [:engine]
                           :buckets     [1000 5000 30000 60000 300000 600000 1800000 3600000 7200000]})
    (prometheus/gauge :metabase-search/last-successful-reindex-timestamp-seconds
-                     {:description "Unix time of this instance's last successful search reindex, per engine."
-                      :labels      [:engine]})
+                     {:description "Stored successful completion time of the active app-db search index."
+                      :labels      [:engine :locale :version]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size

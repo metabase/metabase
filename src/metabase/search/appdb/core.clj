@@ -61,17 +61,11 @@
   ;; the same reason [[metabase.search.core]]'s engine wrapper does: they are single-process test
   ;; scenarios, and leases refuse to be acquired inside a transaction.
   (if search.ingestion/*force-sync*
-    (let [result (thunk)]
-      (when (some? result)
-        (search.engine/record-freshness! :search.engine/appdb))
-      result)
+    (thunk)
     (let [{:keys [acquired? result]}
           (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk {:wait? false})]
       (if acquired?
-        (do
-          (when (some? result)
-            (search.engine/record-freshness! :search.engine/appdb))
-          result)
+        result
         (log/infof "Skipping appdb search %s; another node holds its lease" operation)))))
 
 (defn- parse-datetime [s]
@@ -230,7 +224,9 @@
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/info "Populating index")
-          (populate-index! (if created? :search/reindexing :search/updating)))))))
+          (let [rebuild (search.index/rebuild-context (search.index/active-table))]
+            (u/prog1 (populate-index! :search/reindexing rebuild)
+              (search.index/complete-rebuild! rebuild))))))))
 
 (defmethod search.engine/sync-from-restored-db! :search.engine/appdb [_]
   (search.index/sync-from-restored-db!))
@@ -249,7 +245,8 @@
         (search.index/clear-active-table! table))
       (let [rebuild (search.index/rebuild-context table)]
         (u/prog1 (populate-index! :search/reindexing rebuild)
-          (when-not in-place?
+          (if in-place?
+            (search.index/complete-rebuild! rebuild)
             (search.index/activate-table! rebuild)))))
     (catch Throwable e
       (if (search.lease/expected-abort? e)

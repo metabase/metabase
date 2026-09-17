@@ -1,11 +1,32 @@
 (ns metabase.search.appdb.metrics
   "Prometheus instrumentation for the appdb search engine."
   (:require
+   [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
-   [metabase.search.engine :as search.engine]))
+   [metabase.search.db :as search.db]
+   [metabase.search.engine :as search.engine]
+   [metabase.util.i18n :as i18n]))
+
+(set! *warn-on-reflection* true)
+
+(defn- collect-freshness! []
+  (let [coordinate {:engine    :appdb
+                    :lang-code (i18n/site-locale-string)
+                    :version   (search.index/index-version)}
+        completed  (when (some #{:search.engine/appdb} (search.engine/active-engines))
+                     (search.db/active-index-completion coordinate))]
+    ;; Replace old locale/version labels. A missing completion stays absent rather than inventing a success time.
+    (analytics.interface/clear! :metabase-search/last-successful-reindex-timestamp-seconds)
+    (when completed
+      (analytics.interface/set-gauge! :metabase-search/last-successful-reindex-timestamp-seconds
+                                      {:engine "appdb", :locale (:lang-code coordinate), :version (:version coordinate)}
+                                      (/ (.toEpochMilli ^java.time.Instant (t/instant completed)) 1000.0)))))
+
+(defmethod analytics/pull-collector ::freshness [_]
+  {:f collect-freshness!, :min-interval-s 60})
 
 (defn- active-index-size
   []
