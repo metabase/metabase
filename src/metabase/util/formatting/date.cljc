@@ -17,12 +17,19 @@
    :quarter (builder/->formatter ["Q" :quarter "-" :year])
    :day     formatters/big-endian-day})
 
+(def ^:private weekdays
+  #{:monday :tuesday :wednesday :thursday :friday :saturday :sunday})
+
 (defn- prepare-time-config [time-config]
-  (-> #?(:clj  time-config
-         :cljs (if (map? time-config)
-                 time-config
-                 (js->clj time-config :keywordize-keys true)))
-      (update :start-of-week keyword)))
+  (let [time-config  #?(:clj  time-config
+                        :cljs (if (map? time-config)
+                                time-config
+                                (js->clj time-config :keywordize-keys true)))
+        start-of-week (some-> (:start-of-week time-config) keyword)]
+    (when-not (weekdays start-of-week)
+      (throw (ex-info "Date formatting requires a valid :start-of-week"
+                      {:time-config time-config})))
+    {:start-of-week start-of-week}))
 
 (defn ^:export format-for-parameter
   "Returns a formatting date string for a datetime used as a parameter to a Card."

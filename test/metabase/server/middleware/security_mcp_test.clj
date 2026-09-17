@@ -8,12 +8,8 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]))
 
-(def ^:private cors
-  {:origins-fn         #'mcp/cors-origins
-   :sandbox-origin?-fn #'mcp/sandbox-origin?})
-
 (deftest make-handler-accepts-var-cors-callbacks-test
-  (is (ifn? (server.handler/make-handler (fn [_request _respond _raise]) {:cors cors}))))
+  (is (ifn? (server.handler/make-handler (fn [_request _respond _raise]) {:cors mcp/cors}))))
 
 (defn- get-cors-origin-header
   "Returns the Access-Control-Allow-Origin header value for a given request origin."
@@ -21,7 +17,7 @@
   (let [wrapped-handler (mw.security/add-security-headers
                          (fn [_request respond _raise]
                            (respond {:status 200, :headers {}, :body "ok"}))
-                         cors)
+                         mcp/cors)
         response (wrapped-handler {:headers {"origin" request-origin}
                                    :uri "/api/dashboard/1"}
                                   identity identity)]
@@ -43,7 +39,7 @@
   (let [wrapped-handler (mw.security/add-security-headers
                          (fn [_request respond _raise]
                            (respond {:status 200, :headers {}, :body "ok"}))
-                         cors)
+                         mcp/cors)
         response (wrapped-handler {:headers {"origin" request-origin}
                                    :uri "/api/metabase-mcp"}
                                   identity identity)]

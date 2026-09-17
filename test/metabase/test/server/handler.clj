@@ -2,6 +2,7 @@
   (:require
    [metabase.api-routes.core :as api-routes]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.core :as mcp]
    [metabase.server.core :as server]
    [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.util.log :as log]
@@ -20,7 +21,7 @@
 
   ([api-routes :- ::api.macros/handler]
    (let [server-routes (server/make-routes auth-wrapper/routes api-routes)
-         handler       (server/make-handler server-routes)]
+         handler       (server/make-handler server-routes {:cors mcp/cors})]
      (fn [request respond raise]
        (letfn [(raise' [e]
                  (log/errorf "ERROR HANDLING REQUEST! <async raise> %s" request)

@@ -168,6 +168,9 @@ function startOfUnit(
   const firstDay = DAY_OF_WEEK_OPTIONS.findIndex(
     ({ id }) => id === timeConfig["start-of-week"],
   );
+  if (firstDay < 0) {
+    throw new Error(`Invalid start of week: ${timeConfig["start-of-week"]}`);
+  }
   const daysSinceFirstDay = (date.day() - firstDay + 7) % 7;
   return date.subtract(daysSinceFirstDay, "day").startOf("day");
 }
