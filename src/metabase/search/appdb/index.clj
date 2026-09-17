@@ -251,6 +251,8 @@
   "Make the pending index active if it exists. Returns true if it did so."
   ([] (activate-table! nil))
   ([{:keys [coordinate table] :as rebuild} :- [:maybe ::search.schema/rebuild-context]]
+   (when (and rebuild (mdb/in-transaction?) (not *mocking-tables*))
+     (throw (ex-info "Cannot activate a staged search rebuild inside a caller transaction" {:rebuild rebuild})))
    (let [{:keys [lang-code version]} coordinate
          expected-table            table]
      (when (and rebuild (not= [version lang-code] [(index-version) (i18n/site-locale-string)]))
@@ -337,7 +339,7 @@
   Returns the table name written, or nil if no table is tracked or the batch is skipped.
   Throws when the tracked table is missing and the refresh names the same table, when the retry hits a missing
   table again, and on interruption.
-  Any other failure is logged and the batch is skipped."
+  Strict rebuild population propagates every failure; realtime updates log and skip other failures."
   [conn table-type table-name-fn entries]
   (when-let [table-name (table-name-fn)]
     (let [upsert! (fn [t]

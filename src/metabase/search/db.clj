@@ -526,6 +526,14 @@
 (def ^:private db-now-expr
   ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"])
 
+(mu/defn live-lease? :- :boolean
+  "Whether `owner` still owns an unexpired lease at `coordinate`, using current database time."
+  [conn :- (ms/InstanceOfClass java.sql.Connection)
+   {:keys [engine lang_code version]} :- LeaseCoordinate
+   owner :- :string]
+  (t2/exists? :conn conn :search_index_lease
+              :engine engine :lang_code lang_code :version version :owner owner :expires_at [:> db-now-expr]))
+
 (defn- db-expiry-expr
   "Honey SQL expression for the lease expiry `duration-millis` after the app database's current time."
   [duration-millis]

@@ -5,11 +5,13 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.core :as search]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.lease :as lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2])
   (:import
@@ -485,5 +487,48 @@
           (.. lock writeLock unlock))
         ;; The worker cannot be interrupted while blocked on the non-interruptible gate, so wait for it to
         ;; actually finish before deleting the row it may still acquire.
-        (.await done 10 TimeUnit/SECONDS)
+        (is (.await done 10 TimeUnit/SECONDS) "restore-gate worker finishes before cleanup")
+        (.await done)
         (delete-coordinate! coordinate)))))
+
+(deftest expired-during-acquisition-never-authorizes-body-test
+  (let [coordinate (coordinate)
+        old-time   (t/minus (t/offset-date-time) (t/hours 1))]
+    (try
+      (mt/with-dynamic-fn-redefs [search.db/lease-times (fn [& _] {:expires_at old-time, :now old-time})]
+        (is (nil? (lease/try-acquire! coordinate))))
+      (is (not (t2/exists? :search_index_lease :engine (:engine coordinate)
+                           :lang_code (:lang_code coordinate) :version (:version coordinate))))
+      (finally
+        (delete-coordinate! coordinate)))))
+
+(deftest restore-waits-for-checked-out-lifecycle-operation-test
+  (let [coordinate (coordinate)
+        checked-out (promise)
+        release-sql (promise)
+        restore-started (promise)
+        restore-entered (promise)
+        real-times (dynamic-redefs/original-fn #'search.db/lease-times)
+        lock ^ReentrantReadWriteLock (:lock (mdb/app-db))]
+    (mt/with-dynamic-fn-redefs [search.db/lease-times (fn [& args]
+                                                        (deliver checked-out true)
+                                                        @release-sql
+                                                        (apply real-times args))]
+      (let [claim (future (lease/try-acquire! coordinate))]
+        (try
+          (is (true? (deref checked-out 5000 false)))
+          (let [restore (future
+                          (deliver restore-started true)
+                          (.. lock writeLock lock)
+                          (try (deliver restore-entered true)
+                               (finally (.. lock writeLock unlock))))]
+            (is (true? (deref restore-started 5000 false)))
+            (is (= ::blocked (deref restore-entered 100 ::blocked)))
+            (deliver release-sql true)
+            (is (some? (deref claim 5000 nil)))
+            (is (true? (deref restore-entered 5000 false)))
+            @restore)
+          (finally
+            (deliver release-sql true)
+            @claim
+            (delete-coordinate! coordinate)))))))

@@ -83,8 +83,7 @@
   (perf/select-keys m [:name :display_name :description :collection_name]))
 
 (defn- execute-function-attr
-  "Execute a single function attribute and return the result, or nil if the function throws.
-  nil is valid for every column type, so a failure can never poison the document's insert batch."
+  "Compute an attribute. Rebuild failures and interruptions propagate; realtime failures log and return nil."
   [attr-key attr-def record]
   (try
     (let [f (:fn attr-def)
