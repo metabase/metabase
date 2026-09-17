@@ -201,6 +201,7 @@ export function AIProviderList() {
                   key={item.key}
                   id={item.key}
                   disabled={!isDraggable(item)}
+                  attributesOnDragHandle
                   draggingStyle={{
                     opacity: 0.5,
                     backgroundColor: "var(--mb-color-background-primary)",
