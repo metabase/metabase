@@ -25,12 +25,14 @@ import NewItemButton from "metabase/nav/components/NewItemButton";
 import { NavDrawer } from "metabase/nav/containers/MainNavbar/NavDrawer";
 import { NavSectionSwitcher } from "metabase/nav/containers/MainNavbar/NavSectionSwitcher";
 import { OfficialNav } from "metabase/nav/containers/MainNavbar/OfficialNav";
+import { RawDataTree } from "metabase/nav/containers/MainNavbar/RawDataTree";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { getEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getOpenNavItems } from "metabase/selectors/app";
 import {
   getCanAccessOnboardingPage,
@@ -39,6 +41,7 @@ import {
 import { useSetting, useUserSetting } from "metabase/settings";
 import { ActionIcon, Box, Group, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
@@ -57,10 +60,10 @@ import { useNavSection } from "../use-nav-section";
 
 import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
-import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 import S from "./MainNavbarView.module.css";
 import { OpenItemsSection } from "./OpenItemsSection";
+import { useCanAddData } from "./use-can-add-data";
 
 type Props = {
   bookmarks: Bookmark[];
@@ -103,6 +106,10 @@ export function MainNavbarView({
   const [
     isCollectionsDrawerOpen,
     { toggle: toggleCollectionsDrawer, close: closeCollectionsDrawer },
+  ] = useDisclosure(false);
+  const [
+    isRawDataDrawerOpen,
+    { toggle: toggleRawDataDrawer, close: closeRawDataDrawer },
   ] = useDisclosure(false);
   const openItems = useSelector(getOpenNavItems);
 
@@ -188,6 +195,12 @@ export function MainNavbarView({
 
   const { section } = useNavSection();
   const isUnofficial = section === "unofficial";
+
+  const canAddData = useCanAddData();
+  const entityTypes = useSelector(getEntityTypes);
+  const isEmbeddingIframe = isWithinIframe();
+  const showRawData =
+    hasDataAccess && (!isEmbeddingIframe || entityTypes.includes("table"));
 
   const collectionsHeading = showExternalCollectionsSection
     ? t`Internal Collections`
@@ -295,17 +308,18 @@ export function MainNavbarView({
                 />
               )}
 
-              {/* Only the Unofficial half browses raw data; Official is curated content. */}
-              <SidebarSection>
-                <ErrorBoundary>
-                  <BrowseNavSection
-                    nonEntityItem={nonEntityItem}
-                    onItemSelect={onItemSelect}
-                    hasDataAccess={hasDataAccess}
-                    onAddDataModalOpen={openAddDataModal}
-                  />
-                </ErrorBoundary>
-              </SidebarSection>
+              {showRawData && (
+                <SidebarSection>
+                  <PaddedSidebarLink
+                    icon="database"
+                    isSelected={isRawDataDrawerOpen}
+                    onClick={toggleRawDataDrawer}
+                    right={<Icon name="chevronright" size={12} />}
+                  >
+                    {t`Raw data`}
+                  </PaddedSidebarLink>
+                </SidebarSection>
+              )}
 
               <OpenItemsSection items={openItems} selectedKey={openKey} />
             </>
@@ -376,6 +390,33 @@ export function MainNavbarView({
               />
             </TrashSidebarSection>
           )}
+        </ErrorBoundary>
+      </NavDrawer>
+
+      <NavDrawer
+        title={t`Raw data`}
+        opened={isRawDataDrawerOpen}
+        onClose={closeRawDataDrawer}
+        railNode={railNode}
+        actions={
+          canAddData && !isEmbeddingIframe ? (
+            <Tooltip label={t`Add data`}>
+              <ActionIcon
+                aria-label={t`Add data`}
+                color="text-secondary"
+                onClick={() => {
+                  trackAddDataModalOpened("left-nav");
+                  openAddDataModal();
+                }}
+              >
+                <Icon name="add" />
+              </ActionIcon>
+            </Tooltip>
+          ) : null
+        }
+      >
+        <ErrorBoundary>
+          <RawDataTree />
         </ErrorBoundary>
       </NavDrawer>
 
