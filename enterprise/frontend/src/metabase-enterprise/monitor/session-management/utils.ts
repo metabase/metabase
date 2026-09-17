@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import type { AdminSessionType, AdminSessionUser } from "metabase-types/api";
 
+import type { SessionsLastActive } from "./SessionsPage/types";
+
 export const getSessionUserName = (user: AdminSessionUser): string =>
   user.common_name ?? user.email;
 
@@ -23,4 +25,12 @@ export const getSessionTypeLabel = (type: AdminSessionType): string =>
   match(type)
     .with("normal", () => t`Normal`)
     .with("full-app-embed", () => t`Embedded`)
+    .exhaustive();
+
+export const getLastActiveLabel = (preset: SessionsLastActive): string =>
+  match(preset)
+    .with("hour", () => t`Past hour`)
+    .with("day", () => t`Past day`)
+    .with("week", () => t`Past week`)
+    .with("month", () => t`Past month`)
     .exhaustive();

@@ -4,7 +4,16 @@ import type {
   SortDirection,
 } from "metabase-types/api";
 
+import type { SessionsLastActive } from "./types";
+
 export const PAGE_SIZE = 50;
+
+export const LAST_ACTIVE_VALUES: SessionsLastActive[] = [
+  "hour",
+  "day",
+  "week",
+  "month",
+];
 
 // The auth methods the endpoint accepts as a filter. `unknown` is the bucket for sessions with no auth identity row,
 // not a provider anyone logs in with; `mcp` is absent because those sessions are never listed.
