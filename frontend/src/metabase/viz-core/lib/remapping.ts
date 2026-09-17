@@ -2,17 +2,33 @@ import _ from "underscore";
 
 import type { DatasetData, Series } from "metabase-types/api";
 
-import type { RemappingHydratedDatasetColumn } from "../types";
+import type {
+  RemappingHydratedChartData,
+  RemappingHydratedDatasetColumn,
+} from "../types";
+
+const getRemapping = (col: RemappingHydratedDatasetColumn) => {
+  // keep an existing Map so extractRemappedColumns is idempotent
+  if (col.remapping) {
+    return col.remapping;
+  }
+  if (col.remapped_to != null) {
+    return new Map();
+  }
+  return undefined;
+};
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
-export const extractRemappedColumns = (data: DatasetData) => {
+export const extractRemappedColumns = (
+  data: DatasetData,
+): RemappingHydratedChartData => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map((col) => ({
     ...col,
     remapped_from_index:
       col.remapped_from != null
         ? _.findIndex(data.cols, (c) => c.name === col.remapped_from)
         : undefined,
-    remapping: col.remapped_to != null ? new Map() : undefined,
+    remapping: getRemapping(col),
   }));
 
   const rows = data.rows.map((row) =>
