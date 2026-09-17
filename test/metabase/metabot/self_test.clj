@@ -98,10 +98,15 @@
 
 (deftest ^:parallel registry-test
   (testing "every registered provider resolves to an adapter and a listing"
-    (doseq [provider ["anthropic" "azure" "bedrock" "deepseek" "google"
-                      "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"]]
-      (is (ifn? (registry/required provider :stream)) provider)
-      (is (ifn? (registry/required provider :list-models)) provider)))
+    ;; derived from the rows rather than listed here, so a provider added to the platform and the registry
+    ;; with an empty row fails this instead of going unchecked. The managed connection is excluded because it
+    ;; is served by the wire family its model names and so has no adapter of its own — asked of the platform
+    ;; rather than named, for the same reason.
+    (let [serving (remove (comp llm.provider/managed-type? key) @#'registry/adapters)]
+      (is (seq serving))
+      (doseq [[provider _row] serving]
+        (is (ifn? (registry/required provider :stream)) provider)
+        (is (ifn? (registry/required provider :list-models)) provider))))
   (testing "a capability a provider does not have is absent, not a default"
     (is (nil? (registry/optional "vllm" :supported-models)))
     (is (nil? (registry/optional "deepseek" :context-window)))
