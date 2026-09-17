@@ -1,46 +1,17 @@
 # TEST PLAN SYNTAX
 #  - overrides ALWAYS take precedence over workflow level settings
-#  - IF workflow condition matches, THEN check job conditions
-#  - default: `condition: all` for skip and run blocks
-#    for example: a label `skip-all` AND this is a PR == this job is skipped
+#    - unless `ignore-overrides` is set for the specified run/skip block, then the listed overrides are ignored
+#      and run/skip resolution proceeds as normal. `ignore-overrides` can also be a glob to match multiple ids.
+#  - if workflow condition matches, THEN check job conditions. Workflow level conditions narrower than job
+#    conditions will skip those jobs.
+#  - default: `condition: all` for skip and run blocks for example: a label `skip-all` AND this is a PR == this job is skipped
 #  - optionally can specify `condition: any` in which case if any of label,
 #    event, branch, or path matches skip/run will execute
 #  - if run and skip both match, run ALWAYS takes precedence and the job/workflow will run
 #  - force-skip ALWAYS takes precedence over run and skips the job or workflow
-#  - a workflow condition can only hold jobs back, never compel one to run, so it
-#    must be at least as wide as the widest job under it or it will mask one
-#  - `ignore-overrides:` in a run or skip block lists overrides that block sits
-#    out. It is not a condition -- it never makes the block match or fail to
-#    match -- it says the named override has no effect here, so the job is
-#    decided from its own conditions as it would be on an ordinary run. That is
-#    how a job says "I cannot run here at all", as opposed to "I have nothing to
-#    do": a pull-request-only job on a push would otherwise be force-run by the
-#    protected-branch override and fail. Naming an override anywhere makes the
-#    run work the diff out even though the override settled everything else,
-#    so a `paths:` condition beside it still has an honest answer.
-#
-# CALLS
-#  - a job whose body is `uses:` names the workflow it calls with `calls`
-#  - conditions on that job are the `if:` on the call, and gate the whole of
-#    the called workflow: nothing in it runs when the call does not happen
-#  - a called workflow may still carry a top-level block of its own, for a
-#    condition its jobs share; put a condition on the caller when it is the
-#    caller that knows whether entering the workflow is worth it at all
-#  - a called workflow whose jobs report a required check must be entered on
-#    every run, or the check never reports and the PR sits pending. Leave the
-#    calling job unconditional there and let the plan skip the jobs inside it.
-#
-# NOT LISTED HERE
-#  - the job that builds the plan, and the `*-result` jobs that check it
-#    afterwards. Neither can be governed by the plan -- one runs before there
-#    is a plan to consult, the other has to run whatever the plan said.
-#  - `sync` still lists drivers-tests-result, loki-tests-result,
-#    e2e-tests-result and embedding-sdk-tests-result, because those four have
-#    no `verify` step yet and so do not look like plan machinery. Each is a
-#    case the plan cannot check on its own: `mage driver-decisions`, the loki
-#    story selection and the e2e matrix all narrow further than the plan can
-#    see, and the SDK result job deliberately leaves the not-required host-app
-#    job out of its `needs`. Leave them unlisted until verify can allow for it.
+#  - for workflow jobs that call another workflow, a run/skip block can be set in the 
+#    calling workflow's job block which determines if that workflow is called at all. This
+#    takes precedence over any of the called workflow's conditionals
 
 overrides:
   - id: protected-branch-master
@@ -72,7 +43,7 @@ workflows:
     jobs:
       upload-affected-tests-stats:
         run:
-          # don't run if this isn't a PR
+          # always & only run on PRs
           ignore-overrides:
             - protected-branch-*
           event:
@@ -191,8 +162,6 @@ workflows:
             - ci:run-all
       be-linter-eastwood-test-changed:
         run:
-          # it diffs against the pull request's base, so a push has nothing
-          # for it to lint
           ignore-overrides:
             - protected-branch
           paths:
@@ -285,7 +254,6 @@ workflows:
         - custom_viz_all
     jobs:
       fe-lint:
-        # The lint covers the e2e specs as well as the app.
         run:
           condition: any
           paths:
@@ -328,11 +296,9 @@ workflows:
     jobs:
       changed-specs:
         run:
-          # It narrows the run to the specs a pull request's diff touched, so
-          # it needs a diff to read, and has nothing to say when the run is
-          # meant to cover everything anyway.
+          # only & always run on PRs
           ignore-overrides:
-            - protected-branch
+            - protected-branch-*
             - force-run-label
           event:
             - pull_request
@@ -343,9 +309,9 @@ workflows:
         calls: e2e-matrix-builder
       reset-e2e-test-comment:
         run:
-          # no pull request on a push, so no comment to take off
+          # only & always run on PRs
           ignore-overrides:
-            - protected-branch
+            - protected-branch-*
           event:
             - pull_request
       e2e-tests:
@@ -418,7 +384,6 @@ workflows:
       get-sample-apps-data:
       e2e-sample-apps-tests:
       e2e-shoppy-tests:
-        # The shoppy suites only run against master.
         run:
           branch:
             - master

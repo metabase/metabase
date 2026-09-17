@@ -29,7 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          # Enough history to diff against the base of the pull request.
           fetch-depth: 0
 
       - uses: ./.github/actions/prepare-frontend
@@ -50,6 +49,7 @@ jobs:
               --base "$BEFORE"
           fi
 
+      # TODO: update create-test-plan to use file-paths script instead of separate dorny/paths-filter call
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -59,6 +59,7 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
+      # TODO: see if this can be a single script so we can run in parallel instead of as a composite action   
       - name: Create test plan
         id: compute
         uses: ./.github/actions/create-test-plan
@@ -71,11 +72,13 @@ jobs:
           e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
       
+      # TODO: this needs to be wired into test plan somehow, also need to avoid ~1 minute of build time it adds.     
       - name: Build static-viz frontend
         run: bun run build-static-viz
         env:
           MB_EDITION: ee
       
+      # TODO: update static-viz check/build to use file-paths script instead of separate dorny/paths-filter call
       - name: Check for static viz changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
@@ -85,9 +88,8 @@ jobs:
 
   upload-affected-tests-stats:
     needs: [should-run]
-    # Only land rows for PRs from the upstream repo so forks don't pollute the table.
+    # don't let forks pollute the data
     if: ${{ github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
-    # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
