@@ -12,6 +12,24 @@
 (def ^:private valid-cached-review? @#'mage.owner-approval/valid-cached-review?)
 (def ^:private path-owners @#'mage.owner-approval/path-owners)
 (def ^:private parse-codeowners @#'mage.owner-approval/parse-codeowners)
+(def ^:private approval-status @#'mage.owner-approval/approval-status)
+
+(deftest approval-status-test
+  (let [base {:required #{"A" "B"} :known #{"A" "B"} :unknown #{} :missing #{} :approving #{"A" "B"}}]
+    (is (= {:full       "full"
+            :partial    "partial"
+            :none       "none"
+            :incomplete "incomplete"
+            :n/a        "n/a"
+            :no-owner   "no-owner"
+            :no-pr      "no-pr"}
+           {:full       (approval-status base)
+            :partial    (approval-status (assoc base :missing #{"B"} :approving #{"A"}))
+            :none       (approval-status (assoc base :missing #{"A" "B"} :approving #{}))
+            :incomplete (approval-status (assoc base :known #{"A"} :unknown #{"B"} :approving #{"A"}))
+            :n/a        (approval-status (assoc base :known #{} :unknown #{"A" "B"} :approving #{}))
+            :no-owner   (approval-status (assoc base :required #{} :known #{} :approving #{}))
+            :no-pr      (approval-status (assoc base :no-pr? true))}))))
 (def ^:private enforced-for? @#'mage.owner-approval/enforced-for?)
 (def ^:private no-team-label @#'mage.owner-approval/no-team-label)
 (def ^:private no-team-bucket @#'mage.owner-approval/no-team-bucket)

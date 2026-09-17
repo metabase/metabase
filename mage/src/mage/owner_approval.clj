@@ -249,6 +249,19 @@
 ;;;; report rows + CSV
 ;;;; =============================================================================
 
+(defn- approval-status
+  "How far a PR's required owner teams approved it.
+  A PR whose known teams all approved reads `incomplete` while some required team is unknown, since that
+  team may not have approved."
+  [{:keys [no-pr? required known unknown missing approving]}]
+  (cond
+    no-pr?            "no-pr"
+    (empty? required) "no-owner"
+    (empty? known)    "n/a"
+    (seq missing)     (if (empty? approving) "none" "partial")
+    (seq unknown)     "incomplete"
+    :else             "full"))
+
 (defn- pr-row
   "One report map for a PR commit, joining its point-in-time ownership with its cached approvers."
   [{:keys [pr sha ct files config-blob team-blob]} captured-at]
@@ -266,13 +279,12 @@
         approvers      (set (:approvers review))
         approving      (approving-teams team->members known approvers)
         missing        (into (sorted-set) (remove approving) known)
-        status         (cond
-                         (:missing review)     "no-pr"
-                         (empty? required-all) "no-owner"
-                         (empty? known)        "n/a"
-                         (empty? missing)      "full"
-                         (empty? approving)    "none"
-                         :else                 "partial")]
+        status         (approval-status {:no-pr?    (:missing review)
+                                         :required  required-all
+                                         :known     known
+                                         :unknown   unknown
+                                         :missing   missing
+                                         :approving approving})]
     {:pr pr
      :sha sha
      :merged_at (or (:merged-at review) (str (java.time.Instant/ofEpochSecond ct)))
@@ -334,7 +346,7 @@
       (write-csv! rows)
       (let [by-status (frequencies (map :status rows))]
         (println)
-        (doseq [s ["full" "partial" "none" "n/a" "no-pr" "no-owner"]]
+        (doseq [s ["full" "partial" "none" "incomplete" "n/a" "no-pr" "no-owner"]]
           (println (format "  %-9s %s" s (get by-status s 0))))
         (println (str "\nWrote " (c/green report-csv))))
       (u/exit 0))))
@@ -359,7 +371,7 @@
 (def ^:private unassessable-statuses
   "Statuses that mean we could not judge the PR at all, rather than a judgement of poor. Both the
   `assessable` row filter and the assessable rail/chart derive from this, so the two cannot drift."
-  #{"no-owner" "n/a" "no-pr"})
+  #{"no-owner" "n/a" "no-pr" "incomplete"})
 
 (defn- assessable
   "Rows we could actually judge: they have an owner team whose membership was known at merge."
@@ -368,7 +380,8 @@
 
 ;;; Every status, in stacking order (green at the bottom, no-owner grey on top), with its color.
 (def ^:private status-cats
-  [["full" "#30a46c"] ["partial" "#f5a623"] ["none" "#e5484d"] ["n/a" "#8b8d98"] ["no-pr" "#b9bbc6"] ["no-owner" "#d0d3d9"]])
+  [["full" "#30a46c"] ["partial" "#f5a623"] ["none" "#e5484d"] ["incomplete" "#a5a8b5"]
+   ["n/a" "#8b8d98"] ["no-pr" "#b9bbc6"] ["no-owner" "#d0d3d9"]])
 
 (defn- monthly-stats
   "Ordered `[[month {status count ... :total n}] ...]` over all `rows`, keyed by status string."
@@ -657,12 +670,12 @@
 </style>
 <h1>Owner approval audit</h1>
 <p class=meta><b>" n-total "</b> merged PRs &nbsp;·&nbsp; " (subs (:merged_at (first rows)) 0 10) " to " (subs (:merged_at (last rows)) 0 10) " &nbsp;·&nbsp; captured " (subs (str (:captured_at (first rows))) 0 10) "</p>
-<label class=toggle><input type=checkbox onchange=\"document.getElementById('graphs').dataset.mode=this.checked?'assessable':'all'\"> Owner approval only <span class=hint>(drop n/a, no-pr &amp; no-owner; normalize to the " n-assess " assessable PRs)</span></label>
+<label class=toggle><input type=checkbox onchange=\"document.getElementById('graphs').dataset.mode=this.checked?'assessable':'all'\"> Owner approval only <span class=hint>(drop incomplete, n/a, no-pr &amp; no-owner; normalize to the " n-assess " assessable PRs)</span></label>
 <div id=graphs data-mode=all>
 <h2>Merged PRs by owner approval</h2>
 <div class=g-all>" (rail status-cats all-counts n-total) "</div>
 <div class=g-assessable>" (rail assess-cats all-counts n-assess) "</div>
-<p class=note><b>no-owner</b> — the PR touches no owned backend module (frontend, docs, config). &nbsp; <b>n/a</b> — the owner team's membership was unknown in team.json at that commit.</p>
+<p class=note><b>no-owner</b> — the PR touches no owned backend module (frontend, docs, config). &nbsp; <b>n/a</b> — the owner team's membership was unknown in team.json at that commit. &nbsp; <b>incomplete</b> — every known team approved, but another required team was unknown. &nbsp; <b>no-pr</b> — the commit resolves to no pull request.</p>
 <h2>By month merged</h2>
 <div class=g-all>" (month-chart monthly status-cats :total) "</div>
 <div class=g-assessable>" (month-chart monthly assess-cats assess-total) "</div>
@@ -705,7 +718,7 @@ Close by giving the team a team.json assignee, then generating its rules.</p>
     ;; terminal glimpse: full composition over all PRs, then the rate among assessable
     (println (format "\n%s merged PRs (%s assessable)\n" n-total n-assess))
     (doseq [[s color-fn] [["full" c/green] ["partial" c/yellow] ["none" c/red]
-                          ["n/a" c/gray] ["no-pr" c/gray] ["no-owner" c/dark]]]
+                          ["incomplete" c/gray] ["n/a" c/gray] ["no-pr" c/gray] ["no-owner" c/dark]]]
       (println (bar s (get by-status s 0) n-total color-fn)))
     ;; Snapshot the current checkout (HEAD): the assignees + generated CODEOWNERS the metric measures live
     ;; on the working branch, so origin/master reads 0% until the work merges.
