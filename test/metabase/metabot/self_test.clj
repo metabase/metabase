@@ -122,12 +122,12 @@
     ;; compared rather than exercised: the row's `:=>` forms are documentation — Malli checks one no further
     ;; than `ifn?` — and `mu/defn` already validates each implementation against its own schema on every
     ;; call. What nothing else covers is the two declarations drifting apart.
-    ;; Skipped: `:stream` and `:list-models` are registered as plain `defn`s and carry no schema to compare,
-    ;; and `:supported-models` is a var holding a map rather than a function.
+    ;; Skipped: `:stream` is registered as a plain `defn` and carries no schema to compare, and
+    ;; `:supported-models` is a var holding a map rather than a function.
     (let [declared (into {} (map (fn [[capability _props schema]] [capability (mc/form schema)]))
                          (mc/children (mc/schema registry/AdapterRow)))]
       (doseq [[provider row]              @#'registry/adapters
-              [capability implementation] (dissoc row :stream :list-models :supported-models)]
+              [capability implementation] (dissoc row :stream :supported-models)]
         (is (= (declared capability)
                (some-> (:schema (meta implementation)) mc/form))
             (str provider " " capability)))))

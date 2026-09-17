@@ -369,7 +369,7 @@
     {:model      model
      :reasoning? (run-probes! req model)}))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the models the connection's vLLM server is serving. Pass-through: there is nothing to
   whitelist, and `display_name` falls back to the served id.
 
@@ -380,7 +380,7 @@
   prefill. On edit, a `:proposed-model` is re-probed only while the server still advertises it;
   otherwise the normal candidate selection chooses a replacement."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
+  ([{:keys [credentials ai-proxy? model proposed-model probe?]} :- adapter/ListOpts]
    (let [req      {:credentials credentials :ai-proxy? ai-proxy?}
          entries  (list-all-models req)
          proposed (when (some #(= proposed-model (:id %)) entries)

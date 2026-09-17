@@ -61,7 +61,7 @@
   [model]
   (boolean (get-in supported-models [(str model) :thinking-only?])))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the Z.AI models supported by this adapter (see [[supported-models]]).
 
   The `/models` catalog it intersects is OpenAI-compatible but undocumented; it doubles as the credential
@@ -69,7 +69,7 @@
   base URL reach an authenticated surface).
   `:ai-proxy?` is not supported for Z.AI and throws when true."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models (adapter/fetch-catalog provider opts) :name)))
 
 (def ^:private forced-tool-call-token-floor

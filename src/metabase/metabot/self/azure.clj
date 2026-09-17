@@ -177,7 +177,7 @@
       (when-not (= 400 (:status (ex-data e)))
         (throw e)))))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "Validate Azure credentials with a model-free round trip and return an empty model list.
 
   There is never a dropdown to populate (Azure's listing returns the regional catalog, not the
@@ -194,7 +194,7 @@
   supplies one: `metabase.llm.api.provider` resolves it from the connection's own `:model-fields`, and
   falls back to what `llm-metabot-provider` names for *that* connection."
   ([] (list-models {}))
-  ([{:keys [credentials model ai-proxy?]}]
+  ([{:keys [credentials model ai-proxy?]} :- adapter/ListOpts]
    (adapter/reject-ai-proxy! provider ai-proxy?)
    (when-let [model (not-empty model)]
      (try

@@ -246,14 +246,14 @@
   [{:keys [status]}]
   (= status "available"))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the Bedrock models supported by this adapter (see [[supported-models]]).
   The opts map supports `:credentials`, a map of `:access-key-id`, `:secret-access-key`, `:region`, and (for
   temporary credentials) `:session-token`, plus `:ai-proxy?`, which is not supported for Bedrock and throws when
   true. On a self-hosted Metabase with no access key pair, requests are signed with whatever the AWS default
   credentials chain resolves; Metabase Cloud requires the pair."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
                     (filter available-model? (adapter/fetch-catalog provider opts "/v1/models")))))
 

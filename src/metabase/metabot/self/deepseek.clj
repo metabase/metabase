@@ -74,7 +74,7 @@
   [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the DeepSeek models supported by this adapter (see [[supported-models]]).
 
   The `/models` catalog it intersects is OpenAI-style even though the chat surface is not, so the fail-closed
@@ -83,7 +83,7 @@
   entries carry no `:name`.
   `:ai-proxy?` is not supported for DeepSeek and throws when true."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 ;;; --------------------------------------------- The thinking contract ------------------------------------------

@@ -128,13 +128,13 @@
   [model]
   (boolean (get-in supported-models [(str model) :reasoning-mandatory?])))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
   and throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
                     (adapter/fetch-catalog provider opts "/v1/models")
                     :name)))

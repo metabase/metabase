@@ -59,14 +59,14 @@
   (some #(when (contains? supported-models %) %)
         (cons id aliases)))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the Mistral models supported by this adapter (see [[supported-models]]).
 
   Resolves catalog aliases rather than intersecting ids directly (see [[whitelisted-id]]), so this does not use
   the shared [[adapter/model-listing]].
   `:ai-proxy?` is not supported for Mistral and throws when true."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    {:models (->> (adapter/fetch-catalog provider opts)
                  (keep whitelisted-id)
                  distinct

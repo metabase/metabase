@@ -70,7 +70,7 @@
   [{:keys [model]} :- adapter/ResolvedRef]
   (reasoning-model? model))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the Moonshot models supported by this adapter (see [[supported-models]]).
 
   The `/models` catalog it intersects doubles as the credential round-trip behind the admin Connect button —
@@ -78,7 +78,7 @@
   entries carry no `:name` (and no `:aliases`, so there is no Mistral-style alias resolution to do either).
   `:ai-proxy?` is not supported for Moonshot and throws when true."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models (adapter/fetch-catalog provider opts))))
 
 (def ^:private forced-tool-call-token-floor

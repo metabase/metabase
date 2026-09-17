@@ -104,9 +104,10 @@
 (def ModelListing
   "The model-listing response the admin picker consumes."
   [:map {:closed true}
-   [:models [:sequential [:map {:closed true}
-                          [:id           :string]
-                          [:display_name [:maybe :string]]]]]])
+   [:models                        [:sequential [:map {:closed true}
+                                                 [:id           :string]
+                                                 [:display_name [:maybe :string]]]]]
+   [:learned-config {:optional true} [:map-of :keyword :string]]])
 
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."

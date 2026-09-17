@@ -262,14 +262,14 @@
   [model :- [:maybe :string]]
   (get-in supported-models [model :context-window]))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the OpenAI chat models supported by this adapter, by intersecting [[supported-models]] with the
   account's `/v1/models` catalog.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
   and throws when they are missing.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
                     (adapter/fetch-catalog provider opts "/v1/models"))))
 
