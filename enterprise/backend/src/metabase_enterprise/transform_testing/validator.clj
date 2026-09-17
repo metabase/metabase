@@ -163,7 +163,7 @@
         (throw (transform-testing.errors/ex
                 ::transform-testing.errors/unparseable-source
                 (tru "Expectation {0} has SQL that could not be parsed: {1}"
-                     (pr-str expectation-name) (or (some-> (ex-cause e) ex-message) (ex-message e)))
+                     (pr-str expectation-name) (sql-parsing/parse-error-message e))
                 {:expectation expectation-name}))
         (throw e)))))
 

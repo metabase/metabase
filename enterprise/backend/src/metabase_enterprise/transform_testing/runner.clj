@@ -137,7 +137,7 @@
         (throw (transform-testing.errors/ex
                 ::transform-testing.errors/unparseable-source
                 (tru "The transform source SQL could not be parsed for test input validation: {0}"
-                     (or (some-> (ex-cause e) ex-message) (ex-message e)))
+                     (sql-parsing/parse-error-message e))
                 {:transform-id transform-id}))
         (throw e)))))
 

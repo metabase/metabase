@@ -275,14 +275,19 @@
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform {transform-id :id}
                          {:source {:type "query"
-                                   :query (lib/native-query mp "SELECT !!!")}
+                                   :query (lib/native-query mp "SELECT * FROM WHERE (")}
                           :target {:type "table" :schema "public" :name "parse_test" :database (mt/id)}}
                          :model/TransformTest transform-test
                          {:transform_id transform-id :inputs [] :expectations []}]
             (let [e (try (transform-testing.runner/run-transform-test! transform-test)
                          (catch ExceptionInfo e e))]
               (is (= ::transform-testing.errors/unparseable-source (:error-type (ex-data e))))
-              (is (re-find #"could not be parsed" (ex-message e))))))))))
+              (testing "and the refusal reads as the parser's own diagnostic, less its internals"
+                (is (= (str "The transform source SQL could not be parsed for test input validation: "
+                            "ParseError: Expected table name but got 'WHERE'. Line 1, Col: 19.\n"
+                            "  SELECT * FROM WHERE (\n"
+                            "                ^^^^^")
+                       (ex-message e)))))))))))
 
 (deftest run-transform-test-table-qualified-columns-test
   (testing "column qualifiers naming a replaced table are rewritten along with the table, so the transform reads the input"

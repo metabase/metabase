@@ -13,6 +13,57 @@
 
 (set! *warn-on-reflection* true)
 
+;;; --------------------------------------------- parse-error-message ----------------------------------------------
+
+(def ^:private unparseable
+  "Queries the parser cannot read, each with the internals its own message carries and the diagnostic a caller
+  should see instead.
+
+  Driven through the real parser rather than against recorded strings: a sqlglot whose messages have changed shape
+  is then a failure here, rather than noise in somebody's 400."
+  [{:sql        "SELECT !!!"
+    :internals  "<class 'sqlglot.expressions.Not'>"
+    :diagnostic (str "ParseError: Required keyword: 'this' missing. Line 1, Col: 10.\n"
+                     "  SELECT !!!\n"
+                     "           ^")}
+   {:sql        "SELECT * FROM WHERE ("
+    :internals  "<Token token_type: TokenType.WHERE, text: WHERE,"
+    :diagnostic (str "ParseError: Expected table name but got 'WHERE'. Line 1, Col: 19.\n"
+                     "  SELECT * FROM WHERE (\n"
+                     "                ^^^^^")}
+   {:sql        "SELECT * FROM a JOIN"
+    :internals  "but got None"
+    :diagnostic (str "ParseError: Expected table name but got the end of the query. Line 1, Col: 20.\n"
+                     "  SELECT * FROM a JOIN\n"
+                     "                  ^^^^")}
+   {:sql        "complete nonsense query"
+    :internals  "\u001b["
+    :diagnostic (str "ParseError: Invalid expression / Unexpected token. Line 1, Col: 23.\n"
+                     "  complete nonsense query\n"
+                     "                    ^^^^^")}])
+
+(defn- parse-failure
+  "The exception `sql` fails to parse with."
+  [sql]
+  (try
+    (sql-parsing/referenced-tables "postgres" sql)
+    (is false (str "expected " (pr-str sql) " not to parse"))
+    (catch Exception e e)))
+
+(deftest ^:parallel parse-error-message-test
+  (doseq [{:keys [sql internals diagnostic]} unparseable]
+    (testing (pr-str sql)
+      (let [e (parse-failure sql)]
+        (is (sql-parsing/parse-error? e))
+        (testing "the parser still reports the internals the diagnostic is cleaned of"
+          (is (str/includes? (or (some-> (ex-cause e) ex-message) (ex-message e)) internals)))
+        (testing "and what a caller reads is the error, its place, and a caret under the token"
+          (is (= diagnostic (sql-parsing/parse-error-message e))))))))
+
+(deftest ^:parallel parse-error-message-without-a-message-test
+  (testing "an exception carrying no message of its own has no diagnostic to give"
+    (is (nil? (sql-parsing/parse-error-message (ex-info nil {}))))))
+
 ;;; ------------------------------------------ referenced-tables API Tests -----------------------------------------
 
 (deftest ^:parallel referenced-tables-basic-test
