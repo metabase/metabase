@@ -551,10 +551,10 @@
           (verify-credentials! merged effective (or model (selected-model conn-key)))
           merged                   (update merged :config merge learned-config)
           effective                (merge effective learned-config)]
-      (llm.provider/set-connections! (assoc stored idx merged))
-      ;; even when nothing changed: re-saving is the admin's explicit ask to try the connection again, the recovery
-      ;; lever for a failure fixed on the provider's side (restored credit, regained model access)
-      (llm.health/forget! conn-key)
+      ;; a fresh reset token even when nothing else changed: re-saving is the admin's explicit ask to try the
+      ;; connection again, the recovery lever for a failure fixed on the provider's side (restored credit, regained
+      ;; model access). It changes the stored setting, so every node's `:on-change` drops the failure, not just this one.
+      (llm.provider/set-connections! (assoc stored idx (assoc merged :health-reset (str (random-uuid)))))
       (follow-edited-connection-model! (assoc merged :config effective) model)
       (seed-models-cache! (assoc merged :config effective) listed)
       (connection-response (assoc (merge live merged) :config effective)))))

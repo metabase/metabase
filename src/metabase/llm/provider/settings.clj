@@ -249,9 +249,10 @@
 
 (defn- connection-configurations
   "How each connection in `conns` is set up, keyed by connection key: everything but its display name and its
-  position in the list, which is what decides whether a write leaves it the same connection."
+  position in the list, which is what decides whether a write leaves it the same connection. `:health-reset` counts:
+  the provider API rewrites it when an admin re-saves a connection, to clear its failure on every node."
   [conns]
-  (into {} (map (juxt :key #(select-keys % [:type :config]))) conns))
+  (into {} (map (juxt :key #(select-keys % [:type :config :health-reset]))) conns))
 
 (defsetting llm-providers
   (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")

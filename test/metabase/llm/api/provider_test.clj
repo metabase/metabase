@@ -1517,6 +1517,16 @@
         (is (nil? (llm.health/failure "anthropic"))
             "reading through the refreshed cache is enough — no local write ran")))))
 
+(deftest another-instances-unchanged-re-save-clears-the-failure-here-test
+  (testing "re-saving a connection unchanged on one node clears its failure on this one too: the reset token the save
+            stamps is the change the settings cache carries here"
+    (let [conn (connection "anthropic" "anthropic" {:api-key "sk-ant-same"})]
+      (mt/with-temporary-setting-values [llm-providers [(assoc conn :health-reset "before")]]
+        (with-another-instances-write! [(assoc conn :health-reset "after")]
+          (llm.health/record-failure! "anthropic" "credit balance too low" true)
+          (mt/user-http-request :crowberto :get 200 "llm/providers")
+          (is (nil? (llm.health/failure "anthropic"))))))))
+
 (deftest provider-order-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
                                                     (connection "openai" "openai" {:api-key "sk-o"})
