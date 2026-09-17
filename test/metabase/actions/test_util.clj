@@ -6,11 +6,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
@@ -175,6 +177,11 @@
               (is (= [[74]]
                      (row-count))))))))))
 
+(defn- insert-action!
+  "Normalizes `action` the way the REST API decodes one and inserts it, returning its id."
+  [action]
+  (action/insert! (lib/normalize ::actions.schema/action.for-insert action)))
+
 (defmulti ^:private create-action*!
   {:arglists '([options-map model-id])}
   (fn [options-map _model-id]
@@ -182,7 +189,7 @@
 
 (defmethod create-action*! :query
   [options-map model-id]
-  (let [action-id (action/insert!
+  (let [action-id (insert-action!
                    (merge {:model_id model-id
                            :name "Query Example"
                            :parameters [{:id "id"
@@ -217,7 +224,7 @@
 
 (defmethod create-action*! :implicit
   [options-map model-id]
-  (let [action-id (action/insert! (merge
+  (let [action-id (insert-action! (merge
                                    {:type :implicit
                                     :name "Update Example"
                                     :kind "row/update"
@@ -230,7 +237,7 @@
 
 (defmethod create-action*! :http
   [options-map model-id]
-  (let [action-id (action/insert! (merge
+  (let [action-id (insert-action! (merge
                                    {:type :http
                                     :name "Echo Example"
                                     :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})

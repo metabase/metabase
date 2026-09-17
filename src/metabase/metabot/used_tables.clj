@@ -4,9 +4,6 @@
   Walks `:tool-input` / `:tool-output` pairs, dispatches on tool name:
   - `construct_notebook_query` — query in `:structured-output.query`.
   - `create_sql_query` / `replace_sql_query` / `edit_sql_query` — native SQL.
-  - `write_transform_sql` — native query in `:structured-output.transform.source.query`.
-  - `write_transform_python` — table ids declared explicitly in the
-    `:source_tables` tool-input argument.
 
   For both native and mbql queries, we recursively expand card references to extract underlying source tables.
 
@@ -42,19 +39,6 @@
   (analytics/inc! :metabase-metabot/used-tables-extraction-warnings {:reason reason}))
 
 (def ^:private notebook-tool-name "construct_notebook_query")
-(def ^:private transform-sql-tool-name "write_transform_sql")
-(def ^:private transform-python-tool-name "write_transform_python")
-
-(def ^:private transform-tool-names
-  #{transform-sql-tool-name transform-python-tool-name})
-
-(def ^:private tracked-tool-names
-  "Union of every tool name whose successful invocation we mine for table references. We keep the transform tools
-  out of [[metabase.metabot.tools/query-generation-tool-names]] because the metabot_analytics module makes shape
-  assumptions about that set (`:query-content`/`:database`/etc. in structured-output) that transform outputs do not
-  satisfy."
-  (into transform-tool-names metabot.tools/query-generation-tool-names))
-
 (defn- tool-output->structured
   [result]
   (when (map? result)
@@ -62,10 +46,10 @@
         (:structured_output result))))
 
 (defn- successful-tracked-output?
-  "Is this a successful invocation of a tool in tracked-tool-names?"
+  "Is this a successful invocation of a tool in metabot.tools/query-generation-tool-names?"
   [input-block output-block]
   (and output-block
-       (contains? tracked-tool-names (:function input-block))
+       (contains? metabot.tools/query-generation-tool-names (:function input-block))
        (not (:error output-block))
        (some? (tool-output->structured (:result output-block)))))
 
@@ -184,50 +168,14 @@
                 (log/warnf "Failed to build native query for %s from raw SQL on database %s: %s" tool-name db-id (ex-message e))
                 nil)))))))
 
-(defn- transform-sql-starting-query
-  "Starting query for a `write_transform_sql` tool output."
-  [metadata-providerable structured]
-  (some->> (get-in structured [:transform :source :query])
-           (->mbql5-query metadata-providerable)))
-
-(defn- transform-declared-table-ids
-  "Read `:table_id` values from a `write_transform_*` tool's `:source_tables` argument.
-  Required by the Python tool's schema; absent from the SQL tool's schema."
-  [arguments]
-  (into #{} (keep :table_id) (:source_tables arguments)))
-
-(def ^:private empty-seeds {:queries [] :tables #{}})
-
-(defn- pair->seeds
-  "Return `{:queries [...] :tables #{...}}` for one `(tool-input, tool-output)` pair.
-
-  `:queries` are MBQL queries to feed into the shared BFS in [[extract-used-tables]].
-
-  `:tables` are already-known table ids. Currently only populated by the Python transform tool, which declares its
-  sources in the `:source_tables` argument rather than embedding them in a query."
+(defn- pair->query
   [metadata-providerable input-block output-block]
   (let [tool-name  (:function input-block)
         arguments  (:arguments input-block)
         structured (tool-output->structured (:result output-block))]
-    (cond
-      (= tool-name notebook-tool-name)
-      (if-let [start (notebook-starting-query metadata-providerable structured)]
-        {:queries [start] :tables #{}}
-        empty-seeds)
-
-      (= tool-name transform-sql-tool-name)
-      {:queries (if-let [start (transform-sql-starting-query metadata-providerable structured)]
-                  [start]
-                  [])
-       :tables  (transform-declared-table-ids arguments)}
-
-      (= tool-name transform-python-tool-name)
-      {:queries [] :tables (transform-declared-table-ids arguments)}
-
-      :else
-      (if-let [start (sql-starting-query metadata-providerable tool-name arguments structured)]
-        {:queries [start] :tables #{}}
-        empty-seeds))))
+    (if (= tool-name notebook-tool-name)
+      (notebook-starting-query metadata-providerable structured)
+      (sql-starting-query metadata-providerable tool-name arguments structured))))
 
 (defn- ->rows
   [message-id table-ids]
@@ -240,11 +188,7 @@
   One row per distinct `(message-id, table-id)` pair. Returns `[]` when nothing was referenced.
 
   Runs a single BFS across all tool-call pairs, so a card referenced from multiple pairs is resolved at most once per
-  call.
-
-  Must run on the pre-strip `parts` before [[metabase.metabot.persistence/strip-tool-output-bloat]] trims tool-output;
-  the transform path needs the un-trimmed `:transform` key, which is not
-  in [[metabase.metabot.persistence/persisted-structured-output-keys]]."
+  call."
   ([message-id parts]
    (lib-be/with-metadata-provider-cache
      (extract-used-tables lib-be/application-database-metadata-provider message-id parts)))
@@ -260,15 +204,10 @@
                                              (when (successful-tracked-output? input output)
                                                [input output])))))
                              parts)
-         {:keys [queries tables]}
-         (reduce (fn [acc [input output]]
-                   (let [seeds (pair->seeds metadata-providerable input output)]
-                     (-> acc
-                         (update :queries into (:queries seeds))
-                         (update :tables into (:tables seeds)))))
-                 empty-seeds
-                 pairs)
-         all-tables (into tables (collect-tables queries))]
+         queries (keep (fn [[input output]]
+                         (pair->query metadata-providerable input output))
+                       pairs)
+         all-tables (collect-tables queries)]
      (->rows message-id all-tables))))
 
 (def ^:dynamic *run-synchronously?*

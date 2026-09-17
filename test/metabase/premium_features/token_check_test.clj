@@ -229,6 +229,29 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
+(deftest license-server-fields-we-do-not-read-test
+  (testing "a token status response carrying fields we don't read still validates the token"
+    (let [token   (tu/random-token)
+          body    {:valid       true
+                   :status      "ok"
+                   :features    ["sso-jwt"]
+                   :plan-alias  "pro-self-hosted"
+                   :new-field   "added by the license server"
+                   :store-users [{:email "owner@example.com" :id 42 :first-name "Owner" :last-name "Person"}]
+                   :quotas      [{:hosting-feature "metabase-ai-tokens"
+                                  :soft-limit      100
+                                  :usage           5
+                                  :locked          false
+                                  :updated-at      "2026-09-01T00:00:00Z"
+                                  :quota-type      "monthly"}]}
+          checker (fresh-checker)]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 200 :body (json/encode body)})]
+          (is (= (assoc body :canonical? true)
+                 (token-check/check-token checker token))))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
 (deftest ^:parallel extract-locks-test
   (testing "empty :meters map yields empty result"
     (is (= {} (#'token-check/extract-locks {}))))
@@ -732,10 +755,10 @@
                          {:soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
           token         (tu/random-token)
           bomb          (fn [& _] (throw (ex-info "DB should not be touched" {})))]
-      (with-redefs [mdb/db-is-set-up? (constantly false)
-                    token-check/read-cache-from-db bomb
-                    token-check/write-cache-to-db! bomb
-                    token-check/clear-db-cache! bomb]
+      (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly false)
+                                  token-check/read-cache-from-db bomb
+                                  token-check/write-cache-to-db! bomb
+                                  token-check/clear-db-cache! bomb]
         (is (= good-response (token-check/-check-token checker token)))
         (is (= 1 @call-count) "inner checker was called exactly once")
         ;; clear-cache! should also skip DB without error

@@ -32,17 +32,22 @@
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
-(def ^:private Token [:map
-                      [:resource [:map
-                                  [:question {:optional true} ResourceId]
-                                  [:dashboard {:optional true} ResourceId]]]
-                      [:params :any]])
+(def ^:private ResourceId
+  "An id or entity_id identifying a Card or Dashboard in a JWT `:resource`."
+  [:or ms/PositiveInt ms/NanoIdString])
+(def ^:private Token
+  "An embedding JWT payload naming its `:resource` and `:params`, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
+  [:map {:closed false, ::mr/deliberately-open true, :description "embedding JWT claims"}
+   [:resource [:map {:closed true}
+               [:question {:optional true} ResourceId]
+               [:dashboard {:optional true} ResourceId]]]
+   [:params api.embed.common/SlugValueMap]])
 
 (defn- conditional-update-in
   "If there's a value at `path`, apply `f`, otherwise return `m`."
@@ -98,7 +103,7 @@
      :card card
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params (:embedding_params card)
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :qp qp
      :constraints constraints
      :options options)))
@@ -197,7 +202,7 @@
      :card card
      :embedding-params (:embedding_params dashboard)
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :constraints constraints
      :qp qp
      :middleware middleware)))

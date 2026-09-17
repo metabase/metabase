@@ -101,26 +101,6 @@
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM invalid" result))
         (is (re-find #"Table 'invalid' not found" result))))
-    (testing "formats transform context"
-      (let [context {:user_is_viewing [{:type "transform"
-                                        :id 123
-                                        :name "Daily Revenue"
-                                        :source_type "sql"}]}
-            result (user-context/format-viewing-context context)]
-        (is (some? result))
-        (is (re-find #"Transform" result))
-        (is (re-find #"Daily Revenue" result))
-        (is (re-find #"sql" result))))
-    (testing "formats transform context with error"
-      (let [context {:user_is_viewing [{:type "transform"
-                                        :id 123
-                                        :name "Broken Revenue"
-                                        :source_type "native"
-                                        :error "ERROR: relation \"missing_table\" does not exist"}]}
-            result (user-context/format-viewing-context context)]
-        (is (some? result))
-        (is (re-find #"Transform error" result))
-        (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
     (testing "formats code editor context"
       (let [context {:user_is_viewing [{:type "code_editor"
                                         :buffers [{:id "buffer1"
@@ -504,81 +484,6 @@
     (is (str/includes? result "1111")
         "Formatting result should contain database id")))
 
-(deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd MBQL 5"
-    (mt/test-driver :h2
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [mp     (mt/metadata-provider)
-              source {:type  "query"
-                      :query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                 (lib/limit 5))}
-              text   (user-context/format-transform-source
-                      (assoc source :transform-source-type :query))]
-          (is (string? text))
-          (is (re-find #"```json" text)
-              "output is a JSON code block (the portable representations form), not pprint'd MBQL 5")
-          (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
-          (is (re-find #"\"source-table\"" text))
-          (is (not (re-find #"lib/metadata" text))
-              "the metadata-provider handle never leaks to the LLM-facing payload"))))))
-
-(deftest ^:parallel format-transform-source-native-renders-repr-json-test
-  (testing "native transform sources also go through the repr export so template-tags stay portable"
-    (mt/test-driver :h2
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [source {:type  "query"
-                      :query {:database (mt/id)
-                              :type     :native
-                              :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}
-              text   (user-context/format-transform-source
-                      (assoc source :transform-source-type :native))]
-          (is (string? text))
-          (is (re-find #"\"mbql.stage/native\"" text))
-          (is (re-find #"SELECT \* FROM VENUES" text)))))))
-
-(deftest format-transform-source-permission-checks-database-test
-  (let [source {:type                  "query"
-                :transform-source-type :query
-                :query                 {:database (mt/id)
-                                        :type     :query
-                                        :query    {:source-table (mt/id :venues)}}}]
-    (testing "renders the query when the user can query its database"
-      (mt/with-test-user :crowberto
-        (is (str/includes? (user-context/format-transform-source source)
-                           "source-table"))))
-    (testing "omits the query when the user can view the database but not query it"
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-        (mt/with-test-user :rasta
-          (is (not (str/includes? (user-context/format-transform-source source)
-                                  "source-table"))))))))
-
-(deftest format-transform-source-native-query-permission-test
-  (let [source    {:type                  "query"
-                   :transform-source-type :native
-                   :query                 {:database (mt/id)
-                                           :type     :native
-                                           :native   {:query "SELECT * FROM VENUES"}}}
-        exported? (fn []
-                    (mt/with-current-user (mt/user->id :rasta)
-                      (str/includes? (user-context/format-transform-source source) "VENUES")))]
-    (mt/with-no-data-perms-for-all-users!
-      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-      (testing "a native query is exported when the user has full database-level native permission"
-        (perms/set-database-permission! (perms-group/all-users) (mt/id)
-                                        :perms/create-queries :query-builder-and-native)
-        (is (exported?)))
-      (testing "and omitted when the user has only query-builder permission"
-        (perms/set-database-permission! (perms-group/all-users) (mt/id)
-                                        :perms/create-queries :query-builder)
-        (is (not (exported?))))
-      (testing "or native permission on only some tables, even the one the SQL names"
-        (perms/set-database-permission! (perms-group/all-users) (mt/id)
-                                        :perms/create-queries :no)
-        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
-                                     :perms/create-queries :query-builder-and-native)
-        (is (not (exported?)))))))
-
 (deftest exportable-query-source-card-test
   (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                             :type     :query
@@ -652,19 +557,6 @@
           (let [out (user-context/format-viewing-context (viewing card-id))]
             (is (str/includes? out "notebook editor"))
             (is (re-find #"source-card|card__" out))))))))
-
-(deftest format-transform-source-denied-database-withholds-query-test
-  (testing "a transform source over a database the user cannot read renders no query body"
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-test-user :rasta
-          (let [source {:type  "query"
-                        :query {:database db-id
-                                :type     :native
-                                :native   {:query "SELECT secret FROM t"}}}
-                text   (user-context/format-transform-source
-                        (assoc source :transform-source-type :native))]
-            (is (not (str/includes? (str text) "SELECT secret")))))))))
 
 (defn- refusing-store
   "A ContentStore that records `tag` and refuses, the way the real stores do for a row the

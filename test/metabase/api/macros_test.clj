@@ -82,24 +82,24 @@
             [{:keys [id]} :- [:map
                               [:id pos-int?]]]
             (neat))
-    {:route {:path "/move/:id", :regexes {:id #"[0-9]+"}}}
+    {:route {:path "/move/:id", :regexes {"id" #"[0-9]+"}}}
 
     '(:post "/move/:id"
             [{:keys [id]} :- [:map
                               [:id uuid?]]]
             (neat))
-    {:route {:path "/move/:id", :regexes {:id #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"}}}
+    {:route {:path "/move/:id", :regexes {"id" #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"}}}
 
     '(:post "/move/:id"
             [{:keys [id]} :- [:map
                               [:id ::id]]]
             (neat))
-    {:route {:path "/move/:id", :regexes {:id #"[0-9]+"}}}
+    {:route {:path "/move/:id", :regexes {"id" #"[0-9]+"}}}
 
     '(:post "/move/:id"
             [{:keys [id]} :- RouteParams]
             (neat))
-    {:route {:path "/move/:id", :regexes {:id #"[abc]{4}"}}}))
+    {:route {:path "/move/:id", :regexes {"id" #"[abc]{4}"}}}))
 
 (deftest ^:parallel multipart-tempfile-cleanup-on-throw-test
   (testing "tempfiles are deleted when the handler throws, e.g. on a param validation 400"

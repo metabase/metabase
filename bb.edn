@@ -265,9 +265,13 @@
   {:doc "Print the module hierarchy, nesting enterprise extensions under their OSS module"
    :examples [["./bin/mage modules-tree" "Print the full tree; * marks a custom :ns-prefix"]
               ["./bin/mage modules-tree --nested-only" "Print only roots with nested modules"]
-              ["./bin/mage modules-tree --prefixes" "Show custom prefixes instead of *"]]
+              ["./bin/mage modules-tree --prefixes" "Show custom prefixes instead of *"]
+              ["./bin/mage modules-tree --html --output modules.html" "Write the interactive explorer"]]
    :options [["-n" "--nested-only" "Only print modules that have nested children"]
-             ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]]
+             ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]
+             ["-H" "--html" "Emit the interactive HTML explorer instead of the text tree"]
+             ["-o" "--output FILE" "With --html, write to FILE instead of stdout"]
+             ["-S" "--no-stats" "With --html, skip the slower per-module source metrics"]]
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 

@@ -46,6 +46,11 @@
    {:error/message "Instance of a java.time.temporal.Temporal"}
    (partial instance? Temporal)])
 
+(def ^:private InstanceOfDateTimeFormatter
+  [:fn
+   {:error/message "Instance of a java.time.format.DateTimeFormatter"}
+   (partial instance? DateTimeFormatter)])
+
 (def ^:private utc-zone-region (t/zone-id "UTC"))
 
 (defn- try-parse-as-iso-timestamp
@@ -63,8 +68,8 @@
 
 (mu/defn parse-with-formatter :- [:maybe InstanceOfTemporal]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
-  [formattr
-   s :- [:maybe :string]]
+  [formattr :- InstanceOfDateTimeFormatter
+   s        :- [:maybe :string]]
   {:pre [((some-fn string? nil?) s)]}
   (when-not (str/blank? s)
     (let [formattr          (t/formatter formattr)

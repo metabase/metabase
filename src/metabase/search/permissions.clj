@@ -1,5 +1,6 @@
 (ns metabase.search.permissions
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -7,7 +8,7 @@
    [metabase.util.malli :as mu]))
 
 (defn- assert-current-user! [missing-param]
-  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
+  (assert @api/*current-user*
           (format "metabase.api.common/*current-user* must be bound if %s is missing from search-ctx" missing-param)))
 
 (defn- impersonated-user? [{:keys [is-impersonated-user?] :as _search-ctx}]

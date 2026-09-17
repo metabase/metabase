@@ -27,7 +27,7 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {

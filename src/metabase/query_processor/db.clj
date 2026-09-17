@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -17,7 +18,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn source-card-metadata
@@ -68,7 +69,7 @@
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
   [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe [:sequential :map]]]
+   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
   (t2/update! :model/Card card-id {:result_metadata result-metadata
                                    :updated_at      :updated_at}))
 

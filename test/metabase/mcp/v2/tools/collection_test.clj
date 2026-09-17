@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive, and the :collection projection its echo is built from.
    [metabase.mcp.v2.tools.collection :as tools.collection]
@@ -40,7 +41,7 @@
    error can never masquerade as a result."
   [{:keys [result error]}]
   (when error
-    (throw (ex-info (str "tool call rejected: " (:message error)) {:error error})))
+    (throw (ex-info (str "tool call rejected: " (message/render (:message error))) {:error error})))
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
@@ -51,7 +52,7 @@
    can never satisfy an error assertion."
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)
     :else             (throw (ex-info "expected a tool error, got success" {:result result}))))
 
@@ -87,7 +88,7 @@
 ;; `metabase.mcp.v2.tools.content`, which lands later in the stack.
 
 (deftest create-requires-name-test
-  (is (re-find #"`name` is required when method is \"create\""
+  (is (re-find #"\"name\" is required when method is \"create\""
                (tool-error (call-tool! :crowberto {:method "create" :description "no name"})))))
 
 (deftest create-nests-under-parent-test
@@ -152,7 +153,7 @@
 (deftest create-rejects-update-only-args-test
   (doseq [[k v] {:archived true :id 1}]
     (testing (str "`" (name k) "` on create is a teaching error, not silently ignored")
-      (is (re-find (re-pattern (str "`" (name k) "` applies to method \"update\" only"))
+      (is (re-find (re-pattern (str "\"" (name k) "\" applies to method \"update\" only"))
                    (tool-error (call-tool! :crowberto {:method "create" :name "x" k v})))))))
 
 (deftest create-requires-write-perms-on-parent-test
@@ -233,7 +234,7 @@
             so parent_id would otherwise be silently dropped on the way to the trash"
     (mt/with-temp [:model/Collection parent {:name "Archive/2026"}
                    :model/Collection coll   {:name "Q3 Planning"}]
-      (is (re-find #"`archived: true` and `parent_id` can't be combined"
+      (is (re-find #"`archived: true` and \"parent_id\" can't be combined"
                    (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
                                                        :archived true :parent_id (:id parent)}))))
       (testing "and nothing happened — not archived, not moved"
@@ -264,7 +265,7 @@
                    :model/Collection coll   {:name "Trashed mover"}]
       (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :archived true}))
       (let [location (t2/select-one-fn :location :model/Collection :id (:id coll))]
-        (is (re-find #"Pass `archived: false` alongside `parent_id`"
+        (is (re-find #"Pass `archived: false` alongside \"parent_id\""
                      (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
                                                          :parent_id (:id parent)}))))
         (testing "and the collection did not move"
@@ -290,7 +291,7 @@
       (is (true? (t2/select-one-fn :archived :model/Collection :id (:id coll)))))))
 
 (deftest update-requires-id-test
-  (is (re-find #"`id` is required when method is \"update\""
+  (is (re-find #"\"id\" is required when method is \"update\""
                (tool-error (call-tool! :crowberto {:method "update" :name "nope"})))))
 
 (deftest update-transforms-namespace-collection-test
@@ -323,7 +324,7 @@
 
 (deftest update-rejects-namespace-test
   (mt/with-temp [:model/Collection coll {:name "Fixed namespace"}]
-    (is (re-find #"`namespace` applies to method \"create\" only"
+    (is (re-find #"\"namespace\" applies to method \"create\" only"
                  (tool-error (call-tool! :crowberto {:method "update" :id (:id coll) :namespace "snippets"}))))))
 
 (deftest update-by-entity-id-test
@@ -395,7 +396,7 @@
 (deftest scope-gating-test
   (mt/with-model-cleanup [:model/Collection]
     (testing "a bearer token without the write scope cannot call the tool at all"
-      (is (re-find #"^Insufficient scope to call tool: collection_write\."
+      (is (re-find #"^Insufficient scope to call tool: \"collection_write\"\."
                    (tool-error (call-tool! :crowberto #{"agent:content:read"} {:method "create" :name "x"})))))
     (testing "the write scope creates"
       (is (int? (:id (tool-result (call-tool! :crowberto #{"agent:content:write"}
@@ -407,7 +408,7 @@
                                            {:method "update" :id 13371337 :name "x"})))))
     (testing "the v1 create scope does not reach this tool — it gates POST /api/agent/v1/collection,
               and collection_write is not that endpoint"
-      (is (re-find #"^Insufficient scope to call tool: collection_write\."
+      (is (re-find #"^Insufficient scope to call tool: \"collection_write\"\."
                    (tool-error (call-tool! :crowberto #{"agent:collection:create"}
                                            {:method "create" :name "x"})))))
     ;; GHY-4225: the metabot permission wildcards no longer bear on v2 — in-app callers use

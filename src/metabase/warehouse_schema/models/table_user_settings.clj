@@ -100,7 +100,7 @@
 
 (mu/defn upsert-user-settings
   "Record the user-settable Table columns present in `settings` as the user values of `table`."
-  [{:keys [id]} :- [:map [:id ::lib.schema.id/table]]
+  [{:keys [id]} :- ::warehouse-schema.schema/table
    settings     :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (seq settings)
@@ -138,7 +138,7 @@
 
 (mu/defn unset-user-settings!
   "Drop the user values of the Table columns `ks` for `table`."
-  [{:keys [id]} :- [:map [:id ::lib.schema.id/table]]
+  [{:keys [id]} :- ::warehouse-schema.schema/table
    ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-table-columns)]]
   (when (warehouse-schema.db/table-user-settings-exist? id)
     (warehouse-schema.db/update-table-user-settings!

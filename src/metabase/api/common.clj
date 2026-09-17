@@ -445,21 +445,28 @@
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
+(def ^:private ColumnValue
+  "One value of a column compared by `column-will-change?`."
+  [:maybe [:or :string :int :boolean :keyword
+           :metabase.queries.schema/card.dataset-query
+           :metabase.queries.schema/card.result-metadata
+           ms/EmbeddingParams]])
+
 (mu/defn column-will-change? :- :boolean
-  "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
-  endpoint) is applied.
+  "Helper for PATCH-style operations to see if a column is set to change when `after` (the column's value in the
+  input to the endpoint, or `::not-provided` when the column is absent from that input) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? false true) ; -> true, because value will change
 
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? false false) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- :keyword object-before-updates :- :map object-updates :- :map]
+    (api/column-will-change? false ::not-provided) ; -> false; value not specified in updates (request body)"
+  [before :- ColumnValue
+   after  :- [:or ColumnValue [:= ::not-provided]]]
   (boolean
-   (and (contains? object-updates k)
-        (not= (get object-before-updates k)
-              (get object-updates k)))))
+   (and (not= after ::not-provided)
+        (not= before after))))
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
@@ -494,14 +501,14 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  [:map
+  [:map {:closed true}
    [:collection_id       [:maybe ms/PositiveInt]]
    [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  [:map
+  [:map {:closed true}
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -510,7 +517,7 @@
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
-  ([new-model-data :- ModelWithPosition]
+  ([new-model-data :- ModelWithOptionalPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
   ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
@@ -578,7 +585,7 @@
   "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
   [current-obj obj-updates]
   (cond-> obj-updates
-    (column-will-change? :archived current-obj obj-updates)
+    (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
     (assoc :archived_directly (boolean (:archived obj-updates)))
 
     ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
@@ -587,7 +594,7 @@
     ;;
     ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
     ;; along with it.
-    (and (column-will-change? :archived current-obj obj-updates)
+    (and (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
          (:archived obj-updates))
     (dissoc :collection_id)))
 
@@ -603,9 +610,10 @@
   and an `:id`. The `f` function is called like `(f model all-items-with-that-model)` and should return a collection
   of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
   for reordering items the way they were."
-  [f items :- [:sequential [:map
-                            [:id ms/PositiveInt]
-                            [:model :keyword]]]]
+  [f :- ifn?
+   items :- [:sequential [:map {:closed true}
+                          [:id ms/PositiveInt]
+                          [:model :keyword]]]]
   (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
     (->> items
          (group-by :model)

@@ -5,8 +5,10 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -488,7 +490,12 @@
 
 (mu/defn insert-queries!
   "Insert the Query `rows`, returning the number inserted."
-  [rows :- [:sequential :map]]
+  [rows :- [:sequential [:map {:closed true}
+                         [:query                  [:or
+                                                   ::lib-be.schema/empty-query
+                                                   :metabase.query-processor.schema/any-query]]
+                         [:query_hash             bytes?]
+                         [:average_execution_time number?]]]]
   (t2/insert! :model/Query rows))
 
 (mu/defn query-hash-statuses-reducible
