@@ -1,4 +1,4 @@
-(ns metabase.permissions.models.data-permissions-test
+(ns ^:mb/app-db-migrations-test metabase.permissions.models.data-permissions-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]

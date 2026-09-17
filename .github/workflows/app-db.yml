@@ -73,7 +73,17 @@ jobs:
             image: circleci/mariadb:latest
             env:
               enable-ssl-tests: 'false'
-        job:
+        # The shards every app DB job runs, shared by the other app DB jobs below.
+        #
+        # Hawk partitions by test count, not time. The migration tests are a few hundred tests that take far
+        # longer than their count suggests, and they sort together near the front, so a count-based split piles
+        # them all onto one shard. They're tagged `:mb/app-db-migrations-test` and get Part 1 to themselves,
+        # while Parts 2 and 3 exclude the tag and split everything else, so every test still runs exactly once.
+        # A clj-kondo hook requires the tag on any namespace that uses `test-migrations`.
+        #
+        # The tag only splits `test`. Enterprise Tests runs whole, so it must not exclude the tag: nothing else
+        # would run a tagged enterprise test.
+        job: &app-db-shards
           - name: Enterprise Tests
             build-static-viz: false
             test-args: >-
@@ -83,16 +93,22 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :partition/total 2
-              :partition/index 0
+              :only-tags '[:mb/app-db-migrations-test]'
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
+              :partition/index 0
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test :mb/app-db-migrations-test'
+          - name: EE App DB Tests (Part 3)
+            build-static-viz: true
+            test-args: >-
+              :only '"test"'
+              :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test :mb/app-db-migrations-test'
 
     services:
       mysql:
@@ -182,26 +198,7 @@ jobs:
           #   env:
           #     enable-ssl-tests: 'false'
           #     enable-aws-iam-tests: 'false'
-        job:
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+        job: *app-db-shards
 
     services:
       mysql:
@@ -290,27 +287,7 @@ jobs:
             env:
               enable-ssl-tests: 'true'
               enable-aws-iam-tests: 'true'
-        job:
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :exclude-tags [:mb/driver-tests]
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+        job: *app-db-shards
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       # The old migrations tests are broken, so the `mb/old-migrations-test` tag is
