@@ -295,35 +295,21 @@ export function MainNavbarView({
                 />
               )}
 
-              {trashCollection && (
-                <TrashSidebarSection>
-                  <ErrorBoundary>
-                    <Tree
-                      data={[trashCollection]}
-                      selectedId={collectionItem?.id}
-                      onSelect={onItemSelect}
-                      TreeNode={SidebarCollectionLink}
-                      role="tree"
-                    />
-                  </ErrorBoundary>
-                </TrashSidebarSection>
-              )}
+              {/* Only the Unofficial half browses raw data; Official is curated content. */}
+              <SidebarSection>
+                <ErrorBoundary>
+                  <BrowseNavSection
+                    nonEntityItem={nonEntityItem}
+                    onItemSelect={onItemSelect}
+                    hasDataAccess={hasDataAccess}
+                    onAddDataModalOpen={openAddDataModal}
+                  />
+                </ErrorBoundary>
+              </SidebarSection>
 
               <OpenItemsSection items={openItems} selectedKey={openKey} />
             </>
           )}
-
-          {/* Both sections need the Data links: they are the only way to the list pages. */}
-          <SidebarSection>
-            <ErrorBoundary>
-              <BrowseNavSection
-                nonEntityItem={nonEntityItem}
-                onItemSelect={onItemSelect}
-                hasDataAccess={hasDataAccess}
-                onAddDataModalOpen={openAddDataModal}
-              />
-            </ErrorBoundary>
-          </SidebarSection>
         </div>
 
         {isUnofficial && (
@@ -376,6 +362,19 @@ export function MainNavbarView({
             <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
               {t`Other users' personal collections`}
             </PaddedSidebarLink>
+          )}
+
+          {/* Deleted things belong with the collections they were deleted from. */}
+          {trashCollection && (
+            <TrashSidebarSection>
+              <Tree
+                data={[trashCollection]}
+                selectedId={collectionItem?.id}
+                onSelect={onItemSelect}
+                TreeNode={SidebarCollectionLink}
+                role="tree"
+              />
+            </TrashSidebarSection>
           )}
         </ErrorBoundary>
       </NavDrawer>
