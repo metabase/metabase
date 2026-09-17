@@ -20,6 +20,10 @@ export const getNavSectionOverride = (state: State) => {
   return state.app.navSection;
 };
 
+export const getOpenNavItems = (state: State) => {
+  return state.app.openNavItems;
+};
+
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;

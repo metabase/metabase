@@ -4,7 +4,10 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 
-import type { NavSection } from "metabase/nav/containers/MainNavbar/types";
+import type {
+  NavSection,
+  OpenNavItem,
+} from "metabase/nav/containers/MainNavbar/types";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
@@ -92,6 +95,35 @@ const navSection = handleActions<NavSection | null>(
   null,
 );
 
+export const OPEN_NAV_ITEM = "metabase/app/OPEN_NAV_ITEM";
+export const CLOSE_NAV_ITEM = "metabase/app/CLOSE_NAV_ITEM";
+
+export const openNavItem = createAction<OpenNavItem>(OPEN_NAV_ITEM);
+/** Takes the row out of the rail by its `key`; the entity itself is untouched. */
+export const closeNavItem = createAction<string>(CLOSE_NAV_ITEM);
+
+const openNavItems = handleActions<OpenNavItem[], any>(
+  {
+    [OPEN_NAV_ITEM]: {
+      next: (state: OpenNavItem[], { payload }: { payload: OpenNavItem }) => {
+        const index = state.findIndex((item) => item.key === payload.key);
+
+        if (index === -1) {
+          return [...state, payload];
+        }
+
+        // Reopening keeps its place in the list, but picks up a renamed entity.
+        return state.map((item, i) => (i === index ? payload : item));
+      },
+    },
+    [CLOSE_NAV_ITEM]: {
+      next: (state: OpenNavItem[], { payload }: { payload: string }) =>
+        state.filter((item) => item.key !== payload),
+    },
+  },
+  [],
+);
+
 const tempStorageSlice = createSlice({
   name: "tempStorage",
   // Unjustified type cast. FIXME
@@ -116,6 +148,7 @@ export default combineReducers({
   detailView,
   errorPage,
   navSection,
+  openNavItems,
   isDndAvailable: (initValue: unknown) => {
     if (typeof initValue === "boolean") {
       return initValue;

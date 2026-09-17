@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import {
   skipToken,
@@ -6,7 +6,8 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
-import { connect } from "metabase/redux";
+import { connect, useDispatch } from "metabase/redux";
+import { openNavItem } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -22,6 +23,7 @@ import {
   isModelPath,
   isQuestionPath,
 } from "./getSelectedItems";
+import { getOpenNavItem } from "./open-nav-item";
 import type { MainNavbarOwnProps, SelectedItem } from "./types";
 
 interface EntityLoaderProps {
@@ -50,6 +52,7 @@ function MainNavbarInner({
   dashboard,
   ...props
 }: Props) {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { currentData: card } = useGetCardQuery(
     questionId
@@ -74,6 +77,17 @@ function MainNavbarInner({
       dashboard,
     });
   }, [location, params, card, dashboard, collection]);
+
+  const openItem = useMemo(
+    () => getOpenNavItem({ pathname: location.pathname, card, dashboard }),
+    [location.pathname, card, dashboard],
+  );
+
+  useEffect(() => {
+    if (openItem) {
+      dispatch(openNavItem(openItem));
+    }
+  }, [dispatch, openItem]);
 
   return (
     <Sidebar

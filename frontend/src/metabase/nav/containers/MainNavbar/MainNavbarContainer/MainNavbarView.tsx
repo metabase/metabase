@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,7 +12,6 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
-import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
@@ -23,6 +22,7 @@ import {
 } from "metabase/current-user";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
+import { NavDrawer } from "metabase/nav/containers/MainNavbar/NavDrawer";
 import { NavSectionSwitcher } from "metabase/nav/containers/MainNavbar/NavSectionSwitcher";
 import { OfficialNav } from "metabase/nav/containers/MainNavbar/OfficialNav";
 import {
@@ -31,6 +31,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { getOpenNavItems } from "metabase/selectors/app";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -43,7 +44,6 @@ import type { Bookmark, Collection } from "metabase-types/api";
 import {
   PaddedSidebarLink,
   SidebarContentRoot,
-  SidebarHeading,
   SidebarSection,
   TrashSidebarSection,
 } from "../MainNavbar.styled";
@@ -60,6 +60,7 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 import S from "./MainNavbarView.module.css";
+import { OpenItemsSection } from "./OpenItemsSection";
 
 type Props = {
   bookmarks: Bookmark[];
@@ -97,9 +98,13 @@ export function MainNavbarView({
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
-  const [expandCollections = true, setExpandCollections] = useUserSetting(
-    "expand-collections-in-nav",
-  );
+
+  const [railNode, setRailNode] = useState<HTMLDivElement | null>(null);
+  const [
+    isCollectionsDrawerOpen,
+    { toggle: toggleCollectionsDrawer, close: closeCollectionsDrawer },
+  ] = useDisclosure(false);
+  const openItems = useSelector(getOpenNavItems);
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
@@ -118,6 +123,12 @@ export function MainNavbarView({
     dashboard: dashboardItem,
     "non-entity": nonEntityItem,
   } = _.indexBy(selectedItems, (item) => item.type);
+
+  const openKey = cardItem
+    ? `card-${cardItem.id}`
+    : dashboardItem
+      ? `dashboard-${dashboardItem.id}`
+      : undefined;
 
   // Kept as a no-op hook point: the rail no longer closes on selection.
   const onItemSelect = useCallback(() => {}, []);
@@ -184,7 +195,7 @@ export function MainNavbarView({
 
   return (
     <ErrorBoundary>
-      <SidebarContentRoot>
+      <SidebarContentRoot ref={setRailNode}>
         <div className={cx({ [S.hasFooter]: isUnofficial })}>
           <NavSectionSwitcher />
 
@@ -268,60 +279,14 @@ export function MainNavbarView({
               )}
 
               <SidebarSection>
-                <ErrorBoundary>
-                  <CollapseSection
-                    header={
-                      <SidebarHeading>{collectionsHeading}</SidebarHeading>
-                    }
-                    initialState={expandCollections ? "expanded" : "collapsed"}
-                    iconPosition="right"
-                    iconSize={8}
-                    onToggle={setExpandCollections}
-                    rightAction={
-                      canWriteToCollections && !isTenantUser ? (
-                        <Tooltip label={t`Create a new collection`}>
-                          <ActionIcon
-                            aria-label={t`Create a new collection`}
-                            color="text-secondary"
-                            onClick={() => {
-                              trackNewCollectionFromNavInitiated();
-                              handleCreateNewCollection();
-                            }}
-                          >
-                            <Icon name="add" />
-                          </ActionIcon>
-                        </Tooltip>
-                      ) : null
-                    }
-                    role="section"
-                    aria-label={t`Collections`}
-                  >
-                    {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                      <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                        collections={regularCollections}
-                        selectedId={collectionItem?.id}
-                        onSelect={onItemSelect}
-                      />
-                    ) : (
-                      <Tree
-                        data={regularCollections}
-                        selectedId={collectionItem?.id}
-                        onSelect={onItemSelect}
-                        TreeNode={SidebarCollectionLink}
-                        role="tree"
-                        aria-label="collection-tree"
-                      />
-                    )}
-                    {showOtherUsersCollections && (
-                      <PaddedSidebarLink
-                        icon="group"
-                        url={OTHER_USERS_COLLECTIONS_URL}
-                      >
-                        {t`Other users' personal collections`}
-                      </PaddedSidebarLink>
-                    )}
-                  </CollapseSection>
-                </ErrorBoundary>
+                <PaddedSidebarLink
+                  icon="folder"
+                  isSelected={isCollectionsDrawerOpen}
+                  onClick={toggleCollectionsDrawer}
+                  right={<Icon name="chevronright" size={12} />}
+                >
+                  {collectionsHeading}
+                </PaddedSidebarLink>
               </SidebarSection>
 
               {PLUGIN_DATA_APPS.isEnabled && (
@@ -343,6 +308,8 @@ export function MainNavbarView({
                   </ErrorBoundary>
                 </TrashSidebarSection>
               )}
+
+              <OpenItemsSection items={openItems} selectedKey={openKey} />
             </>
           )}
 
@@ -365,6 +332,53 @@ export function MainNavbarView({
           </Box>
         )}
       </SidebarContentRoot>
+
+      <NavDrawer
+        title={collectionsHeading}
+        opened={isCollectionsDrawerOpen}
+        onClose={closeCollectionsDrawer}
+        railNode={railNode}
+        actions={
+          canWriteToCollections && !isTenantUser ? (
+            <Tooltip label={t`Create a new collection`}>
+              <ActionIcon
+                aria-label={t`Create a new collection`}
+                color="text-secondary"
+                onClick={() => {
+                  trackNewCollectionFromNavInitiated();
+                  handleCreateNewCollection();
+                }}
+              >
+                <Icon name="add" />
+              </ActionIcon>
+            </Tooltip>
+          ) : null
+        }
+      >
+        <ErrorBoundary>
+          {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+            <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+              collections={regularCollections}
+              selectedId={collectionItem?.id}
+              onSelect={onItemSelect}
+            />
+          ) : (
+            <Tree
+              data={regularCollections}
+              selectedId={collectionItem?.id}
+              onSelect={onItemSelect}
+              TreeNode={SidebarCollectionLink}
+              role="tree"
+              aria-label="collection-tree"
+            />
+          )}
+          {showOtherUsersCollections && (
+            <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
+              {t`Other users' personal collections`}
+            </PaddedSidebarLink>
+          )}
+        </ErrorBoundary>
+      </NavDrawer>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </ErrorBoundary>
