@@ -35,8 +35,9 @@
       (is (= [(:id f1)] (sync.db/top-level-field-ids-by-name (:id t1) ["total"]))))
     (testing "a field name that looks like SQL matches nothing"
       (is (empty? (sync.db/top-level-field-ids-by-name (:id t1) [sql-injection-attempt]))))
-    ;; `schema+table+names` is deliberately unmarked -- see the comment on the function. HoneySQL already binds each
-    ;; element of a `[:composite ...]` `:in` as a parameter, so a SQL-looking triple still matches nothing.
+    ;; `schema+table+names` is deliberately unmarked (rubric rule 5: it can be empty, and `[:composite ...]` is a
+    ;; known limit of the lint). HoneySQL already binds each element of a `[:composite ...]` `:in` as a parameter,
+    ;; so a SQL-looking triple still matches nothing.
     (testing "the composite lookup binds its triples"
       (is (= [(:id f1)]
              (into [] (map :id) (sync.db/top-level-field-ids-by-schema-table-and-name-reducible
@@ -48,6 +49,23 @@
       (is (empty? (sync.db/incomplete-analysis-fields-for-table (:id t1) 5)))
       (is (empty? (sync.db/inactive-fields-by-lower-name (:id t1) nil ["total"])))
       (is (= 1 (sync.db/active-table-count (:id db)))))))
+
+(deftest ^:synchronized transformed-column-stays-a-kv-arg-test
+  (testing ":semantic_type is a kv-arg so Toucan's transform runs and the type binds as a parameter"
+    ;; As a `{:where [:= :semantic_type :type/Name]}` map the transform is skipped and HoneySQL formats the keyword
+    ;; as an identifier -- `semantic_type = type."Name"` -- which matches nothing. See the rubric's transform section.
+    (let [[sql & params] (t2/compile (t2/count :model/Field
+                                               :table_id (long 1)
+                                               :active true
+                                               :visibility_type [:not-in ["sensitive" "retired"]]
+                                               :semantic_type :type/Name))]
+      (is (contains? (set params) "type/Name"))
+      (is (not (re-find #"(?i)type\.\"?Name" sql)))))
+  (mt/with-temp [:model/Database db {:name "vdb"}
+                 :model/Table    t1 {:db_id (:id db) :name "orders" :schema "public" :active true}
+                 :model/Field    _  {:table_id (:id t1) :name "name" :active true :semantic_type :type/Name}
+                 :model/Field    _  {:table_id (:id t1) :name "total" :active true}]
+    (is (= 1 (sync.db/name-field-count-for-table (:id t1))))))
 
 (deftest ^:synchronized field-values-kv-arg-path-test
   (testing "the FieldValues reads stay kv-args so `define-before-select` still adds the hash_key predicate"
