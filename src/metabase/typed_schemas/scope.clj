@@ -30,7 +30,8 @@
    [metabase.models.interface :as mi]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,11 +53,11 @@
   (when database-ref
     (let [{:keys [id name]} database-ref]
       (if id
-        (let [database (typed-schemas.db/database id)]
+        (let [database (warehouses.db/select-one-database {:id id})]
           (if (and database (mi/can-read? database))
             #{id}
             #{}))
-        (->> (typed-schemas.db/databases-named name)
+        (->> (warehouses.db/select-databases {:name name})
              (filter mi/can-read?)
              (map :id)
              set)))))

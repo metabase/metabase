@@ -40,19 +40,22 @@
   (when (seq pairs)
     (let [distinct-pairs (distinct pairs)
           sr-ids         (into #{} (map second) distinct-pairs)
-          doc-card-ids   (queries.db/document-card-ids document-id)
+          doc-card-ids   (queries.db/select-card-pks {:document_id document-id})
           reachable      (if (seq doc-card-ids)
-                           (queries.db/stored-result-ids-used-by-cards doc-card-ids sr-ids)
+                           (into #{} (map :stored_result_id)
+                                 (queries.db/select-stored-result-uses {:card_id           doc-card-ids
+                                                                        :stored_result_id  sr-ids
+                                                                        :columns           [:stored_result_id]}))
                            #{})]
       (doseq [[new-card-id sr-id] distinct-pairs
               :when (contains? reachable sr-id)]
-        (queries.db/insert-stored-result-use! sr-id new-card-id)))))
+        (queries.db/insert-stored-result-use! {:stored_result_id sr-id, :card_id new-card-id})))))
 
 (mu/defn assert-can-view-card-snapshots!
   "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
   from."
   [card-id :- ms/PositiveInt]
-  (let [snapshots (queries.db/stored-results-for-card card-id)]
+  (let [snapshots (queries.db/select-stored-results-for-card card-id)]
     (when (empty? snapshots)
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
     (doseq [snapshot snapshots]

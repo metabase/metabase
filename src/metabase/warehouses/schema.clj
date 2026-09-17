@@ -1,6 +1,7 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.cron]
    [metabase.util.malli.registry :as mr]
@@ -57,8 +58,8 @@
 (mr/def ::database.update
   "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."
   [:map {:closed true}
-   [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at                  {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at                  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
@@ -88,6 +89,19 @@
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::database.create
+  "What an insert of a Database accepts: every column an update accepts, plus the `:id` an install that pins a fixed
+  id (the audit database) supplies."
+  [:merge ::database.update [:map {:closed true} [:id {:optional true} ::lib.schema.id/database]]])
+
+(mr/def ::database.partial
+  "A Database row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::database [:map {:closed true} [:id {:optional true} ::lib.schema.id/database]]])
+
+(mr/def ::database.column
+  "A column of `metabase_database`, for the `:columns` option of the queries in [[metabase.warehouses.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::database.update))))
 
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."

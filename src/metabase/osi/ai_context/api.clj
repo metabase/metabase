@@ -49,7 +49,8 @@
   "The stored row for an entity, looked up by its normalized key, or nil. The CRUD API speaks the real
   card flavors; storage keys on the canonical `card`, so normalize before matching."
   [entity-type entity-local-id]
-  (osi.db/ai-context (entity-retrieval/normalize-entity-type entity-type) entity-local-id))
+  (osi.db/select-one-osi-ai-context {:entity_type (entity-retrieval/normalize-entity-type entity-type)
+                                     :entity_local_id entity-local-id}))
 
 (def ^:private logical-key-route-schema
   ;; entity-type is any non-blank string at the route level — a write to a non-writable type gets a clear
@@ -71,8 +72,8 @@
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
-    {:data   (osi.db/ai-contexts-page limit offset)
-     :total  (osi.db/ai-context-count)
+    {:data   (osi.db/select-osi-ai-contexts {:order-by [:entity_type :entity_local_id] :limit limit :offset offset})
+     :total  (osi.db/count-osi-ai-contexts)
      :limit  limit
      :offset offset}))
 
@@ -133,5 +134,6 @@
    _query-params]
   (api/check-superuser)
   (api/check-404 (get-entry entity-type entity-local-id))
-  (osi.db/delete-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id)
+  (osi.db/delete-osi-ai-contexts! {:entity_type (entity-retrieval/normalize-entity-type entity-type)
+                                   :entity_local_id entity-local-id})
   api/generic-204-no-content)

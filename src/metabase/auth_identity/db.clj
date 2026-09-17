@@ -1,77 +1,94 @@
 (ns metabase.auth-identity.db
-  "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for `:model/AuthIdentity`. Every function here is a direct Toucan 2 call with no
+  additional logic, so no other namespace in the module runs an AuthIdentity query itself (model definitions still
+  use `toucan2.core`).
+
+  The queries below follow [[::auth-identity-opts]]; queries that do not fit it, and queries for other models this
+  namespace also hosts, live in the auth-identity-only section at the bottom of this namespace."
   (:require
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(def ^:private AuthIdentityRow
-  "The writable columns of an AuthIdentity row (excluding `:id`, `:created_at`, `:updated_at`)."
+(mr/def ::auth-identity-filters
+  "Which AuthIdentities a query applies to. Keys mirror the columns of `auth_identity`: a scalar matches that value
+  and a set matches any of its values."
   [:map {:closed true}
-   [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
-   [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-   [:credentials  {:optional true} [:maybe ::auth-identity.schema/auth-identity.credentials]]
-   [:metadata     {:optional true} [:maybe ::auth-identity.schema/auth-identity.metadata]]
-   [:provider_id  {:optional true} [:maybe :string]]
-   [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:id       {:optional true} ms/PositiveInt]
+   [:user_id  {:optional true} ::lib.schema.id/user]
+   [:provider {:optional true} :string]])
 
-(mu/defn auth-identity
-  "The AuthIdentity of the User with `user-id` at `provider`, or nil."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider))
+(mr/def ::auth-identity-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::auth-identity-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::auth-identity.schema/auth-identity.column]]
+    [:order-by {:optional true} [:sequential ::auth-identity.schema/auth-identity.column]]]])
 
-(mu/defn auth-identity-id
-  "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/AuthIdentity columns))
 
-(mu/defn auth-identity-expiry
-  "The id and expiry of the AuthIdentity of the User with `user-id` at `provider`, or nil."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string]
-  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id user-id :provider provider))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
-(mu/defn auth-identity-exists?
-  "Whether the User with `user-id` has an AuthIdentity at `provider`."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
-(mu/defn insert-auth-identity!
-  "Insert the AuthIdentity `row`, returning the number inserted."
-  [row :- AuthIdentityRow]
-  (t2/insert! :model/AuthIdentity row))
+;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- AuthIdentityRow]
-  (t2/update! :model/AuthIdentity id changes))
+(mu/defn select-one-auth-identity :- [:maybe ::auth-identity.schema/auth-identity.partial]
+  "The first AuthIdentity matching `opts`, or nil."
+  ([]
+   (select-one-auth-identity nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::auth-identity-opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
 
-(mu/defn touch-auth-identity!
-  "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
-  matching AuthIdentity), which updates nothing."
-  [id :- [:maybe ms/PositiveInt]]
-  (t2/update! :model/AuthIdentity id {:last_used_at :%now}))
+(mu/defn select-one-auth-identity-pk :- [:maybe ms/PositiveInt]
+  "The id of the first AuthIdentity matching `opts`, or nil."
+  ([]
+   (select-one-auth-identity-pk nil))
+  ([opts :- [:maybe ::auth-identity-opts]]
+   (apply t2/select-one-pk :model/AuthIdentity (->args opts))))
 
-(mu/defn delete-auth-identities!
-  "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
-  [user-id  :- ::lib.schema.id/user
-   provider :- :string]
-  (t2/delete! :model/AuthIdentity :user_id user-id :provider provider))
+(mu/defn auth-identity-exists? :- :boolean
+  "Whether an AuthIdentity matching `opts` exists."
+  [opts :- [:maybe ::auth-identity-opts]]
+  (apply t2/exists? :model/AuthIdentity (->args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-auth-identity! :- ::auth-identity.schema/auth-identity
+  "Insert the AuthIdentity `row` and return the inserted instance."
+  [row :- ::auth-identity.schema/auth-identity.update]
+  (t2/insert-returning-instance! :model/AuthIdentity row))
+
+(mu/defn update-auth-identities! :- :int
+  "Apply `changes` to every AuthIdentity matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::auth-identity-opts]
+   changes :- ::auth-identity.schema/auth-identity.update]
+  (apply t2/update! :model/AuthIdentity (conj (->kv-args opts) changes)))
+
+(mu/defn delete-auth-identities! :- :int
+  "Delete every AuthIdentity matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::auth-identity-opts]]
+  (apply t2/delete! :model/AuthIdentity (->kv-args opts)))
+
+;;; ------------------------------- Queries used only by the auth-identity module -------------------------------
 
 (mu/defn delete-sessions-for-user!
   "Delete every Session of the User with `user-id`, returning the number deleted. Duplicates
-  `metabase.session.db/delete-sessions-for-user!`; can't delegate to it because the `session` module already depends
+  `metabase.session.db/delete-sessions!`; can't delegate to it because the `session` module already depends
   on `auth-identity`, so the reverse dependency would be a module cycle."
   [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/Session :user_id user-id))
@@ -79,7 +96,7 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
+  (users.db/select-one-user {:id user-id}))
 
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."
@@ -89,7 +106,7 @@
 (mu/defn user-login-columns
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+  (users.db/select-one-user {:id user-id :columns [:id :is_active :last_login :tenant_id]}))
 
 (mu/defn user-login-columns-by-email
   "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
@@ -100,22 +117,22 @@
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login] user-id))
+  (users.db/select-one-user {:id user-id :columns [:id :is_active :last_login]}))
 
 (mu/defn user-active?
   "Whether the User with `user-id` is active."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :is_active :model/User :id user-id))
+  (:is_active (users.db/select-one-user {:id user-id :columns [:is_active]})))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (users.db/update-users! {:id user-id} changes))
 
 (mu/defn insert-user-returning-login-columns!
   "Insert the User `row` and return its id, last login, active flag, and tenant id."
-  [row :- ::users.schema/user.update]
+  [row :- ::users.schema/user.create]
   (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id] row))
 
 (mu/defn insert-session!

@@ -53,11 +53,11 @@
   "Transforms with only the columns the ordering walk needs — avoids loading every transform's full
   row just to compute the dependency graph (full rows are fetched only for the resulting closure)."
   []
-  (transforms.db/transform-dependency-rows))
+  (transforms.db/select-transforms {:columns [:id :target :target_table_id :created_at :table_dependencies]}))
 
 (defn- full-transforms [ids]
   (if (seq ids)
-    (transforms.db/transforms ids)
+    (transforms.db/select-transforms {:id (set ids)})
     []))
 
 (defn- dag-run-plan

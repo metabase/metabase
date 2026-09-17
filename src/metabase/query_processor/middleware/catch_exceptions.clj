@@ -119,7 +119,7 @@
 (mr/def ::query-execution-info
   "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
   [:merge
-   ::queries.schema/query-execution.update
+   ::queries.schema/query-execution.create
    [:map {:closed true}
     [:json_query        {:optional true} ::qp.schema/any-query]
     [:start_time_millis {:optional true} :int]]])

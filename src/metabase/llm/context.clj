@@ -15,7 +15,8 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field-values :as field-values])
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.io StringWriter Writer)))
 
@@ -55,7 +56,7 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [driver (llm.db/database-engine database-id)
+      (let [driver (:engine (warehouses.db/select-one-database {:id database-id :columns [:engine]}))
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
           (let [matched-tables (llm.db/active-tables-matching database-id tables)]

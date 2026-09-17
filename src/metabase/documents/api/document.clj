@@ -69,11 +69,11 @@
   concurrent edit cannot be overwritten. Returns the updated document."
   [document-id card-id position & {:keys [extra-attrs]}]
   (t2/with-transaction [_conn]
-    (let [document (api/check-404 (documents.db/document document-id))
+    (let [document (api/check-404 (documents.db/select-one-document {:id document-id}))
           updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
           updates  (cond-> (select-keys updated [:document])
                      (:is_placeholder document) (assoc :is_placeholder false))]
-      (documents.db/update-document! document-id updates)
+      (documents.db/update-documents! {:id document-id} updates)
       (collections/check-for-remote-sync-update document)))
   (m.document/get-document document-id :log-view? false))
 
@@ -87,7 +87,7 @@
    _query-params]
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
-  {:items (as-> (documents.db/visible-unarchived-documents) docs
+  {:items (as-> (documents.db/select-visible-unarchived-documents) docs
             (filter mi/can-read? docs)
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
@@ -125,7 +125,7 @@
    {:keys [collection_id] :as body} :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
   ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
-  (let [existing-document (api/check-404 (documents.db/document document-id))]
+  (let [existing-document (api/check-404 (documents.db/select-one-document {:id document-id}))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/write-check existing-document)
@@ -140,12 +140,12 @@
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
-  (let [document (api/check-404 (documents.db/document document-id))]
+  (let [document (api/check-404 (documents.db/select-one-document {:id document-id}))]
     (api/write-check document)
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
-    (documents.db/delete-document! document-id)
+    (documents.db/delete-documents! {:id document-id})
     (events/publish-event! :event/document-delete
                            {:object document
                             :user-id api/*current-user-id*})
@@ -197,7 +197,7 @@
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
                            (api/read-check
-                            (documents.db/unarchived-document from-document-id)))
+                            (documents.db/select-one-document {:id from-document-id, :archived false})))
         document-data {:name                (or name (:name existing-document))
                        :document            (:document existing-document)
                        :content_type        (:content_type existing-document)
@@ -210,11 +210,11 @@
                        (let [new-document-id (documents.db/insert-document! document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
-                           (documents.db/update-document! new-document-id
-                                                          (m.document/update-cards-in-ast
-                                                           {:document (:document existing-document)
-                                                            :content_type (:content_type existing-document)}
-                                                           card-id-map)))
+                           (documents.db/update-documents! {:id new-document-id}
+                                                           (m.document/update-cards-in-ast
+                                                            {:document (:document existing-document)
+                                                             :content_type (:content_type existing-document)}
+                                                            card-id-map)))
                          (u/prog1 (m.document/get-document new-document-id)
                            (when (collections/remote-synced-collection? collection_id)
                              (collections/check-non-remote-synced-dependencies <>)))))]
@@ -256,14 +256,14 @@
   ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
   ;; Only one request will successfully create the UUID; both will return the same value.
   (t2/with-transaction [_conn]
-    (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
+    (if-let [existing-uuid (:public_uuid (documents.db/select-one-document {:id document-id, :columns [:public_uuid]}))]
       {:uuid existing-uuid}
       (do
-        (documents.db/update-document! document-id
-                                       {:public_uuid       (str (random-uuid))
-                                        :made_public_by_id api/*current-user-id*})
+        (documents.db/update-documents! {:id document-id}
+                                        {:public_uuid       (str (random-uuid))
+                                         :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
-        {:uuid (documents.db/document-public-uuid document-id)}))))
+        {:uuid (:public_uuid (documents.db/select-one-document {:id document-id, :columns [:public_uuid]}))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -284,9 +284,9 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
-  (documents.db/update-document! document-id
-                                 {:public_uuid       nil
-                                  :made_public_by_id nil})
+  (documents.db/update-documents! {:id document-id}
+                                  {:public_uuid       nil
+                                   :made_public_by_id nil})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map
@@ -305,7 +305,7 @@
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (documents.db/public-documents))
+  (documents.db/select-documents {:columns [:name :id :public_uuid], :public_uuid_set true, :archived false}))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 
@@ -315,7 +315,7 @@
 
    Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
   [document-id card-id]
-  (let [document (api/check-404 (documents.db/unarchived-document document-id))]
+  (let [document (api/check-404 (documents.db/select-one-document {:id document-id, :archived false}))]
     (api/read-check document)
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))

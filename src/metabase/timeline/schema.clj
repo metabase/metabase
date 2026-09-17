@@ -1,6 +1,7 @@
 (ns metabase.timeline.schema
   "Malli schemas for the timeline module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -12,6 +13,10 @@
    [:map {:closed true}
     [:id            ms/PositiveInt]]])
 
+(mr/def ::timeline.partial
+  "A Timeline row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::timeline [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::timeline.update
   "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
   [:map {:closed true}
@@ -21,10 +26,14 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived      {:optional true} [:maybe :boolean]]
    [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:default       {:optional true} [:maybe :boolean]]
    [:entity_id     {:optional true} [:maybe :string]]])
+
+(mr/def ::timeline.column
+  "A column of `timeline`, for the `:columns` option of the queries in [[metabase.timeline.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::timeline.update))))
 
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
@@ -33,17 +42,25 @@
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
+(mr/def ::timeline-event.partial
+  "A TimelineEvent row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::timeline-event [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::timeline-event.update
   "What an update (or insert) of a TimelineEvent accepts: every column of `:timeline_event` except `id`, all optional."
   [:map {:closed true}
    [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
    [:name         {:optional true} [:maybe :string]]
    [:description  {:optional true} [:maybe :string]]
-   [:timestamp    {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:time_matters {:optional true} [:maybe :boolean]]
    [:timezone     {:optional true} [:maybe :string]]
    [:icon         {:optional true} [:maybe :string]]
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::timeline-event.column
+  "A column of `timeline_event`, for the `:columns` option of the queries in [[metabase.timeline.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::timeline-event.update))))

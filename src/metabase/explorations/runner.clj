@@ -35,7 +35,7 @@
 (defn- pending-query-depth
   "Number of `exploration_query` rows currently awaiting execution."
   []
-  (explorations.db/pending-query-count))
+  (explorations.db/count-queries {:status "pending"}))
 
 (defn- oldest-pending-age-seconds
   "Age in seconds of the oldest still-pending `exploration_query`, or 0 when the queue is empty.
@@ -114,7 +114,7 @@
           (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
                           {:row-id (:id row) :variant variant})))
         (let [token (compute-data-access-token dq (:database_id row))]
-          (explorations.db/update-query! (:id row) {:dataset_query dq :name nm :data_access_token token})
+          (explorations.db/update-queries! {:id (:id row)} {:dataset_query dq :name nm :data_access_token token})
           (assoc row :dataset_query dq :name nm :data_access_token token))))))
 
 (defn- safe-chart-config
@@ -184,12 +184,12 @@
 (defn- exploration-creator-id
   "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
   [exploration-query]
-  (explorations.db/exploration-creator-id-for-thread (:exploration_thread_id exploration-query)))
+  (explorations.db/select-exploration-creator-id-for-thread (:exploration_thread_id exploration-query)))
 
 (defn- exploration-id
   "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."
   [exploration-query]
-  (explorations.db/thread-exploration-id (:exploration_thread_id exploration-query)))
+  (:exploration_id (explorations.db/select-one-thread {:id (:exploration_thread_id exploration-query) :columns [:exploration_id]})))
 
 (defn- variant-note
   "Human phrase for a chart's breakdown variant + params, or nil for the plain `default`
@@ -257,7 +257,7 @@
       (if (nil? creator-id)
         (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
                    (:id exploration-query))
-        (let [prompt (explorations.db/thread-prompt thread-id)]
+        (let [prompt (:prompt (explorations.db/select-one-thread {:id thread-id :columns [:prompt]}))]
           (when-not (str/blank? prompt)
             (let [{:keys [card-description sql]} (build-score-context exploration-query)]
               (request/with-current-user creator-id
@@ -336,12 +336,12 @@
         ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
         (explorations.db/insert-stored-result-use! {:stored_result_id sr-id
                                                     :exploration_id   (exploration-id row)})
-        (explorations.db/update-query! (:id row) {:status      "done"
-                                                  :started_at  started
-                                                  :finished_at (OffsetDateTime/now)})))
+        (explorations.db/update-queries! {:id (:id row)} {:status      "done"
+                                                          :started_at  started
+                                                          :finished_at (OffsetDateTime/now)})))
     true
     (catch Exception e
-      (if (explorations.db/query-result-exists? (:id row))
+      (if (explorations.db/query-result-exists? {:exploration_query_id (:id row)})
         (do (log/infof "ExplorationQuery %d was already completed by a peer; discarding this run's duplicate result"
                        (:id row))
             false)
@@ -372,7 +372,7 @@
           (when (persist-query-result! row started computed)
             (record-query-outcome! "done"))
           (:exploration_thread_id row))))
-    (explorations.db/finished-query-thread-id query-id)))
+    (:exploration_thread_id (explorations.db/select-one-query {:id query-id :status #{"done" "error" "canceled"} :columns [:exploration_thread_id]}))))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
@@ -380,7 +380,7 @@
 
   No-ops on a row that is no longer `pending` (a later delivery succeeded, or it was canceled)."
   [query-id message]
-  (let [thread-id (explorations.db/query-thread-id query-id)]
+  (let [thread-id (:exploration_thread_id (explorations.db/select-one-query {:id query-id :columns [:exploration_thread_id]}))]
     (when (pos? (explorations.db/fail-pending-query! query-id message (OffsetDateTime/now)))
       (record-query-outcome! "error"))
     thread-id))
@@ -391,13 +391,13 @@
   saw the rows that existed at cancel time; rows the planner inserted after that are still `pending`
   on a canceled thread. Flip them so the query table matches its owning thread's terminal state."
   [thread-id]
-  (when (explorations.db/thread-canceled? thread-id)
+  (when (explorations.db/thread-exists? {:id thread-id :canceled_at_set true})
     (explorations.db/cancel-pending-queries-for-thread! thread-id)))
 
 (defn plan-thread!
   "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
   [thread-id]
-  (let [thread   (explorations.db/thread-planning-state thread-id)
+  (let [thread   (explorations.db/select-one-thread {:id thread-id :columns [:id :canceled_at :analysis_started_at]})
         planned? (cond
                    ;; `restart` deletes and re-creates a thread's work; a message for a thread that
                    ;; no longer exists is a no-op.
@@ -419,7 +419,7 @@
                    (do (log/infof "Exploration thread %d already completed its analysis; skipping planning" thread-id)
                        false)
 
-                   (explorations.db/thread-has-queries? thread-id)
+                   (explorations.db/query-exists? {:exploration_thread_id thread-id})
                    (do (log/infof "Exploration thread %d is already planned; skipping" thread-id)
                        false)
 
@@ -445,4 +445,4 @@
 (defn pending-query-ids
   "Ids of `thread-id`'s queries still awaiting execution."
   [thread-id]
-  (explorations.db/pending-query-ids-for-thread thread-id))
+  (mapv :id (explorations.db/select-queries {:exploration_thread_id thread-id :status "pending" :columns [:id]})))

@@ -18,12 +18,12 @@
   ([instance]
    (mi/can-read? :model/ExplorationBlock (:exploration_block_id instance)))
   ([_model pk]
-   (when-let [p (explorations.db/page-block-id-row pk)]
+   (when-let [p (explorations.db/select-one-page {:id pk :columns [:exploration_block_id]})]
      (mi/can-read? :model/ExplorationBlock (:exploration_block_id p)))))
 
 (defmethod mi/can-write? :model/ExplorationPage
   ([instance]
    (mi/can-write? :model/ExplorationBlock (:exploration_block_id instance)))
   ([_model pk]
-   (when-let [p (explorations.db/page-block-id-row pk)]
+   (when-let [p (explorations.db/select-one-page {:id pk :columns [:exploration_block_id]})]
      (mi/can-write? :model/ExplorationBlock (:exploration_block_id p)))))

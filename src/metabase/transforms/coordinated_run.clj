@@ -14,14 +14,14 @@
 (defn- touch-active-run!
   [model run-id]
   (case model
-    :model/TransformJobRun (transforms.db/touch-active-job-run! run-id)
-    :model/TransformDagRun (transforms.db/touch-active-dag-run! run-id)))
+    :model/TransformJobRun (transforms.db/update-transform-job-runs! {:id run-id :is_active true} {:updated_at :%now})
+    :model/TransformDagRun (transforms.db/update-transform-dag-runs! {:id run-id :is_active true} {:updated_at :%now})))
 
 (defn- finish-active-run!
   [model run-id changes]
   (case model
-    :model/TransformJobRun (transforms.db/finish-active-job-run! run-id changes)
-    :model/TransformDagRun (transforms.db/finish-active-dag-run! run-id changes)))
+    :model/TransformJobRun (transforms.db/update-transform-job-runs! {:id run-id :is_active true} changes)
+    :model/TransformDagRun (transforms.db/update-transform-dag-runs! {:id run-id :is_active true} changes)))
 
 (defn add-run-activity!
   "Note that a run has had activity (touches `updated_at`)."
@@ -66,7 +66,7 @@
   [model member-fk run-id]
   (boolean
    (when (pos? (cancel-started-run! model run-id))
-     (doseq [member-run-id (transforms.db/active-run-ids-of-parent member-fk run-id)]
+     (doseq [member-run-id (transforms.db/select-transform-run-pks {member-fk run-id, :is_active true})]
        (transform-run-cancelation/mark-cancel-started-run! member-run-id)
        (canceling/chan-signal-cancel! member-run-id))
      true)))

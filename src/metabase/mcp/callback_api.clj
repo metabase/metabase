@@ -108,7 +108,7 @@
 
 (defn- persist-mcp-feedback!
   [{:keys [feedback conversation_data]}]
-  (mcp.db/insert-feedback!
+  (mcp.db/insert-mcp-feedback!
    {:user_id           api/*current-user-id*
     :positive          (:positive feedback)
     :issue_type        (:issue_type feedback)

@@ -33,7 +33,7 @@
        (let [group-ids (impersonation.db/group-ids-for-user *current-user-id*)]
          (seq
           (when (seq group-ids)
-            (impersonation.db/impersonations-for-groups group-ids))))
+            (impersonation.db/select-connection-impersonations {:group_id group-ids}))))
        ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be using impersonation.
        (throw (ex-info (str (tru "No current user found"))

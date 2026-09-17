@@ -257,7 +257,9 @@
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]
-  (let [current-dependencies (dependencies.db/dependencies-from entity-type entity-id)
+  (let [current-dependencies (dependencies.db/select-dependencies
+                              {:from_entity_type entity-type :from_entity_id entity-id
+                               :columns [:id :to_entity_type :to_entity_id]})
         to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
                           (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
                             id))
@@ -272,7 +274,7 @@
                   :to_entity_id (ensure-entity-id to-entity-id)})]
     (t2/with-transaction [_conn]
       (when (seq to-remove)
-        (dependencies.db/delete-dependencies! to-remove))
+        (dependencies.db/delete-dependencies! {:id (set to-remove)}))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
 
@@ -289,9 +291,13 @@
   - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
   - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
   [entity-type entity-id [old-source-type old-source-id] [new-source-type new-source-id]]
-  (let [already-present? (dependencies.db/dependency-exists? entity-type entity-id new-source-type new-source-id)]
+  (let [already-present? (dependencies.db/dependency-exists?
+                          {:from_entity_type entity-type :from_entity_id entity-id
+                           :to_entity_type new-source-type :to_entity_id new-source-id})]
     (if already-present?
-      (dependencies.db/delete-dependency! entity-type entity-id old-source-type old-source-id)
-      (dependencies.db/retarget-dependency! entity-type entity-id
-                                            old-source-type old-source-id
-                                            new-source-type new-source-id))))
+      (dependencies.db/delete-dependencies! {:from_entity_type entity-type :from_entity_id entity-id
+                                             :to_entity_type old-source-type :to_entity_id old-source-id})
+      (dependencies.db/update-dependencies!
+       {:from_entity_type entity-type :from_entity_id entity-id
+        :to_entity_type old-source-type :to_entity_id old-source-id}
+       {:to_entity_type new-source-type :to_entity_id new-source-id}))))

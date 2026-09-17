@@ -2,7 +2,6 @@
   "Application database queries for the semantic-search module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
    [metabase-enterprise.semantic-search.schema :as semantic-search.schema]
    [metabase.app-db.core :as mdb]
@@ -104,12 +103,12 @@
     (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
                 (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx))))))
 
-(mu/defn insert-token-tracking!
-  "Insert the SemanticSearchTokenTracking `row`."
-  [row :- (mut/select-keys ::semantic-search.schema/semantic-search-token-tracking.update [:model_name :request_type :total_tokens])]
-  (t2/insert! :model/SemanticSearchTokenTracking row))
+(mu/defn insert-token-tracking! :- ::semantic-search.schema/semantic-search-token-tracking
+  "Insert the SemanticSearchTokenTracking `row` and return the inserted instance."
+  [row :- ::semantic-search.schema/semantic-search-token-tracking.create]
+  (t2/insert-returning-instance! :model/SemanticSearchTokenTracking row))
 
-(mu/defn delete-token-tracking-created-before!
-  "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
+(mu/defn delete-token-tracking-created-before! :- :int
+  "Delete the SemanticSearchTokenTracking rows created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/SemanticSearchTokenTracking :created_at [:< cutoff]))

@@ -13,7 +13,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -129,8 +130,13 @@
    [:entity_id   ms/PositiveInt]
    [:entity_name {:optional true} [:maybe :string]]])
 
+(defn- database-names-by-id
+  "A map of id to name for the Databases with `ids`."
+  [ids]
+  (update-vals (warehouses.db/select-database-pk->instance {:id (set ids) :columns [:id :name]}) :name))
+
 (def ^:private entity-type->names-fn
-  {:database  task-history.db/database-names-by-id
+  {:database  database-names-by-id
    :card      task-history.db/card-names-by-id
    :dashboard task-history.db/dashboard-names-by-id})
 
@@ -155,7 +161,7 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (task-history.db/task-counts-for-runs run-ids)
+          counts       (task-history.db/select-task-counts-for-runs run-ids)
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -196,8 +202,8 @@
   (let [filters (run-filters params)
         limit   (request/limit)
         offset  (request/offset)
-        runs    (task-history.db/task-runs filters sort-column sort-direction limit offset)]
-    {:total  (task-history.db/task-run-count filters)
+        runs    (task-history.db/select-task-runs-page filters sort-column sort-direction limit offset)]
+    {:total  (task-history.db/count-task-runs-page filters)
      :limit  limit
      :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
@@ -206,8 +212,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (task-history.db/task-run id))
-        tasks (task-history.db/tasks-for-run id)]
+  (let [run   (api/check-404 (task-history.db/select-one-task-run {:id id}))
+        tasks (task-history.db/select-task-histories {:run_id id, :order-by [:started_at]})]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -222,6 +228,6 @@
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)
   (let [[start end] (timestamp-range (:started-at params))]
-    (->> (task-history.db/distinct-run-entities (:run-type params) start end)
+    (->> (task-history.db/select-distinct-run-entities (:run-type params) start end)
          (map #(update % :entity_type keyword))
          hydrate-entity-names)))

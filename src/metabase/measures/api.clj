@@ -55,7 +55,10 @@
         table-id   (definition-table-id definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
-                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
+                   (measures.db/insert-measure! {:creator_id  api/*current-user-id*
+                                                 :name        name
+                                                 :description description
+                                                 :definition  definition}))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
@@ -71,9 +74,9 @@
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
-  (api/read-check (measures.db/measure id))
+  (api/read-check (measures.db/select-one-measure {:id id}))
   (metrics/sync-dimensions! :metadata/measure id)
-  (cond-> (-> (t2/hydrate (measures.db/measure id) :creator)
+  (cond-> (-> (t2/hydrate (measures.db/select-one-measure {:id id}) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
@@ -100,10 +103,10 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (let [measures  (measures.db/unarchived-measures)
+  (let [measures  (measures.db/select-measures {:archived false, :order-by [:name]})
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (measures.db/table-database-ids table-ids))
+                                                 (measures.db/select-table-database-ids table-ids))
                                     :table-ids table-ids})
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))
@@ -132,7 +135,7 @@
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
-      (measures.db/update-measure! id changes))
+      (measures.db/update-measures! {:id id} changes))
     (u/prog1 (hydrated-measure id false)
       (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))

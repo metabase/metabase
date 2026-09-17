@@ -43,7 +43,7 @@
                 (every? mi/can-write? transforms)
                 true)))))
   ([_model pk]
-   (when-let [job (transforms.db/job pk)]
+   (when-let [job (transforms.db/select-one-transform-job {:id pk})]
      (mi/can-write? job))))
 
 (defmethod mi/can-create? :model/TransformJob
@@ -66,7 +66,8 @@
   (when (seq jobs)
     (let [job-ids         (map :id jobs)
           tag-mappings    (group-by :job_id
-                                    (transforms.db/job-tag-links job-ids))
+                                    (transforms.db/select-transform-job-transform-tags
+                                     {:job_id (set job-ids) :order-by [:position]}))
           ;; Sort each job's tags by position
           sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
       (for [job jobs]
@@ -97,8 +98,8 @@
   write."
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (transforms.db/activate-job! job-id))
-      (transforms.schedule/initialize-job! (transforms.db/job job-id)))))
+    (when (pos? (transforms.db/update-transform-jobs! {:id job-id :active false} {:active true}))
+      (transforms.schedule/initialize-job! (transforms.db/select-one-transform-job {:id job-id})))))
 
 (defn deactivate-job!
   "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
@@ -109,7 +110,7 @@
   [[activate-job!]]."
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (transforms.db/deactivate-job! job-id))
+    (when (pos? (transforms.db/update-transform-jobs! {:id job-id :active true} {:active false}))
       (transforms.schedule/delete-trigger! job-id))))
 
 (defn update-job-tags!
@@ -122,11 +123,11 @@
       (let [;; Deduplicate, just in case
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (transforms.db/job-tag-links [job-id])
+            current-associations (transforms.db/select-transform-job-transform-tags {:job_id job-id :order-by [:position]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
+                                   (transforms.db/select-transform-tag-pks {:id (set deduped-tag-ids)}))
             ;; Filter to only valid tags, preserving order
             new-tag-ids          (if valid-tag-ids
                                    (filterv valid-tag-ids deduped-tag-ids)
@@ -140,17 +141,17 @@
             new-positions        (zipmap new-tag-ids (range))]
         ;; Delete removed associations
         (when (seq to-delete)
-          (transforms.db/delete-job-tag-links! job-id to-delete))
+          (transforms.db/delete-transform-job-transform-tags! {:job_id job-id :tag_id (set to-delete)}))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (transforms.db/set-job-tag-position! job-id tag-id new-pos)))
+            (transforms.db/update-transform-job-transform-tags! {:job_id job-id :tag_id tag-id} {:position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (transforms.db/insert-job-tag-links! (for [tag-id to-insert]
-                                                 {:job_id   job-id
-                                                  :tag_id   tag-id
-                                                  :position (get new-positions tag-id)})))))))
+          (transforms.db/insert-transform-job-transform-tags! (for [tag-id to-insert]
+                                                                {:job_id   job-id
+                                                                 :tag_id   tag-id
+                                                                 :position (get new-positions tag-id)})))))))
 
 (defn- translated-name-and-description [job]
   (let [values {"hourly"
@@ -194,7 +195,8 @@
   (when (seq jobs)
     (let [job-ids      (into #{} (map u/the-id) jobs)
           tag-mappings (group-by :job_id
-                                 (transforms.db/job-tag-links job-ids))]
+                                 (transforms.db/select-transform-job-transform-tags
+                                  {:job_id (set job-ids) :order-by [:position]}))]
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 

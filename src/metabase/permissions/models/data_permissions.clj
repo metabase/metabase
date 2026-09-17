@@ -19,6 +19,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -903,7 +904,7 @@
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
   ;; destination databases are reachable only through their router and never carry permissions of their own
-  (let [db-ids     (if db-id [db-id] (permissions.db/non-destination-database-ids))
+  (let [db-ids     (if db-id [db-id] (warehouses.db/select-database-pks {:router_database_id_set false}))
         perm-types (if perm-type [perm-type] (keys permissions.schema/data-permissions))]
     (into {} (map (fn [db-id]
                     [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
@@ -978,7 +979,7 @@
   "Whether `db-id` is a destination database — one with `router_database_id` set."
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (permissions.db/destination-database? db-id))))
+     (warehouses.db/database-exists? {:id db-id :router_database_id_set true}))))
 
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`

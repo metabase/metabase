@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db])
   (:import (java.time Instant)))
 
 ;; # Google Sheets Integration
@@ -227,7 +228,7 @@
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map {:closed true} [:url ms/NonBlankString]]]
-  (let [attached-dwh (gsheets.db/attached-dwh-database-id)]
+  (let [attached-dwh (:id (warehouses.db/select-one-database {:is_attached_dwh true :columns [:id]}))]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw-error 400 (tru "No attached dwh found.") nil))
@@ -390,15 +391,15 @@
 (comment
 
   ;; need an "attached dwh" locally?
-  (gsheets.db/update-database! 1
-                               {:is_attached_dwh true
-                                :settings
-                                (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
-                                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
+  (warehouses.db/update-databases! {:id 1}
+                                   {:is_attached_dwh true
+                                    :settings
+                                    (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
+                                         "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (gsheets.db/attached-dwh-database))))
+     (warehouses.db/select-one-database {:is_attached_dwh true}))))

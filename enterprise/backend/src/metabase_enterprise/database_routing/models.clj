@@ -20,7 +20,7 @@
   [k databases]
   (mi/instances-with-hydrated-data
    databases k
-   (fn [] (database-routing.db/router-user-attributes-by-database (map :id databases)))
+   (fn [] (database-routing.db/select-database-router-user-attribute-by-database-id (map :id databases)))
    :id
    {:default nil}))
 
@@ -35,13 +35,14 @@
   "Deletes the Database Router associated with this router database."
   :feature :database-routing
   [db-id]
-  (database-routing.db/delete-router! db-id))
+  (database-routing.db/delete-database-routers! {:database_id db-id}))
 
 (defenterprise db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database."
   :feature :database-routing
   :fallback :oss
   [db-or-id]
-  (or (database-routing.db/router-exists? (u/the-id db-or-id))
+  (or (database-routing.db/database-router-exists? {:database_id (u/the-id db-or-id)})
       (some->> (:router-database-id db-or-id)
-               database-routing.db/router-exists?)))
+               (hash-map :database_id)
+               database-routing.db/database-router-exists?)))

@@ -1,13 +1,74 @@
 (ns metabase.revisions.db
   "Application database queries for the revisions module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The queries below follow [[::opts]]; queries that do not fit it live in the revisions-only section at the bottom
+  of this namespace."
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
+
+(mr/def ::filters
+  "Which Revisions a query applies to. Keys mirror the columns of `revision`: a scalar matches that value and a set
+  matches any of its values."
+  [:map {:closed true}
+   [:id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:model    {:optional true} :string]
+   [:model_id {:optional true} ms/PositiveInt]])
+
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::revisions.schema/revision.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::revisions.schema/revision.column
+                                              [:tuple ::revisions.schema/revision.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(mu/defn- ->model
+  "`columns`, narrowed to a Toucan 2 select target. `:model` rides along with any narrowed select: the after-select
+  hook resolves it to run that model's own `post-select` over the recorded `:object`, and without it the object comes
+  back as raw JSON."
+  [columns :- [:maybe [:sequential :keyword]]]
+  (u.query/model-with-columns :model/Revision (when (seq columns) (distinct (cons :model columns)))))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-revisions :- [:sequential ::revisions.schema/revision.partial]
+  "The Revisions matching `opts`."
+  ([]
+   (select-revisions nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn select-one-revision :- [:maybe ::revisions.schema/revision.partial]
+  "The first Revision matching `opts`, or nil."
+  ([]
+   (select-one-revision nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn delete-revisions! :- :int
+  "Delete every Revision matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/Revision (->args opts)))
+
+;;; ------------------------------- Queries used only by the revisions module -------------------------------
 
 (mu/defn entity
   "The `model` row with `id`, or nil. `model` is a generic `:model/X` keyword — revisions track many kinds of
@@ -25,13 +86,13 @@
 (def revisioned-model-row-schema
   "The literal registry keyword of the row/update schema of each model revisions are tracked for (a literal
   keyword, not a `require`, to avoid a dependency cycle with the module that owns each model)."
-  {:model/Card        :metabase.queries.schema/card.update
-   :model/Dashboard   :metabase.dashboards.schema/dashboard.update
-   :model/Document    :metabase.documents.schema/document.update
-   :model/Exploration :metabase.explorations.schema/exploration.update
-   :model/Measure     :metabase.measures.schema/measure.update
-   :model/Segment     :metabase.segments.schema/segment.update
-   :model/Transform   :metabase.transforms.schema/transform.update})
+  {:model/Card        :metabase.queries.schema/card.columns
+   :model/Dashboard   :metabase.dashboards.schema/dashboard.columns
+   :model/Document    :metabase.documents.schema/document.columns
+   :model/Exploration :metabase.explorations.schema/exploration.columns
+   :model/Measure     :metabase.measures.schema/measure.columns
+   :model/Segment     :metabase.segments.schema/segment.columns
+   :model/Transform   :metabase.transforms.schema/transform.columns})
 
 (defn- revision-schema-key [prefix model]
   (keyword "metabase.revisions.db" (str prefix "." (name model))))
@@ -82,13 +143,6 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
 
-(mu/defn revision
-  "The Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
-  [model-name  :- :string
-   model-id    :- ms/PositiveInt
-   revision-id :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, :id revision-id))
-
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -132,21 +186,6 @@
                      [:= :model_id model-id]]
              :for :update}))
 
-(mu/defn revision-ids-newest-first
-  "The ids of the Revisions of the `model-name` row with `model-id`, newest first."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/select-fn-vec :id :model/Revision
-                    :model    model-name
-                    :model_id model-id
-                    {:order-by [[:timestamp :desc]
-                                [:id :desc]]}))
-
-(mu/defn delete-revisions!
-  "Delete the Revisions with `ids`, returning the number deleted."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Revision :id [:in ids]))
-
 (mu/defn unmark-most-recent-revisions!
   "Clear `most_recent` on the Revisions of the `model-name` row with `model-id` other than `revision-id`, returning
   the number updated."
@@ -158,39 +197,14 @@
               {:model model-name :model_id model-id :most_recent true :id [:not= revision-id]}
               {:most_recent false}))
 
-(mu/defn revisions
-  "The Revisions of the `model-name` row with `model-id`, newest first."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/select :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
-
-(mu/defn latest-revision
-  "The newest Revision of the `model-name` row with `model-id`, or nil."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, {:order-by [[:id :desc]]}))
-
-(mu/defn latest-revision-object
-  "The serialized object of the newest Revision of the `model-name` row with `model-id`, or nil."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
-
-(mu/defn revision-object
-  "The serialized object of the Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
-  [model-name  :- :string
-   model-id    :- ms/PositiveInt
-   revision-id :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
-
 (def ^:private revision-object-extra-keys
   "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
   `:object` beyond their own row schema."
-  {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.update
+  {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.columns
                                                             [:map {:closed true}
                                                              [:id     {:optional true} ::lib.schema.id/dashcard]
                                                              [:series {:optional true} [:sequential ::lib.schema.id/card]]]]]]
-                     [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.update
+                     [:tabs  {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-tab.columns
                                                             [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]]})
 
 (def revisioned-model-select-schema
@@ -261,7 +275,7 @@
   [row :- RevertedRevisionRow]
   (t2/insert-returning-instance! :model/Revision row))
 
-(mu/defn latest-editors-reducible
+(mu/defn reducible-select-latest-editors
   "A reducible of the model id, editing User, and timestamp of the most recent Revisions of the `db-model` rows with
   `ids`."
   [db-model :- :string
@@ -275,7 +289,7 @@
                 [:= :r.model db-model]
                 [:in :r.model_id ids]]}))
 
-(mu/defn latest-changes
+(mu/defn select-latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
   and/or the Dashboards with `dashboard-ids`."
   [card-ids      :- [:maybe [:sequential ::lib.schema.id/card]]

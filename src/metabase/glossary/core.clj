@@ -19,9 +19,9 @@
   "Insert a glossary entry created by `user-id` and publish `:event/glossary-create`. Returns the new entry."
   [user-id                   :- ::lib.schema.id/user
    {:keys [term definition]} :- ::entry-fields]
-  (let [entry (glossary.db/insert-glossary-entry! {:term       term
-                                                   :definition definition
-                                                   :creator_id user-id})]
+  (let [entry (glossary.db/insert-glossary! {:term       term
+                                             :definition definition
+                                             :creator_id user-id})]
     (events/publish-event! :event/glossary-create {:object entry :user-id user-id})
     entry))
 
@@ -31,9 +31,9 @@
   [user-id                   :- ::lib.schema.id/user
    id                        :- ms/PositiveInt
    {:keys [term definition]} :- ::entry-fields]
-  (when-let [previous (glossary.db/glossary-entry id)]
-    (glossary.db/update-glossary-entry! id term definition)
-    (let [entry (glossary.db/glossary-entry id)]
+  (when-let [previous (glossary.db/select-one-glossary {:id id})]
+    (glossary.db/update-glossaries! {:id id} {:term term, :definition definition})
+    (let [entry (glossary.db/select-one-glossary {:id id})]
       (events/publish-event! :event/glossary-update {:object          entry
                                                      :previous-object previous
                                                      :user-id         user-id})
@@ -44,7 +44,7 @@
   deleted entry, or nil when no entry has `id`."
   [user-id :- ::lib.schema.id/user
    id      :- ms/PositiveInt]
-  (when-let [entry (glossary.db/glossary-entry id)]
-    (glossary.db/delete-glossary-entry! id)
+  (when-let [entry (glossary.db/select-one-glossary {:id id})]
+    (glossary.db/delete-glossaries! {:id id})
     (events/publish-event! :event/glossary-delete {:object entry :user-id user-id})
     entry))

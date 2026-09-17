@@ -29,7 +29,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -545,7 +546,7 @@
     (cond
       source-table-fk
       (let [db-name (nth source-table-fk 0)
-            ids     (metabot.db/database-ids-by-name db-name)]
+            ids     (warehouses.db/select-database-pks {:name db-name})]
         (case (count ids)
           0 (throw (ex-info (tru "Unknown database: `{0}`." db-name)
                             {:agent-error? true

@@ -1,6 +1,7 @@
 (ns metabase.comments.schema
   "Malli schemas for the comments module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -78,6 +79,10 @@
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
+(mr/def ::comment.partial
+  "A Comment row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::comment [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::comment.update
   "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
   [:map {:closed true}
@@ -88,11 +93,15 @@
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:content           {:optional true} [:maybe ::comment.content]]
    [:is_resolved       {:optional true} [:maybe :boolean]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:deleted_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:content_html      {:optional true} [:maybe :string]]
    [:context           {:optional true} [:maybe ::comment.context]]])
+
+(mr/def ::comment.column
+  "A column of `comment`, for the `:columns` option of the queries in [[metabase.comments.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::comment.update))))
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
@@ -101,10 +110,18 @@
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
+(mr/def ::comment-reaction.partial
+  "A CommentReaction row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::comment-reaction [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::comment-reaction.update
   "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."
   [:map {:closed true}
    [:comment_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:emoji      {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::comment-reaction.column
+  "A column of `comment_reaction`, for the `:columns` option of the queries in [[metabase.comments.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::comment-reaction.update))))

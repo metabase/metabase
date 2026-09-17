@@ -1,5 +1,6 @@
 (ns metabase.actions.schema
   (:require
+   [malli.util :as mut]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.types :as actions.types]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -211,16 +212,24 @@
 (mr/def ::httpaction
   "A HTTPAction as selected from the app DB: every column of `:http_action`."
   [:merge
-   ::httpaction.update
+   ::httpaction.columns
    [:map {:closed true}]])
 
-(mr/def ::httpaction.update
-  "What an update (or insert) of a HTTPAction accepts: every column of `:http_action` except `id`, all optional."
+(mr/def ::httpaction.columns
+  "Every column of `:http_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id       {:optional true} [:maybe ::lib.schema.id/action]]
    [:template        {:optional true} [:maybe ::http-action.template]]
    [:response_handle {:optional true} [:maybe :string]]
    [:error_handle    {:optional true} [:maybe :string]]])
+
+(mr/def ::httpaction.create
+  "What an insert of a HTTPAction accepts."
+  (mr/schema ::httpaction.columns))
+
+(mr/def ::httpaction.update
+  "What an update of a HTTPAction accepts: no immutable columns."
+  (mut/select-keys (mr/schema ::httpaction.columns) [:template :response_handle :error_handle]))
 
 (mr/def ::implicit-action.row
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
@@ -228,11 +237,19 @@
    [:action_id ::lib.schema.id/action]
    [:kind      [:or :keyword :string]]])
 
-(mr/def ::implicit-action.update
-  "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
+(mr/def ::implicit-action.columns
+  "Every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
    [:kind      {:optional true} [:maybe [:or :keyword :string]]]])
+
+(mr/def ::implicit-action.create
+  "What an insert of a ImplicitAction accepts."
+  (mr/schema ::implicit-action.columns))
+
+(mr/def ::implicit-action.update
+  "What an update of a ImplicitAction accepts: no immutable columns."
+  (mut/select-keys (mr/schema ::implicit-action.columns) [:kind]))
 
 (mr/def ::query-action.dataset-query
   "The `:dataset_query` column of a QueryAction, decoded."
@@ -246,13 +263,21 @@
    [:dataset_query ::query-action.dataset-query]
    [:legacy_query  [:maybe :string]]])
 
-(mr/def ::query-action.update
-  "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
+(mr/def ::query-action.columns
+  "Every column of `:query_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]
    [:legacy_query  {:optional true} [:maybe :string]]])
+
+(mr/def ::query-action.create
+  "What an insert of a QueryAction accepts."
+  (mr/schema ::query-action.columns))
+
+(mr/def ::query-action.update
+  "What an update of a QueryAction accepts: no immutable columns."
+  (mut/select-keys (mr/schema ::query-action.columns) [:database_id :dataset_query :legacy_query]))
 
 (mr/def ::execution.row-diff
   "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a

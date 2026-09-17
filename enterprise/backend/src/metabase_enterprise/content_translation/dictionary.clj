@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.content-translation.db :as content-translation.db]
+   [metabase.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -147,10 +147,10 @@
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
       (t2/with-transaction [_tx]
         ;; Replace all existing entries
-        (content-translation.db/delete-all-translations!)
+        (content-translation.db/delete-content-translations! nil)
         ;; Insert all usable rows at once
         (when-not (empty? usable-rows)
-          (content-translation.db/insert-translations! usable-rows))))))
+          (content-translation.db/insert-content-translations! usable-rows))))))
 
 (defn- maybe-read
   [reader]

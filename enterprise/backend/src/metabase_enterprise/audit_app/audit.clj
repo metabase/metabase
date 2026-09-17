@@ -19,6 +19,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import
    (java.nio.file FileVisitOption Files LinkOption Path)
@@ -67,15 +68,15 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (audit-app.db/insert-database! id
-                                   {:is_audit         true
-                                    :name             default-db-name
-                                    :description      "Internal Audit DB used to power metabase analytics."
-                                    :engine           engine
-                                    :is_full_sync     true
-                                    :is_on_demand     false
-                                    :creator_id       nil
-                                    :auto_run_queries true})
+    (warehouses.db/insert-database! {:id               id
+                                     :is_audit         true
+                                     :name             default-db-name
+                                     :description      "Internal Audit DB used to power metabase analytics."
+                                     :engine           engine
+                                     :is_full_sync     true
+                                     :is_on_demand     false
+                                     :creator_id       nil
+                                     :auto_run_queries true})
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
     (audit-app.db/delete-permissions-for-database! id)))
 
@@ -86,7 +87,7 @@
   ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
   ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
   ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
-  (audit-app.db/set-database-engine! audit-db-id "postgres")
+  (warehouses.db/update-databases! {:id audit-db-id} {:engine "postgres"})
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
@@ -120,7 +121,7 @@
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (audit-app.db/set-database-engine! audit-db-id (name (mdb/db-type)))
+    (warehouses.db/update-databases! {:id audit-db-id} {:engine (name (mdb/db-type))})
     (case (mdb/db-type)
       :mysql
       (audit-app.db/clear-table-schemas! audit-db-id)
@@ -253,7 +254,7 @@
            (if loaded?
              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
              (log/info (str "Error Loading Analytics Content: " (pr-str report))))
-           (when-let [{:keys [engine] :as audit-db} (audit-app.db/audit-database)]
+           (when-let [{:keys [engine] :as audit-db} (warehouses.db/select-one-database {:is_audit true})]
              (let [original-engine engine]
                (adjust-audit-db-to-host! audit-db)
                ;; GHY-3974 Mode B: advance the checksum only after the host-adjust completes, so an
@@ -264,7 +265,7 @@
 
 (defn- maybe-install-audit-db!
   []
-  (let [audit-db (audit-app.db/audit-database)
+  (let [audit-db (warehouses.db/select-one-database {:is_audit true})
         result   (cond
                    (not (audit-app.settings/install-analytics-database))
                    (u/prog1 ::blocked
@@ -283,7 +284,7 @@
                    :else
                    ::no-op)]
     (when (contains? #{::installed ::updated} result)
-      (when-let [db (audit-app.db/audit-database)]
+      (when-let [db (warehouses.db/select-one-database {:is_audit true})]
         (log/info "Syncing Audit DB")
         (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
     result))
@@ -460,7 +461,7 @@
   (try
     (cluster-lock/with-detached-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
       (u/prog1 (maybe-install-audit-db!)
-        (when-let [audit-db (audit-app.db/audit-database)]
+        (when-let [audit-db (warehouses.db/select-one-database {:is_audit true})]
           ((sync-util/with-duplicate-ops-prevented
             :sync-database audit-db
             (fn []

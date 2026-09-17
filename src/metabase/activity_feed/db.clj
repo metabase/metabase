@@ -7,9 +7,62 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mr/def ::filters
+  "Which RecentViews a query applies to. Keys mirror the columns of `recent_views`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:id      {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:user_id {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:context {:optional true} [:or [:or :keyword :string] [:set [:or :keyword :string]]]]])
+
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::activity-feed.schema/recent-views.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::activity-feed.schema/recent-views.column
+                                              [:tuple ::activity-feed.schema/recent-views.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/RecentViews columns))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-recent-views :- [:sequential ::activity-feed.schema/recent-views.partial]
+  "The RecentViews matching `opts`."
+  ([]
+   (select-recent-views nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-recent-views!
+  "Insert the RecentViews `rows`."
+  [rows :- [:sequential ::activity-feed.schema/recent-views.create]]
+  (t2/insert! :model/RecentViews rows))
+
+(mu/defn delete-recent-views! :- :int
+  "Delete the RecentViews matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/RecentViews (->args opts)))
+
+;;; ------------------------------- Queries used only by the activity-feed module -------------------------------
 
 (mu/defn recent-cards
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
@@ -141,13 +194,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :document_id :model/Card :id card-id))
 
-(mu/defn recent-views-for-user-context
-  "The RecentViews of the User with `user-id` in `context`, newest first."
-  [user-id :- ::lib.schema.id/user
-   context :- [:or :keyword :string]]
-  (t2/select :model/RecentViews :user_id user-id :context context {:order-by [[:timestamp :desc]]}))
-
-(mu/defn recent-view-ids-to-prune
+(mu/defn select-recent-view-ids-to-prune
   "The ids of the RecentViews of the User with `user-id` for `db-model` in `context` beyond the newest `keep` of
   them, restricted to the Cards of `card-type` when non-nil."
   [db-model  :- :string
@@ -174,17 +221,7 @@
                      :limit 100000
                      :offset keep}))
 
-(mu/defn insert-recent-views!
-  "Insert the RecentViews `rows`."
-  [rows :- [:sequential ::activity-feed.schema/recent-views.update]]
-  (t2/insert! :model/RecentViews rows))
-
-(mu/defn delete-recent-views!
-  "Delete the RecentViews with `ids`."
-  [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/RecentViews :id [:in ids]))
-
-(mu/defn most-recently-viewed-dashboard-id
+(mu/defn select-most-recently-viewed-dashboard-id
   "The id of the unarchived Dashboard the User with `user-id` viewed most recently after `since`, or nil."
   [user-id :- ::lib.schema.id/user
    since   :- ms/TemporalInstant]
@@ -289,7 +326,7 @@
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
-(mu/defn recent-views-with-card-type
+(mu/defn select-recent-views-with-card-type
   "The RecentViews of the User with `user-id` in `contexts`, newest first, with the type of the viewed Card. Narrowed
   to `db-models` and to the Cards of `card-types` when given; excludes trashed and namespaced Collections, exploration
   Documents, and, when `selections?`, the instance analytics Collection."

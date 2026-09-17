@@ -65,7 +65,7 @@
                                :model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
-      (indexed-entities.db/model-index (:id model-index)))))
+      (indexed-entities.db/select-one-model-index {:id (:id model-index)}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -85,7 +85,7 @@
       (throw (ex-info (tru "Question {0} is not a model" model_id)
                       {:model_id model_id
                        :status-code 400})))
-    (indexed-entities.db/model-indexes-for-model model_id)))
+    (indexed-entities.db/select-model-indexes {:model_id model_id})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -95,7 +95,7 @@
   "Retrieve ModelIndex."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [model-index (api/check-404 (indexed-entities.db/model-index id))
+  (let [model-index (api/check-404 (indexed-entities.db/select-one-model-index {:id id}))
         model       (api/read-check :model/Card (:model_id model-index))]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" id)
@@ -111,6 +111,6 @@
   "Delete ModelIndex."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [model-index (indexed-entities.db/model-index id)]
+  (api/let-404 [model-index (indexed-entities.db/select-one-model-index {:id id})]
     (api/write-check :model/Card (:model_id model-index))
-    (indexed-entities.db/delete-model-index! id)))
+    (indexed-entities.db/delete-model-indexes! {:id id})))

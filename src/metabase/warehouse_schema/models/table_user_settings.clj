@@ -68,7 +68,7 @@
 (defn- enforce-invariants
   "Validate `explicit`, complete its two-column pairs and set its flags, merged into `settings`."
   [settings explicit]
-  (let [table     (warehouse-schema.db/table (:table_id settings))
+  (let [table     (warehouse-schema.db/select-one-table {:id (:table_id settings)})
         completed (complete-pairs explicit table)]
     (table/validate-user-changes! explicit table)
     (-> (merge settings completed)
@@ -79,7 +79,7 @@
   [settings]
   (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-table-columns)
              (not-any? #(get settings %) (vals warehouse-schema-overlay/table-user-settings-flags)))
-    (warehouse-schema.db/delete-table-user-settings! (:table_id settings)))
+    (warehouse-schema.db/delete-table-user-settings! {:table_id (:table_id settings)}))
   settings)
 
 (t2/define-before-insert :model/TableUserSettings
@@ -104,8 +104,8 @@
    settings     :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (seq settings)
-      (if (warehouse-schema.db/table-user-settings-exist? id)
-        (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings))
+      (if (warehouse-schema.db/table-user-settings-exists? {:table_id id})
+        (warehouse-schema.db/update-table-user-settings! {:table_id id} (with-set-flags settings settings settings))
         (warehouse-schema.db/insert-table-user-settings! (assoc settings :table_id id))))))
 
 (mu/defn upsert-user-settings-for-tables!
@@ -114,17 +114,17 @@
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
-      (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
+      (let [existing (warehouse-schema.db/select-table-user-settings-pks {:table_id table-ids})]
         (when-let [missing (not-empty (remove existing table-ids))]
           (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
         (when (seq existing)
-          (warehouse-schema.db/update-table-user-settings-for-tables!
-           existing (with-set-flags settings settings settings)))))))
+          (warehouse-schema.db/update-table-user-settings!
+           {:table_id existing} (with-set-flags settings settings settings)))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (warehouse-schema.db/active-field-ids-for-table (u/the-id table))
+  (= (warehouse-schema.db/select-field-pks {:table_id (u/the-id table) :active true :user-settings? false})
      (set field-ordering)))
 
 (defn custom-order-fields!
@@ -134,15 +134,15 @@
   (t2/with-transaction [_]
     (upsert-user-settings table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
-    (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
+    (table/update-field-positions! (warehouse-schema.db/select-one-table {:id (u/the-id table)}))))
 
 (mu/defn unset-user-settings!
   "Drop the user values of the Table columns `ks` for `table`."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-table-columns)]]
-  (when (warehouse-schema.db/table-user-settings-exist? id)
+  (when (warehouse-schema.db/table-user-settings-exists? {:table_id id})
     (warehouse-schema.db/update-table-user-settings!
-     id
+     {:table_id id}
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
                           (warehouse-schema-overlay/table-user-settings-flags k)
@@ -153,7 +153,7 @@
 
 (defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-ids] :as opts}]
   (serdes/extract-reducible-nested "TableUserSettings" (dissoc opts :filter-column :filter-ids)
-                                   (warehouse-schema.db/table-user-settings-with-field-settings filter-ids)))
+                                   (warehouse-schema.db/select-table-user-settings-with-field-settings filter-ids)))
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
@@ -169,12 +169,12 @@
 (defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
   (let [settings (serdes/default-load-one! ingested maybe-local)]
     (when (:field_order ingested)
-      (table/update-field-positions! (warehouse-schema.db/table (:table_id settings))))
+      (table/update-field-positions! (warehouse-schema.db/select-one-table {:id (:table_id settings)})))
     settings))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]
-    (warehouse-schema.db/table-user-settings (:id found-table))))
+    (warehouse-schema.db/select-one-table-user-settings {:table_id (:id found-table)})))
 
 (defn- table-path->table-ref [tus-path]
   (let [[db schema table-name :as table-ref] (mapv :id (pop tus-path))]

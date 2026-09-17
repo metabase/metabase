@@ -5,9 +5,40 @@
    [java-time.api :as t]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.view-log.schema :as view-log.schema]
    [toucan2.core :as t2]))
+
+(mr/def ::filters
+  "Which ViewLog entries a query applies to. Keys mirror the columns of `view_log`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:user_id  {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:model    {:optional true} [:or [:or :keyword :string] [:set [:or :keyword :string]]]]
+   [:model_id {:optional true} [:or :int [:set :int]]]])
+
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::view-log.schema/view-log.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::view-log.schema/view-log.column
+                                              [:tuple ::view-log.schema/view-log.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-view-logs! :- :int
+  "Insert the ViewLog `rows`, returning the number inserted."
+  [rows :- [:sequential ::view-log.schema/view-log.create]]
+  (t2/insert! :model/ViewLog rows))
+
+;;; -------------------------------- Queries used only by the view-log module --------------------------------
 
 (defn- increment-view-counts-of-model!
   "Increments `model`'s `view_count` per `count->ids`, via a raw update that bypasses Toucan 2 model hooks
@@ -42,11 +73,6 @@
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`."
   [count->ids :- count->ids-schema]
   (increment-view-counts-of-model! :model/Document count->ids))
-
-(mu/defn insert-view-logs!
-  "Insert the ViewLog rows `views`, returning the number inserted."
-  [views :- [:sequential ::view-log.schema/view-log.update]]
-  (t2/insert! :model/ViewLog views))
 
 (mu/defn card-type
   "The `:type` of the Card with `card-id`, or nil."

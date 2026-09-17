@@ -1,9 +1,12 @@
 (ns metabase.comments.db
-  "Application database queries for the comments module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for `:model/Comment` and `:model/CommentReaction`. Every function here is a direct
+  Toucan 2 call with no additional logic, so no other namespace in the module runs a query itself (model
+  definitions still use `toucan2.core`).
+
+  The queries below follow [[::opts]] and [[::comment-reaction-opts]]; queries that do not fit them live in the
+  comments-only section at the bottom of this namespace."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.comments.schema :as comments.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -11,33 +14,119 @@
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn comments-for-target
-  "The Comments on the target with `target-type` and `target-id`, oldest first."
-  [target-type :- :string
-   target-id   :- ms/PositiveInt]
-  (t2/select :model/Comment
-             {:where    [:and
-                         [:= :target_type target-type]
-                         [:= :target_id target-id]]
-              :order-by [[:created_at :asc]]}))
+(mr/def ::filters
+  "Which Comments a query applies to. Keys mirror the columns of `comment`: a scalar matches that value and a set
+  matches any of its values."
+  [:map {:closed true}
+   [:id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:target_type {:optional true} [:or :string [:set :string]]]
+   [:target_id   {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(defn document-comments
-  "The Comments on the document with `document-id`, oldest first, ties broken on `:id`.
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::comments.schema/comment.column]]
+    [:order-by {:optional true} [:sequential ::comments.schema/comment.column]]]])
 
-  Distinct from [[comments-for-target]], which leaves ties undetermined."
-  [document-id]
-  (t2/select :model/Comment
-             :target_type "document"
-             :target_id document-id
-             {:order-by [[:created_at :asc] [:id :asc]]}))
+(mr/def ::comment-reaction-filters
+  "Which CommentReactions a query applies to. Keys mirror the columns of `comment_reaction`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:comment_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:user_id    {:optional true} ::lib.schema.id/user]
+   [:emoji      {:optional true} :string]])
 
-(defn document-child-target-counts
+(mr/def ::comment-reaction-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::comment-reaction-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::comments.schema/comment-reaction.column]]
+    [:order-by {:optional true} [:sequential ::comments.schema/comment-reaction.column]]]])
+
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Comment columns))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(defn- ->comment-reaction-model
+  [columns]
+  (u.query/model-with-columns :model/CommentReaction columns))
+
+(defn- ->comment-reaction-args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-comments :- [:sequential ::comments.schema/comment.partial]
+  "The Comments matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::opts]]
+  (apply t2/select (->model columns) (->args opts)))
+
+(mu/defn select-one-comment :- [:maybe ::comments.schema/comment.partial]
+  "The first Comment matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::opts]]
+  (apply t2/select-one (->model columns) (->args opts)))
+
+(mu/defn select-comment-reactions :- [:sequential ::comments.schema/comment-reaction.partial]
+  "The CommentReactions matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::comment-reaction-opts]]
+  (apply t2/select (->comment-reaction-model columns) (->comment-reaction-args opts)))
+
+(mu/defn comment-reaction-exists? :- :boolean
+  "Whether a CommentReaction matching `opts` exists."
+  [opts :- [:maybe ::comment-reaction-opts]]
+  (apply t2/exists? :model/CommentReaction (->comment-reaction-args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-comment! :- ::comments.schema/comment
+  "Insert the Comment `row` and return the inserted instance."
+  [row :- ::comments.schema/comment.update]
+  (t2/insert-returning-instance! :model/Comment row))
+
+(mu/defn update-comments! :- :int
+  "Apply `changes` to every Comment matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::comments.schema/comment.update]
+  (apply t2/update! :model/Comment (conj (->kv-args opts) changes)))
+
+(mu/defn insert-comment-reaction! :- ::comments.schema/comment-reaction
+  "Insert the CommentReaction `row` and return the inserted instance."
+  [row :- ::comments.schema/comment-reaction.update]
+  (t2/insert-returning-instance! :model/CommentReaction row))
+
+(mu/defn delete-comment-reactions! :- :int
+  "Delete every CommentReaction matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::comment-reaction-opts]]
+  (apply t2/delete! :model/CommentReaction (->comment-reaction-args opts)))
+
+;;; ------------------------------- Queries used only by the comments module -------------------------------
+
+(mu/defn soft-delete-comments! :- :int
+  "Mark every Comment matching `opts` deleted now, returning the number updated."
+  [opts :- [:maybe ::opts]]
+  (apply t2/update! :model/Comment (conj (->kv-args opts) {:deleted_at [:now]})))
+
+(mu/defn select-comment-child-target-counts-for-document
   "Rows of `:child_target_id` and `:comment_count` for the document with `document-id`, counting only
   live comments and skipping threads with no child target."
-  [document-id]
+  [document-id :- ms/PositiveInt]
   (t2/select [:model/Comment :child_target_id [:%count.id :comment_count]]
              :target_type "document"
              :target_id document-id
@@ -60,12 +149,7 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Exploration :id id))
 
-(mu/defn comment-by-id
-  "The Comment with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/Comment :id id))
-
-(mu/defn comment-recipient-emails
+(mu/defn select-comment-recipient-emails
   "The emails of the Users to notify about a comment: the authors of the Comment with `parent-comment-id` and of its
   replies, or the User with `creator-id` for a top-level comment, plus the Users with `mention-ids`."
   [creator-id        :- ::lib.schema.id/user
@@ -83,22 +167,6 @@
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
-(mu/defn insert-comment!
-  "Insert the Comment `row` and return the inserted instance."
-  [row :- ::comments.schema/comment.update]
-  (t2/insert-returning-instance! :model/Comment row))
-
-(mu/defn update-comment!
-  "Apply `changes` to the Comment with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment id changes))
-
-(mu/defn soft-delete-comment!
-  "Mark the Comment with `id` deleted now, returning the number updated."
-  [id :- ms/PositiveInt]
-  (t2/update! :model/Comment id {:deleted_at [:now]}))
-
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
   everyone; everyone else is limited to their own tenant and further narrowed by the `user-visibility`
@@ -114,7 +182,7 @@
                                                                  (conj api/*current-user-id*))])
         :none  (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
 
-(mu/defn mentionable-users
+(mu/defn select-mentionable-users
   "The id, first name, last name, and email of the active Users the current user may @mention, ordered by name
   then id, limited to `limit` starting at `offset`."
   [limit  :- [:maybe ms/PositiveInt]
@@ -126,7 +194,7 @@
                                        [:%lower.last_name :asc]
                                        [:id :asc]))))
 
-(mu/defn mentionable-user-count
+(mu/defn count-mentionable-users
   "The `:count` of the active Users the current user may @mention."
   []
   (t2/query-one (merge {:select [[[:count [:distinct :core_user.id]] :count]]
@@ -139,32 +207,3 @@
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
-(mu/defn reaction-exists?
-  "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/exists? :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
-
-(mu/defn insert-reaction!
-  "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/insert! :model/CommentReaction {:comment_id comment-id, :user_id user-id, :emoji emoji}))
-
-(mu/defn delete-reaction!
-  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, returning
-  the number deleted."
-  [comment-id :- ms/PositiveInt
-   user-id    :- ::lib.schema.id/user
-   emoji      :- :string]
-  (t2/delete! :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
-
-(mu/defn reactions-for-comments
-  "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."
-  [comment-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/CommentReaction
-             {:where    [:in :comment_id comment-ids]
-              :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]}))

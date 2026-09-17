@@ -331,6 +331,12 @@
   lets [[metabase.api.macros.defendpoint.closed-schemas]] accept the `:any`."
   (mu/with (string-keyed-map :any true) {::mr/deliberately-open true}))
 
+(def OpaqueJSONColumn
+  "A JSON column this code writes as a Clojure map and reads back as parsed JSON, never reading it by key: the keys
+  are keywords going in and strings coming out, so neither shape can be declared. Prefer [[OpaqueJSONObject]] for a
+  payload that is string-keyed in both directions, and a real schema for any map this code does read by key."
+  (mu/with [:map] {::mr/deliberately-open true}))
+
 (defn string-keyed-object
   "Schema for a JSON object of which this code reads a few keys and keeps the rest as they arrived: an
   [[OpaqueJSONObject]] whose `entries` declare, with string keys, the keys this code reads and their types.
@@ -382,6 +388,11 @@
          :description "ISO-8601 date-time string"}
     #(instance? java.time.temporal.Temporal %)]
    (deferred-tru "value must be a valid date/time/datetime")))
+
+(def TemporalInstantOrNow
+  "Like [[TemporalInstant]], but also accepts the HoneySQL `:%now` sigil, which writes the database's own current
+  timestamp. Use it for a temporal column in an `::x.update` schema that callers stamp with `:%now`."
+  [:or TemporalInstant [:= :%now]])
 
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."

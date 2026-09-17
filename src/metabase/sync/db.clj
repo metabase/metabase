@@ -17,7 +17,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (def ^:private sync-tables-clause
@@ -25,31 +24,6 @@
   [:and [:= :active true] [:= :visibility_type nil]])
 
 ;;; ------------------------------------------------ Database ------------------------------------------------
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn attached-dwh-database
-  "The attached data warehouse Database, or nil."
-  []
-  (t2/select-one :model/Database :is_attached_dwh true))
-
-(mu/defn database-stub?
-  "Whether the Database with `database-id` is a stub."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_stub :model/Database :id database-id))
-
-(mu/defn database-on-demand-flags
-  "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn :is_on_demand :model/Database :id [:in database-ids]))
-
-(mu/defn synced-user-database-exists?
-  "Whether any non-sample, non-audit Database has completed its initial sync."
-  []
-  (t2/exists? :model/Database :is_sample false :is_audit false :initial_sync_status "complete"))
 
 (mu/defn databases-with-schedules-reducible
   "Reducible raw Database rows whose sync schedules are the sample or default ones."
@@ -64,12 +38,6 @@
                                  [:= :metadata_sync_schedule old-sample-metadata-cron]]
                                 [:in :metadata_sync_schedule metadata-crons]
                                 [:in :cache_field_values_schedule cache-field-values-crons]]}))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
@@ -211,7 +179,7 @@
 
 (mu/defn insert-table!
   "Insert `table` and return the new instance."
-  [table :- ::warehouse-schema.schema/table.update]
+  [table :- ::warehouse-schema.schema/table.create]
   (t2/insert-returning-instance! :model/Table table))
 
 (mu/defn update-table!
@@ -433,7 +401,7 @@
 
 (mu/defn insert-fields!
   "Insert the Field `rows` and return their IDs."
-  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
+  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
   (t2/insert-returning-pks! :model/Field rows))
 
 (mu/defn update-field!

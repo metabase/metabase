@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.schema
   "Malli schemas for remote sync API request and response bodies."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -172,12 +173,16 @@
 (mr/def ::remote-sync-object
   "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
   [:merge
-   ::remote-sync-object.update
+   ::remote-sync-object.columns
    [:map {:closed true}
     [:id                  ms/PositiveInt]]])
 
-(mr/def ::remote-sync-object.update
-  "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
+(mr/def ::remote-sync-object.partial
+  "A RemoteSyncObject row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::remote-sync-object [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::remote-sync-object.columns
+  "Every column of `:remote_sync_object` except `id`, all optional."
   [:map {:closed true}
    [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id            {:optional true} [:maybe :int]]
@@ -190,6 +195,24 @@
    [:model_table_name    {:optional true} [:maybe :string]]
    [:file_path           {:optional true} [:maybe :string]]
    [:content_hash        {:optional true} [:maybe :string]]])
+
+(mr/def ::remote-sync-object.create
+  "What an insert of a RemoteSyncObject accepts."
+  (mut/select-keys (mr/schema ::remote-sync-object.columns)
+                   [:model_type :model_id :status :status_changed_at :model_name :model_collection_id
+                    :model_display :model_table_id :model_table_name :file_path :content_hash]))
+
+(mr/def ::remote-sync-object.update
+  "What an update of a RemoteSyncObject accepts: no immutable columns. `:model_type` and `:model_id` (the identity
+  of the tracked entity) are never updated."
+  (mut/select-keys (mr/schema ::remote-sync-object.columns)
+                   [:status :status_changed_at :model_name :model_collection_id
+                    :model_display :model_table_id :model_table_name :file_path :content_hash]))
+
+(mr/def ::remote-sync-object.column
+  "A column of `remote_sync_object`, for the `:columns` option of the queries in
+  [[metabase-enterprise.remote-sync.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::remote-sync-object.columns))))
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
@@ -215,21 +238,43 @@
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
   [:merge
-   ::remote-sync-task.update
+   ::remote-sync-task.columns
    [:map {:closed true}
     [:id                      ms/PositiveInt]]])
 
-(mr/def ::remote-sync-task.update
-  "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
+(mr/def ::remote-sync-task.partial
+  "A RemoteSyncTask row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::remote-sync-task [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::remote-sync-task.columns
+  "Every column of `:remote_sync_task` except `id`, all optional."
   [:map {:closed true}
    [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:progress                {:optional true} [:maybe number?]]
    [:cancelled               {:optional true} [:maybe :boolean]]
    [:started_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:ended_at                {:optional true} [:maybe ms/TemporalInstant]]
-   [:last_progress_report_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:ended_at                {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:last_progress_report_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
    [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]
    [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])
+
+(mr/def ::remote-sync-task.create
+  "What an insert of a RemoteSyncTask accepts."
+  (mut/select-keys (mr/schema ::remote-sync-task.columns)
+                   [:sync_task_type :progress :cancelled :started_at :ended_at :last_progress_report_at
+                    :initiated_by :error_message :version :conflicts :outcome]))
+
+(mr/def ::remote-sync-task.update
+  "What an update of a RemoteSyncTask accepts: no immutable columns. `:sync_task_type`, `:initiated_by`, and
+  `:started_at` (identity, ownership, and creation provenance of the task) are never updated."
+  (mut/select-keys (mr/schema ::remote-sync-task.columns)
+                   [:progress :cancelled :ended_at :last_progress_report_at
+                    :error_message :version :conflicts :outcome]))
+
+(mr/def ::remote-sync-task.column
+  "A column of `remote_sync_task`, for the `:columns` option of the queries in
+  [[metabase-enterprise.remote-sync.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::remote-sync-task.columns))))

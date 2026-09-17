@@ -45,8 +45,8 @@
 (methodical/defmethod events/publish-event! ::card-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :card (:id object))
-    (dependencies.db/delete-dependency-status! :card (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :card :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :card :entity_id (:id object)})))
 
 ;; ### Snippets
 (events/derive! ::snippet-deps :metabase/event)
@@ -64,8 +64,8 @@
 (methodical/defmethod events/publish-event! ::snippet-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :snippet (:id object))
-    (dependencies.db/delete-dependency-status! :snippet (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :snippet :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :snippet :entity_id (:id object)})))
 
 ;; ### Transforms
 (events/derive! ::transform-deps :metabase/event)
@@ -84,8 +84,8 @@
   [_ {:keys [id]}]
   ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :transform id)
-    (dependencies.db/delete-dependency-status! :transform id)))
+    (dependencies.db/delete-dependencies! {:from_entity_type :transform :from_entity_id id})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :transform :entity_id id})))
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
 ;; (And if the target has changed, the old table's dep on the transform is dropped.)
@@ -120,8 +120,8 @@
 (methodical/defmethod events/publish-event! ::dashboard-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :dashboard (:id object))
-    (dependencies.db/delete-dependency-status! :dashboard (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :dashboard :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :dashboard :entity_id (:id object)})))
 
 ;; ### Documents
 (events/derive! ::document-deps :metabase/event)
@@ -139,8 +139,8 @@
 (methodical/defmethod events/publish-event! ::document-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :document (:id object))
-    (dependencies.db/delete-dependency-status! :document (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :document :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :document :entity_id (:id object)})))
 
 ;; ### Sandboxes
 (events/derive! ::sandbox-deps :metabase/event)
@@ -158,8 +158,8 @@
 (methodical/defmethod events/publish-event! ::sandbox-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :sandbox (:id object))
-    (dependencies.db/delete-dependency-status! :sandbox (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :sandbox :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :sandbox :entity_id (:id object)})))
 
 ;; ### Segments
 (events/derive! ::segment-deps :metabase/event)
@@ -177,8 +177,8 @@
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :segment (:id object))
-    (dependencies.db/delete-dependency-status! :segment (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :segment :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :segment :entity_id (:id object)})))
 
 ;; ### Measures
 (events/derive! ::measure-deps :metabase/event)
@@ -196,8 +196,8 @@
 (methodical/defmethod events/publish-event! ::measure-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (dependencies.db/delete-dependencies-from! :measure (:id object))
-    (dependencies.db/delete-dependency-status! :measure (:id object))))
+    (dependencies.db/delete-dependencies! {:from_entity_type :measure :from_entity_id (:id object)})
+    (dependencies.db/delete-dependency-statuses! {:entity_type :measure :entity_id (:id object)})))
 
 ;; ## Checking dependents for breakage (analysis_finding staleness)
 ;;

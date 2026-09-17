@@ -2,41 +2,79 @@
   "Application database queries for the impersonation module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn impersonation
-  "The ConnectionImpersonation with `impersonation-id`, or nil."
-  [impersonation-id :- ms/PositiveInt]
-  (t2/select-one :model/ConnectionImpersonation :id impersonation-id))
+(mr/def ::filters
+  "Which ConnectionImpersonations a query applies to. Keys mirror the columns of `:connection_impersonations`: a
+  scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:db_id    {:optional true} [:or ::lib.schema.id/database [:set ::lib.schema.id/database]]]
+   [:group_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(mu/defn impersonation-for-group-and-database
-  "The ConnectionImpersonation of the group with `group-id` on the Database with `database-id`, or nil."
-  [group-id    :- ms/PositiveInt
-   database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/ConnectionImpersonation :group_id group-id :db_id database-id))
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::impersonation.schema/connection-impersonation.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::impersonation.schema/connection-impersonation.column
+                                              [:tuple ::impersonation.schema/connection-impersonation.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn all-impersonations
-  "Every ConnectionImpersonation, in ID order."
-  []
-  (t2/select :model/ConnectionImpersonation {:order-by [[:id :asc]]}))
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/ConnectionImpersonation columns))
 
-(mu/defn impersonations-for-groups
-  "The ConnectionImpersonations of the groups with `group-ids`."
-  [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
-(mu/defn impersonations-for-groups-and-database
-  "The ConnectionImpersonations of the groups with `group-ids` on the Database with `database-id`."
-  [group-ids   :- [:set ms/PositiveInt]
-   database-id :- ::lib.schema.id/database]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids] :db_id database-id))
+;;; The queries below follow [[::opts]]; queries that do not fit it live in the impersonation-only section at the
+;;; bottom of this namespace.
 
-(mu/defn impersonations-matching
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-connection-impersonations :- [:sequential ::impersonation.schema/connection-impersonation.partial]
+  "The ConnectionImpersonations matching `opts`."
+  ([]
+   (select-connection-impersonations nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn select-one-connection-impersonation :- [:maybe ::impersonation.schema/connection-impersonation.partial]
+  "The first ConnectionImpersonation matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::opts]]
+  (apply t2/select-one (->model columns) (->args opts)))
+
+(mu/defn connection-impersonation-exists? :- :boolean
+  "Whether a ConnectionImpersonation matching `opts` exists."
+  [opts :- [:maybe ::opts]]
+  (apply t2/exists? :model/ConnectionImpersonation (->args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-connection-impersonation! :- ::impersonation.schema/connection-impersonation
+  "Insert the ConnectionImpersonation `row` and return the inserted instance."
+  [row :- ::impersonation.schema/connection-impersonation.create]
+  (t2/insert-returning-instance! :model/ConnectionImpersonation row))
+
+(mu/defn delete-connection-impersonations! :- :int
+  "Delete every ConnectionImpersonation matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/ConnectionImpersonation (->args opts)))
+
+;;; ------------------------------- Queries used only by the impersonation module -------------------------------
+
+(mu/defn select-impersonations-matching
   "The ConnectionImpersonations narrowed by the optional `database-id`, `group-id`, and `group-ids`, excluding the
   Database with `excluded-database-id` when given."
   [database-id           :- [:maybe ::lib.schema.id/database]
@@ -49,27 +87,6 @@
                       (when group-id [:= :group_id group-id])
                       (when group-ids [:in :group_id group-ids])
                       (when excluded-database-id [:not [:= :db_id excluded-database-id]])]}))
-
-(mu/defn impersonation-exists-for-database?
-  "Whether the Database with `database-id` has a ConnectionImpersonation."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/ConnectionImpersonation :db_id database-id))
-
-(mu/defn insert-impersonation!
-  "Insert `impersonation` and return the new instance."
-  [impersonation :- (mut/select-keys ::impersonation.schema/connection-impersonation.update [:db_id :group_id :attribute])]
-  (first (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)))
-
-(mu/defn delete-impersonation!
-  "Delete the ConnectionImpersonation with `impersonation-id`."
-  [impersonation-id :- ms/PositiveInt]
-  (t2/delete! :model/ConnectionImpersonation :id impersonation-id))
-
-(mu/defn delete-impersonations-for-group-and-database!
-  "Delete the ConnectionImpersonations of the group with `group-id` on the Database with `database-id`."
-  [group-id    :- ms/PositiveInt
-   database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id))
 
 (mu/defn view-data-permission-values
   "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
@@ -87,8 +104,3 @@
   current user, such as an internal or unauthenticated context)."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))

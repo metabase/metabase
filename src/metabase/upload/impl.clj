@@ -35,6 +35,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -624,7 +625,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (let [database (or (upload.db/database db-id)
+  (let [database (or (warehouses.db/select-one-database {:id db-id})
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)

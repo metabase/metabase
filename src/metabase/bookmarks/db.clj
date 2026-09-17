@@ -1,6 +1,10 @@
 (ns metabase.bookmarks.db
-  "Application database queries for the bookmarks module, plus a thin (model, id, user-id) dispatch tier over them,
-  so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the bookmarks module. Every function here is a direct Toucan 2 call with no
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use
+  `toucan2.core`).
+
+  The queries below follow [[::card-bookmark-opts]] and its siblings; queries that do not fit them live in the
+  bookmarks-only section at the bottom of this namespace."
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
@@ -11,101 +15,179 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn card-bookmark-exists?
-  "Whether the User with `user-id` has a CardBookmark for the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/CardBookmark :card_id card-id :user_id user-id))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
-(mu/defn dashboard-bookmark-exists?
-  "Whether the User with `user-id` has a DashboardBookmark for the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/exists? :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
+;;; ------------------------------------------------- CardBookmark -------------------------------------------------
 
-(mu/defn collection-bookmark-exists?
-  "Whether the User with `user-id` has a CollectionBookmark for the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/exists? :model/CollectionBookmark :collection_id collection-id :user_id user-id))
+(mr/def ::card-bookmark-filters
+  "Which CardBookmarks a query applies to. Keys mirror the columns of `card_bookmark`: a scalar matches that value
+  and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:card_id {:optional true} [:or ::lib.schema.id/card [:set ::lib.schema.id/card]]]])
 
-(mu/defn document-bookmark-exists?
-  "Whether the User with `user-id` has a DocumentBookmark for the Document with `document-id`."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/exists? :model/DocumentBookmark :document_id document-id :user_id user-id))
+(mr/def ::card-bookmark-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::card-bookmark-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::bookmarks.schema/card-bookmark.column]]
+    [:order-by {:optional true} [:sequential ::bookmarks.schema/card-bookmark.column]]]])
 
-(mu/defn exploration-bookmark-exists?
-  "Whether the User with `user-id` has an ExplorationBookmark for the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
+;;; ---------------------------------------------- DashboardBookmark ----------------------------------------------
 
-(mu/defn insert-card-bookmark!
-  "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/CardBookmark {:card_id card-id :user_id user-id}))
+(mr/def ::dashboard-bookmark-filters
+  "Which DashboardBookmarks a query applies to. Keys mirror the columns of `dashboard_bookmark`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id      {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:dashboard_id {:optional true} [:or ::lib.schema.id/dashboard [:set ::lib.schema.id/dashboard]]]])
 
-(mu/defn insert-dashboard-bookmark!
-  "Insert a DashboardBookmark for the Dashboard with `dashboard-id` and the User with `user-id`, returning the
-  inserted instance."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/DashboardBookmark {:dashboard_id dashboard-id :user_id user-id}))
+(mr/def ::dashboard-bookmark-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::dashboard-bookmark-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::bookmarks.schema/dashboard-bookmark.column]]
+    [:order-by {:optional true} [:sequential ::bookmarks.schema/dashboard-bookmark.column]]]])
 
-(mu/defn insert-collection-bookmark!
-  "Insert a CollectionBookmark for the Collection with `collection-id` and the User with `user-id`, returning the
-  inserted instance."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/CollectionBookmark {:collection_id collection-id :user_id user-id}))
+;;; ---------------------------------------------- CollectionBookmark ----------------------------------------------
 
-(mu/defn insert-document-bookmark!
-  "Insert a DocumentBookmark for the Document with `document-id` and the User with `user-id`, returning the inserted
-  instance."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/DocumentBookmark {:document_id document-id :user_id user-id}))
+(mr/def ::collection-bookmark-filters
+  "Which CollectionBookmarks a query applies to. Keys mirror the columns of `collection_bookmark`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id       {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:collection_id {:optional true} [:or ::lib.schema.id/collection [:set ::lib.schema.id/collection]]]])
 
-(mu/defn insert-exploration-bookmark!
-  "Insert an ExplorationBookmark for the Exploration with `exploration-id` and the User with `user-id`, returning the
-  inserted instance."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/insert-returning-instance! :model/ExplorationBookmark {:exploration_id exploration-id :user_id user-id}))
+(mr/def ::collection-bookmark-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::collection-bookmark-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::bookmarks.schema/collection-bookmark.column]]
+    [:order-by {:optional true} [:sequential ::bookmarks.schema/collection-bookmark.column]]]])
 
-(mu/defn delete-card-bookmark!
-  "Delete the CardBookmark of the User with `user-id` for the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/CardBookmark :card_id card-id :user_id user-id))
+;;; ----------------------------------------------- DocumentBookmark -----------------------------------------------
 
-(mu/defn delete-dashboard-bookmark!
-  "Delete the DashboardBookmark of the User with `user-id` for the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   user-id      :- ::lib.schema.id/user]
-  (t2/delete! :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
+(mr/def ::document-bookmark-filters
+  "Which DocumentBookmarks a query applies to. Keys mirror the columns of `document_bookmark`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id     {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:document_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(mu/defn delete-collection-bookmark!
-  "Delete the CollectionBookmark of the User with `user-id` for the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection
-   user-id       :- ::lib.schema.id/user]
-  (t2/delete! :model/CollectionBookmark :collection_id collection-id :user_id user-id))
+(mr/def ::document-bookmark-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::document-bookmark-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::bookmarks.schema/document-bookmark.column]]
+    [:order-by {:optional true} [:sequential ::bookmarks.schema/document-bookmark.column]]]])
 
-(mu/defn delete-document-bookmark!
-  "Delete the DocumentBookmark of the User with `user-id` for the Document with `document-id`."
-  [document-id :- ms/PositiveInt
-   user-id     :- ::lib.schema.id/user]
-  (t2/delete! :model/DocumentBookmark :document_id document-id :user_id user-id))
+;;; ---------------------------------------------- ExplorationBookmark ----------------------------------------------
 
-(mu/defn delete-exploration-bookmark!
-  "Delete the ExplorationBookmark of the User with `user-id` for the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt
-   user-id        :- ::lib.schema.id/user]
-  (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
+(mr/def ::exploration-bookmark-filters
+  "Which ExplorationBookmarks a query applies to. Keys mirror the columns of `exploration_bookmark`: a scalar
+  matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id        {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:exploration_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
+
+(mr/def ::exploration-bookmark-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::exploration-bookmark-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::bookmarks.schema/exploration-bookmark.column]]
+    [:order-by {:optional true} [:sequential ::bookmarks.schema/exploration-bookmark.column]]]])
+
+;;; ----------------------------------------------- BookmarkOrdering -----------------------------------------------
+
+(mr/def ::bookmark-ordering-filters
+  "Which BookmarkOrderings a query applies to. Keys mirror the columns of `bookmark_ordering`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]])
+
+(mr/def ::bookmark-ordering-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::bookmark-ordering-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::bookmarks.schema/bookmark-ordering.column]]
+    [:order-by {:optional true} [:sequential ::bookmarks.schema/bookmark-ordering.column]]]])
+
+;;; ------------------------------------------------------ Reads ------------------------------------------------------
+
+(mu/defn card-bookmark-exists? :- :boolean
+  "Whether a CardBookmark matching `opts` exists."
+  [opts :- [:maybe ::card-bookmark-opts]]
+  (apply t2/exists? :model/CardBookmark (->args opts)))
+
+(mu/defn dashboard-bookmark-exists? :- :boolean
+  "Whether a DashboardBookmark matching `opts` exists."
+  [opts :- [:maybe ::dashboard-bookmark-opts]]
+  (apply t2/exists? :model/DashboardBookmark (->args opts)))
+
+(mu/defn collection-bookmark-exists? :- :boolean
+  "Whether a CollectionBookmark matching `opts` exists."
+  [opts :- [:maybe ::collection-bookmark-opts]]
+  (apply t2/exists? :model/CollectionBookmark (->args opts)))
+
+(mu/defn document-bookmark-exists? :- :boolean
+  "Whether a DocumentBookmark matching `opts` exists."
+  [opts :- [:maybe ::document-bookmark-opts]]
+  (apply t2/exists? :model/DocumentBookmark (->args opts)))
+
+(mu/defn exploration-bookmark-exists? :- :boolean
+  "Whether an ExplorationBookmark matching `opts` exists."
+  [opts :- [:maybe ::exploration-bookmark-opts]]
+  (apply t2/exists? :model/ExplorationBookmark (->args opts)))
+
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
+(mu/defn delete-card-bookmarks! :- :int
+  "Delete every CardBookmark matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::card-bookmark-opts]]
+  (apply t2/delete! :model/CardBookmark (->args opts)))
+
+(mu/defn delete-dashboard-bookmarks! :- :int
+  "Delete every DashboardBookmark matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::dashboard-bookmark-opts]]
+  (apply t2/delete! :model/DashboardBookmark (->args opts)))
+
+(mu/defn delete-collection-bookmarks! :- :int
+  "Delete every CollectionBookmark matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::collection-bookmark-opts]]
+  (apply t2/delete! :model/CollectionBookmark (->args opts)))
+
+(mu/defn delete-document-bookmarks! :- :int
+  "Delete every DocumentBookmark matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::document-bookmark-opts]]
+  (apply t2/delete! :model/DocumentBookmark (->args opts)))
+
+(mu/defn delete-exploration-bookmarks! :- :int
+  "Delete every ExplorationBookmark matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::exploration-bookmark-opts]]
+  (apply t2/delete! :model/ExplorationBookmark (->args opts)))
+
+(mu/defn delete-bookmark-orderings! :- :int
+  "Delete every BookmarkOrdering matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::bookmark-ordering-opts]]
+  (apply t2/delete! :model/BookmarkOrdering (->args opts)))
+
+(mu/defn insert-bookmark-orderings! :- [:maybe :int]
+  "Insert the BookmarkOrdering `rows`."
+  [rows :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
+  (t2/insert! :model/BookmarkOrdering rows))
+
+;;; ------------------------------- Queries used only by the bookmarks module -------------------------------
 
 ;;; Generic (model, id, user-id) tier. The REST API and the MCP `bookmark_content` tool both take the
 ;;; model as a runtime string, so they dispatch here rather than naming a per-model fn at the call site.
@@ -120,11 +202,11 @@
   Throws for an unrecognized `model`."
   [model id user-id]
   (case model
-    "card"        (card-bookmark-exists? id user-id)
-    "dashboard"   (dashboard-bookmark-exists? id user-id)
-    "collection"  (collection-bookmark-exists? id user-id)
-    "document"    (document-bookmark-exists? id user-id)
-    "exploration" (exploration-bookmark-exists? id user-id)
+    "card"        (card-bookmark-exists? {:card_id id :user_id user-id})
+    "dashboard"   (dashboard-bookmark-exists? {:dashboard_id id :user_id user-id})
+    "collection"  (collection-bookmark-exists? {:collection_id id :user_id user-id})
+    "document"    (document-bookmark-exists? {:document_id id :user_id user-id})
+    "exploration" (exploration-bookmark-exists? {:exploration_id id :user_id user-id})
     (unknown-bookmark-model! model)))
 
 (def ^:private model->bookmark-model+item-key
@@ -147,22 +229,12 @@
   "Delete `user-id`'s bookmark on (`model`, `id`). No-op when there is none. Throws for an unrecognized `model`."
   [model id user-id]
   (case model
-    "card"        (delete-card-bookmark! id user-id)
-    "dashboard"   (delete-dashboard-bookmark! id user-id)
-    "collection"  (delete-collection-bookmark! id user-id)
-    "document"    (delete-document-bookmark! id user-id)
-    "exploration" (delete-exploration-bookmark! id user-id)
+    "card"        (delete-card-bookmarks! {:card_id id :user_id user-id})
+    "dashboard"   (delete-dashboard-bookmarks! {:dashboard_id id :user_id user-id})
+    "collection"  (delete-collection-bookmarks! {:collection_id id :user_id user-id})
+    "document"    (delete-document-bookmarks! {:document_id id :user_id user-id})
+    "exploration" (delete-exploration-bookmarks! {:exploration_id id :user_id user-id})
     (unknown-bookmark-model! model)))
-
-(mu/defn delete-bookmark-orderings-for-user!
-  "Delete the BookmarkOrderings of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/BookmarkOrdering :user_id user-id))
-
-(mu/defn insert-bookmark-orderings!
-  "Insert the BookmarkOrdering `rows`."
-  [rows :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
-  (t2/insert! :model/BookmarkOrdering rows))
 
 (defn- bookmarks-union-query
   [user-id]

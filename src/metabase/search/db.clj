@@ -16,8 +16,42 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
+
+(mr/def ::search-index-metadata-filters
+  "Which SearchIndexMetadata rows a query applies to. Keys mirror the columns of `search_index_metadata`: a scalar
+  matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:engine     {:optional true} [:or [:or :keyword :string] [:set [:or :keyword :string]]]]
+   [:version    {:optional true} :string]
+   [:lang_code  {:optional true} :string]
+   [:index_name {:optional true} :string]
+   [:status     {:optional true} [:or [:or :keyword :string] [:set [:or :keyword :string]]]]])
+
+(mr/def ::search-index-metadata-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::search-index-metadata-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::search.schema/search-index-metadata.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::search.schema/search-index-metadata.column
+                                              [:tuple ::search.schema/search-index-metadata.column [:enum :asc :desc]]]]]]])
+
+(defn- ->search-index-metadata-model
+  [columns]
+  (u.query/model-with-columns :model/SearchIndexMetadata columns))
+
+(defn- ->search-index-metadata-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->search-index-metadata-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 (def ^:private SearchIndexRow
   "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
@@ -121,11 +155,8 @@
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`, throwing if it is already gone."
+  "Drop the search index table named `table-name`."
   [table-name :- [:or :keyword :string]]
-  ;; `IF EXISTS` cannot reliably report whether it dropped a table.
-  ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
-  ;; Let an absent table throw so callers can detect races.
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
@@ -174,10 +205,46 @@
    id    :- ms/PositiveInt]
   (t2/exists? model :id id))
 
-(mu/defn index-metadata-for-engine
-  "The SearchIndexMetadata rows of `engine`."
-  [engine :- :keyword]
-  (t2/select :model/SearchIndexMetadata :engine engine))
+;;; --------------------------------------- SearchIndexMetadata reads ---------------------------------------
+
+(mu/defn select-search-index-metadata :- [:sequential ::search.schema/search-index-metadata.partial]
+  "The SearchIndexMetadata rows matching `opts`."
+  ([]
+   (select-search-index-metadata nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::search-index-metadata-opts]]
+   (apply t2/select (->search-index-metadata-model columns) (->search-index-metadata-args opts))))
+
+(mu/defn select-one-search-index-metadata :- [:maybe ::search.schema/search-index-metadata.partial]
+  "The first SearchIndexMetadata row matching `opts`, or nil."
+  ([]
+   (select-one-search-index-metadata nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::search-index-metadata-opts]]
+   (apply t2/select-one (->search-index-metadata-model columns) (->search-index-metadata-args opts))))
+
+(mu/defn search-index-metadata-exists? :- :boolean
+  "Whether a SearchIndexMetadata row matching `opts` exists."
+  [opts :- [:maybe ::search-index-metadata-opts]]
+  (apply t2/exists? :model/SearchIndexMetadata (->search-index-metadata-args opts)))
+
+;;; --------------------------------------- SearchIndexMetadata writes ---------------------------------------
+
+(mu/defn insert-search-index-metadata! :- ::search.schema/search-index-metadata
+  "Insert the SearchIndexMetadata `row` and return the inserted instance."
+  [row :- ::search.schema/search-index-metadata.create]
+  (t2/insert-returning-instance! :model/SearchIndexMetadata row))
+
+(mu/defn update-search-index-metadata! :- :int
+  "Apply `changes` to every SearchIndexMetadata row matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::search-index-metadata-opts]
+   changes :- ::search.schema/search-index-metadata.update]
+  (apply t2/update! :model/SearchIndexMetadata (conj (->search-index-metadata-kv-args opts) changes)))
+
+(mu/defn delete-search-index-metadata! :- :int
+  "Delete every SearchIndexMetadata row matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::search-index-metadata-opts]]
+  (apply t2/delete! :model/SearchIndexMetadata (->search-index-metadata-args opts)))
+
+;;; ------------------------------------- Queries used only by the search module -------------------------------------
 
 (mu/defn index-row
   "The row of the search index `table` for `model` and `model-id`, or nil."
@@ -247,28 +314,6 @@
   (t2/query {:select [:cfgname]
              :from   [:pg_ts_config]}))
 
-(mu/defn active-index-created-at
-  "When the active `appdb` search index for `version` and `lang-code` was created, or nil."
-  [version   :- :string
-   lang-code :- :string]
-  (t2/select-one-fn :created_at
-                    :model/SearchIndexMetadata
-                    :engine :appdb
-                    :version version
-                    :lang_code lang-code
-                    :status :active
-                    {:order-by [[:created_at :desc]]}))
-
-(mu/defn insert-index-metadata!
-  "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
-  (t2/insert! :model/SearchIndexMetadata row))
-
-(mu/defn delete-index-metadata-by-version!
-  "Delete the SearchIndexMetadata rows of `version`."
-  [version :- :string]
-  (t2/delete! :model/SearchIndexMetadata :version version))
-
 (mu/defn delete-index-metadata-by-name!
   "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
@@ -288,35 +333,6 @@
               :index_name index-name
               :status [:not= :active]))
 
-(mu/defn index-metadata
-  "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
-  `lang-code`."
-  [engine    :- :keyword
-   version   :- :string
-   lang-code :- :string]
-  (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
-             :engine engine
-             :version version
-             :lang_code lang-code
-             :status [:in [:active :pending]]))
-
-(mu/defn delete-expired-pending-index-metadata!
-  "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`."
-  [lang-code      :- :string
-   created-before :- ms/TemporalInstant]
-  (t2/delete! :model/SearchIndexMetadata
-              {:where [:and
-                       [:= :lang_code lang-code]
-                       [:= :status "pending"]
-                       [:< :created_at created-before]]}))
-
-(mu/defn pending-index-metadata-exists?
-  "Whether a pending SearchIndexMetadata row of `engine`, `version`, and `lang-code` exists."
-  [engine    :- :keyword
-   version   :- :string
-   lang-code :- :string]
-  (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
-
 (mu/defn lock-pending-index-metadata!
   "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
   Must be called inside the transaction that will promote the row."
@@ -330,33 +346,15 @@
                  :status :pending
                  {:for :update}))
 
-(mu/defn delete-retired-index-metadata!
-  "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine    :- :keyword
-   version   :- :string
-   lang-code :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :retired))
-
-(mu/defn retire-active-index-metadata!
-  "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine    :- :keyword
-   version   :- :string
-   lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :active} {:status :retired}))
-
-(mu/defn activate-pending-index-metadata!
-  "Activate the pending SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
-  [engine    :- :keyword
-   version   :- :string
-   lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code lang-code :status :pending} {:status :active}))
-
-(mu/defn active-index-name
-  "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code`, or nil."
-  [engine    :- :keyword
-   version   :- :string
-   lang-code :- :string]
-  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :active))
+(mu/defn delete-expired-pending-index-metadata!
+  "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`."
+  [lang-code      :- :string
+   created-before :- ms/TemporalInstant]
+  (t2/delete! :model/SearchIndexMetadata
+              {:where [:and
+                       [:= :lang_code lang-code]
+                       [:= :status "pending"]
+                       [:< :created_at created-before]]}))
 
 (mu/defn recent-index-versions
   "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions."
@@ -381,11 +379,6 @@
                                [:and
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
-
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, or nil."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
 
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."

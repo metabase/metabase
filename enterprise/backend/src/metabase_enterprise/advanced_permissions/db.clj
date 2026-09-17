@@ -23,7 +23,7 @@
 (mu/defn blocked-database-ids-for-group
   "The subset of `database-ids` the group with `group-id` is blocked from viewing."
   [group-id     :- ms/PositiveInt
-   database-ids :- [:sequential ::lib.schema.id/database]]
+   database-ids :- [:or [:sequential ::lib.schema.id/database] [:set ::lib.schema.id/database]]]
   (t2/select-fn-set :db_id :model/DataPermissions
                     :perm_type :perms/view-data
                     :perm_value :blocked
@@ -34,13 +34,13 @@
 (mu/defn impersonated-database-ids-for-group
   "The subset of `database-ids` the group with `group-id` accesses through connection impersonation."
   [group-id     :- ms/PositiveInt
-   database-ids :- [:sequential ::lib.schema.id/database]]
+   database-ids :- [:or [:sequential ::lib.schema.id/database] [:set ::lib.schema.id/database]]]
   (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id group-id :db_id [:in database-ids]))
 
 (mu/defn sandboxed-database-ids-for-group
   "The `:db_id` rows of the Databases among `database-ids` the group with `group-id` has a sandbox on."
   [group-id     :- ms/PositiveInt
-   database-ids :- [:sequential ::lib.schema.id/database]]
+   database-ids :- [:or [:sequential ::lib.schema.id/database] [:set ::lib.schema.id/database]]]
   (t2/query {:select [[:t.db_id :db_id]]
              :from   [[(t2/table-name :model/Sandbox) :s]]
              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})

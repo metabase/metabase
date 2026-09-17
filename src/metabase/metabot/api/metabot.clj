@@ -24,7 +24,7 @@
   "List configured metabot instances"
   []
   (api/check-superuser)
-  {:items (metabot.db/metabots-by-name)})
+  {:items (metabot.db/select-metabots {:order-by [:name]})})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -34,7 +34,7 @@
   "Retrieve one metabot instance"
   [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
-  (api/check-404 (metabot.db/metabot id)))
+  (api/check-404 (metabot.db/select-one-metabot {:id id})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -48,18 +48,18 @@
                        [:use_verified_content {:optional true} :boolean]
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
-  (api/check-404 (metabot.db/metabot-exists? id))
-  (let [old-metabot (metabot.db/metabot id)]
+  (api/check-404 (metabot.db/metabot-exists? {:id id}))
+  (let [old-metabot (metabot.db/select-one-metabot {:id id})]
     ;; Prevent enabling verified content without the premium feature
     (when (:use_verified_content metabot-updates)
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
-        (metabot.db/update-metabot! id metabot-updates)
+        (metabot.db/update-metabots! {:id id} metabot-updates)
         ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
         ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
         (metabot.suggested-prompts-refresh/schedule-refresh! id))
-      (metabot.db/metabot id))))
+      (metabot.db/select-one-metabot {:id id}))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}
@@ -78,7 +78,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/check-404 (metabot.db/metabot-exists? id))
+    (api/check-404 (metabot.db/metabot-exists? {:id id}))
     (metabot.usage/check-metabase-managed-free-limit!)
     (metabot.suggested-prompts/delete-all-metabot-prompts id)
     (metabot.suggested-prompts/generate-sample-prompts id)))
@@ -99,8 +99,8 @@
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
   (let [offset  (when-not sample (request/offset))
-        total   (metabot.db/prompt-count id model model_id)
-        prompts (metabot.db/prompts id model model_id sample (request/limit) offset)]
+        total   (metabot.db/count-metabot-prompts-in-scope id model model_id)
+        prompts (metabot.db/select-metabot-prompts-in-scope id model model_id sample (request/limit) offset)]
     {:prompts prompts
      :limit   (request/limit)
      :offset  offset
@@ -127,7 +127,7 @@
                               [:id pos-int?]
                               [:prompt-id pos-int?]]]
   (api/check-superuser)
-  (metabot.db/delete-metabot-prompt! id prompt-id)
+  (metabot.db/delete-metabot-prompts! {:id prompt-id :metabot_id id})
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

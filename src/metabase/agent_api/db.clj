@@ -1,12 +1,15 @@
 (ns metabase.agent-api.db
-  "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
+  "Application database queries for the agent API module, including `:model/AgentApiCallLog`. Every function here
+  is a direct Toucan 2 call with no additional logic, so the rest of the module only touches `toucan2.core` for
+  hydration."
   (:require
    [malli.util :as mut]
+   [metabase.agent-api.schema :as agent-api.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn collection-breadcrumb-columns
@@ -37,12 +40,12 @@
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard.update]
+  [row :- ::dashboards.schema/dashboard.create]
   (t2/insert-returning-instance! :model/Dashboard row))
 
 (mu/defn insert-dashcard!
   "Insert the DashboardCard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard-card.update]
+  [row :- ::dashboards.schema/dashboard-card.create]
   (t2/insert-returning-instance! :model/DashboardCard row))
 
 (mu/defn dashcard-ids-in-layout-order
@@ -64,16 +67,28 @@
 (mu/defn update-dashcard!
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- (mut/select-keys ::dashboards.schema/dashboard-card.update [:visualization_settings :row :col])]
+   changes     :- (mut/select-keys ::dashboards.schema/dashboard-card.columns [:visualization_settings :row :col])]
   (t2/update! :model/DashboardCard dashcard-id changes))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived :archived_directly])]
+   changes      :- (mut/select-keys ::dashboards.schema/dashboard.columns [:name :description :collection_id :archived :archived_directly])]
   (t2/update! :model/Dashboard dashboard-id changes))
 
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
+
+;;; ----------------------------------------------- AgentApiCallLog -----------------------------------------------
+
+(mu/defn insert-agent-api-call-log! :- ::agent-api.schema/agent-api-call-log
+  "Insert the AgentApiCallLog `row` and return the inserted instance."
+  [row :- ::agent-api.schema/agent-api-call-log.update]
+  (t2/insert-returning-instance! :model/AgentApiCallLog row))
+
+(mu/defn delete-agent-api-call-logs-created-before! :- :int
+  "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/AgentApiCallLog {:where [:< :created_at cutoff]}))

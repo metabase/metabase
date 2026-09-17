@@ -1,5 +1,6 @@
 (ns metabase.dashboards.schema
   (:require
+   [malli.util :as mut]
    [metabase.actions.schema]
    [metabase.collections.schema]
    [metabase.content-verification.schema]
@@ -23,10 +24,10 @@
   ::parameters.schema/parameter)
 
 (mr/def ::dashboard
-  "A Dashboard as selected from the app DB: every column of `:report_dashboard` (see `::dashboard.update`) plus
+  "A Dashboard as selected from the app DB: every column of `:report_dashboard` (see `::dashboard.columns`) plus
   `:id` and the keys some callers hydrate onto it."
   [:merge
-   ::dashboard.update
+   ::dashboard.columns
    [:map {:closed true}
     [:id                         ::lib.schema.id/dashboard]
     [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
@@ -52,11 +53,11 @@
                                                     [:last_name  [:maybe :string]]
                                                     [:email      [:maybe :string]]]]]]])
 
-(mr/def ::dashboard.update
-  "What an update (or insert) of a Dashboard accepts: every column of `:report_dashboard` except `id`, all optional."
+(mr/def ::dashboard.columns
+  "Every column of `:report_dashboard` except `id`, all optional."
   [:map {:closed true}
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
@@ -76,12 +77,34 @@
    [:entity_id               {:optional true} [:maybe :string]]
    [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:width                   {:optional true} [:maybe :string]]
-   [:initially_published_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:initially_published_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:view_count              {:optional true} [:maybe :int]]
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
+
+(mr/def ::dashboard.create
+  "What an insert of a Dashboard accepts."
+  (mr/schema ::dashboard.columns))
+
+(mr/def ::dashboard.update
+  "What an update of a Dashboard accepts: no immutable columns (`:creator_id`, `:entity_id`, and `:created_at`
+  never change after creation)."
+  (mut/select-keys (mr/schema ::dashboard.columns)
+                   [:updated_at :name :description :parameters :points_of_interest :caveats
+                    :show_in_getting_started :public_uuid :made_public_by_id :enable_embedding
+                    :embedding_params :archived :position :collection_id :collection_position :cache_ttl
+                    :auto_apply_filters :width :initially_published_at :view_count :archived_directly
+                    :last_viewed_at :embedding_type :public_uuid_prefix]))
+
+(mr/def ::dashboard.partial
+  "A Dashboard row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::dashboard [:map {:closed true} [:id {:optional true} ::lib.schema.id/dashboard]]])
+
+(mr/def ::dashboard.column
+  "A column of `:report_dashboard`, for the `:columns` option of the queries in [[metabase.dashboards.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::dashboard.columns))))
 
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
@@ -95,7 +118,7 @@
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`, plus the keys some callers
   hydrate onto it."
   [:merge
-   ::dashboard-card.update
+   ::dashboard-card.columns
    [:map {:closed true}
     [:id                     ::lib.schema.id/dashcard]
     [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
@@ -106,11 +129,11 @@
                                                        [:map {:closed true}
                                                         [:database_enabled_actions {:optional true} :boolean]]]]]]])
 
-(mr/def ::dashboard-card.update
-  "What an update (or insert) of a DashboardCard accepts: every column of `:report_dashboardcard` except `id`, all optional."
+(mr/def ::dashboard-card.columns
+  "Every column of `:report_dashboardcard` except `id`, all optional."
   [:map {:closed true}
-   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:size_x                 {:optional true} [:maybe :int]]
    [:size_y                 {:optional true} [:maybe :int]]
    [:row                    {:optional true} [:maybe :int]]
@@ -124,33 +147,86 @@
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
    [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]])
 
+(mr/def ::dashboard-card.create
+  "What an insert of a DashboardCard accepts."
+  (mr/schema ::dashboard-card.columns))
+
+(mr/def ::dashboard-card.update
+  "What an update of a DashboardCard accepts: no immutable columns (`:entity_id` and `:created_at` never change
+  after creation)."
+  (mut/select-keys (mr/schema ::dashboard-card.columns)
+                   [:updated_at :size_x :size_y :row :col :card_id :dashboard_id :parameter_mappings
+                    :visualization_settings :action_id :dashboard_tab_id :inline_parameters]))
+
+(mr/def ::dashboard-card.partial
+  "A DashboardCard row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::dashboard-card [:map {:closed true} [:id {:optional true} ::lib.schema.id/dashcard]]])
+
+(mr/def ::dashboard-card.column
+  "A column of `:report_dashboardcard`, for the `:columns` option of the queries in [[metabase.dashboards.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::dashboard-card.columns))))
+
 (mr/def ::dashboard-card-series
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
   [:merge
-   ::dashboard-card-series.update
+   ::dashboard-card-series.columns
    [:map {:closed true}
     [:id               ms/PositiveInt]]])
 
-(mr/def ::dashboard-card-series.update
-  "What an update (or insert) of a DashboardCardSeries accepts: every column of `:dashboardcard_series` except `id`, all optional."
+(mr/def ::dashboard-card-series.columns
+  "Every column of `:dashboardcard_series` except `id`, all optional."
   [:map {:closed true}
    [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
    [:position         {:optional true} [:maybe :int]]])
 
+(mr/def ::dashboard-card-series.create
+  "What an insert of a DashboardCardSeries accepts."
+  (mr/schema ::dashboard-card-series.columns))
+
+(mr/def ::dashboard-card-series.update
+  "What an update of a DashboardCardSeries accepts: every column of `:dashboardcard_series` except `id`, all
+  optional (none of its columns are immutable)."
+  (mr/schema ::dashboard-card-series.columns))
+
+(mr/def ::dashboard-card-series.partial
+  "A DashboardCardSeries row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::dashboard-card-series [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::dashboard-card-series.column
+  "A column of `:dashboardcard_series`, for the `:columns` option of the queries in [[metabase.dashboards.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::dashboard-card-series.columns))))
+
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
   [:merge
-   ::dashboard-tab.update
+   ::dashboard-tab.columns
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
-(mr/def ::dashboard-tab.update
-  "What an update (or insert) of a DashboardTab accepts: every column of `:dashboard_tab` except `id`, all optional."
+(mr/def ::dashboard-tab.columns
+  "Every column of `:dashboard_tab` except `id`, all optional."
   [:map {:closed true}
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:name         {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]
    [:entity_id    {:optional true} [:maybe :string]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::dashboard-tab.create
+  "What an insert of a DashboardTab accepts."
+  (mr/schema ::dashboard-tab.columns))
+
+(mr/def ::dashboard-tab.update
+  "What an update of a DashboardTab accepts: no immutable columns (`:entity_id` and `:created_at` never change
+  after creation)."
+  (mut/select-keys (mr/schema ::dashboard-tab.columns) [:dashboard_id :name :position :updated_at]))
+
+(mr/def ::dashboard-tab.partial
+  "A DashboardTab row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::dashboard-tab [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::dashboard-tab.column
+  "A column of `:dashboard_tab`, for the `:columns` option of the queries in [[metabase.dashboards.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::dashboard-tab.columns))))

@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +32,7 @@
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
   (let [site-uuid-str    (system/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)]
-    (as-> (model-persistence.db/persisted-info-listing persisted-info-id db-ids card-id limit offset) results
+    (as-> (model-persistence.db/select-persisted-info-listing persisted-info-id db-ids card-id limit offset) results
       (t2/hydrate results :creator)
       (map (fn [{:keys [database_id] :as pi}]
              (assoc pi
@@ -47,17 +48,17 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (perms/check-has-application-permission :monitoring)
-  (let [db-ids (model-persistence.db/persisted-database-ids)
+  (let [db-ids (model-persistence.db/select-persisted-info-database-ids)
         writable-db-ids (when (seq db-ids)
                           (perms/prime-database-perms-cache {:db-ids db-ids})
-                          (->> (model-persistence.db/databases db-ids)
+                          (->> (warehouses.db/select-databases {:id db-ids})
                                (filter mi/can-write?)
                                (map :id)
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (model-persistence.db/persisted-model-count-for-databases writable-db-ids)
+               (model-persistence.db/count-persisted-models-for-databases writable-db-ids)
                0)
      :limit  (request/limit)
      :offset (request/offset)}))
@@ -72,7 +73,8 @@
                                    [:persisted-info-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/read-check :model/Card (:card_id persisted-info))
-    (api/write-check (model-persistence.db/database (:database_id persisted-info)))
+    (api/write-check (when-let [db-id (:database_id persisted-info)]
+                       (warehouses.db/select-one-database {:id db-id})))
     persisted-info))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -85,7 +87,8 @@
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/read-check :model/Card card-id)
-    (api/read-check (model-persistence.db/database (:database_id persisted-info)))
+    (api/read-check (when-let [db-id (:database_id persisted-info)]
+                      (warehouses.db/select-one-database {:id db-id})))
     persisted-info))
 
 (def ^:private CronSchedule
@@ -137,12 +140,12 @@
   - remove `:persist-models-enabled` from relevant [[Database]] settings
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (m/index-by :id (model-persistence.db/all-databases))
+  (let [id->db      (m/index-by :id (warehouses.db/select-databases))
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
-      (model-persistence.db/update-database! (u/the-id db)
-                                             {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
+      (warehouses.db/update-databases! {:id (u/the-id db)}
+                                       {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -179,7 +182,7 @@
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [database_id] :as card} (model-persistence.db/card card-id)]
     (api/write-check card)
-    (let [database (model-persistence.db/database database_id)]
+    (let [database (when database_id (warehouses.db/select-one-database {:id database_id}))]
       (api/write-check database)
       (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
@@ -204,13 +207,14 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [card           (model-persistence.db/card card-id)
-                persisted-info (model-persistence.db/persisted-info-for-card card-id)]
+                persisted-info (model-persistence.db/select-one-persisted-info {:card_id card-id})]
     (when (not (queries/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
     (api/write-check card)
-    (api/write-check (model-persistence.db/database (:database_id persisted-info)))
+    (api/write-check (when-let [db-id (:database_id persisted-info)]
+                       (warehouses.db/select-one-database {:id db-id})))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
@@ -226,8 +230,9 @@
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [card (model-persistence.db/card card-id)]
     (api/write-check card)
-    (when-let [persisted-info (model-persistence.db/persisted-info-for-card card-id)]
-      (api/write-check (model-persistence.db/database (:database_id persisted-info)))
+    (when-let [persisted-info (model-persistence.db/select-one-persisted-info {:card_id card-id})]
+      (api/write-check (when-let [db-id (:database_id persisted-info)]
+                         (warehouses.db/select-one-database {:id db-id})))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
     api/generic-204-no-content))
 
@@ -246,7 +251,7 @@
   (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
-  (api/let-404 [database (model-persistence.db/database id)]
+  (api/let-404 [database (warehouses.db/select-one-database {:id id})]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -256,7 +261,7 @@
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
-            (do (model-persistence.db/update-database! id {:settings (assoc (:settings database) :persist-models-enabled true)})
+            (do (warehouses.db/update-databases! {:id id} {:settings (assoc (:settings database) :persist-models-enabled true)})
                 (task.persist-refresh/schedule-persistence-for-database!
                  database
                  (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -273,10 +278,10 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [database (model-persistence.db/database id)]
+  (api/let-404 [database (warehouses.db/select-one-database {:id id})]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (model-persistence.db/update-database! id {:settings (dissoc (:settings database) :persist-models-enabled)})
+      (do (warehouses.db/update-databases! {:id id} {:settings (dissoc (:settings database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)

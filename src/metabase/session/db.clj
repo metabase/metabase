@@ -1,27 +1,52 @@
 (ns metabase.session.db
-  "Application database queries for the session module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for `:model/Session`. Every function here is a direct Toucan 2 call with no
+  additional logic, so no other namespace in the module runs a Session query itself (model definitions still use
+  `toucan2.core`).
+
+  The queries below follow [[::opts]]; queries that do not fit it, and queries for other models this namespace
+  also hosts, live in the session-only section at the bottom of this namespace."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.session.schema :as session.schema]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn delete-session-by-key-hashed!
-  "Delete the Session with `key-hashed`, returning the number of rows deleted."
-  [key-hashed :- :string]
-  (t2/delete! :model/Session :key_hashed key-hashed))
+(mr/def ::filters
+  "Which Sessions a query applies to. Keys mirror the columns of `core_session`: a scalar matches that value."
+  [:map {:closed true}
+   [:id         {:optional true} :string]
+   [:user_id    {:optional true} ::lib.schema.id/user]
+   [:key_hashed {:optional true} :string]])
 
-(mu/defn delete-sessions-for-user!
-  "Delete every Session of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id user-id))
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::session.schema/session.column]]
+    [:order-by {:optional true} [:sequential ::session.schema/session.column]]]])
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn delete-sessions! :- :int
+  "Delete every Session matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/Session (->args opts)))
+
+;;; ------------------------------------- Queries used only by the session module -------------------------------
 
 (mu/defn delete-expired-sessions!
   "Delete Sessions older than `max-age-minutes`, past their own `expires_at`, or (when `idle-timeout-seconds` is
@@ -43,17 +68,17 @@
       (t2/query-one hsql))))
 
 (mu/defn auth-identity-for-provider
-  "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
-  which owns the AuthIdentity table."
+  "The AuthIdentity of the User with `user-id` at `provider`, or nil. See
+  `metabase.auth-identity.db/select-one-auth-identity`, which owns the AuthIdentity table."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (auth-identity.db/auth-identity user-id provider))
+  (auth-identity.db/select-one-auth-identity {:user_id user-id :provider provider}))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (auth-identity.db/auth-identity-exists? user-id provider))
+  (auth-identity.db/auth-identity-exists? {:user_id user-id :provider provider}))
 
 (mu/defn set-auth-identity-credentials!
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."

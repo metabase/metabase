@@ -65,7 +65,10 @@
                                      downstream-table-ids)]
     (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
                                                         (map :id) outdated-tables))]
-      (dependencies.db/delete-table-dependencies-on-transform! outdated-downstream-table-ids id))))
+      (dependencies.db/delete-dependencies! {:from_entity_type :table
+                                             :from_entity_id   (set outdated-downstream-table-ids)
+                                             :to_entity_type   :transform
+                                             :to_entity_id     id}))))
 
 ;;; ------------------------------ Backfill orchestration ------------------------------
 
@@ -103,7 +106,8 @@
                            (deps.dependency-status/record-failure!
                             entity-type id max-retries
                             (deps.settings/dependency-backfill-delay-minutes))
-                           (let [{:keys [fail_count terminal]} (dependencies.db/dependency-status entity-type id)]
+                           (let [{:keys [fail_count terminal]} (dependencies.db/select-one-dependency-status
+                                                                {:entity_type entity-type :entity_id id})]
                              (if terminal
                                (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
                                            type-name id fail_count (ex-message e))

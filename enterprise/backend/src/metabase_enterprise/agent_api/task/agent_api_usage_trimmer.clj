@@ -9,7 +9,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase-enterprise.agent-api.db :as agent-api.db]
+   [metabase.agent-api.db :as agent-api.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -28,7 +28,7 @@
       (log/info "Skipping Agent API usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))]
         (log/infof "Trimming Agent API usage log rows older than %d days." (long retention-days))
-        (let [calls (agent-api.db/delete-call-logs-created-before! cutoff)]
+        (let [calls (agent-api.db/delete-agent-api-call-logs-created-before! cutoff)]
           (log/infof "Agent API usage log cleanup complete. Deleted %d call rows." (or calls 0)))))))
 
 (task/defjob ^{DisallowConcurrentExecution true

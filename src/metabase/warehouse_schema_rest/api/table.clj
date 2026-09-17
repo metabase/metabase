@@ -34,6 +34,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -242,7 +243,7 @@
     (quick-task/submit-task!
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (warehouse-schema-rest.db/database db-id)]
+         (let [database (warehouses.db/select-one-database {:id db-id})]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -537,7 +538,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
-        database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
+        database (api/check-404 (warehouses.db/select-one-database {:id (:db_id table) :router_database_id_set false}))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

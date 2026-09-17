@@ -9,4 +9,4 @@
 
 (p/import-vars
  [metabase.warehouse-schema.db
-  user-renamed-field-names])
+  select-user-renamed-field-names])

@@ -4,16 +4,12 @@
   (:require
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil. `table-id` may be nil (some callers pass a Card's or Metric's possibly-absent
@@ -178,8 +174,8 @@
 
 (mu/defn insert-card!
   "Insert the Card `card` and return the inserted instance."
-  [card :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card card))
+  [card :- ::queries.schema/card.create]
+  (queries.db/insert-card! card))
 
 (mu/defn delete-cards-in-collection!
   "Delete the Cards in the Collection with `collection-id`, returning the number deleted."
@@ -223,12 +219,12 @@
 
 (mu/defn insert-collection!
   "Insert the Collection `row` and return the inserted instance."
-  [row :- ::collections.schema/collection.update]
+  [row :- ::collections.schema/collection.create]
   (t2/insert-returning-instance! :model/Collection row))
 
 (mu/defn insert-collection-returning-pk!
   "Insert the Collection `row` and return its id."
-  [row :- ::collections.schema/collection.update]
+  [row :- ::collections.schema/collection.create]
   (t2/insert-returning-pk! :model/Collection row))
 
 (mu/defn dashboards

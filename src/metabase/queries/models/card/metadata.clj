@@ -177,7 +177,7 @@ saved later when it is ready."
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
             :else
-            (let [current-query (queries.db/card-dataset-query id)]
+            (let [current-query (:dataset_query (queries.db/select-one-card {:id id :columns [:dataset_query]}))]
               (if (= (:dataset_query card) current-query)
                 (do
                   (queries.db/update-card! id {:result_metadata metadata})

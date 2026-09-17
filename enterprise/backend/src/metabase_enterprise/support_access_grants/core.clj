@@ -46,7 +46,7 @@
                               :notes                 notes
                               :grant_start_timestamp now
                               :grant_end_timestamp   grant-end}
-          grant              (-> (support-access-grants.db/insert-grant! grant-record)
+          grant              (-> (support-access-grants.db/insert-support-access-grant-log! grant-record)
                                  (t2/hydrate :user_info))
           support-email      (sag.settings/support-access-grant-email)
           support-user       (sag.model/fetch-or-create-support-user!)
@@ -79,7 +79,7 @@
   - Grant doesn't exist
   - Grant is already revoked"
   [user-id grant-id]
-  (let [grant (support-access-grants.db/grant grant-id)]
+  (let [grant (support-access-grants.db/select-one-support-access-grant-log {:id grant-id})]
     (when-not grant
       (throw (ex-info (tru "Grant not found")
                       {:status-code 404})))
@@ -87,10 +87,10 @@
       (throw (ex-info (tru "Grant is already revoked")
                       {:status-code 400})))
     (let [now (t/instant)]
-      (support-access-grants.db/update-grant! grant-id
-                                              {:revoked_at now
-                                               :revoked_by_user_id user-id})
-      (-> (support-access-grants.db/grant grant-id)
+      (support-access-grants.db/update-support-access-grant-logs! {:id grant-id}
+                                                                  {:revoked_at now
+                                                                   :revoked_by_user_id user-id})
+      (-> (support-access-grants.db/select-one-support-access-grant-log {:id grant-id})
           (t2/hydrate :user_info)))))
 
 (defn expire-ended-grants!
@@ -129,9 +129,14 @@
 
   (let [limit (min (or limit 50) 100)
         offset (or offset 0)
-        grants (support-access-grants.db/grants-page include-revoked ticket-number user-id limit offset)
+        filters (cond-> {}
+                  (not include-revoked) (assoc :revoked_at_set false)
+                  ticket-number         (assoc :ticket_number ticket-number)
+                  user-id               (assoc :user_id user-id))
+        grants (support-access-grants.db/select-support-access-grant-logs
+                (assoc filters :order-by [[:created_at :desc]] :limit limit :offset offset))
         grants-with-user-name (t2/hydrate grants :user_info)
-        total (support-access-grants.db/grant-count include-revoked ticket-number user-id)]
+        total (support-access-grants.db/count-support-access-grant-logs filters)]
     {:data grants-with-user-name
      :total total
      :limit limit
@@ -142,5 +147,5 @@
 
   Returns the active grant record or nil if no active grant exists."
   []
-  (some-> (support-access-grants.db/current-grant)
+  (some-> (support-access-grants.db/select-current-support-access-grant-log)
           (t2/hydrate :user_info)))

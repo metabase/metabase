@@ -11,7 +11,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.product-feedback.db :as product-feedback.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.time.temporal WeekFields)
    (java.util Locale)))
@@ -45,7 +46,7 @@
    :version        (config/mb-version-info :tag)
    :num_users      (product-feedback.db/active-personal-user-count)
    :num_dashboards (product-feedback.db/unarchived-dashboard-count)
-   :num_databases  (product-feedback.db/non-audit-database-count)
+   :num_databases  (warehouses.db/count-databases {:is_audit false})
    :num_questions  (product-feedback.db/unarchived-card-count "question")
    :num_models     (product-feedback.db/unarchived-card-count "model")})
 

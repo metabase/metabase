@@ -1,6 +1,7 @@
 (ns metabase.bookmarks.schema
   "Malli schemas for the bookmarks module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -20,6 +21,10 @@
    [:item_id  {:optional true} [:maybe ms/PositiveInt]]
    [:ordering {:optional true} [:maybe :int]]])
 
+(mr/def ::bookmark-ordering.column
+  "A column of `bookmark_ordering`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::bookmark-ordering.update))))
+
 (mr/def ::card-bookmark
   "A CardBookmark as selected from the app DB: every column of `:card_bookmark`."
   [:merge
@@ -32,7 +37,11 @@
   [:map {:closed true}
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::card-bookmark.column
+  "A column of `card_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::card-bookmark.update))))
 
 (mr/def ::collection-bookmark
   "A CollectionBookmark as selected from the app DB: every column of `:collection_bookmark`."
@@ -46,7 +55,11 @@
   [:map {:closed true}
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::collection-bookmark.column
+  "A column of `collection_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::collection-bookmark.update))))
 
 (mr/def ::dashboard-bookmark
   "A DashboardBookmark as selected from the app DB: every column of `:dashboard_bookmark`."
@@ -60,7 +73,11 @@
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::dashboard-bookmark.column
+  "A column of `dashboard_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::dashboard-bookmark.update))))
 
 (mr/def ::document-bookmark
   "A DocumentBookmark as selected from the app DB: every column of `:document_bookmark`."
@@ -74,7 +91,11 @@
   [:map {:closed true}
    [:user_id     {:optional true} [:maybe ::lib.schema.id/user]]
    [:document_id {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::document-bookmark.column
+  "A column of `document_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::document-bookmark.update))))
 
 (mr/def ::exploration-bookmark
   "A ExplorationBookmark as selected from the app DB: every column of `:exploration_bookmark`."
@@ -88,4 +109,8 @@
   [:map {:closed true}
    [:user_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:exploration_id {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::exploration-bookmark.column
+  "A column of `exploration_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-bookmark.update))))

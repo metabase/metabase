@@ -72,9 +72,10 @@
    _]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
   {:data (present-tenants
-          (tenants.db/tenants-page status
-                                   (when (request/paged?) (request/limit))
-                                   (when (request/paged?) (request/offset))))})
+          (tenants.db/select-tenants
+           (cond-> {:order-by [:id]}
+             (not= status "all")     (assoc :is_active (= status "active"))
+             (request/paged?)        (assoc :limit (request/limit) :offset (request/offset)))))})
 
 (def ^:private UpdateTenantArguments
   [:map {:closed true}
@@ -88,15 +89,15 @@
    {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (t2/with-transaction [_cn]
     (collection/with-allow-modifying-tenant-root-collections
-      (let [tenant-before-update (tenants.db/tenant tenant-id)
-            _                    (tenants.db/update-tenant! tenant-id tenant)
-            tenant-after-update  (tenants.db/tenant tenant-id)]
+      (let [tenant-before-update (tenants.db/select-one-tenant {:id tenant-id})
+            _                    (tenants.db/update-tenants! {:id tenant-id} tenant)
+            tenant-after-update  (tenants.db/select-one-tenant {:id tenant-id})]
         (when (false? is_active)
-          (tenants.db/deactivate-tenant-users! tenant-id)
+          (tenants.db/update-tenant-users-deactivated! tenant-id)
           (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) false)
                   collection/archive-collection!))
         (when (true? is_active)
-          (tenants.db/reactivate-tenant-users! tenant-id)
+          (tenants.db/update-tenant-users-reactivated! tenant-id)
           (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) true)
                   (collection/unarchive-collection! {})))
         (events/publish-event! :event/tenant-update {:object          tenant-after-update
@@ -118,7 +119,7 @@
   "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
-  (present-tenant (tenants.db/tenant id)))
+  (present-tenant (tenants.db/select-one-tenant {:id id})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenant` routes"

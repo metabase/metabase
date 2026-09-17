@@ -67,7 +67,7 @@
   full stored_result row (creator/db/blob/query) or nil when no result row exists yet (query
   still pending/errored)."
   [eq-id]
-  (when-let [sr-id (explorations.db/query-result-stored-result-id eq-id)]
+  (when-let [sr-id (:stored_result_id (explorations.db/select-one-query-result {:exploration_query_id eq-id :columns [:stored_result_id]}))]
     (explorations.db/stored-result sr-id)))
 
 (defn- deserialize-stored-result
@@ -98,8 +98,8 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
-           eqr       (api/check-404 (explorations.db/query-result eq-id))
+     (let [eq        (api/check-404 (t2/hydrate (explorations.db/select-one-query {:id eq-id}) :segment_name))
+           eqr       (api/check-404 (explorations.db/select-one-query-result {:exploration_query_id eq-id}))
            sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
            qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))

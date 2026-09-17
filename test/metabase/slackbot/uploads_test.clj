@@ -10,7 +10,7 @@
    [metabase.slackbot.uploads :as slackbot.uploads]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.upload.db :as upload.db]
+   [metabase.upload.core :as upload]
    [metabase.upload.impl :as upload.impl]
    [metabase.util :as u]))
 
@@ -40,7 +40,7 @@
   (let [upload-calls   (atom [])
         download-calls (atom [])]
     (mt/with-dynamic-fn-redefs
-      [upload.db/current-database     (constantly (when uploads-enabled?
+      [upload/current-database        (constantly (when uploads-enabled?
                                                     {:id                   db-id
                                                      :uploads_schema_name  nil
                                                      :uploads_table_prefix nil}))

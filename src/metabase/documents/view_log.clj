@@ -59,7 +59,7 @@
       ;; Exploration documents aren't first-class content — they're surfaced only through their
       ;; owning Exploration, and are hidden from search and collection listings. Skip recording
       ;; recent views for them so they don't crowd out real document views in the bucket cap.
-      (when (nil? (documents.db/document-exploration-id object-id))
+      (when (nil? (:exploration_id (documents.db/select-one-document {:id object-id, :columns [:exploration_id]})))
         (activity-feed/update-users-recent-views! user-id :model/Document object-id :view))
       (catch Throwable e
         (log/warnf "Failed to process document view event. %s: %s" topic (ex-message e))))))

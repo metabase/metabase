@@ -121,7 +121,8 @@
     (into #{}
           (comp (filter #(some-> % :details :value u/lower-case-en (= lower-email)))
                 (map :notification_handler_id))
-          (notification.db/raw-value-recipients-reducible))))
+          (notification.db/reducible-select-notification-recipients
+           {:type :notification-recipient/raw-value :columns [:notification_handler_id :details]}))))
 
 (defn- notification-ids-with-recipient-email
   "Notification IDs whose recipients (user or raw-value) match `email` exactly. One SQL query
@@ -130,7 +131,7 @@
   [email]
   (let [lower-email     (u/lower-case-en email)
         raw-handler-ids (handler-ids-with-raw-value-matching email)]
-    (notification.db/handler-notification-ids-for-email lower-email raw-handler-ids)))
+    (notification.db/select-handler-notification-ids-for-email lower-email raw-handler-ids)))
 
 (defn- coerce-run-status
   "Map a task_run/task_history `:status` keyword to the public `::run-status` enum.
@@ -245,8 +246,8 @@
   (let [base-filters (cond-> (-> filters (dissoc :limit :offset :recipient_email))
                        recipient_email
                        (assoc :recipient_notification_ids (notification-ids-with-recipient-email recipient_email)))
-        page-rows    (notification.db/admin-notifications-page base-filters limit offset)
-        total        (or (notification.db/admin-notifications-count base-filters) 0)
+        page-rows    (notification.db/select-admin-notifications-page base-filters limit offset)
+        total        (or (notification.db/count-admin-notifications base-filters) 0)
         decorated    (decorate-runs page-rows)
         hydrated     (models.notification/hydrate-notification (mapv #(apply dissoc % admin-list-keys) decorated))]
     {:data    (mapv (fn [notification row]
@@ -375,7 +376,7 @@
   `:send_history`, each attributed to THIS notification via `task_run.notification_id`. Returns nil
   for a missing or non-card notification."
   [id]
-  (when-let [row (notification.db/admin-notification-detail-row id)]
+  (when-let [row (notification.db/select-admin-notification-detail-row id)]
     (let [decorated     (-> (models.notification/hydrate-notification [(apply dissoc row admin-list-keys)])
                             first
                             (merge (select-keys row admin-list-keys))
@@ -417,10 +418,10 @@
     ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
     ;; archive action, whose update-map never touches creator_id.)
     (t2/with-transaction [_conn]
-      (let [before (-> (notification.db/card-notifications ids)
+      (let [before (-> (notification.db/select-notifications {:id (set ids) :payload_type :notification/card})
                        models.notification/hydrate-notification
                        vec)]
-        (notification.db/update-card-notifications! ids update-map)
+        (notification.db/update-notifications! {:id (set ids) :payload_type :notification/card} update-map)
         before))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
@@ -438,7 +439,7 @@
   (api/check-superuser)
   (let [update-map (action->update-map action creator_id)
         before     (bulk-update! update-map notification_ids)
-        after      (->> (notification.db/notifications-by-id (mapv :id before))
+        after      (->> (notification.db/select-notifications {:id (set (mapv :id before))})
                         models.notification/hydrate-notification
                         (m/index-by :id))]
     (doseq [b    before

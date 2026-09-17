@@ -5,19 +5,59 @@
    [metabase.audit-app.schema :as audit-app.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mr/def ::topic
+  "A topic of `audit_log`, as a keyword or the string Toucan 2 reads back for it."
+  [:or :keyword :string])
+
+(mr/def ::filters
+  "Which AuditLog entries a query applies to. Keys mirror the columns of `audit_log`: a scalar matches that value and
+  a set matches any of its values."
+  [:map {:closed true}
+   [:id    {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:topic {:optional true} [:or ::topic [:set ::topic]]]])
+
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::audit-app.schema/audit-log.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::audit-app.schema/audit-log.column
+                                              [:tuple ::audit-app.schema/audit-log.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn audit-log-exists? :- :boolean
+  "Whether an AuditLog entry matching `opts` exists."
+  [opts :- [:maybe ::opts]]
+  (apply t2/exists? :model/AuditLog (->args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-audit-log! :- ::audit-app.schema/audit-log
+  "Insert the AuditLog `row` and return the inserted instance."
+  [row :- ::audit-app.schema/audit-log.create]
+  (t2/insert-returning-instance! :model/AuditLog row))
+
+;;; -------------------------------- Queries used only by the audit-app module --------------------------------
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
   (t2/select :model/Card :id [:in card-ids]))
-
-(mu/defn audit-log-topic-exists?
-  "Whether an AuditLog entry with `topic` exists."
-  [topic :- [:or :keyword :string]]
-  (t2/exists? :model/AuditLog :topic topic))
 
 (mu/defn collection-with-entity-id
   "The Collection with `entity-id`, or nil."
@@ -38,20 +78,6 @@
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn insert-audit-log!
-  "Insert an AuditLog entry."
-  [topic      :- :keyword
-   details    :- [:maybe ::audit-app.schema/audit-log.details]
-   model-name :- [:maybe :string]
-   model-id   :- [:maybe ms/PositiveInt]
-   user-id    :- [:maybe ::lib.schema.id/user]]
-  (t2/insert! :model/AuditLog
-              :topic    topic
-              :details  details
-              :model    model-name
-              :model_id model-id
-              :user_id  user-id))
 
 (mu/defn delete-oldest-by-id-subquery!
   "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`, lowest ids first."

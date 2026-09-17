@@ -86,7 +86,7 @@
 (defn get-notification
   "Get a notification by id."
   [id]
-  (-> (notification.db/notification id)
+  (-> (notification.db/select-one-notification {:id id})
       api/check-404
       models.notification/hydrate-notification))
 
@@ -97,7 +97,7 @@
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
   [{:keys [creator_id creator_or_recipient_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
-  (->> (notification.db/notifications-matching
+  (->> (notification.db/select-notifications-matching
         {:creator-id               creator_id
          :creator-or-recipient-id  creator_or_recipient_id
          :recipient-id             recipient_id

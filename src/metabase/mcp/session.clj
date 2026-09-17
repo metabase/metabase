@@ -414,7 +414,7 @@
    ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
-     (mcp.db/insert-query-handle!
+     (mcp.db/insert-mcp-query-handle!
       handle-id
       (cond-> {:mcp_session_id  mcp-session-id
                :core_session_id core-session-id
@@ -436,7 +436,7 @@
   (when (and user-id (handle-id? handle-id))
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
     ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
-    (let [row (mcp.db/query-handle-for-user handle-id user-id)]
+    (let [row (mcp.db/select-one-mcp-query-handle-for-user handle-id user-id)]
       (when (and row (not= mcp-session-id (:mcp_session_id row)))
         (log/debugf "MCP handle %s resolved across sessions for user %s"
                     handle-id user-id))

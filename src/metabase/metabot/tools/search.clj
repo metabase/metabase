@@ -20,7 +20,8 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,7 +113,7 @@
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
         id->db (when (seq db-ids)
-                 (metabot.db/database-engines-and-names db-ids))]
+                 (warehouses.db/select-database-pk->instance {:id (set db-ids) :columns [:id :engine :name]}))]
     (cond->> results
       (seq id->db) (mapv (fn [r]
                            (let [{engine :engine, db-name :name} (get id->db (:database_id r))]
@@ -317,7 +318,7 @@
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
+        metabot         (metabot.db/select-one-metabot {:entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id)})
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)

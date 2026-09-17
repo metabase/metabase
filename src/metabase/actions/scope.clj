@@ -22,13 +22,13 @@
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
-    (let [dashboard-id (actions.db/dashcard-dashboard-id (:dashcard-id scope))]
+    (let [dashboard-id (actions.db/select-dashcard-dashboard-id (:dashcard-id scope))]
       (merge {:dashboard-id (or dashboard-id missing-id)} scope))))
 
 (defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
-    (let [card         (actions.db/card-scope-columns card-id)
+    (let [card         (actions.db/select-card-scope-columns card-id)
           table-id     (lib/primary-source-table-id (:dataset_query card))]
       (merge {:table-id      table-id
               :collection-id (:collection_id card missing-id)
@@ -40,12 +40,12 @@
     (:dashcard-id scope) hydrate-from-dashcard
 
     (:dashboard-id scope)
-    (update :collection-id #(or % (actions.db/dashboard-collection-id (:dashboard-id scope)) missing-id))
+    (update :collection-id #(or % (actions.db/select-dashboard-collection-id (:dashboard-id scope)) missing-id))
 
     (:model-id scope) (hydrate-from-card (:model-id scope))
 
     (:table-id scope)
-    (update :database-id #(or % (actions.db/table-database-id (:table-id scope)) missing-id))))
+    (update :database-id #(or % (actions.db/select-table-database-id (:table-id scope)) missing-id))))
 
 (defn- strip-nils
   "Remove any keys corresponding to nil values from the given map."

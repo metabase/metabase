@@ -34,7 +34,7 @@
   [job-ids]
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (transforms.db/latest-job-runs-reducible job-ids))))
+          (transforms.db/reducible-select-latest-transform-job-runs job-ids))))
 
 (defn start-run!
   "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
@@ -42,13 +42,13 @@
   ([job-id run-method]
    ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
    ;; LocalizedString into the snapshot
-   (let [job (transforms.db/job-snapshot job-id)]
-     (transforms.db/insert-job-run! {:job_id        job-id
-                                     :job_name      (some-> (:name job) str)
-                                     :job_entity_id (:entity_id job)
-                                     :run_method    run-method
-                                     :status        :started
-                                     :is_active     true}))))
+   (let [job (transforms.db/select-one-transform-job {:id job-id :columns [:name :entity_id :built_in_type]})]
+     (transforms.db/insert-transform-job-run! {:job_id        job-id
+                                               :job_name      (some-> (:name job) str)
+                                               :job_entity_id (:entity_id job)
+                                               :run_method    run-method
+                                               :status        :started
+                                               :is_active     true}))))
 
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
@@ -59,7 +59,7 @@
 (defn running-run-for-job-id
   "Return a single active job run or nil."
   [id]
-  (transforms.db/active-job-run-for-job id))
+  (transforms.db/select-one-transform-job-run {:job_id id :is_active true}))
 
 (defn paged-job-runs
   "Return a page of the list of job runs.
@@ -69,12 +69,12 @@
   (let [offset          (or offset 0)
         limit           (or limit 20)
         [start-at end-at] (when start-time (transforms.models.u/timestamp-range start-time))]
-    {:data   (transforms.db/job-runs job-id status run-method start-at end-at sort-column sort-direction limit offset)
+    {:data   (transforms.db/select-paged-transform-job-runs job-id status run-method start-at end-at sort-column sort-direction limit offset)
      :limit  limit
      :offset offset
-     :total  (transforms.db/job-run-count job-id status run-method start-at end-at)}))
+     :total  (transforms.db/count-paged-transform-job-runs job-id status run-method start-at end-at)}))
 
 (defn transform-runs-for-job-run
   "Return transform runs that were part of the given job run, ordered by start time."
   [job-run-id]
-  (transforms.db/runs-for-job-run job-run-id))
+  (transforms.db/select-transform-runs {:job_run_id job-run-id :order-by [[:start_time :asc]]}))

@@ -64,7 +64,7 @@
       (table-user-settings/upsert-user-settings-for-tables! #{t1 t2} {:owner_email "owner@example.com"})
       (is (= ["owner@example.com" "owner@example.com"]
              (map (comp :owner_email user-table) [t1 t2])))
-      (is (= 2 (count (warehouse-schema.db/table-ids-with-user-settings #{t1 t2})))))))
+      (is (= 2 (count (warehouse-schema.db/select-table-user-settings-pks {:table_id #{t1 t2}})))))))
 
 (deftest invariants-hold-however-the-row-is-written-test
   (testing "the model's hooks, not just the upsert fns, enforce what has to hold of a settings row -- so a serdes

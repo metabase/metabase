@@ -31,7 +31,7 @@
             (let [transforms (transform/transforms-with-tags [(:id instance)])]
               (every? mi/can-write? transforms)))))
   ([_model pk]
-   (when-let [tag (transforms.db/tag pk)]
+   (when-let [tag (transforms.db/select-one-transform-tag {:id pk})]
      (mi/can-write? tag))))
 
 (defmethod mi/can-create? :model/TransformTag
@@ -46,12 +46,12 @@
     (reduce (fn [m {:keys [transform_id schedule]}]
               (update m transform_id (fnil conj #{}) schedule))
             {}
-            (transforms.db/active-job-schedules-for-transforms transform-ids))))
+            (transforms.db/select-active-job-schedules-for-transforms transform-ids))))
 
 (defn tag-name-exists?
   "Check if a tag with the given name already exists"
   [tag-name]
-  (transforms.db/tag-name-exists? tag-name))
+  (transforms.db/transform-tag-exists? {:name tag-name}))
 
 (defn tag-name-exists-excluding?
   "Check if a tag with the given name exists, excluding the specified ID"
@@ -87,12 +87,12 @@
     tags
     (let [tag-ids (into #{} (map :id) tags)
           ;; Get all transform-tag associations
-          associations (transforms.db/transform-tag-links-for-tags tag-ids)
+          associations (transforms.db/select-transform-transform-tags {:tag_id tag-ids :columns [:tag_id :transform_id]})
           ;; Get unique transform IDs
           transform-ids (into #{} (map :transform_id) associations)
           ;; Fetch transforms and check can-write? for each
           transforms (when (seq transform-ids)
-                       (transforms.db/transforms transform-ids))
+                       (transforms.db/select-transforms {:id transform-ids}))
           transform-id->can-write (into {} (map (juxt :id mi/can-write?)) transforms)
           ;; Build tag-id -> can_run map
           tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]

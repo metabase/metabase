@@ -158,7 +158,7 @@
   []
   (let [instance-version (parse-version (:tag config/mb-version-info))]
     (->>
-     (security-center.db/advisories-reducible)
+     (security-center.db/reducible-select-security-advisories)
      (run! (fn [advisory]
              (try
                (evaluate-advisory! advisory instance-version)

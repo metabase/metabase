@@ -2,6 +2,7 @@
   "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.cache.db :as cache.db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -57,7 +58,7 @@
 (mu/defn duration-cache-configs
   "The duration CacheConfigs that refresh automatically."
   []
-  (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
+  (cache.db/select-cache-configs {:strategy :duration :refresh_automatically true}))
 
 (mu/defn duration-queries-to-rerun
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
@@ -145,7 +146,7 @@
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."
   [query-hashes :- [:sequential bytes?]]
-  (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
+  (cache.db/delete-query-caches! {:query_hash (set query-hashes)}))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -166,4 +167,4 @@
   "Apply `changes` to the CacheConfig with `cache-config-id`."
   [cache-config-id :- ms/PositiveInt
    changes         :- CacheConfigChanges]
-  (t2/update! :model/CacheConfig {:id cache-config-id} changes))
+  (cache.db/update-cache-configs! {:id cache-config-id} changes))

@@ -51,48 +51,48 @@
   with (a literal keyword, not a `require`, to avoid a dependency cycle with every module that owns one of these
   models)."
   {:model/Action                   :metabase.actions.schema/action.for-update
-   :model/Card                     :metabase.queries.schema/card.update
-   :model/Channel                  :metabase.channel.schema/channel.update
-   :model/ChannelTemplate          :metabase.channel.schema/channel-template.update
-   :model/Collection               :metabase.collections.schema/collection.update
-   :model/CustomVizPlugin          :metabase-enterprise.custom-viz-plugin.schema/custom-viz-plugin.update
-   :model/Dashboard                :metabase.dashboards.schema/dashboard.update
-   :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
-   :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
-   :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
+   :model/Card                     :metabase.queries.schema/card.columns
+   :model/Channel                  :metabase.channel.schema/channel.columns
+   :model/ChannelTemplate          :metabase.channel.schema/channel-template.columns
+   :model/Collection               :metabase.collections.schema/collection.columns
+   :model/CustomVizPlugin          :metabase-enterprise.custom-viz-plugin.schema/custom-viz-plugin.columns
+   :model/Dashboard                :metabase.dashboards.schema/dashboard.columns
+   :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.columns
+   :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.columns
+   :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.columns
    :model/Database                 :metabase.warehouses.schema/database.update
-   :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
-   :model/Document                 :metabase.documents.schema/document.update
-   :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.update
-   :model/Exploration              :metabase.explorations.schema/exploration.update
-   :model/Field                    :metabase.warehouse-schema.schema/field.update
-   :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.update
-   :model/FieldValues              :metabase.warehouse-schema.schema/field-values.update
+   :model/Dimension                :metabase.warehouse-schema.schema/dimension.columns
+   :model/Document                 :metabase.documents.schema/document.columns
+   :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.columns
+   :model/Exploration              :metabase.explorations.schema/exploration.columns
+   :model/Field                    :metabase.warehouse-schema.schema/field.columns
+   :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.columns
+   :model/FieldValues              :metabase.warehouse-schema.schema/field-values.columns
    :model/Glossary                 :metabase.glossary.schema/glossary.update
-   :model/HTTPAction               :metabase.actions.schema/httpaction.update
-   :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
-   :model/Measure                  :metabase.measures.schema/measure.update
-   :model/Metabot                  :metabase.metabot.schema/metabot.update
-   :model/MetabotPrompt            :metabase.metabot.schema/metabot-prompt.update
-   :model/NativeQuerySnippet       :metabase.native-query-snippets.schema/native-query-snippet.update
-   :model/Notification             :metabase.notification.schema/notification.update
-   :model/NotificationCard         :metabase.notification.schema/notification-card.update
-   :model/NotificationHandler      :metabase.notification.schema/notification-handler.update
-   :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.update
-   :model/NotificationSubscription :metabase.notification.schema/notification-subscription.update
+   :model/HTTPAction               :metabase.actions.schema/httpaction.columns
+   :model/ImplicitAction           :metabase.actions.schema/implicit-action.columns
+   :model/Measure                  :metabase.measures.schema/measure.columns
+   :model/Metabot                  :metabase.metabot.schema/metabot.columns
+   :model/MetabotPrompt            :metabase.metabot.schema/metabot-prompt.columns
+   :model/NativeQuerySnippet       :metabase.native-query-snippets.schema/native-query-snippet.columns
+   :model/Notification             :metabase.notification.schema/notification.columns
+   :model/NotificationCard         :metabase.notification.schema/notification-card.columns
+   :model/NotificationHandler      :metabase.notification.schema/notification-handler.columns
+   :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.columns
+   :model/NotificationSubscription :metabase.notification.schema/notification-subscription.columns
    :model/OsiAiContext             :metabase.osi.schema/osi-ai-context.update
-   :model/PythonLibrary            :metabase-enterprise.transforms-python.schema/python-library.update
-   :model/QueryAction              :metabase.actions.schema/query-action.update
-   :model/Segment                  :metabase.segments.schema/segment.update
-   :model/Table                    :metabase.warehouse-schema.schema/table.update
-   :model/TableIndex               :metabase.indexes.schema/table-index.update
+   :model/PythonLibrary            :metabase-enterprise.transforms-python.schema/python-library.columns
+   :model/QueryAction              :metabase.actions.schema/query-action.columns
+   :model/Segment                  :metabase.segments.schema/segment.columns
+   :model/Table                    :metabase.warehouse-schema.schema/table.columns
+   :model/TableIndex               :metabase.indexes.schema/table-index.columns
    :model/Timeline                 :metabase.timeline.schema/timeline.update
    :model/TimelineEvent            :metabase.timeline.schema/timeline-event.update
-   :model/Transform                :metabase.transforms.schema/transform.update
-   :model/TransformJob             :metabase.transforms.schema/transform-job.update
-   :model/TransformJobTransformTag :metabase.transforms.schema/transform-job-transform-tag.update
-   :model/TransformTag             :metabase.transforms.schema/transform-tag.update
-   :model/TransformTransformTag    :metabase.transforms.schema/transform-transform-tag.update})
+   :model/Transform                :metabase.transforms.schema/transform.columns
+   :model/TransformJob             :metabase.transforms.schema/transform-job.columns
+   :model/TransformJobTransformTag :metabase.transforms.schema/transform-job-transform-tag.columns
+   :model/TransformTag             :metabase.transforms.schema/transform-tag.columns
+   :model/TransformTransformTag    :metabase.transforms.schema/transform-transform-tag.columns})
 
 (defn- model-schema-key [prefix model]
   (keyword "metabase.models.db" (str prefix "." (name model))))
@@ -253,21 +253,6 @@
   "The id, Database id, name, and schema of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn database-name
-  "The name of the Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
-
-(mu/defn database-names
-  "The names of every Database."
-  []
-  (t2/select-fn-vec :name :model/Database))
-
-(mu/defn database-id-by-name
-  "The id of the Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-fn :id :model/Database :name database-name))
 
 (mu/defn table-id-by-name
   "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."

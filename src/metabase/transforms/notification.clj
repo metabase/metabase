@@ -19,7 +19,7 @@
 (defn- recent-failed-cron-job-runs
   "Cron job runs that failed or timed out in `[start, end)`, oldest first."
   [start end]
-  (transforms.db/failed-cron-job-runs-between start end))
+  (transforms.db/select-failed-cron-transform-job-runs-between start end))
 
 (defn failing-jobs
   "Summarize failed/timed-out cron job runs in `[start, end)`, one entry per job."
@@ -27,7 +27,7 @@
   (let [runs     (recent-failed-cron-job-runs start end)
         job-ids  (distinct (map :job_id runs))
         id->name (when (seq job-ids)
-                   (transforms.db/job-names-by-id job-ids))]
+                   (transforms.db/select-job-names-by-id job-ids))]
     (->> (group-by :job_id runs)
          ;; `runs` is oldest-first, and group-by preserves that within each job's group
          (map (fn [[job-id job-runs]]

@@ -5,67 +5,262 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
-   [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(def ^:private NotificationRow
-  "A whole Notification row for insert."
-  [:map {:closed true}
-   [:payload_type {:optional true} [:maybe [:or :keyword :string]]]
-   [:active       {:optional true} [:maybe :boolean]]
-   [:internal_id  {:optional true} [:maybe :string]]
-   [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]])
+;;; The queries below follow the `::opts` schemas per model; queries that do not fit them live in the
+;;; notification-only section at the bottom of this namespace.
 
-(def ^:private NotificationCardRow
-  "A whole NotificationCard row for insert."
+(mr/def ::notification-filters
+  "Which Notifications a query applies to. Keys mirror the columns of `notification`: a scalar matches that value
+  and a set matches any of its values."
   [:map {:closed true}
-   [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
-   [:send_once       {:optional true} [:maybe :boolean]]
-   [:send_condition  {:optional true} [:maybe [:or :keyword :string]]]
-   [:disable_links   {:optional true} [:maybe :boolean]]])
+   [:id           {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:internal_id  {:optional true} :string]
+   [:payload_type {:optional true} [:or :keyword :string]]])
 
-(def ^:private NotificationHandlerRow
-  "A whole NotificationHandler row for insert."
+(mr/def ::notification-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::notification-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::notification.schema/notification.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::notification.schema/notification.column
+                                              [:tuple ::notification.schema/notification.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->notification-model
+  [columns]
+  (u.query/model-with-columns :model/Notification columns))
+
+(defn- ->notification-args
+  [opts]
+  (u.query/opts->args opts))
+
+(mr/def ::notification-card-filters
+  "Which NotificationCards a query applies to. Keys mirror the columns of `notification_card`: a scalar matches that
+  value and a set matches any of its values."
   [:map {:closed true}
-   [:channel_type    {:optional true} [:maybe [:or :keyword :string]]]
-   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
-   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
-   [:active          {:optional true} [:maybe :boolean]]])
+   [:id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(def ^:private NotificationRecipientRow
-  "A whole NotificationRecipient row for insert."
+(mr/def ::notification-card-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::notification-card-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::notification.schema/notification-card.column]]]])
+
+(defn- ->notification-card-model
+  [columns]
+  (u.query/model-with-columns :model/NotificationCard columns))
+
+(defn- ->notification-card-args
+  [opts]
+  (u.query/opts->args opts))
+
+(mr/def ::notification-handler-filters
+  "Which NotificationHandlers a query applies to. Keys mirror the columns of `notification_handler`: a scalar
+  matches that value and a set matches any of its values. A `nil` entry in the set is harmless -- it never matches
+  a row -- so callers building the set from possibly-unsaved parent rows need not filter it out."
   [:map {:closed true}
-   [:notification_handler_id {:optional true} [:maybe ms/PositiveInt]]
-   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
-   [:user_id                 {:optional true} [:maybe ::lib.schema.id/user]]
-   [:permissions_group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:details                 {:optional true} [:maybe ::notification.schema/notification-recipient.details]]])
+   [:notification_id {:optional true} [:or ms/PositiveInt [:set [:maybe ms/PositiveInt]]]]])
 
-(def ^:private NotificationSubscriptionRow
-  "A whole NotificationSubscription row for insert."
+(mr/def ::notification-handler-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::notification-handler-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::notification.schema/notification-handler.column]]]])
+
+(defn- ->notification-handler-model
+  [columns]
+  (u.query/model-with-columns :model/NotificationHandler columns))
+
+(defn- ->notification-handler-args
+  [opts]
+  (u.query/opts->args opts))
+
+(mr/def ::notification-recipient-filters
+  "Which NotificationRecipients a query applies to. Keys mirror the columns of `notification_recipient`: a scalar
+  matches that value and a set matches any of its values. A `nil` entry in `:notification_handler_id`'s set is
+  harmless -- it never matches a row -- so callers building the set from possibly-unsaved parent rows need not
+  filter it out."
   [:map {:closed true}
-   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
-   [:type            {:optional true} [:maybe [:or :keyword :string]]]
-   [:event_name      {:optional true} [:maybe [:or :keyword :string]]]
-   [:cron_schedule   {:optional true} [:maybe :string]]
-   [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]])
+   [:id                      {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:notification_handler_id {:optional true} [:or ms/PositiveInt [:set [:maybe ms/PositiveInt]]]]
+   [:type                    {:optional true} [:or :keyword :string]]])
 
-(def ^:private ChannelTemplateRow
-  "A whole ChannelTemplate row for insert."
-  ::channel.schema/channel-template.update)
+(mr/def ::notification-recipient-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::notification-recipient-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::notification.schema/notification-recipient.column]]]])
+
+(defn- ->notification-recipient-model
+  [columns]
+  (u.query/model-with-columns :model/NotificationRecipient columns))
+
+(defn- ->notification-recipient-args
+  [opts]
+  (u.query/opts->args opts))
+
+(mr/def ::notification-subscription-filters
+  "Which NotificationSubscriptions a query applies to. Keys mirror the columns of `notification_subscription`: a
+  scalar matches that value and a set matches any of its values. A `nil` entry in `:notification_id`'s set is
+  harmless -- it never matches a row -- so callers building the set from possibly-unsaved parent rows need not
+  filter it out."
+  [:map {:closed true}
+   [:id              {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:notification_id {:optional true} [:or ms/PositiveInt [:set [:maybe ms/PositiveInt]]]]
+   [:type            {:optional true} [:or :keyword :string]]])
+
+(mr/def ::notification-subscription-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::notification-subscription-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::notification.schema/notification-subscription.column]]]])
+
+(defn- ->notification-subscription-model
+  [columns]
+  (u.query/model-with-columns :model/NotificationSubscription columns))
+
+(defn- ->notification-subscription-args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-notifications :- [:sequential ::notification.schema/notification.partial]
+  "The Notifications matching `opts`."
+  ([]
+   (select-notifications nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::notification-opts]]
+   (apply t2/select (->notification-model columns) (->notification-args opts))))
+
+(mu/defn select-one-notification :- [:maybe ::notification.schema/notification.partial]
+  "The first Notification matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::notification-opts]]
+  (apply t2/select-one (->notification-model columns) (->notification-args opts)))
+
+(mu/defn select-notification-cards :- [:sequential ::notification.schema/notification-card.partial]
+  "The NotificationCards matching `opts`."
+  ([]
+   (select-notification-cards nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::notification-card-opts]]
+   (apply t2/select (->notification-card-model columns) (->notification-card-args opts))))
+
+(mu/defn select-one-notification-card :- [:maybe ::notification.schema/notification-card.partial]
+  "The first NotificationCard matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::notification-card-opts]]
+  (apply t2/select-one (->notification-card-model columns) (->notification-card-args opts)))
+
+(mu/defn notification-card-exists? :- :boolean
+  "Whether a NotificationCard matching `opts` exists."
+  [opts :- [:maybe ::notification-card-opts]]
+  (apply t2/exists? :model/NotificationCard (->notification-card-args opts)))
+
+(mu/defn select-notification-handlers :- [:sequential ::notification.schema/notification-handler.partial]
+  "The NotificationHandlers matching `opts`."
+  ([]
+   (select-notification-handlers nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::notification-handler-opts]]
+   (apply t2/select (->notification-handler-model columns) (->notification-handler-args opts))))
+
+(mu/defn select-notification-recipients :- [:sequential ::notification.schema/notification-recipient.partial]
+  "The NotificationRecipients matching `opts`."
+  ([]
+   (select-notification-recipients nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::notification-recipient-opts]]
+   (apply t2/select (->notification-recipient-model columns) (->notification-recipient-args opts))))
+
+(mu/defn reducible-select-notification-recipients
+  "A reducible of the NotificationRecipients matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::notification-recipient-opts]]
+  (apply t2/reducible-select (->notification-recipient-model columns) (->notification-recipient-args opts)))
+
+(mu/defn select-one-notification-subscription :- [:maybe ::notification.schema/notification-subscription.partial]
+  "The first NotificationSubscription matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::notification-subscription-opts]]
+  (apply t2/select-one (->notification-subscription-model columns) (->notification-subscription-args opts)))
+
+(mu/defn select-notification-subscriptions :- [:sequential ::notification.schema/notification-subscription.partial]
+  "The NotificationSubscriptions matching `opts`."
+  ([]
+   (select-notification-subscriptions nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::notification-subscription-opts]]
+   (apply t2/select (->notification-subscription-model columns) (->notification-subscription-args opts))))
+
+(mu/defn select-notification-subscription-pks :- [:set ms/PositiveInt]
+  "The ids of the NotificationSubscriptions matching `opts`."
+  [opts :- [:maybe ::notification-subscription-opts]]
+  (or (apply t2/select-pks-set :model/NotificationSubscription (->notification-subscription-args opts)) #{}))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-notification! :- ::notification.schema/notification
+  "Insert `notification` and return the new instance."
+  [notification :- ::notification.schema/notification.create]
+  (t2/insert-returning-instance! :model/Notification notification))
+
+(mu/defn update-notifications! :- :int
+  "Apply `changes` to every Notification matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::notification-opts]
+   changes :- ::notification.schema/notification.update]
+  (apply t2/update! :model/Notification (conj (u.query/opts->kv-args opts) changes)))
+
+(mu/defn delete-notifications! :- :int
+  "Delete every Notification matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::notification-opts]]
+  (apply t2/delete! :model/Notification (->notification-args opts)))
+
+(mu/defn insert-notification-card! :- ms/PositiveInt
+  "Insert `notification-card` and return its id."
+  [notification-card :- ::notification.schema/notification-card.create]
+  (t2/insert-returning-pk! :model/NotificationCard notification-card))
+
+(mu/defn delete-notification-cards! :- :int
+  "Delete every NotificationCard matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::notification-card-opts]]
+  (apply t2/delete! :model/NotificationCard (->notification-card-args opts)))
+
+(mu/defn insert-notification-handler! :- ms/PositiveInt
+  "Insert `handler` and return its id."
+  [handler :- ::notification.schema/notification-handler.create]
+  (t2/insert-returning-pk! :model/NotificationHandler handler))
+
+(mu/defn insert-notification-recipients! :- :int
+  "Insert one NotificationRecipient map or a sequence of them, returning the number inserted."
+  [recipients :- [:or
+                  ::notification.schema/notification-recipient.create
+                  [:sequential ::notification.schema/notification-recipient.create]]]
+  (t2/insert! :model/NotificationRecipient recipients))
+
+(mu/defn delete-notification-recipients! :- :int
+  "Delete every NotificationRecipient matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::notification-recipient-opts]]
+  (apply t2/delete! :model/NotificationRecipient (->notification-recipient-args opts)))
+
+(mu/defn insert-notification-subscriptions! :- :int
+  "Insert the NotificationSubscription `subscriptions`, returning the number inserted."
+  [subscriptions :- [:sequential ::notification.schema/notification-subscription.create]]
+  (t2/insert! :model/NotificationSubscription subscriptions))
+
+;;; ------------------------------------------- Queries used only by the notification module -------------------------------------------
 
 (def ^:private AdminFilters
-  "The filters accepted by [[admin-notifications-page]] and [[admin-notifications-count]]."
+  "The filters accepted by [[select-admin-notifications-page]] and [[count-admin-notifications]]."
   [:map {:closed true}
    [:active                      {:optional true} [:maybe :boolean]]
    [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
@@ -80,19 +275,7 @@
    [:sort_column                 {:optional true} [:maybe [:enum :id :last_send :last_check :card_name :creator_name :updated_at]]]
    [:sort_direction              {:optional true} [:maybe [:enum :asc :desc]]]])
 
-;;; --------------------------------------------- Notification ---------------------------------------------
-
-(mu/defn notification
-  "The Notification with `notification-id`, or nil."
-  [notification-id :- ms/PositiveInt]
-  (t2/select-one :model/Notification notification-id))
-
-(mu/defn notification-by-internal-id
-  "The seeded Notification with `internal-id`, or nil."
-  [internal-id :- :string]
-  (t2/select-one :model/Notification :internal_id internal-id))
-
-(mu/defn notification-for-handler
+(mu/defn select-notification-for-handler
   "The Notification owning the NotificationHandler with `handler-id`, or nil."
   [handler-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
@@ -100,7 +283,7 @@
                                             :from   :notification_handler
                                             :where  [:= :id handler-id]}]))
 
-(mu/defn notifications-matching
+(mu/defn select-notifications-matching
   "Reducible Notifications, optionally narrowed to `creator-id`, `creator-or-recipient-id` (a User who is either the
   creator or a recipient), `recipient-id`, `card-id`, and `payload-type`; active Notifications only unless
   `include-inactive?` or `legacy-active` (a boolean, overriding both) is given. `legacy-user-id` narrows to a User
@@ -163,17 +346,7 @@
                              [:= :notification_recipient.user_id legacy-user-id]
                              [:= :notification.creator_id legacy-user-id]])))))
 
-(mu/defn notifications-by-id
-  "The Notifications with `notification-ids`."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids]))
-
-(mu/defn card-notifications
-  "The card Notifications among `notification-ids`."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
-
-(mu/defn active-card-notifications-for-card
+(mu/defn select-active-card-notifications-for-card
   "The active card Notifications attached to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/Notification
@@ -183,7 +356,7 @@
                                                 :from   [:notification_card]
                                                 :where  [:= :card_id card-id]}]))
 
-(mu/defn active-system-event-notifications
+(mu/defn select-active-system-event-notifications
   "The active Notifications subscribed to the system event named `event-name`."
   [event-name :- :string]
   (t2/select :model/Notification
@@ -195,91 +368,7 @@
                           [:= :ns.event_name event-name]
                           [:= :ns.type "notification-subscription/system-event"]]}))
 
-(mu/defn insert-notification!
-  "Insert `notification` and return the new instance."
-  [notification :- NotificationRow]
-  (t2/insert-returning-instance! :model/Notification notification))
-
-(mu/defn update-card-notifications!
-  "Apply `changes` to the card Notifications among `notification-ids`, returning the number updated."
-  [notification-ids :- [:sequential ms/PositiveInt]
-   changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
-  (t2/update! :model/Notification :id [:in notification-ids] :payload_type :notification/card changes))
-
-(mu/defn deactivate-notification!
-  "Mark the Notification with `notification-id` inactive, returning the number updated."
-  [notification-id :- ms/PositiveInt]
-  (t2/update! :model/Notification notification-id {:active false}))
-
-(mu/defn delete-notification!
-  "Delete the Notification with `notification-id`, returning the number deleted."
-  [notification-id :- ms/PositiveInt]
-  (t2/delete! :model/Notification notification-id))
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
-
-(mu/defn delete-notification-by-internal-id!
-  "Delete the seeded Notification with `internal-id`, returning the number deleted."
-  [internal-id :- :string]
-  (t2/delete! :model/Notification :internal_id internal-id))
-
-;;; ------------------------------------------- NotificationCard -------------------------------------------
-
-(mu/defn notification-cards
-  "The NotificationCards with `notification-card-ids`."
-  [notification-card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/NotificationCard :id [:in notification-card-ids]))
-
-(mu/defn notification-card-exists?
-  "Whether a NotificationCard with `notification-card-id` exists."
-  [notification-card-id :- ::lib.schema.id/card]
-  (t2/exists? :model/NotificationCard notification-card-id))
-
-(mu/defn notification-card-card-id
-  "The `:card_id` of the NotificationCard with `notification-card-id`."
-  [notification-card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :card_id :model/NotificationCard :id notification-card-id))
-
-(mu/defn insert-notification-card!
-  "Insert `notification-card` and return its ID."
-  [notification-card :- NotificationCardRow]
-  (t2/insert-returning-pk! :model/NotificationCard notification-card))
-
-(mu/defn delete-notification-card!
-  "Delete the NotificationCard with `notification-card-id`, returning the number deleted."
-  [notification-card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/NotificationCard notification-card-id))
-
-;;; --------------------------------------- NotificationSubscription ---------------------------------------
-
-(mu/defn subscription
-  "The NotificationSubscription with `subscription-id`, or nil."
-  [subscription-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationSubscription subscription-id))
-
-(mu/defn subscriptions-for-notifications
-  "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
-  [notification-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (t2/select :model/NotificationSubscription :notification_id [:in notification-ids]))
-
-(mu/defn cron-subscriptions-for-notification
-  "The cron NotificationSubscriptions of the Notification with `notification-id`."
-  [notification-id :- ms/PositiveInt]
-  (t2/select :model/NotificationSubscription
-             :notification_id notification-id
-             :type :notification-subscription/cron))
-
-(mu/defn cron-subscription-ids-for-notification
-  "The IDs of the cron NotificationSubscriptions of the Notification with `notification-id`."
-  [notification-id :- ms/PositiveInt]
-  (t2/select-pks-set :model/NotificationSubscription
-                     :notification_id notification-id
-                     :type :notification-subscription/cron))
-
-(mu/defn active-cron-subscriptions-by-id
+(mu/defn select-active-cron-subscriptions-by-id
   "A map of ID to cron NotificationSubscription for every active Notification."
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
@@ -291,19 +380,7 @@
                               [:= :ns.type "notification-subscription/cron"]
                               [:= :n.active true]]}))
 
-(mu/defn insert-subscriptions!
-  "Insert the NotificationSubscription `subscriptions`, returning the number inserted."
-  [subscriptions :- [:sequential NotificationSubscriptionRow]]
-  (t2/insert! :model/NotificationSubscription subscriptions))
-
-;;; ------------------------------------ NotificationHandler / Recipient ------------------------------------
-
-(mu/defn handlers-for-notifications
-  "The NotificationHandlers of the Notifications with `notification-ids`."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/NotificationHandler :notification_id [:in notification-ids]))
-
-(mu/defn handler-notification-ids-for-email
+(mu/defn select-handler-notification-ids-for-email :- [:set ms/PositiveInt]
   "The set of Notification IDs of the handlers whose recipients (joined to their user) have an exact, lower-cased
   `email` match, either directly (via the recipient's User) or among `raw-value-handler-ids` (handler IDs already
   known to have a matching raw-value recipient)."
@@ -312,48 +389,16 @@
   (let [user-clause [:and
                      [:= :nr.type "notification-recipient/user"]
                      [:= [:lower :cu.email] lower-email]]]
-    (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
-                      {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
-                                   [:= :nr.notification_handler_id :notification_handler.id]]
-                       :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
-                       :where     (if (seq raw-value-handler-ids)
-                                    [:or user-clause [:in :notification_handler.id raw-value-handler-ids]]
-                                    user-clause)})))
+    (or (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
+                          {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
+                                       [:= :nr.notification_handler_id :notification_handler.id]]
+                           :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
+                           :where     (if (seq raw-value-handler-ids)
+                                        [:or user-clause [:in :notification_handler.id raw-value-handler-ids]]
+                                        user-clause)})
+        #{})))
 
-(mu/defn insert-handler!
-  "Insert `handler` and return its ID."
-  [handler :- NotificationHandlerRow]
-  (t2/insert-returning-pk! :model/NotificationHandler handler))
-
-(mu/defn recipients-for-handlers
-  "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
-  [handler-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (t2/select :model/NotificationRecipient :notification_handler_id [:in handler-ids]))
-
-(mu/defn raw-value-recipients-for-handler
-  "The raw-value NotificationRecipients of the NotificationHandler with `handler-id`."
-  [handler-id :- ms/PositiveInt]
-  (t2/select :model/NotificationRecipient
-             :notification_handler_id handler-id
-             :type :notification-recipient/raw-value))
-
-(mu/defn raw-value-recipients-reducible
-  "Reducible handler IDs and details of every raw-value NotificationRecipient."
-  []
-  (t2/reducible-select [:model/NotificationRecipient :notification_handler_id :details]
-                       :type :notification-recipient/raw-value))
-
-(mu/defn insert-recipients!
-  "Insert one NotificationRecipient map or a sequence of them, returning the number inserted."
-  [recipients :- [:or NotificationRecipientRow [:sequential NotificationRecipientRow]]]
-  (t2/insert! :model/NotificationRecipient recipients))
-
-(mu/defn delete-recipient!
-  "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
-  [recipient-id :- ms/PositiveInt]
-  (t2/delete! :model/NotificationRecipient recipient-id))
-
-(mu/defn delete-user-recipients-for-notification!
+(mu/defn delete-notification-recipients-for-user!
   "Delete the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`,
   returning the number deleted."
   [notification-id :- ms/PositiveInt
@@ -364,34 +409,7 @@
                                                               :from   [:notification_handler]
                                                               :where  [:= :notification_id notification-id]}]))
 
-;;; ---------------------------------------------- Channels ----------------------------------------------
-
-(mu/defn active-channels-by-id
-  "A map of ID to active Channel for `channel-ids`."
-  [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
-
-(mu/defn channel-templates-by-id
-  "A map of ID to ChannelTemplate for `template-ids`."
-  [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
-
-(mu/defn channel-template-channel-type
-  "The `:channel_type` of the ChannelTemplate with `template-id`."
-  [template-id :- ms/PositiveInt]
-  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id))
-
-(mu/defn insert-channel-template!
-  "Insert `template` and return its ID."
-  [template :- ChannelTemplateRow]
-  (t2/insert-returning-pk! :model/ChannelTemplate template))
-
-(mu/defn delete-channel-templates!
-  "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
-  [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ChannelTemplate :id [:in template-ids]))
-
-;;; ---------------------------------------------- Task runs ----------------------------------------------
+;;; --------------------------------------------- Task runs ----------------------------------------------
 
 (def ^:private admin-run-lookback-days
   "How far back to consider alert-type TaskRuns / TaskHistory rows when computing run summaries."
@@ -642,7 +660,7 @@
   (assoc (admin-base-list-query (dissoc filters :sort_column :sort_direction))
          :order-by (admin-order-by-clauses (or sort_column :last_send) sort_direction)))
 
-(mu/defn admin-notifications-page
+(mu/defn select-admin-notifications-page
   "A page (`limit`/`offset`) of admin notification-list rows matching `filters` (see
   [[metabase.notification.api.admin]] for the supported keys), most-relevant first per `:sort_column`/
   `:sort_direction`."
@@ -651,14 +669,14 @@
    offset  :- ms/IntGreaterThanOrEqualToZero]
   (t2/select :model/Notification (assoc (admin-list-query filters) :limit limit :offset offset)))
 
-(mu/defn admin-notifications-count
+(mu/defn count-admin-notifications
   "The number of admin notification-list rows matching `filters`."
   [filters :- AdminFilters]
   (:count (t2/query-one (-> (admin-list-query filters)
                             (assoc :select [[[:count :notification.id] :count]])
                             (dissoc :order-by)))))
 
-(mu/defn admin-notification-detail-row
+(mu/defn select-admin-notification-detail-row
   "The admin notification-list row (skipping the run-summary joins) for the Notification with `notification-id`, or
   nil."
   [notification-id :- ms/PositiveInt]

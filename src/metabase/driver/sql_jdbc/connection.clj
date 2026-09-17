@@ -9,7 +9,6 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
@@ -20,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.schema :as warehouses.schema]
    [potemkin :as p])
   (:import
@@ -415,7 +415,7 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (driver.db/database-connection-details database-id)
+      (not= curr-hash (-> (warehouses.db/select-one-database {:id database-id :columns [:id :engine :details :write_data_details :admin_details]})
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool

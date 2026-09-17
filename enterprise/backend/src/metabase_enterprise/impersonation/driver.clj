@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field :as field])
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.sql Connection)))
 
@@ -41,7 +42,7 @@
   [db-or-id]
   (boolean
    (when (and db-or-id (premium-features/enable-advanced-permissions?))
-     (impersonation.db/impersonation-exists-for-database? (u/id db-or-id)))))
+     (impersonation.db/connection-impersonation-exists? {:db_id (u/id db-or-id)}))))
 
 (defn enforced-impersonations-for-db
   "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if
@@ -54,7 +55,7 @@
   [db-or-id]
   (let [group-ids           (impersonation.db/group-ids-for-user api/*current-user-id*)
         conn-impersonations (when (seq group-ids)
-                              (impersonation.db/impersonations-for-groups-and-database group-ids (u/the-id db-or-id)))]
+                              (impersonation.db/select-connection-impersonations {:group_id group-ids, :db_id (u/the-id db-or-id)}))]
     (when (and (seq conn-impersonations) (sandboxed? db-or-id))
       (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
                       {:user-id api/*current-user-id*
@@ -83,7 +84,7 @@
                 role               (get user-attributes role-attribute)
                 database           (if (map? database-or-id)
                                      database-or-id
-                                     (impersonation.db/database (u/the-id database-or-id)))
+                                     (warehouses.db/select-one-database {:id (u/the-id database-or-id)}))
                 default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)

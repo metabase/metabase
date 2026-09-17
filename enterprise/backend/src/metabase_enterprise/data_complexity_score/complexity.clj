@@ -13,7 +13,8 @@
    [metabase.collections.core :as collections]
    [metabase.collections.curation :as curation]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,7 +125,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (map (juxt :table_id :field_count)
-                       (data-complexity-score.db/active-field-counts-by-table chunk))))
+                       (data-complexity-score.db/select-active-field-counts-by-table chunk))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
@@ -134,7 +135,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (u/group-by :table_id :name
-                              (data-complexity-score.db/unarchived-measure-names chunk))))
+                              (data-complexity-score.db/select-unarchived-measure-names chunk))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
@@ -173,7 +174,7 @@
   [collection-id]
   (when collection-id
     (into #{collection-id}
-          (when-let [root (data-complexity-score.db/collection collection-id)]
+          (when-let [root (data-complexity-score.db/select-collection collection-id)]
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
@@ -181,19 +182,19 @@
   []
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
-  (data-complexity-score.db/verified-card-ids))
+  (data-complexity-score.db/select-verified-card-ids))
 
 (defn- official-collection-id-set
   "Set of collection ids with `official` authority level."
   []
-  (data-complexity-score.db/official-collection-ids))
+  (data-complexity-score.db/select-official-collection-ids))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (data-complexity-score.db/routed-child-database-ids))
+  (warehouses.db/select-database-pks {:router_database_id_set true}))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -234,8 +235,8 @@
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`. `:card_schema` is required by `:model/Card`'s post-select hooks
         ;; even when we don't otherwise use it.
-        universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
-        universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
+        universe-cards    (data-complexity-score.db/select-universe-cards audit/audit-db-id)
+        universe-tables   (data-complexity-score.db/select-universe-tables audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)

@@ -28,8 +28,8 @@
                                    [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                    [:table_id {:optional true} [:maybe ms/PositiveInt]]]]
   (if (and group_id table_id)
-    (sandbox.db/sandbox-for-group-and-table group_id table_id)
-    (sandbox.db/sandboxes)))
+    (sandbox.db/select-one-sandbox {:group_id group_id :table_id table_id})
+    (sandbox.db/select-sandboxes {:order-by [:id]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -39,7 +39,7 @@
   "Fetch GTAP by `id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-404 (sandbox.db/sandbox id)))
+  (api/check-404 (sandbox.db/select-one-sandbox {:id id})))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
@@ -72,14 +72,14 @@
    body :- [:map {:closed true}
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
-  (api/check-404 (sandbox.db/sandbox id))
+  (api/check-404 (sandbox.db/select-one-sandbox {:id id}))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
-    (sandbox.db/update-sandbox! id
-                                (u/select-keys-when body
-                                                    :present #{:card_id :attribute_remappings})))
-  (sandbox.db/sandbox id))
+    (sandbox.db/update-sandboxes! {:id id}
+                                  (u/select-keys-when body
+                                                      :present #{:card_id :attribute_remappings})))
+  (sandbox.db/select-one-sandbox {:id id}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -110,8 +110,8 @@
   "Delete a GTAP entry."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-404 (sandbox.db/sandbox id))
-  (sandbox.db/delete-sandbox! id)
+  (api/check-404 (sandbox.db/select-one-sandbox {:id id}))
+  (sandbox.db/delete-sandboxes! {:id id})
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

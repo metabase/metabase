@@ -85,7 +85,7 @@
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (bookmarks.db/delete-bookmark-orderings-for-user! user-id)
+  (bookmarks.db/delete-bookmark-orderings! {:user_id user-id})
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))

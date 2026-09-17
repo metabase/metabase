@@ -385,7 +385,7 @@
   targets while explorations are disabled, so this runs the registered gate over the rows the way its GET does."
   [exploration-id user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (->> (comments.db/comments-for-target "exploration" exploration-id)
+    (->> (comments.db/select-comments {:target_type "exploration" :target_id exploration-id :order-by [:created_at]})
          (comment/apply-context-gate "exploration" exploration-id)
          (mapv :context))))
 

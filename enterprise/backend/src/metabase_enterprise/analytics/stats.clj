@@ -7,7 +7,8 @@
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.driver :as driver]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]))
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defenterprise ee-snowplow-features-data
   "A subset of feature information included in the daily Snowplow stats report. This function only returns information
@@ -31,7 +32,7 @@
                     (mfa/mfa-enabled?))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
-                    (analytics.db/database-with-engine-exists? (descendants driver/hierarchy :sql)))
+                    (warehouses.db/database-exists? {:engine (set (descendants driver/hierarchy :sql))}))
     :enabled   (analytics.db/sandbox-exists?)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)

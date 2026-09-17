@@ -309,19 +309,19 @@
       (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
       (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))
-      (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/field field-id))))))
+      (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/select-one-field {:id field-id}))))))
   (testing "a bare update to the Field is written as given and stays hidden behind the user label"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
       (t2/update! :model/Field field-id {:data_sensitivity :PHI})
       (is (= :PHI (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
-      (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/field field-id))))))
+      (is (= :PUBLIC (:data_sensitivity (warehouse-schema.db/select-one-field {:id field-id}))))))
   (testing "upsert-user-settings with a nil value clears a previously set label on the mirror"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-user-settings field {:data_sensitivity :PUBLIC})
       (field-user-settings/upsert-user-settings field {:data_sensitivity nil})
       (is (nil? (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))
-      (is (= :PII (:data_sensitivity (warehouse-schema.db/field field-id)))))))
+      (is (= :PII (:data_sensitivity (warehouse-schema.db/select-one-field {:id field-id})))))))
 
 (deftest field-user-settings-read-test
   (mt/with-temp [:model/Field {edited-id :id :as edited} {:display_name      "Sync Name"
@@ -338,17 +338,17 @@
     (testing "user values, a user NULL included, replace the sync ones; the rest of the row and its transforms are intact"
       (is (=? {:id edited-id :display_name "User Name" :description nil :semantic_type nil :base_type :type/Text
                :effective_type :type/Text :coercion_strategy nil :visibility_type :normal}
-              (warehouse-schema.db/field edited-id)))
-      (is (=? {:id plain-id :display_name "Plain"} (warehouse-schema.db/field plain-id))))
+              (warehouse-schema.db/select-one-field {:id edited-id})))
+      (is (=? {:id plain-id :display_name "Plain"} (warehouse-schema.db/select-one-field {:id plain-id}))))
     (testing "a flag left false means the sync value shows, even next to a user value"
       (t2/update! :model/FieldUserSettings edited-id {:description_set false})
-      (is (= "sync description" (:description (warehouse-schema.db/field edited-id)))))
+      (is (= "sync description" (:description (warehouse-schema.db/select-one-field {:id edited-id})))))
     (testing "coercion_strategy follows the user's effective_type, so a cleared coercion shows as cleared"
       (t2/update! :model/Field edited-id {:effective_type :type/Number :coercion_strategy :Coercion/String->Number})
       (field-user-settings/upsert-user-settings edited {:effective_type :type/Text :coercion_strategy nil})
-      (is (=? {:effective_type :type/Text :coercion_strategy nil} (warehouse-schema.db/field edited-id)))
+      (is (=? {:effective_type :type/Text :coercion_strategy nil} (warehouse-schema.db/select-one-field {:id edited-id})))
       (field-user-settings/unset-user-settings! edited [:effective_type :coercion_strategy])
-      (is (=? {:effective_type :type/Number :coercion_strategy :Coercion/String->Number} (warehouse-schema.db/field edited-id))))))
+      (is (=? {:effective_type :type/Number :coercion_strategy :Coercion/String->Number} (warehouse-schema.db/select-one-field {:id edited-id}))))))
 
 (deftest upsert-user-settings-flags-test
   (mt/with-temp [:model/Field {field-id :id :as field} {}
@@ -406,4 +406,4 @@
       (field-user-settings/upsert-user-settings source {:semantic_type :type/FK :fk_target_field_id target-id})
       (t2/update! :model/Field target-id {:active false})
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
-      (is (= :type/Category (:semantic_type (warehouse-schema.db/field source-id)))))))
+      (is (= :type/Category (:semantic_type (warehouse-schema.db/select-one-field {:id source-id})))))))

@@ -148,12 +148,12 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (warehouse-schema.db/delete-field-values-of-types! (u/the-id field-or-id) advanced-field-values-types))
+  (warehouse-schema.db/delete-field-values! {:field_id (u/the-id field-or-id) :type advanced-field-values-types}))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (warehouse-schema.db/delete-field-values-for-field! (u/the-id field-or-id)))
+  (warehouse-schema.db/delete-field-values! {:field_id (u/the-id field-or-id)}))
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
@@ -238,7 +238,7 @@
            (t/after? (:last_used_at field-values)
                      cutoff)
            ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
-           (t/after? (warehouse-schema.db/field-values-last-used-at (:field_id field-values))
+           (t/after? (warehouse-schema.db/select-field-values-last-used-at (:field_id field-values))
                      cutoff))))))
 
 (defn field-should-have-field-values?
@@ -246,7 +246,8 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (warehouse-schema.db/field-values-eligibility field-id)
+      (recur (or (warehouse-schema.db/select-one-field
+                  {:id field-id :columns [:base_type :visibility_type :has_field_values :preview_display]})
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -416,7 +417,7 @@
                                      (mapcat rest)
                                      (map :id))]
     (when (seq to-delete-fv-ids)
-      (warehouse-schema.db/delete-field-values! to-delete-fv-ids))
+      (warehouse-schema.db/delete-field-values! {:id (set to-delete-fv-ids)}))
     (update-vals fvs-grouped-by-field-id first)))
 
 (defn- get-latest-field-values
@@ -424,7 +425,7 @@
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (-> (warehouse-schema.db/field-values-of-type field-id type hash)
+  (-> (warehouse-schema.db/select-field-values {:field_id field-id :type type :hash_key hash})
       delete-duplicates-and-return-latest!
       (get field-id)))
 
@@ -448,7 +449,7 @@
   (delete-duplicates-and-return-latest!
    (when (seq field-ids)
      (mapcat (fn [batch]
-               (warehouse-schema.db/full-field-values-for-fields batch))
+               (warehouse-schema.db/select-field-values {:field_id (set batch) :type :full :hash_key nil}))
              (partition-all *fv-select-batch-size* field-ids)))))
 
 (defn persist-field-values!
@@ -494,7 +495,7 @@
       :else
       (do
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (warehouse-schema.db/update-field-values! (u/the-id existing-fv)
+        (warehouse-schema.db/update-field-values! {:id (u/the-id existing-fv)}
                                                   (m/remove-vals nil?
                                                                  {:has_more_values       has-more-values
                                                                   :values                values
@@ -674,10 +675,10 @@
 
              (do
                (when existing
-                 (warehouse-schema.db/touch-field-values! (:id existing)))
+                 (warehouse-schema.db/update-field-values! {:id (:id existing)} {:last_used_at :%now}))
                (get-latest-full-field-values field-id)))))
         (do
-          (warehouse-schema.db/touch-field-values! (:id existing))
+          (warehouse-schema.db/update-field-values! {:id (:id existing)} {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -16,7 +16,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (def ^:private KeypathComponents
   [:map {:closed true}
@@ -52,7 +53,7 @@
          (if field-name
            (sync.db/update-field-by-name! table-id field-name {k value})
            (sync.db/update-table! table-id {k value})))
-       (sync.db/update-database! (u/the-id database) {k value})))))
+       (warehouses.db/update-databases! {:id (u/the-id database)} {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other

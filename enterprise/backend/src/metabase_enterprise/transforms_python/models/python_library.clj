@@ -71,7 +71,7 @@
   [path]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (transforms-python.db/python-library-by-path normalized-path)))
+    (transforms-python.db/select-one-python-library {:path normalized-path})))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
@@ -79,7 +79,7 @@
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
     (let [id (transforms-python.db/upsert-python-library-source! normalized-path source)]
-      (transforms-python.db/python-library id))))
+      (transforms-python.db/select-one-python-library {:id id}))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

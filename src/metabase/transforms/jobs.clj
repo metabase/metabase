@@ -83,7 +83,7 @@
 
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
-    (let [all-transforms (transforms.db/transform-dependency-rows)
+    (let [all-transforms (transforms.db/select-transforms {:columns [:id :target :target_table_id :created_at :table_dependencies]})
           ;; Walk only the dependency closure of the transforms we're asked to run.
           ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in
@@ -101,7 +101,7 @@
       (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
       (let [closure-transforms (if (seq dependencies)
-                                 (transforms.db/transforms (keys dependencies))
+                                 (transforms.db/select-transforms {:id (set (keys dependencies))})
                                  [])]
         (dependencies->plan dependencies closure-transforms)))))
 
@@ -335,7 +335,7 @@
 
 (defn- app-db-now
   []
-  (transforms.db/app-db-now))
+  (transforms.db/select-app-db-now))
 
 (defn run-transforms!
   "Run the transforms of `plan`, honoring the DAG.
@@ -402,9 +402,9 @@
       :else                         {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
-  (let [tag-ids (transforms.db/job-tag-ids job-id)]
+  (let [tag-ids (transforms.db/select-job-tag-ids job-id)]
     (if (seq tag-ids)
-      (or (transforms.db/transform-ids-with-tags tag-ids)
+      (or (transforms.db/select-transform-ids-with-tags tag-ids)
           #{})
       #{})))
 
@@ -525,7 +525,7 @@
   ;; We hope that this will be the most recent user.
   ;; Only root-cause failures are reported individually; dependents that never ran because an
   ;; upstream transform failed are summarized as a count to avoid a cascade of redundant errors.
-  (let [job (transforms.db/job job-id)
+  (let [job (transforms.db/select-one-transform-job {:id job-id})
         [roots cascades] (split-cascade-failures failures)
         roots (map (fn [failure]
                      (let [transform (::transform failure)]

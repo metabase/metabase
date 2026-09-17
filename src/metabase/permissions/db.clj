@@ -1,7 +1,11 @@
 (ns metabase.permissions.db
   "Application database queries for the permissions module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
-  and transactions."
+  and transactions.
+
+  The queries below follow each model's `::opts` (e.g. [[::permissions-group-opts]]); queries that do not fit them —
+  including everything that computes or filters by permission — live in the permissions-only section at the bottom
+  of this namespace."
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
@@ -13,9 +17,375 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+;;; -------------------------------------------------- DataPermissions ---------------------------------------------
+
+(mr/def ::data-permissions-filters
+  "Which DataPermissions a query applies to. Keys mirror the columns of `data_permissions`: a scalar matches that
+  value and a set matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows
+  where that column is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id           {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:group_id     {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:perm_type    {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:db_id        {:optional true} [:or ::lib.schema.id/database [:set ::lib.schema.id/database]]]
+   [:schema_name  {:optional true} [:maybe :string]]
+   [:table_id     {:optional true} [:or ::lib.schema.id/table [:set ::lib.schema.id/table]]]
+   [:table_id_set {:optional true} :boolean]
+   [:perm_value   {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]])
+
+(mr/def ::data-permissions-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::data-permissions-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::permissions.schema/data-permissions.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::permissions.schema/data-permissions.column
+                                              [:tuple ::permissions.schema/data-permissions.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(def ^:private data-permissions-set-columns
+  "Maps each `<column>_set` filter key of [[::data-permissions-filters]] to the column whose nullness it tests."
+  {:table_id_set :table_id})
+
+(defn- with-id
+  "`columns`, plus `:id` when `columns` is non-empty, so a narrowed select still satisfies a schema requiring `:id`."
+  [columns]
+  (when (seq columns)
+    (distinct (cons :id columns))))
+
+(defn- ->data-permissions-model
+  [columns]
+  (u.query/model-with-columns :model/DataPermissions (with-id columns)))
+
+(defn- data-permissions-args
+  [opts]
+  (u.query/opts->args opts {:set-columns data-permissions-set-columns}))
+
+;;; ---------------------------------------------------- Permissions -----------------------------------------------
+
+(mr/def ::permission-filters
+  "Which Permissions a query applies to. Keys mirror the columns of `permissions`: a scalar matches that value and a
+  set matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows where that
+  column is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id                {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:object            {:optional true} [:or :string [:set :string]]]
+   [:group_id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:perm_type         {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:perm_value        {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:collection_id     {:optional true} ::lib.schema.id/collection]
+   [:collection_id_set {:optional true} :boolean]])
+
+(mr/def ::permission-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::permission-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::permissions.schema/permissions.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::permissions.schema/permissions.column
+                                              [:tuple ::permissions.schema/permissions.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(def ^:private permission-set-columns
+  "Maps each `<column>_set` filter key of [[::permission-filters]] to the column whose nullness it tests."
+  {:collection_id_set :collection_id})
+
+(defn- ->permission-model
+  [columns]
+  (u.query/model-with-columns :model/Permissions (with-id columns)))
+
+(defn- permission-args
+  [opts]
+  (u.query/opts->args opts {:set-columns permission-set-columns}))
+
+;;; -------------------------------------------------- PermissionsGroup --------------------------------------------
+
+(mr/def ::permissions-group-filters
+  "Which PermissionsGroups a query applies to. Keys mirror the columns of `permissions_group`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:id                {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:name              {:optional true} [:or :string [:set :string]]]
+   [:entity_id         {:optional true} [:or :string [:set :string]]]
+   [:magic_group_type  {:optional true} [:maybe [:or :keyword :string]]]
+   [:magic_group_type_set {:optional true} :boolean]
+   [:is_tenant_group   {:optional true} :boolean]
+   [:is_data_app_group {:optional true} :boolean]])
+
+(mr/def ::permissions-group-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::permissions-group-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::permissions.schema/permissions-group.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::permissions.schema/permissions-group.column
+                                              [:tuple ::permissions.schema/permissions-group.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(def ^:private permissions-group-set-columns
+  "Maps each `<column>_set` filter key of [[::permissions-group-filters]] to the column whose nullness it tests."
+  {:magic_group_type_set :magic_group_type})
+
+(def ^:private permissions-group-lower-columns
+  "Text columns ordered case-insensitively."
+  #{:name})
+
+(defn- ->permissions-group-model
+  [columns]
+  (u.query/model-with-columns :model/PermissionsGroup (with-id columns)))
+
+(defn- permissions-group-args
+  [opts]
+  (u.query/opts->args opts {:set-columns permissions-group-set-columns, :lower-columns permissions-group-lower-columns}))
+
+(defn- permissions-group-kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns permissions-group-set-columns}))
+
+;;; ---------------------------------------------- PermissionsGroupMembership --------------------------------------
+
+(mr/def ::permissions-group-membership-filters
+  "Which PermissionsGroupMemberships a query applies to. Keys mirror the columns of
+  `permissions_group_membership`: a scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id                {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:user_id           {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:group_id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:is_group_manager  {:optional true} :boolean]])
+
+(mr/def ::permissions-group-membership-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::permissions-group-membership-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::permissions.schema/permissions-group-membership.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::permissions.schema/permissions-group-membership.column
+                                              [:tuple ::permissions.schema/permissions-group-membership.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->permissions-group-membership-model
+  [columns]
+  (u.query/model-with-columns :model/PermissionsGroupMembership (with-id columns)))
+
+(defn- permissions-group-membership-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- permissions-group-membership-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ------------------------------------------------------ Revisions -----------------------------------------------
+
+(mr/def ::permissions-revision-opts
+  "The columns to select and the order to return them in for a PermissionsRevision query. PermissionsRevision rows
+  are never filtered by column, only read in full or by id."
+  [:map {:closed true}
+   [:id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:columns  {:optional true} [:sequential ::permissions.schema/permissions-revision.column]]
+   [:order-by {:optional true} [:sequential [:or
+                                             ::permissions.schema/permissions-revision.column
+                                             [:tuple ::permissions.schema/permissions-revision.column [:enum :asc :desc]]]]]
+   [:limit    {:optional true} ms/PositiveInt]
+   [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::application-permissions-revision-opts
+  "The columns to select and the order to return them in for an ApplicationPermissionsRevision query.
+  ApplicationPermissionsRevision rows are never filtered by column, only read in full or by id."
+  [:map {:closed true}
+   [:id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:columns  {:optional true} [:sequential ::permissions.schema/application-permissions-revision.column]]
+   [:order-by {:optional true} [:sequential [:or
+                                             ::permissions.schema/application-permissions-revision.column
+                                             [:tuple ::permissions.schema/application-permissions-revision.column [:enum :asc :desc]]]]]
+   [:limit    {:optional true} ms/PositiveInt]
+   [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::collection-permission-graph-revision-filters
+  "Which CollectionPermissionGraphRevisions a query applies to."
+  [:map {:closed true}
+   [:id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
+
+(mr/def ::collection-permission-graph-revision-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::collection-permission-graph-revision-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::permissions.schema/collection-permission-graph-revision.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::permissions.schema/collection-permission-graph-revision.column
+                                              [:tuple ::permissions.schema/collection-permission-graph-revision.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+;;; ------------------------------------------------------ Reads ---------------------------------------------------
+
+(mu/defn select-data-permissions :- [:sequential ::permissions.schema/data-permissions.partial]
+  "The DataPermissions matching `opts`."
+  ([]
+   (select-data-permissions nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::data-permissions-opts]]
+   (apply t2/select (->data-permissions-model columns) (data-permissions-args opts))))
+
+(mu/defn select-data-permissions-pks :- [:set ms/PositiveInt]
+  "The ids of the DataPermissions matching `opts`."
+  [opts :- [:maybe ::data-permissions-opts]]
+  (or (apply t2/select-pks-set :model/DataPermissions (data-permissions-args opts)) #{}))
+
+(mu/defn count-data-permissions :- :int
+  "The number of DataPermissions matching `opts`."
+  ([]
+   (count-data-permissions nil))
+  ([opts :- [:maybe ::data-permissions-opts]]
+   (apply t2/count :model/DataPermissions (data-permissions-args opts))))
+
+(mu/defn data-permissions-exist? :- :boolean
+  "Whether a DataPermissions matching `opts` exists."
+  [opts :- [:maybe ::data-permissions-opts]]
+  (apply t2/exists? :model/DataPermissions (data-permissions-args opts)))
+
+(mu/defn select-permissions :- [:sequential ::permissions.schema/permissions.partial]
+  "The Permissions matching `opts`."
+  ([]
+   (select-permissions nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::permission-opts]]
+   (apply t2/select (->permission-model columns) (permission-args opts))))
+
+(mu/defn count-permissions :- :int
+  "The number of Permissions matching `opts`."
+  ([]
+   (count-permissions nil))
+  ([opts :- [:maybe ::permission-opts]]
+   (apply t2/count :model/Permissions (permission-args opts))))
+
+(mu/defn permission-exists? :- :boolean
+  "Whether a Permissions matching `opts` exists."
+  [opts :- [:maybe ::permission-opts]]
+  (apply t2/exists? :model/Permissions (permission-args opts)))
+
+(mu/defn select-permissions-groups :- [:sequential ::permissions.schema/permissions-group.partial]
+  "The PermissionsGroups matching `opts`."
+  ([]
+   (select-permissions-groups nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::permissions-group-opts]]
+   (apply t2/select (->permissions-group-model columns) (permissions-group-args opts))))
+
+(mu/defn select-one-permissions-group :- [:maybe ::permissions.schema/permissions-group.partial]
+  "The first PermissionsGroup matching `opts`, or nil."
+  ([]
+   (select-one-permissions-group nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::permissions-group-opts]]
+   (apply t2/select-one (->permissions-group-model columns) (permissions-group-args opts))))
+
+(mu/defn select-permissions-group-pks :- [:set ms/PositiveInt]
+  "The ids of the PermissionsGroups matching `opts`."
+  ([]
+   (select-permissions-group-pks nil))
+  ([opts :- [:maybe ::permissions-group-opts]]
+   (or (apply t2/select-pks-set :model/PermissionsGroup (permissions-group-args opts)) #{})))
+
+(mu/defn select-one-permissions-group-pk :- [:maybe ms/PositiveInt]
+  "The id of the first PermissionsGroup matching `opts`, or nil."
+  [opts :- [:maybe ::permissions-group-opts]]
+  (apply t2/select-one-pk :model/PermissionsGroup (permissions-group-args opts)))
+
+(mu/defn count-permissions-groups :- :int
+  "The number of PermissionsGroups matching `opts`."
+  ([]
+   (count-permissions-groups nil))
+  ([opts :- [:maybe ::permissions-group-opts]]
+   (apply t2/count :model/PermissionsGroup (permissions-group-args opts))))
+
+(mu/defn permissions-group-exists? :- :boolean
+  "Whether a PermissionsGroup matching `opts` exists."
+  [opts :- [:maybe ::permissions-group-opts]]
+  (apply t2/exists? :model/PermissionsGroup (permissions-group-args opts)))
+
+(mu/defn select-permissions-group-memberships :- [:sequential ::permissions.schema/permissions-group-membership.partial]
+  "The PermissionsGroupMemberships matching `opts`."
+  ([]
+   (select-permissions-group-memberships nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::permissions-group-membership-opts]]
+   (apply t2/select (->permissions-group-membership-model columns) (permissions-group-membership-args opts))))
+
+(mu/defn select-one-permissions-group-membership :- [:maybe ::permissions.schema/permissions-group-membership.partial]
+  "The first PermissionsGroupMembership matching `opts`, or nil."
+  ([]
+   (select-one-permissions-group-membership nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::permissions-group-membership-opts]]
+   (apply t2/select-one (->permissions-group-membership-model columns) (permissions-group-membership-args opts))))
+
+(mu/defn count-permissions-group-memberships :- :int
+  "The number of PermissionsGroupMemberships matching `opts`."
+  ([]
+   (count-permissions-group-memberships nil))
+  ([opts :- [:maybe ::permissions-group-membership-opts]]
+   (apply t2/count :model/PermissionsGroupMembership (permissions-group-membership-args opts))))
+
+(mu/defn permissions-group-membership-exists? :- :boolean
+  "Whether a PermissionsGroupMembership matching `opts` exists."
+  [opts :- [:maybe ::permissions-group-membership-opts]]
+  (apply t2/exists? :model/PermissionsGroupMembership (permissions-group-membership-args opts)))
+
+;;; ------------------------------------------------------ Writes --------------------------------------------------
+
+(mu/defn insert-data-permissions! :- [:maybe :int]
+  "Insert the DataPermissions `rows`."
+  [rows :- [:sequential (mut/select-keys ::permissions.schema/data-permissions.create [:perm_type :group_id :perm_value :db_id :table_id :schema_name])]]
+  (t2/insert! :model/DataPermissions rows))
+
+(mu/defn delete-data-permissions! :- :int
+  "Delete the DataPermissions with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DataPermissions :id [:in ids]))
+
+(mu/defn insert-permissions! :- [:maybe :int]
+  "Insert the Permissions `rows`."
+  [rows :- [:sequential (mut/select-keys ::permissions.schema/permissions.create [:group_id :object])]]
+  (t2/insert! :model/Permissions rows))
+
+(mu/defn insert-permissions-group! :- ::permissions.schema/permissions-group
+  "Insert `group` and return the new instance."
+  [group :- ::permissions.schema/permissions-group.create]
+  (t2/insert-returning-instance! :model/PermissionsGroup group))
+
+(mu/defn update-permissions-groups! :- :int
+  "Apply `changes` to every PermissionsGroup matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::permissions-group-opts]
+   changes :- ::permissions.schema/permissions-group.update]
+  (apply t2/update! :model/PermissionsGroup (conj (permissions-group-kv-args opts) changes)))
+
+(mu/defn delete-permissions-groups! :- :int
+  "Delete every PermissionsGroup matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::permissions-group-opts]]
+  (apply t2/delete! :model/PermissionsGroup (permissions-group-args opts)))
+
+(mu/defn delete-permissions-group-memberships! :- :int
+  "Delete every PermissionsGroupMembership matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::permissions-group-membership-opts]]
+  (apply t2/delete! :model/PermissionsGroupMembership (permissions-group-membership-args opts)))
+
+(mu/defn update-permissions-group-memberships! :- :int
+  "Apply `changes` to every PermissionsGroupMembership matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::permissions-group-membership-opts]
+   changes :- ::permissions.schema/permissions-group-membership.update]
+  (apply t2/update! :model/PermissionsGroupMembership (conj (permissions-group-membership-kv-args opts) changes)))
+
+;;; ------------------------------- Queries used only by the permissions module -------------------------------
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 
@@ -248,16 +618,6 @@
                                                                          [:= :audit_db.is_audit true]
                                                                          [:= :audit_db.id :data_permissions.db_id]]}]]]}))
 
-(mu/defn insert-data-permissions!
-  "Insert the DataPermissions `rows`."
-  [rows :- [:sequential (mut/select-keys ::permissions.schema/data-permissions.update [:perm_type :group_id :perm_value :db_id :table_id :schema_name])]]
-  (t2/insert! :model/DataPermissions rows))
-
-(mu/defn delete-data-permissions!
-  "Delete the DataPermissions with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DataPermissions :id [:in ids]))
-
 ;;; ----------------------------------------------- Permissions -----------------------------------------------
 
 (mu/defn group-ids-with-permission-objects
@@ -290,11 +650,6 @@
    also-under-paths  :- [:sequential :string]]
   (t2/delete! :model/Permissions
               {:where (related-permission-objects-where group-id path also-under-paths)}))
-
-(mu/defn insert-permissions!
-  "Insert the Permissions `rows`."
-  [rows :- [:sequential (mut/select-keys ::permissions.schema/permissions.update [:group_id :object])]]
-  (t2/insert! :model/Permissions rows))
 
 (mu/defn permission-objects-for-user
   "The Permissions objects granted, via group membership, to the User with `user-id`."
@@ -380,17 +735,6 @@
                                       [:in :pgm.group_id group-ids]]
                           :order-by  [[[:lower :u.first_name] :asc]
                                       [[:lower :u.last_name] :asc]]}))
-
-(mu/defn insert-group!
-  "Insert `group` and return the new instance."
-  [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/insert-returning-instance! :model/PermissionsGroup group))
-
-(mu/defn update-group!
-  "Apply `changes` to the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup group-id changes))
 
 (mu/defn group-member-counts
   "A map of PermissionsGroup ID to number of active members in the group. Groups with no active members have no
@@ -686,6 +1030,9 @@
 
 ;;; ------------------------------------------------- Users -------------------------------------------------
 
+;; These stay bespoke rather than moving to `metabase.users.db`: `metabase.users.db` requires
+;; `metabase.permissions.core`, so a reverse dependency here would be circular.
+
 (mu/defn user-superuser?
   "Whether the User with `user-id` is a superuser."
   [user-id :- ::lib.schema.id/user]
@@ -735,16 +1082,6 @@
              :set    {:is_active false}}))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
-
-(mu/defn non-destination-database-ids
-  "The IDs of the Databases that are not routing destinations."
-  []
-  (t2/select-pks-vec :model/Database :router_database_id nil))
-
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
 
 (mu/defn table-location
   "The ID, Database ID, and schema of the Table with `table-id`."

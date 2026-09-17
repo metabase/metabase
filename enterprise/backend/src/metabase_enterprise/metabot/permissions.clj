@@ -20,7 +20,7 @@
     ;; visible :no (#80394). Mode switches delete these rows, but serialization imports and API writes for hidden
     ;; groups can recreate them. A mode change through `PUT /api/setting` can leave them behind. They can also
     ;; remain on instances that switched modes before this fix.
-    (let [stored  (metabot.db/visible-permissions-for-user user-id (metabot-settings/metabot-advanced-permissions))
+    (let [stored  (metabot.db/select-visible-metabot-permissions-for-user user-id (metabot-settings/metabot-advanced-permissions))
           by-type (group-by :perm_type stored)]
       (reduce-kv
        (fn [acc perm-type default-value]

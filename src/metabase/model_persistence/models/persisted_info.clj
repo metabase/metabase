@@ -117,7 +117,7 @@
   "Hydrate a card :is_persisted for the frontend."
   [cards]
   (when (seq cards)
-    (let [existing-ids (model-persistence.db/persisted-card-ids-in-states (map :id cards) (refreshable-states))]
+    (let [existing-ids (model-persistence.db/select-persisted-info-card-ids-in-states (map :id cards) (refreshable-states))]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
@@ -132,9 +132,9 @@
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
    (cond
-     (contains? conditions-map :id)          (model-persistence.db/deactivate-persisted-info! (:id conditions-map) state)
-     (contains? conditions-map :database_id) (model-persistence.db/deactivate-persisted-infos-for-database! (:database_id conditions-map) state)
-     :else                                   (model-persistence.db/deactivate-all-persisted-infos! state))))
+     (contains? conditions-map :id)          (model-persistence.db/update-persisted-info-deactivated! (:id conditions-map) state)
+     (contains? conditions-map :database_id) (model-persistence.db/update-persisted-infos-for-database! (:database_id conditions-map) state)
+     :else                                   (model-persistence.db/update-all-persisted-infos-deactivated! state))))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
@@ -142,7 +142,7 @@
   [card-ids]
   ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
   ;; TODO perhaps we should immediately kick off a recalculation of these caches
-  (model-persistence.db/invalidate-persisted-infos-for-cards! card-ids))
+  (model-persistence.db/update-persisted-infos-for-cards-invalidated! card-ids))
 
 (defenterprise default-persistent-info-state
   "The default state for a new PersistedInfo record. Defaults to 'creating' for OSS"
@@ -176,20 +176,20 @@
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [card-id (u/the-id card)
-        existing-persisted-info (model-persistence.db/persisted-info-for-card card-id)
+        existing-persisted-info (model-persistence.db/select-one-persisted-info {:card_id card-id})
         persisted-info (cond
                          (not existing-persisted-info)
                          (model-persistence.db/insert-persisted-info! (create-row user-id card))
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
-                           (model-persistence.db/reset-persisted-info-to-creating! (u/the-id existing-persisted-info))
-                           (model-persistence.db/persisted-info-for-card card-id)))]
+                           (model-persistence.db/update-persisted-info-reset-to-creating! (u/the-id existing-persisted-info))
+                           (model-persistence.db/select-one-persisted-info {:card_id card-id})))]
     persisted-info))
 
 (defn ready-database!
   "Sets PersistedInfo state to the default state for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
-  (model-persistence.db/ready-deletable-persisted-infos! database-id (default-persistent-info-state))
+  (model-persistence.db/update-deletable-persisted-infos-for-database! database-id (default-persistent-info-state))
   (ready-unpersisted-models! database-id))

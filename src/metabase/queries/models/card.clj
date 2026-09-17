@@ -48,6 +48,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -111,7 +112,7 @@
 
 (defmethod metrics/dimensions-initialized? :metadata/metric
   [metric]
-  (some? (:dimensions (queries.db/card-dimensions (:id metric)))))
+  (some? (:dimensions (queries.db/select-card-dimensions (:id metric)))))
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
@@ -148,7 +149,7 @@
   [card]
   (cond
     (contains? card :document_id) (:document_id card)
-    (:id card)                    (queries.db/card-document-id (:id card))
+    (:id card)                    (:document_id (queries.db/select-one-card {:id (:id card) :columns [:document_id]}))
     :else                         ::not-adjudicable))
 
 (defn- parent-document-permits?
@@ -184,7 +185,7 @@
    (and (perms/can-read-via-parent-collection? (:collection_id instance))
         (parent-document-permits? instance :read)))
   ([_ pk]
-   (mi/can-read? (queries.db/card pk))))
+   (mi/can-read? (queries.db/select-one-card {:id pk}))))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -199,7 +200,7 @@
     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
     (parent-document-permits? instance :write)))
   ([_ pk]
-   (mi/can-write? (queries.db/card pk))))
+   (mi/can-write? (queries.db/select-one-card {:id pk}))))
 
 (defn model?
   "Returns true if `card` is a model."
@@ -225,7 +226,7 @@
   (mi/instances-with-hydrated-data
    cards k
    (fn []
-     (->> (queries.db/dashcard-counts-by-card (map :id cards))
+     (->> (queries.db/select-dashcard-counts-by-card (map :id cards))
           (map (juxt :card_id :count))
           (into {})))
    :id
@@ -237,7 +238,7 @@
    cards k
    (fn []
      (let [card-ids       (map u/the-id cards)
-           all-dashboards (queries.db/dashboards-for-cards card-ids)]
+           all-dashboards (queries.db/select-dashboards-for-cards card-ids)]
        (update-vals
         (group-by :card_id all-dashboards)
         (fn [dashes]
@@ -268,7 +269,7 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (queries.db/parameter-card-counts-by-card (map :id cards))
+   #(->> (queries.db/select-parameter-card-counts-by-card (map :id cards))
          (map (juxt :card_id :count))
          (into {}))
    :id
@@ -278,7 +279,7 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (queries.db/average-running-times-by-card (map :id cards))
+   #(->> (queries.db/select-average-running-times-by-card (map :id cards))
          (map (juxt :card_id :running_time))
          (into {}))
    :id))
@@ -287,7 +288,7 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (queries.db/last-query-starts-by-card (map :id cards))
+   #(->> (queries.db/select-last-query-starts-by-card (map :id cards))
          (map (juxt :card_id :started_at))
          (into {}))
    :id))
@@ -297,7 +298,7 @@
   (mi/instances-with-hydrated-data
    cards k
    #(group-by :source_card_id
-              (->> (queries.db/metric-cards-for-source-cards (map :id cards))
+              (->> (queries.db/select-metric-cards-for-source-cards (map :id cards))
                    (filter mi/can-read?)))
    :id))
 
@@ -347,10 +348,11 @@
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
-      (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
+      (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/select-field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (queries.db/database-name db-id))))]
+                                    (format "%d %s" db-id (pr-str (when db-id
+                                                                    (:name (warehouses.db/select-one-database {:id db-id :columns [:name]}))))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -427,7 +429,7 @@
   changes)
 
 (defn- check-dashboard-internal-card-insert [card]
-  (let [correct-collection-id (queries.db/dashboard-collection-id (:dashboard_id card))
+  (let [correct-collection-id (queries.db/select-dashboard-collection-id (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
                      (not (contains? #{:question "question" nil} (:type card)))
@@ -486,7 +488,7 @@
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{:keys [id database_id]} changes]
   (when (some #{:archived :result_metadata} (keys changes))
-    (let [parameter-cards  (queries.db/parameter-cards-for-card id)
+    (let [parameter-cards  (queries.db/select-parameter-cards {:card_id id})
           metadata-columns (when-let [result-metadata (:result_metadata changes)]
                              (lib/->card-metadata-columns
                               (lib-be/application-database-metadata-provider database_id)
@@ -494,8 +496,8 @@
       (doseq [[[po-type po-id] param-cards]
               (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
         (let [parameters             (case po-type
-                                       :card      (queries.db/card-parameters po-id)
-                                       :dashboard (queries.db/dashboard-parameters po-id))
+                                       :card      (:parameters (queries.db/select-one-card {:id po-id :columns [:parameters]}))
+                                       :dashboard (queries.db/select-dashboard-parameters po-id))
               affected-param-ids-set (cond
                                        ;; update all parameters that use this card as source
                                        (:archived changes)
@@ -543,7 +545,7 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
+  (when-let [action-ids (queries.db/select-implicit-action-ids-for-model model-id)]
     (queries.db/delete-actions! action-ids)))
 
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
@@ -559,7 +561,7 @@
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (queries.db/card-query-info (u/the-id id)))]
+                          (queries.db/select-one-card {:id (u/the-id id) :columns [:dataset_query :type :result_metadata]}))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (some-> changes :dataset_query lib/native-only-query?)
@@ -794,7 +796,7 @@
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
-    (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
+    (assoc card :collection_id (queries.db/select-dashboard-collection-id dashboard-id))
     card))
 
 (mu/defn- populate-result-metadata :- [:map
@@ -853,13 +855,13 @@
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
-  (queries.db/delete-parameter-cards-for-card! id)
+  (queries.db/delete-parameter-cards! {:card_id id})
   (queries.db/delete-card-moderation-reviews! id)
   (queries.db/delete-card-revisions! id)
   ;; delete any card-type notifications for this card — must materialize IDs first because
   ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
   ;; return empty by the time the actual DELETE executes.
-  (when-let [notification-ids (seq (queries.db/card-notification-ids id))]
+  (when-let [notification-ids (seq (queries.db/select-card-notification-ids id))]
     (queries.db/delete-notifications! notification-ids)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
@@ -869,7 +871,7 @@
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+  (let [dashboard (t2/hydrate (queries.db/select-dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
@@ -896,9 +898,9 @@
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
   (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
-  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
+  (when-let [dashcard-ids (seq (map :id (queries.db/select-dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
     (queries.db/delete-dashcard-series! (set dashcard-ids)))
-  (events/publish-event! :event/dashboard-update {:object (queries.db/dashboard dashboard-id)
+  (events/publish-event! :event/dashboard-update {:object (queries.db/select-dashboard dashboard-id)
                                                   :user-id api/*current-user-id*}))
 
 (defn- autoplace-or-remove-dashcards-for-card!
@@ -953,7 +955,7 @@
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
       (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
-      (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
+      (when-let [ids (seq (map :id (queries.db/select-dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
         (queries.db/delete-dashcard-series! ids)))))
 
 (defn create-card!
@@ -1169,7 +1171,7 @@
         breakouts-before (card->breakouts card-before)
         breakouts-after  (card->breakouts card-after)]
     (when-some [identifier->action (breakouts->identifier->action breakouts-before breakouts-after)]
-      (let [dashcards (queries.db/dashcards-for-card (some :id [card-after card-before]))
+      (let [dashcards (queries.db/select-dashcards-for-card (some :id [card-after card-before]))
             updates   (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
         ;; aware of more reasonable way.
@@ -1183,7 +1185,7 @@
   (children-of [_this key-seq]
     (if (empty? key-seq)
       {}
-      (let [deps (queries.db/source-card-dependents key-seq)]
+      (let [deps (queries.db/select-card-dependents-of-source-cards key-seq)]
         (u/group-by :source_card_id :id conj #{} deps)))))
 
 (defn- dependent-cards-to-update
@@ -1191,7 +1193,7 @@
   A card's `database_id` comes from its source card, so updating a dependent first preserves the old ID."
   [root-card-id old-db-id]
   (when-let [all-dep-ids (seq (graph/transitive (->SourceCardDependentsGraph) [root-card-id]))]
-    (let [id->card (m/index-by :id (queries.db/card-queries all-dep-ids))]
+    (let [id->card (m/index-by :id (queries.db/select-card-queries all-dep-ids))]
       (into []
             (comp (map id->card)
                   (filter #(= (get-in % [:dataset_query :database]) old-db-id)))
@@ -1243,7 +1245,7 @@
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
     (collection/check-for-remote-sync-update card-before-update))
   ;; Fetch the updated Card from the DB
-  (let [card (queries.db/card (:id card-before-update))]
+  (let [card (queries.db/select-one-card {:id (:id card-before-update)})]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
     (pulse/delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
     ;; skip publishing the event if it's just a change in its collection position
@@ -1433,7 +1435,7 @@
   (card-deps false card))
 
 (defmethod serdes/descendants "Card" [_model-name id _opts]
-  (let [card               (queries.db/card id)
+  (let [card               (queries.db/select-one-card {:id id})
         query              (not-empty (:dataset_query card))
         source-cards       (some-> query lib/all-source-card-ids)
         template-tags      (some-> query lib/all-template-tags)
@@ -1452,10 +1454,10 @@
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
-  (queries.db/cards-for-serdes-reducible collection-set
-                                         filter-column
-                                         filter-ids
-                                         (serdes/extract-order-columns model-name opts)))
+  (queries.db/reducible-select-cards-for-serdes collection-set
+                                                filter-column
+                                                filter-ids
+                                                (serdes/extract-order-columns model-name opts)))
 
 (defmethod serdes/serialization-dependencies "Card" [_model-name card]
   (card-deps true card))

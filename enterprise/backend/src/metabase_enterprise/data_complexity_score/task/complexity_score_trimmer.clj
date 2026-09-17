@@ -23,7 +23,7 @@
 (defn- trim-old-complexity-score-data!
   []
   (log/info "Trimming old Data Complexity Score snapshots.")
-  (let [deleted (data-complexity-score.db/delete-scores-older-than! retention-months)]
+  (let [deleted (data-complexity-score.db/delete-data-complexity-scores-older-than! retention-months)]
     (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
 
 (task/defjob ^{DisallowConcurrentExecution true

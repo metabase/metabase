@@ -95,7 +95,7 @@
   :snippets)
 
 (defn- trash-collection* []
-  (collections.db/collection-of-type trash-collection-type))
+  (collections.db/select-one-collection {:type trash-collection-type}))
 
 (let [get-trash (mdb/memoize-for-application-db
                  (fn []
@@ -145,7 +145,8 @@
   (cond
     (nil? collection-or-id) false ;; the root collection is never remote-synced
     (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
-    :else (collections.db/collection-remote-synced? (u/the-id collection-or-id))))
+    :else (when-let [collection-id (u/the-id collection-or-id)]
+            (:is_remote_synced (collections.db/select-one-collection {:id collection-id, :columns [:is_remote_synced]})))))
 
 (defn- is-library?
   "Is this the Library collection?"
@@ -165,7 +166,7 @@
 (defn remote-synced-collection
   "Get the remote-synced collection if it exists."
   []
-  (collections.db/root-remote-synced-collection))
+  (collections.db/select-one-collection {:is_remote_synced true, :location "/"}))
 
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
@@ -173,17 +174,17 @@
   "Marks any remote-synced-collection as non-remote-synced"
   []
   (binding [*clearing-remote-sync* true]
-    (collections.db/clear-remote-synced-flags!)))
+    (collections.db/update-collections! {:is_remote_synced true} {:is_remote_synced false})))
 
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
   []
-  (pos-int? (collections.db/remote-synced-collection-count)))
+  (pos-int? (collections.db/count-collections {:is_remote_synced true})))
 
 (defn library-collection
   "Get the 'library' collection, if it exists."
   []
-  (collections.db/collection-of-type library-collection-type))
+  (collections.db/select-one-collection {:type library-collection-type}))
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
@@ -196,7 +197,7 @@
    ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
    (fn [id]
      (when id
-       (collections.db/root-collection-type-by-id id)))
+       (:type (collections.db/select-one-collection {:id id, :location "/", :columns [:type]}))))
    :ttl/threshold (* 60 60 1000)))
 
 (defn root-collection-type
@@ -322,7 +323,7 @@
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
-   (mi/can-write? (collections.db/collection pk))))
+   (mi/can-write? (collections.db/select-one-collection {:id pk}))))
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
@@ -330,7 +331,7 @@
        (perms/can-read-audit-helper :model/Collection (t2/instance :model/Collection (select-keys instance [:id :namespace])))))
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
-       (mi/can-read? (collections.db/collection pk)))))
+       (mi/can-read? (collections.db/select-one-collection {:id pk})))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
@@ -493,7 +494,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (collections.db/collection-count-by-ids ids)))))
+        (collections.db/count-collections {:id (set ids)})))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -525,7 +526,7 @@
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
-      (let [parent-namespace (collections.db/collection-namespace parent-id)]
+      (let [parent-namespace (:namespace (collections.db/select-one-collection {:id parent-id, :columns [:namespace]}))]
         (when-not (= (keyword collection-namespace) (keyword parent-namespace))
           (let [msg (tru "Collection must be in the same namespace as its parent")]
             (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
@@ -540,7 +541,7 @@
   If a collection's parent is remote-synced, it must also be remote-synced."
   [{:keys [location is_remote_synced]}]
   (when-let [parent-id (and location (location-path->parent-id location))]
-    (let [parent-is-remote-synced? (collections.db/collection-remote-synced? parent-id)]
+    (let [parent-is-remote-synced? (:is_remote_synced (collections.db/select-one-collection {:id parent-id, :columns [:is_remote_synced]}))]
       (when (and (or parent-is-remote-synced? is_remote_synced)
                  (not= parent-is-remote-synced? is_remote_synced))
         (let [msg (if is_remote_synced
@@ -580,7 +581,7 @@
   *from*."
   [collection :- CollectionWithLocationOrRoot]
   (if-let [new-parent-id (location-path->parent-id (:location collection))]
-    (collections.db/collection new-parent-id)
+    (collections.db/select-one-collection {:id new-parent-id})
     root-collection))
 
 (mu/defn children-location :- LocationPath
@@ -695,7 +696,7 @@
     ;; Try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`. Then see if
     ;; the root-level ancestor is a Personal Collection (Personal Collections can only exist in the Root Collection.)
     (when-let [id (first (location-path->ids (:location collection)))]
-      (collections.db/personal-collection? id)))))
+      (collections.db/collection-exists? {:id id, :personal_owner_id_set true})))))
 
 (def ^:private CollectionWithNamespace
   "Schema for a Collection instance that has a valid `:location`, and a `:namespace` key *present* (but not
@@ -717,7 +718,7 @@
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
   create it if needed."
   [user-or-id :- UserOrId]
-  (collections.db/personal-collection-of-user (u/the-id user-or-id)))
+  (collections.db/select-one-collection {:personal_owner_id (u/the-id user-or-id)}))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
@@ -804,7 +805,7 @@
         [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
         ;; root collection is nil
         [collection]))
-    (let [personal-collection-ids (collections.db/personal-collection-ids)
+    (let [personal-collection-ids (collections.db/select-collection-pks {:personal_owner_id_set true})
           ;; Personal Collections only ever live in the Root Collection, so a Collection is inside one exactly when
           ;; the first ID of its location path is a Personal Collection. Testing that ID against the set beats
           ;; scanning every personal collection per row: instances with thousands of each made this quadratic.
@@ -1097,7 +1098,7 @@
                              (keep location-path->parent-id))
         id->parent-coll (merge {nil (effective-parent-root)}
                                (when (seq parent-ids)
-                                 (collections.db/collection-columns-by-id effective-parent-fields parent-ids)))]
+                                 (collections.db/select-collection-pk->instance {:id (set parent-ids), :columns effective-parent-fields})))]
     (map
      (fn [collection]
        (let [parent-id (-> collection :effective_location location-path->parent-id)]
@@ -1156,7 +1157,7 @@
   [collections]
   (let [all-ids (mapcat #(some-> % effective-location-path location-path->ids) collections)
         collection-id->collection (if (seq all-ids)
-                                    (collections.db/collections-by-id all-ids)
+                                    (collections.db/select-collection-pk->instance {:id (set all-ids)})
                                     {})]
     (map (fn [collection]
            (assoc collection
@@ -1380,7 +1381,7 @@
   Returns a sequence of {model-name id} maps for dependents that are eligible for remote sync."
   [{:keys [id archived] :as model}]
   (let [;; Get ALL top-level remote-synced collections
-        all-remote-synced-roots (collections.db/remote-synced-root-collection-ids)
+        all-remote-synced-roots (collections.db/select-collection-pks {:is_remote_synced true, :location "/"})
         ;; Traverse descendants of all remote-synced roots combined
         all-remote-synced-descendants (reduce (fn [accum root-id]
                                                 (merge-with concat accum
@@ -1417,7 +1418,8 @@
   naming the direct referrer rather than the whole path back to `model`. Both fall out of the traversal
   that [[non-remote-synced-dependencies]] already runs, so reporting them costs no extra queries."
   [{:keys [id] :as model}]
-  (if (collections.db/collection-exists? (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
+  (if (let [model-collection-id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model))]
+        (and model-collection-id (collections.db/collection-exists? {:id model-collection-id})))
     (let [traversed   (traverse-descendants [(name (t2/model model)) id] true)
           descendants (u/group-by first second (keys traversed))]
       (into []
@@ -1489,9 +1491,9 @@
   [old-collection-id new-collection-id]
   (boolean
    (and (some? new-collection-id)
-        (collections.db/remote-synced-collection-exists? new-collection-id)
+        (collections.db/collection-exists? {:id new-collection-id, :is_remote_synced true})
         (or (nil? old-collection-id)
-            (not (collections.db/remote-synced-collection-exists? old-collection-id))))))
+            (not (collections.db/collection-exists? {:id old-collection-id, :is_remote_synced true}))))))
 
 (defn moving-from-remote-synced?
   "Tests if a move means the object is leaving remote-synced collections entirely.
@@ -1504,9 +1506,9 @@
   [old-collection-id new-collection-id]
   (boolean
    (and (some? old-collection-id)
-        (collections.db/remote-synced-collection-exists? old-collection-id)
+        (collections.db/collection-exists? {:id old-collection-id, :is_remote_synced true})
         (or (nil? new-collection-id)
-            (not (collections.db/remote-synced-collection-exists? new-collection-id))))))
+            (not (collections.db/collection-exists? {:id new-collection-id, :is_remote_synced true}))))))
 
 (defn check-for-remote-sync-update
   "Checks collection items for remote-sync integrity during an update transaction.
@@ -1572,7 +1574,7 @@
   (when (= (audit/default-custom-reports-collection) collection)
     (throw (Exception. (tru "You cannot operate on the Custom Reports Collection."))))
   ;; also make sure we're not trying to operate on a PERSONAL Collection
-  (when (collections.db/personal-collection? (u/the-id collection))
+  (when (collections.db/collection-exists? {:id (u/the-id collection), :personal_owner_id_set true})
     (throw (Exception. (tru "You cannot operate on a Personal Collection."))))
   (set
    (for [collection-or-id (cons
@@ -1683,10 +1685,10 @@
           affected-collection-ids (cons (u/the-id collection)
                                         (collections.db/not-yet-archived-collection-ids-with-location-like
                                          (str (children-location collection) "%")))]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:archive_operation_id archive-operation-id
-                                          :archived_directly    true
-                                          :archived             true})
+      (collections.db/update-collections! {:id (u/the-id collection)}
+                                          {:archive_operation_id archive-operation-id
+                                           :archived_directly    true
+                                           :archived             true})
       (collections.db/archive-descendant-collections! (str (children-location collection) "%") archive-operation-id)
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
@@ -1695,12 +1697,12 @@
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids true)
-      (let [library-data-ids (collections.db/collection-ids-of-type affected-collection-ids library-data-collection-type)]
+      (let [library-data-ids (collections.db/select-collection-pks {:id (set affected-collection-ids), :type library-data-collection-type})]
         (when (seq library-data-ids)
           (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
             (collections.db/unpublish-tables-in-collections! library-data-ids)
             (unpublish-downstream-fk-tables! published-table-ids)))))
-    (let [updated-collection (collections.db/collection (:id collection))]
+    (let [updated-collection (collections.db/select-one-collection {:id (:id collection)})]
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
 
@@ -1719,7 +1721,7 @@
                                   (:parent_id updates)
                                   current-parent-id)
         new-parent              (if new-parent-id
-                                  (collections.db/collection new-parent-id)
+                                  (collections.db/select-one-collection {:id new-parent-id})
                                   root-collection)
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
@@ -1741,12 +1743,12 @@
       (api/check-403
        (:can_restore (t2/hydrate collection :can_restore))))
     (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:location             new-location
-                                          :is_remote_synced     (boolean new-parent-is-remote-synced?)
-                                          :archive_operation_id nil
-                                          :archived_directly    nil
-                                          :archived             false})
+      (collections.db/update-collections! {:id (u/the-id collection)}
+                                          {:location             new-location
+                                           :is_remote_synced     (boolean new-parent-is-remote-synced?)
+                                           :archive_operation_id nil
+                                           :archived_directly    nil
+                                           :archived             false})
       (collections.db/unarchive-descendant-collections! orig-children-location
                                                         new-children-location
                                                         (boolean new-parent-is-remote-synced?)
@@ -1781,7 +1783,8 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (collections.db/collection-remote-synced? (parent-id* {:location new-location}))]
+        will-be-in-remote-synced? (when-let [parent-id (parent-id* {:location new-location})]
+                                    (:is_remote_synced (collections.db/select-one-collection {:id parent-id, :columns [:is_remote_synced]})))]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -1793,9 +1796,9 @@
                (u/the-id collection) (:location collection) new-location)
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:location         new-location
-                                          :is_remote_synced (boolean will-be-in-remote-synced?)})
+      (collections.db/update-collections! {:id (u/the-id collection)}
+                                          {:location         new-location
+                                           :is_remote_synced (boolean will-be-in-remote-synced?)})
       ;; we need to update all the descendant collections as well...
       (u/prog1 (collections.db/move-descendant-collections! orig-children-location
                                                             new-children-location
@@ -2059,7 +2062,7 @@
   (when (= (u/the-id collection) (trash-collection-id))
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   ;; delete all collection children
-  (collections.db/delete-collections-at-location! (children-location collection))
+  (collections.db/delete-collections! {:location (children-location collection)})
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
         published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
     (collections.db/unpublish-tables-in-collections! affected-collection-ids)
@@ -2083,7 +2086,7 @@
 (defmethod mi/perms-objects-set :model/Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
-                     (collections.db/collection-id-and-namespace collection-or-id)
+                     (collections.db/select-one-collection {:id collection-or-id, :columns [:id :namespace]})
                      collection-or-id)]
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
              (not (premium-features/enable-snippet-collections?)))
@@ -2111,7 +2114,7 @@
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
-  (collections.db/collections-for-serdes-reducible collection-set skip-archived filter-column filter-ids))
+  (collections.db/reducible-select-collections-for-serdes collection-set skip-archived filter-column filter-ids))
 
 (defmethod serdes/deserialization-dependencies "Collection"
   [{:keys [parent_id]}]
@@ -2130,14 +2133,14 @@
 
 (defmethod serdes/required "Collection" [_ id]
   (when id
-    (let [{:keys [location]} (collections.db/collection id)
+    (let [{:keys [location]} (collections.db/select-one-collection {:id id})
           path               (location-path->ids location)]
       ;; we'll recurse anyway, so just return immediate parent
       (when (seq path)
         {["Collection" (u/last path)] {"Collection" id}}))))
 
 (defmethod serdes/descendants "Collection" [_model-name id {:keys [skip-archived]}]
-  (let [location    (when id (collections.db/collection-location id))
+  (let [location    (when id (:location (collections.db/select-one-collection {:id id, :columns [:location]})))
         child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
                       (into {} (for [child-id (collections.db/child-collection-ids (str location id "/")
                                                                                    trash-collection-type
@@ -2176,7 +2179,7 @@
   (if-not parent-id
     "/"
     ;; It would be great to use a cache rather than a database call to fetch the parent.
-    (let [{:keys [id location]} (collections.db/collection parent-id)]
+    (let [{:keys [id location]} (collections.db/select-one-collection {:id parent-id})]
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
@@ -2235,7 +2238,7 @@
       (api/write-check root-collection))
     ;; check that the new location is not archived. the root can't be archived.
     (when-let [collection-id (:collection_id object-updates)]
-      (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))))
+      (api/check-400 (collections.db/collection-exists? {:id collection-id, :archived false})))))
 
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
@@ -2255,7 +2258,7 @@
     (check-collection-namespace Card new-collection-id)"
   [model collection-id]
   (when collection-id
-    (let [collection           (or (collections.db/collection-id-and-namespace collection-id)
+    (let [collection           (or (collections.db/select-one-collection {:id collection-id, :columns [:id :namespace]})
                                    (let [msg (tru "Collection does not exist.")]
                                      (throw (ex-info msg {:status-code 404
                                                           :errors      {:collection_id msg}}))))
@@ -2388,11 +2391,13 @@
                                            (t2/hydrate archived-colls :parent_id)))
           parent-ids (keep val coll-id->parent-id)
           parent-id->archived? (when (seq parent-ids)
-                                 (collections.db/collection-archived-flags parent-ids))
+                                 (update-vals (collections.db/select-collection-pk->instance
+                                               {:id (set parent-ids), :columns [:archived]})
+                                              :archived))
           ;; Batch: get all descendants for all archive_operation_ids
           op-ids (keep :archive_operation_id archived-colls)
           all-descendants (when (seq op-ids)
-                            (collections.db/archived-collections-in-operations op-ids))
+                            (collections.db/select-collections {:archive_operation_id (set op-ids), :archived true}))
           op-id->descendant-ids (update-vals (group-by :archive_operation_id all-descendants)
                                              #(map :id %))]
       (for [coll colls
@@ -2491,11 +2496,12 @@
   "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
   (when collection-id
-    (pos-int? (collections.db/collection-count-of-types collection-id [library-collection-type
-                                                                       library-data-collection-type
-                                                                       library-metrics-collection-type]))))
+    (pos-int? (collections.db/count-collections {:id collection-id
+                                                 :type (set [library-collection-type
+                                                             library-data-collection-type
+                                                             library-metrics-collection-type])}))))
 
 (defn collections-in-namespace
   "Return all collections in the given namespace."
   [namespace]
-  (collections.db/collections-in-namespace (name namespace)))
+  (collections.db/select-collections {:namespace (name namespace)}))

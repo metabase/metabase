@@ -18,6 +18,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -159,7 +160,7 @@
   [instances]
   (let [table-ids (into #{} (keep :table_id) instances)
         id->table (when (seq table-ids)
-                    (m/index-by :id (warehouse-schema.db/tables table-ids)))]
+                    (m/index-by :id (warehouse-schema.db/select-tables {:id table-ids})))]
     (for [instance instances]
       (m/assoc-some instance :table (get id->table (:table_id instance))))))
 
@@ -235,7 +236,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
+                                      (driver/default-field-order (:engine (warehouses.db/select-one-database {:id (:db_id table) :columns [:engine]}))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -245,7 +246,7 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-fields-for-table! (:id table)))
+  (warehouse-schema.db/delete-fields! {:table_id (:id table)}))
 
 (t2/define-before-update :model/Table
   [table]
@@ -354,7 +355,7 @@
      (:db_id instance)
      (:id instance))))
   ([_ pk]
-   (mi/can-read? (warehouse-schema.db/table pk))))
+   (mi/can-read? (warehouse-schema.db/select-one-table {:id pk}))))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
@@ -379,7 +380,7 @@
           ;; Can access via published collection (EE feature)
           (perms/can-access-via-collection? instance)))))
   ([_ pk]
-   (mi/can-query? (warehouse-schema.db/table pk))))
+   (mi/can-query? (warehouse-schema.db/select-one-table {:id pk}))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation. Returns a boolean whether the current user can write the given table.
@@ -396,7 +397,7 @@
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
-   (mi/can-write? (warehouse-schema.db/table pk))))
+   (mi/can-write? (warehouse-schema.db/select-one-table {:id pk}))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
   "Batched hydration for :can_write on tables. Pre-fetches collection is_remote_synced values
@@ -469,9 +470,9 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (warehouse-schema.db/update-field! (u/the-id field) {:position new-position}))
+                  (warehouse-schema.db/update-fields! {:id (u/the-id field)} {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (warehouse-schema.db/field-ids-for-table-ordered
+                (warehouse-schema.db/select-field-ids-for-table-ordered
                  (u/the-id table)
                  (:field_order table)))))
 
@@ -482,7 +483,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(-> (group-by :table_id (warehouse-schema.db/full-field-values-for-tables (map :id tables)))
+   #(-> (group-by :table_id (warehouse-schema.db/select-full-field-values-for-tables (map :id tables)))
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
@@ -506,7 +507,7 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(warehouse-schema.db/pk-field-ids-by-table (map :id tables))
+   #(warehouse-schema.db/select-pk-field-id-by-table (map :id tables))
    :id))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
@@ -549,7 +550,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (warehouse-schema.db/active-fields-for-tables table-ids))
+      (warehouse-schema.db/select-active-fields-for-tables table-ids))
     tables))
 
 (mi/define-batched-hydration-method fields
@@ -563,7 +564,8 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (warehouse-schema.db/database (:db_id table)))
+  (when-let [database-id (:db_id table)]
+    (warehouses.db/select-one-database {:id database-id})))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
@@ -572,10 +574,10 @@
     transform_id  (conj [{:model "Transform" :id transform_id}])))
 
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
+  (let [fields   (into {} (for [field-id (warehouse-schema.db/select-field-pks {:table_id id :user-settings? false})]
                             [["Field" field-id] {"Table" id}]))
-        settings (when (or (warehouse-schema.db/table-user-settings-exist? id)
-                           (warehouse-schema.db/field-user-settings-exist-for-table? id))
+        settings (when (or (warehouse-schema.db/table-user-settings-exists? {:table_id id})
+                           (warehouse-schema.db/field-user-settings-exists-for-table? id))
                    {["TableUserSettings" id] {"Table" id}})
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
@@ -584,7 +586,8 @@
     (merge fields settings segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
+  (let [db-name (when-let [database-id (:db_id table)]
+                  (:name (warehouses.db/select-one-database {:id database-id :columns [:name]})))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -599,8 +602,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (warehouse-schema.db/database-id-by-name db-name)]
-    (warehouse-schema.db/table-by-name db-id schema-name table-name)))
+        db-id       (warehouses.db/select-one-database-pk {:name db-name})]
+    (warehouse-schema.db/select-one-table {:db_id db-id :schema schema-name :name table-name})))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema

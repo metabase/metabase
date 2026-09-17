@@ -19,7 +19,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +57,7 @@
                     transforms-base.u/massage-sql-query
                     qp.preprocess/preprocess)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (keyword (transforms-inspector.db/database-engine db-id))
+          driver (keyword (:engine (warehouses.db/select-one-database {:id db-id :columns [:engine]})))
           deps (driver/native-query-deps driver query)
           table-ids (keep :table deps)]
       (table-ids->source-info table-ids))
@@ -321,7 +322,7 @@
              :target              target-info
              :db-id               db-id
              :driver              (or (:driver query-info)
-                                      (keyword (transforms-inspector.db/database-engine db-id)))
+                                      (keyword (:engine (warehouses.db/select-one-database {:id db-id :columns [:engine]}))))
              :from-table-id       (:from-table-id query-info)
              :has-joins?          (boolean (seq join-structure))
              :visited-fields      (:visited-fields query-info)

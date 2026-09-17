@@ -4,7 +4,6 @@
   and transactions."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
@@ -15,53 +14,112 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (declare collection metabot-metrics-and-models-query root-collections-of-types)
 
+;;; The queries below follow their model's `::opts`; queries that do not fit it are grouped as this module's bespoke
+;;; queries, immediately after each model's primitive family.
+
 ;;; ------------------------------------------------- Metabot -------------------------------------------------
 
-(mu/defn metabot
-  "The Metabot with `metabot-id`, or nil."
-  [metabot-id :- ms/PositiveInt]
-  (t2/select-one :model/Metabot :id metabot-id))
+(mr/def ::metabot-filters
+  "Which Metabots a query applies to. Keys mirror the columns of `metabot`: a scalar matches that value and a set
+  matches any of its values."
+  [:map {:closed true}
+   [:id        {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:entity_id {:optional true} [:maybe :string]]])
 
-(mu/defn metabot-by-entity-id
-  "The Metabot with `entity-id`, or nil."
-  [entity-id :- [:maybe :string]]
-  (t2/select-one :model/Metabot :entity_id entity-id))
+(mr/def ::metabot-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::metabot-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::metabot.schema/metabot.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::metabot.schema/metabot.column
+                                              [:tuple ::metabot.schema/metabot.column [:enum :asc :desc]]]]]]])
 
-(mu/defn metabot-id-by-entity-id
-  "The ID of the Metabot with `entity-id`, or nil."
-  [entity-id :- [:maybe :string]]
-  (t2/select-one-pk :model/Metabot :entity_id entity-id))
+;;; ---- Reads ----
 
-(mu/defn metabots-by-name
-  "Every Metabot, ordered by name."
-  []
-  (t2/select :model/Metabot {:order-by [[:name :asc]]}))
+(mu/defn select-metabots :- [:sequential ::metabot.schema/metabot.partial]
+  "The Metabots matching `opts`."
+  ([]
+   (select-metabots nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::metabot-opts]]
+   (apply t2/select (u.query/model-with-columns :model/Metabot columns) (u.query/opts->args opts))))
 
-(mu/defn metabot-exists?
-  "Whether a Metabot with `metabot-id` exists."
-  [metabot-id :- ms/PositiveInt]
-  (t2/exists? :model/Metabot :id metabot-id))
+(mu/defn select-one-metabot :- [:maybe ::metabot.schema/metabot.partial]
+  "The first Metabot matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::metabot-opts]]
+  (apply t2/select-one (u.query/model-with-columns :model/Metabot columns) (u.query/opts->args opts)))
 
-(mu/defn update-metabot!
-  "Apply `changes` to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot metabot-id changes))
+(mu/defn select-one-metabot-pk :- [:maybe ms/PositiveInt]
+  "The id of the first Metabot matching `opts`, or nil."
+  [opts :- [:maybe ::metabot-opts]]
+  (apply t2/select-one-pk :model/Metabot (u.query/opts->args opts)))
+
+(mu/defn metabot-exists? :- :boolean
+  "Whether a Metabot matching `opts` exists."
+  [opts :- [:maybe ::metabot-opts]]
+  (apply t2/exists? :model/Metabot (u.query/opts->args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn update-metabots! :- :int
+  "Apply `changes` to every Metabot matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::metabot-opts]
+   changes :- ::metabot.schema/metabot.update]
+  (apply t2/update! :model/Metabot (conj (u.query/opts->kv-args opts) changes)))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
-(mu/defn prompts-for-metabots
-  "The MetabotPrompts of the Metabots with `metabot-ids`."
-  [metabot-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/MetabotPrompt {:where [:in :metabot_id metabot-ids]}))
+(mr/def ::metabot-prompt-filters
+  "Which MetabotPrompts a query applies to. Keys mirror the columns of `metabot_prompt`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:id         {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:metabot_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(defn- prompts-for-metabot-query
+(mr/def ::metabot-prompt-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::metabot-prompt-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::metabot.schema/metabot-prompt.column]]]])
+
+;;; ---- Reads ----
+
+(mu/defn select-metabot-prompts :- [:sequential ::metabot.schema/metabot-prompt.partial]
+  "The MetabotPrompts matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::metabot-prompt-opts]]
+  (apply t2/select (u.query/model-with-columns :model/MetabotPrompt columns) (u.query/opts->args opts)))
+
+(mu/defn count-metabot-prompts :- :int
+  "The number of MetabotPrompts matching `opts`."
+  [opts :- [:maybe ::metabot-prompt-opts]]
+  (apply t2/count :model/MetabotPrompt (u.query/opts->args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn insert-metabot-prompts! :- :int
+  "Insert the MetabotPrompt `rows`, returning the number inserted."
+  [rows :- [:sequential ::metabot.schema/metabot-prompt.create]]
+  (t2/insert! :model/MetabotPrompt rows))
+
+(mu/defn delete-metabot-prompts! :- :int
+  "Delete every MetabotPrompt matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::metabot-prompt-opts]]
+  (apply t2/delete! :model/MetabotPrompt (u.query/opts->args opts)))
+
+;;; ---------------------------------- Queries used only by the metabot module ----------------------------------
+;;; MetabotPrompt
+
+(defn- metabot-prompts-in-scope-query
   "Honey SQL `:join`/`:where` restricting to MetabotPrompts of the Metabot with `metabot-id` whose Card is within
   scope, optionally further restricted to Cards of `card-type` or the Card with `card-id`."
   [metabot-id card-type card-id]
@@ -82,7 +140,7 @@
        :postgres :random
        :rand)]]])
 
-(mu/defn prompts
+(mu/defn select-metabot-prompts-in-scope
   "The prompt, model, and Card columns of the MetabotPrompts of the Metabot with `metabot-id` whose Card is within
   scope, optionally restricted to Cards of `card-type` or the Card with `card-id`, ordered randomly if `sample?` else
   by Card name, and limited/offset by `limit`/`offset`."
@@ -100,62 +158,67 @@
               [:card.name :model_name]
               :created_at
               :updated_at]
-             (cond-> (prompts-for-metabot-query metabot-id card-type card-id)
+             (cond-> (metabot-prompts-in-scope-query metabot-id card-type card-id)
                true   (assoc :order-by (if sample?
                                          (prompt-sample-order-by)
                                          [[:card.name :asc] [:id :asc]]))
                limit  (assoc :limit limit)
                offset (assoc :offset offset))))
 
-(mu/defn prompt-count
+(mu/defn count-metabot-prompts-in-scope
   "The number of MetabotPrompts of the Metabot with `metabot-id` whose Card is within scope, optionally restricted to
   Cards of `card-type` or the Card with `card-id`."
   [metabot-id :- ms/PositiveInt
    card-type :- [:maybe [:enum "metric" "model"]]
    card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/count :model/MetabotPrompt (prompts-for-metabot-query metabot-id card-type card-id)))
-
-(mu/defn prompt-count-for-metabot
-  "The number of MetabotPrompts of the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt]
-  (t2/count :model/MetabotPrompt :metabot_id metabot-id))
-
-(mu/defn insert-prompts!
-  "Insert the MetabotPrompt `rows`."
-  [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (t2/insert! :model/MetabotPrompt rows))
-
-(mu/defn delete-metabot-prompt!
-  "Delete the MetabotPrompt with `prompt-id` belonging to the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt
-   prompt-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:and
-                                            [:= :id prompt-id]
-                                            [:= :metabot_id metabot-id]]}))
-
-(mu/defn delete-prompts-for-metabot!
-  "Delete the MetabotPrompts of the Metabot with `metabot-id`."
-  [metabot-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
+  (t2/count :model/MetabotPrompt (metabot-prompts-in-scope-query metabot-id card-type card-id)))
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
-(mu/defn conversation
-  "The MetabotConversation with `conversation-id`, or nil."
-  [conversation-id :- :string]
-  (t2/select-one :model/MetabotConversation :id conversation-id))
+(mr/def ::metabot-conversation-filters
+  "Which MetabotConversations a query applies to. Keys mirror the columns of `metabot_conversation`: a scalar
+  matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id    {:optional true} [:or :string [:set :string]]]
+   [:title {:optional true} [:maybe :string]]])
 
-(mu/defn conversation-id-and-user-id
-  "The ID and originator of the MetabotConversation with `conversation-id`, or nil."
-  [conversation-id :- :string]
-  (t2/select-one [:model/MetabotConversation :id :user_id] :id conversation-id))
+(mr/def ::metabot-conversation-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::metabot-conversation-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::metabot.schema/metabot-conversation.column]]]])
 
-(mu/defn conversation-title
-  "The title of the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string]
-  (t2/select-one-fn :title :model/MetabotConversation :id conversation-id))
+;;; ---- Reads ----
 
-(mu/defn lock-conversation
+(mu/defn select-one-metabot-conversation :- [:maybe ::metabot.schema/metabot-conversation.partial]
+  "The first MetabotConversation matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::metabot-conversation-opts]]
+  (apply t2/select-one (u.query/model-with-columns :model/MetabotConversation columns) (u.query/opts->args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn insert-metabot-conversation! :- ::metabot.schema/metabot-conversation
+  "Insert a MetabotConversation `row` under the client-generated `conversation-id` and return the inserted
+  instance."
+  [conversation-id :- :string
+   row             :- ::metabot.schema/metabot-conversation.create]
+  (t2/insert-returning-instance! :model/MetabotConversation (assoc row :id conversation-id)))
+
+(mu/defn update-metabot-conversations! :- :int
+  "Apply `changes` to every MetabotConversation matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::metabot-conversation-opts]
+   changes :- ::metabot.schema/metabot-conversation.update]
+  (apply t2/update! :model/MetabotConversation (conj (u.query/opts->kv-args opts) changes)))
+
+(mu/defn delete-metabot-conversations! :- :int
+  "Delete every MetabotConversation matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::metabot-conversation-opts]]
+  (apply t2/delete! :model/MetabotConversation (u.query/opts->args opts)))
+
+;;; MetabotConversation
+
+(mu/defn lock-metabot-conversation
   "The MetabotConversation with `conversation-id`, locked for update."
   [conversation-id :- :string]
   (t2/select-one :model/MetabotConversation :id conversation-id {:for :update}))
@@ -212,7 +275,7 @@
   (cond-> [:and (participation-clause user-id)]
     profile-id (conj [:= (last-live-message-profile-id-subquery) profile-id])))
 
-(mu/defn conversations-page
+(mu/defn select-metabot-conversations-page
   "A page of up to `limit` (offset by `offset`) MetabotConversations visible in the history of the User with
   `user-id`, most-recent-activity first, optionally narrowed to the last live message's `profile-id`."
   [user-id :- ::lib.schema.id/user
@@ -230,7 +293,7 @@
               :limit    limit
               :offset   offset}))
 
-(mu/defn conversation-count
+(mu/defn count-metabot-conversations
   "The number of MetabotConversations visible in the history of the User with `user-id`, optionally narrowed to the
   last live message's `profile-id`."
   [user-id :- ::lib.schema.id/user
@@ -239,7 +302,7 @@
                          :from   [[:metabot_conversation :c]]
                          :where  (conversations-list-where user-id profile-id)})))
 
-(mu/defn titleless-conversation-ids
+(mu/defn select-titleless-metabot-conversation-ids
   "Up to `limit` IDs of the MetabotConversations without a title, whose ID is greater than `after-id` (or every one,
   when `after-id` is nil), in ID order."
   [after-id :- [:maybe :string]
@@ -249,88 +312,80 @@
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
-(mu/defn insert-conversation!
-  "Insert `conversation` under the client-generated `conversation-id`."
-  [conversation-id :- :string
-   conversation    :- ::metabot.schema/metabot-conversation.update]
-  (t2/insert! :model/MetabotConversation (assoc conversation :id conversation-id)))
-
-(mu/defn upsert-conversation!
+(mu/defn upsert-metabot-conversation!
   "Insert or update the MetabotConversation with `conversation-id`. `update-fn` receives the existing row (or nil on
   insert) and must return the fields to write."
   [conversation-id :- :string
    update-fn :- fn?]
   (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
 
-(mu/defn set-conversation-title-if-missing!
-  "Set the title of the MetabotConversation with `conversation-id` if it has none."
-  [conversation-id :- :string
-   title :- :string]
-  (t2/update! :model/MetabotConversation {:id conversation-id, :title nil} {:title title}))
-
-(mu/defn delete-conversations-created-before!
+(mu/defn delete-metabot-conversations-created-before! :- :int
   "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]}))
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
-(mu/defn participant?
-  "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string
-   user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
+(mr/def ::metabot-message-filters
+  "Which MetabotMessages a query applies to. Keys mirror the columns of `metabot_message`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:id              {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:conversation_id {:optional true} [:maybe :string]]
+   [:external_id     {:optional true} :string]
+   [:deleted_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:role            {:optional true} [:or :keyword :string]]
+   [:user_id         {:optional true} ::lib.schema.id/user]])
 
-(mu/defn message-by-external-id
-  "The ID and conversation of the MetabotMessage with `external-id`, or nil."
-  [external-id :- :string]
-  (t2/select-one [:model/MetabotMessage :id :conversation_id] :external_id external-id))
+(mr/def ::metabot-message-opts
+  "The filters above plus the columns to select, the order to return them in, and the limit."
+  [:merge
+   ::metabot-message-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::metabot.schema/metabot-message.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::metabot.schema/metabot-message.column
+                                              [:tuple ::metabot.schema/metabot-message.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]]])
 
-(mu/defn live-messages
-  "The non-deleted MetabotMessages of the MetabotConversation with `conversation-id`, in reader order."
-  [conversation-id :- [:maybe :string]]
-  (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
-             :deleted_at nil
-             {:order-by [[:created_at :asc] [:id :asc]]}))
+;;; ---- Reads ----
 
-(mu/defn opening-messages
-  "The first `limit` non-deleted MetabotMessages of the MetabotConversation with `conversation-id`, in reader order."
-  [conversation-id :- :string
-   limit :- ms/PositiveInt]
-  (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
-             :deleted_at nil
-             {:order-by [[:created_at :asc] [:id :asc]]
-              :limit    limit}))
+(mu/defn select-metabot-messages :- [:sequential ::metabot.schema/metabot-message.partial]
+  "The MetabotMessages matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::metabot-message-opts]]
+  (apply t2/select (u.query/model-with-columns :model/MetabotMessage columns) (u.query/opts->args opts)))
 
-(mu/defn leaf-assistant-message
-  "The most recent non-deleted assistant MetabotMessage of the MetabotConversation with `conversation-id`, or nil."
-  [conversation-id :- :string]
-  (t2/select-one :model/MetabotMessage
-                 {:where    [:and
-                             [:= :conversation_id conversation-id]
-                             [:= :deleted_at nil]
-                             [:= :role "assistant"]]
-                  :order-by [[:created_at :desc] [:id :desc]]}))
+(mu/defn select-one-metabot-message :- [:maybe ::metabot.schema/metabot-message.partial]
+  "The first MetabotMessage matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::metabot-message-opts]]
+  (apply t2/select-one (u.query/model-with-columns :model/MetabotMessage columns) (u.query/opts->args opts)))
 
-(mu/defn insert-message-returning-pk!
-  "Insert `message` and return its ID."
-  [message :- ::metabot.schema/metabot-message.update]
-  (t2/insert-returning-pk! :model/MetabotMessage message))
+(mu/defn metabot-message-exists? :- :boolean
+  "Whether a MetabotMessage matching `opts` exists."
+  [opts :- [:maybe ::metabot-message-opts]]
+  (apply t2/exists? :model/MetabotMessage (u.query/opts->args opts)))
 
-(mu/defn insert-messages!
-  "Insert one MetabotMessage map or a sequence of them."
-  [messages :- [:or ::metabot.schema/metabot-message.update [:sequential ::metabot.schema/metabot-message.update]]]
-  (t2/insert! :model/MetabotMessage messages))
+;;; ---- Writes ----
 
-(mu/defn update-message!
-  "Apply `changes` to the MetabotMessage with `message-id`."
-  [message-id :- ms/PositiveInt
+(mu/defn insert-metabot-message-returning-pk! :- ms/PositiveInt
+  "Insert the MetabotMessage `row` and return its id."
+  [row :- ::metabot.schema/metabot-message.create]
+  (t2/insert-returning-pk! :model/MetabotMessage row))
+
+(mu/defn insert-metabot-messages! :- :int
+  "Insert one MetabotMessage map or a sequence of them, returning the number inserted."
+  [rows :- [:or ::metabot.schema/metabot-message.create [:sequential ::metabot.schema/metabot-message.create]]]
+  (t2/insert! :model/MetabotMessage rows))
+
+(mu/defn update-metabot-messages! :- :int
+  "Apply `changes` to every MetabotMessage matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::metabot-message-opts]
    changes :- ::metabot.schema/metabot-message.update]
-  (t2/update! :model/MetabotMessage message-id changes))
+  (apply t2/update! :model/MetabotMessage (conj (u.query/opts->kv-args opts) changes)))
 
-(mu/defn soft-delete-messages-where!
+;;; MetabotMessage
+
+(mu/defn soft-delete-metabot-messages! :- :int
   "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
   rows updated. `conditions` must have at least one key -- an empty map would match every message. `:id` matches a
   single MetabotMessage or, given a collection, any of several."
@@ -348,18 +403,16 @@
     (t2/update! :model/MetabotMessage conditions {:deleted_at         [:now]
                                                   :deleted_by_user_id deleted-by-user-id})))
 
-(mu/defn insert-used-tables!
-  "Insert the MetabotUsedTable `rows`."
-  [rows :- [:sequential [:map {:closed true}
-                         [:id {:optional true} ms/PositiveInt]
-                         [:message_id {:optional true} [:maybe ms/PositiveInt]]
-                         [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
-                         [:created_at {:optional true} [:maybe ms/TemporalInstant]]]]]
+;;; ----------------------------------------------- MetabotUsedTable -----------------------------------------------
+
+(mu/defn insert-metabot-used-tables! :- :int
+  "Insert the MetabotUsedTable `rows`, returning the number inserted."
+  [rows :- [:sequential ::metabot.schema/metabot-used-table.create]]
   (t2/insert! :model/MetabotUsedTable rows))
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
-(mu/defn upsert-feedback!
+(mu/defn upsert-metabot-feedback!
   "Insert or update the MetabotFeedback row for the MetabotMessage with `message-id` and the User with
   `submitter-user-id`. `update-fn` receives the existing row (or nil on insert) and must return the fields to
   write."
@@ -370,7 +423,7 @@
                          {:message_id message-id :user_id submitter-user-id}
                          update-fn))
 
-(mu/defn upsert-source-feedback!
+(mu/defn upsert-metabot-source-feedback!
   "Insert or update the MetabotSourceFeedback row for the MetabotMessage with `message-id`, the User with
   `submitter-user-id`, and the source with `source-id`/`source-type`. `update-fn` receives the existing row (or nil
   on insert) and must return the fields to write."
@@ -386,46 +439,38 @@
                           :source_type source-type}
                          update-fn))
 
-;;; ------------------------------------------------ Databases ------------------------------------------------
+;;; ------------------------------------------------ AiUsageLog ------------------------------------------------
 
-(mu/defn database-summary
-  "The ID, name, description, and engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :name :description :engine] database-id))
+(mr/def ::ai-usage-log-filters
+  "Which AiUsageLogs a query applies to. Keys mirror the columns of `ai_usage_log`: a scalar matches that value and
+  a set matches any of its values."
+  [:map {:closed true}
+   [:conversation_id {:optional true} [:or :string [:set :string]]]
+   [:user_id         {:optional true} ::lib.schema.id/user]
+   [:source          {:optional true} :string]])
 
-(mu/defn database-with-columns
-  "The `columns` of the Database with `database-id`."
-  [columns :- [:sequential :keyword]
-   database-id :- ::lib.schema.id/database]
-  (t2/select-one columns database-id))
+(mr/def ::ai-usage-log-opts
+  "The filters above."
+  ::ai-usage-log-filters)
 
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+;;; ---- Writes ----
 
-(mu/defn database-ids-by-name
-  "The IDs of the Databases named `database-name`."
-  [database-name :- :string]
-  (t2/select-pks-vec :model/Database :name database-name))
+(mu/defn insert-ai-usage-log! :- :int
+  "Insert the AiUsageLog `row`, returning the number inserted."
+  [row :- ::metabot.schema/ai-usage-log.create]
+  (t2/insert! :model/AiUsageLog row))
 
-(mu/defn database-engines-and-names
-  "A map of ID to the engine and name of the Databases with `database-ids`."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-pk->fn identity [:model/Database :id :engine :name] :id [:in database-ids]))
+(mu/defn delete-ai-usage-logs! :- :int
+  "Delete every AiUsageLog matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::ai-usage-log-opts]]
+  (apply t2/delete! :model/AiUsageLog (u.query/opts->args opts)))
 
-(mu/defn destination-database-ids
-  "The IDs of the routing destination Databases among `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
+;;; ---- Queries used only by the metabot module: AiUsageLog ----
 
-(mu/defn non-audit-databases
-  "The ID, name, engine, description, and audit flag of every non-audit, non-destination Database, ordered by name."
-  []
-  (t2/select [:model/Database :id :name :engine :description :is_audit]
-             :is_audit false
-             :router_database_id nil
-             {:order-by [[:%lower.name :asc]]}))
+(mu/defn delete-ai-usage-logs-created-before! :- :int
+  "Delete every AiUsageLog created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
 
 ;;; ------------------------------------------------- Tables -------------------------------------------------
 
@@ -702,7 +747,7 @@
   verified-or-curated content (verified, official-collection, or library-published). `limit`, if given, caps the
   number of rows."
   [metabot-id limit]
-  (let [metabot-instance       (metabot metabot-id)
+  (let [metabot-instance       (select-one-metabot {:id metabot-id})
         metabot-collection-id  (:collection_id metabot-instance)
         use-verified-content?  (:use_verified_content metabot-instance)
         verified?              (premium-features/has-feature? :content-verification)

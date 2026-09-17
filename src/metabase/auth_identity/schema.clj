@@ -1,6 +1,7 @@
 (ns metabase.auth-identity.schema
   "Malli schemas for the auth-identity module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -16,7 +17,7 @@
   "Credentials of a hashed-token provider (password reset, support access grant)."
   [:map {:closed true}
    [:token_hash    {:optional true} [:maybe :string]]
-   [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:expires_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:consumed_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:grant_ends_at {:optional true} [:maybe ms/TemporalInstant]]])
 
@@ -62,6 +63,10 @@
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
+(mr/def ::auth-identity.partial
+  "A AuthIdentity row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::auth-identity [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::auth-identity.update
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
   [:map {:closed true}
@@ -70,8 +75,12 @@
    [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]
    [:metadata     {:optional true} [:maybe ::auth-identity.metadata]]
    [:provider_id  {:optional true} [:maybe :string]]
-   [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_used_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:expires_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::auth-identity.column
+  "A column of `auth_identity`, for the `:columns` option of the queries in [[metabase.auth-identity.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::auth-identity.update))))

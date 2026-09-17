@@ -149,7 +149,7 @@
 (mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- ms/PositiveInt]
-  (-> (dashboards.db/dashcard id)
+  (-> (dashboards.db/select-one-dashcard {:id id})
       (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
@@ -176,7 +176,7 @@
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
     ;; first off, just delete all series on the dashboard card (we add them again below)
-    (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids))
+    (dashboards.db/delete-dashcard-series! {:dashboardcard_id (set (keys dashcard-id->card-ids))})
     ;; now just insert all of the series that were given to us
     (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
                                       [i card-id]            (map-indexed vector card-ids)]
@@ -185,7 +185,7 @@
 
 (def ^:private DashboardCardUpdates
   [:merge
-   ::dashboards.schema/dashboard-card.update
+   ::dashboards.schema/dashboard-card.columns
    [:map {:closed true}
     [:id                     ms/PositiveInt]
     ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
@@ -213,7 +213,7 @@
           updates   (shallow-updates (select-keys dashboard-card update-ks)
                                      (select-keys old-dashboard-card update-ks))]
       (when (seq updates)
-        (dashboards.db/update-dashcard! dashcard-id updates))
+        (dashboards.db/update-dashcards! {:id dashcard-id} updates))
       (when (not= (:series dashboard-card [])
                   (:series old-dashboard-card []))
         (update-dashboard-cards-series! {dashcard-id series}))
@@ -221,7 +221,7 @@
 
 (def ^:private NewDashboardCard
   [:merge
-   ::dashboards.schema/dashboard-card.update
+   ::dashboards.schema/dashboard-card.create
    [:map {:closed true}
     [:dashboard_id                ms/PositiveInt]
     [:id                          {:optional true} [:maybe ms/Int]]
@@ -251,7 +251,7 @@
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
-        (-> (dashboards.db/dashcards-by-ids dashboard-card-ids)
+        (-> (dashboards.db/select-dashcards {:id (set dashboard-card-ids)})
             (t2/hydrate :series))))))
 
 (defn- cleanup-orphaned-inline-parameters!
@@ -260,18 +260,18 @@
    from deleted cards become orphaned."
   [dashboard-card-ids]
   (when (seq dashboard-card-ids)
-    (let [cards-being-deleted (dashboards.db/dashcards-by-ids dashboard-card-ids)
+    (let [cards-being-deleted (dashboards.db/select-dashcards {:id (set dashboard-card-ids)})
           orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
           ;; Get dashboard IDs (should all be the same, but let's be safe)
           dashboard-ids (set (map :dashboard_id cards-being-deleted))]
       (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
         (let [dashboard-id (first dashboard-ids)
-              dashboard (dashboards.db/dashboard dashboard-id)
+              dashboard (dashboards.db/select-one-dashboard {:id dashboard-id})
               current-params (:parameters dashboard)
               cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
                                       current-params)]
           (when (not= (count current-params) (count cleaned-params))
-            (dashboards.db/update-dashboard! dashboard-id {:parameters cleaned-params})
+            (dashboards.db/update-dashboards! {:id dashboard-id} {:parameters cleaned-params})
             (count orphaned-param-ids)))))))
 
 (defn delete-dashboard-cards!
@@ -283,7 +283,7 @@
     (cleanup-orphaned-inline-parameters! dashboard-card-ids)
     ;; Delete the cards
     (dashboards.db/delete-pulse-cards-for-dashcards! dashboard-card-ids)
-    (dashboards.db/delete-dashcards! dashboard-card-ids)))
+    (dashboards.db/delete-dashcards! {:id (set dashboard-card-ids)})))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
@@ -341,9 +341,9 @@
 
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
   (remove nil?
-          [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
+          [(serdes/infer-self-path "Dashboard" (dashboards.db/select-one-dashboard {:id (:dashboard_id dashcard)}))
            (when (:dashboard_tab_id dashcard)
-             (serdes/infer-self-path "DashboardTab" (dashboards.db/dashboard-tab (:dashboard_tab_id dashcard))))
+             (serdes/infer-self-path "DashboardTab" (dashboards.db/select-one-dashboard-tab {:id (:dashboard_tab_id dashcard)})))
            (serdes/infer-self-path "DashboardCard" dashcard)]))
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]

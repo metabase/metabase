@@ -92,12 +92,12 @@
   [_model k actions]
   (mi/instances-with-hydrated-data
    actions k
-   #(actions.db/cards-by-id (map :model_id actions))
+   #(actions.db/select-cards-by-id (map :model_id actions))
    :model_id))
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (= (actions.db/card-type model-id) :model)
+  (when-not (= (actions.db/select-card-type model-id) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -117,7 +117,7 @@
   [instance      :- [:map
                      [:model_id pos-int?]]
    read-or-write :- [:enum :read :write]]
-  (mi/perms-objects-set (actions.db/card (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (actions.db/select-card (:model_id instance)) read-or-write))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
@@ -176,7 +176,7 @@
                  (:dataset_query existing-action))]
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (actions.db/update-action! id action-row))
+        (actions.db/update-actions! {:id id} action-row))
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -185,17 +185,17 @@
           (if (and (:type updates) (not= (:type updates) (:type existing-action)))
             (do
               (case (:type existing-action)
-                :query    (actions.db/delete-query-action! id)
-                :http     (actions.db/delete-http-action! id)
-                :implicit (actions.db/delete-implicit-action! id))
+                :query    (actions.db/delete-query-actions! {:action_id id})
+                :http     (actions.db/delete-http-actions! {:action_id id})
+                :implicit (actions.db/delete-implicit-actions! {:action_id id}))
               (case (:type updates)
                 :query    (actions.db/insert-query-action! type-row)
                 :http     (actions.db/insert-http-action! type-row)
                 :implicit (actions.db/insert-implicit-action! type-row)))
             (case (:type existing-action)
-              :query    (actions.db/update-query-action! id type-row)
-              :http     (actions.db/update-http-action! id type-row)
-              :implicit (actions.db/update-implicit-action! id type-row))))))))
+              :query    (actions.db/update-query-actions! {:action_id id} (dissoc type-row :action_id))
+              :http     (actions.db/update-http-actions! {:action_id id} (dissoc type-row :action_id))
+              :implicit (actions.db/update-implicit-actions! {:action_id id} (dissoc type-row :action_id)))))))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -207,14 +207,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (actions.db/query-actions (map :id actions))
+    (let [query-actions (actions.db/select-query-actions {:action_id (set (map :id actions))})
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (actions.db/http-actions (map :id actions))
+    (let [http-actions (actions.db/select-http-actions {:action_id (set (map :id actions))})
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -227,7 +227,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (actions.db/implicit-actions (map :id actions))
+    (let [implicit-actions (actions.db/select-implicit-actions {:action_id (set (map :id actions))})
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -240,17 +240,20 @@
    primary-key shorthand), and returns the matching Actions."
   [options]
   (if (and (= 1 (count options)) (not (keyword? (first options))))
-    (actions.db/actions-with-id (first options))
+    (when-let [id (first options)]
+      (actions.db/select-actions {:id id}))
     (let [opts (apply hash-map options)
           {:keys [id entity_id model_id type archived]} opts]
       (cond
-        (contains? opts :id)        (if (false? archived)
-                                      (actions.db/unarchived-action-with-id id)
-                                      (actions.db/actions-with-id id))
-        (contains? opts :entity_id) (actions.db/action-with-entity-id entity_id)
+        (contains? opts :id)        (when id
+                                      (if (false? archived)
+                                        (actions.db/select-actions {:id id, :archived false})
+                                        (actions.db/select-actions {:id id})))
+        (contains? opts :entity_id) (when entity_id
+                                      (actions.db/select-actions {:entity_id entity_id}))
         (and (contains? opts :model_id) (contains? opts :type))
-        (actions.db/unarchived-non-http-actions-for-model model_id)
-        (contains? opts :type)      (actions.db/actions-of-type type)
+        (actions.db/select-unarchived-non-http-actions-for-model model_id)
+        (contains? opts :type)      (actions.db/select-actions {:type type})
         :else                       (throw (ex-info "Unsupported Action query options" {:options options}))))))
 
 (defn- normalize-actions-by-type
@@ -283,7 +286,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (t2/hydrate (actions.db/tables table-ids) :fields))]
+                 (t2/hydrate (actions.db/select-tables table-ids) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -372,7 +375,7 @@
                                               :type/Temporal :date
                                               :type/Boolean  :boolean
                                               :string)}))))
-            (actions.db/fields-for-parameters field-ids)))))
+            (actions.db/select-fields-for-parameters field-ids)))))
 
 (defn- enrich-viz-settings-fields [viz-fields implicit-params field-id->viz-field]
   (let [param-ids          (map :id implicit-params)
@@ -419,7 +422,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (actions.db/cards implicit-action-model-ids)))
+                                          (actions.db/select-cards implicit-action-model-ids)))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -443,7 +446,7 @@
    Pass in known-models to save a second Card lookup."
   [known-models :- [:maybe [:sequential ::queries.schema/card]]
    action-ids   :- [:sequential ::lib.schema.id/action]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
+  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/select-actions {:id (set action-ids)}))))
 
 (mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
   "Find the unarchived Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
@@ -452,7 +455,7 @@
    Pass in known-models to save a second Card lookup."
   [known-models :- [:maybe [:sequential ::queries.schema/card]]
    model-ids    :- [:sequential ms/PositiveInt]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
+  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/select-actions {:model_id (set model-ids), :archived false}))))
 
 (mu/defn select-actions-non-http-for-models :- [:maybe [:sequential ::actions.schema/action]]
   "Find the unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
@@ -461,7 +464,7 @@
    Pass in known-models to save a second Card lookup."
   [known-models :- [:maybe [:sequential ::queries.schema/card]]
    model-ids    :- [:set ms/PositiveInt]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-non-http-actions-for-models model-ids))))
+  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/select-unarchived-non-http-actions-for-models model-ids))))
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
@@ -504,7 +507,7 @@
 (defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-or-dashcard-id]
-  (some->> (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))
+  (some->> (actions.db/select-dashcard-action-id (u/the-id dashcard-or-dashcard-id))
            (select-action :id)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
@@ -566,7 +569,7 @@
    (concat
     (when model_id [[{:model "Card" :id model_id}]])
     (when (= type :query)
-      (when-let [{:keys [database_id dataset_query]} (actions.db/query-action id)]
+      (when-let [{:keys [database_id dataset_query]} (actions.db/select-one-query-action {:action_id id})]
         (concat
          (when database_id [[{:model "Database" :id database_id}]])
          (serdes/mbql-deps true dataset_query)))))))

@@ -37,7 +37,7 @@
   (when (seq api-keys)
     (let [api-key-id->permissions-groups
           (group-by :api-key-id
-                    (api-keys.db/api-key-groups (map u/the-id api-keys)))
+                    (api-keys.db/select-api-key-groups (map u/the-id api-keys)))
           api-key-id->group
           (fn [api-key-id]
             (let [{name :group-name
@@ -200,7 +200,7 @@
           prefix (prefix (u.secret/expose api-key))]
       ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
       ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
-      (if-not (api-keys.db/api-key-prefix-exists? prefix)
+      (if-not (api-keys.db/api-key-exists? {:key_prefix prefix})
         api-key
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
@@ -210,7 +210,7 @@
    :- [:map {:closed true}
        [:key-name ::api-keys.schema/name]
        [:group-id {:optional true} pos-int?]]]
-  (api/checkp (not (api-keys.db/api-key-name-exists? key-name))
+  (api/checkp (not (api-keys.db/api-key-exists? {:name key-name}))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
@@ -236,13 +236,13 @@
                          [:prefix       ::api-keys.schema/prefix]]
   "Generate a new API key for an existing key with `id`."
   [id :- ::api-keys.schema/id]
-  (let [api-key-before (api-keys.db/api-key id)
+  (let [api-key-before (api-keys.db/select-one-api-key {:id id})
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key)
-                                       :key_prefix    new-prefix
-                                       :updated_by_id api/*current-user-id*})
+      (api-keys.db/update-api-keys! {:id id} {:key           (hash-bcrypt new-key)
+                                              :key_prefix    new-prefix
+                                              :updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate
                              (let [key-before (-> api-key-before
                                                   (t2/hydrate :group))]

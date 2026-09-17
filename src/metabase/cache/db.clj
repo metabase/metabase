@@ -1,19 +1,110 @@
 (ns metabase.cache.db
-  "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for `:model/CacheConfig` and `:model/QueryCache`. Every function here is a direct
+  Toucan 2 call with no additional logic, so no other namespace runs a query on either model itself (model
+  definitions still use `toucan2.core`).
+
+  The queries below follow [[::cache-config-opts]] and [[::query-cache-opts]]; queries that do not fit them live in
+  the cache-only section at the bottom of this namespace.
+
+  `:model/QueryCache` rows are large blobs on a hot path: never add a column to a select on it."
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.cache.schema :as cache.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn database-with-ids
-  "A Database whose id is in `ids`, or nil."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Database :id [:in ids]))
+(mr/def ::cache-config-filters
+  "Which CacheConfigs a query applies to. Keys mirror the columns of `cache_config`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:id                    {:optional true} ms/PositiveInt]
+   [:model                 {:optional true} [:or :string [:set :string]]]
+   [:model_id              {:optional true} [:or :int [:set :int]]]
+   [:strategy              {:optional true} [:or [:or :keyword :string] [:set [:or :keyword :string]]]]
+   [:refresh_automatically {:optional true} :boolean]])
+
+(mr/def ::cache-config-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::cache-config-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::cache.schema/cache-config.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::cache.schema/cache-config.column
+                                              [:tuple ::cache.schema/cache-config.column [:enum :asc :desc]]]]]]])
+
+(mr/def ::query-cache-filters
+  "Which QueryCaches a query applies to. Keys mirror the columns of `query_cache`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:query_hash {:optional true} [:or [:or bytes? :string] [:set [:or bytes? :string]]]]])
+
+(mr/def ::query-cache-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::query-cache-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::cache.schema/query-cache.column]]]])
+
+(defn- ->cache-config-model
+  [columns]
+  (u.query/model-with-columns :model/CacheConfig columns))
+
+(defn- ->cache-config-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->cache-config-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-cache-configs :- [:sequential ::cache.schema/cache-config.partial]
+  "The CacheConfigs matching `opts`."
+  ([]
+   (select-cache-configs nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::cache-config-opts]]
+   (apply t2/select (->cache-config-model columns) (->cache-config-args opts))))
+
+(mu/defn select-one-cache-config :- [:maybe ::cache.schema/cache-config.partial]
+  "The first CacheConfig matching `opts`, or nil."
+  ([]
+   (select-one-cache-config nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::cache-config-opts]]
+   (apply t2/select-one (->cache-config-model columns) (->cache-config-args opts))))
+
+(mu/defn cache-config-exists? :- :boolean
+  "Whether a CacheConfig matching `opts` exists."
+  ([]
+   (cache-config-exists? nil))
+  ([opts :- [:maybe ::cache-config-opts]]
+   (apply t2/exists? :model/CacheConfig (->cache-config-args opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn delete-cache-configs! :- :int
+  "Delete every CacheConfig matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::cache-config-opts]]
+  (apply t2/delete! :model/CacheConfig (->cache-config-args opts)))
+
+(mu/defn update-cache-configs! :- :int
+  "Apply `changes` to every CacheConfig matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::cache-config-opts]
+   changes :- ::cache.schema/cache-config.update]
+  (apply t2/update! :model/CacheConfig (conj (->cache-config-kv-args opts) changes)))
+
+(mu/defn delete-query-caches! :- :int
+  "Delete every QueryCache matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::query-cache-opts]]
+  (apply t2/delete! :model/QueryCache (u.query/opts->args opts)))
+
+;;; --------------------------------------- Queries used only by the cache module ---------------------------------------
 
 (mu/defn dashboard-with-ids
   "A Dashboard whose id is in `ids`, or nil."
@@ -34,16 +125,6 @@
   "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
-
-(mu/defn cache-config
-  "The CacheConfig with primary key `pk`, or nil."
-  [pk :- ms/PositiveInt]
-  (t2/select-one :model/CacheConfig pk))
-
-(mu/defn root-ttl-cache-config
-  "The root TTL CacheConfig, or nil."
-  []
-  (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl))
 
 (defn- sort-column->order-by
   "Convert a sort column to the appropriate SQL order-by expression."
@@ -87,7 +168,7 @@
                   [:= :model "dashboard"] [:!= :report_dashboard.id nil]
                   :else                             true]]}))
 
-(mu/defn cache-configs-page
+(mu/defn select-cache-configs-page
   "The CacheConfigs of `models` in `collection` (or of the entity with `id`), with the name and Collection of the
   configured entity, sorted by `sort-column` in `sort-direction` when given and paged by `limit` and `offset`."
   [models         :- [:sequential :string]
@@ -103,8 +184,8 @@
                limit       (assoc :limit limit)
                offset      (assoc :offset offset))))
 
-(mu/defn cache-config-count-row
-  "The `:count` row of the CacheConfigs [[cache-configs-page]] pages through."
+(mu/defn select-cache-config-count-row
+  "The `:count` row of the CacheConfigs [[select-cache-configs-page]] pages through."
   [models     :- [:sequential :string]
    collection :- [:maybe ms/PositiveInt]
    id         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
@@ -122,21 +203,9 @@
   "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero
-   data     :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
+   data     :- (mut/select-keys (mr/schema ::cache.schema/cache-config.columns) [:model :model_id :strategy :config :refresh_automatically])]
   (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
                             (constantly data)))
-
-(mu/defn cache-configs-for
-  "The CacheConfigs for `model` and `model-ids`."
-  [model     :- :string
-   model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
-
-(mu/defn delete-cache-configs!
-  "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
-  [model     :- :string
-   model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."
@@ -163,8 +232,3 @@
                  :set    {:invalidated_at invalidated-at}
                  :where  (into [:or] (for [[model model-id] model+ids]
                                        [:and [:= :model model] [:= :model_id model-id]]))}))
-
-(mu/defn cache-config-exists?
-  "Whether any CacheConfig exists."
-  []
-  (t2/exists? :model/CacheConfig))

@@ -11,7 +11,9 @@
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -67,29 +69,6 @@
   [dashboard-id]
   (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
 
-(defn browsable-database
-  "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
-
-  Takes an assembled clause rather than the values behind it, for the same reason
-  as [[select-users-where]]: which databases an agent may reach at all is a permission decision and
-  belongs with the permission check."
-  [database-id browsable-where]
-  (t2/select-one :model/Database :id database-id {:where browsable-where}))
-
-(defn browsable-databases
-  "The `columns` of the Databases matching the HoneySQL `browsable-where` clause, in name order. Naming the
-  columns keeps the `details`/`settings` blobs from being decrypted on every row."
-  [columns browsable-where]
-  (t2/select (into [:model/Database] columns)
-             {:where    browsable-where
-              :order-by [[:%lower.name :asc]]}))
-
-(defn browsable-database-ids
-  "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
-  expected non-empty — an empty `:in` is a SQL error rather than an empty result, so callers guard it."
-  [database-ids browsable-where]
-  (t2/select-pks-set :model/Database {:where [:and [:in :id database-ids] browsable-where]}))
-
 (defn unarchived-models-in-database
   "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
   [columns database-id]
@@ -135,9 +114,11 @@
              :archived (boolean archived?)
              {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn insert-feedback!
+;;; ------------------------------------------------ McpFeedback ------------------------------------------------
+
+(mu/defn insert-mcp-feedback!
   "Insert the McpFeedback `row`, returning the number inserted."
-  [row :- ::mcp.schema/mcp-feedback.update]
+  [row :- ::mcp.schema/mcp-feedback.create]
   (t2/insert! :model/McpFeedback row))
 
 (defn session-user-ids
@@ -164,13 +145,17 @@
       :anti_csrf_token nil
       :created_at      :%now})))
 
-(mu/defn insert-query-handle!
+;;; ---------------------------------------------- McpQueryHandle -----------------------------------------------
+
+(mu/defn insert-mcp-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
   [handle-id :- ms/UUIDString
-   row       :- ::mcp.schema/mcp-query-handle.update]
+   row       :- ::mcp.schema/mcp-query-handle.create]
   (t2/insert! :model/McpQueryHandle (assoc row :id handle-id)))
 
-(mu/defn query-handle-for-user
+;;; -------------------------- Queries used only by the mcp module: McpQueryHandle --------------------------
+
+(mu/defn select-one-mcp-query-handle-for-user
   "The McpQueryHandle with `handle-id` whose session belongs to the User with `user-id`, or nil."
   [handle-id :- :string
    user-id   :- ::lib.schema.id/user]
@@ -182,10 +167,67 @@
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
 
-(defn delete-query-handles-created-before!
+(defn delete-mcp-query-handles-created-before!
   "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
   [cutoff]
   (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
+
+;;; ---------------------------------------------- McpSessionLog ------------------------------------------------
+
+(mr/def ::mcp-session-log-filters
+  "Which McpSessionLogs a query applies to. Keys mirror the columns of `mcp_session_log`."
+  [:map {:closed true}
+   [:id {:optional true} :string]])
+
+(mr/def ::mcp-session-log-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::mcp-session-log-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::mcp.schema/mcp-session-log.column]]]])
+
+(mu/defn select-one-mcp-session-log :- [:maybe ::mcp.schema/mcp-session-log.partial]
+  "The first McpSessionLog matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::mcp-session-log-opts]]
+  (apply t2/select-one (u.query/model-with-columns :model/McpSessionLog columns) (u.query/opts->args opts)))
+
+(mu/defn mcp-session-log-exists? :- :boolean
+  "Whether a McpSessionLog matching `opts` exists."
+  [opts :- [:maybe ::mcp-session-log-opts]]
+  (apply t2/exists? :model/McpSessionLog (u.query/opts->args opts)))
+
+(mu/defn insert-mcp-session-log! :- :int
+  "Insert the McpSessionLog `row` under the client-generated `session-id`, returning the number inserted."
+  [session-id :- :string
+   row        :- ::mcp.schema/mcp-session-log.create]
+  (t2/insert! :model/McpSessionLog (assoc row :id session-id)))
+
+(mu/defn update-mcp-session-logs! :- :int
+  "Apply `changes` to every McpSessionLog matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::mcp-session-log-opts]
+   changes :- ::mcp.schema/mcp-session-log.update]
+  (apply t2/update! :model/McpSessionLog (conj (u.query/opts->kv-args opts) changes)))
+
+;;; -------------------------- Queries used only by the mcp module: McpSessionLog --------------------------
+
+(mu/defn delete-mcp-session-logs-created-before! :- :int
+  "Delete every McpSessionLog created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/McpSessionLog {:where [:< :created_at cutoff]}))
+
+;;; ---------------------------------------------- McpToolCallLog -----------------------------------------------
+
+(mu/defn insert-mcp-tool-call-log! :- :int
+  "Insert the McpToolCallLog `row`, returning the number inserted."
+  [row :- ::mcp.schema/mcp-tool-call-log.create]
+  (t2/insert! :model/McpToolCallLog row))
+
+;;; -------------------------- Queries used only by the mcp module: McpToolCallLog --------------------------
+
+(mu/defn delete-mcp-tool-call-logs-created-before! :- :int
+  "Delete every McpToolCallLog created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/McpToolCallLog {:where [:< :created_at cutoff]}))
 
 (mu/defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."

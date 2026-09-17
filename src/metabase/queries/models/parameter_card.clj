@@ -56,7 +56,8 @@
      (queries.db/delete-parameter-cards-for-object-except! parameterized-object-type
                                                            parameterized-object-id
                                                            parameter-ids-still-in-use)
-     (queries.db/delete-parameter-cards-for-object! parameterized-object-type parameterized-object-id))))
+     (queries.db/delete-parameter-cards! {:parameterized_object_type parameterized-object-type
+                                          :parameterized_object_id   parameterized-object-id}))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]
@@ -67,8 +68,8 @@
                       :parameter_id              id}]
       ;; TODO: Maybe update! should return different values for no rows to update vs
       ;; no changes to be made
-      (if (queries.db/parameter-card-exists? parameterized-object-type parameterized-object-id id)
-        (queries.db/set-parameter-card-card-id! parameterized-object-type parameterized-object-id id card-id)
+      (if (queries.db/parameter-card-exists? conditions)
+        (queries.db/update-parameter-cards! conditions {:card_id card-id})
         (queries.db/insert-parameter-card! (merge conditions {:card_id card-id}))))))
 
 (defn values-source-card-ids
@@ -93,7 +94,10 @@
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (when-not mi/*deserializing?*
     (when-let [wanted (not-empty (values-source-card-ids parameters))]
-      (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
+      (let [existing (into #{} (map :card_id)
+                           (queries.db/select-parameter-cards {:parameterized_object_type parameterized-object-type
+                                                               :parameterized_object_id   parameterized-object-id
+                                                               :columns                   [:card_id]}))]
         (doseq [card-id wanted
                 :when   (not (contains? existing card-id))]
           (api/read-check :model/Card card-id))))))

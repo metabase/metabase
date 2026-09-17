@@ -12,16 +12,17 @@
    [metabase.embedding.settings :as embedding.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]))
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- has-user-added-database? []
   ;; `boolean`, because the trailing `when-let` yields nil on an instance with no sample database,
   ;; and the response schema requires a boolean.
   (boolean
-   (or (embedding-hub.db/user-added-database?)
+   (or (warehouses.db/database-exists? {:is_sample false :is_audit false})
        ;; check for CSV uploads to sample db
        ;; as the sample db is excluded from the above query
-       (when-let [sample-db-id (embedding-hub.db/sample-database-id)]
+       (when-let [sample-db-id (warehouses.db/select-one-database-pk {:is_sample true})]
          (embedding-hub.db/uploaded-table? sample-db-id)))))
 
 (defn- has-user-created-dashboard? []

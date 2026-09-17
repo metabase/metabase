@@ -5,16 +5,18 @@
    [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private user-columns
+(def ^:private user-select-columns
   "Required columns when fetching users for SCIM."
-  [:model/User :id :first_name :last_name :email :locale :is_active :entity_id])
+  [:id :first_name :last_name :email :locale :is_active :entity_id])
 
 (def ^:private group-columns
   "Required columns when fetching groups for SCIM."
@@ -35,20 +37,15 @@
   [api-key :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey api-key))
 
-(defn- personal-user-expr
-  [email]
-  [:and [:= :type "personal"]
-   (when email [:= :%lower.email (u/lower-case-en email)])])
-
 (mu/defn scim-user-by-entity-id
   "The SCIM columns of the personal User with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one user-columns :entity_id entity-id {:where [:= :type "personal"]}))
+  (users.db/select-one-user {:entity_id entity-id :type :personal :columns user-select-columns}))
 
 (mu/defn scim-user-by-email
   "The SCIM columns of the User with `email`, or nil."
   [email :- :string]
-  (t2/select-one user-columns :email (u/lower-case-en email)))
+  (users.db/select-one-user {:email (u/lower-case-en email) :columns user-select-columns}))
 
 (mu/defn scim-users
   "The SCIM columns of the personal Users, narrowed to the optional `email` (case-insensitive), paged by `limit`
@@ -56,37 +53,35 @@
   [email  :- [:maybe :string]
    limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select user-columns
-             {:where    (personal-user-expr email)
-              :limit    limit
-              :offset   offset
-              :order-by [[:id :asc]]}))
+  (users.db/select-users (cond-> {:type :personal :columns user-select-columns :limit limit :offset offset :order-by [:id]}
+                           email (assoc :email (u/lower-case-en email)))))
 
 (mu/defn scim-user-count
   "The number of personal Users, narrowed to the optional `email` (case-insensitive)."
   [email :- [:maybe :string]]
-  (t2/count :model/User {:where (personal-user-expr email)}))
+  (users.db/count-users (cond-> {:type :personal}
+                          email (assoc :email (u/lower-case-en email)))))
 
 (mu/defn user-email-exists?
   "Whether a User with `email` (case-insensitive) exists."
   [email :- :string]
-  (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
+  (users.db/user-email-exists? (u/lower-case-en email)))
 
 (mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
-  (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
+  (users.db/select-user-pks {:entity_id (set entity-ids)}))
 
 (mu/defn insert-user!
   "Insert the User `row`, returning the number inserted."
-  [row :- ::users.schema/user.update]
+  [row :- ::users.schema/user.create]
   (t2/insert! :model/User row))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (users.db/update-users! {:id user-id} changes))
 
 (mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
@@ -138,19 +133,19 @@
 
 (mu/defn insert-group!
   "Insert `group` and return the new instance."
-  [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (first (t2/insert-returning-instances! :model/PermissionsGroup group)))
+  [group :- (mut/select-keys ::permissions.schema/permissions-group.create [:name :entity_id :magic_group_type :is_tenant_group])]
+  (permissions.db/insert-permissions-group! group))
 
 (mu/defn update-group!
   "Apply `changes` to the PermissionsGroup with `group-id`, returning the number updated."
   [group-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
+   changes  :- (mut/select-keys ::permissions.schema/permissions-group.columns [:name :entity_id :magic_group_type :is_tenant_group])]
   (t2/update! :model/PermissionsGroup group-id changes))
 
 (mu/defn delete-group!
   "Delete the PermissionsGroup with `group-id`, returning the number deleted."
   [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup group-id))
+  (permissions.db/delete-permissions-groups! {:id group-id}))
 
 (mu/defn group-members
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with

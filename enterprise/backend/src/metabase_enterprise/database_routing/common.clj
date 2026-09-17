@@ -4,12 +4,13 @@
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (database-routing.db/router-user-attribute (u/the-id db-or-id)))
+  (:user_attribute (database-routing.db/select-one-database-router {:database_id (u/the-id db-or-id) :columns [:user_attribute]})))
 
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
@@ -26,7 +27,7 @@
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
                                                                                                 :database-routing-enabled true
                                                                                                 :database-or-id db-or-id
-                                                                                                :database-name (database-routing.db/database-name (u/the-id db-or-id))}))
+                                                                                                :database-name (:name (warehouses.db/select-one-database {:id (u/the-id db-or-id) :columns [:name]}))}))
 
         (= database-name "__METABASE_ROUTER__")
         nil
@@ -44,7 +45,7 @@
                          :status-code 400}))
 
         :else
-        (or (database-routing.db/destination-database-id (u/the-id db-or-id) database-name)
+        (or (warehouses.db/select-one-database-pk {:router_database_id (u/the-id db-or-id) :name database-name})
             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
                                  database-name)
                             {:database-name database-name
@@ -112,7 +113,7 @@
 
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
-  (and (database-routing.db/destination-database? db-or-id)
+  (and (warehouses.db/database-exists? {:id db-or-id :router_database_id_set true})
        (not= *database-routing-on* :on)))
 
 (defn assert-not-direct-destination-access!

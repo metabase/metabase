@@ -5,10 +5,10 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn query-executions-in-month
@@ -44,48 +44,21 @@
 (mu/defn user-by-email
   "The User with `email`, or nil."
   [email :- :string]
-  (t2/select-one :model/User :email email))
+  (users.db/select-one-user {:email email}))
 
 (mu/defn user-columns-by-email
   "The `columns` of the User with `email`, or nil."
   [columns :- [:sequential :keyword]
    email :- :string]
-  (t2/select-one (into [:model/User] columns) :email email))
+  (users.db/select-one-user {:email email :columns columns}))
 
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
-  [user :- ::users.schema/user.update]
-  (t2/insert-returning-instance! :model/User user))
+  [user :- ::users.schema/user.create]
+  (users.db/insert-user! user))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
-
-(mu/defn sample-database-exists?
-  "Whether the sample Database exists."
-  []
-  (t2/exists? :model/Database :is_sample true))
-
-(mu/defn database-id-by-engine-and-name
-  "The ID of the Database of `engine` named `database-name`, or nil."
-  [engine :- :string
-   database-name :- :string]
-  (t2/select-one-pk :model/Database :engine engine :name database-name))
-
-(mu/defn insert-database!
-  "Insert `database` and return the new instance."
-  [database :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database database))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database
-   changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database database-id))
+  (users.db/update-users! {:id user-id} changes))

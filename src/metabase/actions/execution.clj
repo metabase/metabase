@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (def ^:private RequestParameters
@@ -86,20 +87,20 @@
 
 (mu/defn- implicit-action-table
   [card-id :- ::lib.schema.id/card]
-  (let [query              (actions.db/card-query card-id)
+  (let [query              (actions.db/select-card-query card-id)
         {:keys [table-id]} (query/query->database-and-table-ids query)]
-    (t2/hydrate (actions.db/table table-id) :fields)))
+    (t2/hydrate (actions.db/select-table table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters opts]
   (let [{action-type :type, action-id :id} action]
     (actions/check-actions-enabled! action)
-    (let [model (actions.db/card (:model_id action))
+    (let [model (actions.db/select-card (:model_id action))
           ;; the query executes against its own :database; fall back to the derived column if absent
           action-db-id (or (:database (:dataset_query action)) (:database_id action))]
       (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (actions.db/database action-db-id))))
+         (warehouses.db/select-one-database {:id action-db-id}))))
     (try
       (case action-type
         :query
@@ -288,7 +289,7 @@
     dashcard-id        :- ::lib.schema.id/dashcard
     request-parameters :- RequestParameters
     opts               :- [:maybe ExecuteActionOpts]]
-   (let [dashcard (api/check-404 (actions.db/dashcard-in-dashboard dashcard-id dashboard-id))
+   (let [dashcard (api/check-404 (actions.db/select-dashcard-in-dashboard dashcard-id dashboard-id))
          action (api/check-404 (action/select-action :id (:action_id dashcard)))]
      (analytics/track-event! :snowplow/action
                              {:event     :action-executed
@@ -307,7 +308,7 @@
         info {:executed-by api/*current-user-id*
               :context     :action
               :action-id   (:id action)}
-        card (actions.db/card (:model_id action))
+        card (actions.db/select-card (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query

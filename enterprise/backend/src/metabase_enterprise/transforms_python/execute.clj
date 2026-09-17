@@ -15,7 +15,8 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.io Closeable)
    (java.net SocketException SocketTimeoutException)
@@ -105,7 +106,7 @@
   (try
     (let [message-log                                                (base/empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          {driver :engine :as db}                                    (transforms-python.db/database (transforms-base.i/target-db-id transform))
+          {driver :engine :as db}                                    (warehouses.db/select-one-database {:id (transforms-base.i/target-db-id transform)})
           run-user-id                                                (if (and (= run-method :manual) user-id)
                                                                        user-id
                                                                        (or owner_user_id creator_id))

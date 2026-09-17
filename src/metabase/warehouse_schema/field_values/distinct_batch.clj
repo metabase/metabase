@@ -37,8 +37,8 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -137,7 +137,7 @@
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
   (let [db-id          (:db_id table)
-        driver         (:engine (warehouse-schema.db/database db-id))
+        driver         (:engine (warehouses.db/select-one-database {:id db-id}))
         fields         (vec fields)
         hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)

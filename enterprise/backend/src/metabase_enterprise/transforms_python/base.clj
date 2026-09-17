@@ -8,7 +8,6 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -24,7 +23,8 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -366,7 +366,7 @@
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
       (let [{:keys [target] transform-id :id} transform
-            db (transforms-python.db/database (:database target))
+            db (warehouses.db/select-one-database {:id (:database target)})
             ;; Use run-id if provided, otherwise generate a temp one for python runner
             effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
             cancel-chan (or cancel-chan

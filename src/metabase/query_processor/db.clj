@@ -4,8 +4,10 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as app-db]
+   [metabase.cache.db :as cache.db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -53,7 +55,7 @@
 (mu/defn delete-cache-entry!
   "Delete the QueryCache entry for `query-hash`."
   [query-hash :- bytes?]
-  (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))
+  (cache.db/delete-query-caches! {:query_hash query-hash}))
 
 (mu/defn delete-cache-entries-updated-before!
   "Delete the QueryCache entries last updated at or before `updated-before`."
@@ -63,8 +65,8 @@
 (mu/defn insert-query-executions!
   "Insert the QueryExecution `rows`."
   [rows :- [:sequential
-            ::queries.schema/query-execution.update]]
-  (t2/insert! :model/QueryExecution rows))
+            ::queries.schema/query-execution.create]]
+  (queries.db/insert-query-executions! rows))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
@@ -87,7 +89,7 @@
 (mu/defn card-database-ids
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
+  (queries.db/select-cards {:id card-ids :columns [:id :database_id]}))
 
 (mu/defn upsert-cache-entry!
   "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to

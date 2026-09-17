@@ -1,13 +1,13 @@
 (ns metabase.sync.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.sync.db :as sync.db]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- -show-database-syncing-modal []
   (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
     (if (nil? v)
-      (not (sync.db/synced-user-database-exists?))
+      (not (warehouses.db/database-exists? {:is_sample false :is_audit false :initial_sync_status "complete"}))
       ;; frontend should set this value to `true` after the modal has been shown once
       v)))
 

@@ -152,9 +152,9 @@
         ;; notifications pass through :payload instead and have no :payload_id.
         (when-let [payload-id (when (= :notification/card payload_type)
                                 (:payload_id notification-info))]
-          (when-not (notification.db/notification-card-exists? payload-id)
+          (when-not (notification.db/notification-card-exists? {:id payload-id})
             (log/warnf "Payload for notification %d no longer exists, deleting" id)
-            (notification.db/delete-notification! id)
+            (notification.db/delete-notifications! {:id id})
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
@@ -470,7 +470,9 @@
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
-                                                            notification.db/notification-card-card-id))]
+                                                            (hash-map :id)
+                                                            notification.db/select-one-notification-card
+                                                            :card_id))]
                               {:run_type        :alert
                                :entity_type     :card
                                :entity_id       card-id

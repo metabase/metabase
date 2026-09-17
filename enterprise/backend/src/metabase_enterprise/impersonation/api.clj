@@ -22,8 +22,8 @@
                                 [:db_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (if (and group_id db_id)
-    (impersonation.db/impersonation-for-group-and-database group_id db_id)
-    (impersonation.db/all-impersonations)))
+    (impersonation.db/select-one-connection-impersonation {:group_id group_id, :db_id db_id})
+    (impersonation.db/select-connection-impersonations {:order-by [[:id :asc]]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -34,6 +34,6 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (impersonation.db/impersonation id))
-  (impersonation.db/delete-impersonation! id)
+  (api/check-404 (impersonation.db/select-one-connection-impersonation {:id id}))
+  (impersonation.db/delete-connection-impersonations! {:id id})
   api/generic-204-no-content)

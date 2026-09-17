@@ -13,7 +13,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
@@ -59,7 +60,7 @@
 
   Tables that fail any check fall back to the per-field path."
   [table]
-  (let [database (sync.db/database (:db_id table))
+  (let [database (warehouses.db/select-one-database {:id (:db_id table)})
         engine   (:engine database)]
     (and (isa? driver/hierarchy engine :sql)
          (driver.u/supports? engine :nested-queries database)
@@ -236,7 +237,9 @@
         table-id->db-id      (when (seq table-ids)
                                (sync.db/table-database-ids table-ids))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (sync.db/database-on-demand-flags (set (vals table-id->db-id))))]
+                               (update-vals (warehouses.db/select-database-pk->instance
+                                             {:id (set (vals table-id->db-id)) :columns [:is_on_demand]})
+                                            :is_on_demand))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 

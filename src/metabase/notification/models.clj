@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -84,7 +85,7 @@
   (mi/instances-with-hydrated-data
    notifications k
    #(group-by :notification_id
-              (notification.db/subscriptions-for-notifications (map :id notifications)))
+              (notification.db/select-notification-subscriptions {:notification_id (set (map :id notifications))}))
    :id
    {:default []}))
 
@@ -98,7 +99,7 @@
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
                                            :notification/card
-                                           (let [notification-cards (t2/hydrate (notification.db/notification-cards payload-ids) :card)]
+                                           (let [notification-cards (t2/hydrate (notification.db/select-notification-cards {:id (set payload-ids)}) :card)]
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
                                            {[payload-type nil] nil})))]
@@ -113,7 +114,7 @@
   (mi/instances-with-hydrated-data
    notifications k
    #(group-by :notification_id
-              (notification.db/handlers-for-notifications (map :id notifications)))
+              (notification.db/select-notification-handlers {:notification_id (set (map :id notifications))}))
    :id
    {:default []}))
 
@@ -167,7 +168,8 @@
                       {:status-code 400
                        :changes     changes}))))
   (when (contains? (t2/changes instance) :active)
-    (let [subscriptions (notification.db/cron-subscriptions-for-notification (:id instance))]
+    (let [subscriptions (notification.db/select-notification-subscriptions
+                         {:notification_id (:id instance) :type :notification-subscription/cron})]
       (doseq [subscription subscriptions]
         (if (:active instance)
           (notification.task.send-trigger/update-subscription-trigger! subscription)
@@ -176,11 +178,12 @@
 
 (t2/define-before-delete :model/Notification
   [instance]
-  (doseq [subscription-id (notification.db/cron-subscription-ids-for-notification (:id instance))]
+  (doseq [subscription-id (notification.db/select-notification-subscription-pks
+                           {:notification_id (:id instance) :type :notification-subscription/cron})]
     (notification.task.send-trigger/delete-trigger-for-subscription! subscription-id))
   (when-let [payload-id (:payload_id instance)]
     (case (:payload_type instance)
-      :notification/card (notification.db/delete-notification-card! payload-id)))
+      :notification/card (notification.db/delete-notification-cards! {:id payload-id})))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -270,7 +273,7 @@
   (mi/instances-with-hydrated-data
    notification-handlers k
    #(when-let [channel-ids (seq (keep :channel_id notification-handlers))]
-      (notification.db/active-channels-by-id channel-ids))
+      (channel.db/select-channel-pk->instance {:id (set channel-ids) :active true}))
    :channel_id
    {:default nil}))
 
@@ -280,7 +283,7 @@
   (mi/instances-with-hydrated-data
    notification-handlers k
    #(when-let [template-ids (seq (keep :template_id notification-handlers))]
-      (notification.db/channel-templates-by-id template-ids))
+      (channel.db/select-channel-template-pk->instance {:id (set template-ids)}))
    :template_id
    {:default nil}))
 
@@ -291,7 +294,8 @@
    notification-handlers
    k
    #(group-by :notification_handler_id
-              (notification.db/recipients-for-handlers (map :id notification-handlers)))
+              (notification.db/select-notification-recipients
+               {:notification_handler_id (set (map :id notification-handlers))}))
    :id
    {:default []}))
 
@@ -316,7 +320,7 @@
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
     (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (notification.db/channel-template-channel-type template-id)]
+          template-type (:channel_type (channel.db/select-one-channel-template {:id template-id :columns [:channel_type]}))]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
                         {:status        400
@@ -472,7 +476,7 @@
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
    ;; the hydrated Card, echoed back by clients on update; nothing here reads it
    [:card            {:optional true} [:maybe [:merge
-                                               ::queries.schema/card.update
+                                               ::queries.schema/card.columns
                                                [:map {:closed true}
                                                 [:id                ms/PositiveInt]
                                                 ;; a metric's Card row describes its query on the way out of the database
@@ -606,7 +610,7 @@
     (current-user-is-creator? notification)
     (current-user-is-recipient? notification)))
   ([_ pk]
-   (mi/can-read? (notification.db/notification pk))))
+   (mi/can-read? (notification.db/select-one-notification {:id pk}))))
 
 (defmethod mi/can-create? :model/Notification
   [_ notification]
@@ -646,7 +650,7 @@
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? notification))))
   ([_model pk]
-   (mi/can-write? (notification.db/notification pk))))
+   (mi/can-write? (notification.db/select-one-notification {:id pk}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
@@ -870,12 +874,12 @@
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
   "Find all active card notifications for a given card-id."
   [card-id :- pos-int?]
-  (hydrate-notification (notification.db/active-card-notifications-for-card card-id)))
+  (hydrate-notification (notification.db/select-active-card-notifications-for-card card-id)))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
   [event-name]
-  (notification.db/active-system-event-notifications (u/qualified-name event-name)))
+  (notification.db/select-active-system-event-notifications (u/qualified-name event-name)))
 
 (defn create-notification!
   "Create a new notification with `subsciptions`.
@@ -894,20 +898,20 @@
           instance        (notification.db/insert-notification! notification)
           notification-id (:id instance)]
       (when (seq subscriptions)
-        (notification.db/insert-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
+        (notification.db/insert-notification-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [{:keys [recipients template] :as handler} handlers+recipients]
         ;; assert can either template_id exists, then template but be nil, and vice versa
         (when (and template (not (map? template)))
           (throw (ex-info "Channel template must be a map" {:status-code 400})))
         (let [template-id (if template
-                            (notification.db/insert-channel-template! template)
+                            (channel.db/insert-channel-template! template)
                             (:template_id handler))
               handler    (-> handler
                              (dissoc :recipients :template)
                              (assoc :notification_id notification-id
                                     :template_id template-id))
-              handler-id (notification.db/insert-handler! handler)]
-          (notification.db/insert-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
+              handler-id (notification.db/insert-notification-handler! handler)]
+          (notification.db/insert-notification-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
 
 (defn update-notification!
@@ -919,4 +923,4 @@
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."
   [notification-id user-id]
-  (notification.db/delete-user-recipients-for-notification! notification-id user-id))
+  (notification.db/delete-notification-recipients-for-user! notification-id user-id))

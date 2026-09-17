@@ -41,7 +41,8 @@
   "Return a map of [severity acknowledged?] → count for advisories whose
    match_status places them in the vulnerable bucket."
   []
-  (->> (security-center.db/advisories-with-statuses-reducible vulnerable-statuses)
+  (->> (security-center.db/reducible-select-security-advisories
+        {:match_status (set vulnerable-statuses) :columns [:severity :acknowledged_at]})
        (reduce (fn [acc {:keys [severity acknowledged_at]}]
                  (update acc (label-of severity (some? acknowledged_at)) (fnil inc 0)))
                {})))

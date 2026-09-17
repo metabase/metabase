@@ -47,7 +47,7 @@
   [settings]
   (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-field-columns)
              (not-any? #(get settings %) (vals warehouse-schema-overlay/field-user-settings-flags)))
-    (warehouse-schema.db/delete-field-user-settings! (:field_id settings)))
+    (warehouse-schema.db/delete-field-user-settings! {:field_id (:field_id settings)}))
   settings)
 
 (t2/define-before-insert :model/FieldUserSettings
@@ -72,14 +72,14 @@
    settings     :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present field/field-user-settings)]
     (when (seq settings)
-      (if (warehouse-schema.db/field-user-settings-exist? id)
-        (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
+      (if (warehouse-schema.db/field-user-settings-exists? {:field_id id})
+        (warehouse-schema.db/update-field-user-settings! {:field_id id} (with-set-flags settings settings))
         (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id))))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->position))
+  (let [existing (warehouse-schema.db/select-field-user-settings-pks {:field_id (set (keys field-id->position))})
         missing  (remove existing (keys field-id->position))]
     (when (seq missing)
       (warehouse-schema.db/insert-field-user-settings!
@@ -91,9 +91,9 @@
   "Drop the user values of the Field columns `ks` for `field`."
   [{:keys [id]} :- ::warehouse-schema.schema/field
    ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-field-columns)]]
-  (when (warehouse-schema.db/field-user-settings-exist? id)
+  (when (warehouse-schema.db/field-user-settings-exists? {:field_id id})
     (warehouse-schema.db/update-field-user-settings!
-     id
+     {:field_id id}
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
                           (warehouse-schema-overlay/field-user-settings-flags k) (conj [(warehouse-schema-overlay/field-user-settings-flags k) false]))))
@@ -101,7 +101,7 @@
 
 (defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
   (if (= filter-column :table_id)
-    (warehouse-schema.db/field-user-settings-for-tables filter-ids)
+    (warehouse-schema.db/select-field-user-settings-for-tables filter-ids)
     (serdes/extract-query-collections :model/FieldUserSettings opts)))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)

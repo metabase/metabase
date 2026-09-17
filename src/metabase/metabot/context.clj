@@ -365,9 +365,9 @@
   "Look up the metabot row for the given UUID/entity-id, mirroring the resolution used by `metabase.metabot.tools.search`."
   [metabot-id]
   (when metabot-id
-    (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config
-                                             [metabot-id :entity-id]
-                                             metabot-id))))
+    (metabot.db/select-one-metabot {:entity_id (get-in metabot.config/metabot-config
+                                                       [metabot-id :entity-id]
+                                                       metabot-id)})))
 
 (defn- filter-recents-to-curated
   "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).

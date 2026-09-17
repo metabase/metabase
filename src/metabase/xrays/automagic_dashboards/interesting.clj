@@ -54,6 +54,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
@@ -372,7 +373,7 @@
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
   [source :- (ms/InstanceOf #{:model/Table :model/Card})]
-  (xrays.db/database ((some-fn :db_id :database_id) source)))
+  (warehouses.db/select-one-database {:id ((some-fn :db_id :database_id) source)}))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

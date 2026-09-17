@@ -35,7 +35,7 @@
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
-  (queries.db/average-execution-time query-hash))
+  (:average_execution_time (queries.db/select-one-query {:query_hash query-hash})))
 
 (def ^:private smoothing-factor
   "The weight of the latest execution time in the exponential rolling average formula:
@@ -118,7 +118,7 @@
                   (if (contains? #{true 1} missing_query)
                     :needs-query-backfill
                     :up-to-date)]))
-          (queries.db/query-hash-statuses-reducible query-hashes))))
+          (queries.db/reducible-select-query-hash-statuses query-hashes))))
 
 (defn save-queries-and-update-average-execution-times!
   "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,
@@ -165,7 +165,7 @@
     (if-let [source-card-id (lib/primary-source-card-id query)]
       (let [card (or (lib.metadata/card query source-card-id)
                      ;; Card may belong to a different Database; fetch from the app DB
-                     (queries.db/card-database-and-table-ids source-card-id))]
+                     (queries.db/select-card-database-and-table-ids source-card-id))]
         (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
       (let [table-id (lib/primary-source-table-id query)]
         {:database-id database-id

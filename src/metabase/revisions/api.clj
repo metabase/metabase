@@ -118,7 +118,7 @@
                                                      [:revision_id ms/PositiveInt]]]
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (revisions.db/revision (name model) id revision-id))]
+        revision         (api/check-404 (revisions.db/select-one-revision {:model (name model), :model_id id, :id revision-id}))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards

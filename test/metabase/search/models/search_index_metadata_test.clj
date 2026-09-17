@@ -65,13 +65,13 @@
         lock-acquired  (promise)
         release-lock   (promise)
         deleting       (promise)
-        original-prune search.db/delete-retired-index-metadata!]
+        original-prune search.db/delete-search-index-metadata!]
     (try
       (is (search-index-metadata/create-pending! engine version active-index))
       (is (= active-index (search-index-metadata/active-pending! engine version)))
       (is (search-index-metadata/create-pending! engine version pending-index))
       (mt/with-dynamic-fn-redefs
-        [search.db/delete-retired-index-metadata!
+        [search.db/delete-search-index-metadata!
          (fn [& args]
            (deliver lock-acquired true)
            @release-lock

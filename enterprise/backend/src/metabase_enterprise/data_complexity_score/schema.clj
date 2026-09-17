@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-complexity-score.schema
   "Malli schemas for the data-complexity-score module."
   (:require
+   [malli.util :as mut]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -58,14 +59,27 @@
 (mr/def ::data-complexity-score
   "A DataComplexityScore as selected from the app DB: every column of `:data_complexity_score`."
   [:merge
-   ::data-complexity-score.update
+   ::data-complexity-score.columns
    [:map {:closed true}
     [:id          ms/PositiveInt]]])
 
-(mr/def ::data-complexity-score.update
-  "What an update (or insert) of a DataComplexityScore accepts: every column of `:data_complexity_score` except `id`, all optional."
+(mr/def ::data-complexity-score.partial
+  "A DataComplexityScore row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::data-complexity-score [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::data-complexity-score.columns
+  "Every column of `:data_complexity_score` except `id`, all optional."
   [:map {:closed true}
    [:fingerprint {:optional true} [:maybe :string]]
    [:score_data  {:optional true} [:maybe ::data-complexity-score.score-data]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:source      {:optional true} [:maybe [:or :keyword :string]]]])
+
+(mr/def ::data-complexity-score.create
+  "What an insert of a DataComplexityScore accepts: no column is proven immutable, so every column is allowed."
+  (mut/select-keys (mr/schema ::data-complexity-score.columns) [:fingerprint :score_data :created_at :source]))
+
+(mr/def ::data-complexity-score.column
+  "A column of `:data_complexity_score`, for the `:columns` option of the queries in
+  [[metabase-enterprise.data-complexity-score.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::data-complexity-score.columns))))

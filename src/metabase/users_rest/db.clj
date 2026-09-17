@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.users.core :as users]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -26,21 +27,21 @@
   (t2/update! :model/Collection collection-id {:name collection-name}))
 
 (mu/defn users-with-columns
-  "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
+  "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-list-filters]])."
   [columns :- [:sequential :keyword]
-   filters :- ::users.schema/user-filters]
+   filters :- ::users.schema/user-list-filters]
   (t2/select (into [:model/User] columns) (user/filter-clauses filters)))
 
 (mu/defn user-count
-  "The number of Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any `:sort`,
+  "The number of Users matching `filters` (see [[metabase.users.schema/user-list-filters]]), ignoring any `:sort`,
   `:limit`, or `:offset` in `filters`."
-  [filters :- ::users.schema/user-filters]
+  [filters :- ::users.schema/user-list-filters]
   (t2/count :model/User (users/filter-clauses-without-paging (user/filter-clauses filters))))
 
 (mu/defn distinct-user-count
-  "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any
+  "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-list-filters]]), ignoring any
   `:sort`, `:limit`, or `:offset` in `filters`."
-  [filters :- ::users.schema/user-filters]
+  [filters :- ::users.schema/user-list-filters]
   (t2/query (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                     :from   :core_user}
                    (users/filter-clauses-without-paging (user/filter-clauses filters)))))
@@ -48,7 +49,7 @@
 (mu/defn user-sso-source
   "The SSO source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :sso_source :model/User :id user-id))
+  (:sso_source (users.db/select-one-user {:id user-id :columns [:sso_source]})))
 
 (mu/defn has-visible-card?
   "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
@@ -102,40 +103,40 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (users.db/update-users! {:id user-id} changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
+  (users.db/select-one-user {:id user-id}))
 
 (mu/defn personal-user-columns
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
-                 :type :personal
-                 :id user-id))
+  (users.db/select-one-user {:id   user-id
+                             :type :personal
+                             :columns [:id :email :first_name :last_name :is_active :sso_source :tenant_id]}))
 
 (mu/defn active-personal-user-login-columns
   "The id, email, and last login of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :last_login], :id user-id, :type :personal, :is_active true))
+  (users.db/select-one-user {:id user-id :type :personal :is_active true :columns [:id :email :last_login]}))
 
 (mu/defn user-active-and-type
   "The id, active flag, and type of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :type] :id user-id))
+  (users.db/select-one-user {:id user-id :columns [:id :is_active :type]}))
 
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id))
+  (users.db/user-exists? {:id user-id}))
 
 (mu/defn update-personal-user!
   "Apply `changes` to the personal User with `user-id`, returning the number of rows updated."
   [user-id :- ::lib.schema.id/user
    changes :- PersonalUserChanges]
-  (t2/update! :model/User user-id {:type :personal} changes))
+  (users.db/update-users! {:id user-id :type :personal} changes))
 
 (mu/defn mfa-auth-identity-id-from-hashed-key
   "Fetches the `mfa_auth_identity_id` from the session with the given hashed key"

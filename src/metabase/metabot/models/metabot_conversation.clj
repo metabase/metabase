@@ -17,7 +17,7 @@
   "True if `user-id` has sent at least one message in `conversation-id`."
   [conversation-id user-id]
   (when (and conversation-id user-id)
-    (metabot.db/participant? conversation-id user-id)))
+    (metabot.db/metabot-message-exists? {:conversation_id conversation-id :user_id user-id})))
 
 (defmethod mi/can-read? :model/MetabotConversation
   ;; Access: superuser, or originator (first-writer, set on insert and never
@@ -31,7 +31,7 @@
               (or (= originator-id user-id)
                   (participant? conversation-id user-id))))))
   ([_model pk]
-   (when-let [instance (metabot.db/conversation-id-and-user-id pk)]
+   (when-let [instance (metabot.db/select-one-metabot-conversation {:id pk :columns [:id :user_id]})]
      (mi/can-read? instance))))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]

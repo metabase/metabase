@@ -81,7 +81,7 @@
   By default, library-type collections are excluded. "
   [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
   (cond->>
-   (collections.db/collections-matching
+   (collections.db/select-collections-matching
     {:where [:and
              (case archived
                nil nil

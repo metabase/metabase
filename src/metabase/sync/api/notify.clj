@@ -12,7 +12,8 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +39,7 @@
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
-    (api/let-404 [database (sync.db/database id)]
+    (api/let-404 [database (warehouses.db/select-one-database {:id id})]
       (let [table (cond
                     table_id   (api/check-404 (sync.db/table-in-database id (int table_id)))
                     table_name (api/check-404 (sync.db/table-by-name id table_name)))]
@@ -88,7 +89,7 @@
                                                      [:table_name   {:optional true} [:maybe ms/NonBlankString]]
                                                      [:schema_name  {:optional true} [:maybe string?]]
                                                      [:synchronous? {:default false} [:maybe ms/BooleanValue]]]]
-  (api/let-404 [database (sync.db/attached-dwh-database)]
+  (api/let-404 [database (warehouses.db/select-one-database {:is_attached_dwh true})]
     (if (str/blank? table_name)
       (cond-> (future (sync-metadata/sync-db-metadata! database))
         synchronous? deref)
@@ -113,7 +114,7 @@
    {:keys [schema_name table_name]} :- [:map {:closed true}
                                         [:schema_name ms/NonBlankString]
                                         [:table_name  ms/NonBlankString]]]
-  (api/let-404 [database (sync.db/database id)]
+  (api/let-404 [database (warehouses.db/select-one-database {:id id})]
     (if-not (sync.db/table-by-schema-and-name id schema_name table_name)
       (find-and-sync-new-table database table_name schema_name)
       (throw (without-stacktrace

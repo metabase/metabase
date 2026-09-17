@@ -126,7 +126,6 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Field
-                    :model/QueryExecution
                     :model/Table
                     :model/User}}
 
@@ -144,8 +143,9 @@
            permissions
            public-sharing
            queries
-           util}
-   :model-imports #{:model/Action :model/Card :model/Database}}
+           util
+           warehouses}
+   :model-imports #{:model/Action :model/Card}}
 
   activity-feed
   {:team "UX West"
@@ -190,6 +190,7 @@
            api.eid-translation
            app-db
            appearance
+           cache
            core.version
            driver
            lib.be
@@ -203,11 +204,12 @@
            sso
            system
            task
+           users
            util
            util.config
-           warehouse-schema-overlay}
-   :model-imports #{:model/CacheConfig
-                    :model/Card
+           warehouse-schema-overlay
+           warehouses}
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/CustomVizPlugin
                     :model/Dashboard
@@ -216,7 +218,6 @@
                     :model/DatabaseRouter
                     :model/Document
                     :model/ModerationReview
-                    :model/PermissionsGroup
                     :model/Pulse
                     :model/PulseCard
                     :model/PulseChannel
@@ -305,8 +306,7 @@
            permissions
            users
            util}
-   :model-exports #{:model/ApiKey}
-   :model-imports #{:model/User}}
+   :model-exports #{:model/ApiKey}}
 
   api-routes
   {:team "UX West"
@@ -482,13 +482,14 @@
            premium-features
            settings
            util
-           util.config}
-   :model-imports #{:model/Database}}
+           util.config
+           warehouses}}
 
   cache
   {:team "UX West"
    :api  #{metabase.cache.api
            metabase.cache.core
+           metabase.cache.db
            metabase.cache.init}
    :uses #{api
            app-db
@@ -500,7 +501,8 @@
            request
            settings
            util
-           util.config}
+           util.config
+           warehouses}
    :model-exports #{:model/CacheConfig :model/QueryCache}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -512,12 +514,12 @@
   {:team "Gadget"
    :api  #{metabase.channel.api
            metabase.channel.core
+           metabase.channel.db
            metabase.channel.email
            metabase.channel.email.messages
            metabase.channel.init
            metabase.channel.models.channel
            metabase.channel.render.core
-           metabase.channel.schema
            metabase.channel.settings
            metabase.channel.slack
            metabase.channel.template.core
@@ -553,12 +555,12 @@
            tiles
            timeline
            util
-           util.config}
+           util.config
+           warehouses}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
-                    :model/Database
                     :model/PulseChannel
                     :model/User}}
 
@@ -591,6 +593,7 @@
    :api  #{metabase.collections.children
            metabase.collections.core
            metabase.collections.curation
+           metabase.collections.db
            metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
@@ -680,14 +683,12 @@
   {:team "UX West"
    :api  #{metabase.content-translation.models}
    :uses #{premium-features
-           util}
-   :model-exports #{:model/ContentTranslation}}
+           util}}
 
   content-verification
   {:team "UX West"
    :api  #{metabase.content-verification.core metabase.content-verification.init metabase.content-verification.schema}
-   :uses #{app-db
-           lib.schema
+   :uses #{lib.schema
            models
            users
            util}
@@ -844,9 +845,9 @@
            sync
            util
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
-   :model-imports #{:model/Database
-                    :model/Dimension
+   :model-imports #{:model/Dimension
                     :model/Field
                     :model/FieldValues
                     :model/Table}}
@@ -942,7 +943,8 @@
 
   embedding
   {:team "Embedding"
-   :api  #{metabase.embedding.init
+   :api  #{metabase.embedding.db
+           metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.util
@@ -968,14 +970,13 @@
            permissions
            premium-features
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/ConnectionImpersonation
                     :model/Dashboard
-                    :model/Database
                     :model/DatabaseRouter
-                    :model/EmbeddingTheme
                     :model/Sandbox
                     :model/Table
                     :model/Tenant}}
@@ -1000,7 +1001,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
   events
   {:team "DevEx"
@@ -1057,8 +1058,6 @@
                     :model/Comment
                     :model/Document
                     :model/Segment
-                    :model/StoredResult
-                    :model/StoredResultUse
                     :model/Timeline
                     :model/User}}
 
@@ -1327,7 +1326,6 @@
            metabase.mcp.init
            metabase.mcp.usage
            metabase.mcp.v2.api}
-   :model-exports #{:model/McpSessionLog :model/McpToolCallLog}
    :uses #{activity-feed
            ai-tracing
            api
@@ -1368,6 +1366,7 @@
            util
            util.config
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1433,6 +1432,7 @@
    :api     #{metabase.metabot.api
               metabase.metabot.config
               metabase.metabot.core
+              metabase.metabot.db
               metabase.metabot.init
               metabase.metabot.metadata-perms
               metabase.metabot.persistence
@@ -1523,9 +1523,9 @@
   {:team    "Metabot"
    :ns-prefix "metabase.agent-api"
    :api     #{metabase.agent-api.api
+              metabase.agent-api.db
               metabase.agent-api.init
               metabase.agent-api.query-guards
-              metabase.agent-api.schema
               metabase.agent-api.settings
               metabase.agent-api.usage}
    :uses    #{ai-tracing
@@ -1555,8 +1555,7 @@
                     :model/DashboardTab
                     :model/Database
                     :model/Table
-                    :model/User}
-   :model-exports #{:model/AgentApiCallLog}}
+                    :model/User}}
 
   metabot.llm
   {:team "Metabot"
@@ -1586,6 +1585,7 @@
            util
            util.config
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
@@ -1615,11 +1615,9 @@
               sso
               system
               upload
-              util}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
-                    :model/Database
-                    :model/MetabotMessage}}
+              util
+              warehouses}
+   :model-imports #{:model/AuthIdentity :model/Card :model/MetabotMessage}}
 
   metrics
   {:team "UX West"
@@ -1675,7 +1673,7 @@
            util
            warehouses}
    :model-exports #{:model/PersistedInfo}
-   :model-imports #{:model/Card :model/Database}}
+   :model-imports #{:model/Card}}
 
   models
   {:team "DevEx"
@@ -1697,7 +1695,8 @@
            parameters
            util
            util.classloader
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -1776,6 +1775,7 @@
    :api  #{metabase.notification.api
            metabase.notification.card
            metabase.notification.core
+           metabase.notification.db
            metabase.notification.init
            metabase.notification.models
            metabase.notification.payload.core}
@@ -1873,6 +1873,7 @@
   permissions
   {:team "UX West"
    :api  #{metabase.permissions.core
+           metabase.permissions.db
            metabase.permissions.init
            metabase.permissions.metric
            metabase.permissions.path
@@ -1921,8 +1922,10 @@
            premium-features
            request
            settings
+           users
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DataPermissions
@@ -1930,8 +1933,7 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/PermissionsRevision
-                    :model/Table
-                    :model/User}}
+                    :model/Table}}
 
   plugins
   {:team "DevEx"
@@ -1971,11 +1973,9 @@
            settings
            task
            util
-           util.config}
-   :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/Database
-                    :model/User}}
+           util.config
+           warehouses}
+   :model-imports #{:model/Card :model/Dashboard :model/User}}
 
   public-sharing
   {:team "UX West"
@@ -2053,18 +2053,17 @@
                     :model/PulseChannel
                     :model/PulseChannelRecipient}
    :model-imports #{:model/Card
-                    :model/Channel
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/Notification
                     :model/User}}
 
   queries
   {:team "Graphy"
    :api  #{metabase.queries.core
+           metabase.queries.db
            metabase.queries.init
-           metabase.queries.models.query ; TODO FIXME
+           metabase.queries.models.query
            metabase.queries.schema}
    :uses #{analytics
            analytics.interface
@@ -2104,13 +2103,13 @@
            util.config
            util.graph
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-exports #{:model/Card
                     :model/ParameterCard
                     :model/Query
                     :model/QueryExecution
                     :model/QueryTable
-                    :model/StoredResult
                     :model/StoredResultUse}
    :model-imports #{:model/Action
                     :model/CardBookmark
@@ -2155,7 +2154,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
-                    :model/StoredResult
                     :model/StoredResultUse
                     :model/Table}}
 
@@ -2255,7 +2253,6 @@
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
-                    :model/QueryExecution
                     :model/Table}}
 
   query-processor.cache-backend
@@ -2288,10 +2285,10 @@
            settings
            sync
            system
-           upload
            util
            util.classloader
            util.config
+           warehouses
            warehouses.schema
            warehouses.secrets}}
 
@@ -2389,7 +2386,7 @@
            sync
            util
            warehouses}
-   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
+   :model-imports #{:model/DataPermissions :model/Table}}
 
   search
   {:team "UX West"
@@ -2432,11 +2429,11 @@
            transforms
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -2605,8 +2602,8 @@
            setup
            sso.auth-identity
            system
-           util}
-   :model-imports #{:model/User}}
+           users
+           util}}
 
   sql-tools
   {:team "DevEx"
@@ -2773,9 +2770,10 @@
            task
            tracing
            util
-           util.config}
+           util.config
+           warehouses}
    :model-exports #{:model/TaskHistory :model/TaskRun}
-   :model-imports #{:model/Card :model/Dashboard :model/Database}}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   testing-api
   {:team "DevEx"
@@ -2796,17 +2794,10 @@
            search
            security-center
            session
+           users
            util
            util.config}
-   :model-imports #{:model/AiUsageLog
-                    :model/Card
-                    :model/Dashboard
-                    :model/MetabotConversation
-                    :model/MetabotMessage
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/SecurityAdvisory
-                    :model/User}}
+   :model-imports #{:model/Card :model/Dashboard :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
@@ -2888,7 +2879,8 @@
            transforms.base
            transforms.indexes
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
@@ -2915,8 +2907,7 @@
    ;; TODO regressions — transforms-base should not depend on :model/Transform or
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/Table
                     :model/TableIndex
                     :model/Transform
@@ -2933,7 +2924,8 @@
            sync
            transforms.indexes
            util
-           warehouse-schema-overlay}}
+           warehouse-schema-overlay
+           warehouses}}
 
   transforms.indexes
   {:team "Gadget"
@@ -2951,11 +2943,11 @@
    :ns-prefix "metabase.indexes-rest"
    :api #{metabase.indexes-rest.api}
    :uses #{api
-           lib.schema
            transforms.base
            transforms.indexes
-           util}
-   :model-imports #{:model/Database :model/TableIndex :model/Transform}}
+           util
+           warehouses}
+   :model-imports #{:model/TableIndex :model/Transform}}
 
   transforms.inspector
   {:team "Gadget"
@@ -2999,11 +2991,11 @@
            permissions
            system
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
-                    :model/Database
                     :model/Field
                     :model/Measure
                     :model/Table}}
@@ -3016,10 +3008,7 @@
 
   upload
   {:team "Graphy"
-   :api  #{metabase.upload.api
-           metabase.upload.core
-           metabase.upload.db
-           metabase.upload.init}
+   :api  #{metabase.upload.api metabase.upload.core metabase.upload.init}
    :uses #{analytics
            analytics.interface
            api
@@ -3037,6 +3026,7 @@
            sync
            util
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
@@ -3075,6 +3065,7 @@
   {:team "UX West"
    :module-exports #{users.tenants}
    :api  #{metabase.users.core
+           metabase.users.db
            metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
@@ -3097,10 +3088,10 @@
            users.tenants
            util
            util.config
+           warehouses
            enterprise/permissions}
    :model-exports #{:model/User :model/UserParameterValue}
    :model-imports #{:model/Dashboard
-                    :model/Database
                     :model/PermissionsGroupMembership
                     :model/PulseChannelRecipient
                     :model/Tenant}}
@@ -3180,6 +3171,7 @@
    :module-exports #{warehouses.schema
                      warehouses.secrets}
    :api  #{metabase.warehouses.core
+           metabase.warehouses.db
            metabase.warehouses.init
            metabase.warehouses.models.database
            metabase.warehouses.schema}
@@ -3322,10 +3314,10 @@
            upload
            util
            warehouse-schema-overlay
+           warehouses
            warehouses.schema
            xrays}
    :model-imports #{:model/Collection
-                    :model/Database
                     :model/Dimension
                     :model/Field
                     :model/FieldValues
@@ -3368,6 +3360,7 @@
            sync.analyze
            util
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3398,11 +3391,9 @@
            query-processor
            sync
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/FieldValues
-                    :model/Table}}
+           warehouse-schema-overlay
+           warehouses}
+   :model-imports #{:model/Field :model/FieldValues :model/Table}}
 
   enterprise/advanced-config
   {:team "UX West"
@@ -3426,7 +3417,7 @@
            users
            util
            warehouses}
-   :model-imports #{:model/ApiKey :model/Database :model/User}}
+   :model-imports #{:model/ApiKey}}
 
   enterprise/analytics
   {:team "UX West"
@@ -3434,12 +3425,13 @@
    :uses #{driver
            premium-features
            util
+           warehouses
            enterprise/advanced-config
            enterprise/mfa
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Sandbox}}
 
   enterprise/analytics.internal-stats
   {:team "UX West"
@@ -3492,7 +3484,6 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Database
                     :model/Field
                     :model/Notification
                     :model/NotificationRecipient
@@ -3564,12 +3555,11 @@
    :api #{metabase-enterprise.database-replication.api metabase-enterprise.database-replication.init}
    :uses #{api
            driver
-           lib.schema
            premium-features
            settings
            util
-           enterprise/cloud}
-   :model-imports #{:model/Database}}
+           warehouses
+           enterprise/cloud}}
 
   enterprise/cloud.gsheets
   {:team "Cloud"
@@ -3578,13 +3568,12 @@
    :uses #{analytics
            analytics.interface
            api
-           lib.schema
            premium-features
            settings
            util
            warehouses
            enterprise/cloud}
-   :model-imports #{:model/Database :model/Setting}}
+   :model-imports #{:model/Setting}}
 
   enterprise/cloud.proxy
   {:team "Cloud"
@@ -3609,8 +3598,7 @@
            embedding
            premium-features
            util
-           enterprise/api}
-   :model-imports #{:model/ContentTranslation}}
+           enterprise/api}}
 
   enterprise/content-verification
   {:team "UX West"
@@ -3657,13 +3645,12 @@
            request
            settings
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
                     :model/Permissions
-                    :model/PermissionsGroup
                     :model/Table
                     :model/User}}
 
@@ -3703,7 +3690,7 @@
            warehouses
            warehouses.schema}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database :model/Transform}}
+   :model-imports #{:model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -3812,7 +3799,6 @@
                     :model/Collection
                     :model/ConnectionImpersonation
                     :model/Dashboard
-                    :model/Database
                     :model/DatabaseRouter
                     :model/Sandbox
                     :model/Table
@@ -3838,9 +3824,7 @@
               metabot
               premium-features
               task
-              util}
-   :model-imports #{:model/McpSessionLog
-                    :model/McpToolCallLog}}
+              util}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
@@ -3875,7 +3859,7 @@
                      task
                      util
                      enterprise/cloud.add-ons}
-   :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
+   :model-imports #{:model/PermissionsGroupMembership}}
 
   enterprise/metabot.agent-api
   {:team "Metabot"
@@ -3886,8 +3870,7 @@
            metabot.agent-api
            premium-features
            task
-           util}
-   :model-imports #{:model/AgentApiCallLog}}
+           util}}
 
   enterprise/metabot.analytics
   {:team "Metabot"
@@ -3927,11 +3910,11 @@
            util
            util.config
            warehouse-schema-overlay
+           warehouses
            enterprise/search.embeddings
            enterprise/search.semantic}
    :model-imports #{:model/Card
                     :model/Collection
-                    :model/Database
                     :model/Measure
                     :model/Metabot
                     :model/ModerationReview
@@ -4022,10 +4005,11 @@
            premium-features
            query-processor
            util
+           warehouses
            warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
+   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/permissions.sandbox
   {:team "UX West"
@@ -4328,7 +4312,7 @@
            task
            users
            util}
-   :model-imports #{:model/AuthIdentity :model/Session :model/User}}
+   :model-imports #{:model/AuthIdentity :model/Session}}
 
   enterprise/tenants
   {:team "Admin Webapp"
@@ -4344,6 +4328,7 @@
            request
            settings
            sso.auth-identity
+           users
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
@@ -4378,11 +4363,9 @@
            transforms
            transforms.base
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table
-                    :model/Transform}}
+           warehouse-schema-overlay
+           warehouses}
+   :model-imports #{:model/Field :model/Table :model/Transform}}
 
   enterprise/transforms.python
   {:team "Graphy"
@@ -4408,12 +4391,10 @@
            transforms.base
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           warehouses}
    :model-exports #{:model/PythonLibrary}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table
-                    :model/TransformRun}}
+   :model-imports #{:model/Field :model/Table :model/TransformRun}}
 
   enterprise/upload
   {:team "UX West"
@@ -4426,8 +4407,9 @@
            premium-features
            upload
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Database :model/Table}}
+           warehouse-schema-overlay
+           warehouses}
+   :model-imports #{:model/Table}}
 
   enterprise/warehouses
   {:team "Gadget"

@@ -59,17 +59,17 @@
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
+                   (measures.db/select-table (:table_id instance)))]
      (mi/can-read? table)))
   ([_model pk]
-   (mi/can-read? (measures.db/measure pk))))
+   (mi/can-read? (measures.db/select-one-measure {:id pk}))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
+                   (measures.db/select-table (:table_id instance)))]
      (and (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -80,14 +80,14 @@
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([_model pk]
-   (mi/can-write? (measures.db/measure pk))))
+   (mi/can-write? (measures.db/select-one-measure {:id pk}))))
 
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
-                  (measures.db/table (:table_id instance)))]
+                  (measures.db/select-table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -112,7 +112,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (measures.db/collections collection-ids))
+                                      (measures.db/select-collections collection-ids))
                                 {})
         ;; Associate collection info with each measure's table
         measures-with-collection (for [measure measures-with-tables
@@ -154,7 +154,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
+                  (measures.db/select-table-perms-columns (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db

@@ -17,7 +17,7 @@
   "Return the next available `pulse_card.position` for the given `pulse`"
   [pulse-id]
   {:pre [(integer? pulse-id)]}
-  (-> (pulse.db/max-pulse-card-position pulse-id)
+  (-> (pulse.db/select-max-pulse-card-position pulse-id)
       :max
       (some-> inc)
       (or 0)))

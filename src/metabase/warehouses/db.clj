@@ -1,50 +1,146 @@
 (ns metabase.warehouses.db
-  "Application database queries for the warehouses module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for `:model/Database`. Every function here is a direct Toucan 2 call with no additional
+  logic, so no other namespace runs a Database query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn router-database-id
-  "The router Database id of the Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :router_database_id :model/Database :id database-id))
+(mr/def ::engine
+  [:or :keyword :string])
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
+(mr/def ::filters
+  "Which Databases a query applies to. Keys mirror the columns of `metabase_database`: a scalar matches that value and
+  a set matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows where that
+  column is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id                     {:optional true} [:or ::lib.schema.id/database [:set ::lib.schema.id/database]]]
+   [:name                   {:optional true} :string]
+   [:engine                 {:optional true} [:or ::engine [:set ::engine]]]
+   [:initial_sync_status    {:optional true} :string]
+   [:is_sample              {:optional true} :boolean]
+   [:is_audit               {:optional true} :boolean]
+   [:is_attached_dwh        {:optional true} :boolean]
+   [:is_stub                {:optional true} :boolean]
+   [:uploads_enabled        {:optional true} :boolean]
+   [:router_database_id     {:optional true} ::lib.schema.id/database]
+   [:router_database_id_set {:optional true} :boolean]])
 
-(mu/defn non-destination-database
-  "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::warehouses.schema/database.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::warehouses.schema/database.column
+                                              [:tuple ::warehouses.schema/database.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+(def ^:private set-columns
+  "Maps each `<column>_set` filter key to the column whose nullness it tests."
+  {:router_database_id_set :router_database_id})
 
-(mu/defn database-by-name
-  "The Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one :model/Database :name database-name))
+(def ^:private lower-columns
+  "Text columns ordered case-insensitively, so `Zebra` does not sort ahead of `apple`."
+  #{:name :engine :description})
 
-(mu/defn set-database-details!
-  "Set the connection details of the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database database-id {:details details}))
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Database columns))
 
-(mu/defn set-database-provider-name!
-  "Set the provider name of the Database with `database-id`, returning the number updated."
-  [database-id    :- ::lib.schema.id/database
-   provider-name  :- :string]
-  (t2/update! :model/Database database-id {:provider_name provider-name}))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts {:set-columns set-columns, :lower-columns lower-columns}))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns set-columns}))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-databases :- [:sequential ::warehouses.schema/database.partial]
+  "The Databases matching `opts`."
+  ([]
+   (select-databases nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn select-one-database :- [:maybe ::warehouses.schema/database.partial]
+  "The first Database matching `opts`, or nil."
+  ([]
+   (select-one-database nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
+
+(mu/defn select-database-pk->instance :- [:map-of ::lib.schema.id/database ::warehouses.schema/database.partial]
+  "A map of id to the Database matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::opts]]
+  (apply t2/select-pk->fn identity (u.query/model-with-pk-columns :model/Database :id columns) (->args opts)))
+
+(mu/defn select-database-pks :- [:set ::lib.schema.id/database]
+  "The ids of the Databases matching `opts`."
+  ([]
+   (select-database-pks nil))
+  ([opts :- [:maybe ::opts]]
+   (or (apply t2/select-pks-set :model/Database (->args opts)) #{})))
+
+(mu/defn select-one-database-pk :- [:maybe ::lib.schema.id/database]
+  "The id of the first Database matching `opts`, or nil."
+  ([]
+   (select-one-database-pk nil))
+  ([opts :- [:maybe ::opts]]
+   (apply t2/select-one-pk :model/Database (->args opts))))
+
+(mu/defn count-databases :- :int
+  "The number of Databases matching `opts`."
+  ([]
+   (count-databases nil))
+  ([opts :- [:maybe ::opts]]
+   (apply t2/count :model/Database (->args opts))))
+
+(mu/defn database-exists? :- :boolean
+  "Whether a Database matching `opts` exists."
+  [opts :- [:maybe ::opts]]
+  (apply t2/exists? :model/Database (->args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-database! :- ::warehouses.schema/database
+  "Insert the Database `row` and return the inserted instance."
+  [row :- ::warehouses.schema/database.create]
+  (t2/insert-returning-instance! :model/Database row))
+
+(mu/defn insert-databases! :- [:sequential ::warehouses.schema/database]
+  "Insert the Database `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouses.schema/database.create]]
+  (t2/insert-returning-instances! :model/Database rows))
+
+(mu/defn update-databases! :- :int
+  "Apply `changes` to every Database matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::warehouses.schema/database.update]
+  (apply t2/update! :model/Database (conj (->kv-args opts) changes)))
+
+(mu/defn update-databases-returning-pks! :- [:sequential ::lib.schema.id/database]
+  "Apply `changes` to every Database matching `opts`, returning the ids of the updated rows."
+  [opts    :- [:maybe ::opts]
+   changes :- ::warehouses.schema/database.update]
+  (apply t2/update-returning-pks! :model/Database (conj (->kv-args opts) changes)))
+
+(mu/defn delete-databases! :- :int
+  "Delete every Database matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/Database (->args opts)))
+
+;;; ------------------------------- Queries used only by the warehouses module -------------------------------
 
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-destination Database of each engine."
@@ -56,6 +152,22 @@
                         [:= :is_sample false]
                         [:= :router_database_id nil]]
              :group-by [:engine]}))
+
+(mu/defn databases-for-serdes-reducible
+  "A reducible of the Databases to export via serdes: routing destinations and the sample database are always
+  excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
+  of `filter-ids` when `filter-column` is given."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   include-h2?   :- :boolean]
+  (t2/reducible-select :model/Database
+                       {:where [:and
+                                (when filter-column
+                                  [:in filter-column filter-ids])
+                                [:= :router_database_id nil]
+                                [:not= :is_sample true]
+                                (when-not include-h2?
+                                  [:not= :engine "h2"])]}))
 
 (defn- table-ids-of-database-query
   [database-id]
@@ -108,11 +220,6 @@
   (t2/query {:delete-from (t2/table-name :model/Card)
              :where       [:= :database_id database-id]}))
 
-(mu/defn disable-uploads-for-all-databases!
-  "Disable uploads on every Database that has them enabled, returning the number updated."
-  []
-  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
-
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
@@ -138,23 +245,6 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)
              {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn databases-for-serdes-reducible
-  "A reducible of the Databases to export via serdes: routing destinations and the sample database are always
-  excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
-  of `filter-ids` when `filter-column` is given."
-  [filter-column :- [:maybe :keyword]
-   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   include-h2?   :- :boolean]
-  (t2/reducible-select :model/Database
-                       {:where [:and
-                                (when filter-column
-                                  [:in filter-column filter-ids])
-                                [:= :router_database_id nil]
-                                ;; never export the sample database, regardless of its driver
-                                [:not= :is_sample true]
-                                (when-not include-h2?
-                                  [:not= :engine "h2"])]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

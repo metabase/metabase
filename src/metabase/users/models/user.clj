@@ -94,7 +94,7 @@
   (when user-or-user-id
     (settings-map
      (if (integer? user-or-user-id)
-       (users.db/user-settings user-or-user-id)
+       (:settings (users.db/select-one-user {:id user-or-user-id :columns [:settings]}))
        (:settings user-or-user-id)))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
@@ -331,7 +331,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (users.db/user-count)]
+    (let [user-count (users.db/count-users)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))

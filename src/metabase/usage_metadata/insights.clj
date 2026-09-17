@@ -89,17 +89,17 @@
 (defn- grouped-segment-rows
   "Group + sum `source_segment_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (usage-metadata.db/grouped-segment-rows source-type source-id bucket-start bucket-end))
+  (usage-metadata.db/select-grouped-segment-rows source-type source-id bucket-start bucket-end))
 
 (defn- grouped-metric-rows
   "Group + sum `source_metric_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (usage-metadata.db/grouped-metric-rows source-type source-id bucket-start bucket-end))
+  (usage-metadata.db/select-grouped-metric-rows source-type source-id bucket-start bucket-end))
 
 (defn- grouped-dimension-rows
   "Group + sum `source_dimension_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (usage-metadata.db/grouped-dimension-rows source-type source-id bucket-start bucket-end))
+  (usage-metadata.db/select-grouped-dimension-rows source-type source-id bucket-start bucket-end))
 
 (defn- decode-atom-fingerprints [x]
   (cond
@@ -113,14 +113,14 @@
   Each returned row carries the whole-clause JSON, the atom-fingerprint array, and the summed count
   across the window — the input shape expected by the FIM pass."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (->> (usage-metadata.db/grouped-composite-rows source-type source-id bucket-start bucket-end)
+  (->> (usage-metadata.db/select-grouped-composite-rows source-type source-id bucket-start bucket-end)
        (mapv (fn [row]
                (update row :atom_fingerprints decode-atom-fingerprints)))))
 
 (defn- grouped-profile-rows
   "Group + sum `source_dimension_profile_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (usage-metadata.db/grouped-profile-rows source-type source-id bucket-start bucket-end))
+  (usage-metadata.db/select-grouped-profile-rows source-type source-id bucket-start bucket-end))
 
 (defn- wrap-query
   "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."

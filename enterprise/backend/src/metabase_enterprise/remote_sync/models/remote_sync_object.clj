@@ -25,13 +25,13 @@
    Returns true if any remote-synced object has a status other than 'synced', false otherwise.
    Excludes transform model types when transform sync is disabled."
   []
-  (remote-sync.db/dirty-rso-exists? (spec/excluded-model-types)))
+  (remote-sync.db/dirty-remote-sync-object-exists? (spec/excluded-model-types)))
 
 (defn dirty-rows
   "Returns the raw RemoteSyncObject rows that are not yet synced (status != 'synced'),
   excluding disabled model types (e.g. transforms when transform sync is off)."
   []
-  (remote-sync.db/dirty-rsos (spec/excluded-model-types)))
+  (remote-sync.db/select-dirty-remote-sync-objects (spec/excluded-model-types)))
 
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.

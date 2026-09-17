@@ -1,39 +1,267 @@
 (ns metabase.dashboards.db
   "Application database queries for the dashboards module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The queries below follow [[::opts]], [[::dashcard-opts]], [[::dashboard-card-series-opts]], and
+  [[::dashboard-tab-opts]]; queries that do not fit them live in the dashboards-only section at the bottom of this
+  namespace."
   (:require
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+;;; ------------------------------------------------- Dashboard -------------------------------------------------
 
-(mu/defn insert-dashboard!
+(mr/def ::filters
+  "Which Dashboards a query applies to. Keys mirror the columns of `report_dashboard`: a scalar matches that value
+  and a set matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows where
+  that column is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id                {:optional true} [:or ::lib.schema.id/dashboard [:set ::lib.schema.id/dashboard]]]
+   [:entity_id         {:optional true} [:or :string [:set :string]]]
+   [:name              {:optional true} :string]
+   [:collection_id     {:optional true} ::lib.schema.id/collection]
+   [:collection_id_set {:optional true} :boolean]
+   [:creator_id        {:optional true} ::lib.schema.id/user]
+   [:archived          {:optional true} :boolean]
+   [:enable_embedding  {:optional true} :boolean]
+   [:public_uuid       {:optional true} :string]
+   [:public_uuid_set   {:optional true} :boolean]])
+
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::dashboards.schema/dashboard.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::dashboards.schema/dashboard.column
+                                              [:tuple ::dashboards.schema/dashboard.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(def ^:private set-columns
+  "Maps each `<column>_set` filter key to the column whose nullness it tests."
+  {:collection_id_set :collection_id
+   :public_uuid_set   :public_uuid})
+
+(def ^:private lower-columns
+  "Text columns ordered case-insensitively, so `Zebra` does not sort ahead of `apple`."
+  #{:name})
+
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Dashboard columns))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts {:set-columns set-columns, :lower-columns lower-columns}))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns set-columns}))
+
+;;; ---- Reads ----
+
+(mu/defn select-one-dashboard :- [:maybe ::dashboards.schema/dashboard.partial]
+  "The first Dashboard matching `opts`, or nil."
+  ([]
+   (select-one-dashboard nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
+
+;;; ---- Writes ----
+
+(mu/defn insert-dashboard! :- ::dashboards.schema/dashboard
   "Insert the Dashboard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard.update]
+  [row :- ::dashboards.schema/dashboard.create]
   (t2/insert-returning-instance! :model/Dashboard row))
 
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated.
+(mu/defn update-dashboards! :- :int
+  "Apply `changes` to every Dashboard matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::dashboards.schema/dashboard.update]
+  (apply t2/update! :model/Dashboard (conj (->kv-args opts) changes)))
 
-  Takes the whole `::dashboard.update` — \"what an update (or insert) of a Dashboard accepts\" — the same
-  schema [[insert-dashboard!]] takes. It was narrowed to `[:parameters]` when the only caller wrote nothing
-  else; `metabase.dashboards.write/update-dashboard!` writes the full attribute set (`:name`, `:description`,
-  `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+;;; ------------------------------------------------ DashboardCard ------------------------------------------------
+
+(mr/def ::dashcard-filters
+  "Which DashboardCards a query applies to. Keys mirror the columns of `report_dashboardcard`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id               {:optional true} [:or ::lib.schema.id/dashcard [:set ::lib.schema.id/dashcard]]]
+   [:dashboard_id     {:optional true} ::lib.schema.id/dashboard]
+   [:dashboard_tab_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
+
+(mr/def ::dashcard-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::dashcard-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::dashboards.schema/dashboard-card.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::dashboards.schema/dashboard-card.column
+                                              [:tuple ::dashboards.schema/dashboard-card.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->dashcard-model
+  [columns]
+  (u.query/model-with-columns :model/DashboardCard columns))
+
+(defn- ->dashcard-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->dashcard-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ---- Reads ----
+
+(mu/defn select-dashcards :- [:sequential ::dashboards.schema/dashboard-card.partial]
+  "The DashboardCards matching `opts`."
+  ([]
+   (select-dashcards nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::dashcard-opts]]
+   (apply t2/select (->dashcard-model columns) (->dashcard-args opts))))
+
+(mu/defn select-one-dashcard :- [:maybe ::dashboards.schema/dashboard-card.partial]
+  "The first DashboardCard matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::dashcard-opts]]
+  (apply t2/select-one (->dashcard-model columns) (->dashcard-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn insert-dashcards! :- [:sequential ::lib.schema.id/dashcard]
+  "Insert the DashboardCard `rows` and return their ids."
+  [rows :- [:sequential ::dashboards.schema/dashboard-card.create]]
+  (t2/insert-returning-pks! :model/DashboardCard rows))
+
+(mu/defn update-dashcards! :- :int
+  "Apply `changes` to every DashboardCard matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::dashcard-opts]
+   changes :- ::dashboards.schema/dashboard-card.update]
+  (apply t2/update! :model/DashboardCard (conj (->dashcard-kv-args opts) changes)))
+
+(mu/defn delete-dashcards! :- :int
+  "Delete every DashboardCard matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::dashcard-opts]]
+  (apply t2/delete! :model/DashboardCard (->dashcard-args opts)))
+
+;;; --------------------------------------------- DashboardCardSeries ---------------------------------------------
+
+(mr/def ::dashboard-card-series-filters
+  "Which DashboardCardSeries a query applies to. Keys mirror the columns of `dashboardcard_series`: a scalar
+  matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:dashboardcard_id {:optional true} [:or ::lib.schema.id/dashcard [:set ::lib.schema.id/dashcard]]]])
+
+(mr/def ::dashboard-card-series-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::dashboard-card-series-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::dashboards.schema/dashboard-card-series.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::dashboards.schema/dashboard-card-series.column
+                                              [:tuple ::dashboards.schema/dashboard-card-series.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->dashboard-card-series-args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ---- Reads ----
+
+(mu/defn select-dashcard-series :- [:sequential ::dashboards.schema/dashboard-card-series.partial]
+  "The DashboardCardSeries matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::dashboard-card-series-opts]]
+  (apply t2/select (u.query/model-with-columns :model/DashboardCardSeries columns) (->dashboard-card-series-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn insert-dashcard-series! :- :int
+  "Insert the DashboardCardSeries `rows`, returning the number inserted."
+  [rows :- [:sequential ::dashboards.schema/dashboard-card-series.create]]
+  (t2/insert! :model/DashboardCardSeries rows))
+
+(mu/defn delete-dashcard-series! :- :int
+  "Delete every DashboardCardSeries matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::dashboard-card-series-opts]]
+  (apply t2/delete! :model/DashboardCardSeries (->dashboard-card-series-args opts)))
+
+;;; ------------------------------------------------- DashboardTab -------------------------------------------------
+
+(mr/def ::dashboard-tab-filters
+  "Which DashboardTabs a query applies to. Keys mirror the columns of `dashboard_tab`: a scalar matches that value
+  and a set matches any of its values."
+  [:map {:closed true}
+   [:id           {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:dashboard_id {:optional true} [:or ::lib.schema.id/dashboard [:set ::lib.schema.id/dashboard]]]])
+
+(mr/def ::dashboard-tab-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::dashboard-tab-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::dashboards.schema/dashboard-tab.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::dashboards.schema/dashboard-tab.column
+                                              [:tuple ::dashboards.schema/dashboard-tab.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->dashboard-tab-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->dashboard-tab-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ---- Reads ----
+
+(mu/defn select-one-dashboard-tab :- [:maybe ::dashboards.schema/dashboard-tab.partial]
+  "The first DashboardTab matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::dashboard-tab-opts]]
+  (apply t2/select-one (u.query/model-with-columns :model/DashboardTab columns) (->dashboard-tab-args opts)))
+
+(mu/defn select-dashboard-tabs :- [:sequential ::dashboards.schema/dashboard-tab.partial]
+  "The DashboardTabs matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::dashboard-tab-opts]]
+  (apply t2/select (u.query/model-with-columns :model/DashboardTab columns) (->dashboard-tab-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn insert-dashboard-tabs! :- [:sequential ms/PositiveInt]
+  "Insert the DashboardTab `rows` and return their ids."
+  [rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
+  (t2/insert-returning-pks! :model/DashboardTab rows))
+
+(mu/defn update-dashboard-tabs! :- :int
+  "Apply `changes` to every DashboardTab matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::dashboard-tab-opts]
+   changes :- ::dashboards.schema/dashboard-tab.update]
+  (apply t2/update! :model/DashboardTab (conj (->dashboard-tab-kv-args opts) changes)))
+
+(mu/defn delete-dashboard-tabs! :- :int
+  "Delete every DashboardTab matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::dashboard-tab-opts]]
+  (apply t2/delete! :model/DashboardTab (->dashboard-tab-args opts)))
+
+;;; ------------------------------- Queries used only by the dashboards module -------------------------------
 
 (mu/defn delete-dashboard-revisions!
   "Delete the Revisions of the Dashboard with `dashboard-id`, returning the number deleted."
@@ -45,14 +273,7 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/delete! :model/Pulse :dashboard_id dashboard-id))
 
-(mu/defn dashboard-tabs-for-dashboards
-  "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/DashboardTab
-             :dashboard_id [:in dashboard-ids]
-             {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
-
-(mu/defn dashboard-collection-authority-levels
+(mu/defn select-dashboard-collection-authority-levels
   "The id and Collection `authority_level` of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (mdb/query {:select    [:dashboard.id :collection.authority_level]
@@ -60,7 +281,7 @@
               :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
               :where     [:in :dashboard.id dashboard-ids]}))
 
-(mu/defn dashcards-with-visible-cards-for-dashboards
+(mu/defn select-dashcards-with-visible-cards-for-dashboards
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
   not archived by itself, or absent), with their Card's Collection authority level, in dashboard then creation order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
@@ -134,8 +355,8 @@
 
 (mu/defn insert-card!
   "Insert the Card `row` and return the inserted instance."
-  [row :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card row))
+  [row :- ::queries.schema/card.create]
+  (queries.db/insert-card! row))
 
 (defn dashboard-question-exists?
   "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
@@ -151,18 +372,6 @@
                        [:not= :dashboard_id nil]
                        [:in :id card-ids]]}))
 
-(mu/defn dashcard-serdes-columns
-  "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
-  `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
-             :dashboard_id dashboard-id))
-
-(mu/defn dashcard-series-columns
-  "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in dashcard-ids]))
-
 (mu/defn series-cards-for-dashcards
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
@@ -171,11 +380,6 @@
              {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
               :where     [:in :series.dashboardcard_id dashcard-ids]
               :order-by  [[:series.position :asc]]}))
-
-(mu/defn dashcard
-  "The DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn multi-cards-for-dashcard
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
@@ -190,49 +394,10 @@
                           [:= :newcard.archived false]
                           [:= :dashcard.id dashcard-id]]}))
 
-(mu/defn dashcards-by-ids
-  "The DashboardCards with `dashcard-ids`."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select :model/DashboardCard :id [:in dashcard-ids]))
-
-(mu/defn dashcards-in-tabs
-  "The DashboardCards of the Dashboard with `dashboard-id` on the DashboardTabs with `tab-ids`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   tab-ids      :- [:sequential ms/PositiveInt]]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids]))
-
-(mu/defn insert-dashcards!
-  "Insert the DashboardCard `rows` and return their ids."
-  [rows :- [:sequential
-            ::dashboards.schema/dashboard-card.update]]
-  (t2/insert-returning-pks! :model/DashboardCard rows))
-
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard dashcard-id changes))
-
-(mu/defn delete-dashcards!
-  "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCard :id [:in dashcard-ids]))
-
 (mu/defn delete-pulse-cards-for-dashcards!
   "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
-
-(mu/defn delete-series-for-dashcards!
-  "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
-
-(mu/defn insert-dashcard-series!
-  "Insert the DashboardCardSeries `rows`, returning the number inserted."
-  [rows :- [:sequential
-            (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
-  (t2/insert! :model/DashboardCardSeries rows))
 
 (defn parameter-card-card-ids
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
@@ -368,25 +533,3 @@
   (`[[model #{ids}] ...]`) point at."
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
-
-(mu/defn dashboard-tab
-  "The DashboardTab with `tab-id`, or nil."
-  [tab-id :- ms/PositiveInt]
-  (t2/select-one :model/DashboardTab :id tab-id))
-
-(mu/defn insert-dashboard-tabs!
-  "Insert the DashboardTab `rows` and return their ids."
-  [rows :- [:sequential
-            (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position :entity_id])]]
-  (t2/insert-returning-pks! :model/DashboardTab rows))
-
-(mu/defn update-dashboard-tab!
-  "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
-  [tab-id  :- ms/PositiveInt
-   changes :- (mut/select-keys ::dashboards.schema/dashboard-tab.update [:name :position])]
-  (t2/update! :model/DashboardTab tab-id changes))
-
-(mu/defn delete-dashboard-tabs!
-  "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
-  [tab-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardTab :id [:in tab-ids]))

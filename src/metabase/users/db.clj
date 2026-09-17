@@ -1,6 +1,9 @@
 (ns metabase.users.db
   "Application database queries for the users module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The queries below follow [[::user-opts]] and [[::user-parameter-value-opts]]; queries that do not fit them live in
+  the users-only section at the bottom of this namespace."
   (:require
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
@@ -10,8 +13,153 @@
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
+
+;;; -------------------------------------------------- User -------------------------------------------------------
+
+(mr/def ::user-filters
+  "Which Users a query applies to. Keys mirror the columns of `:core_user`: a scalar matches that value and a set
+  matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows where that column
+  is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id              {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:entity_id       {:optional true} [:or :string [:set :string]]]
+   [:email           {:optional true} [:or :string [:set :string]]]
+   [:first_name      {:optional true} [:maybe :string]]
+   [:last_name       {:optional true} [:maybe :string]]
+   [:type            {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:is_active       {:optional true} :boolean]
+   [:is_superuser    {:optional true} :boolean]
+   [:is_data_analyst {:optional true} :boolean]
+   [:sso_source      {:optional true} [:maybe [:or :keyword :string]]]
+   [:tenant_id       {:optional true} :int]
+   [:tenant_id_set   {:optional true} :boolean]
+   [:last_login_set  {:optional true} :boolean]
+   [:deactivated_with_tenant {:optional true} :boolean]])
+
+(mr/def ::user-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::user-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::users.schema/user.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::users.schema/user.column
+                                              [:tuple ::users.schema/user.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(def ^:private user-set-columns
+  "Maps each `<column>_set` filter key of [[::user-filters]] to the column whose nullness it tests."
+  {:tenant_id_set  :tenant_id
+   :last_login_set :last_login})
+
+(defn- ->user-model
+  [columns]
+  (u.query/model-with-columns :model/User columns))
+
+(defn- ->user-args
+  [opts]
+  (u.query/opts->args opts {:set-columns user-set-columns}))
+
+(defn- ->user-kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns user-set-columns}))
+
+;;; ---------------------------------------------- UserParameterValue -----------------------------------------------
+
+(mr/def ::user-parameter-value-filters
+  "Which UserParameterValues a query applies to. Keys mirror the columns of `user_parameter_value`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:user_id      {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:dashboard_id {:optional true} [:or ::lib.schema.id/dashboard [:set ::lib.schema.id/dashboard]]]
+   [:parameter_id {:optional true} [:or :string [:set :string]]]])
+
+(mr/def ::user-parameter-value-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::user-parameter-value-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::users.schema/user-parameter-value.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::users.schema/user-parameter-value.column
+                                              [:tuple ::users.schema/user-parameter-value.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->user-parameter-value-model
+  [columns]
+  (u.query/model-with-columns :model/UserParameterValue columns))
+
+(defn- ->user-parameter-value-args
+  [opts]
+  (u.query/opts->args opts))
+
+;;; ------------------------------------------------- Reads --------------------------------------------------------
+
+(mu/defn select-users :- [:sequential ::users.schema/user.partial]
+  "The Users matching `opts`."
+  ([]
+   (select-users nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::user-opts]]
+   (apply t2/select (->user-model columns) (->user-args opts))))
+
+(mu/defn select-one-user :- [:maybe ::users.schema/user.partial]
+  "The first User matching `opts`, or nil."
+  ([]
+   (select-one-user nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::user-opts]]
+   (apply t2/select-one (->user-model columns) (->user-args opts))))
+
+(mu/defn select-user-pks :- [:set ::lib.schema.id/user]
+  "The ids of the Users matching `opts`."
+  ([]
+   (select-user-pks nil))
+  ([opts :- [:maybe ::user-opts]]
+   (or (apply t2/select-pks-set :model/User (->user-args opts)) #{})))
+
+(mu/defn select-user-pk->instance :- [:map-of ::lib.schema.id/user ::users.schema/user.partial]
+  "A map of id to the User matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::user-opts]]
+  (apply t2/select-pk->fn identity (u.query/model-with-pk-columns :model/User :id columns) (->user-args opts)))
+
+(mu/defn count-users :- :int
+  "The number of Users matching `opts`."
+  ([]
+   (count-users nil))
+  ([opts :- [:maybe ::user-opts]]
+   (apply t2/count :model/User (->user-args opts))))
+
+(mu/defn user-exists? :- :boolean
+  "Whether a User matching `opts` exists."
+  [opts :- [:maybe ::user-opts]]
+  (apply t2/exists? :model/User (->user-args opts)))
+
+(mu/defn select-user-parameter-values :- [:sequential ::users.schema/user-parameter-value.partial]
+  "The UserParameterValues matching `opts`."
+  ([]
+   (select-user-parameter-values nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::user-parameter-value-opts]]
+   (apply t2/select (->user-parameter-value-model columns) (->user-parameter-value-args opts))))
+
+;;; ------------------------------------------------- Writes --------------------------------------------------------
+
+(mu/defn update-users! :- :int
+  "Apply `changes` to every User matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::user-opts]
+   changes :- ::users.schema/user.update]
+  (apply t2/update! :model/User (conj (->user-kv-args opts) changes)))
+
+(mu/defn delete-users! :- :int
+  "Delete every User matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::user-opts]]
+  (apply t2/delete! :model/User (->user-args opts)))
+
+;;; ------------------------------- Queries used only by the users module ---------------------------------
 
 (defn- status-clause
   "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated
@@ -68,10 +216,10 @@
   (apply sql.helpers/order-by honeysql-map (sort-order-by sort)))
 
 (mu/defn filter-clauses
-  "Honeysql clauses for filtering on users. See [[metabase.users.schema/user-filters]] for the accepted options."
+  "Honeysql clauses for filtering on users. See [[metabase.users.schema/user-list-filters]] for the accepted options."
   [{:keys [status query group-ids user-ids include-deactivated is-data-analyst? can-access-data-studio? sort
            limit offset]
-    :as   options} :- ::users.schema/user-filters]
+    :as   options} :- ::users.schema/user-list-filters]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
@@ -138,11 +286,6 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in user-ids]))
 
-(mu/defn user-count
-  "The number of Users."
-  []
-  (t2/count :model/User))
-
 (mu/defn tenant-collection-ids
   "A map of Tenant id to tenant Collection id for the Tenants with `tenant-ids`."
   [tenant-ids :- [:set ms/PositiveInt]]
@@ -150,7 +293,7 @@
 
 (mu/defn insert-user!
   "Insert the User `row` and return the inserted instance."
-  [row :- ::users.schema/user.update]
+  [row :- ::users.schema/user.create]
   (t2/insert-returning-instance! :model/User row))
 
 (mu/defn same-groups-user-ids
@@ -183,21 +326,10 @@
 (mu/defn insert-user-parameter-values!
   "Insert the UserParameterValue `rows`."
   [rows :- [:sequential
-            (mut/select-keys ::users.schema/user-parameter-value.update [:user_id :dashboard_id :parameter_id :value])]]
+            (mut/select-keys ::users.schema/user-parameter-value.create [:user_id :dashboard_id :parameter_id :value])]]
   (t2/insert! :model/UserParameterValue rows))
 
-(mu/defn user-parameter-values-for-dashboards
-  "The UserParameterValues of the User with `user-id` for the Dashboards with `dashboard-ids`."
-  [user-id       :- ::lib.schema.id/user
-   dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id user-id))
-
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- :int]
-  (t2/exists? :model/Database :id database-id))
-
-(mu/defn admin-or-self-visible-user
+(mu/defn admin-or-self-visible-user :- [:maybe ::users.schema/user.partial]
   "The User with `id`, with the given `columns`, or nil. When `type` and/or `is-active?` are given (non-nil), also
   requires `:type` and/or `:is_active` to match."
   [columns :- [:sequential :keyword]
@@ -205,10 +337,9 @@
    & {:keys [type is-active?]} :- [:maybe [:map {:closed true}
                                            [:type        {:optional true} [:maybe [:or :keyword :string]]]
                                            [:is-active?  {:optional true} [:maybe :boolean]]]]]
-  (apply t2/select-one (into [:model/User] columns)
-         :id id
-         (concat (when type [:type type])
-                 (when (some? is-active?) [:is_active is-active?]))))
+  (select-one-user (cond-> {:id id :columns columns}
+                     type               (assoc :type type)
+                     (some? is-active?) (assoc :is_active is-active?))))
 
 (mu/defn user-email-exists?
   "Whether a User whose lower-cased email is `lower-case-email` exists."

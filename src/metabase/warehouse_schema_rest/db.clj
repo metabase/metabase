@@ -45,7 +45,7 @@
 
 (mu/defn insert-dimension!
   "Insert the Dimension `row`."
-  [row :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:field_id :type :name :human_readable_field_id])]
+  [row :- (mut/select-keys ::warehouse-schema.schema/dimension.create [:field_id :type :name :human_readable_field_id])]
   (t2/insert! :model/Dimension row))
 
 (mu/defn update-dimension!
@@ -134,16 +134,6 @@
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
-(mu/defn non-destination-database
-  "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

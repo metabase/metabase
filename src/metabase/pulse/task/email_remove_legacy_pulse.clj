@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- has-legacy-pulse? []
-  (pos? (pulse.db/legacy-pulse-count)))
+  (pos? (pulse.db/count-pulses {:dashboard_id_set false :alert_condition_set false :archived false})))
 
 (def ^:private template-name "warn_deprecate_pulse")
 
@@ -21,7 +21,7 @@
   (when (and (channel.settings/email-configured?)
              (has-legacy-pulse?))
     (log/info "Sending email to admins about removal of legacy pulses")
-    (let [legacy-pulse (->> (pulse.db/legacy-pulses)
+    (let [legacy-pulse (->> (pulse.db/select-pulses {:dashboard_id_set false :alert_condition_set false :archived false})
                             (map #(assoc % :url (urls/legacy-pulse-url (:id %)))))]
       (doseq [admin (pulse.db/superusers)]
         (email/send-email-retrying!

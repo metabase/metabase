@@ -133,13 +133,13 @@
   (let [user-id (api/check-404 api/*current-user-id*)
         limit   (or (request/limit) default-limit)
         offset  (or (request/offset) default-offset)
-        total   (metabot.db/conversation-count user-id profile_id)
+        total   (metabot.db/count-metabot-conversations user-id profile_id)
         ;; Aggregates are per-row correlated subqueries so pagination stays on the outer
         ;; `metabot_conversation` scan rather than grouping every message the user owns.
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
-        rows    (metabot.db/conversations-page user-id profile_id limit offset)]
+        rows    (metabot.db/select-metabot-conversations-page user-id profile_id limit offset)]
     {:data   (mapv #(-> %
                         (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
                                       :forked_from_conversation_id])
@@ -186,7 +186,7 @@
   [{:keys [id]} :- ConversationIdParams
    _query-params
    {:keys [message_id]} :- ForkConversationBody]
-  (let [conversation (api/check-404 (metabot.db/conversation-id-and-user-id id))]
+  (let [conversation (api/check-404 (metabot.db/select-one-metabot-conversation {:id id :columns [:id :user_id]}))]
     (api/check-403 (= (:user_id conversation) api/*current-user-id*))
     (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
       (api/check-400 (some? new-conversation-id)

@@ -2,13 +2,109 @@
   "Application database queries for the usage metadata module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mr/def ::source-segment-daily-filters
+  "Which SourceSegmentDaily rollup rows a query applies to. Keys mirror the columns of `source_segment_daily`: a
+  scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:bucket_date {:optional true} [:or ms/TemporalInstant [:set ms/TemporalInstant]]]])
+
+(mr/def ::source-segment-daily-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::source-segment-daily-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::usage-metadata.schema/source-segment-daily.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::usage-metadata.schema/source-segment-daily.column
+                                              [:tuple ::usage-metadata.schema/source-segment-daily.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::source-segment-composite-daily-filters
+  "Which SourceSegmentCompositeDaily rollup rows a query applies to. Keys mirror the columns of
+  `source_segment_composite_daily`: a scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:bucket_date {:optional true} [:or ms/TemporalInstant [:set ms/TemporalInstant]]]])
+
+(mr/def ::source-segment-composite-daily-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::source-segment-composite-daily-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::usage-metadata.schema/source-segment-composite-daily.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::usage-metadata.schema/source-segment-composite-daily.column
+                                              [:tuple ::usage-metadata.schema/source-segment-composite-daily.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::source-metric-daily-filters
+  "Which SourceMetricDaily rollup rows a query applies to. Keys mirror the columns of `source_metric_daily`: a
+  scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:bucket_date {:optional true} [:or ms/TemporalInstant [:set ms/TemporalInstant]]]])
+
+(mr/def ::source-metric-daily-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::source-metric-daily-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::usage-metadata.schema/source-metric-daily.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::usage-metadata.schema/source-metric-daily.column
+                                              [:tuple ::usage-metadata.schema/source-metric-daily.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::source-dimension-daily-filters
+  "Which SourceDimensionDaily rollup rows a query applies to. Keys mirror the columns of `source_dimension_daily`: a
+  scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:bucket_date {:optional true} [:or ms/TemporalInstant [:set ms/TemporalInstant]]]])
+
+(mr/def ::source-dimension-daily-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::source-dimension-daily-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::usage-metadata.schema/source-dimension-daily.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::usage-metadata.schema/source-dimension-daily.column
+                                              [:tuple ::usage-metadata.schema/source-dimension-daily.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::source-dimension-profile-daily-filters
+  "Which SourceDimensionProfileDaily rollup rows a query applies to. Keys mirror the columns of
+  `source_dimension_profile_daily`: a scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id          {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:bucket_date {:optional true} [:or ms/TemporalInstant [:set ms/TemporalInstant]]]])
+
+(mr/def ::source-dimension-profile-daily-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::source-dimension-profile-daily-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::usage-metadata.schema/source-dimension-profile-daily.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::usage-metadata.schema/source-dimension-profile-daily.column
+                                              [:tuple ::usage-metadata.schema/source-dimension-profile-daily.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
 (mu/defn query-execution-hash-counts
   "The `:hash` and execution count `:n` of the QueryExecutions started at or after `started-at` and before
@@ -32,85 +128,86 @@
    query-hashes :- [:sequential bytes?]]
   (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in query-hashes]))
 
+;;; ---------------------------------------------- Reads / Writes ----------------------------------------------
+;;; The primitives below follow [[::source-segment-daily-opts]] and its per-model siblings; the range-bounded
+;;; "before" deletes and the grouped aggregates do not fit that shape and live in the bespoke section below.
+
+(mu/defn delete-segment-rollups!
+  "Delete the SourceSegmentDaily rollup rows matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::source-segment-daily-opts]]
+  (apply t2/delete! :model/SourceSegmentDaily (u.query/opts->args opts)))
+
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (t2/delete! :model/SourceSegmentDaily :bucket_date [:< bucket-date]))
 
-(mu/defn delete-segment-rollups-for-day!
-  "Delete the SourceSegmentDaily rollup rows bucketed on `bucket-date`."
-  [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date bucket-date))
-
 (mu/defn insert-segment-rollups!
   "Insert `rows` into SourceSegmentDaily."
-  [rows :- [:sequential
-            (mut/select-keys ::usage-metadata.schema/source-segment-daily.update [:source_type :source_id :ownership_mode :field_id :predicate :bucket_date :count])]]
+  [rows :- [:sequential ::usage-metadata.schema/source-segment-daily.create]]
   (t2/insert! :model/SourceSegmentDaily rows))
+
+(mu/defn delete-segment-composite-rollups!
+  "Delete the SourceSegmentCompositeDaily rollup rows matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::source-segment-composite-daily-opts]]
+  (apply t2/delete! :model/SourceSegmentCompositeDaily (u.query/opts->args opts)))
 
 (mu/defn delete-segment-composite-rollups-before!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< bucket-date]))
 
-(mu/defn delete-segment-composite-rollups-for-day!
-  "Delete the SourceSegmentCompositeDaily rollup rows bucketed on `bucket-date`."
-  [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date bucket-date))
-
 (mu/defn insert-segment-composite-rollups!
   "Insert `rows` into SourceSegmentCompositeDaily."
-  [rows :- [:sequential
-            ::usage-metadata.schema/source-segment-composite-daily.update]]
+  [rows :- [:sequential ::usage-metadata.schema/source-segment-composite-daily.create]]
   (t2/insert! :model/SourceSegmentCompositeDaily rows))
+
+(mu/defn delete-metric-rollups!
+  "Delete the SourceMetricDaily rollup rows matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::source-metric-daily-opts]]
+  (apply t2/delete! :model/SourceMetricDaily (u.query/opts->args opts)))
 
 (mu/defn delete-metric-rollups-before!
   "Delete the SourceMetricDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (t2/delete! :model/SourceMetricDaily :bucket_date [:< bucket-date]))
 
-(mu/defn delete-metric-rollups-for-day!
-  "Delete the SourceMetricDaily rollup rows bucketed on `bucket-date`."
-  [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date bucket-date))
-
 (mu/defn insert-metric-rollups!
   "Insert `rows` into SourceMetricDaily."
-  [rows :- [:sequential
-            ::usage-metadata.schema/source-metric-daily.update]]
+  [rows :- [:sequential ::usage-metadata.schema/source-metric-daily.create]]
   (t2/insert! :model/SourceMetricDaily rows))
+
+(mu/defn delete-dimension-rollups!
+  "Delete the SourceDimensionDaily rollup rows matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::source-dimension-daily-opts]]
+  (apply t2/delete! :model/SourceDimensionDaily (u.query/opts->args opts)))
 
 (mu/defn delete-dimension-rollups-before!
   "Delete the SourceDimensionDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (t2/delete! :model/SourceDimensionDaily :bucket_date [:< bucket-date]))
 
-(mu/defn delete-dimension-rollups-for-day!
-  "Delete the SourceDimensionDaily rollup rows bucketed on `bucket-date`."
-  [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date bucket-date))
-
 (mu/defn insert-dimension-rollups!
   "Insert `rows` into SourceDimensionDaily."
-  [rows :- [:sequential
-            ::usage-metadata.schema/source-dimension-daily.update]]
+  [rows :- [:sequential ::usage-metadata.schema/source-dimension-daily.create]]
   (t2/insert! :model/SourceDimensionDaily rows))
+
+(mu/defn delete-dimension-profile-rollups!
+  "Delete the SourceDimensionProfileDaily rollup rows matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::source-dimension-profile-daily-opts]]
+  (apply t2/delete! :model/SourceDimensionProfileDaily (u.query/opts->args opts)))
 
 (mu/defn delete-dimension-profile-rollups-before!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
   (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< bucket-date]))
 
-(mu/defn delete-dimension-profile-rollups-for-day!
-  "Delete the SourceDimensionProfileDaily rollup rows bucketed on `bucket-date`."
-  [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date bucket-date))
-
 (mu/defn insert-dimension-profile-rollups!
   "Insert `rows` into SourceDimensionProfileDaily."
-  [rows :- [:sequential
-            ::usage-metadata.schema/source-dimension-profile-daily.update]]
+  [rows :- [:sequential ::usage-metadata.schema/source-dimension-profile-daily.create]]
   (t2/insert! :model/SourceDimensionProfileDaily rows))
+
+;;; ----------------------------- Queries used only by the usage-metadata module -----------------------------
 
 (mu/defn field-names
   "The id, name, and display name of the Fields with `field-ids`."
@@ -140,7 +237,7 @@
     bucket-start (conj [:>= :bucket_date bucket-start])
     bucket-end   (conj [:<= :bucket_date bucket-end])))
 
-(mu/defn grouped-segment-rows
+(mu/defn select-grouped-segment-rows
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
   `bucket-start` and `bucket-end`, grouped by source, field, and predicate, largest first."
   [source-type  :- [:maybe :keyword]
@@ -157,7 +254,7 @@
               :group-by [:source_type :source_id :field_id :predicate]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-metric-rows
+(mu/defn select-grouped-metric-rows
   "The summed `source_metric_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
   `bucket-start` and `bucket-end`, grouped by source and aggregation, largest first."
   [source-type  :- [:maybe :keyword]
@@ -176,7 +273,7 @@
               :group-by [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-dimension-rows
+(mu/defn select-grouped-dimension-rows
   "The summed `source_dimension_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed
   between `bucket-start` and `bucket-end`, grouped by source, field, unit, and binning, largest first."
   [source-type  :- [:maybe :keyword]
@@ -194,7 +291,7 @@
               :group-by [:source_type :source_id :field_id :temporal_unit :binning]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-composite-rows
+(mu/defn select-grouped-composite-rows
   "The summed `source_segment_composite_daily` counts optionally narrowed to `source-type`, `source-id`, and
   bucketed between `bucket-start` and `bucket-end`, grouped by source and clause, largest first."
   [source-type  :- [:maybe :keyword]
@@ -212,7 +309,7 @@
               :group-by [:source_type :source_id :clause :atom_fingerprints :atom_count]
               :order-by [[:total_count :desc]]}))
 
-(mu/defn grouped-profile-rows
+(mu/defn select-grouped-profile-rows
   "The summed `source_dimension_profile_daily` counts optionally narrowed to `source-type`, `source-id`, and
   bucketed between `bucket-start` and `bucket-end`, grouped by source, field, and observation, largest first."
   [source-type  :- [:maybe :keyword]

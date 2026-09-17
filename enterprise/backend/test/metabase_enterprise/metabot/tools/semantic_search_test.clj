@@ -114,9 +114,9 @@
           (testing "search with metabot verified-or-curated content flag"
             (let [metabot {:entity_id "test-bot"
                            :use_verified_content true}]
-              (with-redefs [metabot.db/metabot-by-entity-id (fn [entity-id]
-                                                              (is (= "test-bot" entity-id) "Should look up the Metabot")
-                                                              metabot)
+              (with-redefs [metabot.db/select-one-metabot (fn [{:keys [entity_id]}]
+                                                            (is (= "test-bot" entity_id) "Should look up the Metabot")
+                                                            metabot)
                             search-core/ranked-results (fn [context]
                                                          ;; use_verified_content now drives the curated filter, not :verified
                                                          (is (true? (:curated? context)))

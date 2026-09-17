@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -119,7 +120,7 @@
 (defn- set-default-permission-values!
   [group]
   (data-perms/with-global-permissions-lock
-    (let [db-ids (permissions.db/non-destination-database-ids)]
+    (let [db-ids (warehouses.db/select-database-pks {:router_database_id_set false})]
       (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
 
 (t2/define-after-insert :model/PermissionsGroup
@@ -242,12 +243,12 @@
       (binding [*allow-modifying-magic-groups* true]
         (t2/with-transaction [_conn]
           ;; Rename and demote the existing group to a normal visible group
-          (permissions.db/update-group! (:id existing-group)
-                                        {:name             (unique-converted-group-name (:name existing-group))
-                                         :magic_group_type nil})
+          (permissions.db/update-permissions-groups! {:id (:id existing-group)}
+                                                     {:name             (unique-converted-group-name (:name existing-group))
+                                                      :magic_group_type nil})
           ;; Create new empty magic group with default library permissions, reusing the old name
-          (let [{new-group-id :id} (permissions.db/insert-group! {:name             (:name existing-group)
-                                                                  :magic_group_type data-analyst-magic-group-type})]
+          (let [{new-group-id :id} (permissions.db/insert-permissions-group! {:name             (:name existing-group)
+                                                                              :magic_group_type data-analyst-magic-group-type})]
             (grant-library-permissions! new-group-id))
           (permissions.db/clear-data-analyst-flags!))))))
 

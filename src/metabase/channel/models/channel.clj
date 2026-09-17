@@ -99,7 +99,7 @@
 
 (defmethod serdes/load-find-local "Channel"
   [path]
-  (channel.db/channel-by-name (:id (last path))))
+  (channel.db/select-one-channel {:name (:id (last path))}))
 
 (defmethod serdes/generate-path "Channel" [_ channel]
   [(serdes/infer-self-path "Channel" channel)])

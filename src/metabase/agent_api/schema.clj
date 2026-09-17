@@ -15,7 +15,7 @@
 (mr/def ::agent-api-call-log.update
   "What an update (or insert) of a AgentApiCallLog accepts: every column of `:agent_api_call_log` except `id`, all optional."
   [:map {:closed true}
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
    [:tenant_id     {:optional true} [:maybe ms/PositiveInt]]
    [:client_name   {:optional true} [:maybe :string]]

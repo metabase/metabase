@@ -4,7 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.queries-rest.api.card :as api.card]
-   [metabase.queries-rest.db :as queries-rest.db]
+   [metabase.queries.db :as queries.db]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -28,7 +28,7 @@
    _query-params
    {:keys [card_ids]} :- [:map {:closed true}
                           [:card_ids [:sequential ms/PositiveInt]]]]
-  (let [id->card (queries-rest.db/cards-by-id card_ids)]
+  (let [id->card (queries.db/select-card-pk->instance {:id (set card_ids)})]
     (as-> card_ids $
       (mapv id->card $)
       (t2/hydrate $ :in_dashboards)

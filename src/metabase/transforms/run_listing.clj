@@ -40,11 +40,11 @@
         limit               (or limit 20)
         [start-at end-at]   (when start-time (transforms.models.u/timestamp-range start-time))
         [ended-at end-end]  (when end-time (transforms.models.u/timestamp-range end-time))]
-    {:data   (transforms.db/root-run-summaries-page types statuses run-methods start-at end-at ended-at end-end
-                                                    transform-ids sort-column sort-direction limit offset)
+    {:data   (transforms.db/select-root-run-summaries-page types statuses run-methods start-at end-at ended-at end-end
+                                                           transform-ids sort-column sort-direction limit offset)
      :limit  limit
      :offset offset
-     :total  (transforms.db/root-run-summaries-count types statuses run-methods start-at end-at ended-at end-end
+     :total  (transforms.db/count-root-run-summaries types statuses run-methods start-at end-at ended-at end-end
                                                      transform-ids)}))
 
 (defn present-run-summaries
@@ -54,8 +54,8 @@
   (let [by-type         (group-by :run_type rows)
         job-ids         (seq (keep :entity_id (get by-type "job")))
         transform-ids   (seq (keep :entity_id (concat (get by-type "dag") (get by-type "transform"))))
-        job->name       (when job-ids (transforms.db/job-names-by-id job-ids))
-        transform->name (when transform-ids (transforms.db/transform-names-by-id transform-ids))]
+        job->name       (when job-ids (transforms.db/select-job-names-by-id job-ids))
+        transform->name (when transform-ids (transforms.db/select-transform-names-by-id transform-ids))]
     (map (fn [{:keys [run_type entity_id entity_name] :as row}]
            (-> row
                (assoc :name (or (if (= run_type "job")

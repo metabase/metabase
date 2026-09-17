@@ -50,12 +50,12 @@
   ([]
    (list-timelines false))
   ([archived :- ms/BooleanValue]
-   (timeline.db/timelines-in-visible-collections archived)))
+   (timeline.db/select-timelines-in-visible-collections archived)))
 
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
   [id :- ms/PositiveInt]
-  (api/read-check (timeline.db/timeline id)))
+  (api/read-check (timeline.db/select-one-timeline {:id id})))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
@@ -110,15 +110,15 @@
                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (timeline.db/timeline id))]
+        current-archived (:archived (timeline.db/select-one-timeline {:id id}))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (timeline.db/update-timeline! id
-                                  (u/select-keys-when timeline-updates
-                                                      :present #{:description :icon :collection_id :default :archived}
-                                                      :non-nil #{:name}))
+    (timeline.db/update-timelines! {:id id}
+                                   (u/select-keys-when timeline-updates
+                                                       :present #{:description :icon :collection_id :default :archived}
+                                                       :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (timeline.db/set-timeline-events-archived! id archived))
-    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
+      (timeline.db/update-timeline-events! {:timeline_id id} {:archived archived}))
+    (u/prog1 (t2/hydrate (timeline.db/select-one-timeline {:id id}) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -130,7 +130,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
-    (timeline.db/delete-timeline! id)
+    (timeline.db/delete-timelines! {:id id})
     (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 

@@ -67,7 +67,7 @@
                        (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
-                         (if-let [snippet-id (native-query-snippets.db/snippet-id-by-name snippet-name)]
+                         (if-let [snippet-id (:id (native-query-snippets.db/select-one-snippet {:name snippet-name, :columns [:id]}))]
                            (assoc tag :snippet-id snippet-id)
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
@@ -161,7 +161,7 @@
   ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (native-query-snippets.db/exportable-snippets
+  (native-query-snippets.db/reducible-select-snippets-for-serdes
    (not-empty (remove nil? collection-set))
    (boolean (some nil? collection-set))
    skip-archived
@@ -182,7 +182,7 @@
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
-  (when-let [collection_id (native-query-snippets.db/snippet-collection-id id)]
+  (when-let [collection_id (:collection_id (native-query-snippets.db/select-one-snippet {:id id, :columns [:collection_id]}))]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"

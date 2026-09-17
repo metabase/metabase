@@ -4,8 +4,11 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
+   [metabase.cache.db :as cache.db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
+   [metabase.users.db :as users.db]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,22 +18,12 @@
 (mu/defn first-user-date-joined
   "The earliest join date among all Users, or nil."
   []
-  (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
-
-(mu/defn sample-database-exists?
-  "Whether a sample Database exists."
-  []
-  (t2/exists? :model/Database, :is_sample true))
-
-(mu/defn sample-database-id
-  "The id of the sample Database, or nil."
-  []
-  (t2/select-one-pk :model/Database :is_sample true))
+  (permissions.db/earliest-user-join-date))
 
 (mu/defn personal-user-stats-columns
   "The active, superuser, last login, and SSO source of every personal User."
   []
-  (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type :personal))
+  (users.db/select-users {:type :personal :columns [:is_active :is_superuser :last_login :sso_source]}))
 
 (mu/defn document-archived-flags
   "The archived flag of every Document."
@@ -66,7 +59,7 @@
 (mu/defn permissions-group-count
   "The number of PermissionsGroups."
   []
-  (t2/count :model/PermissionsGroup))
+  (permissions.db/count-permissions-groups))
 
 (mu/defn dashboard-stats-columns
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
@@ -307,11 +300,6 @@
   [since :- ms/TemporalInstant]
   (t2/count :model/User :sso_source :scim :is_active true :date_joined [:>= since]))
 
-(mu/defn database-engines-among
-  "The set of engines of the Databases whose engine is one of `engine-names`."
-  [engine-names :- [:sequential :string]]
-  (t2/select-fn-set :engine :model/Database {:where [:in :engine engine-names]}))
-
 (mu/defn embedded-dashboard-exists?
   "Whether a Dashboard with embedding enabled exists."
   []
@@ -337,11 +325,6 @@
   []
   (t2/exists? :model/CustomVizPlugin))
 
-(mu/defn uploads-database-exists?
-  "Whether a Database with uploads enabled exists."
-  []
-  (t2/exists? :model/Database :uploads_enabled true))
-
 (mu/defn official-collection-exists?
   "Whether an official Collection exists."
   []
@@ -350,12 +333,12 @@
 (mu/defn cache-config-exists?
   "Whether any CacheConfig exists."
   []
-  (t2/exists? :model/CacheConfig))
+  (cache.db/cache-config-exists? nil))
 
 (mu/defn preemptive-cache-config-exists?
   "Whether a CacheConfig that refreshes automatically exists."
   []
-  (t2/exists? :model/CacheConfig :refresh_automatically true))
+  (cache.db/cache-config-exists? {:refresh_automatically true}))
 
 (mu/defn database-router-exists?
   "Whether a DatabaseRouter exists."
@@ -381,8 +364,3 @@
   "Whether a snippet Collection exists."
   []
   (t2/exists? :model/Collection :namespace "snippets"))
-
-(mu/defn starburst-database-details
-  "The connection details of the Starburst Databases."
-  []
-  (t2/select-fn-set :details :model/Database :engine "starburst"))

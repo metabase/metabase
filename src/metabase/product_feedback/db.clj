@@ -44,11 +44,6 @@
   []
   (t2/count :model/Dashboard :archived false))
 
-(mu/defn non-audit-database-count
-  "The number of Databases other than the audit Database."
-  []
-  (t2/count :model/Database :is_audit false))
-
 (mu/defn unarchived-card-count
   "The number of unarchived Cards of `card-type`."
   [card-type :- [:or :keyword :string]]

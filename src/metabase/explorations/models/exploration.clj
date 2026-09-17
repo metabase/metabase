@@ -44,7 +44,8 @@
   (mi/instances-with-hydrated-data
    explorations k
    #(group-by :exploration_id
-              (explorations.db/threads-for-explorations (map :id explorations)))
+              (explorations.db/select-threads {:exploration_id (set (map :id explorations))
+                                               :order-by       [[:position :asc] [:id :asc]]}))
    :id
    {:default []}))
 

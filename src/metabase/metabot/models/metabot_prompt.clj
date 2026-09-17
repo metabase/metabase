@@ -23,7 +23,7 @@
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/generate-path "MetabotPrompt" [_ entity]
-  (conj (serdes/generate-path "Metabot" (metabot.db/metabot (:metabot_id entity)))
+  (conj (serdes/generate-path "Metabot" (metabot.db/select-one-metabot {:id (:metabot_id entity)}))
         (serdes/infer-self-path "MetabotPrompt" entity)))
 
 (defmethod serdes/deserialization-dependencies "MetabotPrompt" [prompt]

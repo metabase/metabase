@@ -38,7 +38,7 @@
   (mt/with-model-cleanup [:model/DataApp]
     (insert-app! :allowed_hosts ["https://api.example.com"])
     (testing "non-blob-data-app-by-slug returns metadata without the bundle blob"
-      (let [app (data-apps.db/non-blob-data-app-by-slug "m")]
+      (let [app (data-apps.db/select-one-non-blob-data-app-by-slug "m")]
         (is (not (contains? app :bundle)))
         (is (= "M" (:display_name app)))
         (is (= ["https://api.example.com"] (:allowed_hosts app)))))))

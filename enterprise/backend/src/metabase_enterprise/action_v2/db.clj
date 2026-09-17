@@ -1,14 +1,87 @@
 (ns metabase-enterprise.action-v2.db
-  "Application database queries for the action-v2 module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
+  "Application database queries for `:model/Undo`. Queries that do not fit [[::opts]] live in the action-v2-only
+  section at the bottom of this namespace, including the queries against `:model/Table`, `:model/Field`, and
+  `:model/FieldValues` used only by this module."
   (:require
    [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mr/def ::filters
+  "Which Undos a query applies to. Keys mirror the columns of `data_edit_undo_chain`: a scalar matches that value and
+  a set matches any of its values."
+  [:map {:closed true}
+   [:id         {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:batch_num  {:optional true} [:or :int [:set :int]]]
+   [:table_id   {:optional true} [:or ::lib.schema.id/table [:set ::lib.schema.id/table]]]
+   [:user_id    {:optional true} [:or ::lib.schema.id/user [:set ::lib.schema.id/user]]]
+   [:scope      {:optional true} :string]
+   [:undoable   {:optional true} :boolean]
+   [:undone     {:optional true} :boolean]])
+
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::action-v2.schema/undo.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::action-v2.schema/undo.column
+                                              [:tuple ::action-v2.schema/undo.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Undo columns))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-undos :- [:sequential ::action-v2.schema/undo.partial]
+  "The Undos matching `opts`."
+  ([]
+   (select-undos nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn count-undos :- :int
+  "The number of Undos matching `opts`."
+  ([]
+   (count-undos nil))
+  ([opts :- [:maybe ::opts]]
+   (apply t2/count :model/Undo (->args opts))))
+
+(mu/defn undo-exists? :- :boolean
+  "Whether an Undo matching `opts` exists."
+  [opts :- [:maybe ::opts]]
+  (apply t2/exists? :model/Undo (->args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn update-undos! :- :int
+  "Apply `changes` to every Undo matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::action-v2.schema/undo.update]
+  (apply t2/update! :model/Undo (conj (->kv-args opts) changes)))
+
+(mu/defn delete-undos! :- :int
+  "Delete every Undo matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/Undo (->args opts)))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -19,11 +92,6 @@
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -69,6 +137,8 @@
   "The value lists of the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
+
+;;; ------------------------------- Queries used only by the action-v2 module -------------------------------
 
 (defn- scope-and-user-expr
   [scope user-id]
@@ -132,14 +202,14 @@
 (mu/defn insert-undos!
   "Insert the Undo `undos`."
   [undos :- [:sequential
-             ::action-v2.schema/undo.update]]
+             ::action-v2.schema/undo.create]]
   (t2/insert! :model/Undo undos))
 
 (mu/defn mark-batch-undone!
   "Set the undone flag of the Undo batch `batch-num` to `undone?`."
   [batch-num :- ms/PositiveInt
    undone?   :- :boolean]
-  (t2/update! :model/Undo {:batch_num batch-num} {:undone undone?}))
+  (update-undos! {:batch_num batch-num} {:undone undone?}))
 
 (mu/defn superseding-change-exists?
   "Whether a later (when `undo?`) or earlier Undo row for the rows `row-pks` of the Tables `table-ids` exists beyond

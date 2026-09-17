@@ -11,6 +11,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -74,7 +75,7 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (warehouse-schema.db/tables ids)
+     (let [tables (warehouse-schema.db/select-tables {:id (set ids)})
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
@@ -93,7 +94,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (warehouse-schema.db/table id) opts))
+  (fetch-query-metadata* (warehouse-schema.db/select-one-table {:id id}) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
@@ -136,10 +137,10 @@
                                                 schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
-(defn browsable-databases-honeysql-filter
-  "The `:where` predicate selecting the databases a user may browse: excludes stubs (placeholder
-   rows for in-progress database creation) and — unless `:include-analytics?` — the audit
-   database, and restricts to non-router databases unless `:router-database-id` scopes to one
+(defn browsable-database-filters
+  "The [[metabase.warehouses.db]] filters selecting the databases a user may browse: excludes stubs
+   (placeholder rows for in-progress database creation) and — unless `:include-analytics?` — the
+   audit database, and restricts to non-router databases unless `:router-database-id` scopes to one
    router's destinations. The per-user read permission filter is applied separately by the caller.
 
    Excluding destination databases (`router_database_id` non-null — the same definition as
@@ -147,15 +148,12 @@
    security boundary, not a nicety: a destination reached directly bypasses the router that would
    reroute a user to their own tenant, so a caller with a raw destination id could otherwise read
    another tenant's data. Keep this in sync with that definition."
-  ([] (browsable-databases-honeysql-filter nil))
+  ([] (browsable-database-filters nil))
   ([{:keys [include-analytics? router-database-id]}]
-   [:and
-    [:= :is_stub false]
-    (when-not include-analytics?
-      [:= :is_audit false])
-    (if router-database-id
-      [:= :router_database_id router-database-id]
-      [:= :router_database_id nil])]))
+   (cond-> (if router-database-id
+             {:is_stub false, :router_database_id router-database-id}
+             {:is_stub false, :router_database_id_set false})
+     (not include-analytics?) (assoc :is_audit false))))
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
@@ -171,7 +169,7 @@
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
-                                     (let [tables (warehouse-schema.db/active-tables-for-database id)
+                                     (let [tables (warehouse-schema.db/select-tables {:db_id id :active true})
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
@@ -180,7 +178,7 @@
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (warehouse-schema.db/active-table-schemas id include-hidden?)
+    (->> (warehouse-schema.db/select-schemas-for-database id include-hidden?)
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -199,8 +197,11 @@
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
    (let [candidate-tables (if include-hidden?
-                            (warehouse-schema.db/active-tables-in-schema db-id schema)
-                            (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
+                            (warehouse-schema.db/select-tables
+                             {:db_id db-id :schema schema :active true :order-by [[:display_name :asc]]})
+                            (warehouse-schema.db/select-tables
+                             {:db_id db-id :schema schema :active true :visibility_type nil
+                              :order-by [[:display_name :asc]]}))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (if-let [f (when config/ee-available?
@@ -225,7 +226,7 @@
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (warehouse-schema.db/fields ids)
+                                         (-> (warehouse-schema.db/select-fields {:id (set ids)})
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -264,7 +265,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (warehouse-schema.db/fields metadata-field-ids)
+                             (-> (warehouse-schema.db/select-fields {:id metadata-field-ids})
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]
@@ -297,7 +298,7 @@
       include-database?
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
-                                           (warehouse-schema.db/database database_id)))]
+                                           (warehouses.db/select-one-database {:id database_id})))]
                    (when (mi/can-read? database) database)))
 
       include-fields?
@@ -339,7 +340,7 @@
   (when (seq ids)
     (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
           dbs (if (seq cards)
-                (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
+                (warehouses.db/select-database-pk->instance {:id (into #{} (map :database_id) cards)})
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]

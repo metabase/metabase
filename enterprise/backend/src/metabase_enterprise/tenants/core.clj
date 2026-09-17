@@ -14,7 +14,7 @@
   :feature :tenants
   [{:keys [tenant_id] :as _user}]
   (or (when (and (perms/use-tenants) tenant_id)
-        (when-let [{:keys [slug attributes]} (tenants.db/tenant tenant_id)]
+        (when-let [{:keys [slug attributes]} (tenants.db/select-one-tenant {:id tenant_id})]
           (merge attributes {"@tenant.slug" slug})))
       {}))
 
@@ -27,7 +27,7 @@
           (comp
            (mapcat keys)
            (distinct))
-          (tenants.db/tenant-attributes-reducible))
+          (tenants.db/reducible-select-tenant-attributes))
     #{}))
 
 (defenterprise tenant-is-active?
@@ -35,7 +35,7 @@
   :feature :tenants
   [tenant-id]
   (or (nil? tenant-id)
-      (tenants.db/active-tenant-exists? tenant-id)))
+      (tenants.db/tenant-exists? {:id tenant-id :is_active true})))
 
 (defenterprise create-tenant!
   "Creates a tenant"
@@ -48,7 +48,7 @@
   :feature :tenants
   [user]
   (when-let [tenant-id (:tenant_id user)]
-    (tenants.db/tenant tenant-id)))
+    (tenants.db/select-one-tenant {:id tenant-id})))
 
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."

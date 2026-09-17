@@ -60,7 +60,7 @@
 (defn- latest-updated-at
   "Return the maximum `updated_at` across all advisories as an ISO-8601 string, or nil if none exist."
   []
-  (some-> (security-center.db/max-advisory-updated-at)
+  (some-> (security-center.db/max-security-advisory-updated-at)
           t/instant
           t/format))
 
@@ -128,7 +128,7 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (security-center.db/upsert-advisory! advisory))
+  (security-center.db/upsert-security-advisory! advisory))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."

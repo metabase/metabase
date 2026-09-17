@@ -47,7 +47,7 @@
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
   {:added "0.42.0"}
   [id]
-  (secrets.db/latest-secret id))
+  (secrets.db/select-one-secret {:id id :order-by [[:version :desc]]}))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
@@ -67,7 +67,7 @@
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
-                           (secrets.db/secret-version (or id (u/the-id inserted)) v)))
+                           (secrets.db/select-one-secret {:id (or id (u/the-id inserted)) :version v})))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (insert-new (u/the-id latest-version) (inc (:version latest-version)))
@@ -293,7 +293,7 @@
                               #{}
                               possible-secret-prop-names)]
       (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-      (secrets.db/delete-secret! secret-id))))
+      (secrets.db/delete-secrets! {:id secret-id}))))
 
 (defn- hydrate-redacted-secret
   [db-details conn-prop-nm _conn-prop]
@@ -390,7 +390,7 @@
                                       (assoc cleared-details id-kw id))
                                     (do
                                       (when secret-id
-                                        (secrets.db/delete-secret! secret-id))
+                                        (secrets.db/delete-secrets! {:id secret-id}))
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]

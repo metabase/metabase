@@ -29,7 +29,7 @@
       (do
         (log/infof "Trimming metabot_conversation rows older than %d days." (long retention-days))
         (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (metabot.db/delete-conversations-created-before! cutoff)]
+              deleted (metabot.db/delete-metabot-conversations-created-before! cutoff)]
           (log/infof "Metabot conversation cleanup complete. Deleted %d conversations (messages/feedback removed by ON DELETE CASCADE)."
                      (or deleted 0)))))))
 

@@ -177,7 +177,7 @@
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
   ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
-  {:database (or database (when table-id (actions.db/table-database-id table-id)))
+  {:database (or database (when table-id (actions.db/select-table-database-id table-id)))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
 

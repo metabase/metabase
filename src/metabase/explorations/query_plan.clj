@@ -95,7 +95,10 @@
   MySQL can't uniquely index): two planners in here at once would both miss and both insert. Safe
   only because [[lock-thread-for-planning!]] keeps them out — see there."
   [[block-id card-id dim-id query-type] position]
-  (or (explorations.db/page-id-for-key block-id card-id dim-id query-type)
+  (or (explorations.db/select-one-page-pk {:exploration_block_id block-id
+                                           :card_id              card-id
+                                           :dimension_id         dim-id
+                                           :query_type           query-type})
       (explorations.db/insert-page! {:exploration_block_id block-id
                                      :card_id              card-id
                                      :dimension_id         dim-id
@@ -129,8 +132,7 @@
   page, so a starred page survives a rerun that drops its selection."
   [page-ids]
   (if (seq page-ids)
-    ;; `(set ...)` since t2 set selectors return nil, not #{}, when nothing matches
-    (set (explorations.db/starred-page-ids page-ids))
+    (explorations.db/select-page-pks {:id (set page-ids) :starred true})
     #{}))
 
 (defn- pages-with-queries
@@ -140,7 +142,7 @@
   wiped first."
   [page-ids]
   (if (seq page-ids)
-    (set (explorations.db/page-ids-with-queries page-ids))
+    (explorations.db/page-ids-with-queries page-ids)
     #{}))
 
 (defn- gc-orphan-pages!
@@ -152,14 +154,14 @@
   [thread-id used-page-ids]
   (let [block-ids (explorations.db/block-ids-for-thread thread-id)
         orphans   (when (seq block-ids)
-                    (->> (explorations.db/page-ids-for-blocks block-ids)
+                    (->> (mapv :id (explorations.db/select-pages {:exploration_block_id (set block-ids) :columns [:id]}))
                          (remove (set used-page-ids))))
         retained  (set/union (pages-with-comments orphans)
                              (starred-pages orphans)
                              (pages-with-queries orphans))
         deletable (remove retained orphans)]
     (when (seq deletable)
-      (explorations.db/delete-pages! deletable))))
+      (explorations.db/delete-pages! {:id (set deletable)}))))
 
 (defn- lock-thread-for-planning!
   "Take a row lock on `thread-id`'s `exploration_thread` row (call inside a transaction) so at most
@@ -215,7 +217,7 @@
       :no-rows
       (t2/with-transaction [_conn]
         (lock-thread-for-planning! thread-id)
-        (if (explorations.db/thread-has-queries? thread-id)
+        (if (explorations.db/query-exists? {:exploration_thread_id thread-id})
           (do
             (log/infof "Thread %d was planned by a concurrent delivery; discarding this planner's %d row(s)"
                        thread-id (count rows))
@@ -241,8 +243,8 @@
   doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (explorations.db/update-thread! thread-id {:analysis_started_at now
-                                               :completed_at        now})))
+    (explorations.db/update-threads! {:id thread-id} {:analysis_started_at now
+                                                      :completed_at        now})))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -251,7 +253,7 @@
 (defn- save-transcript!
   [thread-id transcript]
   (try
-    (explorations.db/update-thread! thread-id {:query_plan_transcript transcript})
+    (explorations.db/update-threads! {:id thread-id} {:query_plan_transcript transcript})
     (catch Throwable e
       (log/warnf e "Failed to save query-plan transcript for thread %d" thread-id))))
 
@@ -273,17 +275,18 @@
 
 (defn- thread-prompt-for
   [thread-id]
-  (explorations.db/thread-prompt thread-id))
+  (:prompt (explorations.db/select-one-thread {:id thread-id :columns [:prompt]})))
 
 (defn- creator-id-for-thread
   [thread-id]
-  (explorations.db/exploration-creator-id-for-thread thread-id))
+  (explorations.db/select-exploration-creator-id-for-thread thread-id))
 
 (defn- build-planner-ctx
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
   [thread-id]
-  (let [thread-blocks  (explorations.db/blocks-for-thread thread-id)
+  (let [thread-blocks  (explorations.db/select-blocks {:exploration_thread_id thread-id
+                                                       :order-by [[:position :asc] [:id :asc]]})
         metric-dim-ctx (qp.context/metric-and-dim-context thread-blocks)
         ;; [block-id metric-id] -> metric-context, so materialization resolves a plan
         ;; item against the same block the planner emitted it under (a metric can live
@@ -392,7 +395,7 @@
   the same terminal state [[generate-query-plan!]] writes when the planner itself fails:
   transcript and the terminal stamp that stops the client polling."
   [thread-id message]
-  (when-not (explorations.db/thread-has-queries? thread-id)
+  (when-not (explorations.db/query-exists? {:exploration_thread_id thread-id})
     (let [message (or message "planning gave up after exhausting retries")]
       (record-outcome! thread-id (preamble thread-id :unknown) :error :error message)
       (mark-thread-terminally-failed! thread-id))))
@@ -404,4 +407,4 @@
 (defn debug-transcript
   "Return the persisted query-plan transcript for `thread-id`."
   [thread-id]
-  (explorations.db/thread-transcript thread-id))
+  (:query_plan_transcript (explorations.db/select-one-thread {:id thread-id :columns [:query_plan_transcript]})))

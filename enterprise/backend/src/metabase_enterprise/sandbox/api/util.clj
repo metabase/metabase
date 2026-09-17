@@ -47,7 +47,7 @@
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
-          sandboxes-with-group-ids (t2/hydrate (sandbox.db/user-sandboxes-with-group-ids user-id) :table)
+          sandboxes-with-group-ids (t2/hydrate (sandbox.db/select-sandboxes-with-group-ids-for-user user-id) :table)
 
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (sandbox.db/impersonations-for-groups user-group-ids))

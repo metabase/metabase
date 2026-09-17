@@ -1,6 +1,7 @@
 (ns metabase.osi.schema
   "Malli schemas for the osi module."
   (:require
+   [malli.util :as mut]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -33,5 +34,9 @@
    [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_local_id {:optional true} [:maybe ms/PositiveInt]]
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::osi-ai-context.column
+  "A column of `osi_ai_context`, for the `:columns` option of the queries in [[metabase.osi.db]]."
+  (into [:enum] (mut/keys (mr/schema ::osi-ai-context.update))))

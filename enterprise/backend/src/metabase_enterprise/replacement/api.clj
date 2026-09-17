@@ -140,20 +140,21 @@
   [_route-params
    {:keys [is-active]} :- [:map {:closed true} [:is-active {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (replacement.db/runs is-active))
+  (replacement.db/select-replacement-runs (cond-> {:order-by [[:start_time :desc]]}
+                                            (some? is-active) (assoc :is_active is-active))))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (or (replacement.db/run id)
+  (or (replacement.db/select-one-replacement-run {:id id})
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (let [run (replacement.db/run id)]
+  (let [run (replacement.db/select-one-replacement-run {:id id})]
     (when-not run
       (throw (ex-info "Run not found" {:status-code 404})))
     (when-not (:is_active run)

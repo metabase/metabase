@@ -7,7 +7,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -139,7 +140,7 @@
 (defn get-database
   "Get the `fields` of the database with ID `id`."
   [id & fields]
-  (-> (metabot.db/database-with-columns (into [:model/Database :id] fields) id)
+  (-> (warehouses.db/select-one-database {:id id :columns (vec (distinct (cons :id fields)))})
       api/read-check))
 
 (defn get-table
@@ -196,7 +197,7 @@
   [[metabase.metabot.tools.resources/check-resource-database]])."
   [db-ids]
   (when (seq db-ids)
-    (metabot.db/destination-database-ids db-ids)))
+    (warehouses.db/select-database-pks {:id (set db-ids) :router_database_id_set true})))
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.

@@ -55,7 +55,7 @@
                                (:model_id card-updated-info)
                                (select-keys card-updated-info [:id :email :first_name :last_name :timestamp])))
                       {}
-                      (revisions.db/latest-editors-reducible (model->db-model model) ids))]
+                      (revisions.db/reducible-select-latest-editors (model->db-model model) ids))]
           (map (fn [item]
                  (m/assoc-some item :last-edit-info (-> item :id id->updated-info)))
                items))))))
@@ -89,7 +89,7 @@
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
   [{:keys [card-ids dashboard-ids]} :- FetchLastEditedInfoArgs]
   (when (seq (concat card-ids dashboard-ids))
-    (let [latest-changes (revisions.db/latest-changes card-ids dashboard-ids)]
+    (let [latest-changes (revisions.db/select-latest-changes card-ids dashboard-ids)]
       (->> latest-changes
            (group-by :model)
            (m/map-vals (fn [model-changes]

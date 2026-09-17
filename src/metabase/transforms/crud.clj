@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,7 +28,7 @@
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
   [transform]
-  (let [database (api/check-400 (transforms.db/database (transforms-base.i/target-db-id transform))
+  (let [database (api/check-400 (warehouses.db/select-one-database {:id (transforms-base.i/target-db-id transform)})
                                 (deferred-tru "The target database cannot be found."))
         features (transforms-base.u/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
@@ -60,7 +61,7 @@
   and leaves the Metabase table with zero fields."
   [transform]
   (let [db-id (transforms-base.i/target-db-id transform)
-        db    (transforms.db/database db-id)]
+        db    (warehouses.db/select-one-database {:id db-id})]
     (when (and db (driver.u/supports? (:engine db) :schemas db))
       (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
                      (deferred-tru "A target schema is required for this database.")))))
@@ -118,7 +119,7 @@
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
+    (let [transforms (transforms.db/select-transforms-of-source-types enabled-types database-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
@@ -131,7 +132,7 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (transforms.db/database db-id)]
+    (when-let [database (warehouses.db/select-one-database {:id db-id})]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e
@@ -187,7 +188,7 @@
   [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (transforms.db/transform id)
+                    (let [old (transforms.db/select-one-transform {:id id})
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
@@ -210,11 +211,11 @@
                                            (transforms-base.u/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
-                    (transforms.db/update-transform! id (dissoc body :tag_ids))
+                    (transforms.db/update-transforms! {:id id} (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
+                    (t2/hydrate (transforms.db/select-one-transform {:id id}) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         transforms.u/add-source-readable)))
@@ -222,7 +223,7 @@
 (defn delete-transform!
   "Delete a transform and publish the delete event."
   [transform]
-  (transforms.db/delete-transform! (:id transform))
+  (transforms.db/delete-transforms! {:id (:id transform)})
   (events/publish-event! :event/transform-delete
                          {:object transform
                           :user-id api/*current-user-id*})

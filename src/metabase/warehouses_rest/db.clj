@@ -12,7 +12,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-tables-for-databases
@@ -35,11 +34,6 @@
                                [:in :db_id database-ids]
                                [:= :active true]
                                [:= :visibility_type nil]]}))
-
-(mu/defn database-engines
-  "The id and engine of every Database."
-  []
-  (t2/select [:model/Database :id :engine]))
 
 (mu/defn source-query-cards-reducible
   "A reducible of the Cards of `card-type` (also including \"metric\" Cards) in the Databases with `database-ids`
@@ -102,21 +96,6 @@
                      base-where)]
     (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                 :where where})))
-
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
-
-(mu/defn non-destination-database-exists?
-  "Whether a Database with `database-id` that is not a routing destination exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id nil))
-
-(mu/defn destination-database-exists-for-router?
-  "Whether the Database with `database-id` has routing destinations."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
 
 (mu/defn autocomplete-tables
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
@@ -226,37 +205,6 @@
              :table_id        [:in table-ids]
              :visibility_type [:not-in ["sensitive" "retired"]]
              {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn insert-database!
-  "Insert the Database `row` and return the inserted instance."
-  [row :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database row))
-
-(mu/defn sample-database
-  "The sample Database, or nil."
-  []
-  (t2/select-one :model/Database :is_sample true))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
-
-(mu/defn delete-destination-databases!
-  "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
-  [router-database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :router_database_id router-database-id))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
 
 (mu/defn mark-tables-sync-complete!
   "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."

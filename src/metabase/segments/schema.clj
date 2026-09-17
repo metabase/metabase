@@ -1,5 +1,6 @@
 (ns metabase.segments.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -36,14 +37,14 @@
   "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
   hydrate onto it."
   [:merge
-   ::segment.update
+   ::segment.columns
    [:map {:closed true}
     [:id                      ms/PositiveInt]
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
-(mr/def ::segment.update
-  "What an update (or insert) of a Segment accepts: every column of `:segment` except `id`, all optional."
+(mr/def ::segment.columns
+  "Every column of `:segment` except `id`, all optional."
   [:map {:closed true}
    [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
@@ -51,9 +52,29 @@
    [:description             {:optional true} [:maybe :string]]
    [:archived                {:optional true} [:maybe :boolean]]
    [:definition              {:optional true} [:maybe ::segment.definition]]
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
+
+(mr/def ::segment.create
+  "What an insert of a Segment accepts."
+  (mut/select-keys (mr/schema ::segment.columns)
+                   [:table_id :creator_id :name :description :archived :definition :created_at :updated_at
+                    :points_of_interest :caveats :show_in_getting_started :entity_id]))
+
+(mr/def ::segment.update
+  "What an update of a Segment accepts: no immutable columns."
+  (mut/select-keys (mr/schema ::segment.columns)
+                   [:table_id :name :description :archived :definition :created_at :updated_at
+                    :points_of_interest :caveats :show_in_getting_started]))
+
+(mr/def ::segment.partial
+  "A Segment row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::segment [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::segment.column
+  "A column of `segment`, for the `:columns` option of the queries in [[metabase.segments.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::segment.columns))))

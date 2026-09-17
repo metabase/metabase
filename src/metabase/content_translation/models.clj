@@ -22,5 +22,5 @@
   ([locale]
    (premium-features/assert-has-feature :content-translation (tru "Content translation"))
    (if locale
-     (content-translation.db/translations-for-locale locale)
-     (content-translation.db/all-translations))))
+     (content-translation.db/select-content-translations {:locale locale :order-by [:msgid]})
+     (content-translation.db/select-content-translations {:order-by [:locale :msgid]}))))
