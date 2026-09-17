@@ -10,6 +10,13 @@ on:
           plan, and everything runs.
         type: string
         default: '{}'
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.e2e-tests-result.outputs.ok }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -189,24 +196,25 @@ jobs:
 
   e2e-tests-result:
     needs:
+      # Every job the `e2e-tests` plan names, so the roll-up below can see each
+      # one's result.
+      - changed-specs
+      - e2e-matrix-builder
+      - reset-e2e-test-comment
       - e2e-tests
+      - collect-timings
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()
-    env:
-      E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Stub
-        if: ${{ needs.e2e-tests.result == 'skipped' }}
-        run: |
-          echo "Didn't run due to conditional filtering"
-      - name: Test results
-        if: ${{ needs.e2e-tests.result != 'skipped' }}
-        run: | # sh
-          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
-            echo "E2E Tests failed"
-            exit 1
-          fi
+      - uses: actions/checkout@v6
+      - name: Roll the e2e results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
+        with:
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: e2e-tests

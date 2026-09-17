@@ -739,10 +739,14 @@ describe(".github/test-plan.yaml", () => {
     expect(Object.keys(config.workflows)).toContain(ENTRY);
   });
 
-  // Every workflow and every job in this file is gated by something, its own
-  // condition or an ancestor's. A run with nothing changed, no labels and an
-  // ordinary branch therefore costs nothing at all.
-  it("runs nothing when no condition in it matches", () => {
+  // Almost every job in this file is gated by something, its own condition or
+  // an ancestor's, so a run with nothing changed, no labels and an ordinary
+  // branch costs next to nothing. The exceptions are the jobs that have to run
+  // before anyone can say what else should: the plan itself, and the check for
+  // an uberjar that four other workflows take as a `needs:`. Each of them is a
+  // few minutes on a slim runner, and each is listed here so that adding a
+  // fifth is a decision rather than an accident.
+  it("runs only the jobs that decide the run when no condition matches", () => {
     const plan = createPlan(
       config,
       {
@@ -756,8 +760,97 @@ describe(".github/test-plan.yaml", () => {
     );
 
     expect(plan.override).toBeNull();
-    expect(running(plan)).toEqual([]);
-    expect(runningWorkflows(plan)).toEqual([]);
+    expect(running(plan)).toEqual([
+      "run-tests/should-run",
+      "run-tests/uberjar",
+      "should-run/static-viz",
+      "uberjar/setup",
+    ]);
+    expect(runningWorkflows(plan)).toEqual([
+      "run-tests",
+      "should-run",
+      "uberjar",
+    ]);
+  });
+
+  // The jobs that hand a jar to something else, and the ones that take one.
+  // GitHub skips a job whose `needs:` were skipped, so a skipped uberjar takes
+  // all four of these down with it -- and a required check attached to a job
+  // that never runs is a pull request that can never merge. Hence the rule:
+  // whatever the diff, whatever the labels, if one of these is planned then
+  // `uberjar` is planned too, and run-tests can depend on it plainly.
+  describe("uberjar-dependent jobs", () => {
+    const DEPENDENTS = [
+      "containerize",
+      "e2e-tests",
+      "sdk-tests",
+      "bundle-size",
+    ];
+
+    /** Every path group, every label and every event the config mentions. */
+    const filters = Object.keys(parseFilters(readFileSync(FILTERS, "utf8")));
+    const labels = [
+      "ci:run-all",
+      "ci:skip",
+      "build-docker-uberjar",
+      "ci:run-semantic-search-tests",
+    ];
+    const events = ["pull_request", "push"];
+    const refs = ["feature", "master", "release-x.57.x"];
+
+    /**
+     * One change at a time, on each branch and event. A group on its own is
+     * the hardest case for this rule: a diff touching several only ever runs
+     * more, so the narrow ones are where a gap would open up.
+     */
+    const situations = events.flatMap((event) =>
+      refs.flatMap((ref) =>
+        filters.flatMap((group) =>
+          [null, ...labels].map((label) => ({
+            what: `${event} on ${ref}, ${group}${label ? `, ${label}` : ""}`,
+            context: {
+              event,
+              ref,
+              baseRef: "master",
+              draft: false,
+              labels: label ? [label] : [],
+            },
+            group,
+          })),
+        ),
+      ),
+    );
+
+    it("never plans one without planning the uberjar", () => {
+      const gaps = situations.filter(({ context, group }) => {
+        const jobs = createPlan(config, context, () => ({
+          changedFiles: [`${group}-file`],
+          changedGroups: [group],
+        })).workflows[ENTRY].jobs;
+
+        return DEPENDENTS.some((job) => jobs[job]?.run) && !jobs.uberjar?.run;
+      });
+
+      expect(gaps.map(({ what }) => what)).toEqual([]);
+    });
+
+    // The half of the rule that costs nothing: `setup` only looks for a jar
+    // that already exists, so it is never the reason a run is skipped.
+    it("asks whether a jar exists on every run the plan does not skip whole", () => {
+      const asked = situations.filter(({ context, group }) => {
+        const plan = createPlan(config, context, () => ({
+          changedFiles: [`${group}-file`],
+          changedGroups: [group],
+        }));
+
+        return (
+          plan.override !== "skip-label" &&
+          !plan.workflows.uberjar.jobs.setup.run
+        );
+      });
+
+      expect(asked.map(({ what }) => what)).toEqual([]);
+    });
   });
 
   // `sync` rewrites this file in place, and everything in it that matters --

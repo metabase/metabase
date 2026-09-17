@@ -10,6 +10,13 @@ on:
           plan, and everything runs.
         type: string
         default: '{}'
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.embedding-sdk-tests-result.outputs.ok }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -145,41 +152,29 @@ jobs:
 
   embedding-sdk-tests-result:
     needs:
+      # Every job the `embedding-sdk` plan names, so the roll-up below can see
+      # each one's result.
       - build-sdk-package
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
+      - not-required-embedding-sdk-apps-compatibility-tests
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check embedding SDK job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      - name: Roll the SDK results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log('Some embedding SDK jobs failed');
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-            process.exit(1);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: embedding-sdk
+          # The host and sample apps are reported here but do not gate: they
+          # test other people's apps against this SDK, and a break there is not
+          # this pull request's to fix.
+          unrequired: not-required-embedding-sdk-apps-compatibility-tests

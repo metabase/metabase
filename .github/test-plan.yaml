@@ -119,7 +119,7 @@ workflows:
         - e2e_all
     jobs:
       setup:
-      build:
+      build:       
 
   containerize-jar:
     run:
@@ -262,7 +262,6 @@ workflows:
       be-tests-sqlserver:
       login-to-ecr:
       be-tests-vertica-ee:
-      drivers-tests-result:
 
   frontend:
     run:
@@ -307,7 +306,6 @@ workflows:
     jobs:
       story-selection:
       visual-test:
-      loki-tests-result:
 
   e2e-tests:
     run:
@@ -340,7 +338,6 @@ workflows:
         run:
           branch:
             - master
-      e2e-tests-result:
 
   e2e-matrix-builder:
     jobs:
@@ -391,7 +388,6 @@ workflows:
         run:
           paths:
             - embedding_sdk_host_sample_apps
-      embedding-sdk-tests-result:
 
   embedding-sdk-component-tests:
     jobs:

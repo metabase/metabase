@@ -777,10 +777,13 @@ const LOCAL_WORKFLOW = /^\.?\/?\.github\/workflows\/([\w.-]+)\.ya?ml$/;
 /** This script, as a workflow step spells it. */
 const PLAN_SCRIPT = "test-plan.ts";
 
+/** The composite action a roll-up job uses to check the plan for itself. */
+const PLAN_ACTION = "actions/aggregate-results";
+
 /**
- * True for the job that builds the plan and the job that checks it afterwards.
- * Neither can be governed by the plan — one runs before there is a plan to
- * consult, and the other has to run whatever the plan said — so the config
+ * True for the job that builds the plan and the jobs that check it afterwards.
+ * None of them can be governed by the plan — one runs before there is a plan to
+ * consult, and the rest have to run whatever the plan said — so the config
  * leaves them out, and a sync has to leave them out too.
  */
 function runsThePlan(job: RawJob): boolean {
@@ -789,8 +792,8 @@ function runsThePlan(job: RawJob): boolean {
     job.steps.some(
       (step) =>
         isRecord(step) &&
-        typeof step.run === "string" &&
-        step.run.includes(PLAN_SCRIPT),
+        ((typeof step.run === "string" && step.run.includes(PLAN_SCRIPT)) ||
+          (typeof step.uses === "string" && step.uses.includes(PLAN_ACTION))),
     )
   );
 }
@@ -954,6 +957,13 @@ export type JobText = { inline: string; body: string[] };
 export type ExistingWorkflow = {
   /** The workflow's own lines, `run:` and its conditions, verbatim. */
   blocks: string[];
+  /**
+   * Whatever sits between `jobs:` and the first job — in practice a comment
+   * about that job. A comment between two jobs lands in the body of the one
+   * above it and is carried across with it, which leaves the first job with
+   * nowhere for its own comment to go; this is that place.
+   */
+  preamble: string[];
   jobs: Record<string, JobText>;
 };
 
@@ -984,7 +994,7 @@ export function existingConfig(config: string): ExistingConfig {
 
   keys.forEach((entry, index) => {
     if (entry.indent === WORKFLOW_INDENT) {
-      current = existing[entry.key] ??= { blocks: [], jobs: {} };
+      current = existing[entry.key] ??= { blocks: [], preamble: [], jobs: {} };
       inJobs = false;
       return;
     }
@@ -994,10 +1004,20 @@ export function existingConfig(config: string): ExistingConfig {
     }
 
     if (entry.indent === WORKFLOW_INDENT + 2 && entry.key === "jobs") {
-      // Everything between the workflow's name and its `jobs:` is the gate.
+      // Everything between the workflow's name and its `jobs:` is the gate,
+      // and everything between `jobs:` and the first job belongs to that job.
       current.blocks = trimBlank(
         lines.slice(sectionStart(keys, index), entry.line),
       );
+
+      const first = keys
+        .slice(index + 1)
+        .find((key) => key.indent <= JOB_INDENT);
+
+      current.preamble =
+        first && first.indent === JOB_INDENT
+          ? trimBlank(lines.slice(entry.line + 1, first.line))
+          : [];
       inJobs = true;
       return;
     }
@@ -1106,6 +1126,7 @@ export function renderWorkflows(scaffold: Scaffold, config = ""): string {
     }
 
     lines.push(`${" ".repeat(WORKFLOW_INDENT + 2)}jobs:`);
+    lines.push(...(before?.preamble ?? []));
 
     for (const { job, calls } of jobs) {
       lines.push(...jobLines(job, calls, before?.jobs[job]));
@@ -1918,7 +1939,7 @@ function readSource(location: string): string {
 }
 
 /** Job outputs survive newlines only via the heredoc form. */
-function writeOutput(name: string, value: string): void {
+export function writeOutput(name: string, value: string): void {
   const path = process.env.GITHUB_OUTPUT;
 
   if (!path) {
@@ -1930,7 +1951,7 @@ function writeOutput(name: string, value: string): void {
   appendFileSync(path, `${name}<<${delimiter}\n${value}\n${delimiter}\n`);
 }
 
-function appendSummary(markdown: string): void {
+export function appendSummary(markdown: string): void {
   const path = process.env.GITHUB_STEP_SUMMARY;
 
   if (!path) {

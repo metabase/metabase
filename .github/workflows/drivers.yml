@@ -11,6 +11,13 @@ on:
           `{}` means there is no plan, and everything runs.
         type: string
         default: '{}'
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.drivers-tests-result.outputs.ok }}
   # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- credentials, services, test args, quarantine gating -- is
   # whatever the normal CI run uses, because it is the same job.
@@ -1289,8 +1296,10 @@ jobs:
 
   drivers-tests-result:
     needs:
+      # Every job the `drivers` plan names, so the roll-up below can see each
+      # one's result. If you add a driver job, add it here too.
       - determine-driver-skips
-      # if you add a driver job, you must add it to this list for it to be a required check
+      - login-to-ecr
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-bigquery-transforms-python-ee
@@ -1317,60 +1326,55 @@ jobs:
     timeout-minutes: 5
     name: drivers-tests-result
     if: always() && !cancelled()
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      # `fail: false` so the verdict is a value the two steps below can read,
+      # and failing on it is the second of them.
+      - name: Roll the driver results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: drivers
+          fail: 'false'
+      - name: Cam is very proud of you
+        if: ${{ steps.aggregate.outputs.ok == 'true' }}
+        shell: bash
+        run: | # sh
+          cat <<'ART'
 
-            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
-            // job whose result gates this check.
-            const jobs = Object.entries(needs)
-              .filter(([jobName]) => jobName !== 'determine-driver-skips')
-              .map(([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
+                  _------.
+                 /  ,     \_
+               /   /  /{}\ |o\_
+              /    \  `--' /-' \
+             |      \      \    |
+            |              |`-, |
+            /              /__/)/
+           |              |
 
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-                console.log("");
-                console.log("        _------.        ");
-                console.log("       /  ,     \_      ");
-                console.log("     /   /  /{}\ |o\_   ");
-                console.log("    /    \  `--' /-' \  ");
-                console.log("   |      \      \    | ");
-                console.log("  |              |`-, | ");
-                console.log("  /              /__/)/ ");
-                console.log(" |              |       ");
-                console.log("");
-                console.log("All driver tests have passed (or have been skipped). Cam is very proud of you.");
-              process.exit(0);
-            }
+          All driver tests have passed (or have been skipped). Cam is very proud of you.
+          ART
+      - name: MetaJail
+        if: ${{ steps.aggregate.outputs.ok != 'true' }}
+        shell: bash
+        run: | # sh
+          cat <<'ART'
 
-            // otherwise, something failed
-            console.log("");
-            console.log("       .::::::::::.                          .::::::::::.       ");
-            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
-            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
-            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
-            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
-            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
-            console.log("  :::               |::-o::|        |::o-::|               :::  ");
-            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
-            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
-            console.log("     `::::......::::'                      `::::......::::'     ");
-            console.log("       `::::::::::'                          `::::::::::'       ");
-            console.log("");
-            console.log("Driver tests have failed. You have been sentenced to MetaJail.");
+                 .::::::::::.                          .::::::::::.
+               .::::''''''::::.                      .::::''''''::::.
+             .:::'          `::::....          ....::::'          `:::.
+            .::'             `:::::::|        |:::::::'             `::.
+           .::|               |::::::|_ ___ __|::::::|               |::.
+           `--'               |::::::|_()__()_|::::::|               `--'
+            :::               |::-o::|        |::o-::|               :::
+            `::.             .|::::::|        |::::::|.             .::'
+             `:::.          .::\-----'        `-----/::.          .:::'
+               `::::......::::'                      `::::......::::'
+                 `::::::::::'                          `::::::::::'
 
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-
-            process.exit(1);
+          Driver tests have failed. You have been sentenced to MetaJail.
+          ART
+          exit 1

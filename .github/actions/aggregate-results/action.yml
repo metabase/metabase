@@ -1,0 +1,67 @@
+name: Aggregate results
+description: >-
+  Roll a workflow's job results up into one verdict, checked against the test
+  plan, and publish it as the `ok` output.
+
+inputs:
+  needs:
+    description: The `needs` context, as JSON — `${{ toJSON(needs) }}`.
+    required: true
+  plan:
+    description: >-
+      The CI test plan, as JSON. `{}` means there is no plan, and only the job
+      results and the extra checks decide.
+    required: false
+    default: '{}'
+  workflow:
+    description: >-
+      The name this workflow goes by in the plan. Required whenever a plan is
+      given.
+    required: false
+    default: ''
+  checks:
+    description: >-
+      Signals from outside the `needs` results, one `name=value` per line. A
+      value of `true`, `success` or `skipped` passes and anything else fails;
+      an empty one means nothing was reported, which is what a skipped
+      workflow's `ok` output looks like. This is where a called workflow's own
+      verdict, or a bespoke script's answer, comes in.
+    required: false
+    default: ''
+  unrequired:
+    description: >-
+      Names — of jobs or of checks — this roll-up reports on but does not gate
+      on, one per line.
+    required: false
+    default: ''
+  fail:
+    description: >-
+      `false` to publish the verdict without failing the step on it, for a
+      caller that wants to decide for itself.
+    required: false
+    default: 'true'
+
+outputs:
+  ok:
+    description: >-
+      `true` when everything the plan asked for ran and passed, `false`
+      otherwise. Empty if this job was skipped or never got as far as running
+      the check — read it alongside the job's own result, never instead of it.
+    value: ${{ steps.aggregate.outputs.ok }}
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/prepare-node-bun
+
+    - name: Aggregate results
+      id: aggregate
+      shell: bash
+      env:
+        NEEDS: ${{ inputs.needs }}
+        PLAN: ${{ inputs.plan }}
+        WORKFLOW: ${{ inputs.workflow }}
+        CHECKS: ${{ inputs.checks }}
+        UNREQUIRED: ${{ inputs.unrequired }}
+        FAIL: ${{ inputs.fail }}
+      run: bun .github/scripts/aggregate-results.ts

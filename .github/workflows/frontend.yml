@@ -14,6 +14,13 @@ on:
       test-plan-artifact-id:
         type: string
         default: ""
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.fe-tests-result.outputs.ok }}
   workflow_dispatch:
     inputs:
       plan:
@@ -219,6 +226,8 @@ jobs:
 
   fe-tests-result:
     needs:
+      # Every job the `frontend` plan names, so the roll-up below can see each
+      # one's result.
       - fe-lint
       - fe-type-check
       - fe-tests-unit
@@ -228,47 +237,14 @@ jobs:
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/prepare-node-bun
-      - name: Check frontend job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - name: Roll the frontend results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log('Some frontend jobs failed');
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-            process.exit(1);
-
-      # The plan and the run have to agree: every job the plan asked for ran
-      # and passed, and every job it ruled out was skipped. Runs even when the
-      # status check above failed, so a drift is never hidden behind it.
-      - name: Verify the plan was carried out
-        if: ${{ !cancelled() && inputs.plan != '{}' }}
-        env:
-          PLAN: ${{ inputs.plan }}
-          RESULTS: ${{ toJSON(needs) }}
-        run: |
-          printf '%s' "$PLAN" |
-            bun .github/scripts/test-plan.ts verify --plan - --workflow frontend --results "$RESULTS"
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: frontend

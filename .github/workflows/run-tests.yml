@@ -162,3 +162,37 @@ jobs:
     secrets: inherit
     with:
       plan: ${{ needs.should-run.outputs.plan }}
+
+  test-gate:
+    name: meta-check
+    needs:
+      - should-run
+      - backend-tests
+      - semantic-search-tests
+      - app-db-tests
+      - driver-tests
+      - frontend-tests
+      - loki-tests
+      - e2e-tests
+      - sdk-tests
+      - build-scripts-tests
+    if: always() && !cancelled()
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Roll every workflow up
+        uses: ./.github/actions/aggregate-results
+        with:
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ needs.should-run.outputs.plan }}
+          workflow: run-tests
+          checks: |
+            app-db-tests=${{ needs.app-db-tests.outputs.ok }}
+            backend-tests=${{ needs.backend-tests.outputs.ok }}
+            driver-tests=${{ needs.driver-tests.outputs.ok }}
+            e2e-tests=${{ needs.e2e-tests.outputs.ok }}
+            frontend-tests=${{ needs.frontend-tests.outputs.ok }}
+            loki-tests=${{ needs.loki-tests.outputs.ok }}
+            sdk-tests=${{ needs.sdk-tests.outputs.ok }}
+            semantic-search-tests=${{ needs.semantic-search-tests.outputs.ok }}
