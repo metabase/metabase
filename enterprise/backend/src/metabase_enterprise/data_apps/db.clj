@@ -6,6 +6,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private non-blob-columns
@@ -52,13 +53,15 @@
 (defn table-database-id
   "The database ID for the Table with `table-id`, or nil."
   [table-id]
-  (t2/select-one-fn :db_id :model/Table :id table-id))
+  (t2/select-one-fn :db_id :model/Table :id table-id
+                    {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (defn existing-table-ids
   "The IDs from `table-ids` that belong to existing Tables."
   [table-ids]
   (if (seq table-ids)
-    (t2/select-pks-set :model/Table :id [:in table-ids])
+    (t2/select-pks-set :model/Table :id [:in table-ids]
+                       {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})
     #{}))
 
 (defn users-for-permission-warnings
@@ -196,7 +199,7 @@
                        :t.schema
                        [:t.db_id :database_id]
                        [:d.name :database_name]]
-              :from [[:metabase_table :t]]
+              :from [(warehouse-schema-overlay/table-query {:alias :t})]
               :join [[:metabase_database :d] [:= :d.id :t.db_id]]
               :where [:in :t.id table-ids]
               :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
@@ -222,11 +225,12 @@
              :from [[:permissions_group_membership :pgm]]
              :join [[:data_permissions :dp] [:= :dp.group_id :pgm.group_id]
                     [:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                    [:metabase_table :t] [:and
-                                          [:= :t.db_id :dp.db_id]
-                                          [:or
-                                           [:= :dp.table_id nil]
-                                           [:= :dp.table_id :t.id]]]]
+                    (warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+                    [:and
+                     [:= :t.db_id :dp.db_id]
+                     [:or
+                      [:= :dp.table_id nil]
+                      [:= :dp.table_id :t.id]]]]
              :where [:and
                      [:in :pgm.user_id user-ids]
                      [:in :t.id table-ids]

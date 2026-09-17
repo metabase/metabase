@@ -88,7 +88,7 @@
                (lib/display-name query-with-metric metric)))))))
 
 (deftest ^:parallel unknown-display-name-test
-  (let [metric [:metric {} 1]]
+  (let [metric [:metric {:lib/uuid (str (random-uuid))} 1]]
     (doseq [style [nil
                    :default
                    :long]]
@@ -121,7 +121,7 @@
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"
            :long-display-name "[Unknown Metric]"}
-          (lib/display-info query-with-metric [:metric {} 1]))))
+          (lib/display-info query-with-metric [:metric {:lib/uuid (str (random-uuid))} 1]))))
 
 (deftest ^:parallel type-of-test
   (are [metric] (= :type/Integer
@@ -152,7 +152,7 @@
 
 (deftest ^:parallel unknown-type-of-test
   (is (= :type/*
-         (lib/type-of query-with-metric [:metric {} 1]))))
+         (lib/type-of query-with-metric [:metric {:lib/uuid (str (random-uuid))} 1]))))
 
 (deftest ^:parallel display-info-unselected-metric-test
   (testing "Include `:selected false` in display info for Metrics not in aggregations"

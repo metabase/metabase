@@ -206,11 +206,19 @@ export interface VersionInfoRecord {
   announcement_url?: string;
 }
 
+export interface AlertUpgradeVersion {
+  min: string;
+  fixed: string;
+  message: string;
+  id?: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
+  alert_upgrade_versions?: AlertUpgradeVersion[];
 }
 
 export type LocaleData = [string, string];
@@ -390,6 +398,8 @@ export type PasswordComplexity = {
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
+
+export type MfaEnforcement = "off" | "optional" | "required";
 
 export interface SettingDefinition<
   Key extends EnterpriseSettingKey = EnterpriseSettingKey,
@@ -588,7 +598,8 @@ interface PublicSettings {
   "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
-  "mfa-enforcement"?: "off" | "optional";
+  "mfa-enforcement": MfaEnforcement;
+  "mfa-requirement-deadline": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
@@ -619,7 +630,7 @@ interface PublicSettings {
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
-  "ldap-group-membership-filter"?: string;
+  "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;

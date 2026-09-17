@@ -62,6 +62,7 @@ Supported models:
 | GPT-5.6 Luna  | `gpt-5.6-luna`  | 922,000                 |
 | GPT-5.6 Sol   | `gpt-5.6-sol`   | 922,000                 |
 | GPT-5.6 Terra | `gpt-5.6-terra` | 922,000                 |
+| GPT-6 Astra   | `gpt-6-astra`   | 922,000                 |
 
 Credentials:
 
@@ -247,6 +248,7 @@ Supported models:
 | GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`  | 272,000                 |
 | GPT-5.5              | `openai.gpt-5.5`             | 272,000                 |
 | GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`  | 272,000                 |
+| GPT-6 Astra          | `openai.gpt-6-astra`         | 922,000                 |
 
 Credentials:
 

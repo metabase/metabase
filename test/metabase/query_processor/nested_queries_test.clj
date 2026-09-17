@@ -752,7 +752,7 @@
       (qp.store/with-metadata-provider (-> meta/metadata-provider
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
-        (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
+        (is (= {:paths #{(perms/collection-read-path 1000)}}
                (query-perms/required-perms-for-query (query-with-source-card 1
                                                                              lib.schema.id/saved-questions-virtual-database-id
                                                                              :aggregation [:count]))))))))

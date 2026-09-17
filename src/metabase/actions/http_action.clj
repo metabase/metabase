@@ -7,7 +7,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   (:import
    (com.fasterxml.jackson.databind ObjectMapper)
    (net.thisptr.jackson.jq BuiltinFunctionLoader JsonQuery Output Scope Versions)))
@@ -26,11 +27,14 @@
 ;; May go away if parameters substitution is taken out of query-processing/db dependency
 (declare substitute*)
 
+(mr/def ::acc
+  [:tuple [:maybe :string] [:maybe [:sequential :string]]])
+
 (mu/defn- substitute-param
-  [param->value
-   [sql missing]
-   _in-optional?
-   {:keys [k]} :- :metabase.lib.parameters.parse.types/param]
+  [param->value  :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
+   [sql missing] :- ::acc
+   _in-optional? :- :boolean
+   {:keys [k]}   :- :metabase.lib.parameters.parse.types/param]
   (if-not (contains? param->value k)
     [sql (conj missing k)]
     (let [v (get param->value k)]
@@ -42,8 +46,8 @@
         [(str sql v) missing]))))
 
 (mu/defn- substitute-optional
-  [param->value
-   [sql missing]
+  [param->value  :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
+   [sql missing] :- ::acc
    {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
   (let [[opt-sql opt-missing] (substitute* param->value subclauses true)]
     (if (seq opt-missing)

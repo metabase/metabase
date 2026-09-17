@@ -3,10 +3,19 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
+   [metabase.glossary.core :as glossary.core]
    [metabase.glossary.db :as glossary.db]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- editable?
+  "Glossary entries are locked on a read-only remote-sync instance whose Library is synced."
+  []
+  (remote-sync/model-editable? :model/Glossary nil))
+
+(defn- check-editable! []
+  (api/check-403 (editable?)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -16,7 +25,8 @@
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
-  {:data (t2/hydrate (glossary.db/glossary-entries search) :creator)})
+  {:data      (t2/hydrate (glossary.db/glossary-entries search) :creator)
+   :can_write (boolean (and (api/is-data-analyst?) (editable?)))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -26,18 +36,12 @@
   "Create a new glossary entry."
   [_route-params
    _query-params
-   {:keys [term definition]} :- [:map {:closed true}
-                                 [:term ms/NonBlankString]
-                                 [:definition ms/NonBlankString]]]
+   body :- [:map {:closed true}
+            [:term ms/NonBlankString]
+            [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [glossary (glossary.db/insert-glossary-entry!
-                  {:term       term
-                   :definition definition
-                   :creator_id api/*current-user-id*})]
-    (events/publish-event! :event/glossary-create
-                           {:object glossary
-                            :user-id api/*current-user-id*})
-    (t2/hydrate glossary :creator)))
+  (check-editable!)
+  (t2/hydrate (glossary.core/create-entry! api/*current-user-id* body) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -47,18 +51,12 @@
   "Update an existing glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [term definition]} :- [:map {:closed true}
-                                 [:term ms/NonBlankString]
-                                 [:definition ms/NonBlankString]]]
+   body :- [:map {:closed true}
+            [:term ms/NonBlankString]
+            [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [previous-glossary (api/check-404 (glossary.db/glossary-entry id))]
-    (glossary.db/update-glossary-entry! id term definition)
-    (let [glossary (glossary.db/glossary-entry id)]
-      (events/publish-event! :event/glossary-update
-                             {:object glossary
-                              :previous-object previous-glossary
-                              :user-id api/*current-user-id*})
-      (t2/hydrate glossary :creator))))
+  (check-editable!)
+  (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -68,9 +66,6 @@
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [glossary (api/check-404 (glossary.db/glossary-entry id))]
-    (glossary.db/delete-glossary-entry! id)
-    (events/publish-event! :event/glossary-delete
-                           {:object glossary
-                            :user-id api/*current-user-id*}))
+  (check-editable!)
+  (api/check-404 (glossary.core/delete-entry! api/*current-user-id* id))
   api/generic-204-no-content)

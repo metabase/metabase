@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
+   [metabase.osi.schema]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

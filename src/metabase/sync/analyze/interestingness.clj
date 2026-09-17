@@ -76,10 +76,13 @@
              {:fields-scored 0 :fields-failed 0}
              (sync.db/unscored-fields-for-database-reducible (u/the-id database))))
 
+(def ^:private LogProgressFn
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
+
 (mu/defn score-fields-for-db!
   "Score interestingness for all qualifying Fields in `database`."
   [database        :- i/DatabaseInstance
-   log-progress-fn]
+   log-progress-fn :- LogProgressFn]
   (let [tables (sync-util/reducible-sync-tables database)
         per-table-stats (transduce (map (fn [table]
                                           (let [result (score-fields! table)]

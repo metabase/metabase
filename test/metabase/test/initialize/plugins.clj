@@ -30,7 +30,7 @@
                                   "Loading plugin manifest (from %s) for driver as if it were a real plugin: %s"
                                   path
                                   nm))
-                       (yaml/parse-string (slurp manifest))))))))
+                       (plugins.init/normalize-manifest (yaml/parse-string (slurp manifest)))))))))
 
 (defn- driver-parents
   "Return the set of parents for `driver`. Based on the value of `:metabase.driver/parents` in its `deps.edn`

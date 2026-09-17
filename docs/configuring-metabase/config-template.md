@@ -147,9 +147,7 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
-    enable-embedding-sdk: false
-    enable-embedding-simple: false
-    enable-embedding-static: false
+    enable-embedding-modular: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -188,7 +186,7 @@ config:
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
-    ldap-attribute-firstname: givenName
+    ldap-attribute-firstname: givenname
     ldap-attribute-lastname: sn
     ldap-bind-dn: null
     ldap-enabled: false
@@ -272,6 +270,7 @@ config:
     metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
+    mfa-requirement-deadline: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
