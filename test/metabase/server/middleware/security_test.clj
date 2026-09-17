@@ -694,7 +694,8 @@
       (is (= "60" (get headers "Access-Control-Max-Age"))
           "Expected Access-Control-Max-Age header to be set to 60")))
   (testing "CORS should be enabled when origins are configured regardless of embedding flags"
-    (mt/with-temporary-setting-values [enable-embedding-modular false]
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false]
       (let [headers (mw.security/access-control-headers "https://example.com"
                                                         "https://example.com")]
         (is (= "https://example.com"
@@ -707,7 +708,8 @@
 
 (deftest test-cors-enabled-when-origins-configured-without-embedding-features
   (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
-    (mt/with-temporary-setting-values [enable-embedding-modular  false
+    (mt/with-temporary-setting-values [enable-embedding-sdk    false
+                                       enable-embedding-simple false
                                        embedding-app-origins-sdk "https://example.com"]
       (let [wrapped-handler (mw.security/add-security-headers
                              (fn [_request respond _raise]
