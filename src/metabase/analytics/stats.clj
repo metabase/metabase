@@ -970,6 +970,9 @@
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
+   {:name      :transforms-testing
+    :available (premium-features/enable-transform-testing?)
+    :enabled   (premium-features/enable-transform-testing?)}
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
     :enabled   (premium-features/enable-dependencies?)}
