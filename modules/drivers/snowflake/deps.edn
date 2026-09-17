@@ -21,6 +21,8 @@
                                                    io.opentelemetry/opentelemetry-api
                                                    org.bouncycastle/bcpkix-jdk18on
                                                    org.bouncycastle/bcprov-jdk18on
+                                                   ;; resolved from /deps.edn transitively via bcpkix-jdk18on
+                                                   org.bouncycastle/bcutil-jdk18on
                                                    org.jsoup/jsoup]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
