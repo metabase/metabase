@@ -362,13 +362,13 @@
   "`max_tokens` for an unresolved model — low enough to be safe on any of them."
   64000)
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the Anthropic chat models supported by this adapter, by intersecting [[supported-models]] with the
   account's `/v1/models` catalog.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
   and throws when they are missing. Also supports `:ai-proxy?`."
   ([] (list-models {}))
-  ([opts]
+  ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
                     (adapter/fetch-catalog provider opts "/v1/models")
                     :display_name)))

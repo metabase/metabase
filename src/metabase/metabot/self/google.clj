@@ -517,7 +517,7 @@
     :google    (validate-google-surface! credentials model))
   nil)
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "Validates the Google credentials and the candidate model with a probe, and returns an empty model list.
 
   Similar to the Azure provider, there is no list-models call that we can use to whitelist models for the Gemini
@@ -528,7 +528,7 @@
   `:probe?` reports the model the probe verified as `:learned-config` `:probed-model`, for the connect and edit paths
   to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
   ([] (list-models {}))
-  ([{:keys [credentials model proposed-model ai-proxy? probe?]}]
+  ([{:keys [credentials model proposed-model ai-proxy? probe?]} :- adapter/ListOpts]
    (adapter/reject-ai-proxy! provider ai-proxy?)
    (if-let [model (or (not-empty model) (not-empty proposed-model))]
      (do

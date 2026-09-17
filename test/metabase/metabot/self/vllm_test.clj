@@ -4,13 +4,15 @@
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.test :as mt]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.net ConnectException SocketTimeoutException)
    (java.util.concurrent CountDownLatch TimeUnit)))
@@ -752,6 +754,13 @@
   "[[probe-choice!]] for a server that runs to a natural stop, where only the message shape matters."
   [models chat-message]
   (probe-choice! models {:message chat-message :finish_reason "tool_calls"}))
+
+(deftest probe-return-conforms-to-the-listing-schema-test
+  (testing "a probing listing still validates against [[adapter/ModelListing]] — `:learned-config` is a
+            declared key, not an undeclared extra the closed schema would reject"
+    (let [listing (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)]
+      (is (contains? listing :learned-config))
+      (is (nil? (mr/explain adapter/ModelListing listing))))))
 
 (deftest preflight-passes-on-a-correctly-configured-server-test
   (testing "a server that returns a well-formed tool call passes and still lists its models"
