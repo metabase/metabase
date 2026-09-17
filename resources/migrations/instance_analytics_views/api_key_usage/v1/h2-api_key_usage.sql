@@ -11,7 +11,10 @@ SELECT
     t.api_key_id                                           AS api_key_id,
     ak.name                                                AS api_key_name,
     t.created_by_id                                        AS user_id,
-    COALESCE(creator.first_name || ' ' || creator.last_name, creator.email) AS user_display_name,
+    -- CAST to VARCHAR: H2 declares core_user.email VARCHAR_IGNORECASE (for case-insensitive lookups),
+    -- and COALESCE inherits that type, which Metabase's H2 type mapper doesn't recognize — it falls back
+    -- to an unknown type, and metabase-lib silently excludes unknown-typed columns from sortable columns.
+    CAST(COALESCE(creator.first_name || ' ' || creator.last_name, creator.email) AS VARCHAR) AS user_display_name,
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id
