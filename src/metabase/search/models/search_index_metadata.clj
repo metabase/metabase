@@ -52,16 +52,19 @@
          ;; We assume that failure corresponds to a unique index conflict (a pending entry already exists)
          false)))))
 
-(defn delete-index!
-  "Delete the given pending index, as long as its still pending."
+(defn delete-non-active-index!
+  "Delete the metadata rows for `index-name` unless it is the active index.
+  Returns the number of rows deleted."
   [engine version index-name]
-  (search.db/delete-index-metadata! engine version (i18n/site-locale-string) (name index-name)))
+  (search.db/delete-non-active-index-metadata! engine version (i18n/site-locale-string) (name index-name)))
 
 (defn active-pending!
   "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."
   [engine version]
   (t2/with-transaction [_conn]
-    (when (search.db/pending-index-metadata-exists? engine version (i18n/site-locale-string))
+    ;; Lock the exact row before retiring the active index. A concurrent reset can otherwise delete the pending row
+    ;; after the existence check, leaving the coordinate with no active index.
+    (when (search.db/lock-pending-index-metadata! engine version (i18n/site-locale-string))
       (search.db/delete-retired-index-metadata! engine version (i18n/site-locale-string))
       (search.db/retire-active-index-metadata! engine version (i18n/site-locale-string))
       (search.db/activate-pending-index-metadata! engine version (i18n/site-locale-string)))
