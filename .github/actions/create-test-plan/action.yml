@@ -23,11 +23,14 @@ inputs:
   shared-sources-touched:
     description: Whether cljc/cljs/package.json changed.
     required: true
+  eng-stats-url:
+    description: Eng stats API URL for the affected-tests stats upload.
+    required: true
+  eng-stats-api-key:
+    description: Eng stats API key for the affected-tests stats upload.
+    required: true
 
 outputs:
-  stats:
-    description: FE Affected Tests stats row (JSON).
-    value: ${{ steps.compute.outputs.stats }}
   artifact-id:
     description: Artifact containing test-plan.json for this run.
     value: ${{ steps.upload.outputs.artifact-id }}
@@ -71,6 +74,22 @@ runs:
         # stdout is the plan JSON; the planner's own info logs go to stderr.
         # The planner writes this step's GITHUB_OUTPUT entries.
         bun .github/scripts/create-test-plan.ts > test-plan.json
+
+    - name: Upload affected tests stats
+      # Only land rows for PRs from the upstream repo so forks don't pollute the table.
+      if: github.event.pull_request.head.repo.full_name == 'metabase/metabase'
+      # Stats upload is best-effort — a failure here shouldn't fail the test plan.
+      continue-on-error: true
+      shell: bash
+      env:
+        STATS_JSON: ${{ steps.compute.outputs.stats }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        ENG_STATS_URL: ${{ inputs.eng-stats-url }}
+        API_KEY: ${{ inputs.eng-stats-api-key }}
+      # Composite steps don't support timeout-minutes.
+      run: timeout 3m bun .github/scripts/upload-affected-tests-stats.ts
 
     - name: Upload test plan
       id: upload
