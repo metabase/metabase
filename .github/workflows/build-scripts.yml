@@ -3,17 +3,18 @@ name: Build scripts
 on:
   workflow_call:
     inputs:
-      skip-build-scripts:
-        type: boolean
-        default: false
-      skip-embedder-plugin:
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `build-scripts`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
 
 jobs:
 
   test-embedder-plugin:
-    if: ${{ !inputs.skip-embedder-plugin }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.build-scripts.jobs.test-embedder-plugin.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     permissions:
@@ -63,7 +64,7 @@ jobs:
         '[metabase-enterprise.semantic-search.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
 
   test-build-scripts:
-    if: ${{ !inputs.skip-build-scripts }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.build-scripts.jobs.test-build-scripts.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     steps:

@@ -3,25 +3,13 @@ name: Backend
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
-      run-project-backend-checks:
-        description: Run project-level backend checks.
-        type: boolean
-        default: false
-      run-project-migration-checks:
-        description: Run project-level migration checks.
-        type: boolean
-        default: false
-      run-project-ratchet-checks:
-        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `backend`
+          workflow in it decides the jobs below. `{}` means there is no plan,
+          and everything runs.
+        type: string
+        default: '{}'
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -38,6 +26,11 @@ on:
         type: boolean
         required: false
         default: false
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
@@ -56,15 +49,27 @@ env:
   # partition args no longer apply, and legs that hold none of the named tests run nothing.
   PROFILE_TESTS: ${{ inputs.profile }}
   ONLY_TESTS: ${{ inputs.tests }}
+  # `project-checks` runs three suites in one job, so the plan gates the job
+  # and these gate the steps. An override settled the run without asking the
+  # diff which suites it wanted -- and a hand-dispatched run has no plan at
+  # all -- so the honest answer in both cases is to run all three.
+  # (A workflow level `env` cannot read another, so "all of them" is spelled
+  # out in each rather than named once.)
+  PROJECT_BACKEND_CHECKS: >-
+    ${{ inputs.plan == '{}' || fromJSON(inputs.plan).override != null ||
+    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_backend_checks') }}
+  PROJECT_MIGRATION_CHECKS: >-
+    ${{ inputs.plan == '{}' || fromJSON(inputs.plan).override != null ||
+    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_migration_checks') }}
+  PROJECT_RATCHET_CHECKS: >-
+    ${{ inputs.plan == '{}' || fromJSON(inputs.plan).override != null ||
+    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_backend_checks') ||
+    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_ratchet_checks') }}
 
 jobs:
   project-checks:
     name: 'Project tests: Suites'
-    if: >-
-      ${{ inputs.force-run ||
-      inputs.run-project-backend-checks ||
-      inputs.run-project-migration-checks ||
-      inputs.run-project-ratchet-checks }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.project-checks.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -76,21 +81,23 @@ jobs:
         run: ./bin/mage
       - parallel:
         - name: Run backend checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          if: ${{ env.PROJECT_BACKEND_CHECKS == 'true' }}
           run: ./bin/mage project-tests backend
         - name: Run migration checks
-          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          if: ${{ env.PROJECT_MIGRATION_CHECKS == 'true' }}
           run: ./bin/mage project-tests migrations
         # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
         # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
         - name: Run ratchet checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          if: ${{ env.PROJECT_RATCHET_CHECKS == 'true' }}
           run: ./bin/mage kondo-ratchets
 
   project-tests:
     name: Project tests
     needs: project-checks
-    if: ${{ always() && !cancelled() }}
+    if: >-
+      ${{ always() && !cancelled() &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.project-tests.run) }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -148,7 +155,7 @@ jobs:
             process.exit(1);
 
   be-linter-clj-kondo:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-linter-clj-kondo.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -160,7 +167,7 @@ jobs:
         run: ./bin/mage kondo
 
   be-linter-eastwood:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
@@ -173,7 +180,9 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && inputs.force-run }}
+    if: >-
+      ${{ inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood-test.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -186,7 +195,9 @@ jobs:
 
   be-linter-eastwood-test-changed:
     # Lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
+    if: >-
+      ${{ inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood-test-changed.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -251,7 +262,7 @@ jobs:
         run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-tests.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -448,7 +459,7 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-check.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -464,7 +475,7 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-cljfmt.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
@@ -477,6 +488,9 @@ jobs:
 
   be-tests-result:
     needs:
+      # Every job the `backend` plan names, so the verify step below can see
+      # each one's result.
+      - project-checks
       - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test
@@ -491,6 +505,8 @@ jobs:
     env:
       needs: ${{ toJson(needs) }}
     steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare-node-bun
       - name: Check backend job status
         uses: actions/github-script@v9
         env:
@@ -518,3 +534,15 @@ jobs:
               }
             });
             process.exit(1);
+
+      # The plan and the run have to agree: every job the plan asked for ran
+      # and passed, and every job it ruled out was skipped. Runs even when the
+      # status check above failed, so a drift is never hidden behind it.
+      - name: Verify the plan was carried out
+        if: ${{ !cancelled() && inputs.plan != '{}' }}
+        env:
+          PLAN: ${{ inputs.plan }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          printf '%s' "$PLAN" |
+            bun .github/scripts/test-plan.ts verify --plan - --workflow backend --results "$RESULTS"

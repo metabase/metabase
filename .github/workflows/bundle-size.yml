@@ -7,6 +7,14 @@ name: Bundle Size
 
 on:
   workflow_call:
+    inputs:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `bundle-size`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
 
 concurrency:
   group: bundle-size-${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -14,6 +22,7 @@ concurrency:
 
 jobs:
   bundle-size-check:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.bundle-size.jobs.bundle-size-check.run }}
     name: "Bundle size check"
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

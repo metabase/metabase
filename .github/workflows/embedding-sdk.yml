@@ -3,26 +3,13 @@ name: SDK
 on:
   workflow_call:
     inputs:
-      cli-snippets-type-check:
-        description: "Whether to run cli snippets type check."
-        required: true
-        type: boolean
-      docs-snippets-type-check:
-        description: "Whether to run docs snippets type check."
-        required: true
-        type: boolean
-      documentation-validation:
-        description: "Whether to run documentation generation validation check."
-        required: true
-        type: boolean
-      component-tests:
-        description: "Whether to run component tests."
-        required: true
-        type: boolean
-      host-sample-apps-tests:
-        description: "Whether to run host and sample apps compatibility tests."
-        required: true
-        type: boolean
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `embedding-sdk`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
       skip:
         description: Whether to skip running tests due to one of the artifacts failing to build.
         required: true
@@ -33,8 +20,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-sdk-package:
+    name: "Build Embedding SDK package"
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.build-sdk-package.run }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build Embedding SDK package
+        run: |
+          # Remove the matchers to not report false positives on every PR
+          # unrelated to embedding (EMB-765)
+          echo "::remove-matcher owner=tsc::"
+          bun run build-embedding-sdk-package
+      - name: Smoke test the packed SDK CLI
+        run: node bin/embedding-sdk/test-sdk-package.mjs
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
   embedding-sdk-cli-snippets-type-check:
-    if: inputs.cli-snippets-type-check && !inputs.skip
+    needs: build-sdk-package
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-cli-snippets-type-check.run) &&
+      !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -50,7 +65,10 @@ jobs:
         run: bun run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    if: inputs.docs-snippets-type-check && !inputs.skip
+    needs: build-sdk-package
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-docs-snippets-type-check.run) &&
+      !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -66,7 +84,10 @@ jobs:
         run: bun run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    if: inputs.documentation-validation && !inputs.skip
+    needs: build-sdk-package
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-api-documentation-generation-validation.run) &&
+      !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -116,18 +137,29 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
     name: "SDK component tests"
-    if: inputs.component-tests && !inputs.skip
+    needs: build-sdk-package
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-component-tests.run) &&
+      !inputs.skip }}
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
+    with:
+      plan: ${{ inputs.plan }}
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    if: inputs.host-sample-apps-tests && !inputs.skip
+    needs: build-sdk-package
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.not-required-embedding-sdk-apps-compatibility-tests.run) &&
+      !inputs.skip }}
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
+    with:
+      plan: ${{ inputs.plan }}
 
   embedding-sdk-tests-result:
     needs:
+      - build-sdk-package
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation

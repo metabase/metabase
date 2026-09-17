@@ -100,6 +100,15 @@ export type Condition = {
   mode: "all" | "any";
   /** Predicate name to its parsed value, in the order the YAML listed them. */
   predicates: Record<string, unknown>;
+  /**
+   * Overrides this block sits out, by id. An override normally settles every
+   * job in every workflow before a block is so much as read; naming one here
+   * says it has no effect here, and the job is decided from its own
+   * conditions exactly as it would be on an ordinary run.
+   *
+   * It is not a condition — it never makes the block match or fail to match.
+   */
+  ignoreOverrides: string[];
 };
 
 /**
@@ -120,10 +129,15 @@ export type Override = Pick<Blocks, "run" | "skip"> & {
 
 export type JobConfig = Blocks & {
   /**
-   * The workflow this job calls, for a job whose whole body is `uses:`. Such a
-   * job decides nothing itself — it runs exactly when the workflow it calls has
-   * work in it — so the called workflow's own jobs, described here like any
-   * other, are what settle it.
+   * The workflow this job calls, for a job whose whole body is `uses:`. It runs
+   * when the workflow it calls has work in it, so the called workflow's own
+   * jobs, described here like any other, are most of what settles it.
+   *
+   * Blocks alongside a `calls` gate the call itself, from above: they are the
+   * caller's `if:`, and they reach the whole of the called workflow. Put a
+   * condition here when the caller is what knows about it — the diff or the
+   * branch that decides whether entering the workflow makes sense at all — and
+   * on the called workflow when it is a condition its own jobs share.
    */
   calls?: string;
 };
@@ -282,6 +296,11 @@ export function matchesCondition(condition: Condition, facts: Facts): boolean {
   return holds(condition, matched(condition, facts));
 }
 
+/** True when any block of these sits the named override out. */
+export function ignoresOverride(blocks: Blocks, id: string): boolean {
+  return LADDER.some(({ block }) => blocks[block]?.ignoreOverrides.includes(id));
+}
+
 function predicate(name: string): PredicateSpec {
   const spec = PREDICATES[name];
 
@@ -328,7 +347,8 @@ function describe(
  *
  *   force-skip  an unconditional no. Nothing below it can talk it round, so
  *               it is the way to hold a job back even when the diff, or a
- *               label, is asking for it.
+ *               label, is asking for it. An override still outranks it; a
+ *               block that has to survive one names it in `ignore-overrides`.
  *   run         asking for something to run is a positive instruction, and it
  *               outranks a plain skip.
  *   skip        the weakest, since it only ever says "no reason to bother".
@@ -419,22 +439,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * before anyone has worked out what changed; a `paths:` there would be a
  * condition that can never be honestly answered, so it is an error rather than
  * something that quietly never matches.
+ *
+ * `overrideIds` is every override the config declares, which is what an
+ * `ignore-overrides` entry is checked against — a typo there would otherwise
+ * be a block that quietly sits out nothing at all. It is null inside an
+ * override, where the key makes no sense.
  */
 export function parseCondition(
   value: unknown,
   where: string,
   allowDiff = true,
+  overrideIds: string[] | null = [],
 ): Condition {
   if (!isRecord(value)) {
     throw new Error(`${where} must be a mapping of conditions`);
   }
 
-  const { condition: mode = "all", ...rest } = value;
+  const {
+    condition: mode = "all",
+    "ignore-overrides": rawIgnore,
+    ...rest
+  } = value;
 
   if (mode !== "all" && mode !== "any") {
     throw new Error(`${where}.condition must be all | any`);
   }
 
+  const ignoreOverrides = parseIgnoreOverrides(rawIgnore, where, overrideIds);
   const predicates: Record<string, unknown> = {};
 
   for (const [name, raw] of Object.entries(rest)) {
@@ -459,7 +490,43 @@ export function parseCondition(
     throw new Error(`${where} needs at least one condition`);
   }
 
-  return { mode, predicates };
+  return { mode, predicates, ignoreOverrides };
+}
+
+/**
+ * The overrides a block sits out.
+ *
+ * Every id has to name an override that exists. An `ignore-overrides` entry is
+ * silent when it is right — the block simply behaves as it always did — so a
+ * misspelt one would never show up as anything but the override applying after
+ * all, on the one run the block was written to survive.
+ */
+function parseIgnoreOverrides(
+  value: unknown,
+  where: string,
+  overrideIds: string[] | null,
+): string[] {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (overrideIds === null) {
+    throw new Error(
+      `${where} cannot use \`ignore-overrides\` — an override does not sit itself out`,
+    );
+  }
+
+  const ids = stringList(value, `${where}.ignore-overrides`);
+
+  for (const id of ids) {
+    if (!overrideIds.includes(id)) {
+      throw new Error(
+        `${where}.ignore-overrides names unknown override "${id}", expected one of ${overrideIds.join(", ") || "(none declared)"}`,
+      );
+    }
+  }
+
+  return ids;
 }
 
 /** Reads whichever of `rungs` blocks are present, for jobs and overrides alike. */
@@ -468,6 +535,7 @@ function parseBlocks(
   where: string,
   rungs: readonly { block: keyof Blocks }[],
   allowDiff: boolean,
+  overrideIds: string[] | null = [],
 ): Blocks {
   const blocks: Blocks = {};
 
@@ -477,6 +545,7 @@ function parseBlocks(
         raw[block],
         `${where}.${block}`,
         allowDiff,
+        overrideIds,
       );
     }
   }
@@ -520,10 +589,13 @@ export function parseConfig(source: string): PlanConfig {
 
     return {
       id,
-      ...parseBlocks(raw, `override "${id}"`, OVERRIDE_BLOCKS, false),
+      ...parseBlocks(raw, `override "${id}"`, OVERRIDE_BLOCKS, false, null),
       reason: typeof raw.reason === "string" ? raw.reason : id,
     } satisfies Override;
   });
+
+  // What an `ignore-overrides` entry below is allowed to name.
+  const overrideIds = overrides.map(({ id }) => id);
 
   if (!isRecord(parsed.workflows)) {
     throw new Error("`workflows` must be a mapping of workflow name to jobs");
@@ -550,12 +622,18 @@ export function parseConfig(source: string): PlanConfig {
 
       jobs[job] = {
         calls: parseCalls(options, where),
-        ...parseBlocks(options, where, LADDER, true),
+        ...parseBlocks(options, where, LADDER, true, overrideIds),
       };
     }
 
     workflows[workflow] = {
-      ...parseBlocks(rawWorkflow, `workflow "${workflow}"`, LADDER, true),
+      ...parseBlocks(
+        rawWorkflow,
+        `workflow "${workflow}"`,
+        LADDER,
+        true,
+        overrideIds,
+      ),
       jobs,
     };
   }
@@ -565,7 +643,7 @@ export function parseConfig(source: string): PlanConfig {
   return { overrides, workflows };
 }
 
-/** `calls` is the whole of a job's configuration, so nothing may sit beside it. */
+/** The workflow a job calls, if it calls one. Its blocks gate the call. */
 function parseCalls(
   options: Record<string, unknown>,
   where: string,
@@ -578,30 +656,55 @@ function parseCalls(
     throw new Error(`${where}.calls must be the name of a workflow`);
   }
 
-  const clashes = LADDER.map(({ block }) => block).filter(
-    (block) => options[block] !== undefined,
-  );
-
-  if (clashes.length > 0) {
-    throw new Error(
-      `${where} cannot combine \`calls\` with ${clashes.join(", ")} — the jobs of the called workflow decide whether it runs`,
-    );
-  }
-
   return options.calls;
 }
 
-/** A called workflow has to be described here, or nothing can plan its jobs. */
+/**
+ * A called workflow has to be described here, or nothing can plan its jobs —
+ * and it has to be called from one place only, since the calling job's own
+ * conditions gate it and two callers would be two different gates on one plan.
+ */
 function validateCalls(workflows: PlanConfig["workflows"]): void {
+  const callers: Record<string, string> = {};
+
   for (const [workflow, { jobs }] of Object.entries(workflows)) {
     for (const [job, options] of Object.entries(jobs)) {
-      if (options.calls !== undefined && !workflows[options.calls]) {
+      if (options.calls === undefined) {
+        continue;
+      }
+
+      if (!workflows[options.calls]) {
         throw new Error(
           `job "${workflow}/${job}" calls workflow "${options.calls}", which is not described here — add it under \`workflows\``,
         );
       }
+
+      const already = callers[options.calls];
+
+      if (already) {
+        throw new Error(
+          `workflow "${options.calls}" is called by both "${already}" and "${workflow}/${job}" — it can only be called from one place, since the calling job's conditions gate it`,
+        );
+      }
+
+      callers[options.calls] = `${workflow}/${job}`;
     }
   }
+}
+
+/** Where each called workflow is called from, by the name of the workflow. */
+function callSites(workflows: PlanConfig["workflows"]): Record<string, true> {
+  const called: Record<string, true> = {};
+
+  for (const { jobs } of Object.values(workflows)) {
+    for (const { calls } of Object.values(jobs)) {
+      if (calls !== undefined) {
+        called[calls] = true;
+      }
+    }
+  }
+
+  return called;
 }
 
 /** Every `paths` group a job or workflow filters on, wherever it sits. */
@@ -1080,7 +1183,8 @@ export type Decision = { id: string; run: boolean; reason: string };
 /**
  * The first override whose `run` or `skip` matches, which then applies to
  * every job in every workflow — an override outranks everything a workflow
- * says about itself, `force-skip` included.
+ * says about itself, `force-skip` included. The one way out is for a block to
+ * name it in `ignore-overrides`.
  *
  * It is tested against the context alone: `paths` is barred from an override
  * at parse time, so the empty diff handed in here is never consulted.
@@ -1117,11 +1221,18 @@ function decide(
   unconditional: string,
 ): JobPlan {
   // Overrides always take precedence over every workflow level setting, which
-  // is the outer rule: `force-skip` tops the ladder below, not this.
-  if (override) {
+  // is the outer rule: `force-skip` tops the ladder below, not this. The one
+  // way out is a block naming the override in `ignore-overrides`, which sits
+  // this job out of it and leaves it decided by its own conditions.
+  const sittingOut = override !== null && ignoresOverride(blocks, override.id);
+
+  if (override && !sittingOut) {
     return { run: override.run, reason: override.reason };
   }
 
+  // Said once at the end rather than folded into each reason, so a reason
+  // still reads as the condition that settled it.
+  const aside = sittingOut ? ` (ignoring the ${override?.id} override)` : "";
   const verdict = weigh(blocks, facts);
 
   if (verdict) {
@@ -1130,9 +1241,10 @@ function decide(
 
     return {
       run: verdict.run,
-      reason: loser
-        ? `${reason} (which beats the matching ${loser} condition)`
-        : reason,
+      reason:
+        (loser
+          ? `${reason} (which beats the matching ${loser} condition)`
+          : reason) + aside,
     };
   }
 
@@ -1141,11 +1253,11 @@ function decide(
   if (blocks.run) {
     return {
       run: false,
-      reason: `no run condition met: ${describeCondition(blocks.run)}`,
+      reason: `no run condition met: ${describeCondition(blocks.run)}${aside}`,
     };
   }
 
-  return { run: true, reason: unconditional };
+  return { run: true, reason: unconditional + aside };
 }
 
 export function planJob(
@@ -1164,8 +1276,12 @@ export function planJob(
  * along with the backend — it stops asking them anything when the backend is
  * untouched, and otherwise leaves them exactly as they were.
  */
-export function gateWorkflow(config: WorkflowConfig, facts: Facts): JobPlan {
-  return decide(config, facts, null, "no workflow conditions");
+export function gateWorkflow(
+  config: WorkflowConfig,
+  facts: Facts,
+  override: Decision | null = null,
+): JobPlan {
+  return decide(config, facts, override, "no workflow conditions");
 }
 
 /** The id the plan carries when everything ran because the diff failed. */
@@ -1191,11 +1307,17 @@ const diffFailed: Decision = {
 /**
  * Plans every workflow, and a called one before its caller.
  *
- * Calls are what let one config govern workflows that call each other: the
- * calling job is not planned from its own options, it simply takes the answer
- * the called workflow arrived at, which is the same "is there real work here?"
- * rule a top-level workflow uses. So a nested job's path filter reaches all the
- * way up, and there is one place to look to see why any of it ran.
+ * Calls are what let one config govern workflows that call each other. A
+ * calling job takes the answer the called workflow arrived at, which is the
+ * same "is there real work here?" rule a top-level workflow uses, so a nested
+ * job's path filter reaches all the way up and there is one place to look to
+ * see why any of it ran.
+ *
+ * Conditions on the calling job are the `if:` on the call, and so gate the
+ * called workflow from above — everything in it is held back when the call is.
+ * That is the one thing a called workflow cannot say for itself: its own gate
+ * is shared by its jobs, but only the caller knows whether entering it was
+ * worth it at all.
  */
 function planWorkflows(
   config: PlanConfig,
@@ -1205,7 +1327,10 @@ function planWorkflows(
   const planned: Record<string, WorkflowPlan> = {};
   const calling: string[] = [];
 
-  const planWorkflow = (workflow: string): WorkflowPlan => {
+  /** The call that reached this workflow, for a workflow that was called. */
+  type Call = { workflow: string; job: string; plan: JobPlan };
+
+  const planWorkflow = (workflow: string, call?: Call): WorkflowPlan => {
     const done = planned[workflow];
 
     if (done) {
@@ -1229,26 +1354,46 @@ function planWorkflows(
     calling.push(workflow);
 
     // An override settles every job in every workflow on its own, so there is
-    // nothing left for a gate to hold back and it is not consulted.
-    const gate = override ? null : gateWorkflow(workflowConfig, facts);
-    const closed = gate !== null && !gate.run;
+    // nothing left for a gate to hold back and neither gate is consulted --
+    // unless this workflow's own blocks sit that override out, in which case
+    // its gate is asked exactly as it would be on an ordinary run.
+    const settled =
+      override !== null && !ignoresOverride(workflowConfig, override.id);
+
+    const gate = settled ? null : gateWorkflow(workflowConfig, facts, override);
+
+    // The call is the outer gate: a workflow nobody called runs none of its
+    // jobs, whatever its own gate would have allowed.
+    const closed = settled
+      ? null
+      : call && !call.plan.run
+        ? `the ${call.workflow} workflow does not call it: ${call.plan.reason}`
+        : gate && !gate.run
+          ? gate.reason
+          : null;
 
     const jobs: Record<string, JobPlan> = {};
 
     for (const [job, options] of Object.entries(workflowConfig.jobs)) {
-      if (closed) {
-        // Named so the reason reads the same wherever the job is looked up,
-        // rather than making sense only next to the workflow it belongs to.
-        jobs[job] = {
-          run: false,
-          reason: `the ${workflow} workflow is skipped: ${gate.reason}`,
-        };
+      // Named so the reason reads the same wherever the job is looked up,
+      // rather than making sense only next to the workflow it belongs to.
+      const own = closed
+        ? { run: false, reason: `the ${workflow} workflow is skipped: ${closed}` }
+        : planJob(options, facts, override);
+
+      if (options.calls === undefined) {
+        jobs[job] = own;
         continue;
       }
 
-      jobs[job] = options.calls
-        ? planCall(options.calls, planWorkflow(options.calls))
-        : planJob(options, facts, override);
+      // A call is planned even when this workflow is closed, so that the
+      // whole subtree below it is marked skipped for the same reason rather
+      // than being planned later as though nobody had called it.
+      const called = planWorkflow(options.calls, { workflow, job, plan: own });
+
+      // The job's own blocks decide whether the call happens; what is left
+      // inside the called workflow decides whether the job has anything to do.
+      jobs[job] = closed ? own : planCall(options.calls, called);
     }
 
     calling.pop();
@@ -1257,11 +1402,8 @@ function planWorkflows(
 
     const workflowPlan: WorkflowPlan = {
       run,
-      reason: closed
-        ? gate.reason
-        : run
-          ? "a job in it has work to do"
-          : "no job in it has work to do",
+      reason:
+        closed ?? (run ? "a job in it has work to do" : "no job in it has work to do"),
       jobs,
     };
 
@@ -1270,8 +1412,18 @@ function planWorkflows(
     return workflowPlan;
   };
 
-  // Planned depth-first, but reported in the order the config lists them, so
-  // reading a plan follows the same path as reading the file it came from.
+  // A called workflow has to be planned through the call that gates it, so the
+  // workflows nobody calls go first and everything else is reached from one of
+  // them. Reported in the order the config lists them all the same, so reading
+  // a plan follows the same path as reading the file it came from.
+  const called = callSites(config.workflows);
+
+  for (const workflow of Object.keys(config.workflows)) {
+    if (!called[workflow]) {
+      planWorkflow(workflow);
+    }
+  }
+
   return Object.fromEntries(
     Object.keys(config.workflows).map((workflow) => [
       workflow,
@@ -1286,11 +1438,27 @@ function planCall(workflow: string, called: WorkflowPlan): JobPlan {
     : { run: false, reason: `nothing to run in the ${workflow} workflow` };
 }
 
+/** True when anything in the config sits the named override out. */
+function anythingIgnores(config: PlanConfig, id: string): boolean {
+  return Object.values(config.workflows).some(
+    (workflow) =>
+      ignoresOverride(workflow, id) ||
+      Object.values(workflow.jobs).some((job) => ignoresOverride(job, id)),
+  );
+}
+
 /**
- * `diff` is a thunk because an override settles every job on its own: on a
- * protected branch, or behind force-run or skip-all, there is no question left
- * for the diff to answer, so it is never asked. When it is asked and throws,
- * that is not an error to fail the run with — it is the diff-failed decision.
+ * `diff` is a thunk because an override usually settles every job on its own:
+ * on a protected branch, or behind force-run or skip-all, there is no question
+ * left for the diff to answer, so it is never asked. When it is asked and
+ * throws, that is not an error to fail the run with — it is the diff-failed
+ * decision.
+ *
+ * A block that sits the override out is the exception. It is decided from its
+ * own conditions, and those may include `paths:`, so the diff has to be worked
+ * out after all. A diff that then fails is not the diff-failed decision — the
+ * override already settled everything else, and everything that sat it out is
+ * left with no changed groups, which is the same answer it would have had.
  */
 export function createPlan(
   config: PlanConfig,
@@ -1305,6 +1473,12 @@ export function createPlan(
       changes = diff();
     } catch {
       override = diffFailed;
+    }
+  } else if (anythingIgnores(config, override.id)) {
+    try {
+      changes = diff();
+    } catch {
+      changes = null;
     }
   }
 

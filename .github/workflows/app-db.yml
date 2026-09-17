@@ -3,13 +3,13 @@ name: App DB Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `app-db` workflow in
+          it decides the jobs below. `{}` means there is no plan, and everything
+          runs.
+        type: string
+        default: '{}'
 
   # Run one app-DB job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- services, matrix legs, test args, quarantine gating -- is
@@ -34,6 +34,11 @@ on:
         type: boolean
         required: false
         default: false
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
@@ -56,7 +61,7 @@ env:
 
 jobs:
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.app-db-matrix.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -69,7 +74,12 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          RUN_ALL: ${{ inputs.force-run }}
+          # Every app DB version, not just the latest. True when an override
+          # settled the run -- a protected branch, ci:run-all -- which is the
+          # same thing `force-run` used to say.
+          RUN_ALL: >-
+            ${{ inputs.plan != '{}' &&
+            fromJSON(inputs.plan).override != null }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -135,7 +145,9 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.be-tests-mariadb.run) &&
+      (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -220,7 +232,9 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.be-tests-mysql.run) &&
+      (inputs.app-db == '' || inputs.app-db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -313,7 +327,9 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.be-tests-postgres.run) &&
+      (inputs.app-db == '' || inputs.app-db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -398,6 +414,8 @@ jobs:
     name: app-db-tests-result
     if: always() && !cancelled()
     steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare-node-bun
       - name: Check job status
         uses: actions/github-script@v9
         env:
@@ -451,3 +469,15 @@ jobs:
             });
 
             process.exit(1);
+
+      # The plan and the run have to agree: every job the plan asked for ran
+      # and passed, and every job it ruled out was skipped. Runs even when the
+      # status check above failed, so a drift is never hidden behind it.
+      - name: Verify the plan was carried out
+        if: ${{ !cancelled() && inputs.plan != '{}' }}
+        env:
+          PLAN: ${{ inputs.plan }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          printf '%s' "$PLAN" |
+            bun .github/scripts/test-plan.ts verify --plan - --workflow app-db --results "$RESULTS"

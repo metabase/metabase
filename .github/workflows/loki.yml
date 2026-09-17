@@ -3,10 +3,13 @@ name: Loki Visual Regression Testing
 on:
   workflow_call:
     inputs:
-      skip:
-        description: "Skip the Loki visual tests."
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `loki` workflow in
+          it decides the jobs below. `{}` means there is no plan, and everything
+          runs.
+        type: string
+        default: '{}'
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
         type: string
@@ -18,7 +21,9 @@ concurrency:
 
 jobs:
   story-selection:
-    if: ${{ !inputs.skip && inputs.test-plan-artifact-id != '' }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.loki.jobs.story-selection.run) &&
+      inputs.test-plan-artifact-id != '' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -49,7 +54,9 @@ jobs:
     needs: story-selection
     # A missing job output compares equal to '0' in GitHub expressions,
     # so an empty selection is marked with a non-numeric value.
-    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.selection != 'empty' }}
+    if: >-
+      ${{ !cancelled() && (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.loki.jobs.visual-test.run) &&
+      needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:

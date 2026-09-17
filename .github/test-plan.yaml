@@ -9,6 +9,38 @@
 #  - force-skip ALWAYS takes precedence over run and skips the job or workflow
 #  - a workflow condition can only hold jobs back, never compel one to run, so it
 #    must be at least as wide as the widest job under it or it will mask one
+#  - `ignore-overrides:` in a run or skip block lists overrides that block sits
+#    out. It is not a condition -- it never makes the block match or fail to
+#    match -- it says the named override has no effect here, so the job is
+#    decided from its own conditions as it would be on an ordinary run. That is
+#    how a job says "I cannot run here at all", as opposed to "I have nothing to
+#    do": a pull-request-only job on a push would otherwise be force-run by the
+#    protected-branch override and fail. Naming an override anywhere makes the
+#    run work the diff out even though the override settled everything else,
+#    so a `paths:` condition beside it still has an honest answer.
+#
+# CALLS
+#  - a job whose body is `uses:` names the workflow it calls with `calls`
+#  - conditions on that job are the `if:` on the call, and gate the whole of
+#    the called workflow: nothing in it runs when the call does not happen
+#  - a called workflow may still carry a top-level block of its own, for a
+#    condition its jobs share; put a condition on the caller when it is the
+#    caller that knows whether entering the workflow is worth it at all
+#  - a called workflow whose jobs report a required check must be entered on
+#    every run, or the check never reports and the PR sits pending. Leave the
+#    calling job unconditional there and let the plan skip the jobs inside it.
+#
+# NOT LISTED HERE
+#  - the job that builds the plan, and the `*-result` jobs that check it
+#    afterwards. Neither can be governed by the plan -- one runs before there
+#    is a plan to consult, the other has to run whatever the plan said.
+#  - `sync` still lists drivers-tests-result, loki-tests-result,
+#    e2e-tests-result and embedding-sdk-tests-result, because those four have
+#    no `verify` step yet and so do not look like plan machinery. Each is a
+#    case the plan cannot check on its own: `mage driver-decisions`, the loki
+#    story selection and the e2e matrix all narrow further than the plan can
+#    see, and the SDK result job deliberately leaves the not-required host-app
+#    job out of its `needs`. Leave them unlisted until verify can allow for it.
 
 overrides:
   # The global verdict from run-tests.yml's `should-run` job, in the same
@@ -36,33 +68,21 @@ overrides:
 workflows:
   run-tests:
     jobs:
-      should-run:
-      create-test-plan:
+      upload-affected-tests-stats:
         run:
+          # don't run if this isn't a PR
+          ignore-overrides:
+            - protected-branch
           event:
             - pull_request
-      upload-affected-tests-stats:
       uberjar:
         calls: uberjar
-        run:
-          condition: any
-          paths:
-            - backend_all
-            - frontend_all
-            - e2e_all
       containerize:
         calls: containerize-jar
-        run:
-          condition: any
-          branch:
-            - master
-          labels:
-            - build-docker-uberjar
       e2e-cljs:
         run:
           paths:
             - e2e_all
-      static-viz-files-changed:
       backend-tests:
         calls: backend
       semantic-search-tests:
@@ -77,8 +97,6 @@ workflows:
         calls: loki
       e2e-tests:
         calls: e2e-tests
-      embedding-sdk-package:
-        calls: embedding-sdk-package-build
       sdk-tests:
         calls: embedding-sdk
       build-scripts-tests:
@@ -97,13 +115,11 @@ workflows:
       verify-docker-pull-amd64:
         force-skip:
           event:
-            - push
             - pull_request
             - workflow_dispatch
       verify-docker-pull-arm:
         force-skip:
           event:
-            - push
             - pull_request
             - workflow_dispatch
 
@@ -148,6 +164,10 @@ workflows:
             - ci:run-all
       be-linter-eastwood-test-changed:
         run:
+          # it diffs against the pull request's base, so a push has nothing
+          # for it to lint
+          ignore-overrides:
+            - protected-branch
           paths:
             - backend_all
           event:
@@ -161,10 +181,6 @@ workflows:
           paths:
             - backend_all
       be-cljfmt:
-        run:
-          paths:
-            - backend_all
-      be-tests-result:
         run:
           paths:
             - backend_all
@@ -191,7 +207,6 @@ workflows:
         run:
           labels:
             - ci:run-semantic-search-tests
-      semantic-search-tests-result:
 
   app-db:
     run:
@@ -202,7 +217,6 @@ workflows:
       be-tests-mariadb:
       be-tests-mysql:
       be-tests-postgres:
-      app-db-tests-result:
 
   drivers:
     run:
@@ -270,10 +284,6 @@ workflows:
         run:
           paths:
             - custom_viz_all
-      fe-tests-result:
-        run:
-          paths:
-            - frontend_all
 
   loki:
     run:
@@ -289,10 +299,26 @@ workflows:
       paths:
         - e2e_all
     jobs:
+      changed-specs:
+        run:
+          # It narrows the run to the specs a pull request's diff touched, so
+          # it needs a diff to read, and has nothing to say when the run is
+          # meant to cover everything anyway.
+          ignore-overrides:
+            - protected-branch
+            - force-run-label
+          event:
+            - pull_request
+        force-skip:
+          labels:
+            - ci:run-all
       e2e-matrix-builder:
         calls: e2e-matrix-builder
       reset-e2e-test-comment:
         run:
+          # no pull request on a push, so no comment to take off
+          ignore-overrides:
+            - protected-branch
           event:
             - pull_request
       e2e-tests:
@@ -304,20 +330,14 @@ workflows:
       e2e-tests-result:
 
   e2e-matrix-builder:
-    run:
-      paths:
-        - e2e_all
     jobs:
       build-matrix:
 
   e2e-test:
-    run:
-      paths:
-        - e2e_all
     jobs:
       e2e-tests:
 
-  embedding-sdk-package-build:
+  embedding-sdk:
     run:
       condition: any
       paths:
@@ -328,16 +348,14 @@ workflows:
         - embedding_sdk_host_sample_apps
     jobs:
       build-sdk-package:
-
-  embedding-sdk:
-    run:
-      condition: any
-      paths:
-        - embedding_sdk_components
-        - frontend_sources
-        - embedding_documentation
-        - embedding_sdk_host_sample_apps
-    jobs:
+        run:
+          condition: any
+          paths:
+            - embedding_sdk_components
+            - frontend_sources
+            - embedding_documentation
+            - embedding_sdk_ci
+            - embedding_sdk_host_sample_apps
       embedding-sdk-cli-snippets-type-check:
         run:
           paths:
@@ -352,23 +370,23 @@ workflows:
             - frontend_sources
       embedding-sdk-component-tests:
         calls: embedding-sdk-component-tests
+        run:
+          paths:
+            - embedding_sdk_components
       not-required-embedding-sdk-apps-compatibility-tests:
         calls: embedding-sdk-host-sample-apps-tests
+        run:
+          paths:
+            - embedding_sdk_host_sample_apps
       embedding-sdk-tests-result:
 
   embedding-sdk-component-tests:
-    run:
-      paths:
-        - embedding_sdk_components
     jobs:
       sdk-component-tests:
       decide-target-ref:
       sdk-component-tests-backward-compatibility:
 
   embedding-sdk-host-sample-apps-tests:
-    run:
-      paths:
-        - embedding_sdk_host_sample_apps
     jobs:
       get-sample-apps-data:
       e2e-sample-apps-tests:
@@ -395,10 +413,5 @@ workflows:
             - build_scripts
 
   bundle-size:
-    run:
-      paths:
-        - frontend_sources
-      event:
-            - pull_request
     jobs:
       bundle-size-check:

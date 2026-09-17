@@ -2,6 +2,14 @@ name: "[NOT REQUIRED] SDK Compatibility tests"
 
 on:
   workflow_call:
+    inputs:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `embedding-sdk-host-sample-apps-tests`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
 
 env:
   DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
@@ -12,6 +20,7 @@ env:
   MB_EDITION: ee
 jobs:
   get-sample-apps-data:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-host-sample-apps-tests.jobs.get-sample-apps-data.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
@@ -92,8 +101,9 @@ jobs:
       matrix:
         test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
         environment: ["production", "development"]
-    if: |
-      !cancelled() && needs.get-sample-apps-data.result == 'success'
+    if: >-
+      ${{ !cancelled() && needs.get-sample-apps-data.result == 'success' &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-host-sample-apps-tests.jobs.e2e-sample-apps-tests.run) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
@@ -203,9 +213,9 @@ jobs:
       fail-fast: false
       matrix:
         environment: ["production", "development"]
-    if: |
-      !cancelled() && needs.get-sample-apps-data.result == 'success' &&
-      (github.ref == 'refs/heads/master' || github.base_ref == 'master')
+    if: >-
+      ${{ !cancelled() && needs.get-sample-apps-data.result == 'success' &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-host-sample-apps-tests.jobs.e2e-shoppy-tests.run) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-shoppy-e2e-tests-${{ matrix.environment }}-bundle
@@ -265,10 +275,10 @@ jobs:
   # They use the shoppy production environment and include performance measurement tests.
   e2e-shoppy-synthetic-tests:
     needs: [get-sample-apps-data]
-    if: |
-      !cancelled() && needs.get-sample-apps-data.result == 'success' &&
+    if: >-
+      ${{ !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
-      github.ref == 'refs/heads/master'
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-host-sample-apps-tests.jobs.e2e-shoppy-synthetic-tests.run) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-shoppy-synthetic-monitoring-tests
@@ -347,6 +357,9 @@ jobs:
   # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
   # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   e2e-host-apps-tests:
+    if: >-
+      ${{ inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.embedding-sdk-host-sample-apps-tests.jobs.e2e-host-apps-tests.run }}
     strategy:
       fail-fast: false
       matrix:

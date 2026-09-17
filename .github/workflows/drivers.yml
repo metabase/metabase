@@ -3,13 +3,14 @@ name: Driver Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `drivers`
+          workflow in it decides whether `determine-driver-skips` is asked at
+          all, and `mage driver-decisions` decides which drivers it names.
+          `{}` means there is no plan, and everything runs.
+        type: string
+        default: '{}'
   # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- credentials, services, test args, quarantine gating -- is
   # whatever the normal CI run uses, because it is the same job.
@@ -49,6 +50,11 @@ on:
         type: boolean
         required: false
         default: false
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -73,6 +79,13 @@ jobs:
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
+    # The plan only decides whether the question gets asked. Which drivers
+    # actually run is `mage driver-decisions`, from the module graph -- a
+    # narrowing the plan cannot see, which is why this workflow has no
+    # `verify` step.
+    if: >-
+      ${{ inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.drivers.jobs.determine-driver-skips.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -116,7 +129,9 @@ jobs:
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --skip="${{ inputs.skip }}"
+            # The plan already held this job back when there was nothing to
+            # do, so reaching here means there is.
+            --skip="false"
             --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
@@ -131,7 +146,12 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ inputs.force-run }}
+          # Run every driver, not just the affected ones. True when an
+          # override settled the run -- a protected branch, ci:run-all --
+          # which is the same thing `force-run` used to say.
+          FORCE_RUN: >-
+            ${{ inputs.plan != '{}' &&
+            fromJSON(inputs.plan).override != null }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 

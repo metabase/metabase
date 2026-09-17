@@ -24,11 +24,13 @@ jobs:
     timeout-minutes: 5
     outputs:
       plan: ${{ steps.decide.outputs.plan }}
+      frontend-plan: ${{ steps.compute.outputs.plan }}
     steps:
       - uses: actions/checkout@v6
         with:
           # Enough history to diff against the base of the pull request.
           fetch-depth: 0
+      - uses: ./.github/actions/prepare-node-bun
       - name: Create test plan
         id: decide
         env:
@@ -37,25 +39,14 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           if [ -n "$PR" ]; then
-            node .github/scripts/test-plan.ts create --pr "$PR" --repo "$GITHUB_REPOSITORY"
+            bun .github/scripts/test-plan.ts create --pr "$PR" --repo "$GITHUB_REPOSITORY"
           else
-            node .github/scripts/test-plan.ts create \
+            bun .github/scripts/test-plan.ts create \
               --event "$GITHUB_EVENT_NAME" \
               --ref "$GITHUB_REF_NAME" \
               --base "$BEFORE"
           fi
 
-  create-test-plan:
-    needs: [should-run, files-changed]
-    name: Create test plan
-    if: ${{ github.event_name == 'pull_request' && needs.should-run.outputs.verdict == 'defer' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    outputs:
-      stats: ${{ steps.compute.outputs.stats }}
-      artifact-id: ${{ steps.compute.outputs.artifact-id }}
-    steps:
-      - uses: actions/checkout@v6
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -64,6 +55,7 @@ jobs:
           # comma separated list of files
           list-files: csv
           filters: .github/file-paths.yaml
+
       - name: Create test plan
         id: compute
         uses: ./.github/actions/create-test-plan
@@ -77,12 +69,9 @@ jobs:
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
 
   upload-affected-tests-stats:
-    needs: create-test-plan
+    needs: [should-run]
     # Only land rows for PRs from the upstream repo so forks don't pollute the table.
-    if: |
-      !cancelled() &&
-      needs.create-test-plan.result == 'success' &&
-      github.event.pull_request.head.repo.full_name == 'metabase/metabase'
+    if: ${{ github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -102,7 +91,7 @@ jobs:
 
   uberjar:
     needs: [should-run]
-    if: fromJSON(needs.should-run.outputs.plan).workflows.run-tests.uberjar.run
+    if: ${{ fromJSON(needs.should-run.outputs.plan).workflows.run-tests.jobs.uberjar.run }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
@@ -110,7 +99,7 @@ jobs:
 
   containerize:
     needs: [should-run, uberjar]
-    if: fromJSON(needs.should-run.outputs.plan).workflows.run-tests.containerize.run
+    if: ${{ fromJSON(needs.should-run.outputs.plan).workflows.run-tests.jobs.containerize.run }}
     name: containerize (${{ matrix.edition }})
     strategy:
       matrix:
@@ -118,6 +107,7 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
+      plan: ${{ needs.should-run.outputs.plan }}
       build-args: |
         GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -125,15 +115,11 @@ jobs:
       release: false
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
-  # The compile is doesn't depend on MB_EDITION
+  # The compile doesn't depend on MB_EDITION.
   e2e-cljs:
     name: Compile CLJS for e2e
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      (needs.files-changed.result == 'success' &&
-       needs.files-changed.outputs.e2e_all == 'true'))
+    needs: [should-run]
+    if: ${{ fromJSON(needs.should-run.outputs.plan).workflows.run-tests.jobs.e2e-cljs.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -154,229 +140,109 @@ jobs:
           # replace it rather than fail on a re-run.
           overwrite: true
 
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    needs: should-run
-    # Its only consumer is the backend skip gate, which a force-run overrides.
-    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ee
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: static_viz
-        with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
+  # TODO: integrate with the test plan. This job builds static-viz and then
+  # path-filters `.github/static-viz-sources.yaml`, which the rspack build
+  # emits from the module graph of this very commit — so it is a signal that
+  # only exists after a build, and `should-run` has no way to work it out up
+  # front. Until the plan can express it, a frontend-only change that alters
+  # what static-viz pulls in no longer forces the backend suite to run.
+  #
+  # static-viz-files-changed:
+  #   name: Check whether static-viz files changed
+  #   needs: should-run
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+  #   timeout-minutes: 10
+  #   outputs:
+  #     static_viz: ${{ steps.static_viz.outputs.static_viz }}
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - name: Prepare front-end environment
+  #       uses: ./.github/actions/prepare-frontend
+  #     - name: Prepare back-end environment
+  #       uses: ./.github/actions/prepare-backend
+  #     - name: Build static-viz frontend
+  #       run: bun run build-static-viz
+  #       env:
+  #         MB_EDITION: ee
+  #     - name: Check for static viz changes
+  #       uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+  #       id: static_viz
+  #       with:
+  #         token: ${{ github.token }}
+  #         filters: .github/static-viz-sources.yaml
 
   backend-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed, static-viz-files-changed]
+    needs: [should-run]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' &&
-        needs.static-viz-files-changed.outputs.static_viz != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' }}
-      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' }}
-      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
+      plan: ${{ needs.should-run.outputs.plan }}
 
   semantic-search-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: [should-run]
     uses: ./.github/workflows/semantic-search.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
-      smoke-only: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-         !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
-        }}
+      plan: ${{ needs.should-run.outputs.plan }}
 
   app-db-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: [should-run]
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      plan: ${{ needs.should-run.outputs.plan }}
 
   driver-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: [should-run]
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      plan: ${{ needs.should-run.outputs.plan }}
 
   frontend-tests:
-    needs: [should-run, files-changed, create-test-plan]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
+    needs: [should-run]
+    if: ${{ !cancelled() && needs.should-run.result == 'success' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' }}
+      plan: ${{ needs.should-run.outputs.plan }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
-      skip-lint: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
-      skip-custom-viz: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.custom_viz_all != 'true' }}
-      skip-ci-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.ci_scripts != 'true' }}
 
   loki-tests:
-    needs: [should-run, files-changed, create-test-plan]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
+    needs: [should-run]
+    if: ${{ !cancelled() && needs.should-run.result == 'success' }}
     uses: ./.github/workflows/loki.yml
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_loki_all != 'true' }}
+      plan: ${{ needs.should-run.outputs.plan }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 
   e2e-tests:
-    needs: [should-run, files-changed, uberjar]
-    # Skip e2e tests when the uberjar build failed or was cancelled — the
-    # downstream tests can't fetch a missing artifact, and we don't want to
-    # mask the uberjar failure with a wave of misleading e2e errors. We still
-    # enter the workflow when uberjar is `skipped` (docs-only PRs), because
-    # the inner `skip` input handles that path and reports the required
-    # `e2e-tests-result` check as success. When the uberjar genuinely failed,
-    # this whole job is skipped, the inner required checks never report, and
-    # branch protection blocks the merge as pending.
-    if: |
-      always() && !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' || needs.files-changed.result == 'success') &&
-      needs.uberjar.result != 'failure' &&
-      needs.uberjar.result != 'cancelled'
+    needs: [should-run, uberjar]
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
-      # here we pass the list of changed files
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs.
-      # Only narrow to changed specs on pull requests that haven't been forced to run everything.
-      # On push to master/release branches (and the merge queue) the paths-filter still computes
-      # these file lists, so without this guard a run that touched only specs would silently run a
-      # narrowed suite — we always want the full suite there.
-      specs: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        github.event_name == 'pull_request' &&
-        needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files &&
-        needs.files-changed.outputs.e2e_specs_files || '' }}
-
-  embedding-sdk-package:
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.outputs.embedding_sdk_components == 'true' ||
-      needs.files-changed.outputs.frontend_sources == 'true' ||
-      needs.files-changed.outputs.embedding_documentation == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_ci == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true')
-    uses: ./.github/workflows/embedding-sdk-package-build.yml
-    secrets: inherit
+      plan: ${{ needs.should-run.outputs.plan }}
 
   sdk-tests:
-    needs: [should-run, uberjar, embedding-sdk-package, files-changed]
-    if: always() && !cancelled()
+    needs: [should-run, uberjar]
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      cli-snippets-type-check: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.frontend_sources == 'true' }}
-      docs-snippets-type-check: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.embedding_documentation == 'true' }}
-      documentation-validation: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.frontend_sources == 'true' }}
-      component-tests: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.embedding_sdk_components == 'true' }}
-      host-sample-apps-tests: >-
-        ${{ needs.should-run.outputs.verdict == 'force-run' ||
-        needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true' }}
-      skip: >-
-        ${{ needs.embedding-sdk-package.result != 'success' ||
-        needs.uberjar.result != 'success' }}
+      plan: ${{ needs.should-run.outputs.plan }}
 
   build-scripts-tests:
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
+    needs: [should-run]
     uses: ./.github/workflows/build-scripts.yml
     secrets: inherit
     with:
-      skip-build-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.build_scripts != 'true' }}
-      skip-embedder-plugin: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.embedder_plugin != 'true' }}
+      plan: ${{ needs.should-run.outputs.plan }}
 
   bundle-size:
-    needs: [uberjar, files-changed]
-    if: |
-      !cancelled() &&
-      github.event_name == 'pull_request' &&
-      needs.uberjar.result == 'success' &&
-      needs.files-changed.outputs.frontend_sources == 'true'
+    needs: [should-run, uberjar]
+    if: ${{ fromJSON(needs.should-run.outputs.plan).workflows.run-tests.jobs.bundle-size.run }}
     uses: ./.github/workflows/bundle-size.yml
     secrets: inherit
+    with:
+      plan: ${{ needs.should-run.outputs.plan }}
