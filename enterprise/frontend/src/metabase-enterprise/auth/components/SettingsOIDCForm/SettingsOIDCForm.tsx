@@ -5,6 +5,7 @@ import * as Yup from "yup";
 
 import { SETTINGS_FIELD_DESCRIPTION_PROPS } from "metabase/admin/settings/utils";
 import { getErrorMessage } from "metabase/api/utils/errors";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -283,7 +284,7 @@ export function SettingsOIDCForm() {
         validationSchema={getOidcFormSchema()}
         enableReinitialize
       >
-        {({ dirty, values, initialValues, setFieldValue }) => (
+        {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -427,6 +428,7 @@ export function SettingsOIDCForm() {
                 />
               </Flex>
             </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
           </Form>
         )}
       </FormProvider>
