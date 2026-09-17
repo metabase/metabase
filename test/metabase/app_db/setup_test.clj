@@ -178,7 +178,7 @@
   (testing "downgrade detection goes off the recorded version of the last deployment; a synthetic (dev) version warns"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
         (liquibase/with-liquibase [liquibase conn]
           (let [db             (.getDatabase liquibase)
                 versions-table liquibase/databasechangelog-versions-table
@@ -205,7 +205,7 @@
   (testing "a newer binary that boots without running any migrations must not block the previous binary from booting"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
         (liquibase/with-liquibase [_liquibase conn]
           (let [versions-table liquibase/databasechangelog-versions-table
                 ;; an arbitrary released major playing the installing binary's version; the newer binaries below are
