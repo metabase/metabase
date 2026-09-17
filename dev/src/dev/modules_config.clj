@@ -4,7 +4,7 @@
   [[dev.deps-graph]] computes `:api` and `:uses`;
   [[dev.model-boundary-config]] computes `:model-exports` and `:model-imports`.
   This namespace writes those generated keys in sorted order while preserving
-  handwritten settings, comments, and the `:any` and `:bypass` sentinels.
+  handwritten settings, the `:any` and `:bypass` sentinels, and comments, except inside a set it rewrites.
 
   Usage:
 

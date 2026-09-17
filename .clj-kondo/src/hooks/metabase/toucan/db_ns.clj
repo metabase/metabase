@@ -2,11 +2,12 @@
   "Lints application database calls: Toucan 2 functions and the wrappers in `metabase.app-db.core`.
 
   Outside a module's `db` namespace, any such call is a `:metabase/t2-query-namespace` finding. A module's
-  `db` namespace is its effective `:ns-prefix` plus `.db`, such as `metabase.metabot.llm.db`. Driver
-  namespaces and test files are exempt.
+  `db` namespace is its effective `:ns-prefix` plus `.db`, such as `metabase.metabot.llm.db`. A driver's
+  `metabase.driver.<driver>.db` namespace also counts, and test files are exempt.
 
-  Inside one, read calls are checked for `:metabase/unsafe-app-db-query`: values must be `[:auto/param ...]`
-  markers, and the query a map rather than `:column value` pairs.
+  Inside one, read calls are checked for `:metabase/unsafe-app-db-query`: a symbol reaching a value slot must
+  be wrapped in an `[:auto/param ...]` marker, and the query must be a map rather than `:column value`
+  pairs. Literals and column references need no marker.
 
   The hook is registered in `.clj-kondo/config.edn` for each database function."
   (:require
