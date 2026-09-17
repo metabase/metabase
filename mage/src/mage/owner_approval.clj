@@ -463,8 +463,9 @@
   the catch-all. Product code and drivers are the actionable gaps (code that should get an owner);
   everything else is tooling expected to stay ownerless."
   [["unmoduled backend" (fn [p] (or (re-find #"^(src|test)/metabase\b" p)
-                                    (re-find #"^enterprise/backend/(src|test)/" p)))]
-   ["drivers"           (fn [p] (str/starts-with? p "modules/"))]
+                                    (re-find #"^enterprise/backend/(src|test)/" p)
+                                    (re-find #"^modules/(?!drivers/)[^/]+/(src|test)/" p)))]
+   ["drivers"           (fn [p] (str/starts-with? p "modules/drivers/"))]
    ["tooling & scripts" (constantly true)]])
 
 (def ^:private actionable-no-team-buckets #{"unmoduled backend" "drivers"})

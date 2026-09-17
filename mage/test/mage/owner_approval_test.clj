@@ -105,6 +105,7 @@
     (is (= "unmoduled backend" (no-team-bucket "test/metabase/thing_test.clj")))
     (is (= "unmoduled backend" (no-team-bucket "enterprise/backend/src/metabase_enterprise/thing.clj")))
     (is (= "drivers"           (no-team-bucket "modules/drivers/mongo/src/x.clj")))
+    (is (= "unmoduled backend" (no-team-bucket "modules/embedder/src/metabase_enterprise/x.clj")))
     (is (= "tooling & scripts" (no-team-bucket ".clj-kondo/hooks/x.clj")))
     (is (= "tooling & scripts" (no-team-bucket "dev/src/dev/x.clj")))
     (is (= "tooling & scripts" (no-team-bucket "mage/src/mage/x.clj")))))

@@ -443,6 +443,18 @@
       (is (= 'lib.schema
              (#'mage.modules/file->module prefix->module "src/metabase/lib/schema/config.edn"))))))
 
+(deftest plugin-files-resolve-to-their-module-test
+  (let [prefix->module (modules/build-prefix->module
+                        '{enterprise/search.embeddings.embedder {:ns-prefix "metabase-enterprise.embedder"}
+                          driver                                {}})]
+    (testing "a plugin's own source tree resolves like any other"
+      (is (= 'enterprise/search.embeddings.embedder
+             (#'mage.modules/file->module prefix->module
+                                          "modules/embedder/src/metabase_enterprise/embedder/model.clj"))))
+    (testing "driver plugins are not claimed for the driver module"
+      (is (nil? (#'mage.modules/file->module prefix->module
+                                             "modules/drivers/mysql/src/metabase/driver/mysql.clj"))))))
+
 (deftest top-level-files-belong-only-to-declared-modules-test
   (testing "a file directly under metabase/ belongs to a module only when a declared prefix owns its namespace"
     (let [prefix->module (modules/build-prefix->module '{driver {}})]

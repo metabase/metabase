@@ -28,14 +28,21 @@
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
+(def ^:private plugin-root-pattern
+  "A plugin's own source or test root under `modules/`, such as `modules/embedder/src/`. Drivers are excluded:
+  they are not modules, and resolving them would claim them for `driver`."
+  #"^modules/(?!drivers/)[^/]+/(?:src|test)/")
+
 (defn- file->ns-symbol [filename]
-  (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
-    (-> filename
-        (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
-        (str/replace #"\.[^./]+$" "")
-        (str/replace "/" ".")
-        (str/replace "_" "-")
-        symbol)))
+  (let [filename (str/replace filename plugin-root-pattern "src/")]
+    (when (re-find #"^(?:(?:src|test)/metabase(?:_enterprise)?|enterprise/backend/(?:src|test)/metabase_enterprise)/"
+                   filename)
+      (-> filename
+          (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
+          (str/replace #"\.[^./]+$" "")
+          (str/replace "/" ".")
+          (str/replace "_" "-")
+          symbol))))
 
 (defn- file->module [prefix->module filename]
   (or
@@ -306,6 +313,22 @@
   extension `file->module` resolves (clj/cljc/cljs/bb) or those root namespaces go unowned."
   [".clj" ".cljc" ".cljs" ".bb"])
 
+(defn- plugin-roots
+  "Plugin directories under `modules/` other than the drivers, such as `modules/embedder`."
+  []
+  (->> (.listFiles (io/file "modules"))
+       (filter #(.isDirectory ^java.io.File %))
+       (map #(str "modules/" (.getName ^java.io.File %)))
+       (remove #{"modules/drivers"})
+       sort))
+
+(defn- plugin-paths
+  "The same path as `path` under each plugin's own root, for a `path` under `src/` or `test/`, EE or OSS."
+  [path]
+  (let [[_ tree rel] (re-matches #"^(?:enterprise/backend/)?(src|test)/(.*)$" path)]
+    (for [root (plugin-roots)]
+      (str root "/" tree "/" rel))))
+
 (defn- module->owned-paths
   "Existing src and test paths `module` contributes, in CODEOWNERS pattern form (repo-relative, no leading
   slash), src first. Each tree contributes its directory plus the root namespace file beside it — e.g.
@@ -321,7 +344,9 @@
           (concat [(dir? src)]
                   (map #(file? (str src %)) codeowners-root-file-extensions)
                   [(dir? test)]
-                  (map #(file? (str test "_test" %)) codeowners-root-file-extensions)))))
+                  (map #(file? (str test "_test" %)) codeowners-root-file-extensions)
+                  (map dir? (plugin-paths src))
+                  (map dir? (plugin-paths test))))))
 
 (defn- codeowners-stanza-lines
   "Lines for one module's stanza: a `# module (team)` header then one line per owned path.

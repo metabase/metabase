@@ -181,6 +181,9 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/email
 # enterprise/backend/test/metabase_enterprise/email
 
+# search.embeddings.embedder (Metabot, no :assignee in team.json)
+# modules/embedder/src/metabase_enterprise/embedder
+
 # embedding (Embedding, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/embedding_hub
 # enterprise/backend/test/metabase_enterprise/embedding_hub
