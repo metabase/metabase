@@ -235,6 +235,8 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:source                {:optional true} [:maybe [:or :keyword :string]]]
    [:model                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model_name            {:optional true} [:maybe :string]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
    [:completion_tokens     {:optional true} [:maybe :int]]
    [:total_tokens          {:optional true} [:maybe :int]]
