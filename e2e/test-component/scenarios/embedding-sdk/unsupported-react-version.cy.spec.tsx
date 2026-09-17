@@ -1,16 +1,50 @@
-import { StaticQuestion } from "@metabase/embedding-sdk-react";
+import {
+  StaticQuestion,
+  useMetabaseAuthStatus,
+  useMetabot,
+} from "@metabase/embedding-sdk-react";
 import * as React from "react";
 
-import { EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION } from "build-configs/embedding-sdk/constants/react-version";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  getSdkBundleScriptElement,
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
-const UNSUPPORTED_REACT_ERROR = `The Metabase modular embedding SDK requires React ${EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION} or newer, but this application is running React 17. Upgrade your application to React ${EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION} to display embedded content.`;
+// The React major the bundle is built with, which is what the check compares
+// against. When Metabase drops React 18 and moves to 19, change this to 19:
+// the spec then fakes a React 18 host and expects the React 19 message. Until
+// someone does, every assertion here is wrong and the spec fails.
+const MINIMUM_SUPPORTED_REACT_MAJOR = 18;
+
+const UNSUPPORTED_HOST_REACT_MAJOR = MINIMUM_SUPPORTED_REACT_MAJOR - 1;
+
+const UNSUPPORTED_REACT_ERROR = `The Metabase modular embedding SDK requires React ${MINIMUM_SUPPORTED_REACT_MAJOR} or newer, but this application is running React ${UNSUPPORTED_HOST_REACT_MAJOR}. Upgrade your application to React ${MINIMUM_SUPPORTED_REACT_MAJOR} to display embedded content.`;
+
+// Component tests keep the page between tests, so each test has to load the
+// bundle again: it reads the host React and logs the error only once per load.
+const sdkBundleCleanup = () => {
+  getSdkBundleScriptElement()?.remove();
+  // Unjustified type cast. FIXME
+  delete (window as any).METABASE_EMBEDDING_SDK_BUNDLE;
+  // Unjustified type cast. FIXME
+  delete (window as any).METABASE_PROVIDER_PROPS_STORE;
+  // Unjustified type cast. FIXME
+  delete (window as any).METABASE_EMBEDDING_SDK_AUTH_STATE;
+  // Unjustified type cast. FIXME
+  delete (window as any).webpackChunkembedding_sdk_bundle;
+  // Unjustified type cast. FIXME
+  delete (window as any).webpackChunkembedding_sdk_legacy;
+  deleteConflictingCljsGlobals();
+};
 
 describe("scenarios > embedding-sdk > unsupported-react-version", () => {
   beforeEach(() => {
+    sdkBundleCleanup();
+
     signInAsAdminAndEnableEmbeddingSdk();
 
     cy.signOut();
@@ -20,38 +54,80 @@ describe("scenarios > embedding-sdk > unsupported-react-version", () => {
     cy.window().then((win) => {
       cy.spy(win.console, "error").as("consoleError");
 
-      // The SDK bundle reads the host's React from this global when it loads,
-      // so it sees React 17 while the test itself keeps rendering with the
-      // real one.
+      // Only the version string is faked, standing in for any React older
+      // than the SDK supports: the bundle reads the host's React from this
+      // global when it loads, while the test keeps rendering with the real one.
       Object.assign(win, {
-        METABASE_REACT: { ...React, version: "17.0.2" },
+        METABASE_REACT: {
+          ...React,
+          version: `${UNSUPPORTED_HOST_REACT_MAJOR}.0.0`,
+        },
       });
     });
   });
 
-  it("shows an error in place of the SDK and keeps the host app rendering", () => {
+  it("shows an error in place of each SDK component and keeps the host app rendering", () => {
     mountSdkContent(
       <>
         <div data-testid="host-app-content">host app content</div>
         <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+        <StaticQuestion questionId={ORDERS_QUESTION_ID} />
       </>,
-      // The unsupported React check skips auth, so no user is requested.
+      // The SDK components never load, so there is no user request to wait on.
       { waitForUser: false },
     );
 
-    cy.findByTestId("sdk-unsupported-react-version-error").should(
-      "have.text",
-      UNSUPPORTED_REACT_ERROR,
-    );
+    cy.findAllByTestId("sdk-unsupported-react-version-error")
+      .should("have.length", 2)
+      .each((errorBox) => {
+        cy.wrap(errorBox).should("have.text", UNSUPPORTED_REACT_ERROR);
+      });
     cy.findByTestId("host-app-content").should("be.visible");
     cy.get("[data-cy-root]").findByText("Product ID").should("not.exist");
 
-    cy.get<sinon.SinonSpy>("@consoleError").should((consoleError) => {
-      const unsupportedReactErrors = consoleError.args.filter(
-        ([message]) => message === UNSUPPORTED_REACT_ERROR,
-      );
+    assertUnsupportedReactErrorLoggedOnce();
+  });
 
-      expect(unsupportedReactErrors).to.have.length(1);
-    });
+  // A hooks-only host renders nothing, so the console error is what says the
+  // bundle loaded and ran the check, and the hook's value is what says the
+  // entry behind it was swapped out (see sdk-bundle-exports.ts).
+  it("does not start the SDK, so useMetabaseAuthStatus stays uninitialized", () => {
+    mountSdkContent(<AuthStatus />, { waitForUser: false });
+
+    assertUnsupportedReactErrorLoggedOnce();
+
+    cy.findByTestId("host-hook-value").should("have.text", "uninitialized");
+    cy.findByTestId("sdk-unsupported-react-version-error").should("not.exist");
+  });
+
+  it("does not render the Metabot subscriber, so useMetabot stays empty", () => {
+    mountSdkContent(<Metabot />, { waitForUser: false });
+
+    assertUnsupportedReactErrorLoggedOnce();
+
+    cy.findByTestId("host-hook-value").should("have.text", "none");
+    cy.findByTestId("sdk-unsupported-react-version-error").should("not.exist");
   });
 });
+
+function AuthStatus() {
+  const authStatus = useMetabaseAuthStatus();
+
+  return <div data-testid="host-hook-value">{authStatus?.status}</div>;
+}
+
+function Metabot() {
+  const metabot = useMetabot();
+
+  return <div data-testid="host-hook-value">{metabot ? "ready" : "none"}</div>;
+}
+
+function assertUnsupportedReactErrorLoggedOnce() {
+  cy.get<sinon.SinonSpy>("@consoleError").should((consoleError) => {
+    const unsupportedReactErrors = consoleError.args.filter(
+      ([message]) => message === UNSUPPORTED_REACT_ERROR,
+    );
+
+    expect(unsupportedReactErrors).to.have.length(1);
+  });
+}
