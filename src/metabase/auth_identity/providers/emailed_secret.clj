@@ -194,7 +194,8 @@
       (if (:last_login user)
         (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
         (messages/send-user-joined-admin-notification-email! (auth-identity.db/user (:id user))))
-      (auth-identity/set-password! (:id user) password)
+      ;; the person resetting proved they own the account, so they are who ends its sessions
+      (auth-identity/set-password! (:id user) password {:ended-by (:id user)})
       ;; The session cannot belong to the reset identity: `set-password!` has just deleted it, and its `expires_at` is
       ;; the token's short lifetime, which has no business bounding a session. The user now holds a fresh password
       ;; credential, so the session belongs to that. The reset itself is recorded by the event above.

@@ -10,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.session.schema :as session.schema]
    [metabase.users.models.user :as user]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -25,6 +26,7 @@
   ["password" "ldap" "google" "slack-connect" "custom-oidc" "jwt" "saml" "support-access-grant" "unknown"])
 
 (mr/def ::FilterParams
+  "The criteria the list and the revoke share: every one of them can match a live session."
   [:map {:closed true}
    [:user-id            {:optional true} ms/PositiveInt]
    ;; a single `?ids=` arrives as a bare string; coerce so one id and many behave the same. `:and` decodes through
@@ -48,13 +50,19 @@
    [:sort-direction {:default :desc}       [:enum :asc :desc]]])
 
 (mr/def ::ListParams
+  "The list's criteria: [[::FilterParams]], the sort, `query`, and `status` with the filters that only match ended
+  sessions."
   ;; `query` lives here rather than in ::FilterParams because the revoke endpoint merges those filters, and revoking
   ;; everyone whose name happens to match a substring is far easier to get wrong than revoking by explicit criteria.
   [:merge
    ::FilterParams
    ::SortParams
    [:map {:closed true}
-    [:query {:optional true} ms/NonBlankString]]])
+    [:query        {:optional true} ms/NonBlankString]
+    [:status       {:default :live}  ::sm.schema/session-status]
+    [:reason       {:optional true} ::session.schema/end-reason]
+    [:ended-before {:optional true} ms/TemporalString]
+    [:ended-after  {:optional true} ms/TemporalString]]])
 
 (mr/def ::Session
   [:map {:closed true}
@@ -72,12 +80,29 @@
    [:device_description [:maybe :string]]
    [:ip_address         [:maybe :string]]
    [:device_id          [:maybe :string]]
-   [:current            :boolean]])
+   [:current            :boolean]
+   [:status             [:enum "live" "ended"]]
+   ;; all three null for a live session, and for an ended one whose ending the nightly sweep has not recorded yet
+   [:ended_at           [:maybe ms/TemporalInstant]]
+   [:end_reason         [:maybe ::session.schema/end-reason]]
+   [:ended_by           [:maybe ms/PositiveInt]]])
+
+(mr/def ::EndedOnlyCriterion
+  ;; declared, so that a value is rejected rather than dropped as an undeclared key of a closed map
+  [:= {:error/message "only live sessions can be revoked, so a filter that only matches ended ones is not allowed"}
+   nil])
 
 (mr/def ::RevokeByCriteriaParams
+  ;; [[::FilterParams]] rather than [[::ListParams]]: an ended session cannot be revoked, or removed early, so a
+  ;; `status` other than `live` — or `reason`, `ended-before`, `ended-after`, which only match ended sessions — is a
+  ;; 400 rather than something silently narrowed away
   [:merge
    ::FilterParams
    [:map {:closed true}
+    [:status          {:optional true} [:enum {:error/message "only live sessions can be revoked"} :live]]
+    [:reason          {:optional true} ::EndedOnlyCriterion]
+    [:ended-before    {:optional true} ::EndedOnlyCriterion]
+    [:ended-after     {:optional true} ::EndedOnlyCriterion]
     ;; in a JSON body `ids` arrives as a real array, so it needs none of the single-value coercion a query string does
     [:ids             {:optional true} [:sequential {:max 1000} :string]]
     [:exclude-current {:default true}  :boolean]
@@ -113,11 +138,13 @@
    [:data   [:sequential ::Session]]])
 
 (defn- params->filters
-  "Turn the query params into the filter map `metabase-enterprise.session-management.query/filters->where` takes,
+  "Turn the query params into the filter map [[metabase-enterprise.session-management.query/session-where]] takes,
   parsing the date strings into instants."
-  [{:keys [user-id ids provider type tenancy query
-           created-before created-after last-active-before last-active-after]}]
-  {:user-id            user-id
+  [{:keys [status user-id ids provider type tenancy query
+           created-before created-after last-active-before last-active-after
+           reason ended-before ended-after]}]
+  {:status             status
+   :user-id            user-id
    :ids                ids
    :provider           provider
    :type               type
@@ -127,7 +154,10 @@
    :created-before     (some-> created-before u.date/parse)
    :created-after      (some-> created-after u.date/parse)
    :last-active-before (some-> last-active-before u.date/parse)
-   :last-active-after  (some-> last-active-after u.date/parse)})
+   :last-active-after  (some-> last-active-after u.date/parse)
+   :reason             reason
+   :ended-before       (some-> ended-before u.date/parse)
+   :ended-after        (some-> ended-after u.date/parse)})
 
 (defn- effective-expires-at
   "When this session stops working: the earlier of the row's own hard `expires_at` and the `max-session-age` cap
@@ -149,7 +179,7 @@
 (defn- ->response-item
   [max-age-minutes
    {:keys [id user_id user_email user_first_name user_last_name created_at last_active_at expires_at
-           provider type current device_id ip_address user_agent]}]
+           provider type current device_id ip_address user_agent live ended_at end_reason ended_by_user_id]}]
   {:id                 id
    :user               (-> {:id         user_id
                             :email      user_email
@@ -168,12 +198,20 @@
    :ip_address         ip_address
    :device_id          device_id
    ;; the SQL returns 1/0 so that MySQL, which has no boolean type, can't hand back something else
-   :current            (= 1 (long current))})
+   :current            (= 1 (long current))
+   ;; likewise; computed in SQL so the client never has to work out liveness itself
+   :status             (if (= 1 (long live)) "live" "ended")
+   :ended_at           ended_at
+   :end_reason         end_reason
+   :ended_by           ended_by_user_id})
 
 (api.macros/defendpoint :get "/" :- ::SessionsResponse
-  "List the sessions that are currently live — the ones that would still authenticate a request. Sessions that have
-  hit `max-session-age`, passed their own `expires_at`, gone idle past the session timeout, or belong to a
-  deactivated user or an inactive tenant are excluded from both `data` and `total`.
+  "List sessions. By default the ones that are currently live — the ones that would still authenticate a request.
+  `status=ended` lists instead the sessions that have ended: revoked, logged out, expired, idle past the session
+  timeout, or belonging to a deactivated user or an inactive tenant. An ended session stays on record for thirty
+  days, with when and why it ended (`ended_at`, `end_reason`) and who ended it (`ended_by`) once the nightly sweep
+  or the ending itself has recorded that; a session that has merely stopped being live since the last sweep is
+  already `ended`, with those three null. `status=all` lists both. `total` counts whatever the filters match.
 
   Superuser only."
   [_route-params
@@ -185,15 +223,15 @@
         filters  (params->filters params)
         limit    (request/limit)
         offset   (request/offset)]
-    {:total  (sm.db/live-session-count liveness filters)
+    {:total  (sm.db/session-count liveness filters)
      :limit  limit
      :offset offset
      :data   (mapv (partial ->response-item (:max-age-minutes liveness))
-                   (sm.db/live-sessions liveness filters
-                                        (or sort-column :created_at)
-                                        (or sort-direction :desc)
-                                        limit offset
-                                        authed-session-key-hash))}))
+                   (sm.db/sessions liveness filters
+                                   (or sort-column :created_at)
+                                   (or sort-direction :desc)
+                                   limit offset
+                                   authed-session-key-hash))}))
 
 (defn- record-revocation!
   "Write the audit trail for a revoke by criteria: one `:event/sessions-revoked` summary row for the whole call, plus
@@ -216,15 +254,19 @@
       (log/warn e "Error recording a session revocation in the audit log"))))
 
 (api.macros/defendpoint :post "/revoke" :- ::RevokeByCriteriaResponse
-  "Revoke — delete — every live session matching the given criteria, which are the filters the list endpoint takes.
-  All of them have to hold, so a revoke removes exactly the sessions the same filters would have listed. An empty
-  body matches every live session: that is how an admin logs everybody out.
+  "Revoke — end — every live session matching the given criteria, which are the filters the list endpoint takes.
+  All of them have to hold, so a revoke ends exactly the sessions the same filters would have listed. An empty
+  body matches every live session: that is how an admin logs everybody out. A revoked session is destroyed as a
+  credential at once, and stays on record as ended for thirty days.
+
+  Only live sessions can be revoked, so `status` may only be `live` (or absent), and `reason`, `ended-before` and
+  `ended-after` — which only match ended sessions — are rejected with a 400.
 
   `exclude-current` (default true) excludes the session this request was made with. Pass false to log the caller
   out too, in which case the response also clears their session cookie.
 
-  Sessions that are no longer live are left for the nightly cleanup task rather than revoked, and sessions belonging
-  to MCP clients are never matched. Affected users are not notified.
+  Sessions that are no longer live are left for the nightly cleanup task to record rather than revoked, and sessions
+  belonging to MCP clients are never matched.
 
   Returns how many sessions were `revoked`, how many live sessions still match the criteria afterwards (`remaining`,
   non-zero only when a login raced the revoke), and the `user_ids` whose sessions were revoked. Superuser only."
@@ -238,7 +280,7 @@
         liveness         (session/liveness-params)
         filters          (params->filters criteria)
         {:keys [revoked user-ids current-revoked?]}
-        (sm.db/revoke-live-sessions! liveness filters current-hash exclude-current?)]
+        (sm.db/revoke-live-sessions! liveness filters current-hash exclude-current? api/*current-user-id*)]
     (log/infof "User %s revoked %d session(s) matching %s" api/*current-user-id* revoked (pr-str criteria))
     (let [remaining (sm.db/revocable-session-count liveness filters current-hash exclude-current?)
           response  {:revoked revoked, :remaining remaining, :user_ids (vec (distinct user-ids))}]

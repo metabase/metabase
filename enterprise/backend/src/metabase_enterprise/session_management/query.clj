@@ -60,8 +60,23 @@
            [:like [:lower :user.last_name] wildcard]
            [:like [:lower :user.email] wildcard]])))
 
+(mu/defn- status-conditions :- [:sequential :any]
+  "The HoneySQL predicates for a `status` filter. `:live` is the `session` module's own liveness. `:ended` is its
+  negation, or a recorded ending — so a session that stopped being live since the last sweep is already ended, and a
+  recorded ending stays ended whatever the predicates would say now. `:all` is both. MCP-backed rows are not sessions
+  and are excluded under every value."
+  [liveness :- ::session.schema/liveness-params
+   status   :- [:maybe ::sm.schema/session-status]]
+  (case (or status :live)
+    :live  (session/live-session-conditions liveness)
+    :ended [session/not-mcp-session
+            [:or
+             [:not= :session.ended_at nil]
+             [:not (into [:and] (session/live-session-conditions liveness))]]]
+    :all   [session/not-mcp-session]))
+
 (mu/defn filters->where :- [:sequential :any]
-  "The HoneySQL predicates for `filters` (see `::sm.schema/session-filters`), for a query using
+  "The HoneySQL predicates for `filters` (see `::sm.schema/session-filters`) other than `status`, for a query using
   `metabase.session.core/session-from-and-joins`. Independent of the current request so that listing sessions and
   revoking them by criteria stay in lockstep: whatever a filtered list shows is exactly what the same filters would
   revoke.
@@ -69,7 +84,8 @@
   Date ranges are half-open — `after` is inclusive, `before` exclusive — so adjacent ranges neither overlap nor
   leave a gap."
   [{:keys [user-id ids provider type tenancy query
-           created-before created-after last-active-before last-active-after]}
+           created-before created-after last-active-before last-active-after
+           reason ended-before ended-after]}
    :- ::sm.schema/session-filters]
   (cond-> []
     user-id
@@ -102,23 +118,30 @@
     created-after      (conj [:>= :session.created_at created-after])
     created-before     (conj [:< :session.created_at created-before])
     last-active-after  (conj [:>= last-active-expr last-active-after])
-    last-active-before (conj [:< last-active-expr last-active-before])))
+    last-active-before (conj [:< last-active-expr last-active-before])
+
+    ;; these three only ever match a session whose ending has been recorded
+    reason             (conj [:= :session.end_reason reason])
+    ended-after        (conj [:>= :session.ended_at ended-after])
+    ended-before       (conj [:< :session.ended_at ended-before])))
 
 (mu/defn session-where :- ::h2x/honeysql-expr
-  "The `:where` for a session-management query: live, and matching `filters`."
+  "The `:where` for a session-management query: the sessions of the `status` in `filters` (live by default) matching
+  the rest of `filters`."
   [liveness :- ::session.schema/liveness-params
    filters  :- ::sm.schema/session-filters]
-  (into [:and] cat [(session/live-session-conditions liveness) (filters->where filters)]))
+  (into [:and] cat [(status-conditions liveness (:status filters)) (filters->where filters)]))
 
 (mu/defn revoke-where :- ::h2x/honeysql-expr
-  "The predicates a `core_session` row must satisfy to be revoked by these criteria: live, matching `filters`, and —
-  when `exclude-current?` — not the session `current-key-hash` identifies. The hash is only ever compared in SQL, so
-  `key_hashed` never leaves the database."
+  "The predicates a `core_session` row must satisfy to be revoked by these criteria: live (whatever `status` says: an
+  ended session cannot be revoked, or removed early), matching `filters`, and — when `exclude-current?` — not the
+  session `current-key-hash` identifies. The hash is only ever compared in SQL, so `key_hashed` never leaves the
+  database."
   [liveness         :- ::session.schema/liveness-params
    filters          :- ::sm.schema/session-filters
    current-key-hash :- [:maybe :string]
    exclude-current? :- :boolean]
-  (cond-> (session-where liveness filters)
+  (cond-> (session-where liveness (assoc filters :status :live))
     (and exclude-current? current-key-hash)
     (conj [:not= :session.key_hashed current-key-hash])))
 
@@ -129,6 +152,7 @@
       :last_active_at last-active-expr
       :user_email     :user.email
       :provider       provider-expr
+      :ended_at       :session.ended_at
       :session.created_at)
     sort-direction]
    ;; a stable tiebreaker, so paging can't show or skip a row because two sessions share a timestamp

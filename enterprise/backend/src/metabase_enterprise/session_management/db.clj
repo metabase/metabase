@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.session-management.query :as sm.query]
    [metabase-enterprise.session-management.schema :as sm.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.session.core :as session]
    [metabase.session.schema :as session.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -14,27 +15,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:dynamic *delete-batch-size*
-  "How many ids one `DELETE ... WHERE id IN (...)` may name. Revoking by criteria has no upper bound on how many
-  sessions it matches, and every id is a bind parameter — pgjdbc refuses a statement with more than 65,535 of them."
-  1000)
-
-(mu/defn delete-sessions-by-ids! :- ms/IntGreaterThanOrEqualToZero
-  "Delete the Sessions with `ids`, in batches, returning the total number of rows deleted. An empty `ids` deletes
-  nothing."
-  [ids :- [:sequential :string]]
-  (transduce (map (fn [batch]
-                    (t2/delete! :model/Session :id [:in batch])))
-             +
-             0
-             (partition-all *delete-batch-size* ids)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            Live sessions                                                        |
+;;; |                                            Listing sessions                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn live-sessions :- [:sequential :map]
-  "The live sessions matching `filters`, newest-relevant-first per `sort-column`/`sort-direction`.
+(mu/defn sessions :- [:sequential :map]
+  "The sessions matching `filters` — live ones unless `:status` says otherwise — ordered per
+  `sort-column`/`sort-direction`. `:live` (1/0) says whether each row is live, whatever `:status` asked for.
 
   `current-key-hash` is the hashed session key of the request being served (nil when the caller authenticated some
   other way); the `:current` column is computed in SQL against it so that `key_hashed` itself never leaves the
@@ -56,6 +43,10 @@
                               [:session.created_at :created_at]
                               [:session.last_active_at :last_active_at]
                               [:session.expires_at :expires_at]
+                              [:session.ended_at :ended_at]
+                              [:session.end_reason :end_reason]
+                              [:session.ended_by_user_id :ended_by_user_id]
+                              [(session/live-expr liveness) :live]
                               [sm.query/provider-expr :provider]
                               [sm.query/type-expr :type]
                               ;; 1/0 rather than a boolean: MySQL has no boolean type and would hand back a number
@@ -82,9 +73,9 @@
       :count
       long))
 
-(mu/defn live-session-count :- ms/IntGreaterThanOrEqualToZero
-  "How many live sessions match `filters`. Uses the same joins and predicates as [[live-sessions]], so the total can
-  never disagree with the rows being paged through."
+(mu/defn session-count :- ms/IntGreaterThanOrEqualToZero
+  "How many sessions match `filters`, `:status` included. Uses the same joins and predicates as [[sessions]], so the
+  total can never disagree with the rows being paged through."
   [liveness :- ::session.schema/liveness-params
    filters  :- ::sm.schema/session-filters]
   (count-where (sm.query/session-where liveness filters)))
@@ -94,7 +85,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn revocable-session-count :- ms/IntGreaterThanOrEqualToZero
-  "How many live sessions [[revoke-live-sessions!]] would delete for these arguments. Called again after a revoke to
+  "How many live sessions [[revoke-live-sessions!]] would end for these arguments. Called again after a revoke to
   report how many still match — 0 unless a login raced it."
   [liveness         :- ::session.schema/liveness-params
    filters          :- ::sm.schema/session-filters
@@ -103,20 +94,22 @@
   (count-where (sm.query/revoke-where liveness filters current-key-hash exclude-current?)))
 
 (mu/defn revoke-live-sessions! :- ::sm.schema/revocation
-  "Delete every live session matching `filters` and report what that did. The criteria are the ones [[live-sessions]]
-  takes, so a revoke removes exactly the set a list with the same filters would have shown; rows that are no longer
-  live (and MCP-backed rows, which never are) are left alone for the cleanup task.
+  "End every live session matching `filters`, recording `actor-id` as the admin who revoked it, and report what that
+  did. The criteria are the ones [[sessions]] takes, so a revoke ends exactly the set a list with the same filters
+  would have shown; rows that are no longer live (and MCP-backed rows, which never are) are left alone for the
+  cleanup task.
 
   When `exclude-current?` the session `current-key-hash` identifies is held back, so a caller sweeping every session
-  stays logged in. Either way `:current-revoked?` says whether the caller's own session was one of the rows deleted.
+  stays logged in. Either way `:current-revoked?` says whether the caller's own session was one of the rows ended.
 
-  `:user-ids` has one entry per session deleted rather than per user, so `frequencies` gives the per-user count."
+  `:user-ids` has one entry per session ended rather than per user, so `frequencies` gives the per-user count."
   [liveness         :- ::session.schema/liveness-params
    filters          :- ::sm.schema/session-filters
    current-key-hash :- [:maybe :string]
-   exclude-current? :- :boolean]
+   exclude-current? :- :boolean
+   actor-id         :- ::lib.schema.id/user]
   (let [current-expr (if current-key-hash
-                       ;; 1/0 rather than a boolean, for the same reason as in [[live-sessions]]
+                       ;; 1/0 rather than a boolean, for the same reason as in [[sessions]]
                        [:case [:= :session.key_hashed current-key-hash] [:inline 1] :else [:inline 0]]
                        [:inline 0])
         matched      (t2/query (merge session/session-from-and-joins
@@ -125,13 +118,13 @@
                                                 [current-expr :current]]
                                        :where  (sm.query/revoke-where liveness filters current-key-hash
                                                                       exclude-current?)}))
-        ;; the select is what tells us which rows (and whose) went, for the response and the audit trail; a DELETE
+        ;; the select is what tells us which rows (and whose) went, for the response and the audit trail; an UPDATE
         ;; over these joined criteria also has no single-statement form that works on H2, MySQL, and Postgres
-        revoked      (delete-sessions-by-ids! (mapv :id matched))]
+        revoked      (session/end-sessions-by-ids! (mapv :id matched) "admin" actor-id)]
     (when (not= revoked (count matched))
-      ;; benign, and only ever fewer: the delete names the matched ids, so a session that logs in after the select is
+      ;; benign, and only ever fewer: the update names the matched ids, so a session that logs in after the select is
       ;; untouched (it is what `remaining` reports), while one logged out or swept by cleanup in between is a miss here
-      (log/infof "Revoke matched %d session(s) but deleted %d; the rest went away in between"
+      (log/infof "Revoke matched %d session(s) but ended %d; the rest went away in between"
                  (count matched) revoked))
     {:revoked          revoked
      :user-ids         (mapv :user_id matched)

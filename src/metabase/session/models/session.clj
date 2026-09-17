@@ -75,8 +75,20 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(t2/define-before-update :model/Session [_model]
-  (throw (RuntimeException. "You cannot update a Session.")))
+(def ^:private ending-columns
+  "The only columns an update of a Session may touch: the ones [[metabase.session.db/end-sessions!]] writes to record
+  that the session ended. Everything else on the row is immutable."
+  #{:ended_at :end_reason :ended_by_user_id :key_hashed})
+
+(t2/define-before-update :model/Session [session]
+  (let [changed (set (keys (t2/changes session)))]
+    (when-not (every? ending-columns changed)
+      (throw (RuntimeException. "You cannot update a Session.")))
+    ;; a recorded ending is final: nothing may revive the session by clearing it, or move it
+    (when (and (contains? changed :ended_at)
+               (some? (:ended_at (t2/original session))))
+      (throw (RuntimeException. "You cannot change when a Session ended."))))
+  session)
 
 (t2/define-before-insert :model/Session
   [{session-key :session_key :as session}]
