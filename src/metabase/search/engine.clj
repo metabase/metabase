@@ -8,6 +8,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn record-freshness!
   "Stamp the per-engine freshness gauge that staleness alerting watches.
 
