@@ -422,9 +422,11 @@
     (u/exit (or exit 0))))
 
 (defn cli-fix-module-cycles
-  "CLI entry point: record the shrinks, splits and dissolutions of the cyclic module clusters.
-  Always a fresh JVM rather than the dev REPL, so a refused regression exits nonzero, which the shrink
-  workflow relies on."
+  "CLI entry point: record how the cyclic module clusters changed.
+  The file's `:mode` decides which changes it accepts: every change under `:observe`, only improvements under
+  `:enforce`.
+  Always a fresh JVM rather than the dev REPL, so a refused change exits nonzero, which the shrink workflow
+  relies on."
   [{:keys [options] :as _parsed}]
   (let [{:keys [exit], :or {exit -1}}
         (apply shell/sh* "clojure" "-X:dev" "dev.module-cycle-scan/fix!"
