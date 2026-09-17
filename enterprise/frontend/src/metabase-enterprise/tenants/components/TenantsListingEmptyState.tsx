@@ -2,7 +2,6 @@ import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { Anchor, Box, Button, Flex, Text } from "metabase/ui";
-import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 export const TenantsListingEmptyState = ({
   onCreateTenant,
@@ -17,13 +16,13 @@ export const TenantsListingEmptyState = ({
         ).jt`Create your first tenant to start adding ${(
           <Anchor
             component={Link}
-            to={EnterpriseUrls.tenantPeople()}
+            to="/admin/people/tenants/people"
             key="external-users-link"
           >{t`external users`}</Anchor>
-        )} to it, and organize these users into ${<Anchor component={Link} to={EnterpriseUrls.tenantGroups()} key="tenant-groups-link">{t`groups`}</Anchor>} to assign ${(
+        )} to it, and organize these users into ${<Anchor component={Link} to="/admin/people/tenants/groups" key="tenant-groups-link">{t`groups`}</Anchor>} to assign ${(
           <Anchor
             component={Link}
-            to={EnterpriseUrls.tenantsPermissions()}
+            to="/admin/permissions"
             key="permissions-link"
           >{t`permissions`}</Anchor>
         )}. Then, create dashboards, charts and models for your tenants in shared collections.`}

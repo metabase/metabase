@@ -7,11 +7,7 @@ export type SetupGuideStepId =
   | "configure-row-column-security"
   | "sso-configured"
   | "embed-production"
-  | "data-permissions-and-enable-tenants"
-  // Embedding hub-only steps. The home-page stepper never renders these; it maps its own
-  // step list and simply never looks them up.
-  | "create-custom-theme"
-  | "configure-ai";
+  | "data-permissions-and-enable-tenants";
 
 export interface SetupGuideStep {
   id: SetupGuideStepId;
