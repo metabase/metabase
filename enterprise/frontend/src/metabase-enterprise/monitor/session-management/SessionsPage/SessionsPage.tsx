@@ -16,7 +16,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { Button, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
 import type {
@@ -182,15 +182,30 @@ export const SessionsPage = () => {
     <>
       <Flex ref={containerRef} h="100%" wrap="nowrap">
         <MonitorMain>
-          <Flex justify="space-between" align="center" mb="sm" pr="4rem">
+          <Flex justify="space-between" align="center" mb="sm" pr="3rem">
             <MonitorHeaderTitle>{t`Session management`}</MonitorHeaderTitle>
-            <Button
-              leftSection={<Icon name="exit" />}
-              disabled={isRevoking || total === 0}
-              onClick={revokeAll}
-            >
-              {t`Revoke all sessions`}
-            </Button>
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <ActionIcon
+                  aria-label={t`More actions`}
+                  size="lg"
+                  c="icon-primary"
+                  disabled={isRevoking}
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  c="feedback-negative"
+                  leftSection={<Icon name="exit" />}
+                  disabled={total === 0}
+                  onClick={revokeAll}
+                >
+                  {t`Revoke all sessions`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Flex>
 
           <Flex gap="md" align="center">
