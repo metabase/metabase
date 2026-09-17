@@ -22,7 +22,7 @@
    [:user_id                     {:optional true} [:maybe ::lib.schema.id/user]]
    [:model                       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id                    {:optional true} [:maybe :int]]
-   [:timestamp                   {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp                   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:metadata                    {:optional true} [:maybe ::view-log.metadata]]
    [:has_access                  {:optional true} [:maybe :boolean]]
    [:context                     {:optional true} [:maybe [:or :keyword :string]]]

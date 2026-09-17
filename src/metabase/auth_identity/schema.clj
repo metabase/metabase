@@ -17,7 +17,7 @@
   "Credentials of a hashed-token provider (password reset, support access grant)."
   [:map {:closed true}
    [:token_hash    {:optional true} [:maybe :string]]
-   [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:expires_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:consumed_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:grant_ends_at {:optional true} [:maybe ms/TemporalInstant]]])
 
@@ -76,9 +76,9 @@
    [:metadata     {:optional true} [:maybe ::auth-identity.metadata]]
    [:provider_id  {:optional true} [:maybe :string]]
    [:last_used_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
-   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:expires_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::auth-identity.column

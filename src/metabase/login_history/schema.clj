@@ -21,7 +21,7 @@
 (mr/def ::login-history.update
   "What an update (or insert) of a LoginHistory accepts: every column of `:login_history` except `id`, all optional."
   [:map {:closed true}
-   [:timestamp          {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:session_id         {:optional true} [:maybe :string]]
    [:device_id          {:optional true} [:maybe :string]]

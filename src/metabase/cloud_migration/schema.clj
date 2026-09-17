@@ -18,5 +18,5 @@
    [:upload_url  {:optional true} [:maybe :string]]
    [:state       {:optional true} [:maybe [:or :keyword :string]]]
    [:progress    {:optional true} [:maybe :int]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])

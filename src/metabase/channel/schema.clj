@@ -103,8 +103,8 @@
    [:type        {:optional true} [:maybe [:or :keyword :string]]]
    [:details     {:optional true} [:maybe ::channel.details]]
    [:active      {:optional true} [:maybe :boolean]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (def channel-template-details-types
   "The `:type`s an email template's details can have: a Handlebars template written inline, or one shipped as a resource."
@@ -156,5 +156,5 @@
    [:name         {:optional true} [:maybe :string]]
    [:channel_type {:optional true} [:maybe [:or :keyword :string]]]
    [:details      {:optional true} [:maybe ::channel-template.details]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])

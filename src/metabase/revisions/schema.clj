@@ -23,7 +23,7 @@
    [:model            {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id         {:optional true} [:maybe :int]]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
-   [:timestamp        {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:object           {:optional true} [:maybe ::revision.object]]
    [:is_reversion     {:optional true} [:maybe :boolean]]
    [:is_creation      {:optional true} [:maybe :boolean]]

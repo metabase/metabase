@@ -26,8 +26,8 @@
    [:content       {:optional true} [:maybe :string]]
    [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:archived      {:optional true} [:maybe :boolean]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])

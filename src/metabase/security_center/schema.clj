@@ -89,9 +89,9 @@
    [:published_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:fetched_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:match_status      {:optional true} [:maybe [:or :keyword :string]]]
-   [:last_evaluated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_evaluated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:acknowledged_by   {:optional true} [:maybe :int]]
    [:acknowledged_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:last_notified_at  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_notified_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:download_jar_urls {:optional true} [:maybe ::download-jar-urls]]])

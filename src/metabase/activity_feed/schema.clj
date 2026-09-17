@@ -18,5 +18,5 @@
    [:user_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:model     {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id  {:optional true} [:maybe :int]]
-   [:timestamp {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:context   {:optional true} [:maybe [:or :keyword :string]]]])

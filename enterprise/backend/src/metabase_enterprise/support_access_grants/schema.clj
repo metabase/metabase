@@ -69,8 +69,8 @@
    [:ticket_number         {:optional true} [:maybe :string]]
    [:notes                 {:optional true} [:maybe :string]]
    [:grant_start_timestamp {:optional true} [:maybe ms/TemporalInstant]]
-   [:grant_end_timestamp   {:optional true} [:maybe ms/TemporalInstant]]
-   [:revoked_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:grant_end_timestamp   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:revoked_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:revoked_by_user_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]])

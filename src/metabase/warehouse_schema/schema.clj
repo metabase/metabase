@@ -22,8 +22,8 @@
    [:name                    {:optional true} [:maybe :string]]
    [:type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
 (mr/def ::dimension.create
@@ -56,8 +56,8 @@
 (mr/def ::field.columns
   "Every column of `:metabase_field` except `id`, all optional."
   [:map {:closed true}
-   [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at                 {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at                 {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name                       {:optional true} [:maybe :string]]
    [:base_type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:semantic_type              {:optional true} [:maybe [:or :keyword :string]]]
@@ -70,7 +70,7 @@
    [:display_name               {:optional true} [:maybe :string]]
    [:visibility_type            {:optional true} [:maybe [:or :keyword :string]]]
    [:fk_target_field_id         {:optional true} [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_analyzed              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:points_of_interest         {:optional true} [:maybe :string]]
    [:caveats                    {:optional true} [:maybe :string]]
    [:fingerprint                {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
@@ -133,8 +133,8 @@
   "Every column of `:metabase_field_user_settings`, all optional."
   [:map {:closed true}
    [:field_id           {:optional true} [:maybe ::lib.schema.id/field]]
-   [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at         {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at         {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:semantic_type      {:optional true} [:maybe [:or :keyword :string]]]
    [:description        {:optional true} [:maybe :string]]
    [:display_name       {:optional true} [:maybe :string]]
@@ -185,15 +185,15 @@
 (mr/def ::field-values.columns
   "Every column of `:metabase_fieldvalues` except `id`, all optional."
   [:map {:closed true}
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:values                {:optional true} [:maybe ms/FieldValues]]
    [:human_readable_values {:optional true} [:maybe ms/FieldValues]]
    [:field_id              {:optional true} [:maybe ::lib.schema.id/field]]
    [:has_more_values       {:optional true} [:maybe :boolean]]
    [:type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:hash_key              {:optional true} [:maybe :string]]
-   [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
+   [:last_used_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::field-values.create
   "What an insert of a FieldValues accepts."
@@ -224,8 +224,8 @@
   "Every column of `:metabase_table_user_settings`, all optional."
   [:map {:closed true}
    [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:display_name            {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
@@ -289,8 +289,8 @@
 (mr/def ::table.columns
   "Every column of `:metabase_table` except `id`, all optional."
   [:map {:closed true}
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
@@ -309,7 +309,7 @@
    [:estimated_row_count     {:optional true} [:maybe :int]]
    [:view_count              {:optional true} [:maybe :int]]
    [:is_defective_duplicate  {:optional true} [:maybe :boolean]]
-   [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:deactivated_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:archived_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:is_writable             {:optional true} [:maybe :boolean]]
    [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]

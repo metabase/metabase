@@ -145,8 +145,8 @@
    [:source                {:optional true} [:maybe ::transform.source]]
    [:target                {:optional true} [:maybe ::transform.target]]
    [:entity_id             {:optional true} [:maybe :string]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:source_type           {:optional true} [:maybe [:or :keyword :string]]]
    [:creator_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:source_database_id    {:optional true} [:maybe ::lib.schema.id/database]]
@@ -199,12 +199,12 @@
    [:status                     {:optional true} [:maybe [:or :keyword :string]]]
    [:is_active                  {:optional true} [:maybe :boolean]]
    [:start_time                 {:optional true} [:maybe ms/TemporalInstant]]
-   [:end_time                   {:optional true} [:maybe ms/TemporalInstant]]
+   [:end_time                   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:message                    {:optional true} [:maybe :string]]
    [:user_id                    {:optional true} [:maybe ::lib.schema.id/user]]
    [:last_heartbeat             {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at                 {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at                 {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::transform-dag-run.partial
   "A TransformDagRun row as selected, where a `:columns` narrowing may have left out any column."
@@ -242,8 +242,8 @@
    [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:schedule        {:optional true} [:maybe :string]]
    [:entity_id       {:optional true} [:maybe :string]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:built_in_type   {:optional true} [:maybe [:or :keyword :string]]]
    [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active          {:optional true} [:maybe :boolean]]])
@@ -282,10 +282,10 @@
    [:status         {:optional true} [:maybe [:or :keyword :string]]]
    [:is_active      {:optional true} [:maybe :boolean]]
    [:start_time     {:optional true} [:maybe ms/TemporalInstant]]
-   [:end_time       {:optional true} [:maybe ms/TemporalInstant]]
+   [:end_time       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:message        {:optional true} [:maybe :string]]
-   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at     {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:last_heartbeat {:optional true} [:maybe ms/TemporalInstant]]
    [:job_name       {:optional true} [:maybe :string]]
    [:job_entity_id  {:optional true} [:maybe :string]]])
@@ -358,7 +358,7 @@
    [:status                     {:optional true} [:maybe [:or :keyword :string]]]
    [:is_active                  {:optional true} [:maybe :boolean]]
    [:start_time                 {:optional true} [:maybe ms/TemporalInstant]]
-   [:end_time                   {:optional true} [:maybe ms/TemporalInstant]]
+   [:end_time                   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:message                    {:optional true} [:maybe :string]]
    [:user_id                    {:optional true} [:maybe ::lib.schema.id/user]]
    [:transform_name             {:optional true} [:maybe :string]]
@@ -431,8 +431,8 @@
   [:map {:closed true}
    [:name          {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
    [:entity_id     {:optional true} [:maybe :string]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:built_in_type {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::transform-tag.partial

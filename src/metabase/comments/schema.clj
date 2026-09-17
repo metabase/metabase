@@ -93,8 +93,8 @@
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:content           {:optional true} [:maybe ::comment.content]]
    [:is_resolved       {:optional true} [:maybe :boolean]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:deleted_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:content_html      {:optional true} [:maybe :string]]
    [:context           {:optional true} [:maybe ::comment.context]]])
@@ -120,7 +120,7 @@
    [:comment_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:emoji      {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::comment-reaction.column
   "A column of `comment_reaction`, for the `:columns` option of the queries in [[metabase.comments.db]]."

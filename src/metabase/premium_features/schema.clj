@@ -15,4 +15,4 @@
   [:map {:closed true}
    [:token_hash        {:optional true} [:maybe :string]]
    [:token_status_hash {:optional true} [:maybe :string]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]])

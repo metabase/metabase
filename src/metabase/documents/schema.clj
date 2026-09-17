@@ -33,11 +33,11 @@
   "Every column of `:document` except `id`, all optional."
   [:map {:closed true}
    [:name                {:optional true} [:maybe :string]]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:document            {:optional true} [:maybe ::document.document]]
    [:content_type        {:optional true} [:maybe [:or :keyword :string]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived            {:optional true} [:maybe :boolean]]
    [:archived_directly   {:optional true} [:maybe :boolean]]

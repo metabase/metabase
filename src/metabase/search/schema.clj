@@ -18,6 +18,6 @@
    [:version    {:optional true} [:maybe :string]]
    [:index_name {:optional true} [:maybe :string]]
    [:status     {:optional true} [:maybe [:or :keyword :string]]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:lang_code  {:optional true} [:maybe :string]]])

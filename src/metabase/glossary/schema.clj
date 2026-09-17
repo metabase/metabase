@@ -22,8 +22,8 @@
   [:map {:closed true}
    [:term       {:optional true} [:maybe :string]]
    [:definition {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
 
 (mr/def ::glossary.column

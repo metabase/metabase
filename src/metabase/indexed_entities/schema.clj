@@ -30,7 +30,7 @@
    [:state      {:optional true} [:maybe :string]]
    [:indexed_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:error      {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
 
 (mr/def ::model-index-value

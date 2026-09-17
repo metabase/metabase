@@ -16,5 +16,5 @@
   [:map {:closed true}
    [:model_name   {:optional true} [:maybe :string]]
    [:request_type {:optional true} [:maybe [:or :keyword :string]]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:total_tokens {:optional true} [:maybe :int]]])

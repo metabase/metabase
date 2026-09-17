@@ -22,5 +22,5 @@
    [:name       {:optional true} [:maybe :string]]
    [:settings   {:optional true} [:maybe ::embedding-theme.settings]]
    [:is_default {:optional true} [:maybe :boolean]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])

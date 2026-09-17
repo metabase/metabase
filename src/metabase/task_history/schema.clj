@@ -158,7 +158,9 @@
 (mr/def ::task-history.log
   "One entry of the `:logs` column of a TaskHistory, decoded."
   [:map {:closed true}
-   [:level        {:optional true} [:enum :trace :debug :info :warn :error :fatal]]
+   [:level        {:optional true} [:or
+                                    [:enum :trace :debug :info :warn :error :fatal]
+                                    [:enum "trace" "debug" "info" "warn" "error" "fatal"]]]
    [:timestamp    {:optional true} :string]
    [:fqns         {:optional true} :string]
    [:msg          {:optional true} :string]
@@ -179,7 +181,7 @@
    [:task         {:optional true} [:maybe :string]]
    [:db_id        {:optional true} [:maybe ::lib.schema.id/database]]
    [:started_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:ended_at     {:optional true} [:maybe ms/TemporalInstant]]
+   [:ended_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:duration     {:optional true} [:maybe :int]]
    [:task_details {:optional true} [:maybe ::task-history.task-details]]
    [:status       {:optional true} [:maybe [:or :keyword :string]]]
@@ -197,8 +199,15 @@
                    [:task :db_id :ended_at :duration :task_details :status :logs]))
 
 (mr/def ::task-history.partial
-  "A TaskHistory row as selected, where a `:columns` narrowing may have left out any column."
-  [:merge ::task-history [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+  "A TaskHistory row as selected, where a `:columns` narrowing may have left out any column. The JSON columns are
+  typed loosely here because decoding them does not round-trip keywords: a `:level` or `:trigger_type` written as a
+  keyword reads back as a string. Writes still go through the strict schemas above."
+  [:merge
+   ::task-history
+   [:map {:closed true}
+    [:id           {:optional true} ms/PositiveInt]
+    [:task_details {:optional true} [:maybe [:map]]]
+    [:logs         {:optional true} [:maybe [:sequential [:map]]]]]])
 
 (mr/def ::task-history.column
   "A column of `task_history`, for the `:columns` option of the queries in [[metabase.task-history.db]]."
@@ -218,10 +227,10 @@
    [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id       {:optional true} [:maybe ms/PositiveInt]]
    [:started_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:ended_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:ended_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:status          {:optional true} [:maybe [:or :keyword :string]]]
    [:process_uuid    {:optional true} [:maybe :string]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::task-run.create

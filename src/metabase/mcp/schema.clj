@@ -21,7 +21,7 @@
    [:freeform_feedback {:optional true} [:maybe :string]]
    [:prompt            {:optional true} [:maybe :string]]
    [:query             {:optional true} [:maybe :string]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::mcp-query-handle
   "A McpQueryHandle as selected from the app DB: every column of `:mcp_query_handle`."
@@ -36,7 +36,7 @@
    [:mcp_session_id  {:optional true} [:maybe :string]]
    [:core_session_id {:optional true} [:maybe :string]]
    [:encoded_query   {:optional true} [:maybe :string]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:prompt          {:optional true} [:maybe :string]]])
 
 (mr/def ::mcp-session-log
@@ -49,8 +49,8 @@
 (mr/def ::mcp-session-log.update
   "What an update (or insert) of a McpSessionLog accepts: every column of `:mcp_session_log` except `id`, all optional."
   [:map {:closed true}
-   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
-   [:ended_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:ended_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:tenant_id      {:optional true} [:maybe ms/PositiveInt]]
    [:client_name    {:optional true} [:maybe :string]]
@@ -68,7 +68,7 @@
 (mr/def ::mcp-tool-call-log.update
   "What an update (or insert) of a McpToolCallLog accepts: every column of `:mcp_tool_call_log` except `id`, all optional."
   [:map {:closed true}
-   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id              {:optional true} [:maybe ::lib.schema.id/user]]
    [:tool_name            {:optional true} [:maybe :string]]
    [:status               {:optional true} [:maybe [:or :keyword :string]]]

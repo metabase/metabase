@@ -27,12 +27,12 @@
   "What an update (or insert) of a Session accepts: every column of `:core_session` except `id`, all optional."
   [:map {:closed true}
    [:user_id             {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:anti_csrf_token     {:optional true} [:maybe :string]]
    [:key_hashed          {:optional true} [:maybe :string]]
    [:auth_identity_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:expires_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:last_active_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:expires_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:last_active_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:saml_session_index  {:optional true} [:maybe :string]]
    [:saml_name_id        {:optional true} [:maybe :string]]
    [:saml_name_id_format {:optional true} [:maybe :string]]])

@@ -122,6 +122,6 @@
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
    [:error_message    {:optional true} [:maybe :string]]
    [:created_by       {:optional true} [:maybe :int]]
-   [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:last_executed_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])

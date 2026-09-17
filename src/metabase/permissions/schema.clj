@@ -64,7 +64,7 @@
    [:before     {:optional true} [:maybe ::application-permissions-revision.before]]
    [:after      {:optional true} [:maybe ::application-permissions-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:remark     {:optional true} [:maybe :string]]])
 
 (mr/def ::application-permissions-revision.create
@@ -116,7 +116,7 @@
    [:before     {:optional true} [:maybe ::collection-permission-graph-revision.before]]
    [:after      {:optional true} [:maybe ::collection-permission-graph-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:remark     {:optional true} [:maybe :string]]])
 
 (mr/def ::collection-permission-graph-revision.create
@@ -349,7 +349,7 @@
    [:before     {:optional true} [:maybe ::permissions-revision.before]]
    [:after      {:optional true} [:maybe ::permissions-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:remark     {:optional true} [:maybe :string]]])
 
 (mr/def ::permissions-revision.create

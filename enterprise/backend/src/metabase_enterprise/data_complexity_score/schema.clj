@@ -67,5 +67,5 @@
   [:map {:closed true}
    [:fingerprint {:optional true} [:maybe :string]]
    [:score_data  {:optional true} [:maybe ::data-complexity-score.score-data]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:source      {:optional true} [:maybe [:or :keyword :string]]]])

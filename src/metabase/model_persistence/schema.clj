@@ -33,7 +33,7 @@
    [:refresh_end     {:optional true} [:maybe ms/TemporalInstant]]
    [:state_change_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:error           {:optional true} [:maybe :string]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:creator_id      {:optional true} [:maybe ::lib.schema.id/user]]])
 
 (mr/def ::persisted-info.create

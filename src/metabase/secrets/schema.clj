@@ -17,8 +17,8 @@
   [:map {:closed true}
    [:version    {:optional true} [:maybe :int]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name       {:optional true} [:maybe :string]]
    [:kind       {:optional true} [:maybe [:or :keyword :string]]]
    [:source     {:optional true} [:maybe [:or :keyword :string]]]

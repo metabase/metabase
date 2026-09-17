@@ -31,8 +31,8 @@
   [:map {:closed true}
    [:model                 {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id              {:optional true} [:maybe :int]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:strategy              {:optional true} [:maybe [:or :keyword :string]]]
    [:config                {:optional true} [:maybe ::cache-config.config]]
    [:state                 {:optional true} [:maybe ::cache-config.state]]
@@ -50,6 +50,6 @@
   "What an update (or insert) of a QueryCache accepts: every column of `:query_cache` except `id`, all optional."
   [:map {:closed true}
    [:query_hash         {:optional true} [:maybe [:or bytes? :string]]]
-   [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at         {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:results            {:optional true} [:maybe [:or bytes? :string]]]
    [:refresh_started_at {:optional true} [:maybe ms/TemporalInstant]]])

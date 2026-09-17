@@ -173,7 +173,7 @@
   "Every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the
   model's hooks."
   [:map {:closed true}
-   [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at                                {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
@@ -201,9 +201,9 @@
    [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
    [:type                                      {:optional true} [:maybe ::lib.schema.metadata/card.type]]
-   [:initially_published_at                    {:optional true} [:maybe ms/TemporalInstant]]
+   [:initially_published_at                    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:cache_invalidated_at                      {:optional true} [:maybe ms/TemporalInstant]]
-   [:last_used_at                              {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_used_at                              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:view_count                                {:optional true} [:maybe :int]]
    [:archived_directly                         {:optional true} [:maybe :boolean]]
    [:dataset_query_metrics_v2_migration_backup {:optional true} [:maybe :string]]
@@ -264,8 +264,8 @@
 (mr/def ::parameter-card.columns
   "Every column of `:parameter_card` except `id`, all optional."
   [:map {:closed true}
-   [:updated_at                {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at                {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at                {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:created_at                {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:card_id                   {:optional true} [:maybe ::lib.schema.id/card]]
    [:parameterized_object_type {:optional true} [:maybe [:or :keyword :string]]]
    [:parameterized_object_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -442,8 +442,8 @@
    [:dataset_query     {:optional true} [:maybe ::stored-result.dataset-query]]
    [:data_access_token {:optional true} [:maybe ::stored-result.data-access-token]]
    [:row_count         {:optional true} [:maybe :int]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::stored-result.create
   "What an insert of a StoredResult accepts."
@@ -475,8 +475,8 @@
   [:map {:closed true}
    [:stored_result_id {:optional true} [:maybe ms/PositiveInt]]
    [:exploration_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
 
 (mr/def ::stored-result-use.create

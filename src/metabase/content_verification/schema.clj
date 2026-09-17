@@ -16,8 +16,8 @@
 (mr/def ::moderation-review.update
   "What an update (or insert) of a ModerationReview accepts: every column of `:moderation_review` except `id`, all optional."
   [:map {:closed true}
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:status              {:optional true} [:maybe [:or :keyword :string]]]
    [:text                {:optional true} [:maybe :string]]
    [:moderated_item_id   {:optional true} [:maybe ms/PositiveInt]]

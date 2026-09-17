@@ -17,5 +17,5 @@
    [:continue_url {:optional true} [:maybe :string]]
    [:origin       {:optional true} [:maybe :string]]
    [:embedding    {:optional true} [:maybe :boolean]]
-   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:expires_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])

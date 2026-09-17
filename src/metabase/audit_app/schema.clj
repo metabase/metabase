@@ -20,7 +20,7 @@
   "What an update (or insert) of a AuditLog accepts: every column of `:audit_log` except `id`, all optional."
   [:map {:closed true}
    [:topic         {:optional true} [:maybe [:or :keyword :string]]]
-   [:timestamp     {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp     {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:end_timestamp {:optional true} [:maybe ms/TemporalInstant]]
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
    [:model         {:optional true} [:maybe [:or :keyword :string]]]

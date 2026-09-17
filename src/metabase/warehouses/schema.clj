@@ -58,8 +58,8 @@
 (mr/def ::database.update
   "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."
   [:map {:closed true}
-   [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at                  {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at                  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]

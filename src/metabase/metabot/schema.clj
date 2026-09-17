@@ -227,7 +227,7 @@
 (mr/def ::ai-usage-log.update
   "What an update (or insert) of a AiUsageLog accepts: every column of `:ai_usage_log` except `id`, all optional."
   [:map {:closed true}
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:source                {:optional true} [:maybe [:or :keyword :string]]]
    [:model                 {:optional true} [:maybe [:or :keyword :string]]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
@@ -255,8 +255,8 @@
    [:name                 {:optional true} [:maybe :string]]
    [:description          {:optional true} [:maybe :string]]
    [:entity_id            {:optional true} [:maybe :string]]
-   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:use_verified_content {:optional true} [:maybe :boolean]]
    [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
 
@@ -270,7 +270,7 @@
 (mr/def ::metabot-conversation.update
   "What an update (or insert) of a MetabotConversation accepts: every column of `:metabot_conversation` except `id`, all optional."
   [:map {:closed true}
-   [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at                  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id                     {:optional true} [:maybe ::lib.schema.id/user]]
    [:title                       {:optional true} [:maybe :string]]
    [:ip_address                  {:optional true} [:maybe :string]]
@@ -297,8 +297,8 @@
    [:positive          {:optional true} [:maybe :boolean]]
    [:issue_type        {:optional true} [:maybe [:or :keyword :string]]]
    [:freeform_feedback {:optional true} [:maybe :string]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id           {:optional true} [:maybe ::lib.schema.id/user]]])
 
 (mr/def ::metabot-message.data-part
@@ -330,7 +330,7 @@
 (mr/def ::metabot-message.update
   "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
   [:map {:closed true}
-   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:profile_id             {:optional true} [:maybe :string]]
    [:role                   {:optional true} [:maybe [:or :keyword :string]]]
    [:data                   {:optional true} [:maybe [:sequential ::metabot-message.data-part]]]
@@ -365,8 +365,8 @@
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
    [:entity_id  {:optional true} [:maybe :string]]
    [:prompt     {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:metabot_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback
@@ -384,8 +384,8 @@
    [:source_id   {:optional true} [:maybe ms/PositiveInt]]
    [:source_type {:optional true} [:maybe [:or :keyword :string]]]
    [:positive    {:optional true} [:maybe :boolean]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::metabot-used-table
   "A MetabotUsedTable as selected from the app DB: every column of `:metabot_used_table`."
@@ -399,4 +399,4 @@
   [:map {:closed true}
    [:message_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_id   {:optional true} [:maybe ::lib.schema.id/table]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])

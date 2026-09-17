@@ -24,9 +24,9 @@
    [:namespace  {:optional true} [:maybe :string]]
    [:key        {:optional true} [:maybe :string]]
    [:value      {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:expires_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:expires_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::user-key-value.column
   "A column of `user_key_value`, for the `:columns` option of the queries in [[metabase.user-key-value.db]]."

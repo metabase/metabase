@@ -16,6 +16,6 @@
   [:map {:closed true}
    [:path       {:optional true} [:maybe :string]]
    [:source     {:optional true} [:maybe [:or :keyword :string]]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:entity_id  {:optional true} [:maybe :string]]])

@@ -26,8 +26,8 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived      {:optional true} [:maybe :boolean]]
    [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:default       {:optional true} [:maybe :boolean]]
    [:entity_id     {:optional true} [:maybe :string]]])
 
@@ -52,14 +52,14 @@
    [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
    [:name         {:optional true} [:maybe :string]]
    [:description  {:optional true} [:maybe :string]]
-   [:timestamp    {:optional true} [:maybe ms/TemporalInstant]]
+   [:timestamp    {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:time_matters {:optional true} [:maybe :boolean]]
    [:timezone     {:optional true} [:maybe :string]]
    [:icon         {:optional true} [:maybe :string]]
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::timeline-event.column
   "A column of `timeline_event`, for the `:columns` option of the queries in [[metabase.timeline.db]]."

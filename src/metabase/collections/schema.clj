@@ -144,7 +144,7 @@
    [:namespace            {:optional true} [:maybe [:or :keyword :string]]]
    [:authority_level      {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id            {:optional true} [:maybe :string]]
-   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:type                 {:optional true} [:maybe [:or :keyword :string]]]
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]

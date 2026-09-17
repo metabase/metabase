@@ -242,7 +242,7 @@
       task   (conj [:= :task_history.task task])
       status (conj [:= :task_history.status (name status)]))))
 
-(mu/defn select-task-histories-page :- [:sequential ::task-history.schema/task-history]
+(mu/defn select-task-histories-page :- [:sequential ::task-history.schema/task-history.partial]
   "Up to `limit` (offset by `offset`) TaskHistory rows, optionally narrowed to `status` and/or `task`, sorted by
   `sort-column` (an allow-listed column, joining to Database for `:db_name`/`:db_engine`) and `sort-direction`, with
   `:id desc` as a stable tiebreaker."

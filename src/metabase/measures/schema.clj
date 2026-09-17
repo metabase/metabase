@@ -53,8 +53,8 @@
    [:description        {:optional true} [:maybe :string]]
    [:archived           {:optional true} [:maybe :boolean]]
    [:definition         {:optional true} [:maybe ::measure.definition]]
-   [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at         {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at         {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:entity_id          {:optional true} [:maybe :string]]
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])

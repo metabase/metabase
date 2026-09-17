@@ -37,7 +37,7 @@
   [:map {:closed true}
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::card-bookmark.column
   "A column of `card_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
@@ -55,7 +55,7 @@
   [:map {:closed true}
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at    {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::collection-bookmark.column
   "A column of `collection_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
@@ -73,7 +73,7 @@
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::dashboard-bookmark.column
   "A column of `dashboard_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
@@ -91,7 +91,7 @@
   [:map {:closed true}
    [:user_id     {:optional true} [:maybe ::lib.schema.id/user]]
    [:document_id {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::document-bookmark.column
   "A column of `document_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."
@@ -109,7 +109,7 @@
   [:map {:closed true}
    [:user_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:exploration_id {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::exploration-bookmark.column
   "A column of `exploration_bookmark`, for the `:columns` option of the queries in [[metabase.bookmarks.db]]."

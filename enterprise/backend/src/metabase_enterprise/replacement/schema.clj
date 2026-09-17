@@ -81,4 +81,4 @@
    [:message            {:optional true} [:maybe :string]]
    [:user_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:start_time         {:optional true} [:maybe ms/TemporalInstant]]
-   [:end_time           {:optional true} [:maybe ms/TemporalInstant]]])
+   [:end_time           {:optional true} [:maybe ms/TemporalInstantOrNow]]])

@@ -26,8 +26,8 @@
    [:archived_directly   {:optional true} [:maybe :boolean]]
    [:collection_position {:optional true} [:maybe :int]]
    [:entity_id           {:optional true} [:maybe :string]]
-   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::exploration-block.metric.explore-filter
   "One entry of a block metric selection's `:explore_filters` vector, decoded."
@@ -75,8 +75,8 @@
    [:metrics               {:optional true} [:maybe [:sequential ::exploration-block.metric]]]
    [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.dimension]]]
    [:position              {:optional true} [:maybe :int]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::exploration-page
   "A ExplorationPage as selected from the app DB: every column of `:exploration_page`."
@@ -96,8 +96,8 @@
    [:position             {:optional true} [:maybe :int]]
    [:starred              {:optional true} [:maybe :boolean]]
    [:hidden               {:optional true} [:maybe :boolean]]
-   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
@@ -146,8 +146,8 @@
    [:started_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:finished_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id              {:optional true} [:maybe :string]]
-   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]])
 
 (mr/def ::exploration-query-result.chart-stats
@@ -166,7 +166,7 @@
   [:map {:closed true}
    [:exploration_query_id             {:optional true} [:maybe ms/PositiveInt]]
    [:stored_result_id                 {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at                       {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at                       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
    [:chart_stats                      {:optional true} [:maybe ::exploration-query-result.chart-stats]]
@@ -247,8 +247,8 @@
    [:source_page_id        {:optional true} [:maybe ms/PositiveInt]]
    [:started_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id             {:optional true} [:maybe :string]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:completed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:analysis_started_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
@@ -269,5 +269,5 @@
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
    [:position              {:optional true} [:maybe :int]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]])

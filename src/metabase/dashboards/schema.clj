@@ -56,8 +56,8 @@
 (mr/def ::dashboard.columns
   "Every column of `:report_dashboard` except `id`, all optional."
   [:map {:closed true}
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
@@ -77,7 +77,7 @@
    [:entity_id               {:optional true} [:maybe :string]]
    [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:width                   {:optional true} [:maybe :string]]
-   [:initially_published_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:initially_published_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:view_count              {:optional true} [:maybe :int]]
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
@@ -132,8 +132,8 @@
 (mr/def ::dashboard-card.columns
   "Every column of `:report_dashboardcard` except `id`, all optional."
   [:map {:closed true}
-   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:size_x                 {:optional true} [:maybe :int]]
    [:size_y                 {:optional true} [:maybe :int]]
    [:row                    {:optional true} [:maybe :int]]
@@ -211,8 +211,8 @@
    [:name         {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]
    [:entity_id    {:optional true} [:maybe :string]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::dashboard-tab.create
   "What an insert of a DashboardTab accepts."

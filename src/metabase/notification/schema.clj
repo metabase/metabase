@@ -17,8 +17,8 @@
   [:map {:closed true}
    [:payload_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active       {:optional true} [:maybe :boolean]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:internal_id  {:optional true} [:maybe :string]]
    [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]])
@@ -36,8 +36,8 @@
    [:card_id        {:optional true} [:maybe ::lib.schema.id/card]]
    [:send_once      {:optional true} [:maybe :boolean]]
    [:send_condition {:optional true} [:maybe [:or :keyword :string]]]
-   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at     {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at     {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:disable_links  {:optional true} [:maybe :boolean]]])
 
 (mr/def ::notification-handler
@@ -55,8 +55,8 @@
    [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
    [:template_id     {:optional true} [:maybe ms/PositiveInt]]
    [:active          {:optional true} [:maybe :boolean]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::notification-recipient.details
   "The `:details` column of a NotificationRecipient, decoded."
@@ -84,8 +84,8 @@
    [:user_id                 {:optional true} [:maybe ::lib.schema.id/user]]
    [:permissions_group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:details                 {:optional true} [:maybe ::notification-recipient.details]]
-   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::notification-subscription
   "A NotificationSubscription as selected from the app DB: every column of `:notification_subscription`."
@@ -100,6 +100,6 @@
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
    [:type            {:optional true} [:maybe [:or :keyword :string]]]
    [:event_name      {:optional true} [:maybe [:or :keyword :string]]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:cron_schedule   {:optional true} [:maybe :string]]
    [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]])

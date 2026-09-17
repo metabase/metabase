@@ -22,7 +22,7 @@
    [:name                 {:optional true} [:maybe :string]]
    [:slug                 {:optional true} [:maybe :string]]
    [:is_active            {:optional true} [:maybe :boolean]]
-   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:attributes           {:optional true} [:maybe ::tenant.attributes]]
    [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])

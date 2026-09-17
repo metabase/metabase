@@ -27,7 +27,7 @@
    [:expiry     {:optional true} [:maybe :int]]
    [:resource   {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::oauth-access-token.column
   "A column of `oauth_access_token`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
@@ -57,7 +57,7 @@
    [:code_challenge        {:optional true} [:maybe :string]]
    [:code_challenge_method {:optional true} [:maybe [:or :keyword :string]]]
    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
-   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::oauth-authorization-code.column
   "A column of `oauth_authorization_code`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
@@ -92,8 +92,8 @@
    [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
    [:registration_access_token_hash {:optional true} [:maybe :string]]
-   [:created_at                     {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                     {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at                     {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at                     {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::oauth-client.column
   "A column of `oauth_client`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
@@ -112,7 +112,7 @@
    [:oauth_client_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:event_type      {:optional true} [:maybe [:or :keyword :string]]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::oauth-refresh-token
   "A OAuthRefreshToken as selected from the app DB: every column of `:oauth_refresh_token`."
@@ -135,7 +135,7 @@
    [:resource   {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:expiry     {:optional true} [:maybe :int]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::oauth-refresh-token.column
   "A column of `oauth_refresh_token`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."

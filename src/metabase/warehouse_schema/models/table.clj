@@ -564,7 +564,8 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (warehouses.db/select-one-database {:id (:db_id table)}))
+  (when-let [database-id (:db_id table)]
+    (warehouses.db/select-one-database {:id database-id})))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]

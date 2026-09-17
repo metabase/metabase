@@ -34,8 +34,8 @@
    [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_local_id {:optional true} [:maybe ms/PositiveInt]]
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
 (mr/def ::osi-ai-context.column
   "A column of `osi_ai_context`, for the `:columns` option of the queries in [[metabase.osi.db]]."

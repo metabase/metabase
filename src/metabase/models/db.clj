@@ -61,13 +61,13 @@
    :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.columns
    :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.columns
    :model/Database                 :metabase.warehouses.schema/database.update
-   :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
+   :model/Dimension                :metabase.warehouse-schema.schema/dimension.columns
    :model/Document                 :metabase.documents.schema/document.columns
    :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.update
    :model/Exploration              :metabase.explorations.schema/exploration.update
-   :model/Field                    :metabase.warehouse-schema.schema/field.update
-   :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.update
-   :model/FieldValues              :metabase.warehouse-schema.schema/field-values.update
+   :model/Field                    :metabase.warehouse-schema.schema/field.columns
+   :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.columns
+   :model/FieldValues              :metabase.warehouse-schema.schema/field-values.columns
    :model/Glossary                 :metabase.glossary.schema/glossary.update
    :model/HTTPAction               :metabase.actions.schema/httpaction.update
    :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
@@ -84,7 +84,7 @@
    :model/PythonLibrary            :metabase-enterprise.transforms-python.schema/python-library.update
    :model/QueryAction              :metabase.actions.schema/query-action.update
    :model/Segment                  :metabase.segments.schema/segment.update
-   :model/Table                    :metabase.warehouse-schema.schema/table.update
+   :model/Table                    :metabase.warehouse-schema.schema/table.columns
    :model/TableIndex               :metabase.indexes.schema/table-index.update
    :model/Timeline                 :metabase.timeline.schema/timeline.update
    :model/TimelineEvent            :metabase.timeline.schema/timeline-event.update

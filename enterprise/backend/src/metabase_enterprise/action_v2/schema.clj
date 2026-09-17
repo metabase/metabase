@@ -55,5 +55,5 @@
    [:raw_before {:optional true} [:maybe ::undo.raw-before]]
    [:raw_after  {:optional true} [:maybe ::undo.raw-after]]
    [:undone     {:optional true} [:maybe :boolean]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
