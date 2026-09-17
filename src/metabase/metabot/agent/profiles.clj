@@ -284,21 +284,26 @@
 
   A :nlq request whose library index can't serve queries is transparently served the :nlq-fallback
   profile's discovery tool and prompt (see [[nlq-fallback?]]); the profile's `:name` stays :nlq so
-  telemetry, recent-views, and skill matching are unaffected."
-  [profile-id]
-  (if-let [profile (get @*profiles profile-id)]
-    (let [profile                     (if (nlq-fallback? profile-id)
-                                        (if-let [fb (get @*profiles :nlq-fallback)]
-                                          (assoc profile :tools (:tools fb) :prompt-template (:prompt-template fb))
-                                          ;; The redirect target should always be registered; if it isn't, serve :nlq
-                                          ;; unredirected rather than a profile with nil tools/prompt.
-                                          (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
-                                              profile))
-                                        profile)
-          {:keys [model-ref fallback]} (metabot.settings/metabot-model-selection)]
-      (assoc profile :model model-ref :model-fallback fallback))
-    ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
-    (log/warnf "No metabot profile registered for %s" profile-id)))
+  telemetry, recent-views, and skill matching are unaffected.
+
+  Pass `model-selection`, a [[metabase.metabot.settings/metabot-model-selection]] resolved earlier in the request, so
+  the profile runs the model the request already checked and recorded rather than re-resolving it."
+  ([profile-id]
+   (get-profile profile-id (metabot.settings/metabot-model-selection)))
+  ([profile-id model-selection]
+   (if-let [profile (get @*profiles profile-id)]
+     (let [profile                     (if (nlq-fallback? profile-id)
+                                         (if-let [fb (get @*profiles :nlq-fallback)]
+                                           (assoc profile :tools (:tools fb) :prompt-template (:prompt-template fb))
+                                           ;; The redirect target should always be registered; if it isn't, serve :nlq
+                                           ;; unredirected rather than a profile with nil tools/prompt.
+                                           (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
+                                               profile))
+                                         profile)
+           {:keys [model-ref fallback]} model-selection]
+       (assoc profile :model model-ref :model-fallback fallback))
+     ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
+     (log/warnf "No metabot profile registered for %s" profile-id))))
 
 (defn profile->tools
   "Tool registry for an ALREADY-RESOLVED profile, filtered by capabilities and `*current-user-scope*`.

@@ -469,12 +469,14 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
+  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id model-selection]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
         ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
-        profile      (or (profiles/get-profile profile-id)
+        profile      (or (if model-selection
+                           (profiles/get-profile profile-id model-selection)
+                           (profiles/get-profile profile-id))
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/profile->tools profile capabilities)
@@ -726,6 +728,18 @@
             [:eval-session-id {:optional true}
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
+            ;; the model the caller already resolved for this turn, so the loop runs what was checked and recorded
+            [:model-selection {:optional true}
+             [:maybe [:map {:closed true}
+                      [:model-ref :string]
+                      [:selected-model-ref {:optional true} [:maybe :string]]
+                      [:fallback {:optional true}
+                       [:maybe [:map {:closed true}
+                                [:model :string]
+                                [:model_name [:maybe :string]]
+                                [:provider_name [:maybe :string]]
+                                [:previous_model :string]
+                                [:previous_provider_name [:maybe :string]]]]]]]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities]
                                                  capabilities/enforce-permissions)
