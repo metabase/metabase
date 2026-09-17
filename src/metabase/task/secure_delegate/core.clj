@@ -1,4 +1,4 @@
-(ns metabase.task.secure-delegate
+(ns metabase.task.secure-delegate.core
   "Metabase's Quartz `DriverDelegate`s and their installation.
 
   Quartz's stock delegate reads BLOB columns with a bare `ObjectInputStream`, which reconstructs any
@@ -58,8 +58,10 @@
 
 ;; Postgres uses PostgreSQLDelegate (byte-based BLOB handling); everything else uses StdJDBCDelegate.
 (def ^:private delegate
-  {:postgres {:class "metabase.task.SecurePostgresDelegate" :ns 'metabase.task.secure-delegate-postgres}
-   :default  {:class "metabase.task.SecureStdDelegate"      :ns 'metabase.task.secure-delegate-std}})
+  {:postgres {:class "metabase.task.secure_delegate.SecurePostgresDelegate"
+              :ns    'metabase.task.secure-delegate.postgres}
+   :default  {:class "metabase.task.secure_delegate.SecureStdDelegate"
+              :ns    'metabase.task.secure-delegate.std}})
 
 (defn- class-loadable? [^String class-name]
   (try
