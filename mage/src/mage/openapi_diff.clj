@@ -327,6 +327,58 @@
     (println (str "      doc was: " (if (str/blank? old-description) "(none)" (subs old-description 0 (min 300 (count old-description))))))
     (println (str "      doc now: " (if (str/blank? new-description) "(none)" (subs new-description 0 (min 300 (count new-description))))))))
 
+(defn- grouped-findings
+  "Findings across all changed operations, collapsed by identical text.
+
+  A systematic change (one PR closing every `mu/defn` schema, say) produces the same finding on
+  hundreds of endpoints. That is one changelog entry, so report it once with its endpoints rather
+  than hundreds of times."
+  [changed]
+  (->> (for [{:keys [operation findings]} changed
+             [severity text] findings]
+         {:severity severity :text (str/trim text) :operation operation})
+       (group-by (juxt :severity :text))
+       (map (fn [[[severity text] occurrences]]
+              {:severity severity
+               :text text
+               :operations (sort (distinct (map :operation occurrences)))}))
+       (sort-by (juxt (comp severity-order :severity)
+                      (comp - count :operations)
+                      :text))))
+
+(defn print-grouped
+  "Render `diff` collapsed by distinct change, widest blast radius first."
+  [{:keys [removed added changed counts]} min-severity]
+  (let [visible? (fn [sev] (or (nil? min-severity)
+                               (<= (severity-order sev) (severity-order min-severity))))
+        groups (filter (comp visible? :severity) (grouped-findings changed))
+        endpoint-changes (+ (count removed) (count added))]
+    (println (format "# %d distinct changes across %d endpoints (%d -> %d operations)"
+                     (+ (count groups) endpoint-changes)
+                     (+ (count changed) endpoint-changes)
+                     (:operations-before counts) (:operations-after counts)))
+    (println)
+    (when (and (visible? breaking) (seq removed))
+      (println (format "## BREAKING: %d REMOVED ENDPOINTS" (count removed)))
+      (doseq [k removed] (println (str "  - " k)))
+      (println))
+    (when (and (visible? additive) (seq added))
+      (println (format "## ADDITIVE: %d NEW ENDPOINTS" (count added)))
+      (doseq [k added] (println (str "  + " k)))
+      (println))
+    (doseq [{:keys [severity text operations]} groups]
+      (println (format "## %s - %d endpoint%s"
+                       (str/upper-case (name severity))
+                       (count operations)
+                       (if (= 1 (count operations)) "" "s")))
+      (println (str "  " text))
+      (doseq [op (take 5 operations)] (println (str "    " op)))
+      (when (> (count operations) 5)
+        (println (str "    ... and " (- (count operations) 5) " more")))
+      (println))
+    (println "# Grouped by identical finding. A change spanning many endpoints is usually one")
+    (println "# upstream PR, and belongs in the changelog as one entry naming its cause.")))
+
 (defn print-diff
   "Render `diff` to stdout, breaking-first. `min-severity` of `:breaking` or `:additive` hides
   less-severe sections."
@@ -493,9 +545,11 @@
               [op np (cond-> [] ostale (conj old-arg) nstale (conj new-arg))]))
           [old-arg new-arg []])]
     (when (:refs options) (println))
-    (print-diff (diff (json/parse-string (slurp old-path))
-                      (json/parse-string (slurp new-path)))
-                min-severity)
+    (let [d (diff (json/parse-string (slurp old-path))
+                  (json/parse-string (slurp new-path)))]
+      (if (:grouped options)
+        (print-grouped d min-severity)
+        (print-diff d min-severity)))
     (when (seq stale-refs)
       (println)
       (println (str "# WARNING: used the committed spec for " (str/join " and " stale-refs) "."))
