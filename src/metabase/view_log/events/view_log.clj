@@ -103,8 +103,8 @@
   to [[record-view-interval-seconds]] (plus they are lost on non-graceful shutdown); we consider that an acceptable
   trade for not paying for a synchronous INSERT on every read/query request."
   [view-or-views :- [:or
-                     ::view-log.schema/view-log.update
-                     [:sequential ::view-log.schema/view-log.update]]]
+                     ::view-log.schema/view-log.create
+                     [:sequential ::view-log.schema/view-log.create]]]
   (span/with-span!
     {:name "record-view!"}
     (when (premium-features/log-enabled?)

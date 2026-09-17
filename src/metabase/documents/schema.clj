@@ -64,8 +64,14 @@
                     :public_uuid_prefix :is_placeholder]))
 
 (mr/def ::document.partial
-  "A Document row as selected, where a `:columns` narrowing may have left out any column."
-  [:merge ::document [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+  "A Document row as selected, where a `:columns` narrowing may have left out any column. The `:document` AST is
+  typed loosely here because a stored document may predate the current node shapes; writes still go through the
+  strict schema above."
+  [:merge
+   ::document
+   [:map {:closed true}
+    [:id       {:optional true} ms/PositiveInt]
+    [:document {:optional true} [:maybe [:map]]]]])
 
 (mr/def ::document.column
   "A column of `:document`, for the `:columns` option of the queries in [[metabase.documents.db]]."

@@ -145,7 +145,8 @@
   (cond
     (nil? collection-or-id) false ;; the root collection is never remote-synced
     (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
-    :else (:is_remote_synced (collections.db/select-one-collection {:id (u/the-id collection-or-id), :columns [:is_remote_synced]}))))
+    :else (when-let [collection-id (u/the-id collection-or-id)]
+            (:is_remote_synced (collections.db/select-one-collection {:id collection-id, :columns [:is_remote_synced]})))))
 
 (defn- is-library?
   "Is this the Library collection?"
@@ -1782,7 +1783,8 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (:is_remote_synced (collections.db/select-one-collection {:id (parent-id* {:location new-location}), :columns [:is_remote_synced]}))]
+        will-be-in-remote-synced? (when-let [parent-id (parent-id* {:location new-location})]
+                                    (:is_remote_synced (collections.db/select-one-collection {:id parent-id, :columns [:is_remote_synced]})))]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection

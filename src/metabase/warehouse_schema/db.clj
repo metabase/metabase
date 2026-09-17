@@ -579,19 +579,20 @@
 
 ;;; ------------------------- Queries used only by the warehouse-schema module -------------------------
 
-(mu/defn select-schemas-for-database :- [:sequential :string]
+(mu/defn select-schemas-for-database :- [:set [:maybe :string]]
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
   `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
   hidden -- see `metabase.warehouse-schema.models.table/visibility-types`)."
   [database-id     :- ::lib.schema.id/database
-   include-hidden? :- :boolean]
+   include-hidden? :- [:maybe :boolean]]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:from     [(warehouse-schema-overlay/table-query)]
-                              :order-by [[:%lower.schema :asc]]}
-                             (when clauses
-                               {:where (into [:and] clauses)})))))
+    (or (t2/select-fn-set :schema :model/Table :db_id database-id :active true
+                          (merge {:from     [(warehouse-schema-overlay/table-query)]
+                                  :order-by [[:%lower.schema :asc]]}
+                                 (when clauses
+                                   {:where (into [:and] clauses)})))
+        #{})))
 
 (mu/defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."
