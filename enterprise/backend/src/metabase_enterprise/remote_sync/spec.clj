@@ -73,7 +73,7 @@
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
-                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
+                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet, Glossary)
                        nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
@@ -145,6 +145,22 @@
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
     :export-scope   :all  ; export all snippets
     :enabled?       :library-synced}
+
+   :model/Glossary
+   {:model-type     "Glossary"
+    :model-key      :model/Glossary
+    :identity       :entity-id
+    :events         {:prefix :event/glossary
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :library-synced}  ; sync every glossary entry when Library is remote-synced
+    :archived-key   nil
+    :tracking       {:select-fields  [:term]
+                     :field-mappings {:model_name :term}}
+    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :export-scope   :all  ; export all glossary entries
+    :enabled?       :library-synced
+    ;; files exported before `entity_id` existed are keyed by term; resolve those paths through load-find-local
+    :natural-key-paths? true}
 
    :model/Timeline
    {:model-type     "Timeline"
@@ -442,6 +458,14 @@
     :library-synced         "Snippets"
     (str/capitalize (name setting-kw))))
 
+(defn- setting->content-label
+  "Describes the content a feature setting governs, for conflict messages. The Library groups several models
+   under one category, so name them rather than the category."
+  [setting-kw]
+  (case setting-kw
+    :library-synced "Library content (snippets, glossary)"
+    (setting->category setting-kw)))
+
 (defn- setting->namespace
   "Converts a setting keyword to the corresponding collection namespace keyword, or nil."
   [setting-kw]
@@ -533,11 +557,11 @@
                           (and feature-namespace
                                (contains? import-namespace-collections (name feature-namespace))))
                 :when (has-unsynced-entities-for-feature? specs-for-feature)
-                :let [category (setting->category setting-kw)]]
+                :let [category (setting->category setting-kw)
+                      label    (setting->content-label setting-kw)]]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category
-             :message  (format "Import contains %s but local instance has unsynced %s"
-                               category category)}))))
+             :message  (format "Import contains %s but local instance has unsynced %s" label label)}))))
 
 (defn check-namespace-collection-conflicts
   "Checks if import contains namespace collections (transforms/snippets) that conflict with local
@@ -683,14 +707,16 @@
                         ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
                         ;; collection's worth of rows just to count/sample them.
                         opts         (removal-opts spec synced-collection-ids imported-ids)
-                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)]
+                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
+                        name-col     (get-in spec [:tracking :field-mappings :model_name])]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
                :category model-type
                :model    model-type
                :count    n
                ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (remote-sync.db/unsynced-instance-names model-key model-type opts max-conflict-names)
+               :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
+                                                                 max-conflict-names)
                :message  (format "Import would delete %d unsynced local %s %s"
                                  n model-type (if (= 1 n) "entity" "entities"))})))))
 
@@ -885,17 +911,37 @@
   "Extracts identity data from a serdes path based on the spec's identity strategy. For entity-id
    and hybrid models, returns the entity_id string from the last path element. For path-based models
    like Table and Field, returns a map with database, schema, and table/field names that can be used
-   to look up the entity."
-  {:arglists '([spec serdes-path])}
-  (fn [spec _path] (:identity spec))
+   to look up the entity. A spec with `:natural-key-paths?` may also be keyed on a natural key (files
+   exported before the model had an entity_id); its paths are resolved through `serdes/load-find-local`, and
+   through the entity's natural key when `ingest-one` (path -> ingested entity, or nil) is given."
+  {:arglists '([spec serdes-path ingest-one])}
+  (fn [spec _path _ingest-one] (:identity spec))
   :hierarchy #'serdes-path-identity-hierarchy)
 
+(defn- natural-key-entity-id
+  "The entity_id of the local row whose natural-key column (the spec's tracked name column) equals `ingested`'s,
+  or nil."
+  [{:keys [model-key] :as spec} ingested]
+  (let [column (get-in spec [:tracking :field-mappings :model_name])]
+    (when-some [value (get ingested column)]
+      (remote-sync.db/entity-id-where model-key column value))))
+
 (defmethod extract-identity-from-serdes-path ::entity-id-extractor
-  [_ serdes-path]
-  (:id (last serdes-path)))
+  [{:keys [natural-key-paths?] :as spec} serdes-path ingest-one]
+  (let [id (:id (last serdes-path))]
+    (if natural-key-paths?
+      ;; The path id may be a natural key (a glossary term, before `entity_id` existed) naming whichever local row
+      ;; the loader matches it to, so use that row's entity_id. Before the load there may be no row with that id
+      ;; yet; the loader then matches the entity on its natural key, so resolve the same way when the entity can
+      ;; be read. Failing both, the raw id is kept, since it matches no local row (harmless to the removal
+      ;; anti-join) and still counts as an imported entity.
+      (or (:entity_id (serdes/load-find-local serdes-path))
+          (when ingest-one (natural-key-entity-id spec (ingest-one serdes-path)))
+          id)
+      id)))
 
 (defmethod extract-identity-from-serdes-path :path
-  [_ serdes-path]
+  [_ serdes-path _ingest-one]
   (let [path-map (into {} (map (fn [elem] [(keyword (u/lower-case-en (:model elem))) (:id elem)]) serdes-path))]
     (cond-> {}
       (contains? path-map :database) (assoc :db_name (:database path-map))
@@ -904,34 +950,39 @@
       (contains? path-map :field)    (assoc :field_name (:field path-map)))))
 
 (defmethod extract-identity-from-serdes-path :default
-  [_ _]
+  [_ _ _]
   nil)
 
 (defn extract-imported-entities
   "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
    Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
-   path lookup maps for models like Table and Field that use path-based identity."
-  [seen-paths]
-  (reduce
-   (fn [acc path]
-     (let [model-type (-> path last :model)]
-       (if-let [spec (spec-for-model-type model-type)]
-         (let [identity-type (:identity spec)
-               identity-data (extract-identity-from-serdes-path spec path)]
-           (if identity-data
-             (case identity-type
-               (:entity-id :hybrid)
-               (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
+   path lookup maps for models like Table and Field that use path-based identity.
 
-               :path
-               (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+   `ingest-one` (path -> ingested entity) is for the pre-load conflict check: a `:natural-key-paths?` path whose
+   id matches no local row yet resolves to the row the loader will match on the entity's natural key."
+  ([seen-paths]
+   (extract-imported-entities seen-paths nil))
+  ([seen-paths ingest-one]
+   (reduce
+    (fn [acc path]
+      (let [model-type (-> path last :model)]
+        (if-let [spec (spec-for-model-type model-type)]
+          (let [identity-type (:identity spec)
+                identity-data (extract-identity-from-serdes-path spec path ingest-one)]
+            (if identity-data
+              (case identity-type
+                (:entity-id :hybrid)
+                (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
 
-               acc)
-             acc))
-         acc)))
-   {:by-entity-id {}
-    :by-path {}}
-   seen-paths))
+                :path
+                (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+
+                acc)
+              acc))
+          acc)))
+    {:by-entity-id {}
+     :by-path {}}
+    seen-paths)))
 
 ;;; -------------------------------------------- Event Helper Functions ------------------------------------------------
 

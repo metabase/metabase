@@ -14,7 +14,7 @@
    - Table and TableUserSettings, which also carries a Field's own edits (when published in a remote-synced collection)
    - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
-   - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
+   - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
@@ -26,8 +26,18 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defn enable-snippet-tracking!
-  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
+(defn- glossary-tracking-rows
+  "A 'create' ledger row for each of the glossary `entries`."
+  [entries timestamp]
+  (for [entry entries]
+    {:model_type        "Glossary"
+     :model_id          (:id entry)
+     :model_name        (:term entry)
+     :status            "create"
+     :status_changed_at timestamp}))
+
+(defn enable-library-tracking!
+  "Mark all existing snippets, snippets-namespace collections, and glossary entries as 'create' for initial sync."
   []
   (let [timestamp (t/offset-date-time)
         rows      (concat
@@ -43,15 +53,25 @@
                       :model_name          (:name snippet)
                       :model_collection_id (:collection_id snippet)
                       :status              "create"
-                      :status_changed_at   timestamp}))]
+                      :status_changed_at   timestamp})
+                   (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
     (when (seq rows)
       (remote-sync.db/insert-remote-sync-objects! rows))))
 
-(defn disable-snippet-tracking!
-  "Remove all snippet-related tracking entries."
+(defn backfill-glossary-tracking!
+  "Insert a 'create' ledger row for every glossary entry that has none, so an instance upgraded with the Library
+  already synced still pushes its entries. Returns the number of rows inserted."
+  []
+  (let [rows (vec (glossary-tracking-rows (remote-sync.db/untracked-glossary-entries) (t/offset-date-time)))]
+    (when (seq rows)
+      (remote-sync.db/insert-remote-sync-objects! rows))
+    (count rows)))
+
+(defn disable-library-tracking!
+  "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
   []
   (let [snippet-coll-ids (remote-sync.db/snippet-collection-ids)]
-    (remote-sync.db/delete-remote-sync-objects! {:model_type "NativeQuerySnippet"})
+    (remote-sync.db/delete-remote-sync-objects! {:model_type #{"NativeQuerySnippet" "Glossary"}})
     (when (seq snippet-coll-ids)
       (remote-sync.db/delete-remote-sync-objects! {:model_type "Collection" :model_id (set snippet-coll-ids)}))))
 
@@ -262,19 +282,19 @@
   (remote-sync.db/collection-name-and-id id))
 
 (defn- handle-library-sync-status-change!
-  "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
-   This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
+  "When the Library collection's is_remote_synced status changes, trigger Library content sync tracking.
+   This ensures all snippets and glossary entries are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
-  (let [snippets-already-tracked? (remote-sync.db/remote-sync-object-exists? {:model_type "NativeQuerySnippet"})]
+  (let [library-already-tracked? (remote-sync.db/remote-sync-object-exists? {:model_type #{"NativeQuerySnippet" "Glossary"}})]
     (cond
-      (and is-now-synced? (not snippets-already-tracked?))
+      (and is-now-synced? (not library-already-tracked?))
       (do
-        (log/info "Library collection became remote-synced, enabling snippet sync tracking")
-        (enable-snippet-tracking!))
-      (and (not is-now-synced?) snippets-already-tracked?)
+        (log/info "Library collection became remote-synced, enabling Library content sync tracking")
+        (enable-library-tracking!))
+      (and (not is-now-synced?) library-already-tracked?)
       (do
-        (log/info "Library collection is no longer remote-synced, disabling snippet sync tracking")
-        (disable-snippet-tracking!)))))
+        (log/info "Library collection is no longer remote-synced, disabling Library content sync tracking")
+        (disable-library-tracking!)))))
 
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
