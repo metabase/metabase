@@ -308,6 +308,30 @@
     (string? id-str)
     (some-> (re-find #"\d+" id-str) Integer/parseInt)))
 
+(def ^:private first-versionless-major
+  "The first Metabase major whose changesets are version-less. From this major on every changeset lives in a year-based
+  directory (e.g. `2026/20260911_glossary_entity_id.yaml`) with a version-less ID, so that the version a changeset ships
+  with is decided by the branch it is merged into rather than being baked into the changelog."
+  65)
+
+(defn- require-no-versioned-changesets-from-first-versionless-major
+  "Ensures no `vNN.`-prefixed changeset for [[first-versionless-major]] or later exists, whichever kind of versioned
+  file it is in. Year-based directories are exempt: their IDs are version-less by construction."
+  [change-log file]
+  (when-not (year-dir-migration-file? file)
+    (let [versioned-ids (filter #(some-> (major-version % file) (>= first-versionless-major))
+                                (change-set-ids change-log))]
+      (when (seq versioned-ids)
+        (throw (validation-error
+                ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
+                #_{:clj-kondo/ignore [:unresolved-symbol]}
+                (format (str "Versioned changesets are not allowed from v%d on; add new changesets to a year-based "
+                             "directory (e.g. migrations/2026/) with version-less IDs: %s")
+                        first-versionless-major
+                        (str/join ", " versioned-ids))
+                {:versioned-ids           (vec versioned-ids)
+                 :first-versionless-major first-versionless-major}))))))
+
 (def change-types-supporting-rollback
   "This set was generated with a little grep and awk from the docs here:
   https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
@@ -357,6 +381,7 @@
 
   (require-distinct-change-set-ids change-log)
   (require-change-set-ids-in-correct-file change-log file)
+  (require-no-versioned-changesets-from-first-versionless-major change-log file)
   (require-change-set-ids-in-order change-log file)
   (require-change-set-ids-match-file-format change-log file)
   (require-no-bare-blob-or-text-types change-log)
