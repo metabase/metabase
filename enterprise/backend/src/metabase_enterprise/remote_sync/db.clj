@@ -179,7 +179,7 @@
   [model      :- :keyword
    columns    :- [:sequential :keyword]
    entity-ids :- [:set :string]]
-  (t2/select (into [model] columns) :entity_id [:in [:auto/param entity-ids]]))
+  (t2/select (into [model] columns) :entity_id [:in entity-ids]))
 
 (mu/defn delete-instances!
   "Delete the instances of `model` with `ids`."
@@ -224,7 +224,7 @@
     (t2/query {:select (into [id-column] select)
                :from   from
                :join   join
-               :where  [:in (keyword alias "entity_id") [:auto/param entity-ids]]})))
+               :where  [:in (keyword alias "entity_id") entity-ids]})))
 
 (mu/defn entity-id
   "The entity ID of the instance of `model` with `id`."
@@ -242,13 +242,13 @@
   "The subset of `entity-ids` that instances of `model` have."
   [model      :- :keyword
    entity-ids :- [:or [:set :string] [:sequential :string]]]
-  (t2/select-fn-set :entity_id model :entity_id [:in [:auto/param entity-ids]]))
+  (t2/select-fn-set :entity_id model :entity_id [:in entity-ids]))
 
 (mu/defn ids-by-entity-ids
   "The IDs of the instances of `model` with `entity-ids`."
   [model      :- :keyword
    entity-ids :- [:set :string]]
-  (t2/select-pks-vec model :entity_id [:in [:auto/param entity-ids]]))
+  (t2/select-pks-vec model :entity_id [:in entity-ids]))
 
 (defn- path-expr
   "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
