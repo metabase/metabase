@@ -15,7 +15,7 @@
 (def ^:private no-team-label @#'mage.owner-approval/no-team-label)
 (def ^:private no-team-bucket @#'mage.owner-approval/no-team-bucket)
 
-;; Longest path first, as codeowners-rules emits: a deeper rule (incl. an owner-less exclusion) wins.
+;; Last CODEOWNERS line first, as codeowners-rules emits: a later rule (incl. an owner-less exclusion) wins.
 (def ^:private rules
   [["docs/developers-guide" #{}]
    ["src/metabase/lib" #{"@metabase/core-backend-querying-platform"}]
@@ -74,11 +74,18 @@
     (is (false? (valid-cached-review? {:cache-version 1 :pr 42 :n-reviews -1 :approvers ["bob"]})))))
 
 (deftest path-owners-picks-most-specific-rule-test
-  (testing "the deepest ancestor rule governs; an owner-less exclusion overrides a broad owner; uncovered = nil"
+  (testing "the first rule, the last line in the file, governs; an owner-less exclusion overrides a broad owner; uncovered = nil"
     (is (= #{"@metabase/core-backend-querying-platform"} (path-owners rules "src/metabase/lib/core.clj")))
     (is (= #{"@metabase/graphy"}                         (path-owners rules "src/metabase/graph/impl.clj")))
     (is (= #{}                                           (path-owners rules "docs/developers-guide/x.md")))
     (is (nil?                                            (path-owners rules "README.md")))))
+
+(deftest path-owners-last-line-wins-test
+  (testing "a broad rule written after a specific one governs the specific path too, as GitHub applies it"
+    (is (= #{"@metabase/graphy"}
+           (path-owners [["src/metabase" #{"@metabase/graphy"}]
+                         ["src/metabase/analytics/prometheus.clj" #{"@metabase/cloud-ops"}]]
+                        "src/metabase/analytics/prometheus.clj")))))
 
 (deftest enforced-for?-owner-aware-with-no-team-fallback-test
   (testing "a real team is enforced only by its own handle"

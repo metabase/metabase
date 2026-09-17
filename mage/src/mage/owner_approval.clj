@@ -267,6 +267,7 @@
         approving      (approving-teams team->members known approvers)
         missing        (into (sorted-set) (remove approving) known)
         status         (cond
+                         (:missing review)     "no-pr"
                          (empty? required-all) "no-owner"
                          (empty? known)        "n/a"
                          (empty? missing)      "full"
@@ -324,7 +325,7 @@
         limit      (some-> (first arguments) parse-long)
         batch-size (or (some-> (:batch options) parse-long) 50)
         captured   (str (java.time.Instant/now))
-        _          (println (format "Collecting PR commits on %s back to %s..." (c/cyan ref) (c/cyan (subs boundary 0 12))))
+        _          (println (format "Collecting PR commits on %s back to %s..." (c/cyan ref) (c/cyan (subs boundary 0 (min 12 (count boundary))))))
         commits    (cond->> (pr-commits ref boundary)
                      limit (take-last limit))
         _          (println (format "%s PR commits." (c/green (count commits))))]
@@ -333,7 +334,7 @@
       (write-csv! rows)
       (let [by-status (frequencies (map :status rows))]
         (println)
-        (doseq [s ["full" "partial" "none" "n/a" "no-owner"]]
+        (doseq [s ["full" "partial" "none" "n/a" "no-pr" "no-owner"]]
           (println (format "  %-9s %s" s (get by-status s 0))))
         (println (str "\nWrote " (c/green report-csv))))
       (u/exit 0))))
@@ -358,7 +359,7 @@
 (def ^:private unassessable-statuses
   "Statuses that mean we could not judge the PR at all, rather than a judgement of poor. Both the
   `assessable` row filter and the assessable rail/chart derive from this, so the two cannot drift."
-  #{"no-owner" "n/a"})
+  #{"no-owner" "n/a" "no-pr"})
 
 (defn- assessable
   "Rows we could actually judge: they have an owner team whose membership was known at merge."
@@ -367,7 +368,7 @@
 
 ;;; Every status, in stacking order (green at the bottom, no-owner grey on top), with its color.
 (def ^:private status-cats
-  [["full" "#30a46c"] ["partial" "#f5a623"] ["none" "#e5484d"] ["n/a" "#8b8d98"] ["no-owner" "#d0d3d9"]])
+  [["full" "#30a46c"] ["partial" "#f5a623"] ["none" "#e5484d"] ["n/a" "#8b8d98"] ["no-pr" "#b9bbc6"] ["no-owner" "#d0d3d9"]])
 
 (defn- monthly-stats
   "Ordered `[[month {status count ... :total n}] ...]` over all `rows`, keyed by status string."
@@ -411,9 +412,9 @@
   (read-team-assignees-blob (git-str "rev-parse" (str ref ":" team-path))))
 
 (defn- codeowners-rules
-  "Active CODEOWNERS entries at `ref` as `[normalized-path #{owner-handle ...}]`, sorted longest path first
-  so the first ancestor match is the most specific — GitHub resolves a path to its last matching line, and
-  for these prefix-style rules that is the deepest one. An entry with no owners (an exclusion line, path
+  "Active CODEOWNERS entries at `ref` as `[normalized-path #{owner-handle ...}]`, last line first, so the
+  first ancestor match is the line GitHub applies: it resolves a path to its last matching line, which is
+  not always the deepest. An entry with no owners (an exclusion line, path
   followed only by a comment) keeps an empty owner set, so a specific exclusion overrides a broad owner."
   [ref]
   (let [rules (->> (str/split-lines (git-str "show" (str ref ":.github/CODEOWNERS")))
@@ -427,7 +428,7 @@
                                                     (filter #(str/starts-with? % "@")))
                                               (rest toks))]
                              (when (seq path) [path owners]))))
-                   (sort-by (comp count first) >))
+                   reverse)
         globs (filter #(re-find #"[*?\[]" (first %)) rules)]
     ;; path-owners matches by directory prefix, so a glob rule (e.g. *.clj) would silently mis-resolve.
     ;; CODEOWNERS has none today; warn loudly if one ever lands rather than report a wrong number.
@@ -437,7 +438,7 @@
     rules))
 
 (defn- path-owners
-  "Owner handles governing `path`: the owner set of its most specific ancestor-or-equal `rules` entry, or
+  "Owner handles governing `path`: the owner set of its first ancestor-or-equal `rules` entry, or
   `nil` when no entry covers it. An empty set means a rule covers the path but assigns no owner."
   [rules path]
   (some (fn [[p owners]] (when (or (= p path) (str/starts-with? path (str p "/"))) owners)) rules))
