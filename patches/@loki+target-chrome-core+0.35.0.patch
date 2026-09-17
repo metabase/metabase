@@ -1,0 +1,35 @@
+diff --git a/node_modules/@loki/target-chrome-core/src/create-chrome-target.js b/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
+index 69878ef..7cd63f1 100644
+--- a/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
++++ b/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
+@@ -169,13 +169,19 @@ function createChromeTarget(
+         .concat(args.map(JSON.stringify))
+         .join(',');
+       const expression = `(() => Promise.resolve((${functionToExecute})(${stringifiedArgs})).then(JSON.stringify))()`;
+-      const { result } = await Runtime.evaluate({
++      const { result, exceptionDetails } = await Runtime.evaluate({
+         expression,
+         awaitPromise: true,
+       });
+       if (result.subtype === 'error') {
++        // Browser-side error. Keep the full description (including the stack)
++        // and the CDP exceptionDetails (script url / line / column of the
++        // throw site) so failures inside Storybook itself are debuggable.
++        const details = exceptionDetails
++          ? `\nexceptionDetails=${JSON.stringify(exceptionDetails, null, 2)}`
++          : '';
+         throw new Error(
+-          result.description.replace(/^Error: /, '').split('\n')[0]
++          `${result.description.replace(/^Error: /, '')}${details}`
+         );
+       }
+       return result.value && JSON.parse(result.value);
+@@ -241,7 +247,7 @@ function createChromeTarget(
+       try {
+         return await executeFunctionWithWindow(getSelectorBoxSize, selector);
+       } catch (error) {
+-        if (error.message === 'No visible elements found') {
++        if (error.message.startsWith('No visible elements found')) {
+           throw new Error(
+             `Unable to get position of selector "${selector}". Review the \`chromeSelector\` option and make sure your story doesn't crash.`
+           );
