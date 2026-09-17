@@ -19,6 +19,7 @@ export function TimeControlPopover({
           variant="subtle"
           color="neutral"
           radius={0}
+          h="100%"
           onClick={() => setIsOpen(!isOpen)}
         >
           {label}
