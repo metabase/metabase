@@ -65,7 +65,7 @@
     (filter #(= wanted (u/lower-case-en (:term %))) entries)))
 
 (registry/deftool glossary
-  "Look up a business term as this Metabase instance defines it, as its own data analysts wrote it down. glossary() lists terms with their definitions, paged with limit (default 50, max 500) and offset; glossary(term) returns just that term, matched without regard to case — which can be more than one entry, since terms differing only in case are stored separately. Call glossary() before answering any question about this instance's data: these definitions override your own reading of a word, and the question itself will not tell you which words are defined here."
+  "Look up a business term as this Metabase instance defines it, as its own data analysts wrote it down. glossary() lists terms with their definitions, paged with limit (default 50, max 500) and offset; glossary(term) returns matching terms (case insensitive). Call glossary() before answering any question about this instance's data: these definitions override your own reading of a word, and the question itself will not tell you which words are defined here."
   {:name        "glossary"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
