@@ -128,7 +128,7 @@
                                  block-ids))
             (liquibase/record-deployment-version! conn dep-id (format "x.%d.0.0" major))))
         ;; the reassignment vacated the install's own deployment: every changelog row moved to a per-major
-        ;; deployment, so drop its now-orphaned version row (the fresh install's synthetic x.1000.0.0)
+        ;; deployment, so drop its now-orphaned version row (the fresh install's dev version)
         (jdbc/execute! {:connection conn}
                        [(format "DELETE FROM %s WHERE deployment_id NOT IN (SELECT DISTINCT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
                                 liquibase/databasechangelog-versions-table
