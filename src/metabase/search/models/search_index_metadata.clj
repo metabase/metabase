@@ -45,7 +45,7 @@
   ([conn engine version index-name]
    ;; Clear out any expired records
    (search.db/delete-expired-pending-index-metadata! conn
-                                                     (i18n/site-locale-string)
+                                                     {:engine engine, :version version, :lang-code (i18n/site-locale-string)}
                                                      (t/minus (t/offset-date-time) pending-table-cut-off))
    (boolean
     (when-not (search.db/pending-index-metadata-exists? conn engine version (i18n/site-locale-string))
@@ -111,15 +111,10 @@
     (search.db/active-index-name conn engine version lang-code)))
 
 (defn delete-obsolete!
-  "Remove metadata corresponding to obsolete Metabase versions.
-  It is up to the relevant engine to delete the actual indexes themselves."
+  "Retain cross-version metadata until deployment liveness can establish that deletion is safe."
   ([our-version]
    (delete-obsolete! nil our-version))
-  ([conn our-version]
-   ;; If there are no recent versions, then there is nothing to delete.
-   (when-let [most-recent (seq (map :version (search.db/recent-index-versions conn 3)))]
-     ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
-     (search.db/delete-obsolete-index-metadata! conn
-                                                most-recent
-                                                (filter some? [our-version (first most-recent)])
-                                                (t/minus (t/zoned-date-time) pending-table-cut-off)))))
+  ([_conn _our-version]
+   ;; Age/order cannot establish whether another deployment still serves a version.
+   ;; Retired rows for our own version are removed at activation; retain other versions for rollback.
+   nil))

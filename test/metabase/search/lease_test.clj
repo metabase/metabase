@@ -68,7 +68,7 @@
       (finally
         (delete-coordinate! coordinate)))))
 
-(deftest acquisition-does-not-sweep-unrelated-expired-leases-test
+(deftest acquisition-collects-unrelated-expired-leases-test
   (let [expired-coordinate (coordinate)
         new-coordinate     (coordinate)]
     (try
@@ -78,12 +78,12 @@
                      :version   (:version expired-claim)
                      :lang_code (:lang_code expired-claim)}
                     {:expires_at (t/minus (t/offset-date-time) (t/minutes 1))})
-        (is (some? (lease/try-acquire! new-coordinate)))
-        (is (some? (t2/select-one :search_index_lease
-                                  :engine (:engine expired-coordinate)
-                                  :version (:version expired-coordinate)
-                                  :lang_code (:lang_code expired-coordinate)))
-            "acquiring an unrelated coordinate does not create a cross-coordinate locking sweep"))
+        (is (:acquired? (lease/do-with-lease new-coordinate (constantly :done))))
+        (is (nil? (t2/select-one :search_index_lease
+                                 :engine (:engine expired-coordinate)
+                                 :version (:version expired-coordinate)
+                                 :lang_code (:lang_code expired-coordinate)))
+            "the bounded pre-acquisition collection removes abandoned coordinates"))
       (finally
         (delete-coordinate! expired-coordinate)
         (delete-coordinate! new-coordinate)))))

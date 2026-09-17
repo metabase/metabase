@@ -61,8 +61,8 @@
   "The serialization coordinate for `engine` at the current search specification and effective site locale."
   [engine]
   {:engine      (name engine)
-   :version     (search.spec/index-version-hash)
-   :lang_code   (i18n/site-locale-string)
+   :version     (if (= engine :search.engine/semantic) "initialization-1" (search.spec/effective-index-version))
+   :lang_code   (if (= engine :search.engine/semantic) "" (i18n/site-locale-string))
    ;; Keep the configured locale separately so an intentional outer locale override is not mistaken for a setting
    ;; change while the rebuild is running.
    :site-locale (configured-site-locale)})
@@ -389,6 +389,14 @@
      (throw (ex-info (str "Search reindex leases cannot be acquired inside an app-db transaction."
                           " Schedule the reindex with mdb/do-after-commit, or move it outside the transaction.")
                      {:type ::ambient-transaction, :coordinate (where-coordinate coordinate)})))
+   (try
+     (do-with-lifecycle-connection #(search.db/collect-expired-leases! % (where-coordinate coordinate)))
+     (catch InterruptedException e
+       (.interrupt (Thread/currentThread))
+       (throw e))
+     (catch Exception e
+       (record-event! coordinate :cleanup-error)
+       (log/warnf "Failed to collect expired search leases: %s" (ex-message e))))
    (if-let [claim (wait-for-claim coordinate wait?)]
      (let [stopped               (promise)
            heartbeat             (volatile! nil)
@@ -405,7 +413,7 @@
                               (future (heartbeat-loop! context stopped))))
          {:acquired? true
           :result    (binding [*lease-context* context
-                               i18n/*site-locale-override* (:lang_code claim)]
+                               i18n/*site-locale-override* (when (seq (:lang_code claim)) (:lang_code claim))]
                        (thunk))}
          (finally
            (deliver stopped true)

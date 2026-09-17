@@ -14,10 +14,15 @@
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
+   [metabase.util.connection :as u.conn]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private SearchIndexRow
   "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
@@ -329,12 +334,14 @@
              :status [:in [:active :pending]]))
 
 (mu/defn delete-expired-pending-index-metadata!
-  "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`, on `conn`."
+  "Delete expired pending metadata only for the requested engine, version, and locale."
   [conn           :- [:maybe (ms/InstanceOfClass java.sql.Connection)]
-   lang-code      :- :string
+   {:keys [engine version lang-code]} :- ::search.schema/index-coordinate
    created-before :- ms/TemporalInstant]
   (t2/delete! :conn conn :model/SearchIndexMetadata
               {:where [:and
+                       [:= :engine (name engine)]
+                       [:= :version version]
                        [:= :lang_code lang-code]
                        [:= :status "pending"]
                        [:< :created_at created-before]]}))
@@ -550,6 +557,34 @@
    owner     :- [:maybe :string]]
   (t2/delete! :conn conn :search_index_lease
               :engine engine :version version :lang_code lang-code :owner owner))
+
+(defn collect-expired-leases!
+  "Collect at most eight expired leases other than `coordinate`, with a one-second timeout per statement."
+  [^Connection conn {:keys [engine version lang_code]}]
+  ;; Recheck owner and database expiry on DELETE: a selected row may have been renewed or replaced.
+  (with-open [select (.prepareStatement conn
+                                        (str "SELECT engine, version, lang_code, owner FROM search_index_lease "
+                                             "WHERE expires_at <= CURRENT_TIMESTAMP "
+                                             "AND NOT (engine = ? AND version = ? AND lang_code = ?) LIMIT 8"))]
+    (when-not (u.conn/set-query-timeout! select 1)
+      (throw (ex-info "Skipping lease collection: database does not support a statement timeout" {})))
+    (.setString select 1 engine)
+    (.setString select 2 version)
+    (.setString select 3 lang_code)
+    (let [rows (with-open [rs (.executeQuery select)]
+                 (loop [rows []]
+                   (if (.next rs)
+                     (recur (conj rows (mapv #(.getString rs (int %)) [1 2 3 4])))
+                     rows)))]
+      (doseq [row rows]
+        (with-open [delete (.prepareStatement conn
+                                              (str "DELETE FROM search_index_lease WHERE engine = ? AND version = ? "
+                                                   "AND lang_code = ? AND owner = ? AND expires_at <= CURRENT_TIMESTAMP"))]
+          (when-not (u.conn/set-query-timeout! delete 1)
+            (throw (ex-info "Skipping lease collection: database does not support a statement timeout" {})))
+          (doseq [[i value] (map-indexed vector row)]
+            (.setString delete (inc i) value))
+          (.executeUpdate delete))))))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, or nil."

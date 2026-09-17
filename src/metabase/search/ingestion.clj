@@ -20,6 +20,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *fail-on-error*
+  "Whether population must abort instead of skipping failed documents or attributes."
+  false)
+
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
 (defonce ^:private ^DelayQueue queue (queue/delay-queue))
 
@@ -90,6 +94,8 @@
                   record)]
       (f input))
     (catch Exception e
+      (when (or *fail-on-error* (instance? InterruptedException e))
+        (throw e))
       (log/warn "Function execution failed for attribute" attr-key ":" (ex-message e))
       nil)))
 
@@ -179,6 +185,10 @@
                                  (.interrupt (Thread/currentThread))
                                  (throw ie))
                                (catch Exception t
+                                 (when *fail-on-error*
+                                   (log/errorf "Failed to build search document %s %s: %s"
+                                               (:model m) (:id m) (ex-message t))
+                                   (throw t))
                                  (analytics/inc! :metabase-search/index-documents-skipped {:model (:model m)})
                                  (let [n (vswap! failures inc)]
                                    (cond

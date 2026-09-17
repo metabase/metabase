@@ -208,8 +208,11 @@
   [search-ctx model id]
   (appdb-diagnose search-ctx model id))
 
-(defn- populate-index! [context]
-  (search.index/index-docs! context (search.ingestion/searchable-documents)))
+(defn- populate-index!
+  ([context] (populate-index! context nil))
+  ([context rebuild]
+   (binding [search.ingestion/*fail-on-error* true]
+     (search.index/index-docs! context (search.ingestion/searchable-documents) rebuild))))
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
@@ -231,13 +234,17 @@
   (try
     (search.index/delete-obsolete-tables!)
     (search.index/ensure-ready!)
-    (if in-place?
-      (when-let [table (search.index/active-table)]
-        ;; keep the current table, just delete its contents
+    (let [table (if in-place?
+                  (search.index/active-table)
+                  (search.index/maybe-create-pending!))]
+      (when-not table
+        (throw (ex-info "No destination for search rebuild" {})))
+      (when in-place?
         (search.index/clear-active-table! table))
-      (search.index/maybe-create-pending!))
-    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-      (search.index/activate-table!))
+      (let [rebuild (search.index/rebuild-context table)]
+        (u/prog1 (populate-index! :search/reindexing rebuild)
+          (when-not in-place?
+            (search.index/activate-table! rebuild)))))
     (catch Throwable e
       (if (search.lease/expected-abort? e)
         (log/infof "App-db reindex stopped safely: %s" (ex-message e))
