@@ -104,21 +104,14 @@
 
 (mr/def ::table-index.structured
   "The `:structured` column of a TableIndex, decoded."
-  :map)
+  ::index-structured)
 
 (mr/def ::table-index
   "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:transform_id     ::lib.schema.id/transform]
-   [:index_name       :string]
-   [:structured       ::table-index.structured]
-   [:status           [:or :keyword :string]]
-   [:error_message    [:maybe :string]]
-   [:created_by       [:maybe :int]]
-   [:created_at       ms/TemporalInstant]
-   [:updated_at       ms/TemporalInstant]
-   [:last_executed_at [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::table-index.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::table-index.update
   "What an update (or insert) of a TableIndex accepts: every column of `:metabase_table_indexes` except `id`, all optional."

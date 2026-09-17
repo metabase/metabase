@@ -202,7 +202,7 @@
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
-        imported-data (spec/extract-imported-entities ingest-list)
+        imported-data (spec/extract-imported-entities ingest-list #(serialization/ingest-one ingestable %))
         models-present (spec/models-in-import ingest-list)
         ;; Extract namespace info from imported Collection entities
         import-ns-info
@@ -469,11 +469,12 @@
                             :let [model-key (:model-key (spec/spec-for-model-type model_type))
                                   eid (when model-key (remote-sync.db/entity-id model-key model_id))]
                             :when (not (loaded-eid? model_type eid))]
-                        {:model_type model_type :model_id model_id :model-key model-key})
+                        {:model_type model_type :model_id model_id})
+        model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
         sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
     (remote-sync.task/update-progress! task-id 0.8)
     (t2/with-transaction [_conn]
-      (doseq [[model-key ds] (group-by :model-key deletes)]
+      (doseq [[model-key ds] (group-by model-key-of deletes)]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
         (remote-sync.db/delete-rsos-of-keys! deletes))
@@ -485,7 +486,7 @@
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
     ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
-    (doseq [[model-key ds] (group-by :model-key deletes)]
+    (doseq [[model-key ds] (group-by model-key-of deletes)]
       (search/delete! model-key (mapv :model_id ds)))
     (remote-sync.task/update-progress! task-id 0.95)
     (log/info "Successfully reloaded entities from git repository")
@@ -1019,7 +1020,7 @@
   []
   (cond-> #{}
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
-    (not (settings/library-is-remote-synced?)) (conj "snippets")))
+    (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write [commit opts [row entity]]
   (let [path    (or (:file_path row) (source/entity->path opts entity))

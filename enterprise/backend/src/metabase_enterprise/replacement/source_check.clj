@@ -59,8 +59,8 @@
   "Check whether `old-source` can be replaced by `new-source`. Returns a map with
   `:success`, `:errors` (unique top-level error types), and `:column_mappings`.
   Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
-  [[old-type old-id :as old-ref]
-   [new-type new-id :as new-ref]]
+  [[old-type old-id :as old-ref] :- ::replacement.schema/source-ref
+   [new-type new-id :as new-ref] :- ::replacement.schema/source-ref]
   (if (= old-ref new-ref)
     {:success false}
     (let [source-db-id    (fetch-source-database-id old-type old-id)

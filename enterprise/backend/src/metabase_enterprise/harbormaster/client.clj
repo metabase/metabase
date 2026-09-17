@@ -23,7 +23,7 @@
   (cond->> s
     (not (str/starts-with? s "/")) (str "/")))
 
-(mu/defn- ->requestor [method]
+(mu/defn- ->requestor [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]]
   (case method
     :get     http/get
     :head    http/head
@@ -36,9 +36,9 @@
     :patch   http/patch))
 
 (mu/defn- get-safe-status
-  [response]
-  (when (number? (:status response))
-    (http/success? response)))
+  [status :- [:maybe :int]]
+  (when (number? status)
+    (http/success? {:status status})))
 
 (defn- ->config
   "Returns the config needed to call [[make-request]].
@@ -93,7 +93,7 @@
 
 (defn- calculate-success [response url request]
   (try
-    (get-safe-status response)
+    (get-safe-status (:status response))
     (catch Exception e
       (log/errorf "Error decoding response from %s, is it json? %s" url (ex-message e))
       {:response response
@@ -110,7 +110,10 @@
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
-   & [body]]
+   & [body] :- [:* [:map {:closed true}
+                    [:type   :string]
+                    [:secret [:map {:closed true}
+                              [:resources [:sequential :string]]]]]]]
   (let [{:keys [store-api-url
                 api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)

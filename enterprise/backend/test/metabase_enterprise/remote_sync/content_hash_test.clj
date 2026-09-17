@@ -81,6 +81,12 @@
                      :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id sc)}]
         (is (= "synced" (noop-update-status! "NativeQuerySnippet" (:id snip) :event/snippet-update snip)))))))
 
+(deftest glossary-noop-update-stays-synced-test
+  (testing "A no-op Glossary update keeps it synced when the Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+        (is (= "synced" (noop-update-status! "Glossary" (:id entry) :event/glossary-update entry)))))))
+
 (deftest collection-noop-update-stays-synced-test
   (testing "A no-op Collection update keeps it synced (GHY-3933)"
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}]
@@ -414,6 +420,27 @@
         (events/publish-event! topic (merge {:object entity :user-id (mt/user->id :rasta)}
                                             (when payload-fn (payload-fn entity))))
         (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))))))
+
+(deftest glossary-import-then-noop-stays-synced-test
+  (testing "After a real import, a no-op Glossary update stays synced"
+    (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-model-cleanup [:model/Glossary :model/Collection]
+        ;; The snapshot carries the Library as a read-write instance exports it, so the Library stays synced
+        ;; through the import and the Glossary spec is enabled when the ledger is rebuilt.
+        (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+        (let [eid   "test-glossary-xxxxxxx"
+              files {"main" {"collections/library/library.yaml"
+                             (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
+                                                                    :type "library" :is-remote-synced true)
+                             "collections/main/test_coll/test_coll.yaml"
+                             (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                             "glossary/arr.yaml"
+                             (test-helpers/generate-glossary-yaml eid "ARR" "Annual recurring revenue")}}]
+          (is (= "synced"
+                 (import-then-noop-status!
+                  files "Glossary"
+                  #(t2/select-one :model/Glossary :entity_id eid)
+                  :event/glossary-update))))))))
 
 (deftest transform-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"

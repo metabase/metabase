@@ -42,7 +42,7 @@
     (let [teams  (teams)
           config (modules-config)]
       (doseq [module (keys config)
-              :let   [team (dev.deps-graph/module-team config module)]]
+              :let   [team (modules/module-team config module)]]
         (testing (format "\n'%s' module" module)
           (is (or (contains? teams team)
                   (contains? teams-to-reassign team))
@@ -54,7 +54,7 @@
                  parent.child.leaf     {:team "Leaf"}
                  enterprise/parent     {}
                  enterprise/standalone {:team "Enterprise"}}]
-    (are [module team] (= team (dev.deps-graph/module-team config module))
+    (are [module team] (= team (modules/module-team config module))
       'parent.child          "Parent"      ; inherited from the nearest configured ancestor
       'parent.child.leaf     "Leaf"        ; an explicit team overrides its ancestors
       'enterprise/parent     "Parent"      ; an EE companion inherits from its OSS parent

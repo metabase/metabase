@@ -7,17 +7,10 @@
 
 (mr/def ::agent-api-call-log
   "A AgentApiCallLog as selected from the app DB: every column of `:agent_api_call_log`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:created_at    ms/TemporalInstant]
-   [:user_id       [:maybe ::lib.schema.id/user]]
-   [:tenant_id     [:maybe ms/PositiveInt]]
-   [:client_name   [:maybe :string]]
-   [:operation     [:maybe :string]]
-   [:status        [:maybe [:or :keyword :string]]]
-   [:duration_ms   [:maybe :int]]
-   [:ip_address    [:maybe :string]]
-   [:error_message [:maybe :string]]])
+  [:merge
+   ::agent-api-call-log.update
+   [:map {:closed true}
+    [:id            ms/PositiveInt]]])
 
 (mr/def ::agent-api-call-log.update
   "What an update (or insert) of a AgentApiCallLog accepts: every column of `:agent_api_call_log` except `id`, all optional."

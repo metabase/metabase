@@ -54,10 +54,10 @@
   (mt/with-model-cleanup [:model/DataApp]
     (let [files (merge (app-files "broken" {:name "Broken" :path "index.js" :bundle "BROKEN"})
                        (app-files "working" {:name "Working" :path "index.js" :bundle "WORKING"}))]
-      (with-redefs [data-app.resources/ensure-resources!
-                    (fn [app]
-                      (when (= "broken" (:name app))
-                        (throw (ex-info "Resource provisioning failed." {}))))]
+      (mt/with-dynamic-fn-redefs [data-app.resources/ensure-resources!
+                                  (fn [app]
+                                    (when (= "broken" (:name app))
+                                      (throw (ex-info "Resource provisioning failed." {}))))]
         (is (=? {:synced 2 :changed 2}
                 (data-app.sync/import-from-snapshot! (snapshot files))))
         (is (= "Resource provisioning failed."
@@ -321,17 +321,17 @@
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [files (merge (app-files "broken" {:name "Broken" :path "index.js" :bundle "OLD"})
                        (app-files "working" {:name "Working" :path "index.js" :bundle "OLD"}))
-          ensure-resources! data-app.resources/ensure-resources!]
+          ensure-resources! (mt/original-fn #'data-app.resources/ensure-resources!)]
       (data-app.sync/import-from-snapshot! (snapshot files))
       (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "broken")
             old-name (t2/select-one-fn :name :model/Collection :id collection-id)]
         ; inject an error into `ensure-resources!` for the "broken" app
-        (with-redefs [data-app.resources/ensure-resources!
-                      (fn [app]
-                        (ensure-resources! app)
-                        (when (= "broken" (:name app))
-                          (t2/update! :model/Collection :id collection-id {:name "Partial update"})
-                          (throw (ex-info "Resource provisioning failed." {}))))]
+        (mt/with-dynamic-fn-redefs [data-app.resources/ensure-resources!
+                                    (fn [app]
+                                      (ensure-resources! app)
+                                      (when (= "broken" (:name app))
+                                        (t2/update! :model/Collection :id collection-id {:name "Partial update"})
+                                        (throw (ex-info "Resource provisioning failed." {}))))]
           (data-app.sync/import-from-snapshot!
            (snapshot (assoc files "data_apps/broken/index.js" "NEW" "data_apps/working/index.js" "NEW"))))
         ; the "broken" app bundle with sync error should be rolled back to "OLD"
@@ -348,13 +348,13 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [working-files (app-files "working" {:name "Working" :path "index.js" :bundle "OLD"})
             files (merge working-files (app-files "removed" {:name "Removed" :path "index.js" :bundle "OLD"}))
-            prune! data-apps.db/delete-data-apps-not-named!]
+            prune! (mt/original-fn #'data-apps.db/delete-data-apps-not-named!)]
         (data-app.sync/import-from-snapshot! (snapshot files))
         ; inject an error into deleting data apps
-        (with-redefs [data-apps.db/delete-data-apps-not-named!
-                      (fn [slugs]
-                        (prune! slugs)
-                        (throw (ex-info "Pruning failed." {})))]
+        (mt/with-dynamic-fn-redefs [data-apps.db/delete-data-apps-not-named!
+                                    (fn [slugs]
+                                      (prune! slugs)
+                                      (throw (ex-info "Pruning failed." {})))]
         ; sync should report the error from pruning step
           (is (=? {:synced 1 :changed 1 :removed 0 :pruning-error "Pruning failed."}
                   (data-app.sync/sync-from-snapshot!

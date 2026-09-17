@@ -103,7 +103,7 @@
 
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
-  ([query]
+  ([query :- ::lib.schema/query]
    (available-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
