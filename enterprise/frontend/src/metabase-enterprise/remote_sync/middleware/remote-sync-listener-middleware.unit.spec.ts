@@ -14,6 +14,7 @@ import { Api } from "metabase/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
+import { glossaryApi } from "metabase/api/glossary";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
@@ -664,6 +665,84 @@ describe("remote-sync-listener-middleware", () => {
           name: "Renamed",
         }),
       );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+  });
+
+  describe("glossary listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    it("invalidates when a glossary entry is created", async () => {
+      fetchMock.post("path:/api/glossary", {
+        id: 1,
+        term: "ARR",
+        definition: "Annual recurring revenue",
+      });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        glossaryApi.endpoints.createGlossary.initiate({
+          term: "ARR",
+          definition: "Annual recurring revenue",
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a glossary entry is updated", async () => {
+      fetchMock.put("path:/api/glossary/1", {
+        id: 1,
+        term: "ARR",
+        definition: "Annualized recurring revenue",
+      });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        glossaryApi.endpoints.updateGlossary.initiate({
+          id: 1,
+          term: "ARR",
+          definition: "Annualized recurring revenue",
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a glossary entry is deleted", async () => {
+      fetchMock.delete("path:/api/glossary/1", 204);
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(glossaryApi.endpoints.deleteGlossary.initiate({ id: 1 }));
 
       await waitForCondition(() => dirtyCallCount() > 1);
       expect(dirtyCallCount()).toBeGreaterThan(1);
