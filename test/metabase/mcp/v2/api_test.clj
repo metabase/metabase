@@ -775,21 +775,6 @@
               (is (not (:isError result)))
               (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
 
-(defn- do-with-temp-tool!
-  "Register a throwaway tool for the body, then restore the registry. Lets a test assert scope filtering against a
-  tool whose scope differs from the token's without depending on a not-yet-landed real tool."
-  [tool thunk]
-  (let [tools-atom @#'registry/tools*
-        snapshot   @tools-atom]
-    (try
-      (registry/register-tool! tool)
-      (thunk)
-      (finally
-        (reset! tools-atom snapshot)
-        ;; register-tool! flushes the manifest cache; do the same on the way out so a later test doesn't see
-        ;; a manifest that still lists the throwaway tool.
-        (reset! @#'registry/manifest-cache nil)))))
-
 (defn- do-with-bearer-token!
   "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
   [scopes f]
@@ -883,13 +868,14 @@
     ;; Register a throwaway tool on a DIFFERENT scope (`agent:content:write`, which the token below does not carry)
     ;; so the negative half of the scope contract has teeth independent of which real write tools are registered:
     ;; this test fails if the bearer request dispatches unrestricted.
-    (do-with-temp-tool!
-     {:name        "scope_probe_write"
-      :scope       metabot.scope/agent-content-write
-      :description "test-only tool gated on a write scope the narrow token lacks"
-      :annotations {:readOnlyHint false}
-      :args        [:map]
-      :handler     (fn [_ _] nil)}
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_write"
+      :scope          metabot.scope/agent-content-write
+      :default-access :allowed
+      :description    "test-only tool gated on a write scope the narrow token lacks"
+      :annotations    {:readOnlyHint false}
+      :args           [:map]
+      :handler        (fn [_ _] nil)}
      (fn []
        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
          (oauth-server.tu/with-oauth-client [client-id]
@@ -1304,13 +1290,14 @@
 
 (deftest unscoped-callers-never-get-an-insufficient-scope-challenge-test
   (testing "GHY-4543: a cookie session is stamped unrestricted, so a tool gated on any scope is served over 200"
-    (do-with-temp-tool!
-     {:name        "scope_probe_sql"
-      :scope       metabot.scope/agent-sql-run
-      :description "test-only tool gated on agent:sql:run"
-      :annotations {:readOnlyHint true}
-      :args        [:map]
-      :handler     (fn [_ _] {:content [{:type "text" :text "served"}]})}
+    (v2.tu/do-with-temp-tool!
+     {:name           "scope_probe_sql"
+      :scope          metabot.scope/agent-sql-run
+      :default-access :allowed
+      :description    "test-only tool gated on agent:sql:run"
+      :annotations    {:readOnlyHint true}
+      :args           [:map]
+      :handler        (fn [_ _] {:content [{:type "text" :text "served"}]})}
      (fn []
        (let [[session-id] (initialize!)
              response     (mcp-request (jsonrpc-request "tools/call" {:name "scope_probe_sql" :arguments {}})
