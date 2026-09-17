@@ -2399,7 +2399,7 @@
 
 (deftest decision-stores-a-repeated-scope-once-test
   (testing (str "GHY-4555: a client may repeat a scope in its `scope` parameter. The consent page lists it once, and "
-                "the grant is filtered from the offered list, so a duplicate left there is stored twice in the token.")
+                "the grant is filtered from the offered list, so a duplicate left there would be stored twice.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]

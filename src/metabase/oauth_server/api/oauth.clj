@@ -115,7 +115,7 @@
    blank.
 
    Deduplicating here is what keeps a repeated scope out of the granted token: the decision filters the grant from this
-   list, so a duplicate left in it is stored twice."
+   list, so a duplicate left in it would be stored twice."
   [scope-param]
   (some-> scope-param str str/trim not-empty (str/split #"\s+") distinct vec))
 
@@ -426,8 +426,13 @@
 
    Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
    form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
-   can re-sign anything. The endpoint that issues the code has to apply these rules itself."
+   can re-sign anything. The endpoint that issues the code has to apply these rules itself.
+
+   Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403
+   `params_tampered`, which is only the right status while the sole way to reach it is a choice naming an unoffered
+   scope. A blank offer would make an honest approval look like tampering."
   [parsed]
+  {:post [(not (str/blank? %))]}
   (let [;; A scope-less request would otherwise mint a token with no scopes.
         _          (when (str/blank? (:scope parsed))
                      (throw (ex-info "no scope was requested"
