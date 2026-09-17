@@ -144,12 +144,20 @@ jobs:
           EOF
           )"
 
-      - name: Approve and Merge the PR
-        run: |
-          gh pr review --approve "$PR_NUMBER"
-          gh pr merge --squash --auto "$PR_NUMBER"
+      # Approving takes a different token than the one that opened the PR (above, the automation
+      # user's): GitHub won't let a token approve its own pull request.
+      - name: Approve the PR
+        run: gh pr review --approve "$PR_NUMBER"
         shell: bash
         env:
-          # uses a different token than the token that created the PR so we can approve and merge it
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+
+      # Merging goes back through the automation user: GitHub starts no workflow run for a push made
+      # with `GITHUB_TOKEN`, so an auto-merge enabled with it lands on master with no CI.
+      - name: Merge the PR
+        run: gh pr merge --squash --auto "$PR_NUMBER"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
