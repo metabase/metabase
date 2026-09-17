@@ -74,7 +74,7 @@
                                                                  sql-injection-attempt)))))))
 
 (deftest update-users!-filters-on-the-ids-it-is-given
-  (testing "the conditions map filters, rather than being read as a column named :where"
+  (testing "only the users named in `user-ids` are updated"
     (mt/with-temp [:model/User {a :id} {:is_data_analyst false}
                    :model/User {b :id} {:is_data_analyst false}]
       (is (= 1 (permissions.db/update-users! [a] {:is_data_analyst true})))
