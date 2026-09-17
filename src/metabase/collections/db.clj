@@ -117,12 +117,15 @@
 (mu/defn collections-in-namespace
   "The Collections in the namespace named `namespace-name`."
   [namespace-name :- :string]
+  ;; `:namespace` is a transformed column (`mi/transform-keyword`) and this is a kv-arg, so the `:in` fn
+  ;; `u/qualified-name` runs first and puts a plain string in the value slot, which HoneySQL binds. Marking the
+  ;; argument instead throws, since `u/qualified-name` cannot cast the marker vector to Named.
   (t2/select :model/Collection :namespace namespace-name))
 
 (mu/defn archived-collections-in-operations
   "The archived Collections belonging to the archive operations with `archive-operation-ids`."
   [archive-operation-ids :- [:sequential :string]]
-  (t2/select :model/Collection :archive_operation_id [:in archive-operation-ids] :archived true))
+  (t2/select :model/Collection :archive_operation_id [:in [:auto/param archive-operation-ids]] :archived true))
 
 (mu/defn ancestor-summaries
   "The name, ID, and owner of the Collections with `collection-ids`, ordered by location."
@@ -151,7 +154,7 @@
                        [:= :personal_owner_id nil]
                        [:= :personal_owner_id (some-> current-user-id long)]]
                       (when (some? archived?)
-                        [:= :archived archived?])
+                        [:= :archived [:auto/param archived?]])
                       visibility-clause]}))
 
 (mu/defn descendant-summaries-with-type
@@ -194,7 +197,13 @@
                                      [:= :personal_owner_id nil])
                                    [:or
                                     [:= :type nil]
+                                    ;; `trash-collection-type` is a ^:constant string literal, so rule 3 applies;
+                                    ;; the lint flags it because it reads as a symbol.
                                     [:not= :type collections.schema/trash-collection-type]]
+                                   ;; `filter-ids` is left unmarked per rule 5: serdes can hand us an empty vector
+                                   ;; (extract.clj removes analytics Cards from an id batch), and Toucan's rewrite of
+                                   ;; `[:in col []]` to `false` happens inside the step the marker wraps, so marking
+                                   ;; it would throw `::marked-empty-collection`.
                                    (when filter-column
                                      [:in filter-column filter-ids])]
                         :order-by serdes/stable-storage-order}))
@@ -208,7 +217,7 @@
   "The number of Collections with `collection-id` whose type is one of `types`."
   [collection-id :- ::lib.schema.id/collection
    types         :- [:sequential :string]]
-  (t2/count :model/Collection :id (long collection-id) :type [:in types]))
+  (t2/count :model/Collection :id (long collection-id) :type [:in [:auto/param types]]))
 
 (mu/defn remote-synced-collection-count
   "The number of remote-synced Collections."
@@ -570,7 +579,7 @@
              :from            :transform
              :where           [:and
                                [:in :collection_id [:auto/param collection-ids]]
-                               [:in :source_type source-types]]}))
+                               [:in :source_type [:auto/param source-types]]]}))
 
 (defn unarchived-dashboard-collection-ids-in
   "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."
