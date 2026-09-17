@@ -157,6 +157,10 @@
            (is (= (sort-module-names uses)
                   uses))))))))
 
+;; Optional dependencies look like any other `:uses` entry, so these tests miss a hard require of absent code.
+;; The scan records a `defenterprise` target, a guarded `requiring-resolve` and a static require of an EE
+;; namespace alike, and a module requiring a plugin that isn't installed looks no different.
+;; Such a require only fails when its namespace loads without that code, as in the OSS test jobs (no EE src).
 (deftest modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
