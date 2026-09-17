@@ -2,9 +2,10 @@
 // its aim is to split the e2e test matrix into multiple jobs
 // grouping some specific tests together, other tests are split into chunks
 
+const SPECS_PER_JOB = 5;
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 
-const specialTestConfigs = [
+const taggedJobs = [
   {
     name: "oss-subset",
     edition: "oss",
@@ -15,32 +16,31 @@ const specialTestConfigs = [
   { name: "python", tags: "@python", specs: DEFAULT_SPEC_PATTERN },
 ];
 
-function buildMatrix(options, specFiles, inputChunks) {
+function buildMatrix(options, specFiles, maxJobs) {
   const { java, defaultRunner } = options;
-  if (
-    !Number.isInteger(inputChunks) ||
-    inputChunks <= specialTestConfigs.length
-  ) {
+  if (!Number.isInteger(maxJobs) || maxJobs <= taggedJobs.length) {
     throw new Error(
-      `E2E chunks must be greater than ${specialTestConfigs.length}`,
+      `E2E job limit must be an integer greater than ${taggedJobs.length} to allow at least one regular job alongside the tagged jobs`,
     );
   }
-  const maxRegularChunks = inputChunks - specialTestConfigs.length;
-  const regularChunks =
-    specFiles === null
-      ? maxRegularChunks
-      : Math.min(maxRegularChunks, Math.ceil(specFiles.length / 5));
 
   if (specFiles?.length === 0) {
     return { config: [], regularChunks: 0 };
   }
 
-  const regularTests = Array.from({ length: regularChunks }, (_, index) => ({
+  const maxRegularJobs = maxJobs - taggedJobs.length;
+  let regularChunks = maxRegularJobs;
+  if (specFiles !== null) {
+    const jobsForSelectedSpecs = Math.ceil(specFiles.length / SPECS_PER_JOB);
+    regularChunks = Math.min(maxRegularJobs, jobsForSelectedSpecs);
+  }
+
+  const regularJobs = Array.from({ length: regularChunks }, (_, index) => ({
     name: `e2e-group-${String(index + 1).padStart(2, "0")}`,
   }));
 
   // Regular jobs exclude the OSS, Mongo, and Python tags, so these jobs must also run for selected specs.
-  const config = regularTests.concat(specialTestConfigs).map((test) => ({
+  const config = [...regularJobs, ...taggedJobs].map((test) => ({
     "java-version": java,
     runner: defaultRunner,
     edition: "ee",

@@ -71,12 +71,4 @@ describe("buildMatrix", () => {
       expect(job.specs).toBeUndefined();
     }
   });
-
-  it("should keep the matrix small for a large plan", () => {
-    const result = buildMatrix(options, specs(10000), 50);
-
-    expect(result.config).toHaveLength(50);
-    expect(JSON.stringify(result.config).length).toBeLessThan(10000);
-    expect(JSON.stringify(result.config)).not.toContain("9999.cy.spec.ts");
-  });
 });

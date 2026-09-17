@@ -1,6 +1,6 @@
 const { readFileSync } = require("node:fs");
 
-function readSpecPlan(pathsFile) {
+function readSpecPaths(pathsFile) {
   if (!pathsFile) {
     return null;
   }
@@ -15,4 +15,4 @@ function readSpecPlan(pathsFile) {
   return files;
 }
 
-module.exports = { readSpecPlan };
+module.exports = { readSpecPaths };

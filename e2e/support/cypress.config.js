@@ -1,10 +1,10 @@
 const { defineConfig } = require("cypress");
 
-const { readSpecPlan } = require("../runner/read-spec-plan");
+const { readSpecPaths } = require("../runner/read-spec-paths");
 
 const { mainConfig } = require("./config");
 
-const specFiles = readSpecPlan(process.env.E2E_SPEC_PATHS_FILE);
+const specFiles = readSpecPaths(process.env.E2E_SPEC_PATHS_FILE);
 
 module.exports = defineConfig({
   e2e: {

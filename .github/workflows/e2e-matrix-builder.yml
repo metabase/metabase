@@ -39,7 +39,7 @@ jobs:
             .github
             /.nvmrc
             /package.json
-            e2e/runner/read-spec-plan.js
+            e2e/runner/read-spec-paths.js
           sparse-checkout-cone-mode: false
       - name: Prepare Node + Bun environment
         if: ${{ inputs.test-plan-artifact-id != '' }}
@@ -60,8 +60,8 @@ jobs:
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
-            const { readSpecPlan } = require('${{ github.workspace }}/e2e/runner/read-spec-plan.js');
-            const specFiles = readSpecPlan(process.env.E2E_SPEC_PATHS_FILE);
+            const { readSpecPaths } = require('${{ github.workspace }}/e2e/runner/read-spec-paths.js');
+            const specFiles = readSpecPaths(process.env.E2E_SPEC_PATHS_FILE);
             const inputChunks = Number(process.env.chunks);
             const java = 25;
             const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";
