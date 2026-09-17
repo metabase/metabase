@@ -281,8 +281,27 @@
                             (known-linter-hint))
                     {:unknown (vec unknown)}))))
 
-(def ^:private source-roots
-  ["src" "test" "enterprise" "modules/drivers" "dev" "bin" "mage"])
+(defn plugin-source-roots
+  "Each plugin's `src` and `test` directories under `modules/`, drivers included, relative to `repo-root`.
+  A plugin's other directories hold no code of its own, and a local build copies its sources into `target/`,
+  which would otherwise count twice."
+  ([]
+   (plugin-source-roots "."))
+  ([repo-root]
+   (let [subdirs (fn [parent]
+                   (->> (.listFiles (io/file repo-root parent))
+                        (filter #(.isDirectory ^java.io.File %))
+                        (map #(str parent "/" (.getName ^java.io.File %)))
+                        sort))]
+     (for [plugin (concat (remove #{"modules/drivers"} (subdirs "modules"))
+                          (subdirs "modules/drivers"))
+           tree   ["src" "test"]
+           :let   [root (str plugin "/" tree)]
+           :when  (.isDirectory (io/file repo-root root))]
+       root))))
+
+(defn- source-roots []
+  (into ["src" "test" "enterprise" "dev" "bin" "mage"] (plugin-source-roots)))
 
 (def ^:private source-extensions
   [".clj" ".cljc" ".cljs"])
@@ -461,7 +480,7 @@
   Returns `{:file \"src/...\", :line 42, :linters [...], :justified? boolean}` maps.
   Forms inside string literals or line comments don't count."
   ([]
-   (scan source-roots))
+   (scan (source-roots)))
   ([roots]
    (for [root  roots
          ^java.io.File f (file-seq (io/file root))

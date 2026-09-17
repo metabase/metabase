@@ -59,7 +59,16 @@
   (is (= "metabase.lib.schema" (modules/default-ns-prefix 'lib.schema)))
   (is (= "metabase.query-processor" (modules/default-ns-prefix 'query-processor)))
   (is (= "metabase-enterprise.transforms" (modules/default-ns-prefix 'enterprise/transforms)))
-  (is (= "metabase-enterprise.transforms.python" (modules/default-ns-prefix 'enterprise/transforms.python))))
+  (is (= "metabase-enterprise.transforms.python" (modules/default-ns-prefix 'enterprise/transforms.python)))
+  (is (= "metabase-module.embedder" (modules/default-ns-prefix 'module/embedder))))
+
+(deftest ^:parallel module-directory-test
+  (is (= ["src/metabase/lib/schema"
+          "enterprise/backend/test/metabase_enterprise/sso"
+          "modules/embedder/src/metabase_module/embedder"]
+         [(modules/module-directory {} 'lib.schema "src")
+          (modules/module-directory {} 'enterprise/sso "test")
+          (modules/module-directory {} 'module/embedder "src")])))
 
 (deftest ^:parallel module-ns-prefix-explicit-override-test
   (let [modules '{lib        {}
@@ -362,6 +371,23 @@
         (is (nil? (modules/usage-error (assoc-in config [:metabase/modules 'lib.other] {:uses :any, :api :any})
                                        'lib.other
                                        'metabase.lib.schema.foo)))))))
+
+(deftest ^:parallel usage-error-plugins-are-private-to-themselves-test
+  (let [config {:metabase/modules {'module/embedder       {:api :any}
+                                   'module/embedder.model {:api :any :uses #{'module/embedder}}
+                                   'caller                {:api :any :uses :any}
+                                   'explicit              {:api :any :uses #{'module/embedder}}}}]
+    (testing "namespaces resolve to the plugin"
+      (is (= 'module/embedder (modules/module config 'metabase-module.embedder.plugin)))
+      (is (= 'module/other (modules/module config 'metabase-module.other.core))
+          "an undeclared plugin namespace names its plugin, so the linter can report it"))
+    (testing "neither `:uses :any` nor an explicit `:uses` reaches a plugin from outside"
+      (is (some? (modules/usage-error config 'caller 'metabase-module.embedder.plugin)))
+      (is (some? (modules/namability-error (:metabase/modules config) 'explicit 'module/embedder))))
+    (testing "the plugin's own subtree may use it"
+      (is (nil? (modules/namability-error (:metabase/modules config)
+                                           'module/embedder.model
+                                           'module/embedder))))))
 
 (deftest ^:parallel usage-error-privacy-scoped-to-nearest-non-opening-ancestor-test
   (testing "An unexported child is private to its nearest non-exporting ancestor's subtree, not the top-level one"

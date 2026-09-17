@@ -1,7 +1,7 @@
-(ns metabase-enterprise.embedder.plugin
+(ns metabase-module.embedder.plugin
   "Manifest entry point for the in-process embedding provider."
   (:require
-   [metabase-enterprise.embedder.catalog :as catalog]
+   [metabase-module.embedder.catalog :as catalog]
    [metabase.classloader.core :as classloader]
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.util.log :as log]))
@@ -50,8 +50,8 @@
   ;; `require` skips its classloader setup when the namespace is already loaded, so install it unconditionally for
   ;; callers running on thread pools that predate plugin initialization.
   (classloader/the-classloader)
-  (classloader/require 'metabase-enterprise.embedder.model)
-  (or (ns-resolve 'metabase-enterprise.embedder.model fn-name)
+  (classloader/require 'metabase-module.embedder.model)
+  (or (ns-resolve 'metabase-module.embedder.model fn-name)
       (throw (ex-info (format "Embedder plugin model implementation does not define %s." fn-name)
                       {:provider provider-name :fn fn-name}))))
 

@@ -10,8 +10,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private lint-roots
-  ["src" "test" "enterprise/backend" "modules/drivers" "dev" "bin" "mage"])
+(defn- lint-roots []
+  (into ["src" "test" "enterprise/backend" "dev" "bin" "mage"] (kondo-ratchet/plugin-source-roots)))
 
 (defn- kondo-findings!
   "Kondo run over `roots`, optionally with `linter` forced to `:warning`; returns findings as EDN maps
@@ -337,10 +337,10 @@
   An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
   ;; Without this, hooks reading the analysis cache report nothing and their ignores all look redundant.
-  (kondo/warm-cache! lint-roots)
+  (kondo/warm-cache! (lint-roots))
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
-        findings   (kondo-findings! :redundant-ignore lint-roots)
+        findings   (kondo-findings! :redundant-ignore (lint-roots))
         {located true, homeless false} (group-by #(some? (:row %)) findings)
         file-lines (memoize (fn [file] (vec (str/split-lines (slurp file)))))
         {lsp-only true, verifiable false}
@@ -478,9 +478,9 @@
   (when (str/blank? (str linter-arg))
     (throw (ex-info "Usage: ./bin/mage kondo-insert-ignores LINTER [PATHS...]" {:exit-code 1})))
   ;; Without this, a cache-reading hook linter finds no sites at all.
-  (kondo/warm-cache! lint-roots)
+  (kondo/warm-cache! (lint-roots))
   (let [linter   (keyword (str/replace-first linter-arg #"^:" ""))
-        roots    (or (seq paths) lint-roots)
+        roots    (or (seq paths) (lint-roots))
         _        (println (format "Running kondo with %s enabled over %s..." linter (str/join " " roots)))
         findings (kondo-findings! linter roots)
         by-file  (group-by :filename findings)]

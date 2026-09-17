@@ -411,14 +411,32 @@
 
 (deftest explorer-file->module-test
   (let [file->module   #'module-explorer/file->module
-        prefix->module (modules/build-prefix->module '{lib {} lib.schema {} driver {}})]
+        prefix->module (modules/build-prefix->module
+                        '{lib             {}
+                          lib.schema      {}
+                          driver          {}
+                          module/embedder {}})]
     (testing "files resolve through the declared prefixes, tests included"
       (is (= 'lib.schema (file->module prefix->module "src/metabase/lib/schema/join.cljc")))
       (is (= 'lib.schema (file->module prefix->module "test/metabase/lib/schema_test.cljc")))
       (is (= 'lib (file->module prefix->module "src/metabase/lib/core.cljc"))))
     (testing "driver-plugin files belong to the driver module regardless of namespace"
       (is (= 'driver (file->module prefix->module "modules/drivers/mysql/src/metabase/driver/mysql.clj")))
-      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))))
+      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))
+    (testing "other plugin files resolve through their namespace"
+      (is (= 'module/embedder
+             (file->module prefix->module "modules/embedder/src/metabase_module/embedder/model.clj"))))))
+
+(deftest explorer-module->tree-path-test
+  (let [config '{search {}, enterprise/search {}, module/embedder {}, module/embedder.model {}}]
+    (is (= [["search" "enterprise"] ["module/embedder"] ["module/embedder" "model"]]
+           (map #(module-explorer/module->tree-path config %)
+                '[enterprise/search module/embedder module/embedder.model])))))
+
+(deftest explorer-tracks-plugin-files-test
+  (testing "the explorer scans plugin directories, not just the drivers"
+    (is (some #(str/starts-with? % "modules/embedder/src/")
+              (#'module-explorer/tracked-source-files)))))
 
 (deftest explorer-page-test
   (let [html (module-explorer/page {:modules [{:id "</script>"}]})]
@@ -442,6 +460,40 @@
              (#'mage.modules/file->module prefix->module "test/metabase/lib/schema_test.cljc")))
       (is (= 'lib.schema
              (#'mage.modules/file->module prefix->module "src/metabase/lib/schema/config.edn"))))))
+
+(deftest plugin-files-resolve-to-their-module-test
+  (let [prefix->module (modules/build-prefix->module '{module/embedder {}, driver {}})]
+    (testing "a plugin's own source tree resolves like any other"
+      (is (= 'module/embedder
+             (#'mage.modules/file->module prefix->module
+                                          "modules/embedder/src/metabase_module/embedder/model.clj"))))
+    (testing "a plugin's other files belong to it too"
+      (is (= 'module/embedder
+             (#'mage.modules/file->module prefix->module "modules/embedder/deps.edn")))
+      (is (= 'module/embedder
+             (#'mage.modules/file->module prefix->module
+                                          "modules/embedder/resources/metabase/embedder/metabase-plugin.yaml"))))
+    (testing "an undeclared plugin still names its module"
+      (is (= 'module/other
+             (#'mage.modules/file->module prefix->module "modules/other/src/metabase_module/other/core.clj"))))
+    (testing "driver plugins are not claimed for the driver module"
+      (is (nil? (#'mage.modules/file->module prefix->module
+                                             "modules/drivers/mysql/src/metabase/driver/mysql.clj"))))))
+
+(deftest plugin-paths-test
+  (testing "a plugin's tests live under its own modules/ directory"
+    (is (= "modules/embedder/test/metabase_module/embedder"
+           (#'mage.modules/module->test-path-prefix '{module/embedder {}} 'module/embedder)))))
+
+(deftest uses-any-does-not-reach-plugins-test
+  (let [deps '{core            :any
+               search          #{module/embedder}
+               module/embedder #{}
+               util            #{}}]
+    (is (= '{module/embedder #{search}
+             util            #{core}}
+           {'module/embedder (#'mage.modules/direct-dependents deps 'module/embedder)
+            'util            (#'mage.modules/direct-dependents deps 'util)}))))
 
 (deftest top-level-files-belong-only-to-declared-modules-test
   (testing "a file directly under metabase/ belongs to a module only when a declared prefix owns its namespace"

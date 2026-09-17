@@ -124,7 +124,10 @@
       prefix->module (into {}
                            (map (fn [[module {:keys [ns-prefix]}]]
                                   [(or ns-prefix
-                                       (str (if (= "enterprise" (namespace module)) "metabase-enterprise." "metabase.")
+                                       (str (case (namespace module)
+                                              "enterprise" "metabase-enterprise."
+                                              "module"     "metabase-module."
+                                              "metabase.")
                                             (name module)))
                                    module]))
                            config)

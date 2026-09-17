@@ -576,6 +576,7 @@
     "bin/load-namespaces/test"
     "bin/release-list/src"
     "bin/release-list/test"
+    "modules/embedder/src"
     "modules/drivers/athena/src"
     "modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/src"

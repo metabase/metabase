@@ -71,13 +71,13 @@
 (defn- check-platform-support!
   "Which platforms the bundled natives claim to support, driven through the catalog's private probes."
   []
-  (let [libc-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
-        os-var          (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
-        arch-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
-        detect-libc-var (ns-resolve 'metabase-enterprise.embedder.catalog 'detect-linux-libc)
+  (let [libc-var        (ns-resolve 'metabase-module.embedder.catalog 'linux-libc)
+        os-var          (ns-resolve 'metabase-module.embedder.catalog 'operating-system)
+        arch-var        (ns-resolve 'metabase-module.embedder.catalog 'architecture)
+        detect-libc-var (ns-resolve 'metabase-module.embedder.catalog 'detect-linux-libc)
         detect-libc     (var-get detect-libc-var)
-        glibc-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'glibc-version)
-        supported-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'supported-glibc-version?)
+        glibc-version-var (ns-resolve 'metabase-module.embedder.catalog 'glibc-version)
+        supported-version-var (ns-resolve 'metabase-module.embedder.catalog 'supported-glibc-version?)
         supported-version? (var-get supported-version-var)]
     (is (= :unknown (detect-libc false nil)) "unreadable process maps fail closed")
     (is (= :musl (detect-libc true nil)))
@@ -127,8 +127,8 @@
   "A catalog entry with no export for this architecture must fail rather than hash a nil sha256 into a
   well-formed but meaningless embedding-space id."
   [requested-model]
-  (let [model-spec-var (ns-resolve 'metabase-enterprise.embedder.catalog 'model-spec)
-        arch-var       (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
+  (let [model-spec-var (ns-resolve 'metabase-module.embedder.catalog 'model-spec)
+        arch-var       (ns-resolve 'metabase-module.embedder.catalog 'architecture)
         spec           ((var-get model-spec-var) (:model-name requested-model))
         without-arch   (update spec :architectures dissoc ((var-get arch-var)))]
     (with-redefs-fn {model-spec-var (constantly without-arch)}
@@ -154,13 +154,13 @@
         (is (embeddings.provider/registered? "in-process"))
         (is (= "true" (System/getProperty "ai.djl.offline")))
         (is (= "true" (System/getProperty "OPT_OUT_TRACKING")))
-        (is (str/starts-with? (str (io/resource "metabase_enterprise/embedder/plugin.clj")) "jar:file:"))
-        (is (nil? (find-ns 'metabase-enterprise.embedder.model))
+        (is (str/starts-with? (str (io/resource "metabase_module/embedder/plugin.clj")) "jar:file:"))
+        (is (nil? (find-ns 'metabase-module.embedder.model))
             "manifest registration must not initialize the DJL model namespace")
         (let [{:keys [readiness resolved]} (await-thread! pre-plugin-thread)]
           (is (true? (:ready? readiness)))
           (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}" (:embedding-space-id resolved)))
-          (is (nil? (find-ns 'metabase-enterprise.embedder.model))
+          (is (nil? (find-ns 'metabase-module.embedder.model))
               "catalog access from an old worker thread remains lazy")))
       (testing "the built artifact contains a ready, immutable model space"
         (is (true? (:ready? (embeddings.provider/readiness retrieval-model))))
@@ -172,10 +172,10 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has 384 dimensions"
                               (embeddings.provider/resolve-model
                                (assoc retrieval-model :vector-dimensions 768))))
-        (let [architecture-var (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
-              os-var           (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
-              libc-var         (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
-              glibc-version-var (ns-resolve 'metabase-enterprise.embedder.catalog 'glibc-version)
+        (let [architecture-var (ns-resolve 'metabase-module.embedder.catalog 'architecture)
+              os-var           (ns-resolve 'metabase-module.embedder.catalog 'operating-system)
+              libc-var         (ns-resolve 'metabase-module.embedder.catalog 'linux-libc)
+              glibc-version-var (ns-resolve 'metabase-module.embedder.catalog 'glibc-version)
               resolve-for      (fn [arch]
                                  (with-redefs-fn {architecture-var (constantly arch)
                                                   os-var           (constantly "linux")
@@ -191,7 +191,7 @@
           (is (= normal bounded) "model identity ignores ambient printer bindings")
           (is (apply not= normal)
               "architecture-specific exports intentionally have distinct embedding spaces"))
-        (let [model-spec-var (ns-resolve 'metabase-enterprise.embedder.catalog 'model-spec)
+        (let [model-spec-var (ns-resolve 'metabase-module.embedder.catalog 'model-spec)
               model-spec-fn  (var-get model-spec-var)
               spec           (model-spec-fn (:model-name retrieval-model))
               normal         (embeddings.provider/resolve-model retrieval-model)
@@ -216,7 +216,7 @@
                     (:embedding-space-id resolved))
               "the two bundled models must never share an embedding space")))
       (testing "the artifact bounds local inference batches before loading the runtime"
-        (let [model-fn-var (ns-resolve 'metabase-enterprise.embedder.plugin 'model-fn)
+        (let [model-fn-var (ns-resolve 'metabase-module.embedder.plugin 'model-fn)
               batch-sizes  (atom [])]
           (with-redefs-fn
             {model-fn-var (constantly
@@ -225,7 +225,7 @@
                              (mapv (fn [_] (float-array 384)) texts)))}
             #(embeddings.provider/embed-texts retrieval-model (repeat 65 "text")))
           (is (= [32 32 1] @batch-sizes))
-          (is (nil? (find-ns 'metabase-enterprise.embedder.model)))))
+          (is (nil? (find-ns 'metabase-module.embedder.model)))))
       (testing "real inference runs through the plugin jar"
         (let [network-attempts (atom [])
               original-proxy   (ProxySelector/getDefault)]
@@ -235,7 +235,7 @@
                   (await-thread!
                    (isolated-thread-call
                     #(embeddings.provider/embed-texts retrieval-model ["dog" "puppy" "invoice"])))]
-              (is (some? (find-ns 'metabase-enterprise.embedder.model)))
+              (is (some? (find-ns 'metabase-module.embedder.model)))
               (is (= [384 384 384] (mapv alength [dog puppy invoice])))
               (is (> (cosine dog puppy) (cosine dog invoice))))
             (testing "the complexity-score model infers from the same loaded artifact"

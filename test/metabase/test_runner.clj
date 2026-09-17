@@ -107,11 +107,8 @@
 (defn module-folders
   [modules]
   (let [config (-> (slurp ".clj-kondo/config/modules/config.edn") edn/read-string :metabase/modules)]
-    (for [m modules
-          :let [ns-prefix (hooks.modules/module-ns-prefix config m)]]
-      (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-           "test/"
-           (-> ns-prefix (str/replace "." "/") (str/replace "-" "_"))))))
+    (for [m modules]
+      (hooks.modules/module-directory config m "test"))))
 
 (defn parse-options
   [options]

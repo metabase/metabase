@@ -107,7 +107,7 @@
 
 ;; namespaces will be converted to their file paths, so this check will work.
 (def ^:private namespace-prefixes
-  ["metabase." "metabase-enterprise." "hooks."])
+  ["metabase." "metabase-enterprise." "metabase-module." "hooks."])
 
 (defn- namespace-like? [s]
   (some #(str/starts-with? s %) namespace-prefixes))

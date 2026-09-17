@@ -1,4 +1,4 @@
-(ns metabase-enterprise.embedder.catalog
+(ns metabase-module.embedder.catalog
   "Immutable metadata for the model artifact bundled in the embedder plugin."
   (:require
    [clojure.edn :as edn]

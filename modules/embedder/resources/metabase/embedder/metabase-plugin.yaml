@@ -5,4 +5,4 @@ info:
 metabase-plugin-api-version: 1
 init:
   - step: load-namespace
-    namespace: metabase-enterprise.embedder.plugin
+    namespace: metabase-module.embedder.plugin

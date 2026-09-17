@@ -76,15 +76,19 @@
   ^java.io.File []
   (io/file (str (.getAbsolutePath (project-root-directory)) "/enterprise/backend/src")))
 
+(declare kondo-config)
+
 (mu/defn- plugin-source-roots :- [:sequential (ms/InstanceOfClass java.io.File)]
-  "Source roots of the separately built plugin modules under `modules/`: every driver, plus the siblings that
-  ship as their own jar. They are off the main classpath, so nothing else here would find them."
+  "Source roots of the separately built plugins under `modules/`: every driver, plus `modules/X/src` for each
+  declared `module/X`. They are off the main classpath, so nothing else here would find them."
   []
   (let [modules (io/file (str (.getAbsolutePath (project-root-directory)) "/modules"))]
     (concat
      (for [driver (.listFiles (io/file modules "drivers"))]
        (io/file driver "src"))
-     [(io/file modules "embedder" "src")])))
+     (for [module (keys (kondo-config))
+           :when  (modules/plugin-module? module)]
+       (io/file modules (name module) "src")))))
 
 (mu/defn- find-source-files :- [:sequential (ms/InstanceOfClass java.io.File)]
   []
@@ -277,8 +281,6 @@
       (throw (ex-info (format "Error calculating dependencies for %s" file)
                       {:file file}
                       e)))))
-
-(declare kondo-config)
 
 (comment
   (file-dependencies (modules/build-prefix->module (kondo-config)) "src/metabase/app_db/setup.clj")
@@ -731,10 +733,7 @@
   [".clj" ".cljc" ".cljs" ".bb"])
 
 (defn- module->test-path-prefix [modules-config module]
-  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
-    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "test/"
-         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
+  (modules/module-directory modules-config module "test"))
 
 (defn- existing-test-file-paths [path-prefix]
   (into (sorted-set)

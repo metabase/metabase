@@ -21,18 +21,51 @@
 ;;;; Dots express nesting: `lib.schema` is a child of `lib`. A declared
 ;;;; `enterprise/X` module is also a child of OSS module `X`. A namespace
 ;;;; belongs to the module with the most specific matching `:ns-prefix`.
+;;;;
+;;;; A `module/X` module is a plugin built from `modules/X`, shipped as its own jar and possibly absent at
+;;;; runtime, so only its own subtree may use it.
+
+;; TODO (Chris 2026-09-17) -- Driver plugins are not modules yet. The plan is `module/driver.X`, implying
+;; `metabase.driver.X` in `modules/drivers/X`, so drivers and the third-party plugins built like them keep
+;; their namespaces. With each driver a module, "should this change run driver tests" can come from the module
+;; graph instead of the override list in `mage.modules`. The drivers' `metabase.test.data.X` helpers will need
+;; resolving by directory, or a rename.
+
+(defn plugin-module?
+  "Whether `module` is a plugin, built from `modules/<name>` and shipped as its own jar."
+  [module]
+  (= "module" (namespace module)))
 
 (defn default-ns-prefix
   "Namespace prefix a module owns unless it sets `:ns-prefix`: `metabase.lib.schema` for `lib.schema`,
-  `metabase-enterprise.foo` for `enterprise/foo`."
+  `metabase-enterprise.foo` for `enterprise/foo`, `metabase-module.embedder` for `module/embedder`."
   [module]
-  (str (if (= "enterprise" (namespace module)) "metabase-enterprise." "metabase.") (name module)))
+  (str (case (namespace module)
+         "enterprise" "metabase-enterprise."
+         "module"     "metabase-module."
+         "metabase.")
+       (name module)))
 
 (defn module-ns-prefix
   "Namespace prefix `module` owns: its `:ns-prefix`, else [[default-ns-prefix]]."
   [modules module]
   (or (get-in modules [module :ns-prefix])
       (default-ns-prefix module)))
+
+(defn module-directory
+  "Repo-relative directory holding `module`'s namespaces in `tree`, `\"src\"` or `\"test\"`, e.g.
+  `src/metabase/lib/schema`, `enterprise/backend/test/metabase_enterprise/sso` or
+  `modules/embedder/src/metabase_module/embedder`."
+  [modules module tree]
+  (let [ns-prefix (module-ns-prefix modules module)]
+    (str (cond
+           (plugin-module? module)
+           (str "modules/" (first (str/split (name module) #"\.")) "/")
+
+           (str/starts-with? ns-prefix "metabase-enterprise.")
+           "enterprise/backend/")
+         tree "/"
+         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
 
 (defn build-prefix->module
   "Map each declared namespace prefix to its module, for [[declared-module]]."
@@ -56,6 +89,7 @@
 
     (resolve-module prefix->module 'metabase.qp.middleware.wow) => 'qp
     (resolve-module prefix->module 'metabase-enterprise.whatever.core) => enterprise/whatever
+    (resolve-module prefix->module 'metabase-module.whatever.core) => module/whatever
 
   An unmatched Metabase namespace resolves to its first segment so the linter can report an undeclared module."
   [prefix->module ns-symb]
@@ -69,6 +103,9 @@
         (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
                  second
                  (symbol "enterprise"))
+        (some->> (re-find #"^metabase-module\.([^.]+)" (str ns-symb))
+                 second
+                 (symbol "module"))
         (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
                 second
                 symbol))))
@@ -119,17 +156,31 @@
         (recur ancestor)
         {:ancestor ancestor, :child child}))))
 
+(defn- plugin-error
+  "Explain why `caller` may not use plugin `target`, or return `nil` when `target` is no plugin or `caller`
+  sits inside the plugin."
+  [modules caller target]
+  (when (plugin-module? target)
+    (let [plugin (last (take-while some? (iterate #(parent-module modules %) target)))]
+      (when-not (descendant-of? modules caller plugin)
+        (format (str "Module %s is a plugin that may not be installed; %s may not use it. Load it through "
+                     "metabase.plugins instead. [:metabase/modules %s :uses]")
+                target caller caller)))))
+
 (defn namability-error
   "Explain why `caller` may not refer to `target` in `:uses`, or return `nil` if it may.
 
   A nested module is private to the nearest ancestor with a missing export.
-  Exporting every link makes it public."
+  Exporting every link makes it public.
+  A plugin is private to itself, since it may be missing at runtime."
   [modules caller target]
-  (when-let [{:keys [ancestor child]} (blocking-export modules target)]
-    (when-not (descendant-of? modules caller ancestor)
-      (format (str "Module %s is nested and not exported by its ancestors; %s may not use it. Add %s to %s's "
-                   ":module-exports, or move the caller into the %s subtree. [:metabase/modules %s :module-exports]")
-              target caller child ancestor ancestor ancestor))))
+  (or (plugin-error modules caller target)
+      (when-let [{:keys [ancestor child]} (blocking-export modules target)]
+        (when-not (descendant-of? modules caller ancestor)
+          (format (str "Module %s is nested and not exported by its ancestors; %s may not use it. Add %s to "
+                       "%s's :module-exports, or move the caller into the %s subtree. "
+                       "[:metabase/modules %s :module-exports]")
+                  target caller child ancestor ancestor ancestor)))))
 
 ;;;; Lint rules. These functions take the full linter config.
 

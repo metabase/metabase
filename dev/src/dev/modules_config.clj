@@ -40,13 +40,19 @@
 ;;;; Ordering — must match `metabase.core.modules-test`
 ;;;; ---------------------------------------------------------------------------
 
-(defn- enterprise? [module-name]
-  (str/starts-with? (str module-name) "enterprise/"))
+(defn- module-group
+  "Where `module-name` sorts: OSS modules first, then `enterprise/` ones, then `module/` plugins."
+  [module-name]
+  (let [s (str module-name)]
+    (cond
+      (str/starts-with? s "enterprise/") 1
+      (str/starts-with? s "module/")     2
+      :else                              0)))
 
 (defn- sort-module-names
-  "Sort module symbols with `enterprise/` modules last. Mirrors the test's `sort-module-names`."
+  "Sort module symbols by [[module-group]], then by name. Mirrors the test's `sort-module-names`."
   [module-names]
-  (sort-by (juxt #(if (enterprise? %) 1 0) str) module-names))
+  (sort-by (juxt module-group str) module-names))
 
 (defn- sort-for-key
   "Return the sorted element vector for a generated key. `:uses` sorts modules enterprise-last; everything
@@ -246,7 +252,7 @@
                  (str/join ", " to-add)))
 
       (not sorted?)
-      (conj "Modules are not sorted by name (enterprise/ last) — reorder them by hand."))))
+      (conj "Modules are not sorted by name (enterprise/, then module/, last) — reorder them by hand."))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Entry point

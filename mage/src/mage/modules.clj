@@ -14,6 +14,8 @@
 
 (def ^:dynamic ^:private *github-output-only?* false)
 
+;; TODO (Chris 2026-09-17) -- Once drivers are `module/driver.X` modules (see `hooks.common.modules`), which
+;; driver tests a change needs can follow from the module graph, and these lists can go.
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
   '#{driver transforms})
@@ -23,16 +25,23 @@
   '#{query-processor transforms
      enterprise/transforms enterprise/transforms.python})
 
+(def ^:private plugin-root-pattern
+  "A plugin's own source or test root under `modules/`, such as `modules/embedder/src/`. Drivers are excluded:
+  they are not modules, and resolving them would claim them for `driver`."
+  #"^modules/(?!drivers/)[^/]+/(?:src|test)/")
+
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
 (defn- file->ns-symbol [filename]
-  (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
-    (-> filename
-        (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
-        (str/replace #"\.[^./]+$" "")
-        (str/replace "/" ".")
-        (str/replace "_" "-")
-        symbol)))
+  (let [filename (str/replace filename plugin-root-pattern "src/")]
+    (when (re-find #"^(?:(?:src|test)/metabase(?:_enterprise|_module)?|enterprise/backend/(?:src|test)/metabase_enterprise)/"
+                   filename)
+      (-> filename
+          (str/replace #"^(?:enterprise/backend/)?(?:src|test)/" "")
+          (str/replace #"\.[^./]+$" "")
+          (str/replace "/" ".")
+          (str/replace "_" "-")
+          symbol))))
 
 (defn- file->module [prefix->module filename]
   (or
@@ -41,7 +50,12 @@
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
-     (symbol "enterprise" (str/replace module #"_" "-")))))
+     (symbol "enterprise" (str/replace module #"_" "-")))
+   (when-let [[_match module] (re-matches #"^modules/[^/]+/(?:src|test)/metabase_module/([^/]+)/.*$" filename)]
+     (symbol "module" (str/replace module #"_" "-")))
+   ;; the rest of a plugin's directory -- deps.edn, resources, its manifest -- belongs to the plugin
+   (when-let [[_match plugin] (re-matches #"^modules/(?!drivers/)([^/]+)/.*$" filename)]
+     (symbol "module" plugin))))
 
 (defn- read-modules-config []
   (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
@@ -63,10 +77,7 @@
   [".clj" ".cljc"])
 
 (defn- module->test-path-prefix [modules-config module]
-  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
-    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "test/"
-         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
+  (modules/module-directory modules-config module "test"))
 
 (defn- module->test-paths [modules-config module]
   (let [prefix->module (modules/build-prefix->module modules-config)
@@ -104,8 +115,10 @@
   [deps module]
   (into (sorted-set)
         (keep (fn [[a-module module-deps]]
-                (when (or (= module-deps :any)
-                          (contains? module-deps module))
+                ;; `:any` can't reach a plugin, which may not be installed.
+                (when (if (= module-deps :any)
+                        (not (modules/plugin-module? module))
+                        (contains? module-deps module))
                   a-module)))
         deps))
 
@@ -280,12 +293,13 @@
           (keys modules-config)))
 
 (defn- sorted-children
-  "Sort child nodes alphabetically, with enterprise nodes last."
+  "Sort child nodes alphabetically, with enterprise nodes and then `module/` plugins last."
   [node]
-  (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
-                                      (str/starts-with? segment "enterprise/"))
-                                1
-                                0)
+  (sort-by (fn [[segment _]] [(cond
+                                (or (= segment "enterprise")
+                                    (str/starts-with? segment "enterprise/")) 1
+                                (str/starts-with? segment "module/")          2
+                                :else                                         0)
                               segment])
            (:children node)))
 

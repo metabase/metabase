@@ -1,7 +1,7 @@
-(ns metabase-enterprise.embedder.model
+(ns metabase-module.embedder.model
   "Lazy DJL/ONNX Runtime lifecycle for the bundled embedding models."
   (:require
-   [metabase-enterprise.embedder.catalog :as catalog]
+   [metabase-module.embedder.catalog :as catalog]
    [metabase.util.log :as log])
   (:import
    (ai.djl.huggingface.translator TextEmbeddingTranslatorFactory)

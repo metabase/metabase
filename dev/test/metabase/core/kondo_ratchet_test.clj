@@ -153,6 +153,21 @@
               :extra              1}
              (kondo-ratchet/actual-counts occurrences))))))
 
+(deftest ^:parallel plugin-source-roots-test
+  (let [dir (.toFile (java.nio.file.Files/createTempDirectory
+                      "plugin-roots"
+                      (make-array java.nio.file.attribute.FileAttribute 0)))]
+    (doseq [path ["modules/embedder/src"
+                  "modules/embedder/resources"
+                  "modules/embedder/target/classes"
+                  "modules/drivers/mongo/src"
+                  "modules/drivers/mongo/test"
+                  "modules/drivers/mongo/target"]]
+      (.mkdirs (io/file dir path)))
+    (testing "plugins and drivers contribute their src and test directories, never target or resources"
+      (is (= ["modules/embedder/src" "modules/drivers/mongo/src" "modules/drivers/mongo/test"]
+             (kondo-ratchet/plugin-source-roots (.getPath dir)))))))
+
 (deftest ^:parallel scan-error-identifies-file-test
   (let [dir  (.toFile (java.nio.file.Files/createTempDirectory
                        "kondo-ratchet-error-test"

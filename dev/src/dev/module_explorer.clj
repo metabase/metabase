@@ -19,14 +19,15 @@
   "The path segments used to display `module` in the tree.
 
   An enterprise module appears under its OSS counterpart when one exists.
-  Otherwise its full `enterprise/` name appears at the root."
+  Otherwise its full `enterprise/` name appears at the root, as a `module/` plugin's always does."
   [modules-config module]
   (let [segments (str/split (name module) #"\.")]
-    (if (= (namespace module) "enterprise")
-      (if (contains? modules-config (symbol (first segments)))
-        ;; Keep an enterprise subtree together under its OSS module.
-        (into [(first segments) "enterprise"] (rest segments))
-        (into [(str "enterprise/" (first segments))] (rest segments)))
+    (case (namespace module)
+      "enterprise" (if (contains? modules-config (symbol (first segments)))
+                     ;; Keep an enterprise subtree together under its OSS module.
+                     (into [(first segments) "enterprise"] (rest segments))
+                     (into [(str "enterprise/" (first segments))] (rest segments)))
+      "module"     (into [(str "module/" (first segments))] (rest segments))
       segments)))
 
 (defn explicit-ns-prefix
@@ -35,13 +36,6 @@
   (let [prefix (get-in modules-config [module :ns-prefix])]
     (when (and prefix (not= prefix (modules/default-ns-prefix module)))
       prefix)))
-
-(defn- ns-prefix->source-dir
-  "Repo-relative source directory for a namespace prefix: `metabase.lib-be` -> `src/metabase/lib_be`."
-  [ns-prefix]
-  (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-       "src/"
-       (-> ns-prefix (str/replace "." "/") (str/replace "-" "_"))))
 
 (defn- set->strings
   "Sort and stringify a set-valued config field."
@@ -88,7 +82,7 @@
   "One module's config as the plain data the page consumes."
   [modules-config module->uses used-by module]
   (let [{:keys [api uses friends] :as entry} (get modules-config module)
-        source-dir (ns-prefix->source-dir (modules/module-ns-prefix modules-config module))]
+        source-dir (modules/module-directory modules-config module "src")]
     {:id                   (str module)
      :enterprise           (= (namespace module) "enterprise")
      :team                 (modules/module-team modules-config module)
@@ -108,7 +102,7 @@
 
 ;;; Per-module source metrics, from tracked files and git history.
 
-(def ^:private source-dirs ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "modules/drivers"])
+(def ^:private source-dirs ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "modules"])
 
 (defn- git-output!
   "Run Git and return stdout, or throw with its stderr when it fails."
@@ -123,7 +117,8 @@
        str/split-lines
        (filter #(re-find #"\.clj[cs]?$" %))))
 
-(def ^:private source-root #"^(?:enterprise/backend/)?(?:src|test)/|^modules/drivers/[^/]+/(?:src|test)/")
+(def ^:private source-root
+  #"^(?:enterprise/backend/)?(?:src|test)/|^modules/drivers/[^/]+/(?:src|test)/|^modules/[^/]+/(?:src|test)/")
 
 (defn- file->ns
   "The namespace a source or test file declares, going by its path."

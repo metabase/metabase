@@ -87,17 +87,18 @@
         modules'))))
 
 (defn- sort-module-names
-  "Sort module names in order but sort the `enterprise/` modules last."
+  "Sort module names in order, with `enterprise/` modules after the OSS ones and `module/` plugins last."
   [module-names]
   (sort-by (fn [module-name]
-             [(if (str/starts-with? module-name "enterprise/")
-                1
-                0)
+             [(cond
+                (str/starts-with? module-name "enterprise/") 1
+                (str/starts-with? module-name "module/")     2
+                :else                                        0)
               module-name])
            module-names))
 
 (deftest modules-should-be-sorted-by-name-test
-  (testing "Modules configs should sorted by module name with enterprise/modules appearing last"
+  (testing "Modules are sorted by name, with enterprise/ modules and then module/ plugins last"
     (let [actual   (module-names-in-file-order)
           expected (sort-module-names actual)]
       (is (= expected
@@ -256,8 +257,10 @@
   (testing "`:module` resolves through each module's :ns-prefix, so dotted and renamed modules find their tests"
     (is (= ["test/metabase/lib/schema"
             "test/metabase/actions_rest"
-            "enterprise/backend/test/metabase_enterprise/transforms_python"]
-           (metabase.test-runner/module-folders '[lib.schema actions.rest enterprise/transforms.python])))))
+            "enterprise/backend/test/metabase_enterprise/transforms_python"
+            "modules/embedder/test/metabase_module/embedder"]
+           (metabase.test-runner/module-folders
+            '[lib.schema actions.rest enterprise/transforms.python module/embedder])))))
 
 (deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)

@@ -4131,12 +4131,6 @@
    :api #{metabase-enterprise.embeddings.client}
    :uses #{enterprise/search.semantic}}
 
-  enterprise/search.embeddings.embedder
-  {:team "Metabot"
-   :ns-prefix "metabase-enterprise.embedder"
-   :api  #{}
-   :uses #{search.embeddings util util.classloader}}
-
   enterprise/search.entity-retrieval
   {:team "Metabot"
    :ns-prefix "metabase-enterprise.entity-retrieval"
@@ -4440,7 +4434,12 @@
            util
            warehouse-schema-overlay
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
+
+  module/embedder
+  {:team "Metabot"
+   :api  #{}
+   :uses #{search.embeddings util util.classloader}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

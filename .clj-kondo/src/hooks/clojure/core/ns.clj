@@ -110,11 +110,11 @@
     (when-not (contains? (hooks.common/ignored-linters ns-symb-node) :metabase/namespace-name)
       (let [parts (str/split (str (hooks/sexpr ns-symb-node)) #"\.")]
         (when (and (<= (count parts) 2)
-                   (#{"metabase" "metabase-enterprise"} (first parts))
+                   (#{"metabase" "metabase-enterprise" "metabase-module"} (first parts))
                    ;; exclude test namespaces for now
                    (not (str/ends-with? (last parts) "test")))
           (hooks/reg-finding! (assoc (meta ns-symb-node)
-                                     :message "Metabase namespaces should have the form metabase[-enterprise].<module>.* [:metabase/namespace-name]"
+                                     :message "Metabase namespaces should have the form metabase[-enterprise|-module].<module>.* [:metabase/namespace-name]"
                                      :type    :metabase/namespace-name)))))))
 
 (defn- ns-form-node->import-node [ns-form-node]

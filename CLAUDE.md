@@ -98,6 +98,9 @@ interactive explorer with a dependency graph.
   target's `:api`.
 - Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
   make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
+- A `module/X` module is a plugin built from `modules/X` and shipped as its own jar, with namespaces under
+  `metabase-module.X`. It may be missing at runtime, so only its own subtree may use it, and `:uses :any` does not
+  reach it; the rest of the backend loads it through `metabase.plugins`.
 
 ## Ratchets
 
