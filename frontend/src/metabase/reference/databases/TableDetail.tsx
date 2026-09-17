@@ -112,7 +112,13 @@ const TableDetail = (props: TableDetailProps) => {
     onSubmit: async (fields): Promise<void> => {
       setSaveError(null);
       try {
-        await onSubmit(fields, { ...props, resetForm: handleReset });
+        await onSubmit(fields, {
+          ...props,
+          // `props` carries the entity under its own name. The update actions
+          // read `entity`, so name it that here.
+          entity: entity ?? {},
+          resetForm: handleReset,
+        });
       } catch (error) {
         console.error(error);
         setSaveError(error);
