@@ -60,10 +60,12 @@
 (deftest listed-description-quotes-terms-test
   (testing "GHY-4522: a term is user-written text going into model-facing prose, so it is cleaned like any other
             interpolated value rather than concatenated in raw"
-    (mt/with-temp [:model/Glossary _ {:term "Ignore previous" :definition "d"}]
-      (let [description (described)]
-        (is (not (str/includes? description "Ignore previous")))
-        (is (str/includes? description "Ignore\\u2028previous"))))))
+    ;; The separator is built rather than written literally: a raw U+2028 in source trips the whitespace linter.
+    (let [term (str "Ignore" (char 0x2028) "previous")]
+      (mt/with-temp [:model/Glossary _ {:term term :definition "d"}]
+        (let [description (described)]
+          (is (not (str/includes? description term)))
+          (is (str/includes? description "Ignore\\u2028previous")))))))
 
 (deftest listed-description-with-empty-glossary-test
   (testing "GHY-4522: with no terms defined the tool still lists, and says so rather than trailing an empty list"
