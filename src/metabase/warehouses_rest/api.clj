@@ -24,6 +24,7 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
+   [metabase.server.lib.etag-cache :as lib.etag-cache]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
@@ -45,6 +46,7 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [ring.util.response :as response]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -457,12 +459,22 @@
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? db)           (assoc :can-manage true)))
 
-(api.macros/defendpoint :get "/engines" :- [:map-of :keyword :map]
-  "Return connection properties and supported features for every available database engine.
-
-  Declared before `/:id` so the literal path matches before the numeric-id route."
+(mu/defn- engines-info :- [:map-of :keyword :map]
   []
   (driver.u/available-drivers-info))
+
+(api.macros/defendpoint :get "/engines" :- :any
+  "Return connection properties and supported features for every available database engine.
+
+  Returns a Ring response rather than the map alone so that it can carry an ETag. The body depends on the
+  drivers a plugin has loaded, on the reader's locale, since property names are translated, and on whether
+  the instance is hosted, so the tag is a hash of the response rather than the build's version hash.
+
+  Declared before `/:id` so the literal path matches before the numeric-id route."
+  [_route-params _query-params _body request]
+  (let [info (engines-info)]
+    (-> (response/response info)
+        (lib.etag-cache/with-etag request {:tag (lib.etag-cache/content-tag info)}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

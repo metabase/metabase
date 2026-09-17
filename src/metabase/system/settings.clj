@@ -117,14 +117,12 @@
   :getter     available-locales-with-names
   :doc        false)
 
-(defsetting available-timezones
-  "Available report timezone options"
-  :encryption :no
-  :visibility :public
-  :export?    true
-  :setter     :none
-  :getter     (comp sort t/available-zone-ids)
-  :doc        false)
+(defn available-timezones
+  "The timezones this instance can use as a report timezone. Comes from the JVM's timezone database, so it
+  changes only when the instance is upgraded. Served by `GET /api/util/timezones` rather than inlined into
+  every document as a setting."
+  []
+  (sort (t/available-zone-ids)))
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
