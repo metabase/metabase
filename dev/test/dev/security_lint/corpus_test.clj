@@ -208,6 +208,11 @@
       (is (= (count (:findings whole)) (count (get-in sarif [:runs 0 :results]))))
       (is (< (count (:findings result)) (count (:findings whole)))))))
 
+(deftest quiet-scan-prints-nothing-test
+  (testing "`:quiet?` silences the whole text output, the disabled-rules line included: the mage task reads the
+            returned map, and every line printed comes back as the nREPL value"
+    (is (= "" (with-out-str (security-lint/scan {:paths [(str root "/src")] :root root :quiet? true}))))))
+
 (deftest every-rule-has-a-corpus-case-test
   (testing "a rule with no fixture is a rule nothing guards"
     (is (empty? (remove (set (map first expected)) (map :id (rules/all)))))))

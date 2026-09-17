@@ -28,9 +28,23 @@
                source-layout-check-namespaces
                honey-sql-check-namespaces)))
 
+(def ^:private security-lint-test-namespaces
+  ;; The security linter's own tests. They live under `dev/test`, outside the `metabase.*` pattern the regular
+  ;; suite selects by, on purpose: they scan a fixture tree and take a JVM of their own, and `./bin/mage -test`
+  ;; is Babashka and cannot load them. They run here, through the same clojure command as the other checks.
+  '[dev.security-lint.ast-test
+    dev.security-lint.callgraph-test
+    dev.security-lint.corpus-test
+    dev.security-lint.engine-test
+    dev.security-lint.request-taint-test
+    dev.security-lint.rule-test
+    dev.security-lint.rules-test
+    dev.security-lint.sarif-test
+    dev.security-lint.taint-test])
+
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."
-  ["migrations" "backend" "ratchets"])
+  ["migrations" "backend" "security-lint" "ratchets"])
 
 ;; `sh` is a [[mage.shell/sh*]]-compatible function so unit tests can inspect commands without running them.
 ;; .github/scripts/check-preresolve-aliases.sh reads the alias strings out of these two functions.
@@ -50,10 +64,11 @@
       "./bin/mage" "kondo-ratchets"))
 
 (def ^:private suite-labels
-  {"backend"    "backend checks"
-   "migrations" "migration checks"
-   "modules"    "module checks"
-   "ratchets"   "ratchet checks"})
+  {"backend"       "backend checks"
+   "migrations"    "migration checks"
+   "modules"       "module checks"
+   "ratchets"      "ratchet checks"
+   "security-lint" "security-lint checks"})
 
 (defn- run-suite!
   "Run one suite and return its exit code.
@@ -62,10 +77,11 @@
   (println "Running" (suite-labels suite))
   (try
     (:exit (case suite
-             "backend"    (run-clojure-checks! sh backend-check-namespaces)
-             "migrations" (run-migration-checks! sh)
-             "modules"    (run-clojure-checks! sh module-check-namespaces)
-             "ratchets"   (run-ratchet-checks! sh)))
+             "backend"       (run-clojure-checks! sh backend-check-namespaces)
+             "migrations"    (run-migration-checks! sh)
+             "modules"       (run-clojure-checks! sh module-check-namespaces)
+             "ratchets"      (run-ratchet-checks! sh)
+             "security-lint" (run-clojure-checks! sh security-lint-test-namespaces)))
     (catch Exception e
       (println "Could not run" (suite-labels suite) "--" (ex-message e))
       1)))

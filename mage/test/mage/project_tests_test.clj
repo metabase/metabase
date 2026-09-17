@@ -86,8 +86,21 @@
   (let [calls (atom [])]
     (with-redefs [shell/sh* (fake-sh calls [])]
       (project-tests/run!))
-    (is (= 3 (count @calls)))
+    (is (= 4 (count @calls)))
     (is (= ["./bin/mage" "kondo-ratchets"] (last @calls)))))
+
+(deftest security-lint-suite-test
+  (testing "the linter's own tests are JVM namespaces under dev/test, outside the regular suite's pattern, and run
+            through the same clojure command as the other backend checks"
+    (let [[[cmd alias only nss :as call]] (:calls (run-suites! [] ["security-lint"]))]
+      (is (= ["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"] [cmd alias only]))
+      (is (= 4 (count call)) "one command, with one :only vector")
+      (is (= ["dev.security-lint.ast-test" "dev.security-lint.callgraph-test" "dev.security-lint.corpus-test"
+              "dev.security-lint.engine-test" "dev.security-lint.request-taint-test" "dev.security-lint.rule-test"
+              "dev.security-lint.rules-test" "dev.security-lint.sarif-test" "dev.security-lint.taint-test"]
+             (map str (read-string nss))))))
+  (testing "it is one of the default suites, so `project-tests` with no argument runs it"
+    (is (str/includes? (:out (run-suites! [] ["security-lint"])) "Running security-lint checks"))))
 
 (deftest targeted-suites-test
   (testing "modules runs only its own namespaces"

@@ -46,13 +46,13 @@
              ;; `(-> dc :visualization_settings :link :entity :id)`: a JSON column as a step
              (or (some vocab/json-columns (kws node))
                  (json-column-read? ctx (first (ast/args node))))
-             (case head
-               (get get-in) (let [[m path] (ast/args node)]
-                              (or (json-column-read? ctx m)
-                                  (and path (ast/vector-node? (ast/unmeta path))
-                                       (some vocab/json-columns (kws (ast/unmeta path))))
-                                  (and path (ast/keyword-node? (ast/unmeta path))
-                                       (contains? vocab/json-columns (n/sexpr (ast/unmeta path))))))
+             (if (contains? '#{get get-in} head)
+               (let [[m path] (ast/args node)]
+                 (or (json-column-read? ctx m)
+                     (and path (ast/vector-node? (ast/unmeta path))
+                          (some vocab/json-columns (kws (ast/unmeta path))))
+                     (and path (ast/keyword-node? (ast/unmeta path))
+                          (contains? vocab/json-columns (n/sexpr (ast/unmeta path))))))
                false))
 
            ;; `(:visualization_settings dc)`, and `(:id (:entity (:link (:visualization_settings dc))))`

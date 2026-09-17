@@ -23,9 +23,10 @@
   `load_id` is anchored to a word: a `payload_id` names a row."
   #"(^|[-_])load[-_]id$|session[-_]id$|request[-_]id$|^metabase-user-id$|^request-user-id$|^browser-id$|^client[-_]id$|^provider[-_]id$|entity[-_]id$|^dimension[-_]id$")
 
-(def ^:private authz-exempt-files
+(def authz-exempt-files
   "Endpoints authenticated by something other than a session, and authorized by the token rather than by checks.
-  Each entry names the mechanism."
+  Each entry names the mechanism. Public only because the `defrule` hook drops the rule spec from what clj-kondo
+  analyzes, so a private var read there alone counts as unused."
   [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/"   ; public uuid, signed embed token
    #"session/api\.clj$"                                           ; login: there is no user yet
    #"testing_api/"                                                ; test builds only

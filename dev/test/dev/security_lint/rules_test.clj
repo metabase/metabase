@@ -230,9 +230,14 @@
               "(ns t) (defn f [] (javax.net.ssl.SSLContext/getInstance \"TLSv1.3\"))")))
 
 (deftest insecure-hostname-verifier-test
-  (is (flags? :metabase-security-lint/insecure-hostname-verifier
-              "(ns t) (defn f [v] (javax.net.ssl.HttpsURLConnection/setDefaultHostnameVerifier v))"))
-  (is (clean? :metabase-security-lint/insecure-hostname-verifier "(ns t) (defn f [] :ok)")))
+  (let [id :metabase-security-lint/insecure-hostname-verifier
+        fs (check id "(ns t) (defn f [v] (javax.net.ssl.HttpsURLConnection/setDefaultHostnameVerifier v))")]
+    (is (= 1 (count fs)))
+    (is (= [:error] (map :severity fs)))
+    (is (= "Default hostname verification is being replaced" (:message (first fs))))
+    (is (clean? id "(ns t) (defn f [] :ok)"))
+    (is (clean? id "(ns t) (defn f [factory] (javax.net.ssl.HttpsURLConnection/setDefaultSSLSocketFactory factory))")
+        "another static method on the same class is not the verifier")))
 
 (deftest xxe-test
   (is (flags? :metabase-security-lint/xxe
@@ -355,9 +360,10 @@
         (is (empty? (engine/analyze {:paths [(.getAbsolutePath f)] :rules [(rule/by-id id)] :taint-sources :call-graph})))))))
 
 (deftest redos-test
-  (is (flags? :metabase-security-lint/redos
-              "(ns t) (defn f [pat] (re-pattern pat))")
-      "a caller-supplied pattern can be built to backtrack catastrophically")
+  (let [fs (check :metabase-security-lint/redos "(ns t) (defn f [pat] (re-pattern pat))")]
+    (is (= 1 (count fs)) "a caller-supplied pattern can be built to backtrack catastrophically")
+    (is (= [:error] (map :severity fs)))
+    (is (= "Regex pattern is compiled from a caller-supplied value" (:message (first fs)))))
   (is (clean? :metabase-security-lint/redos
               "(ns t) (defn f [] (re-pattern \"^[a-z]+$\"))"))
   (is (clean? :metabase-security-lint/redos
@@ -408,7 +414,10 @@
       "mapping a config key to a setting name is metadata, not a credential"))
 
 (deftest weak-random-test
-  (is (flags? :metabase-security-lint/weak-random "(ns t) (defn f [] (java.util.Random.))"))
+  (let [fs (check :metabase-security-lint/weak-random "(ns t) (defn f [] (java.util.Random.))")]
+    (is (= 1 (count fs)))
+    (is (= [:note] (map :severity fs)) "a note: jitter and sampling are fine with a predictable source")
+    (is (str/includes? (:message (first fs)) "SecureRandom") "the message names the fix"))
   (is (clean? :metabase-security-lint/weak-random "(ns t) (defn f [] (java.security.SecureRandom.))")))
 
 (deftest sensitive-data-in-logs-test
@@ -461,9 +470,12 @@
       "defsetting defaults :sensitive? settings to encrypted, so absence is not a finding there"))
 
 (deftest open-redirect-test
-  (is (flags? :metabase-security-lint/open-redirect
-              "(ns t (:require [ring.util.response :as response]))
-               (defn f [target] (response/redirect target))"))
+  (let [fs (check :metabase-security-lint/open-redirect
+                  "(ns t (:require [ring.util.response :as response]))
+                   (defn f [target] (response/redirect target))")]
+    (is (= 1 (count fs)))
+    (is (= [:error] (map :severity fs)))
+    (is (= "Redirect target derives from a caller-supplied value" (:message (first fs)))))
   (is (clean? :metabase-security-lint/open-redirect
               "(ns t (:require [ring.util.response :as response]))
                (defn f [] (response/redirect \"/dashboard\"))")))
@@ -964,9 +976,9 @@
 (deftest throwable-map-outside-sanitizer-test
   (let [id  :metabase-security-lint/throwable-map-outside-sanitizer
         at  (fn [relpath src]
-              (let [dir (doto (java.io.File. (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+              (let [dir (doto (java.io.File. ^String (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
                           .mkdirs .deleteOnExit)
-                    f   (java.io.File. dir relpath)]
+                    f   (java.io.File. dir ^String relpath)]
                 (.mkdirs (.getParentFile f))
                 (.deleteOnExit f)
                 (spit f src)
@@ -1171,9 +1183,17 @@
   (let [id :metabase-security-lint/middleware-acts-on-request-value
         mw (fn [body] (str "(ns metabase.server.middleware.x (:require [metabase.settings.core :as setting] [metabase.premium-features.core :as premium-features] [metabase.util.log :as log]))
 (defn wrap-x [handler] (fn [request respond raise] " body " (handler request respond raise)))"))
-        sev (fn [src] (map :severity (check-cg id src)))]
+        sev (fn [src] (map :severity (check-cg id src)))
+        msg (fn [src] (:message (first (check-cg id src))))]
     (is (= [:error] (sev (mw "(setting/set! :site-url (get-in request [:headers \"host\"]))")))
         "a header written into site-url repoints every link the instance sends")
+    (testing "each message says what the middleware did with the request"
+      (is (str/starts-with? (msg (mw "(setting/set! :site-url (get-in request [:headers \"host\"]))"))
+                            "set! acts on a request value from middleware, before the caller is known: "))
+      (is (str/starts-with? (msg (mw "(log/error \"bad origin\" (get-in request [:headers \"origin\"]))"))
+                            "Request value written to the log at error from middleware: "))
+      (is (= "clear-cache! runs from middleware, unthrottled, whenever a request asks"
+             (msg (mw "(when (get-in request [:cookies \"c\" :value]) (premium-features/clear-cache!))")))))
     (is (= [:error] (sev (mw "(slurp (:body request))")))
         "a body read here is read for every route, before auth")
     (is (= [:warning] (sev (mw "(when (get-in request [:cookies \"c\" :value]) (premium-features/clear-cache!))")))
@@ -1194,6 +1214,11 @@
 (defn f [query] " body ")"))]
     (is (flags? id (d "(when api/*current-user-id* (check-audit-db query) (throw (ex-info \"no\" {})))"))
         "a guard inside (when *current-user-id* ...) is skipped by a nil user -- a public card, a job")
+    (let [fs (check id (d "(when api/*current-user-id* (check-audit-db query) (throw (ex-info \"no\" {})))"))]
+      (is (= [:warning] (map :severity fs)) "a warning: the rule reads the check's name")
+      (is (= "Check runs only when a user is bound; public and background contexts skip it: check-audit-db, throw"
+             (:message (first fs)))
+          "naming the check, and the throw the gate skips"))
     (is (flags? id (d "(when (some? api/*current-user-id*) (check-audit-db query))"))
         "a check by name, and the test spelled with some?")
     (is (flags? id (d "(if api/*current-user-id* (throw (ex-info \"no\" {})) query)"))
@@ -1333,6 +1358,11 @@
         sev (fn [src] (map :severity (check-cg id src)))]
     (is (= [:error] (sev (ep "(t2/update! :model/Action id (select-keys body [:name :public_uuid]))")))
         "public_uuid kept by an allow-list that includes it: whoever can call the endpoint publishes the object")
+    (is (= "Privileged column written from the request: :public_uuid"
+           (:message (first (check-cg id (ep "(t2/update! :model/Action id (select-keys body [:name :public_uuid]))"))))))
+    (is (= "Privileged columns written from the request: :creator_id, :public_uuid"
+           (:message (first (check-cg id (ep "(t2/update! :model/Action id {:creator_id (:creator_id body) :public_uuid (:public_uuid body)})")))))
+        "every privileged column the write takes from the body")
     (is (= [:error] (sev (ep "(t2/update! :model/Action id {:name (:name body) :creator_id (:creator_id body)})")))
         "creator_id from the body")
     (is (= [:error] (sev (ep "(t2/update! :model/Card id {:embedding_params (:embedding_params body)})")))
