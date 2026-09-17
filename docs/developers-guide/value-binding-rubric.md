@@ -361,8 +361,12 @@ before assuming a column is plain.
 A marker outside a value slot is refused too, as `::marker-outside-value-slot`. The lift rewrites a
 marker wherever it sits, so without this check one in a `:select`, `:from`, `:order-by` or
 `:group-by` clause compiled to the identifier `PARAM` and silently discarded the value — the one
-place the mechanism used to be silent. A subquery is checked on its own terms, so `t2/exists?`,
-which wraps the query in `:select [[[:exists {...}]]]`, still works.
+place the mechanism used to be silent.
+
+The check recurses, so a marker in a SUBQUERY's identifier clause is refused too. And it descends
+past a keyword-headed operator form, because a comparison inside one of those clauses is a genuine
+value slot — a computed projection (`{:select [[[:= :engine [:auto/param "h2"]] :is_match]]}`) or a
+`CASE` sort key is fine, as is a join's ON condition.
 
 `nil` needs no special handling. A marked nil passes through as a literal so HoneySQL emits
 `IS NULL`, where a bound parameter would emit `= ?` and match nothing.
@@ -435,6 +439,21 @@ Partial conversions with recorded questions are a good outcome.
 
 ## Out of scope
 
-Values only. An attacker-controlled operator or column name still injects; the marker does nothing
-about it. Writes are not parameterized here either — see rule 1, and
-[GHY-4615](https://linear.app/metabase/issue/GHY-4615) for the write path. Both are step 2's half.
+**Values only.** A HoneySQL map has value slots and structure slots — an operator, a column name, a
+table name, an arm count. `[:auto/param x]` protects a value slot and cannot protect a structure
+slot: in a structure position HoneySQL formats `[:param :k]` as an identifier, dropping the value
+and putting a generated key in the SQL text. The guard now refuses that outright
+(`::marker-outside-value-slot`), so do not reach for a marker to fix a structure slot — it will
+throw, and the fix is a `.sql` file.
+
+The structure-slot backlog is measured: **90 read-side structure slots are confirmed
+request-reachable** across 33 `db.clj` files, of which 73 convert mechanically (flag-gating or a
+`CASE` over a bound value) and 17 need runtime composition. See the
+[structure-slot provenance audit](https://linear.app/metabase/document/structure-slot-provenance-audit-what-actually-needs-converting-to-sql-f7c824f3fac1).
+That work is GHY-4482 onward and does not overlap this sweep.
+
+Do not treat a converted namespace as safe from injection. This sweep closes the value half; a
+namespace can be fully value-bound and still have a request-reachable structure slot.
+
+**Writes** are not parameterized here either — see rule 1, and
+[GHY-4615](https://linear.app/metabase/issue/GHY-4615) for the write path.

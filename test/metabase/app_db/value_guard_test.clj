@@ -90,6 +90,21 @@
       {:where [:auto/param :locale "de"]}
       ;; a join alternates table and ON condition; the condition is a value slot
       {:select [:*] :from [:t] :join [:u [:= :t.a [:auto/param 1]]]}))
+  (testing "a marker in an expression inside an identifier clause is a real value slot"
+    ;; A computed projection or a CASE sort key puts a genuine comparison in a clause that
+    ;; otherwise holds identifiers. Refusing these would break a namespace that grows one later.
+    (are [query] (nil? (#'value-guard/check-marker-placement! query))
+      {:select [[[:= :engine [:auto/param "h2"]] :is_match]] :from [:t]}
+      {:select [:*] :from [:t] :order-by [[[:case [:= :a [:auto/param 1]] 1 :else 2] :asc]]}
+      {:select [:*] :from [:t] :group-by [[:coalesce :a [:auto/param 1]]]}))
+  (testing "a subquery's OWN identifier clauses are scanned too"
+    ;; The scan recurses, so a marker one level down in a nested :select is still refused -- it
+    ;; would otherwise compile to the identifier `param` inside the subquery and drop the value.
+    (is (= ::value-guard/marker-outside-value-slot
+           (try (#'value-guard/check-marker-placement!
+                 {:select [[[:exists {:select [[:auto/param "name"]] :from [:t]}] :e]]})
+                nil
+                (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))))
   (testing "a subquery has its own clauses, so an outer identifier slot holding one is not scanned"
     ;; `t2/exists?` wraps the whole query in `:select [[[:exists {...}]]]`, and that inner map's
     ;; `:where` is a real value slot. Scanning the outer `:select` wholesale would reject it.
