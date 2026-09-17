@@ -799,15 +799,18 @@ describe(
           cy.wait("@getModel");
         });
 
+        cy.intercept("POST", "/api/action/*/execute").as(
+          "executeImpersonatedAction",
+        );
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
         H.modal().within(() => {
           cy.findByLabelText(TEST_PARAMETER.name).type("1");
           cy.button(SAMPLE_QUERY_ACTION.name).click();
 
+          cy.wait("@executeImpersonatedAction", { responseTimeout: 60_000 });
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
-            { timeout: 30000 },
           );
         });
 
