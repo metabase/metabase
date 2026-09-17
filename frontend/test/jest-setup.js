@@ -12,6 +12,12 @@ import "cross-fetch/polyfill";
 import "jest-canvas-mock";
 import "__support__/mocks";
 
+import { EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION } from "build-configs/embedding-sdk/constants/react-version";
+
+// SDK bundle code reads this, including the iframe embed and MCP app in the main app.
+process.env.EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION =
+  EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION;
+
 // NOTE: this is needed because sometimes asynchronous code tries to access
 // window.location or similar jsdom properties after the tests have ended and
 // jsdom has been torn down

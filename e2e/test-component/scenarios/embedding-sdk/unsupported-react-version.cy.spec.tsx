@@ -1,13 +1,13 @@
 import { StaticQuestion } from "@metabase/embedding-sdk-react";
 import * as React from "react";
 
+import { EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION } from "build-configs/embedding-sdk/constants/react-version";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
-const UNSUPPORTED_REACT_ERROR =
-  "The Metabase modular embedding SDK requires React 18 or newer, but this application is running React 17. Upgrade your application to React 18 to display embedded content.";
+const UNSUPPORTED_REACT_ERROR = `The Metabase modular embedding SDK requires React ${EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION} or newer, but this application is running React 17. Upgrade your application to React ${EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION} to display embedded content.`;
 
 describe("scenarios > embedding-sdk > unsupported-react-version", () => {
   beforeEach(() => {

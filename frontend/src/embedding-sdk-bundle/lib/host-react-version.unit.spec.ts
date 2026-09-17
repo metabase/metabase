@@ -33,6 +33,14 @@ describe("getHostReactMajorVersion", () => {
   });
 });
 
+describe("MINIMUM_SUPPORTED_REACT_MAJOR_VERSION", () => {
+  it("matches the major of the React that Metabase is built with", () => {
+    expect(MINIMUM_SUPPORTED_REACT_MAJOR_VERSION).toBe(
+      parseInt(jest.requireActual("react").version, 10),
+    );
+  });
+});
+
 describe("isHostReactVersionSupported", () => {
   it("supports React 18 while the minimum is 18", () => {
     mockReactVersion = "18.3.1";
