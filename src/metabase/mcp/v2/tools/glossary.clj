@@ -8,16 +8,9 @@
    would beg that same question and cost more: clients truncate long descriptions, and a list cut
    short reads as the whole glossary, which is worse than no list at all.
 
-   The two halves of the description are split by job. The static half says what the tool is and how
-   to call it; the suffix carries the instruction and the one reason for it. Keeping the reason in
-   one place matters more than it looks: the server's `initialize` instructions make the same
-   argument, and a model that meets it three times in one session learns nothing the second and
-   third time.
-
    Metabot solves the same problem by pasting the whole glossary into every message it sends, which
    it can do because it owns the prompt. Here the description is the only channel that reaches the
-   model unprompted, and a client may cache it for the life of its session, so a term added
-   mid-session reaches that client's count when it next connects."
+   model unprompted, so it carries the instruction to call and nothing else."
   (:require
    [metabase.glossary.db :as glossary.db]
    [metabase.mcp.v2.common :as common]
@@ -59,22 +52,6 @@
                                   (count shown) (count terms) (common/list-message shown))
       :else          (message/msg ["Terms defined here: %s."] (common/list-message shown)))))
 
-(defn- instruction-message
-  "The instruction closing the tool description, for an instance defining `term-count` terms. The count keeps the
-   instruction honest: on an empty instance a call would find nothing, and saying so is what stops it."
-  [term-count]
-  (if (zero? term-count)
-    (message/msg ["This instance's glossary is empty, so there is nothing here to look up."])
-    (message/msg [(str "This instance's glossary defines %d %s. Call glossary() before answering any question "
-                       "about this instance's data: these definitions override your own reading of a word, and "
-                       "the question itself will not tell you which words are defined here.")]
-                 term-count (message/raw (u/format-plural term-count "term")))))
-
-(defn- terms-suffix
-  "The instruction to call the tool, appended to its description on every `tools/list`."
-  []
-  (str "\n\n" (message/render (instruction-message (count (entries))))))
-
 (defn- entry-message
   [{:keys [term definition]}]
   (message/msg ["%s: %s"] term definition))
@@ -88,25 +65,24 @@
     (filter #(= wanted (u/lower-case-en (:term %))) entries)))
 
 (registry/deftool glossary
-  "Look up a business term as this Metabase instance defines it, as its own data analysts wrote it down. glossary() lists terms with their definitions, paged with limit (default 50, max 500) and offset; glossary(term) returns just that term, matched without regard to case — which can be more than one entry, since terms differing only in case are stored separately."
-  {:name               "glossary"
-   :scope              metabot.scope/agent-content-read
-   :description-suffix terms-suffix
-   :annotations        {:readOnlyHint true :idempotentHint true}
-   :args               [:map {:closed true}
-                        [:term {:optional true}
-                         [:maybe [:string {:min 1
-                                           :description (str "The term to define, matched case-insensitively. "
-                                                             "Omit to list terms with their definitions.")}]]]
-                        [:limit {:optional true}
-                         [:maybe [:int {:min 1 :max max-limit
-                                        :description (str "Maximum entries to return (default 50, max 500). "
-                                                          "Ignored with \"term\", which is a lookup, not a "
-                                                          "page.")}]]]
-                        [:offset {:optional true}
-                         [:maybe [:int {:min 0
-                                        :description (str "Number of entries to skip, for paging (default 0). "
-                                                          "Ignored with \"term\".")}]]]]}
+  "Look up a business term as this Metabase instance defines it, as its own data analysts wrote it down. glossary() lists terms with their definitions, paged with limit (default 50, max 500) and offset; glossary(term) returns just that term, matched without regard to case — which can be more than one entry, since terms differing only in case are stored separately. Call glossary() before answering any question about this instance's data: these definitions override your own reading of a word, and the question itself will not tell you which words are defined here."
+  {:name        "glossary"
+   :scope       metabot.scope/agent-content-read
+   :annotations {:readOnlyHint true :idempotentHint true}
+   :args        [:map {:closed true}
+                 [:term {:optional true}
+                  [:maybe [:string {:min 1
+                                    :description (str "The term to define, matched case-insensitively. "
+                                                      "Omit to list terms with their definitions.")}]]]
+                 [:limit {:optional true}
+                  [:maybe [:int {:min 1 :max max-limit
+                                 :description (str "Maximum entries to return (default 50, max 500). "
+                                                   "Ignored with \"term\", which is a lookup, not a "
+                                                   "page.")}]]]
+                 [:offset {:optional true}
+                  [:maybe [:int {:min 0
+                                 :description (str "Number of entries to skip, for paging (default 0). "
+                                                   "Ignored with \"term\".")}]]]]}
   [{:keys [term limit offset]} _context]
   (let [entries (entries)]
     (if term

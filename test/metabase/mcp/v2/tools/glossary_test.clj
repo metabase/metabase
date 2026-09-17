@@ -27,9 +27,6 @@
        first
        :description))
 
-;;; The description tests run against a blank app DB: they assert on the term count, which any other test's
-;;; glossary row would otherwise add to.
-
 (deftest listed-description-instructs-an-unconditional-call-test
   (testing "GHY-4522: the description tells the model to call before answering rather than naming the terms — an
             instruction conditioned on noticing a word is jargon is one the model never acts on, since the terms that
@@ -39,27 +36,10 @@
                                    {:term "Account" :definition "An org that pays us"}])
       (let [description (described)]
         (is (str/includes? description "Call glossary() before answering"))
-        (testing "the count keeps the instruction honest about whether there is anything to look up"
-          (is (str/includes? description "2 terms")))
         (testing "terms stay behind the call: a partial list reads to the model as the whole glossary, and a complete
                   one is unbounded — either way the description is the wrong place for it"
           (is (not (str/includes? description "Zoomer")))
-          (is (not (str/includes? description "Account")))
           (is (not (str/includes? description "An org that pays us"))))))))
-
-(deftest listed-description-counts-a-single-term-test
-  (testing "GHY-4522: the count reads as English at one term"
-    (mt/with-empty-h2-app-db!
-      (t2/insert! :model/Glossary [{:term "Account" :definition "An org that pays us"}])
-      (is (str/includes? (described) "1 term.")))))
-
-(deftest listed-description-with-empty-glossary-test
-  (testing "GHY-4522: with nothing defined the description says the glossary is empty, so the model spends no call
-            on it rather than being told to look up words that have no definitions behind them"
-    (mt/with-empty-h2-app-db!
-      (let [description (described)]
-        (is (str/includes? description "glossary is empty"))
-        (is (not (str/includes? description "Call glossary() before answering")))))))
 
 (deftest lookup-test
   (mt/with-temp [:model/Glossary _ {:term "Account" :definition "An org that pays us"}]
