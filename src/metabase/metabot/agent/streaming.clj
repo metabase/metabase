@@ -17,7 +17,7 @@
 (def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
-(def shown-entity-type "AI-SDK data type for inline existing entities." "shown_entity")
+(def entity-preview-type "AI-SDK data type for inline existing entities." "entity_preview")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
@@ -130,11 +130,11 @@
    :data-type generated-entity-type
    :data entity})
 
-(defn shown-entity-part
+(defn entity-preview-part
   "Create a persisted inline reference to an existing entity with `:type`, `:id`, `:title`, and `:url`."
   [entity]
   {:type :data
-   :data-type shown-entity-type
+   :data-type entity-preview-type
    :data entity})
 
 (defn entity-saved-part

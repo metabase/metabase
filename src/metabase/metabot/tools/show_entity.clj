@@ -40,4 +40,4 @@
         url    (links/resolve-metabase-uri (str "metabase://" entity-type "/" entity-id) {} {})]
     {:output (str "Showing " title " inline. The user can open the existing item from its title. "
                   "Do not claim to have created it or describe data values you have not inspected.")
-     :data-parts [(streaming/shown-entity-part {:type entity-type :id entity-id :title title :url url})]}))
+     :data-parts [(streaming/entity-preview-part {:type entity-type :id entity-id :title title :url url})]}))

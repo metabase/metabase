@@ -128,7 +128,7 @@ const finishedDetail = () =>
   });
 
 describe("MetabotConversationPage", () => {
-  it("restores shown entities inline when opening a fullscreen conversation", async () => {
+  it("restores entity previews inline when opening a fullscreen conversation", async () => {
     mockConversationDetail(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
@@ -141,7 +141,7 @@ describe("MetabotConversationPage", () => {
                 role: "agent",
                 type: "data_part",
                 part: {
-                  type: "data-shown_entity",
+                  type: "data-entity_preview",
                   data: {
                     type: "dashboard",
                     id: 42,
