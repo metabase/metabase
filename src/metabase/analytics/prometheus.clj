@@ -744,6 +744,9 @@
                        {:description (str "Number of Slack bot responses that reached the user as nothing at all, "
                                           "because the plain-text fallback failed too.")})
    ;; metabot / LLM agent metrics
+   ;; The `:provider` label is one of the provider types in `metabase.llm.provider`, or `unknown` if a caller omits it.
+   ;; Resolution rejects anything else, so the set only grows when a type joins the registry.
+   ;; It is a projection of `:model`, which already carries the connection key, so it adds no series.
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
                         :labels [:model :source :provider]})
