@@ -28,7 +28,7 @@
           (is (true? (deps.db/dependency-exists? "card" from-id "table" to-id))))))))
 
 (deftest entity-type-accepts-a-keyword-test
-  (testing "a query map bypasses Toucan's keyword transform, so the entity type is normalised to its name"
+  (testing "the kv-arg call runs Toucan's keyword transform, so a keyword and its name select alike"
     (mt/with-temp [:model/Dependency _ {:from_entity_type :card :from_entity_id from-id
                                         :to_entity_type :table :to_entity_id to-id}]
       (testing "the keyword and the string select the same rows"
