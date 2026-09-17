@@ -1106,6 +1106,7 @@
            events
            lib.schema
            models
+           remote-sync
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
@@ -4103,6 +4104,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
