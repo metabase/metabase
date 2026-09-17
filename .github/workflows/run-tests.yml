@@ -19,76 +19,15 @@ permissions:
 
 jobs:
   should-run:
-    name: Decide which jobs should run
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 10
-    outputs:
-      plan: ${{ steps.decide.outputs.plan }}
-      frontend-plan-id: ${{ steps.compute.outputs.artifact-id }}
-      stats: ${{ steps.compute.outputs.stats }}
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/prepare-frontend
-      - uses: ./.github/actions/prepare-backend
-
-      - name: Create test plan
-        id: decide
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [ -n "$PR" ]; then
-            bun .github/scripts/test-plan.ts create --pr "$PR" --repo "$GITHUB_REPOSITORY"
-          else
-            bun .github/scripts/test-plan.ts create \
-              --event "$GITHUB_EVENT_NAME" \
-              --ref "$GITHUB_REF_NAME" \
-              --base "$BEFORE"
-          fi
-
-      # TODO: update create-test-plan to use file-paths script instead of separate dorny/paths-filter call
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          # comma separated list of files
-          list-files: csv
-          filters: .github/file-paths.yaml
-
-      # TODO: see if this can be a single script so we can run in parallel instead of as a composite action
-      - name: Create test plan
-        id: compute
-        uses: ./.github/actions/create-test-plan
-        with:
-          changed-files: ${{ steps.changes.outputs.all_changed_files }}
-          fe-changed-files: ${{ steps.changes.outputs.frontend_sources_files }}
-          be-changed-files: ${{ steps.changes.outputs.backend_sources_files }}
-          unit-infra-touched: ${{ steps.changes.outputs.frontend_unit_infra }}
-          loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
-          e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
-          shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
-
-      # TODO: this needs to be wired into test plan somehow, also need to avoid ~1 minute of build time it adds.
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ee
-
-      # TODO: update static-viz check/build to use file-paths script instead of separate dorny/paths-filter call
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: static_viz
-        with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
+    uses: ./.github/workflows/should-run.yml
+    secrets: inherit
 
   upload-affected-tests-stats:
     needs: [should-run]
     # don't let forks pollute the data
-    if: ${{ github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    if: >-
+      github.event.pull_request.head.repo.full_name == 'metabase/metabase' &&
+      fromJSON(needs.should-run.outputs.plan).workflows.run-tests.jobs.upload-affected-tests-stats.run
     continue-on-error: true
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
@@ -157,6 +96,7 @@ jobs:
     secrets: inherit
     with:
       plan: ${{ needs.should-run.outputs.plan }}
+      static-viz: ${{ needs.should-run.outputs.static_viz == 'true' }}
 
   semantic-search-tests:
     needs: [should-run]

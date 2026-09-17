@@ -41,6 +41,8 @@ overrides:
 workflows:
   run-tests:
     jobs:
+      should-run:
+        calls: should-run
       upload-affected-tests-stats:
         run:
           # always & only run on PRs
@@ -89,6 +91,24 @@ workflows:
             - frontend_sources
           event:
             - pull_request
+
+  should-run:
+    jobs:
+      frontend-test-plan:
+        run:
+          # always & only run on PRs
+          ignore-overrides:
+            - protected-branch-*
+          event:
+            - pull_request
+      static-viz:
+        skip:
+          ignore-overrides:
+            - protected-branch-*
+          event:
+            - pull_request
+          paths:
+            - backend_all
 
   uberjar:
     run:

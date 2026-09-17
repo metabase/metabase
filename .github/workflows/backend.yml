@@ -10,6 +10,14 @@ on:
           and everything runs.
         type: string
         default: '{}'
+      static-viz:
+        description: >-
+          Whether the static-viz bundle's sources changed. The backend renders
+          static viz through GraalJS, so a change there has to run the backend
+          jobs even on a diff the plan sees no backend files in — the static-viz
+          sources are front-end paths and match no `backend_all` glob.
+        type: boolean
+        default: false
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -148,7 +156,9 @@ jobs:
             process.exit(1);
 
   be-linter-clj-kondo:
-    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-linter-clj-kondo.run }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-clj-kondo.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -160,7 +170,9 @@ jobs:
         run: ./bin/mage kondo
 
   be-linter-eastwood:
-    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood.run }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
@@ -174,7 +186,7 @@ jobs:
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
     if: >-
-      ${{ inputs.plan == '{}' ||
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
       fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood-test.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
@@ -189,7 +201,7 @@ jobs:
   be-linter-eastwood-test-changed:
     # Lint only the test namespaces touched by the diff.
     if: >-
-      ${{ inputs.plan == '{}' ||
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
       fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood-test-changed.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -255,7 +267,9 @@ jobs:
         run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
-    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-tests.run }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-tests.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -452,7 +466,9 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-check.run }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-check.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -468,7 +484,9 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.be-cljfmt.run }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-cljfmt.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
