@@ -821,7 +821,9 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.selectDataset("Blue Question");
+        H.selectDataset("Blue Question", {
+          searchAlias: "searchBlueQuestion",
+        });
         cy.button("Save").click();
       });
 
