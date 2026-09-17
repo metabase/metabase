@@ -84,6 +84,33 @@ describe("TimelineCard", () => {
     expect(screen.getByText("RC")).toBeInTheDocument();
   });
 
+  it("should list events newest first when their UTC offsets differ", () => {
+    const props = getProps({
+      timeline: createMockTimeline({
+        events: [
+          createMockTimelineEvent({
+            id: 1,
+            name: "Earlier release",
+            timestamp: "2024-01-01T10:00:00+05:00",
+          }),
+          createMockTimelineEvent({
+            id: 2,
+            name: "Later release",
+            timestamp: "2024-01-01T08:00:00-02:00",
+          }),
+        ],
+      }),
+      isDefault: true,
+    });
+
+    render(<TimelineCard {...props} />);
+
+    const eventCards = screen.getAllByLabelText("Timeline event card");
+    expect(eventCards).toHaveLength(2);
+    expect(eventCards[0]).toHaveTextContent("Later release");
+    expect(eventCards[1]).toHaveTextContent("Earlier release");
+  });
+
   it("should toggle visibility of the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({
