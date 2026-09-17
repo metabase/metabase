@@ -589,7 +589,7 @@
         (testing "a caller without transform permissions on the inferred database is refused, exactly as with
                   an explicit `database` — inference fills in the key, it does not skip the create check"
           (mt/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
+            (is (= "\"You don't have permissions to do that.\""
                    (tool-error (create! :rasta {:lib/type "mbql/query"
                                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                                             :source-table (mt/id :venues)}]}))))))
