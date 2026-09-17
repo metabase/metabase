@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -53,7 +54,7 @@
                      :measure-id id
                      :measure-name name}))))
 
-(mu/defn- fetch-measures :- [:map-of pos-int? :map]
+(mu/defn- fetch-measures :- [:map-of pos-int? ::lib.schema.metadata/measure]
   "Fetch measure metadata for the given IDs."
   [query       :- ::lib.schema/query
    measure-ids :- [:set {:min 1} pos-int?]]
@@ -77,7 +78,7 @@
 (mu/defn- expand-measures-in-stage :- ::lib.schema/stage
   "Replace :measure clauses in a stage with their actual aggregation expressions."
   [stage        :- ::lib.schema/stage
-   id->measure  :- [:map-of pos-int? :map]]
+   id->measure  :- [:map-of pos-int? ::lib.schema.metadata/measure]]
   (match/replace stage
     [:measure opts (id :guard pos-int?)]
     (b/cond

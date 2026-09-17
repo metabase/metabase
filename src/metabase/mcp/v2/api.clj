@@ -8,8 +8,11 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
+   [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
@@ -39,10 +42,28 @@
 
 ;;; ------------------------------------------------ Method dispatch -----------------------------------------------
 
-(defn- handle-tools-list [id _params session-id token-scopes]
+(defn- handle-tools-list [id _params session-id]
   (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (transport/jsonrpc-response id {:tools (registry/list-tools token-scopes
-                                                                {:supports-mcp-ui? supports-mcp-ui?})})))
+    (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})})))
+
+(defn- step-up-scopes
+  "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
+   `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
+  [surface-scopes token-scopes required]
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
+  ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
+  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  (let [held (set (filter string? token-scopes))]
+    (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
+      (not (some #{required} surface-scopes)) (conj required))))
+
+(defn- with-step-up-challenge
+  "`error-response` marked with [[transport/insufficient-scope]] for the scope an `insufficient-scope` detail names,
+   asking for [[step-up-scopes]] over `token-scopes`."
+  [error-response token-scopes {:keys [required-scope description]}]
+  (transport/insufficient-scope error-response
+                                (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
+                                description))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
@@ -59,54 +80,69 @@
                             {:client-info      client-info
                              :supports-mcp-ui? supports-mcp-ui?
                              :request-context  request-context})]
-    (if-let [{:keys [code message]} error]
-      (transport/jsonrpc-error id code message)
+    (if-let [{:keys [code message insufficient-scope]} error]
+      (cond-> (transport/jsonrpc-error id code message)
+        insufficient-scope (with-step-up-challenge token-scopes insufficient-scope))
       (transport/jsonrpc-response id result))))
 
-(defn- handle-resources-list [id _params token-scopes]
-  (transport/jsonrpc-response id (v2.resources/list-resources token-scopes)))
+(defn- handle-resources-list [id _params]
+  (transport/jsonrpc-response id (v2.resources/list-resources)))
+
+(defn- resource-scope-denial
+  "The JSON-RPC error refusing request `id` a read of `uri` because `token-scopes` lack `required-scope`, marked with
+   [[transport/insufficient-scope]]."
+  [id uri token-scopes required-scope]
+  (with-step-up-challenge
+    (transport/jsonrpc-error
+     id
+     common/error-code-invalid-request
+     (registry/insufficient-scope-message (message/msg ["read resource: %s"] uri) required-scope token-scopes))
+    token-scopes
+    (registry/insufficient-scope-detail uri required-scope)))
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
-      (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
+      (transport/jsonrpc-error id -32602 (message/msg ["Missing required parameter: uri"]))
       ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
       ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
       ;; templates that embed it (the test fallback), and the production template discards it.
       ;; Deliberately a delay: the URI has not been resolved yet, so minting eagerly would hand a live
       ;; 5-minute authenticator to data resources that ignore it, and burn one on reads that turn out
-      ;; to be unknown or scope-denied. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it,
-      ;; and only after the scope gate has passed.
+      ;; to be unknown or scope-denied. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it, and
+      ;; [[metabase.mcp.v2.resources/read-resource]] withholds it from a token lacking the shell's scope.
       (let [user-id       api/*current-user-id*
             ui-credential (when user-id
                             (delay (mcp.session/issue-ui-credential session-id user-id token-scopes)))
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
-          ;; Collapsed so a scope-denied read can't be used to probe which resources exist.
-          (:not-found :scope-denied) (transport/jsonrpc-error id -32602 "Resource not found")
-          :ok                        (transport/jsonrpc-response id {:contents (:contents result)})
-          (transport/jsonrpc-error id -32603 (str "Unexpected resource status: " (:status result))))))))
+          :not-found    (transport/jsonrpc-error id -32602 (message/msg ["Resource not found"]))
+          :scope-denied (resource-scope-denial id uri token-scopes (:required-scope result))
+          :ok           (transport/jsonrpc-response id {:contents (:contents result)})
+          (transport/jsonrpc-error id -32603 (message/msg ["Unexpected resource status: %s"] (:status result))))))))
 
 (defn- handle-ping [id _params]
   (transport/jsonrpc-response id {}))
 
 (defn- dispatch-method
   "Route a single JSON-RPC `method` to its handler, returning a response map or nil
-  (notifications). `resources/*` serves the MCP Apps iframe shells only; documentation and skill
-  resources land with the skills work. `prompts/*` is still unimplemented and falls through to
+  (notifications). `resources/*` serves the resources in [[metabase.mcp.v2.resources]]: the MCP Apps
+  iframe shells and the fields catalog. `resources/read` of a data resource needs its scope and answers
+  a 403 challenge otherwise; a UI shell is served to any token, carrying a credential only when the
+  token holds the shell's scope. `prompts/*` is still unimplemented and falls through to
   method-not-found. A handler that throws is turned into a JSON-RPC internal error by the
   transport."
   [id method params session-id token-scopes request-context]
   (case method
     "notifications/initialized" nil
-    "tools/list"                (handle-tools-list id params session-id token-scopes)
+    "tools/list"                (handle-tools-list id params session-id)
     "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
-    "resources/list"            (handle-resources-list id params token-scopes)
+    "resources/list"            (handle-resources-list id params)
     "resources/read"            (handle-resources-read id params session-id token-scopes)
     "ping"                      (handle-ping id params)
     (if id
-      (transport/jsonrpc-error id -32601 (str "Method not found: " method))
+      (transport/jsonrpc-error id -32601 (message/msg ["Method not found: %s"] method))
       nil)))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
@@ -116,32 +152,40 @@
   mcp.validation/+mcp-enabled)
 
 (def ^:private server-instructions
-  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call, so it points
-  at the `learn` skills once and, in one sentence, settles the routing choice a model makes before reading any
-  tool description closely: structured queries are the default, raw SQL the escape hatch."
+  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
+  at the `learn` skills once, settles the routing choices a model makes before reading any tool description closely
+  (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts when listed), and
+  explains the scope-denial failures that clients rewrite before the model sees them."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, a multi-stage or joined "
        "query, visualization settings — read the matching skill unless it is already in context.\n"
        "Answer questions from data with execute_query (structured MBQL) by default; execute_sql is the escape hatch "
        "for what MBQL cannot express or an explicit request for SQL.\n"
-       "Teaching errors embed the relevant contract, so a failed call always names its fix."))
+       "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
+       "query_handle from execute_query or execute_sql when you have one); don't draw the chart yourself.\n"
+       "Teaching errors embed the relevant contract, so a failed call always names its fix.\n"
+       ;; Must match what the consent screen shows: one Authorize button, no per-permission choices. Given less, the
+       ;; model invents a step asking the user to tick the permission.
+       "A permission failure may reach you rewritten by your client. If a Metabase tool call or resource read fails "
+       "with a message about re-authorization, an expired token, \"insufficient scope\", \"Unauthorized\", or just "
+       "\"tool execution failed\", the usual cause is a missing permission on this connection, not an expired login. "
+       "Tell the user which tool or resource failed and which permission it needs: for a tool, use the name in the "
+       "\"Requires the ... permission\" sentence that starts the tool's description, which is how Metabase's consent "
+       "screen names it. To grant it, the user reconnects Metabase in their client and clicks Authorize on the "
+       "consent screen, e.g. in Claude Code: /mcp, select this server, Re-authenticate; in Codex: "
+       "`codex mcp login <server>`, then start a new session. The consent screen has no per-permission choices, so "
+       "don't ask the user to check or select anything. Don't retry the tool until the user says they have "
+       "reconnected."))
 
 (def ^:private default-ask-scopes
-  "What an uninstructed client is asked to request for this surface: everything the surface accepts.
-
-  A client asks once, at connect time, using this challenge — and `list-tools` filters by the scopes the resulting
-  token carries. Asking for less therefore does not degrade gracefully: it hides the write tools from `tools/list`
-  entirely, so the user sees a read-only Metabase with nothing telling them the rest exists or how to ask for it.
-  There is no in-product path from \"connected\" to \"can write\".
-
-  So the consent screen names the full surface and the user decides there, rather than the server deciding for them
-  by omission. This is not a widening of what the surface accepts — that set is unchanged, and `mb:full` and the
-  rest of the agent-API scopes remain refused (GHY-4226).
-
-  Read from [[metabase.mcp.paths/v2-surface-scopes]] rather than listed here, because the OAuth server has to
-  grant exactly this set: when the two drifted, a client that followed the challenge asked for scopes
-  `validate-scope` rejected and the connect failed with \"Invalid scope\"."
-  mcp.paths/v2-surface-scopes)
+  "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
+  inside the OAuth server's default grant ceiling."
+  ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
+  ;; `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
+  ;; `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
+  ;; surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered
+  ;; "Invalid scope" for a client that follows the challenge.
+  mcp.paths/v2-baseline-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

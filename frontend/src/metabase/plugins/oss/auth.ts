@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 
 import {
   PluginPlaceholder,
@@ -18,11 +18,6 @@ export type AuthSettingsPageProps = {
   tab?: AuthSettingsPageTab;
 };
 
-export type SettingsJWTFormProps = {
-  /** `null` renders the form with no heading -- the embedding hub supplies its own. */
-  title?: ReactNode;
-};
-
 const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
@@ -38,8 +33,12 @@ export const PLUGIN_AUTH_PROVIDERS = definePluginSlot(
   getDefaultPluginAuthProviders,
 );
 
+export type LdapUserProvisioningProps = {
+  disabled?: boolean;
+};
+
 const getDefaultPluginLdapFormFields = () => ({
-  LdapUserProvisioning: PluginPlaceholder,
+  LdapUserProvisioning: PluginPlaceholder<LdapUserProvisioningProps>,
   LdapGroupMembershipFilter: PluginPlaceholder,
 });
 

@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.staleness.core :as staleness]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -77,7 +78,7 @@
   "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."
-  [union-queries :- [:sequential :map]
+  [union-queries :- [:sequential ::staleness/query]
    sort-column :- [:enum :name :last_used_at]
    sort-direction :- [:enum :asc :desc]
    limit :- [:maybe :int]
@@ -93,6 +94,6 @@
 
 (mu/defn stale-content-count
   "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
-  [union-queries :- [:sequential :map]]
+  [union-queries :- [:sequential ::staleness/query]]
   (:count (t2/query-one {:select [[:%count.* :count]]
                          :from   (stale-content-union union-queries)})))

@@ -175,7 +175,7 @@
 
 (mu/defn create-notification! :- ::models.notification/FullyHydratedNotification
   "Create a notification with permission checks, hydration, email notifications, and event publishing."
-  [notification-info :- ::models.notification/FullyHydratedNotification]
+  [notification-info :- ::CreateNotificationParams]
   (api/create-check :model/Notification notification-info)
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!

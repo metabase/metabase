@@ -12,10 +12,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -36,7 +38,7 @@
 
 (mu/defn- dependent-mbql-cards :- [:sequential ::lib.schema.id/card]
   "Returns a list of all card dependencies in the transitive children of `[start-type start-id]` using `graph`."
-  [graph
+  [graph      :- ::graph/graph
    start-type :- ::deps.dependency-types/dependency-types
    start-id   :- ::deps.dependency-types/entity-id]
   (let [start [start-type start-id]]
@@ -46,7 +48,18 @@
                             (not= node start))
                    node-id))))))
 
-(mr/def ::column-metadata-edits [:map-of :keyword :any])
+(mr/def ::column-metadata-edits
+  "Edits `card-metadata-edits` reports: the keys are QP-results-cased (plain keys snake_case, `:lib/...` keys stay
+  kebab-case), since values are looked up straight out of `qp-results-cased-col` maps."
+  [:map {:closed true}
+   [:id                       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:description              {:optional true} [:maybe :string]]
+   [:display_name             {:optional true} [:maybe :string]]
+   [:semantic_type            {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:fk_target_field_id       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:settings                 {:optional true} [:maybe ::lib.schema.common/visualization-settings]]
+   [:visibility_type          {:optional true} [:maybe ::lib.schema.metadata/column.visibility-type]]
+   [:lib/source-display-name  {:optional true} [:maybe :string]]])
 (mr/def ::card-metadata-edits [:map-of :string ::column-metadata-edits])
 (mr/def ::card-list-metadata-edits [:map-of ::lib.schema.id/card ::card-metadata-edits])
 
@@ -119,7 +132,7 @@
   [original-mp     :- ::lib.schema.metadata/metadata-providerable
    start-type      :- ::deps.dependency-types/dependency-types
    start-id        :- ::deps.dependency-types/entity-id
-   previous-object :- :any
+   previous-object :- ::queries.schema/card
    metadata-type   :- :keyword]
   ;; Notes on metadata providers:
   ;;

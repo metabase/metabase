@@ -23,6 +23,14 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::opts
+  [:map {:closed true}
+   [:group-id  {:optional true} [:maybe pos-int?]]
+   [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
+   [:db-id     {:optional true} [:maybe pos-int?]]
+   [:audit?    {:optional true} [:maybe :boolean]]
+   [:perm-type {:optional true} [:maybe ::permissions.schema/data-permission-type]]])
+
 ;; See also: [[permissions.schema/data-permissions]]
 (def ^:private ->api-keys
   {:perms/view-data             :view-data
@@ -70,11 +78,14 @@
   (when-not (ellide? type value)
     [(->api-keys type) ((->api-vals type) value)]))
 
+(mr/def ::schema->table-id->perm-value
+  [:map-of :string [:map-of nat-int? ::permissions.schema/data-permission-value]])
+
 (mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
    Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
   [type :- ::permissions.schema/data-permission-type
-   schema->table-id->api-val]
+   schema->table-id->api-val :- ::schema->table-id->perm-value]
   (let [transform-val         (fn [perm-val] ((->api-vals type) perm-val))
         coalesce-or-transform (fn [table-id->perm]
                                 (let [unique-perms (set (vals table-id->perm))]
@@ -259,7 +270,7 @@
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
-  [& {:as opts}]
+  [& {:as opts} :- [:maybe ::opts]]
   (reduce-into-graph (data-perms-reducible opts) collapse-uniform-view-data))
 
 (defn- maybe-hide-tenant-groups [groups]
@@ -277,13 +288,7 @@
   ([]
    (api-graph {}))
 
-  ([& {:as opts}
-    :- [:map
-        [:group-id  {:optional true} [:maybe pos-int?]]
-        [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
-        [:db-id     {:optional true} [:maybe pos-int?]]
-        [:audit?    {:optional true} [:maybe :boolean]]
-        [:perm-type {:optional true} [:maybe ::permissions.schema/data-permission-type]]]]
+  ([& {:as opts} :- [:maybe ::opts]]
    {:revision (perms/latest-permissions-revision-id)
     :groups (-> (reduce-into-graph (data-perms-reducible opts)
                                    (fn [perm-map]
@@ -602,7 +607,9 @@
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly.
    Uses bulk operations to minimize database round-trips."
-  ([graph]
+  ([graph :- [:map-of
+              ::permissions-rest.schema/group-id
+              [:maybe [:map-of ::permissions-rest.schema/id ::permissions-rest.schema/db-perms]]]]
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))
          all-tables          (when (seq affected-db-ids)
@@ -620,7 +627,12 @@
        (perms/batch-insert-permissions! to-insert))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
-  ([ks :- [:vector :any] new-value]
+  ([ks        :- [:vector [:or :int :string :keyword]]
+    new-value :- [:or
+                  ::permissions.schema/data-permission-value
+                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]
+                  [:ref ::permissions-rest.schema/schemas]
+                  [:ref ::permissions-rest.schema/db-perms]]]
    (-> (api-graph)
        :groups
        (assoc-in ks new-value)
@@ -647,7 +659,12 @@
          (reconcile-data-app-permissions! (into #{} (mapcat keys) (vals group-updates)))))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
-  ([ks :- [:vector :any] new-value]
+  ([ks        :- [:vector [:or :int :string :keyword]]
+    new-value :- [:or
+                  ::permissions.schema/data-permission-value
+                  [:map-of ::permissions.schema/data-permission-type ::permissions.schema/data-permission-value]
+                  [:ref ::permissions-rest.schema/schemas]
+                  [:ref ::permissions-rest.schema/db-perms]]]
    (-> (api-graph)
        (assoc-in (cons :groups ks) new-value)
        update-data-perms-graph!)))

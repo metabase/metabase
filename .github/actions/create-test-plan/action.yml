@@ -99,6 +99,10 @@ runs:
           echo
           echo "Changed: $(jq '.stats.fe_files_changed' "$plan") FE / $(jq '.stats.be_files_changed' "$plan") BE file(s) · $(jq '.stats.fe_modules_affected_usage' "$plan") FE module(s) affected"
           echo
+          if [ "$(jq '.stats.loki_preview_touched' "$plan")" = "true" ]; then
+            echo "**Loki: full run**: a file the Storybook preview imports changed."
+            echo
+          fi
           e2e_run=$(jq '.stats.e2e_specs_to_run_usage' "$plan")
           e2e_all=$(jq '.stats.e2e_specs_all' "$plan")
           if [ "$e2e_run" -eq "$e2e_all" ]; then

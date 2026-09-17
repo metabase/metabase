@@ -6,6 +6,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
 import micromatch from "micromatch";
 
+import { MAIN_APP_STORY_GLOBS } from "../../.storybook/story-files.cjs";
 import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
 import { type FileDependency, parseCruiseModules } from "./affected-modules";
@@ -22,11 +23,9 @@ const UNIT_GLOBS = [
   "!**/*.leak.unit.spec.{js,jsx,ts,tsx}", // run only by jest.memory.conf.js
 ];
 
-const STORY_ROOTS = ["frontend", "enterprise/frontend"];
-const STORY_GLOBS = [
-  "frontend/**/*.stories.{js,jsx,ts,tsx}",
-  "enterprise/frontend/**/*.stories.{js,jsx,ts,tsx}",
-];
+const FRONTEND_ROOTS = ["frontend", "enterprise/frontend"];
+
+const LOKI_PREVIEW_FILE = ".storybook/preview.tsx";
 
 // `git ls-files -- frontend enterprise/frontend` already prints just over a
 // megabyte of paths, and node's default maxBuffer is exactly 1 MiB: past that
@@ -52,7 +51,7 @@ const csvToList = (csv: string | undefined) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-// Runs dependency-cruiser over the frontend sources and parses its edges.
+// Runs dependency-cruiser over the frontend sources and the Storybook preview and parses its edges.
 // Null falls back to the rules graph, so a failed cruise never breaks the plan.
 function loadFileDependencies(): FileDependency[] | null {
   const output = "dependency-graph.json";
@@ -65,6 +64,7 @@ function loadFileDependencies(): FileDependency[] | null {
         "depcruise",
         "frontend/src",
         "enterprise/frontend/src",
+        LOKI_PREVIEW_FILE,
         "--config",
         ".dependency-cruiser.cjs",
         "--output-type",
@@ -120,9 +120,10 @@ const testPlan = createTestPlan({
   loadFileDependencies,
   testFilesBySuite: {
     unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),
-    loki: listFiles(STORY_ROOTS, STORY_GLOBS),
+    loki: listFiles(FRONTEND_ROOTS, MAIN_APP_STORY_GLOBS),
     e2e: listSpecFiles(),
   },
+  lokiPreviewFile: LOKI_PREVIEW_FILE,
   e2eSpecFiles: readE2eSpecFiles(),
   unitInfraTouched: process.env.UNIT_INFRA_TOUCHED === "true",
   lokiInfraTouched: process.env.LOKI_INFRA_TOUCHED === "true",
@@ -130,7 +131,7 @@ const testPlan = createTestPlan({
   sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
   feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
   beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,
-  feFilesTotal: listFiles(["frontend", "enterprise/frontend"], ["**"]).length,
+  feFilesTotal: listFiles(FRONTEND_ROOTS, ["**"]).length,
   beFilesTotal: listFiles(["src", "enterprise/backend"], ["**"]).length,
 });
 

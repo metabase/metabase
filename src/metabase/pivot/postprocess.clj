@@ -30,14 +30,19 @@
 ;; The 'pivot-grouping' is the giveaway. If you ever see that column, you know you're dealing with raw pivot rows.
 
 (mr/def ::pivot-spec
-  [:map
+  [:map {:closed true}
    [:column-titles  [:sequential [:string]]]
    [:pivot-rows     [:sequential [:int {:min 0}]]]
    [:pivot-cols     [:sequential [:int {:min 0}]]]
    [:pivot-grouping-key {:optional true}
     [:int {:min 0}]]
+   [:pivot-grouping {:optional true}
+    [:int {:min 0}]]
    [:pivot-measures {:optional true}
-    [:sequential [:int {:min 0}]]]])
+    [:sequential [:int {:min 0}]]]
+   [:show-row-totals    {:optional true} [:maybe :boolean]]
+   [:show-column-totals {:optional true} [:maybe :boolean]]
+   [:column-sort-order  {:optional true} [:maybe [:map-of [:maybe nat-int?] [:maybe :keyword]]]]])
 
 (def non-pivot-row-group
   "Pivot query results have a 'pivot-grouping' column. Rows whose pivot-grouping value is 0 are expected results.

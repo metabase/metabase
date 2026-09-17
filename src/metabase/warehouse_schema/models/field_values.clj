@@ -43,6 +43,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

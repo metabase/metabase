@@ -14,11 +14,7 @@ type CheckListApiStep =
   | "create-tenants"
   | "setup-data-segregation-strategy"
   | "data-permissions-and-enable-tenants"
-  | "sso-auth-manual-tested"
-  // Embedding hub-only steps. The response is a superset of any one host's step list --
-  // the home-page stepper maps its own steps and never looks these up.
-  | "create-custom-theme"
-  | "configure-ai";
+  | "sso-auth-manual-tested";
 export type SetupGuideChecklist = Record<CheckListApiStep, boolean>;
 
 export type SetupGuideChecklistResponse = {
@@ -32,7 +28,7 @@ export const setupGuideApi = Api.injectEndpoints({
       query: () => ({
         method: "GET",
         // The path keeps the old name: renaming it would break the endpoint.
-        url: "/api/embedding-hub/checklist",
+        url: "/api/ee/embedding-hub/checklist",
       }),
       providesTags: [listTag("setup-guide-checklist")],
     }),

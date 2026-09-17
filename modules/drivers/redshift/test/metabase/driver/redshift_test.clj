@@ -699,7 +699,7 @@
                      :base-type {:native "VARBYTE"}
                      :effective-type :type/Text}
                     {:field-name "multi_driver"
-                     :base-type {:natives {:redshift "SUPER" :postgres "JSONB"}}
+                     :base-type {:natives {"redshift" "SUPER" "postgres" "JSONB"}}
                      :effective-type :type/JSON}]}]}
           rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 456 dbdef)
           fields (:field-rows (first rows))]
