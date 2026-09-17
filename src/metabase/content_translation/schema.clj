@@ -1,6 +1,7 @@
 (ns metabase.content-translation.schema
   "Malli schemas for the content-translation module."
   (:require
+   [malli.util :as mut]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -17,3 +18,8 @@
    [:locale {:optional true} [:maybe :string]]
    [:msgid  {:optional true} [:maybe :string]]
    [:msgstr {:optional true} [:maybe :string]]])
+
+(mr/def ::content-translation.column
+  "A column of `content_translation`, for the `:columns` option of the queries in
+  [[metabase.content-translation.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::content-translation.update))))

@@ -166,11 +166,13 @@
   [path]
   ;; Resolve the parent path back to a local entity, then find this row by its (entity_type, local-id) key.
   (when-let [{:keys [entity_type entity_local_id]} (parent-path->entity (pop path))]
-    (osi.db/ai-context (entity-retrieval/normalize-entity-type entity_type) entity_local_id)))
+    (osi.db/select-one-osi-ai-context {:entity_type (entity-retrieval/normalize-entity-type entity_type)
+                                       :entity_local_id entity_local_id})))
 
 (defmethod serdes/load-update! "OsiAiContext"
   [_model-name ingested local]
   ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
-  (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (update ingested :ai_context ->ai-context))
-  (osi.db/ai-context (:entity_type local) (:entity_local_id local)))
+  (osi.db/update-osi-ai-contexts! {:entity_type (:entity_type local) :entity_local_id (:entity_local_id local)}
+                                  (update ingested :ai_context ->ai-context))
+  (osi.db/select-one-osi-ai-context {:entity_type (:entity_type local) :entity_local_id (:entity_local_id local)}))

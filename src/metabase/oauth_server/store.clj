@@ -107,7 +107,7 @@
 (defrecord DbClientStore []
   proto/ClientStore
   (get-client [_ client-id]
-    (-> (oauth-server.db/oauth-client client-id)
+    (-> (oauth-server.db/select-one-oauth-client {:client_id client-id})
         db-row->client-config))
 
   (register-client [_ client-config]
@@ -131,13 +131,13 @@
       config))
 
   (update-client [_ client-id updated-config]
-    (let [existing (oauth-server.db/oauth-client client-id)]
+    (let [existing (oauth-server.db/select-one-oauth-client {:client_id client-id})]
       (when existing
         (let [existing-config (db-row->client-config existing)
               merged          (-> (merge existing-config updated-config)
                                   (assoc :client-id client-id))
               row             (client-config->db-row merged)]
-          (oauth-server.db/update-oauth-client! (:id existing) row)
+          (oauth-server.db/update-oauth-clients! {:id (:id existing)} row)
           merged)))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
@@ -145,7 +145,7 @@
 (defrecord DbAuthorizationCodeStore []
   proto/AuthorizationCodeStore
   (save-authorization-code [_ code user-id client-id redirect-uri scope nonce expiry code-challenge code-challenge-method resource]
-    (oauth-server.db/insert-authorization-code!
+    (oauth-server.db/insert-oauth-authorization-code!
      (cond-> {:code         code
               :user_id      (parse-user-id-or-throw user-id)
               :client_id    client-id
@@ -159,17 +159,17 @@
     true)
 
   (get-authorization-code [_ code]
-    (-> (oauth-server.db/authorization-code code)
+    (-> (oauth-server.db/select-one-oauth-authorization-code {:code code})
         db-row->auth-code))
 
   (delete-authorization-code [_ code]
-    (oauth-server.db/delete-authorization-code! code)
+    (oauth-server.db/delete-oauth-authorization-codes! {:code code})
     true)
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
-      (when-let [row (oauth-server.db/lock-authorization-code code)]
-        (oauth-server.db/delete-authorization-code! code)
+      (when-let [row (oauth-server.db/lock-oauth-authorization-code code)]
+        (oauth-server.db/delete-oauth-authorization-codes! {:code code})
         (db-row->auth-code row)))))
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
@@ -177,7 +177,7 @@
 (defrecord DbTokenStore []
   proto/TokenStore
   (save-access-token [_ token user-id client-id scope expiry resource]
-    (oauth-server.db/insert-access-token!
+    (oauth-server.db/insert-oauth-access-token!
      (cond-> {:token     token
               :user_id   (parse-user-id user-id)
               :client_id client-id
@@ -187,11 +187,11 @@
     true)
 
   (get-access-token [_ token]
-    (-> (oauth-server.db/unrevoked-access-token token)
+    (-> (oauth-server.db/select-one-oauth-access-token {:token token :revoked_at_set false})
         db-row->access-token))
 
   (save-refresh-token [_ token user-id client-id scope expiry resource]
-    (oauth-server.db/insert-refresh-token!
+    (oauth-server.db/insert-oauth-refresh-token!
      (cond-> {:token     token
               :user_id   (parse-user-id user-id)
               :client_id client-id
@@ -201,12 +201,12 @@
     true)
 
   (get-refresh-token [_ token]
-    (-> (oauth-server.db/unrevoked-refresh-token token)
+    (-> (oauth-server.db/select-one-oauth-refresh-token {:token token :revoked_at_set false})
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (oauth-server.db/revoke-access-token! token)
-    (oauth-server.db/revoke-refresh-token! token)
+    (oauth-server.db/update-oauth-access-tokens! {:token token} {:revoked_at :%now})
+    (oauth-server.db/update-oauth-refresh-tokens! {:token token} {:revoked_at :%now})
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------

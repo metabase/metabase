@@ -114,8 +114,9 @@
                            :provider_id (:email user)
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
-        (if-let [auth-identity-id (auth-identity.db/auth-identity-id user-id "emailed-secret-password-reset")]
-          (auth-identity.db/update-auth-identity! auth-identity-id auth-identity)
+        (if-let [auth-identity-id (auth-identity.db/select-one-auth-identity-pk
+                                   {:user_id user-id :provider "emailed-secret-password-reset"})]
+          (auth-identity.db/update-auth-identities! {:id auth-identity-id} auth-identity)
           (auth-identity.db/insert-auth-identity! auth-identity))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
@@ -146,7 +147,7 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (auth-identity.db/auth-identity user-id (name provider))]
+        (if-let [auth-identity (auth-identity.db/select-one-auth-identity {:user_id user-id :provider (name provider)})]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid

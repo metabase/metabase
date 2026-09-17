@@ -7,7 +7,7 @@
   (itself `:audit-app`-gated). Every write is best-effort: a failure is logged and swallowed so
   logging never fails the Agent API request and adds negligible latency."
   (:require
-   [metabase-enterprise.agent-api.db :as agent-api.db]
+   [metabase.agent-api.db :as agent-api.db]
    [metabase.agent-api.usage :as agent-api.usage]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
@@ -38,7 +38,7 @@
           pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                        :ip-address ip-address})
                            [:ip_address])]
-      (agent-api.db/insert-call-log!
+      (agent-api.db/insert-agent-api-call-log!
        (merge {:user_id       user-id
                :tenant_id     tenant-id
                :client_name   (agent-api.usage/detect-client user-agent)

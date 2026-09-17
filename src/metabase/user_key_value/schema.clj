@@ -1,6 +1,7 @@
 (ns metabase.user-key-value.schema
   "Malli schemas for the user-key-value module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -22,3 +23,7 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:expires_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::user-key-value.column
+  "A column of `user_key_value`, for the `:columns` option of the queries in [[metabase.user-key-value.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::user-key-value.update))))

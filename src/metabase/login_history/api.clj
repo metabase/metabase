@@ -13,7 +13,9 @@
   ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
   ;; API endpoint?
   (login-history/human-friendly-infos
-   (login-history.db/login-history-for-user (u/the-id user-or-id))))
+   (login-history.db/select-login-histories {:user_id   (u/the-id user-or-id)
+                                             :columns   [:timestamp :session_id :device_description :ip_address]
+                                             :order-by  [[:timestamp :desc]]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -1,6 +1,7 @@
 (ns metabase.login-history.schema
   "Malli schemas for the login-history module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -22,3 +23,7 @@
    [:device_id          {:optional true} [:maybe :string]]
    [:device_description {:optional true} [:maybe :string]]
    [:ip_address         {:optional true} [:maybe :string]]])
+
+(mr/def ::login-history.column
+  "A column of `login_history`, for the `:columns` option of the queries in [[metabase.login-history.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::login-history.update))))

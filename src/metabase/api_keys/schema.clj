@@ -134,6 +134,10 @@
 (mr/def ::api-key.update
   (update-schema ::api-key))
 
+(mr/def ::api-key.column
+  "A column of `api_key`, for the `:columns` option of the queries in [[metabase.api-keys.db]]."
+  (mut/keys (mr/schema ::api-key.update)))
+
 (mr/def ::api-key.create
   "What an insert of a ApiKey accepts: every column of `:api_key` except `id`, all optional, plus `:metabase.api-keys.core/unhashed-key` consumed by the model's hooks."
   [:map {:closed true}

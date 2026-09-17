@@ -37,7 +37,7 @@
 
 (defmethod serdes/load-find-local "Glossary"
   [path]
-  (glossary.db/glossary-entry-by-term (:id (first path))))
+  (glossary.db/select-one-glossary {:term (:id (first path))}))
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
   {:copy      [:term :definition]

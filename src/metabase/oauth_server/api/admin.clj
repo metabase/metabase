@@ -35,8 +35,8 @@
   (api/check-superuser)
   (let [limit  (or (request/limit) 50)
         offset (or (request/offset) 0)
-        total  (:count (first (oauth-server.db/client-event-count client-id event-type)))
-        rows   (oauth-server.db/client-events client-id event-type limit offset)]
+        total  (:count (first (oauth-server.db/count-oauth-client-events client-id event-type)))
+        rows   (oauth-server.db/select-oauth-client-events client-id event-type limit offset)]
     {:total  (or total 0)
      :limit  limit
      :offset offset

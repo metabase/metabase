@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.schema
   "Malli schemas for the oauth-server module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -24,6 +25,10 @@
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::oauth-access-token.column
+  "A column of `oauth_access_token`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::oauth-access-token.update))))
+
 (mr/def ::oauth-authorization-code
   "A OAuthAuthorizationCode as selected from the app DB: every column of `:oauth_authorization_code`."
   [:merge
@@ -45,6 +50,10 @@
    [:code_challenge_method {:optional true} [:maybe [:or :keyword :string]]]
    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::oauth-authorization-code.column
+  "A column of `oauth_authorization_code`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::oauth-authorization-code.update))))
 
 (mr/def ::oauth-client
   "A OAuthClient as selected from the app DB: every column of `:oauth_client`."
@@ -73,6 +82,10 @@
    [:registration_access_token_hash {:optional true} [:maybe :string]]
    [:created_at                     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                     {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::oauth-client.column
+  "A column of `oauth_client`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::oauth-client.update))))
 
 (mr/def ::oauth-client-event
   "A OAuthClientEvent as selected from the app DB: every column of `:oauth_client_event`."
@@ -107,3 +120,7 @@
    [:expiry     {:optional true} [:maybe :int]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::oauth-refresh-token.column
+  "A column of `oauth_refresh_token`, for the `:columns` option of the queries in [[metabase.oauth-server.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::oauth-refresh-token.update))))

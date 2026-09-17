@@ -1,12 +1,15 @@
 (ns metabase.agent-api.db
-  "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
+  "Application database queries for the agent API module, including `:model/AgentApiCallLog`. Every function here
+  is a direct Toucan 2 call with no additional logic, so the rest of the module only touches `toucan2.core` for
+  hydration."
   (:require
    [malli.util :as mut]
+   [metabase.agent-api.schema :as agent-api.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn collection-breadcrumb-columns
@@ -77,3 +80,15 @@
   "The active User with `email`, compared case-insensitively, or nil."
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
+
+;;; ----------------------------------------------- AgentApiCallLog -----------------------------------------------
+
+(mu/defn insert-agent-api-call-log! :- ::agent-api.schema/agent-api-call-log
+  "Insert the AgentApiCallLog `row` and return the inserted instance."
+  [row :- ::agent-api.schema/agent-api-call-log.update]
+  (t2/insert-returning-instance! :model/AgentApiCallLog row))
+
+(mu/defn delete-agent-api-call-logs-created-before! :- :int
+  "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/AgentApiCallLog {:where [:< :created_at cutoff]}))

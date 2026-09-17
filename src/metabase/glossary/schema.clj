@@ -1,6 +1,7 @@
 (ns metabase.glossary.schema
   "Malli schemas for the glossary module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -20,3 +21,7 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::glossary.column
+  "A column of `glossary`, for the `:columns` option of the queries in [[metabase.glossary.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::glossary.update))))

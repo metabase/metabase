@@ -1,6 +1,7 @@
 (ns metabase.comments.schema
   "Malli schemas for the comments module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -94,6 +95,10 @@
    [:content_html      {:optional true} [:maybe :string]]
    [:context           {:optional true} [:maybe ::comment.context]]])
 
+(mr/def ::comment.column
+  "A column of `comment`, for the `:columns` option of the queries in [[metabase.comments.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::comment.update))))
+
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
   [:merge
@@ -108,3 +113,7 @@
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:emoji      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::comment-reaction.column
+  "A column of `comment_reaction`, for the `:columns` option of the queries in [[metabase.comments.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::comment-reaction.update))))

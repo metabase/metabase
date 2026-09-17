@@ -1,5 +1,6 @@
 (ns metabase.session.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -35,3 +36,7 @@
    [:saml_session_index  {:optional true} [:maybe :string]]
    [:saml_name_id        {:optional true} [:maybe :string]]
    [:saml_name_id_format {:optional true} [:maybe :string]]])
+
+(mr/def ::session.column
+  "A column of `core_session`, for the `:columns` option of the queries in [[metabase.session.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::session.update))))

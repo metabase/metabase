@@ -1,46 +1,97 @@
 (ns metabase.osi.db
-  "Application database queries for the OSI module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for `:model/OsiAiContext`. Every function here is a direct Toucan 2 call with no
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use
+  `toucan2.core`).
+
+  The queries below follow [[::opts]]; queries that do not fit it live in the osi-only section at the bottom of
+  this namespace."
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.osi.schema :as osi.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ai-context
-  "The OsiAiContext of the entity with `entity-type` and `entity-local-id`, or nil."
-  [entity-type      :- :string
-   entity-local-id  :- ms/PositiveInt]
-  (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+(mr/def ::filters
+  "Which OsiAiContexts a query applies to. Keys mirror the columns of `osi_ai_context`, which has no surrogate
+  `:id`; a row's key is the pair of `:entity_type` and `:entity_local_id`."
+  [:map {:closed true}
+   [:entity_type     {:optional true} :string]
+   [:entity_local_id {:optional true} ms/PositiveInt]])
 
-(mu/defn ai-contexts-page
-  "Up to `limit` OsiAiContexts from `offset`, ordered by entity type and local id."
-  [limit  :- ms/PositiveInt
-   offset :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select :model/OsiAiContext
-             {:order-by [[:entity_type :asc] [:entity_local_id :asc]]
-              :limit    limit
-              :offset   offset}))
+(mr/def ::opts
+  "The filters above plus the columns to select, the order to return them in, and a page of rows."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::osi.schema/osi-ai-context.column]]
+    [:order-by {:optional true} [:sequential ::osi.schema/osi-ai-context.column]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn ai-context-count
-  "The number of OsiAiContexts."
-  []
-  (t2/count :model/OsiAiContext))
+(defn- filter-clause
+  [column value]
+  (if (set? value)
+    [:in column value]
+    [:= column value]))
 
-(mu/defn delete-ai-context!
-  "Delete the OsiAiContext of the entity with `entity-type` and `entity-local-id`, returning the number deleted."
-  [entity-type      :- :string
-   entity-local-id  :- ms/PositiveInt]
-  (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+(defn- where-clause
+  [filters]
+  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
 
-(mu/defn update-ai-context!
-  "Apply `changes` to the OsiAiContext of the entity with `entity-type` and `entity-local-id`, returning the
-  number updated."
-  [entity-type      :- :string
-   entity-local-id  :- ms/PositiveInt
-   changes          :- ::osi.schema/osi-ai-context.update]
-  (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id changes))
+(defn- order-by-clause
+  [columns]
+  (mapv (fn [column] [column :asc]) columns))
+
+(defn- ->model
+  [columns]
+  (if (seq columns)
+    (into [:model/OsiAiContext] columns)
+    :model/OsiAiContext))
+
+(defn- ->honeysql
+  [{:keys [order-by limit offset] :as opts}]
+  (cond-> {:where (where-clause (dissoc opts :columns :order-by :limit :offset))}
+    (seq order-by) (assoc :order-by (order-by-clause order-by))
+    limit          (assoc :limit limit)
+    offset         (assoc :offset offset)))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-osi-ai-contexts :- [:sequential ::osi.schema/osi-ai-context]
+  "The OsiAiContexts matching `opts`."
+  ([]
+   (select-osi-ai-contexts nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (t2/select (->model columns) (->honeysql opts))))
+
+(mu/defn select-one-osi-ai-context :- [:maybe ::osi.schema/osi-ai-context]
+  "The first OsiAiContext matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::opts]]
+  (t2/select-one (->model columns) (->honeysql opts)))
+
+(mu/defn count-osi-ai-contexts :- :int
+  "The number of OsiAiContexts matching `opts`."
+  ([]
+   (count-osi-ai-contexts nil))
+  ([opts :- [:maybe ::opts]]
+   (t2/count :model/OsiAiContext (->honeysql opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn update-osi-ai-contexts! :- :int
+  "Apply `changes` to every OsiAiContext matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::osi.schema/osi-ai-context.update]
+  (t2/update! :model/OsiAiContext (->honeysql opts) changes))
+
+(mu/defn delete-osi-ai-contexts! :- :int
+  "Delete every OsiAiContext matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (t2/delete! :model/OsiAiContext (->honeysql opts)))
+
+;;; --------------------------------- Queries used only by the osi module ---------------------------------
 
 (mu/defn upsert-ai-context!
   "Insert or replace the `:ai_context` of the OsiAiContext of the entity with `entity-type` and `entity-local-id`

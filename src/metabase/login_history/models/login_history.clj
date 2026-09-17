@@ -66,14 +66,14 @@
 (defn first-login-ever?
   "Return true if this is the first login ever for the given user-id."
   [{user-id :user_id}]
-  (some-> (login-history.db/login-history-ids-for-user user-id 2)
+  (some-> (login-history.db/select-login-history-pks {:user_id user-id :limit 2})
           count
           (= 1)))
 
 (defn first-login-on-this-device?
   "Return true if this is the first login for the given user-id on the device"
   [{user-id :user_id, device-id :device_id}]
-  (some-> (login-history.db/login-history-ids-for-user-device user-id device-id 2)
+  (some-> (login-history.db/select-login-history-pks {:user_id user-id :device_id device-id :limit 2})
           count
           (= 1)))
 

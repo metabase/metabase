@@ -268,7 +268,7 @@
           (when (and (or (nil? expiry)
                          (t/after? (t/instant expiry) (t/instant)))
                      ;; Fail closed if the issuing client is gone (SEC-863).
-                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
+                     (oauth-server.db/oauth-client-exists? {:client_id (:client-id token-data)}))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id

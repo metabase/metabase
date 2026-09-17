@@ -1,6 +1,7 @@
 (ns metabase.timeline.schema
   "Malli schemas for the timeline module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -26,6 +27,10 @@
    [:default       {:optional true} [:maybe :boolean]]
    [:entity_id     {:optional true} [:maybe :string]]])
 
+(mr/def ::timeline.column
+  "A column of `timeline`, for the `:columns` option of the queries in [[metabase.timeline.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::timeline.update))))
+
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
   [:merge
@@ -47,3 +52,7 @@
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::timeline-event.column
+  "A column of `timeline_event`, for the `:columns` option of the queries in [[metabase.timeline.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::timeline-event.update))))

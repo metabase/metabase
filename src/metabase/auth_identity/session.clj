@@ -33,7 +33,8 @@
              [:saml-name-id-format {:optional true} [:maybe :string]]]]
    (let [user-id (u/the-id user)
          provider-str (name provider)
-         auth-identity (auth-identity.db/auth-identity-expiry user-id provider-str)
+         auth-identity (auth-identity.db/select-one-auth-identity {:user_id user-id :provider provider-str
+                                                                   :columns [:id :expires_at]})
          auth-identity-id (:id auth-identity)
          session-key (str (random-uuid))
          session-id (string/random-string 12)
@@ -42,7 +43,8 @@
                                                               (:expires_at auth-identity) mfa-auth-identity-id opts)
                      (when provider-str
                        (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
-                       (auth-identity.db/touch-auth-identity! auth-identity-id))
+                       (when auth-identity-id
+                         (auth-identity.db/update-auth-identities! {:id auth-identity-id} {:last_used_at :%now})))
                      (when device-info
                        (login-history/record-login-history! session-id user device-info))))]
      (assoc session

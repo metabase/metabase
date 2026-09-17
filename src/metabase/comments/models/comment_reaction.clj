@@ -24,17 +24,17 @@
 (defn reaction-exists?
   "Check if a reaction already exists for a given comment, user, and emoji"
   [comment-id user-id emoji]
-  (comments.db/reaction-exists? comment-id user-id emoji))
+  (comments.db/comment-reaction-exists? {:comment_id comment-id :user_id user-id :emoji emoji}))
 
 (defn create-reaction!
   "Create a new reaction"
   [comment-id user-id emoji]
-  (comments.db/insert-reaction! comment-id user-id emoji))
+  (comments.db/insert-comment-reaction! {:comment_id comment-id :user_id user-id :emoji emoji}))
 
 (defn delete-reaction!
   "Delete a specific reaction"
   [comment-id user-id emoji]
-  (comments.db/delete-reaction! comment-id user-id emoji))
+  (comments.db/delete-comment-reactions! {:comment_id comment-id :user_id user-id :emoji emoji}))
 
 (defn toggle-reaction
   "Toggle a reaction - add it if it doesn't exist, remove it if it does"
@@ -59,7 +59,7 @@
    Returns a map of `{comment-id {emoji [user1 user2...]}}."
   [current-user-id comment-ids]
   (when (seq comment-ids)
-    (let [reactions   (-> (comments.db/reactions-for-comments comment-ids)
+    (let [reactions   (-> (comments.db/select-comment-reactions {:comment_id (set comment-ids) :order-by [:comment_id :created_at :emoji]})
                           (t2/hydrate :user))
 
           ;; first user comes first if they reacted

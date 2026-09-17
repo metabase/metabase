@@ -11,6 +11,6 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [user-id] :as _event}]
-  (oauth-server.db/revoke-access-tokens-for-user! user-id)
-  (oauth-server.db/revoke-refresh-tokens-for-user! user-id)
-  (oauth-server.db/delete-authorization-codes-for-user! user-id))
+  (oauth-server.db/update-oauth-access-tokens! {:user_id user-id :revoked_at_set false} {:revoked_at :%now})
+  (oauth-server.db/update-oauth-refresh-tokens! {:user_id user-id :revoked_at_set false} {:revoked_at :%now})
+  (oauth-server.db/delete-oauth-authorization-codes! {:user_id user-id}))

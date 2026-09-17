@@ -434,7 +434,7 @@
       (auth-identity.db/update-user! user-id
                                      (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                                        reactivating? (assoc :is_superuser false))))
-    (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
+    (when-not (auth-identity.db/auth-identity-exists? {:user_id user-id :provider (name provider)})
       (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
                                                 (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
     (auth-identity.db/user-login-status user-id)))

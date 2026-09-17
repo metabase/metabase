@@ -1,6 +1,7 @@
 (ns metabase.auth-identity.schema
   "Malli schemas for the auth-identity module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -75,3 +76,7 @@
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::auth-identity.column
+  "A column of `auth_identity`, for the `:columns` option of the queries in [[metabase.auth-identity.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::auth-identity.update))))

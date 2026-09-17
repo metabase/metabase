@@ -132,7 +132,7 @@
     {:disabled true
      :comments []}
     (let [_entity  (api/read-check (type->model target_type) target_id)
-          comments (-> (comments.db/comments-for-target target_type target_id)
+          comments (-> (comments.db/select-comments {:target_type target_type :target_id target_id :order-by [:created_at]})
                        (t2/hydrate :creator :reactions))]
       ;; The read check above only proves the viewer may see the *target*, and for an exploration
       ;; that is collection permissions alone; the gate is what adjudicates the warehouse values a
@@ -157,11 +157,11 @@
                        "document"    (comments.db/document target_id)
                        "exploration" (comments.db/exploration target_id))
               parent (when parent_comment_id
-                       (comments.db/comment-by-id parent_comment_id))}}]]
+                       (comments.db/select-one-comment {:id parent_comment_id}))}}]]
   (let [mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
         ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
-        recipients (-> (comments.db/comment-recipient-emails (:creator_id entity) parent_comment_id mentions)
+        recipients (-> (comments.db/select-comment-recipient-emails (:creator_id entity) parent_comment_id mentions)
                        (disj (:email @api/*current-user*)))
         payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
@@ -181,7 +181,7 @@
 (defn notify-comment-id!
   "Send a notification using only comment id"
   [comment-id]
-  (notify-comment! (-> (comments.db/comment-by-id comment-id)
+  (notify-comment! (-> (comments.db/select-one-comment {:id comment-id})
                        (t2/hydrate :creator :reactions))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -198,7 +198,7 @@
                                                "Cannot comment on archived entities")))
         ;; If this is a reply, validate the parent comment exists and belongs to same entity
         parent     (when parent_comment_id
-                     (-> (api/check-404 (comments.db/comment-by-id parent_comment_id))
+                     (-> (api/check-404 (comments.db/select-one-comment {:id parent_comment_id}))
                          (u/prog1 (api/check-400 (and (= (:target_type <>) target_type)
                                                       (= (:target_id <>) target_id)
                                                       (= (:child_target_id <>) child_target_id))
@@ -229,7 +229,7 @@
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
-  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))
+  (let [comment (api/check-404 (comments.db/select-one-comment {:id comment-id}))
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
@@ -246,8 +246,8 @@
     (when-let [updates (-> {:content content :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
-      (comments.db/update-comment! comment-id updates))
-    (let [updated-comment (-> (comments.db/comment-by-id comment-id)
+      (comments.db/update-comments! {:id comment-id} updates))
+    (let [updated-comment (-> (comments.db/select-one-comment {:id comment-id})
                               (t2/hydrate :creator :reactions))]
       (events/publish-event! :event/comment-update
                              {:object updated-comment
@@ -262,7 +262,7 @@
   "Soft delete a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params]
-  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
+  (let [comment (api/check-404 (comments.db/select-one-comment {:id comment-id}))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
@@ -271,7 +271,7 @@
                        (:is_superuser @api/*current-user*)))
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
     ;; Soft delete the comment
-    (comments.db/soft-delete-comment! comment-id)
+    (comments.db/soft-delete-comments! {:id comment-id})
     (events/publish-event! :event/comment-delete
                            {:object comment
                             :user-id api/*current-user-id*})
@@ -287,7 +287,7 @@
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [emoji]} :- [:map {:closed true} [:emoji [:string {:min 1 :max 10}]]]]
-  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
+  (let [comment (api/check-404 (comments.db/select-one-comment {:id comment-id}))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
@@ -304,9 +304,9 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-  {:data   (->> (comments.db/mentionable-users (request/limit) (request/offset))
+  {:data   (->> (comments.db/select-mentionable-users (request/limit) (request/offset))
                 (mapv #(assoc % :model "user")))
-   :total  (:count (comments.db/mentionable-user-count))
+   :total  (:count (comments.db/count-mentionable-users))
    :limit  (request/limit)
    :offset (request/offset)})
 

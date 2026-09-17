@@ -46,7 +46,7 @@
 (defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (timeline.db/timeline (:timeline_id event)))]
+                     (timeline.db/select-one-timeline {:id (:timeline_id event)}))]
     (mi/perms-objects-set timeline read-or-write)))
 
 (defmethod mi/can-create? :model/TimelineEvent
@@ -59,7 +59,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(timeline.db/timelines-by-id (map :timeline_id events))
+   #(timeline.db/select-timeline-pk->instance {:id (set (map :timeline_id events))})
    :timeline_id))
 
 (defn- fetch-events
@@ -67,7 +67,7 @@
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
   regardless of archive state."
   [timeline-ids {:events/keys [all? start end]}]
-  (t2/hydrate (timeline.db/timeline-events-for-timelines timeline-ids all? start end) :creator))
+  (t2/hydrate (timeline.db/select-timeline-events-for-timelines timeline-ids all? start end) :creator))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -91,7 +91,7 @@
 (defn dashcard-timeline-events
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (timeline.db/timelines-for-collection collection_id false)]
+  (let [timelines (timeline.db/select-timelines {:collection_id collection_id :archived false})]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
