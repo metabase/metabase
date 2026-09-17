@@ -197,7 +197,8 @@
       (do
         (check-native-source-gates! token-scopes)
         (let [{:keys [database_id sql template_tags]} native
-              mp (lib-be/application-database-metadata-provider database_id)]
+              ;; the schema takes the id as a string too, for clients that serialize every id that way
+              mp (lib-be/application-database-metadata-provider (v2.resolve/normalize-id database_id))]
           (-> (lib/native-query mp sql)
               (apply-template-tags template_tags)))))))
 
