@@ -133,12 +133,6 @@ export function getSdkUsageProblem(
     })
       // MCP Apps uses temporary sessions created by MCP backend.
       .with({ isMcpApp: true }, () => null)
-      // The iframe embed renders with the React shipped by Metabase, so the
-      // host app's React version is not the customer's to upgrade there.
-      .with(
-        { hostReactMajorVersion: 18, isDevelopmentHost: true, isEajs: false },
-        () => toWarning("REACT_18_DEPRECATED"),
-      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
@@ -150,6 +144,16 @@ export function getSdkUsageProblem(
         },
         () => toError("EMBEDDING_SDK_NOT_ENABLED"),
       )
+      // We do not allow using API keys in production.
+      .with({ isApiKey: true, hasTokenFeature: true, isLocalhost: false }, () =>
+        toError("API_KEYS_WITH_LICENSE"),
+      )
+      // The iframe embed renders with the React shipped by Metabase, so the
+      // host app's React version is not the customer's to upgrade there.
+      .with(
+        { hostReactMajorVersion: 18, isDevelopmentHost: true, isEajs: false },
+        () => toWarning("REACT_18_DEPRECATED"),
+      )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
       // API keys are always enabled regardless of the "enable-embedding" setting,
@@ -159,10 +163,6 @@ export function getSdkUsageProblem(
       )
       .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: false }, () =>
         toWarning("API_KEYS_WITHOUT_LICENSE"),
-      )
-      // We do not allow using API keys in production.
-      .with({ isApiKey: true, hasTokenFeature: true }, () =>
-        toError("API_KEYS_WITH_LICENSE"),
       )
       .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
       .otherwise(() => null)

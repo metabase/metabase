@@ -24,6 +24,7 @@ import {
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import * as IsHostAppInDevModeModule from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -441,6 +442,111 @@ describe("SdkUsageProblemDisplay", () => {
         /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the React 18 warning on a non-localhost host app in development mode", async () => {
+    const isLocalhostMock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+    const isHostAppInDevModeMock = jest
+      .spyOn(IsHostAppInDevModeModule, "isHostAppInDevMode")
+      .mockImplementation(() => true);
+
+    setup({ authConfig: createMockSdkConfig(), hostReactMajorVersion: 18 });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    expect(
+      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+        "This application uses React 18. The Metabase modular embedding SDK will require React 19 in a future release, and this embed will stop working once your Metabase instance is upgraded to it. Please upgrade your application to React 19.",
+      ),
+    ).toBeInTheDocument();
+
+    isLocalhostMock.mockRestore();
+    isHostAppInDevModeMock.mockRestore();
+  });
+
+  it("shows the license error over the React 18 warning when JWT is used without a license", async () => {
+    setup({
+      authConfig: createMockSdkConfig(),
+      hasEmbeddingFeature: false,
+      hostReactMajorVersion: 18,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText(
+        "Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).queryByText(/This application uses React 18/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the SDK disabled error over the React 18 warning on a host app in development mode", async () => {
+    const isLocalhostMock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+    const isHostAppInDevModeMock = jest
+      .spyOn(IsHostAppInDevModeModule, "isHostAppInDevMode")
+      .mockImplementation(() => true);
+
+    setup({
+      authConfig: createMockSdkConfig(),
+      isEmbeddingSdkEnabled: false,
+      hostReactMajorVersion: 18,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText(
+        "Embedding is not enabled for this instance. Please enable it in settings.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).queryByText(/This application uses React 18/),
+    ).not.toBeInTheDocument();
+
+    isLocalhostMock.mockRestore();
+    isHostAppInDevModeMock.mockRestore();
+  });
+
+  it("shows the API key error over the React 18 warning on a non-localhost host app in development mode", async () => {
+    const isLocalhostMock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+    const isHostAppInDevModeMock = jest
+      .spyOn(IsHostAppInDevModeModule, "isHostAppInDevMode")
+      .mockImplementation(() => true);
+
+    setup({ authConfig: createMockApiKeyConfig(), hostReactMajorVersion: 18 });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(within(card).getByText("Error")).toBeInTheDocument();
+    expect(
+      within(card).getByText(
+        "This embed is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).queryByText(/This application uses React 18/),
+    ).not.toBeInTheDocument();
+
+    isLocalhostMock.mockRestore();
+    isHostAppInDevModeMock.mockRestore();
   });
 
   it("hides the problem when 'hide' is clicked", async () => {
