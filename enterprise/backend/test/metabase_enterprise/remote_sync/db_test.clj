@@ -112,7 +112,7 @@
         (is (nil? (remote-sync.db/rso sql-ish -1)))))))
 
 (deftest set-rsos-status!-filters-on-the-ids-it-is-given
-  (testing "the conditions map filters, rather than being read as a column named :where"
+  (testing "the coerced id list filters to exactly the RemoteSyncObjects named"
     (mt/with-temp [:model/RemoteSyncObject {a :id} {:model_type "Card" :model_id 1 :model_name "One"
                                                     :status "pending" :status_changed_at (t/offset-date-time)}
                    :model/RemoteSyncObject {b :id} {:model_type "Card" :model_id 2 :model_name "Two"

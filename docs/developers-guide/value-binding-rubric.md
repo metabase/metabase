@@ -208,6 +208,27 @@ uncheckable. See [Type transforms](#type-transforms-the-trap-that-bit-us) below.
 
 The `lint-kv-args!` check that asked for the conversion is removed, so nothing requests it.
 
+### These rules are temporary
+
+Everything in this section, and the [type transform trap](#type-transforms-the-trap-that-bit-us)
+below, exists because a Toucan query fn accepts kv-args and a query map in almost any mix, so
+"which style is this, and does that change the semantics?" is a question you have to ask per call.
+
+Step 2 retires the question rather than answering it. A HugSQL query function takes one map and has
+no override surface:
+
+```clojure
+(card.db/card-by-id {:id 3})
+(sso.queries/auth-identity-exists {:user-id 5 :provider "google"})
+```
+
+There is no call style to choose, so there is no transform-position trap: the value goes into a
+`:value:x` hole and binds, and any transform the model needs runs explicitly in the wrapper. A
+namespace that has been extracted does not need this section at all.
+
+So read these rules as scaffolding for the sweep, not as house style. They retire per namespace as
+extraction lands (GHY-4482 onward).
+
 ### If you convert anyway
 
 Two rules you cannot skip.
