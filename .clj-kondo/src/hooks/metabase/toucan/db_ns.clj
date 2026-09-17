@@ -62,6 +62,12 @@
         :else
         (mapcat value-nodes (:children node))))
 
+    ;; A clause built conditionally -- `(when flag [:= :col v])`, `(if ... )`, `(cond-> ...)`. The
+    ;; value slots are inside, so walk the children rather than stopping. Without this a value
+    ;; wrapped in `when` is invisible to the check, which is a false negative in a security lint.
+    (hooks/list-node? node)
+    (mapcat value-nodes (:children node))
+
     :else nil))
 
 (def ^:private write-fns
