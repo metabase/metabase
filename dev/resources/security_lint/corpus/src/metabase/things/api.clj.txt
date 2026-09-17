@@ -9,7 +9,7 @@
    [metabase.request.core :as request]
    [metabase.things.db :as things.db]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
+   [metabase.util.malli :as mu] [metabase.util.password :as u.password]
    [metabase.util.malli.schema :as ms]
    [next.jdbc :as jdbc]
    [ring.util.response :as response]
@@ -96,7 +96,7 @@
 (api.macros/defendpoint :post "/:id/unlock"
   "Unlocks a thing with a password."
   [{:keys [id]} _query {:keys [password]}]
-  (when (= password "hunter2") (things.db/thing id)))
+  (when (u.password/verify-password password "salt" "hash") (things.db/thing id)))
 
 ;; the denial carries the thing's definition back to the caller who may not read it
 (defn- check-readable [thing]

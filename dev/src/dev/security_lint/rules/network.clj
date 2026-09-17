@@ -67,8 +67,7 @@
    :precision   :high
    :cwe         "CWE-295"
    :triggers    #{clj-http.client/get clj-http.client/post clj-http.client/put clj-http.client/patch
-                  clj-http.client/delete clj-http.client/head clj-http.client/request
-                  org.httpkit.client/get org.httpkit.client/post org.httpkit.client/request}}
+                  clj-http.client/delete clj-http.client/head clj-http.client/request}}
   [{:keys [node]}]
   (let [bad (for [a     (ast/args node)
                   :when (ast/map-node? a)
@@ -124,8 +123,10 @@
         setter       (get opts :setter)]
     (when (and setting-name
                (re-find url-setting-name setting-name)
-               ;; a logo or favicon URL is fetched by the browser, never by the server
+               ;; a logo or favicon URL is fetched by the browser, never by the server; `site-url` is the
+               ;; instance's own address, handed to browsers and put in emails, and never fetched
                (not (re-find #"(?i)logo|favicon" setting-name))
+               (not (contains? #{"site-url"} setting-name))
                (contains? #{nil ":string"} (opt :type))
                (not= ":internal" (opt :visibility))
                (not= ":none" (opt :setter))
