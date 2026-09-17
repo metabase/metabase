@@ -424,7 +424,7 @@
 (defn cli-fix-module-cycles
   "CLI entry point: record how the cyclic module clusters changed.
   The file's `:mode` decides which changes it accepts: every change under `:observe`, only improvements under
-  `:enforce`.
+  `:enforce`. Both refuse a split whose halves it cannot name.
   Always a fresh JVM rather than the dev REPL, so a refused change exits nonzero, which the shrink workflow
   relies on."
   [{:keys [options] :as _parsed}]

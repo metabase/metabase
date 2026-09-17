@@ -84,6 +84,7 @@ jobs:
         id: compare
         env:
           GH_TOKEN: ${{ github.token }}
+          CYCLES_OUTCOME: ${{ steps.cycles.outcome }}
         run: |
           # The REST `head=owner:branch` filter is applied server-side and only matches this repository's
           # branch, so a fork carrying a branch of the same name can never hand its PR number to the
@@ -99,15 +100,23 @@ jobs:
             # An open PR that still differs from master records a state master has since moved past, such as
             # a cluster that shrank and then grew back. The ratchet check fails a budget below the real count,
             # but under `:observe` nothing fails a stale cluster record, so the PR is closed rather than
-            # approved.
-            if git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH" 2>/dev/null \
-               && git diff --quiet FETCH_HEAD -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" "$CYCLE_CLUSTERS_FILE"; then
+            # approved. That takes a confirmed difference and a scan that succeeded: a failed scan leaves the
+            # cycle file as master has it, so the PR is left alone, unapproved, and the last step reports it.
+            git fetch --quiet --depth=1 origin "refs/heads/$AUTOMATION_BRANCH"
+            differs=0
+            git diff --quiet FETCH_HEAD -- "$KONDO_RATCHETS_FILE" "$MODULE_RATCHETS_FILE" "$CYCLE_CLUSTERS_FILE" \
+              || differs=$?
+            if [ "$differs" = 0 ]; then
               echo "The open automation PR #$open_pr is re-approved below"
               echo "pr=$open_pr" >> "$GITHUB_OUTPUT"
-            else
+            elif [ "$differs" != 1 ]; then
+              exit "$differs"
+            elif [ "$CYCLES_OUTCOME" = success ]; then
               gh pr close "$open_pr" --repo "$GITHUB_REPOSITORY" \
                 --comment "Master $(git rev-parse --short HEAD) already matches the measured ratchets, so this PR is stale."
               echo "Closed the stale automation PR #$open_pr"
+            else
+              echo "The automation PR #$open_pr differs from master, but the cycle scan failed; leaving it open"
             fi
             exit 0
           fi
