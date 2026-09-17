@@ -10,13 +10,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
   useGetRemappedCardParameterValueQuery,
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { useTranslateContent } from "metabase/content-translation/hooks";

@@ -12,6 +12,7 @@ import {
   getIsNavBarEnabled,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
   Archived,
   GenericError,
@@ -35,7 +36,6 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ErrorBoundary from "./ErrorBoundary";
 import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";

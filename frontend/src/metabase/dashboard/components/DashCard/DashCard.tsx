@@ -2,8 +2,8 @@ import cx from "classnames";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";

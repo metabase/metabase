@@ -7,7 +7,8 @@ import type {
 import { Component, forwardRef } from "react";
 
 import { useReportFrontendErrorMutation } from "metabase/api";
-import { SmallGenericError } from "metabase/common/components/ErrorPages";
+
+import { SmallGenericError } from "./ErrorPages";
 
 interface ErrorBoundaryProps extends PropsWithChildren {
   onError?: (errorInfo: ErrorInfo) => void;

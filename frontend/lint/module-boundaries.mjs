@@ -430,12 +430,6 @@ const elements = [
       }),
   ),
   createElement({
-    type: "shared",
-    name: "error-boundary",
-    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
-    mode: "full",
-  }),
-  createElement({
     type: "app",
     name: "routes-stable-id-aware",
     pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
