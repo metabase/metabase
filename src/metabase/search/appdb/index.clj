@@ -247,6 +247,35 @@
     (catch Exception e
       (log/warnf "Failed to analyze index table %s: %s" table-name (ex-message e)))))
 
+(defn active-index-complete?
+  "Whether the current active index has a recorded successful population."
+  []
+  (or *mocking-tables*
+      (some? (search.db/active-index-completion
+              {:engine :appdb, :lang-code (i18n/site-locale-string), :version (index-version)}))))
+
+(mu/defn invalidate-completion! :- :boolean
+  "Invalidate prior completion before changing an already-active destination."
+  [rebuild :- ::search.schema/rebuild-context]
+  (if *mocking-tables*
+    true
+    (search.lease/do-with-mutation-connection
+     (fn [conn]
+       (when-not (= 1 (search.db/invalidate-active-completion! conn rebuild))
+         (throw (ex-info "Rebuild destination is no longer active" {:rebuild rebuild})))
+       true))))
+
+(mu/defn complete-rebuild! :- :boolean
+  "Record successful initial or in-place population while verifying ownership and the active destination."
+  [rebuild :- ::search.schema/rebuild-context]
+  (if *mocking-tables*
+    true
+    (search.lease/do-with-mutation-connection
+     (fn [conn]
+       (when-not (= 1 (search.db/complete-rebuild! conn rebuild))
+         (throw (ex-info "Rebuild destination is no longer active" {:rebuild rebuild})))
+       true))))
+
 (mu/defn activate-table! :- :boolean
   "Make the pending index active if it exists. Returns true if it did so."
   ([] (activate-table! nil))
@@ -277,9 +306,15 @@
            (when pending
              (analyze-table! pending)
              (let [active (search.lease/do-with-ddl-connection
-                           #(some-> (search-index-metadata/activate-named-pending!
-                                     % :appdb (index-version) pending)
-                                    keyword))]
+                           (fn [conn]
+                             (let [active (some-> (search-index-metadata/activate-named-pending!
+                                                   conn :appdb (index-version) pending)
+                                                  keyword)]
+                               (when rebuild
+                                 (when-not (and (= active pending)
+                                                (= 1 (search.db/complete-rebuild! conn rebuild)))
+                                   (throw (ex-info "Rebuild destination is no longer pending" {:rebuild rebuild}))))
+                               active)))]
                (when-not (= active pending)
                  ;; Another process replaced or retired our pending metadata between the sync and the fenced
                  ;; transaction; the table we built is left for orphan cleanup.
@@ -456,6 +491,7 @@
        (transduce (comp (partition-all insert-batch-size)
                         (map (partial batch-update! reindex-table)))
                   (partial merge-with +)
+                  {}
                   document-reducible)))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]

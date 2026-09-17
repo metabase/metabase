@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-17T05:00:00
+      author: crisptrutski
+      comment: Persist successful app-db search rebuild completion
+      changes:
+        - addColumn:
+            tableName: search_index_metadata
+            columns:
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+                  remarks: Database time of the last successful population of this index; null if unknown.
