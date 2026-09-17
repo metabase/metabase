@@ -189,8 +189,9 @@
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
           impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
           sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
+          ;; New databases have no legacy grants to preserve. App groups must start blocked.
           blocked-groups      (into (or blocked-group-ids #{})
-                                    (concat impersonation-group-ids sandbox-group-ids))]
+                                    (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
 (defenterprise new-table-view-data-permission-levels
@@ -205,6 +206,14 @@
           sandbox-group-ids (into #{}
                                   (map :group_id)
                                   (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))
-          blocked-groups    (into (or blocked-group-ids #{})
-                                  sandbox-group-ids)]
-      (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
+          app-group-ids     (set (perms/data-app-group-ids))
+          app-view-data     (when (some app-group-ids group-ids)
+                              (perms/data-app-view-data-permission-level db-id))
+          blocked-groups    (into (or blocked-group-ids #{}) sandbox-group-ids)]
+      ;; A new table must not introduce a block into an app group's database-wide legacy permission.
+      (into {} (map (fn [group-id]
+                      [group-id (cond
+                                  (app-group-ids group-id) app-view-data
+                                  (blocked-groups group-id) :blocked
+                                  :else :unrestricted)]))
+            group-ids))))

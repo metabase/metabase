@@ -18,6 +18,9 @@
 (def ^:private ratchets-file
   ".clj-kondo/ratchets.edn")
 
+(def ^:private module-ratchets-file
+  ".clj-kondo/config/modules/ratchets.edn")
+
 ;; Keep the user's git configuration (hooks, merge drivers) out of the temporary repositories.
 (def ^:private git-env
   {"GIT_CONFIG_GLOBAL"   "/dev/null"
@@ -138,6 +141,18 @@
     (is (= #{"M  .clj-kondo/ratchets.edn" "UU app.txt"}
            (status dir)))))
 
+(deftest resolves-module-ratchets-test
+  (with-conflict [dir {:base   {module-ratchets-file "{:api-any 3, :friend-edges 5}\n"}
+                       :ours   {module-ratchets-file "{:api-any 2, :friend-edges 5}\n"}
+                       :theirs {module-ratchets-file "{:api-any 3, :friend-edges 4, :uses-any 1}\n"}}]
+    (let [{:keys [exit out]} (run dir script)]
+      (is (= 0 exit))
+      (is (str/includes? out (str "staged merged " module-ratchets-file))))
+    (is (= {:api-any 2, :friend-edges 4, :uses-any 1}
+           (edn/read-string (slurp (str (fs/path dir module-ratchets-file))))))
+    (is (= #{(str "M  " module-ratchets-file) "UU app.txt"}
+           (status dir)))))
+
 (deftest keeps-a-disabled-target-verbatim-test
   (let [disabled ";; release branch\n{:disabled true}\n"]
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
@@ -214,4 +229,4 @@
   (with-conflict [dir {:base {ratchets-file base-ratchets}}]
     (let [{:keys [exit err]} (run dir script)]
       (is (= 1 exit))
-      (is (str/includes? err "is not conflicted")))))
+      (is (str/includes? err "neither ratchet file is conflicted")))))

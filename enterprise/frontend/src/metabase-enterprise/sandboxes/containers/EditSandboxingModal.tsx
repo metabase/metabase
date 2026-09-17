@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { GROUPS_BASE_PATH } from "metabase/admin/permissions/utils/urls";
+import { getGroupsBasePath } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetGroupTableAccessPolicyQuery,
@@ -77,7 +77,7 @@ const EditSandboxingModalContainer = ({
         entityId: { databaseId, schemaName: params.schemaName, tableId },
         // the modal is mounted under both permissions editor views; only
         // permission post-actions read the view
-        view: location.pathname.startsWith(GROUPS_BASE_PATH)
+        view: location.pathname.startsWith(getGroupsBasePath())
           ? "group"
           : "database",
       }),

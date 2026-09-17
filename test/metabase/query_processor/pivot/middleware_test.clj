@@ -1,13 +1,16 @@
 (ns metabase.query-processor.pivot.middleware-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.pivot.middleware :as qp.pivot.middleware]))
 
 (deftest ^:parallel full-breakout-combination-test
   (letfn [(combo [breakout-combination remaps]
             (#'qp.pivot.middleware/full-breakout-combination
-             {:qp.pivot/remapped-breakout-combination breakout-combination
-              :qp.pivot/remapped-indexes              remaps}))]
+             (assoc (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    :qp.pivot/remapped-breakout-combination breakout-combination
+                    :qp.pivot/remapped-indexes              remaps)))]
     (is (= []
            (combo [] {1 0, 4 3})))
     (is (= [0 1]

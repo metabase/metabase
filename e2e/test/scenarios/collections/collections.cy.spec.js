@@ -1337,7 +1337,7 @@ describe("scenarios > collection items listing", () => {
 
       cy.findByRole("button", { name: "Filter" }).click();
       H.popover().within(() => {
-        cy.findAllByRole("checkbox").should("have.length", 8);
+        cy.findAllByRole("checkbox").should("have.length", 7);
         cy.findByLabelText("Collection").should("not.be.checked");
         cy.findByLabelText("Dashboard").should("not.be.checked");
         cy.findByLabelText("Question").should("not.be.checked");

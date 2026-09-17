@@ -96,9 +96,9 @@ export const AdminNavbar = ({
           gap="0.25rem"
           miw={0}
         >
-          {adminPaths.map(({ name, key, path }) => (
+          {adminPaths.map(({ getName, key, path }) => (
             <AdminNavItem
-              name={name}
+              name={getName()}
               path={path}
               key={key}
               currentPath={currentPath}
@@ -161,14 +161,14 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           bdrs="0 0 0 0.5rem"
           style={{ overflowY: "auto" }}
         >
-          {adminPaths.map(({ name, key, path }) => (
+          {adminPaths.map(({ getName, key, path }) => (
             <AdminNavLink
               to={path}
               key={key}
               isSelected={currentPath.startsWith(path)}
               isInMobileNav
             >
-              {name}
+              {getName()}
             </AdminNavLink>
           ))}
           {/* Security Center is rendered outside adminPaths because it

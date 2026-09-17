@@ -476,17 +476,17 @@
       (try
         ;; stale the content checksum so the (stubbed) load runs inside the locked pipeline
         (audit/last-analytics-checksum! 0)
-        (with-redefs [serialization.cmd/v2-load-internal!
-                      (fn [& _]
-                        (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
-                        (reset! visible
-                                (deref (future
-                                         (binding [t2.connection/*current-connectable* nil]
-                                           (t2/exists? :model/User :email email)))
-                                       5000 ::timeout))
-                        ;; report no errors: content is already loaded from the steady state, so
-                        ;; letting the checksum advance leaves a consistent end state
-                        {:errors [] :seen []})]
+        (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!
+                                    (fn [& _]
+                                      (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+                                      (reset! visible
+                                              (deref (future
+                                                       (binding [t2.connection/*current-connectable* nil]
+                                                         (t2/exists? :model/User :email email)))
+                                                     5000 ::timeout))
+                                      ;; report no errors: content is already loaded from the steady state, so
+                                      ;; letting the checksum advance leaves a consistent end state
+                                      {:errors [] :seen []})]
           (mbc/ensure-audit-db-installed!))
         (testing "work committed inside the audit pipeline is visible mid-pipeline from another connection"
           (is (true? @visible)))
@@ -505,8 +505,8 @@
       (audit/last-analytics-checksum! 0)
       ;; "Boot 1": the serdes load dies partway through.
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"killed mid-load"
-                            (with-redefs [serialization.cmd/v2-load-internal!
-                                          (fn [& _] (throw (ex-info "killed mid-load" {})))]
+                            (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!
+                                                        (fn [& _] (throw (ex-info "killed mid-load" {})))]
                               (mbc/ensure-audit-db-installed!))))
       (testing "the content checksum does not advance past an incomplete load"
         (is (= 0 (audit/last-analytics-checksum))))

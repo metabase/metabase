@@ -145,6 +145,7 @@ show-homepage-data
 show-homepage-pin-message
 show-homepage-xrays
 show-metabot
+show-modular-embed-terms
 show-sdk-embed-terms
 show-simple-embed-terms
 show-static-embed-terms
@@ -306,7 +307,7 @@ Type: Boolean.
 
 Default: Data model is included.
 
-Excludes [table metadata](../data-studio/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
+Excludes [table metadata](../data-modeling/metadata/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
 
 ### Include field values
 

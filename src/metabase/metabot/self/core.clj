@@ -11,12 +11,14 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
@@ -31,13 +33,179 @@
 ;; "required" → {:type "any"} for Claude, system-message placement, tool wire
 ;; format) happens inside each adapter, but the **input contract is identical**.
 
+(def ^:private MalliSchema
+  "A malli schema, in schema-form or as a compiled instance."
+  [:and :any [:fn {:error/message "a malli schema"} mc/schema]])
+
+(def ^:private AnthropicProviderMetadata
+  "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
+  payload, or a signed-thinking block's signature."
+  [:map {:closed true}
+   [:redactedData {:optional true} [:maybe :string]]
+   [:signature    {:optional true} [:maybe :string]]])
+
+(def ^:private OpenAIProviderMetadata
+  "OpenAI-specific data carried on a reasoning part, needed to replay it across tool-call
+  round-trips despite `store:false`."
+  [:map {:closed true}
+   [:encryptedContent {:optional true} [:maybe :string]]
+   [:itemId           {:optional true} [:maybe :string]]])
+
+(def ^:private MistralProviderMetadata
+  "Mistral-specific data carried on a reasoning part: a think chunk's captured signature."
+  [:map {:closed true}
+   [:signature {:optional true} [:maybe :string]]])
+
+(def ^:private GoogleProviderMetadata
+  "Google-specific data carried on a tool-input part: the thought signature Gemini 3.x requires
+  when a functionCall is replayed in the current turn."
+  [:map {:closed true}
+   [:thoughtSignature {:optional true} [:maybe :string]]])
+
+(def ^:private ProviderMetadata
+  "Vendor-specific data carried verbatim on a reasoning/tool-input part, namespaced by provider."
+  [:map {:closed true}
+   [:anthropic {:optional true} [:maybe AnthropicProviderMetadata]]
+   [:openai    {:optional true} [:maybe OpenAIProviderMetadata]]
+   [:google    {:optional true} [:maybe GoogleProviderMetadata]]
+   [:mistral   {:optional true} [:maybe MistralProviderMetadata]]])
+
 (def ToolEntry
   "A tool definition map with :tool-name, :doc, :schema, :fn, and optionally :decode/:prompt."
-  [:map
+  [:map {:closed true}
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
-   [:schema :any]
-   [:fn [:fn fn?]]])
+   [:schema MalliSchema]
+   [:fn [:fn fn?]]
+   [:decode {:optional true} [:maybe [:fn fn?]]]
+   [:prompt {:optional true} [:maybe :string]]
+   [:title-fn {:optional true} [:maybe [:fn fn?]]]
+   [:system-instructions {:optional true} [:maybe :string]]
+   [:capabilities {:optional true} [:maybe [:set :keyword]]]
+   [:scope {:optional true} [:maybe :string]]])
+
+(def ^:private DataPart
+  "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
+  constructors."
+  [:map {:closed true}
+   [:type      [:= :data]]
+   [:data-type :string]
+   [:data      {:optional true} [:maybe ::schema.v2/tool-io]]])
+
+(def ^:private ToolResult
+  "The raw return value of a tool's `:fn`, before it is trimmed for persistence or forwarded to
+  a provider (see [[collect-tool-result]])."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:map {:closed true}
+    [:output            {:optional true} [:maybe :string]]
+    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
+    [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
+    [:terminal-error?   {:optional true} :boolean]
+    [:data-parts        {:optional true} [:sequential DataPart]]
+    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
+    [:instructions      {:optional true} [:maybe :string]]
+    [:status-code       {:optional true} [:maybe :int]]
+    [:error             {:optional true} [:maybe [:map {:closed true}
+                                                  [:message {:optional true} [:maybe :string]]
+                                                  [:type    {:optional true} [:maybe :string]]]]]]])
+
+(def ^:private ToolCallArguments
+  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
+  string keys off the wire, keyword keys when built in Clojure."
+  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
+   [:or :string :keyword] ::request.schema/json-value])
+
+(def ^:private AISDKPart
+  "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
+  `:type` (`:text`, `:reasoning`, `:tool-input`, `:tool-output`), or a plain role message keyed
+  by `:role` instead."
+  [:map {:closed true}
+   [:type              {:optional true} [:maybe :keyword]]
+   [:role              {:optional true} [:maybe (ms/enum-keywords-and-strings :user :system :assistant :tool)]]
+   [:id                {:optional true} [:maybe :string]]
+   [:text              {:optional true} [:maybe :string]]
+   [:content           {:optional true} [:maybe :string]]
+   [:function          {:optional true} [:maybe :string]]
+   [:title             {:optional true} [:maybe :string]]
+   [:arguments         {:optional true} [:maybe ToolCallArguments]]
+   [:result            {:optional true} [:maybe ToolResult]]
+   [:duration-ms       {:optional true} [:maybe number?]]
+   [:error             {:optional true} [:maybe [:map {:closed true}
+                                                 [:message {:optional true} [:maybe :string]]
+                                                 [:type    {:optional true} [:maybe :string]]]]]
+   [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
+
+(def ^:private ApiKeyCredentials
+  "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
+  [:map {:closed true}
+   [:api-key         {:optional true} [:maybe :string]]
+   [:base-url        {:optional true} [:maybe :string]]
+   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]])
+
+(def ^:private AzureCredentials
+  "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
+  [:map {:closed true}
+   [:api-key         {:optional true} [:maybe :string]]
+   [:base-url        {:optional true} [:maybe :string]]
+   [:model-family    {:optional true} [:maybe :string]]
+   [:deployment-name {:optional true} [:maybe :string]]])
+
+(def ^:private BedrockCredentials
+  [:map {:closed true}
+   [:access-key-id     {:optional true} [:maybe :string]]
+   [:secret-access-key {:optional true} [:maybe :string]]
+   [:session-token     {:optional true} [:maybe :string]]
+   [:region            {:optional true} [:maybe :string]]])
+
+(def ^:private GoogleCredentials
+  [:map {:closed true}
+   [:service-account-key {:optional true} [:maybe :string]]
+   [:oauth-access-token  {:optional true} [:maybe :string]]
+   [:project-id          {:optional true} [:maybe :string]]
+   [:location            {:optional true} [:maybe :string]]
+   [:auth-method         {:optional true} [:maybe :string]]
+   [:base-url            {:optional true} [:maybe :string]]])
+
+(def ^:private LLMCredentials
+  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
+
+(def ^:private ReasoningConfig
+  "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."
+  [:map {:closed true}
+   [:type    :string]
+   [:display {:optional true} [:maybe :string]]])
+
+(def ^:private JSONSchemaLeaf
+  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
+  an array-typed leaf."
+  [:map {:closed true}
+   [:type        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:items       {:optional true} [:map {:closed true}
+                                   [:type        {:optional true} [:maybe :string]]
+                                   [:description {:optional true} [:maybe :string]]]]
+   [:minimum     {:optional true} number?]
+   [:maximum     {:optional true} number?]])
+
+(def ^:private JSONSchemaProperties
+  "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
+  string keys off the wire, keyword keys when built in Clojure."
+  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+   [:or :string :keyword] JSONSchemaLeaf])
+
+(def ^:private JSONSchemaNode
+  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
+  `:properties` keys are the field names the schema itself declares, not ours to enumerate."
+  [:map {:closed true}
+   [:type                 {:optional true} [:maybe :string]]
+   [:properties           {:optional true} JSONSchemaProperties]
+   [:required             {:optional true} [:vector :string]]
+   [:additionalProperties {:optional true} :boolean]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -69,19 +237,19 @@
                         ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
-  [:map
+  [:map {:closed true}
    [:model            {:optional true} :string]
    [:system           {:optional true} [:maybe :string]]
-   [:input            {:optional true} [:sequential :map]]
+   [:input            {:optional true} [:sequential AISDKPart]]
    [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
-   [:schema           {:optional true} :any]
-   [:credentials      {:optional true} [:maybe :map]]
+   [:schema           {:optional true} [:maybe JSONSchemaNode]]
+   [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
-   [:reasoning-config {:optional true} [:maybe :map]]
+   [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
@@ -329,7 +497,7 @@
                                            (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (cond-> (coerce-stringified-json (:arguments part))
+                           (title-fn (cond-> (walk/keywordize-keys (coerce-stringified-json (:arguments part)))
                                        decode decode))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
@@ -776,7 +944,7 @@
                            (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
             results  (try
                        (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                             arguments (or (coerce-stringified-json arguments) {})
+                             arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
                              arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)

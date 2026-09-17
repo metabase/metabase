@@ -273,13 +273,16 @@
   "True when changing `setting-key` could change whether Metabot can reach an LLM — i.e. it
   feeds [[llm-metabot-configured?]] or one of the Metabot enable settings.
 
-  Matches all of [[metabase.llm.settings]] rather than a hand-listed key set: being broad
-  costs a redundant re-check, while missing a key silently strands callers that wake on it."
+  Matches every setting the `llm` module defines, rather than a hand-listed key set or a single
+  namespace: the module spreads its settings over several namespaces, and being broad costs a
+  redundant re-check while missing a key silently strands callers that wake on it."
   [setting-key]
   (boolean
    (or (contains? metabot-llm-setting-keys setting-key)
-       (= 'metabase.llm.settings
-          (:namespace (get @setting/registered-settings setting-key))))))
+       (some-> (get @setting/registered-settings setting-key)
+               :namespace
+               str
+               (str/starts-with? "metabase.llm.")))))
 
 ;;; ------------------------------------------------- AI Data Retention ------------------------------------------------
 

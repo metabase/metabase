@@ -44,9 +44,9 @@ Database routing **can't be used** on databases with:
 
 - [Writable connections](../databases/writable-connection.md)
 - [Editable tables](../data-modeling/editable-tables.md)
-- [Actions](../actions/introduction.md)
+- [Actions](../data-modeling/models/actions/introduction.md)
 - [CSV uploads](../databases/uploads.md)
-- [Model persistence](../data-modeling/model-persistence.md)
+- [Model persistence](../data-modeling/models/model-persistence.md)
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
 

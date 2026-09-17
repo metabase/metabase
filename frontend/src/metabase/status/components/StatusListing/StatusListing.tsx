@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { getUserIsAdmin } from "metabase/current-user";
 import {
+  PLUGIN_AUDIT,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
   PLUGIN_UPLOAD_MANAGEMENT,
@@ -11,7 +12,6 @@ import { useSelector } from "metabase/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
 
-import { AnalyticsExportStatus } from "../AnalyticsExportStatus";
 import { DatabaseStatus } from "../DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
@@ -37,7 +37,7 @@ export const StatusListing = () => {
         {isAdmin && <DatabaseStatus />}
         {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />
-        <AnalyticsExportStatus />
+        <PLUGIN_AUDIT.AnalyticsExportStatus />
         <DownloadsStatus />
         {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
       </StatusListingRoot>

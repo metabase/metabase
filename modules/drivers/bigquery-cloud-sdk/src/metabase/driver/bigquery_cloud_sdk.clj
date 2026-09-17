@@ -31,6 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf])
   (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery
@@ -48,6 +49,7 @@
     DatasetId
     Field
     Field$Mode
+    FieldList
     FieldValue
     FieldValueList
     Job
@@ -106,7 +108,7 @@
    [:api-host :token-host]))
 
 (mu/defn- database-details->client
-  ^BigQuery [details :- :map]
+  ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         creds        (.createScoped base-creds bigquery-scopes)
@@ -246,7 +248,9 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [database dataset-id table-id]
+  (^Table [database   :- :metabase.warehouses.schema/database-or-metadata
+           dataset-id :- driver-api/schema.common.non-blank-string
+           table-id   :- driver-api/schema.common.non-blank-string]
    (let [details    (driver.conn/effective-details database)
          project-id (:project-id details)]
      (get-table (database-details->client details) project-id dataset-id table-id)))
@@ -394,9 +398,11 @@
     [database-type (database-type->base-type database-type)]))
 
 (mu/defn- fields->metabase-field-info
-  ([fields]
+  ([fields :- (driver-api/instance-of-class FieldList)]
    (fields->metabase-field-info nil nil fields))
-  ([database-position nfc-path fields]
+  ([database-position :- [:maybe :int]
+    nfc-path          :- [:maybe [:sequential :string]]
+    fields            :- (driver-api/instance-of-class FieldList)]
    (into
     []
     (map
@@ -1053,11 +1059,11 @@
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
-  [respond  :- fn?
-   database :- [:map [:details :map]]
-   sql
-   parameters
-   cancel-chan]
+  [respond     :- fn?
+   database    :- :metabase.warehouses.schema/database-or-metadata
+   sql         :- :string
+   parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
+   cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`

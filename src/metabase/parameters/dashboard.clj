@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -19,7 +20,8 @@
   1000)
 
 (mu/defn- param->fields
-  [param :- ::parameters.schema/resolved-parameter & {:keys [op-override]}]
+  [param :- ::parameters.schema/resolved-parameter
+   & {:keys [op-override]} :- [:maybe [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]]
   (let [op      (or op-override (params/param-type->op (:type param)))
         options (or (:options param) (params/param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -28,8 +30,8 @@
        :options  options})))
 
 (mu/defn ^:private chain-filter-constraints :- ::chain-filter/constraints
-  [dashboard                   :- :map
-   constraint-param-key->value :- [:map-of string? any?]]
+  [dashboard                   :- :metabase.dashboards.schema/dashboard
+   constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
              :when             param
@@ -75,12 +77,14 @@
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."
-  ([dashboard param-key constraint-param-key->value]
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
    (chain-filter dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- :map
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
     param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- [:map-of string? any?]
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard   (cond-> dashboard
                        (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
@@ -109,6 +113,48 @@
              (api/throw-403 e)
              (throw e))))))))
 
+(mr/def ::range
+  "The span of a parameter's column: its extremes, and how many distinct values lie between them.
+  `:distinct-count` is nil when the parameter maps to several fields, whose distinct values overlap
+  in ways only a union could count — the extremes still merge exactly."
+  [:map
+   [:min            [:maybe :any]]
+   [:max            [:maybe :any]]
+   [:distinct-count [:maybe :int]]])
+
+(mu/defn param-range :- [:maybe ::range]
+  "The span of `param-key`'s column under the other filters' current selections, for a parameter whose
+  values are a range to filter inside rather than a set to pick from. Answers nil when the parameter
+  maps to no queryable field — a field-ref-only mapping has no column to aggregate, so the caller must
+  fall back to listing values.
+
+  Aggregates instead of listing, which is the whole reason to prefer it over [[chain-filter]] here:
+  listing stops at `result-limit` and, since values come back ascending, its last value is the
+  1000th-earliest rather than the column's max. Extremes merge across a multi-field parameter exactly
+  (the min of mins bounds every field, as does the max of maxes); the distinct count cannot, and is
+  dropped rather than guessed at."
+  [dashboard                   :- :metabase.dashboards.schema/dashboard
+   param-key                   :- ms/NonBlankString
+   constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
+  (let [dashboard   (cond-> dashboard
+                      (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
+        constraints (chain-filter-constraints dashboard constraint-param-key->value)
+        param       (get-in dashboard [:resolved-params param-key])
+        field-ids   (into #{} (map :field-id (param->fields param)))]
+    (when (seq field-ids)
+      (try
+        (let [ranges  (mapv #(chain-filter/chain-filter-range % constraints) field-ids)
+              extreme (fn [k pick]
+                        (some-> (seq (keep k ranges)) sort pick))]
+          {:min            (extreme :min first)
+           :max            (extreme :max last)
+           :distinct-count (when (= 1 (count ranges))
+                             (:distinct-count (first ranges)))})
+        (catch clojure.lang.ExceptionInfo e
+          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+            (api/throw-403 e)
+            (throw e)))))))
+
 (mu/defn param-values
   "Fetch values for a parameter.
 
@@ -116,12 +162,14 @@
   - static-list: user defined values list
   - card: values is result of running a card
   - nil: chain-filter"
-  ([dashboard param-key constraint-param-key->value]
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]]
    (param-values dashboard param-key constraint-param-key->value nil))
 
-  ([dashboard                   :- :map
+  ([dashboard                   :- :metabase.dashboards.schema/dashboard
     param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- [:map-of string? any?]
+    constraint-param-key->value :- [:map-of :string [:or ms/FieldValue [:sequential ms/FieldValue]]]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]

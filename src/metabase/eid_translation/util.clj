@@ -105,7 +105,8 @@
                                                     :string
                                                     [:map [:status eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
-  [api-name eids]
+  [api-name :- [:or ApiName ApiModel]
+   eids     :- [:sequential :string]]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
         eid->id (into {} (case model
                            :model/Action             (eid-translation.db/action-ids-by-entity-ids eids)

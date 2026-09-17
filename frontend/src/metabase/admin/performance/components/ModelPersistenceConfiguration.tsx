@@ -1,12 +1,7 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
 import {
   useDisablePersistMutation,
@@ -22,12 +17,16 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
 import { PerformancePageContent } from "./PerformancePageContent";
 
-const modelCachingOptions = [
+const getModelCachingOptions = () => [
   {
     value: "0 0 0/1 * * ? *",
     // this has to be plural because it's plural elsewhere and it cannot be both a singular message ID and a
@@ -166,7 +165,7 @@ export const ModelPersistenceConfiguration = () => {
             <div>
               <ModelCachingScheduleWidget
                 value={modelCachingSchedule}
-                options={modelCachingOptions}
+                options={getModelCachingOptions()}
                 onChange={async (value: string) => {
                   await resolveWithToasts([
                     setRefreshSchedule({ cron: value }).unwrap(),

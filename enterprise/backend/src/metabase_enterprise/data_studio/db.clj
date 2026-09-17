@@ -7,6 +7,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -50,9 +52,9 @@
                           [:not [:in output-table-id tables]])]
     (t2/reducible-query {:select [[output-table-id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
+                         :join   [(warehouse-schema-overlay/field-query {:alias :source_field, :user-settings? false})
                                   [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
+                                  (warehouse-schema-overlay/field-query {:alias :target_field, :user-settings? false})
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
                                   [:= :dim.type "external"]
@@ -66,7 +68,8 @@
    extra-table-ids  :- [:maybe [:set ::lib.schema.id/table]]
    extra-mode       :- [:enum :unpublished :any]]
   (t2/select-pks-set :model/Table
-                     {:where (let [selector-expr (table-selectors-expr selectors)]
+                     {:from [(warehouse-schema-overlay/table-query)]
+                      :where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
                                  [:or selector-expr (case extra-mode
                                                       :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
@@ -76,12 +79,12 @@
 (mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
+  (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
@@ -106,12 +109,14 @@
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
   [table-ids     :- [:set ::lib.schema.id/table]
    collection-id :- ::lib.schema.id/collection]
-  (t2/update! :model/Table :id [:in table-ids] {:collection_id collection-id, :is_published true}))
+  (schema.table-user-settings/upsert-user-settings-for-tables!
+   table-ids {:collection_id collection-id, :is_published true}))
 
 (mu/defn unpublish-tables!
   "Unpublish the Tables with `table-ids` and detach them from their Collection, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/update! :model/Table :id [:in table-ids] {:collection_id nil, :is_published false}))
+  (schema.table-user-settings/upsert-user-settings-for-tables!
+   table-ids {:collection_id nil, :is_published false}))
 
 (mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
@@ -119,7 +124,8 @@
    user-id    :- ::lib.schema.id/user
    superuser? :- :boolean]
   (t2/exists? :model/Table
-              {:where [:and
+              {:from  [(warehouse-schema-overlay/table-query)]
+               :where [:and
                        [:= :id table-id]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause
@@ -130,7 +136,8 @@
   "Whether the current user can read the Collection of any published Table."
   []
   (t2/exists? :model/Table
-              {:where [:and
+              {:from [(warehouse-schema-overlay/table-query)]
+               :where [:and
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
 
@@ -138,7 +145,8 @@
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table
-              {:where [:and
+              {:from [(warehouse-schema-overlay/table-query)]
+               :where [:and
                        [:= :db_id database-id]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))

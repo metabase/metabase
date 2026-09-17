@@ -1,12 +1,14 @@
 import { type ReactNode, useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
+import {
+  AdminSettingInput,
+  SettingHeader,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Box, Flex, Stack, Switch, Text } from "metabase/ui";
 
 import { CursorInstallLink } from "./CursorInstallLink";

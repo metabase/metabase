@@ -17,6 +17,10 @@ const url = process.argv[2] || "http://localhost:4000";
 const EMAIL = "bench@example.com";
 // The setup endpoint rejects a password that is short or common.
 const PASSWORD = "Benchmark-Passw0rd!";
+// A translated site, so the document carries a translation catalogue and a
+// change to how locales load shows up in the numbers. The user sets no locale
+// of their own, so it falls back to this one.
+const SITE_LOCALE = "de";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -69,7 +73,7 @@ async function post(path: string, body: unknown) {
           first_name: "Bench",
           last_name: "Mark",
         },
-        prefs: { site_name: "Bench" },
+        prefs: { site_name: "Bench", site_locale: SITE_LOCALE },
       })
     : await post("/api/session", { username: EMAIL, password: PASSWORD });
 

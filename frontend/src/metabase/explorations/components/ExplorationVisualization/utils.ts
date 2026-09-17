@@ -12,7 +12,7 @@ import {
 import type { HighlightedCommentState } from "metabase/redux/store/explorations";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import {
   formatDateTimeRangeWithUnit,
   formatValue,
@@ -460,7 +460,7 @@ export function formatColumnValue(
   columnSettings?: ColumnSettings,
 ): string {
   const settings = columnSettings ?? { column };
-  return String(formatValue(value ?? NULL_DISPLAY_VALUE, settings));
+  return String(formatValue(value ?? getNullDisplayValue(), settings));
 }
 
 function getClickedColumnSettings(

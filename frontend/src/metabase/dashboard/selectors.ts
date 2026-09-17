@@ -11,7 +11,7 @@ import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import {
-  getMetadata,
+  getShallowDatabases,
   selectQuestionFromCardBuilder,
 } from "metabase/metadata-store";
 import {
@@ -34,7 +34,6 @@ import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
   getParameterValuesBySlug,
@@ -413,19 +412,24 @@ export const getParameterTarget = createSelector(
 );
 
 export const getQuestions = createSelector(
-  [getDashboardComplete, getMetadata],
-  (dashboard, metadata) => {
+  [getDashboardComplete, selectQuestionFromCardBuilder],
+  (dashboard, buildQuestion) => {
     if (!dashboard) {
       return {};
     }
-    return getDashboardQuestions(dashboard.dashcards, metadata);
+    return getDashboardQuestions(dashboard.dashcards, buildQuestion);
   },
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestions, getIsEditing],
-  (dashboard, metadata, questions, isEditing) => {
-    if (!dashboard || !metadata) {
+  [
+    getDashboardComplete,
+    selectQuestionFromCardBuilder,
+    getQuestions,
+    getIsEditing,
+  ],
+  (dashboard, buildQuestion, questions, isEditing) => {
+    if (!dashboard) {
       return [];
     }
 
@@ -433,7 +437,7 @@ export const getParameters = createSelector(
       ? getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
-          metadata,
+          buildQuestion,
           questions,
         )
       : getSavedDashboardUiParameters(
@@ -505,10 +509,10 @@ export const getMissingRequiredParameters = createSelector(
 export const getQuestionByCard = createSelector(
   [
     (_state: State, props: { card: Card | VirtualCard }) => props.card,
-    getMetadata,
+    selectQuestionFromCardBuilder,
   ],
-  (card, metadata) => {
-    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
+  (card, buildQuestion) => {
+    return isQuestionCard(card) ? buildQuestion(card) : undefined;
   },
 );
 
@@ -691,13 +695,8 @@ export const getParameterMappingsBeforeEditing = createSelector(
 );
 
 export const getHasModelActionsEnabled = createSelector(
-  [getMetadata],
-  (metadata) => {
-    if (!metadata) {
-      return false;
-    }
-
-    const databases = metadata.databasesList();
+  [getShallowDatabases],
+  (databases) => {
     const hasModelActionsEnabled = Object.values(databases).some((database) =>
       // @ts-expect-error Schema types do not match
       hasDatabaseActionsEnabled(database),

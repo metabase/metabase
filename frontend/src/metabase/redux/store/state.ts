@@ -3,7 +3,6 @@ import type { DocumentsState } from "metabase/redux/store/documents";
 import type { ExplorationsState } from "metabase/redux/store/explorations";
 
 import type { AdminState } from "./admin";
-import type { AnalyticsExportState } from "./analytics-export";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
@@ -25,7 +24,6 @@ type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
-  analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
   dashboard: DashboardState;

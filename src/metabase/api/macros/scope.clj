@@ -12,7 +12,15 @@
 
   The `::unrestricted` keyword is used as a sentinel in `:token-scopes` to indicate an unrestricted token
   (session auth or unscoped JWT). Unlike `\"*\"` which is a valid wildcard scope that could appear in a
-  JWT claim, this keyword can never be confused with an externally-supplied scope string."
+  JWT claim, this keyword can never be confused with an externally-supplied scope string.
+
+  `::mcp-ui` is a second such sentinel, for the MCP Apps iframe credential. It is deliberately NOT
+  `::unrestricted`: the credential authenticates a narrow, purpose-limited surface, and stamping it
+  unrestricted meant that anything which reached an endpoint outside that surface arrived with full
+  privilege. Carrying `::mcp-ui` instead makes the default failure closed — it satisfies no endpoint's
+  declared `:scope`, and `ensure-scopes-checked` refuses it on endpoints that declare none — so such a
+  request is rejected rather than served. Being a keyword, it can never be requested, granted, or named on
+  a consent screen."
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
@@ -37,7 +45,19 @@
 
    On success, sets `:token-scopes-checked` on the request so that downstream [[ensure-scopes-checked]]
    middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
-   namespace level while individual endpoints use `ensure-scopes-checked` as a safety net."
+   namespace level while individual endpoints use `ensure-scopes-checked` as a safety net.
+
+   Also passes an MCP Apps UI credential (`::mcp-ui`) whose request is already `:token-scopes-checked`.
+   That credential is not an OAuth token and an endpoint's declared `:scope` is not the vocabulary that
+   confines it: [[metabase.mcp.ui-surface/request-surface]] is, and it is strictly narrower — a handful of
+   routes, each priced in the MCP scope the minting session had to hold. The stamp is set only when that
+   gate passes, so honouring it here defers to a route-specific decision that already happened rather than
+   waiving one. Without this, declaring a `:scope` on any route of that surface silently 403s the iframe
+   while every other caller is unaffected, and the iframe just stops rendering.
+
+   Deliberately conditioned on `::mcp-ui` rather than on the stamp alone. `enforce-scope` sets the stamp
+   itself on success, so trusting it unconditionally would make every per-endpoint `:scope` a no-op
+   underneath a namespace-level `enforce-scope`."
   [required-scope]
   ;; Dev-time warning only — fires at middleware construction (load time), not per-request.
   ;; The middleware is returned regardless; this just surfaces unregistered scopes early.
@@ -48,6 +68,8 @@
       (let [token-scopes (:token-scopes request)]
         (if (or (nil? token-scopes)
                 (contains? token-scopes ::unrestricted)
+                (and (contains? token-scopes ::mcp-ui)
+                     (:token-scopes-checked request))
                 (scope-satisfied? token-scopes required-scope))
           (handler (cond-> request
                      token-scopes (assoc :token-scopes-checked true))
