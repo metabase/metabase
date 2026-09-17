@@ -310,9 +310,10 @@
 
 (def ^:private first-versionless-major
   "The first Metabase major whose changesets are version-less. From this major on every changeset lives in a year-based
-  directory (e.g. `2026/20260911_glossary_entity_id.yaml`) with a version-less ID, so that the version a changeset ships
-  with is decided by the branch it is merged into rather than being baked into the changelog."
-  65)
+  directory (e.g. `2026/20261001_something.yaml`) with a version-less ID, so that the version a changeset ships with is
+  decided by the branch it is merged into rather than being baked into the changelog. 65 already shipped versioned
+  changesets before the cutover, so it is exempt."
+  66)
 
 (defn- require-no-versioned-changesets-from-first-versionless-major
   "Ensures no `vNN.`-prefixed changeset for [[first-versionless-major]] or later exists, whichever kind of versioned

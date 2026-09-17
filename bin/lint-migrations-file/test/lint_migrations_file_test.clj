@@ -245,41 +245,60 @@
         (validate-id "v57.2024-01-01T10:30:00" "056_update_migrations.yaml"))))))
 
 (deftest ^:parallel no-versioned-changesets-from-first-versionless-major-test
-  (let [msg (str "Versioned changesets are not allowed from v65 on; add new changesets to a year-based directory "
-                 "(e.g. migrations/2026/) with version-less IDs: v65.2026-09-11T12:00:00")]
-    (testing "v65+ changesets must be version-less in a year-based directory, whatever kind of file they are in"
-      (doseq [file ["migrations/065/20260911_glossary_entity_id.yaml"
-                    "065_update_migrations.yaml"]]
+  (let [msg (str "Versioned changesets are not allowed from v66 on; add new changesets to a year-based directory "
+                 "(e.g. migrations/2026/) with version-less IDs: v66.2026-10-01T12:00:00")]
+    (testing "v66+ changesets must be version-less in a year-based directory, whatever kind of file they are in"
+      (doseq [file ["migrations/066/20261001_something.yaml"
+                    "066_update_migrations.yaml"]]
         (is-thrown-with-error-info? msg
-                                    {:versioned-ids           ["v65.2026-09-11T12:00:00"]
-                                     :first-versionless-major 65}
-                                    (validate-file (io/file file) (mock-change-set :id "v65.2026-09-11T12:00:00")))))
+                                    {:versioned-ids           ["v66.2026-10-01T12:00:00"]
+                                     :first-versionless-major 66}
+                                    (validate-file (io/file file) (mock-change-set :id "v66.2026-10-01T12:00:00")))))
     (testing "later majors are refused too"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Versioned changesets are not allowed from v65 on"
-           (validate-file (io/file "migrations/066/20270101_something.yaml")
-                          (mock-change-set :id "v66.2027-01-01T10:30:00")))))
+           #"Versioned changesets are not allowed from v66 on"
+           (validate-file (io/file "migrations/067/20270101_something.yaml")
+                          (mock-change-set :id "v67.2027-01-01T10:30:00")))))
     (testing "every offending id is reported"
-      (is-thrown-with-error-info? (str "Versioned changesets are not allowed from v65 on; add new changesets to a "
+      (is-thrown-with-error-info? (str "Versioned changesets are not allowed from v66 on; add new changesets to a "
                                        "year-based directory (e.g. migrations/2026/) with version-less IDs: "
-                                       "v65.2026-09-11T12:00:00, v65.2026-09-11T12:00:01")
-                                  {:versioned-ids           ["v65.2026-09-11T12:00:00" "v65.2026-09-11T12:00:01"]
-                                   :first-versionless-major 65}
-                                  (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
-                                                 (mock-change-set :id "v65.2026-09-11T12:00:00")
-                                                 (mock-change-set :id "v65.2026-09-11T12:00:01")))))
-  (testing "v64 and earlier versioned changesets are still allowed"
+                                       "v66.2026-10-01T12:00:00, v66.2026-10-01T12:00:01")
+                                  {:versioned-ids           ["v66.2026-10-01T12:00:00" "v66.2026-10-01T12:00:01"]
+                                   :first-versionless-major 66}
+                                  (validate-file (io/file "migrations/066/20261001_something.yaml")
+                                                 (mock-change-set :id "v66.2026-10-01T12:00:00")
+                                                 (mock-change-set :id "v66.2026-10-01T12:00:01")))))
+  (testing "v65 and earlier versioned changesets are still allowed (65 shipped versioned changesets before the cutover)"
+    (is (= :ok
+           (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
+                          (mock-change-set :id "v65.2026-09-11T12:00:00"))))
     (is (= :ok
            (validate-file (io/file "migrations/064/20260911_table_user_settings.yaml")
                           (mock-change-set :id "v64.2026-09-11T00:00:11"))))
     (is (= :ok
            (validate-file (io/file "056_update_migrations.yaml")
                           (mock-change-set :id "v56.2024-01-01T10:30:00")))))
-  (testing "year-based directories are what v65+ should use"
+  (testing "year-based directories are what v66+ should use"
     (is (= :ok
-           (validate-file (io/file "migrations/2026/20260911_glossary_entity_id.yaml")
-                          (mock-change-set :id "glossary_entity_id"))))))
+           (validate-file (io/file "migrations/2026/20261001_something.yaml")
+                          (mock-change-set :id "something_versionless")))))
+  (testing "a v65 release mixes versioned 065/ changesets with version-less 2026/ ones, and both validate"
+    (is (= :ok
+           (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
+                          (mock-change-set :id "v65.2026-09-11T12:00:00")
+                          (mock-change-set :id "v65.2026-09-11T12:00:01"))))
+    (is (= :ok
+           (validate-file (io/file "migrations/2026/20260917_shipped_in_65.yaml")
+                          (mock-change-set :id "shipped_in_65")
+                          (mock-change-set :id "also_shipped_in_65"))))
+    (testing "but a version-less id may not sneak into the versioned 065/ file, nor a v65 id into 2026/"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (validate-file (io/file "migrations/065/20260911_glossary_entity_id.yaml")
+                                  (mock-change-set :id "shipped_in_65"))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid changeset IDs"
+                            (validate-file (io/file "migrations/2026/20260917_shipped_in_65.yaml")
+                                           (mock-change-set :id "v65.2026-09-11T12:00:00")))))))
 
 (deftest ^:parallel year-dir-version-less-ids-test
   (testing "year-based directories allow version-less changeset IDs"
