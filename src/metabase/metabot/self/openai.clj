@@ -237,13 +237,14 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "openai"
-    :display-name "OpenAI"
-    :errors       {401 #(tru "OpenAI API key expired or invalid")
-                   403 #(tru "OpenAI API key has insufficient permissions")
-                   404 #(tru "OpenAI API endpoint or model listing is unavailable")
-                   429 #(tru "OpenAI API has rate limited us")
-                   500 #(tru "OpenAI API is not working but not saying why")}}))
+   {:slug              "openai"
+    :display-name      "OpenAI"
+    :error-fallback    #(tru "OpenAI API error (HTTP {0})" %)
+    :errors            {401 #(tru "OpenAI API key expired or invalid")
+                        403 #(tru "OpenAI API key has insufficient permissions")
+                        404 #(tru "OpenAI API endpoint or model listing is unavailable")
+                        429 #(tru "OpenAI API has rate limited us")
+                        500 #(tru "OpenAI API is not working but not saying why")}}))
 
 (def supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
@@ -271,7 +272,7 @@
   ([] (list-models {}))
   ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
-                    (adapter/fetch-catalog provider opts "/v1/models"))))
+                          (adapter/fetch-catalog provider opts "/v1/models"))))
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `openai.`).

@@ -137,14 +137,15 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "azure"
-    :display-name "Azure"
-    :auth         azure-auth
-    :errors       {401 #(tru "Azure rejected the API key for this resource")
-                   403 #(tru "Azure API key lacks permission for this resource or deployment")
-                   404 #(tru "Azure API endpoint or deployment was not found — check the base URL and deployment name")
-                   429 #(tru "Azure has rate limited us")
-                   500 #(tru "Azure is not working but not saying why")}}))
+   {:slug              "azure"
+    :display-name      "Azure"
+    :auth              azure-auth
+    :error-fallback    #(tru "Azure API error (HTTP {0})" %)
+    :errors            {401 #(tru "Azure rejected the API key for this resource")
+                        403 #(tru "Azure API key lacks permission for this resource or deployment")
+                        404 #(tru "Azure API endpoint or deployment was not found — check the base URL and deployment name")
+                        429 #(tru "Azure has rate limited us")
+                        500 #(tru "Azure is not working but not saying why")}}))
 
 ;;; ---------------------------------------------- Connect validation -------------------------------------------
 

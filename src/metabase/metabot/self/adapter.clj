@@ -51,6 +51,7 @@
    [:slug                                :string]
    [:display-name                        :string]
    [:errors             {:optional true} [:maybe [:map-of :int fn?]]]
+   [:error-fallback     {:optional true} [:maybe fn?]]
    [:headers            {:optional true} [:maybe [:map-of :string :string]]]
    [:auth               {:optional true} [:maybe fn?]]
    [:supports-ai-proxy? {:optional true} [:maybe :boolean]]])
@@ -131,14 +132,18 @@
   "Build the `res->message` callback [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]] take.
 
   `errors` maps an HTTP status to a thunk returning that status's user-facing message; a status with no
-  entry falls back to naming the provider and the status. The messages stay thunks so each one is
-  rendered in the caller's locale at throw time, the way an inline `tru` would be."
-  [display-name errors]
+  entry falls back to `fallback`, a fn of the status. The messages stay thunks so each one is rendered in
+  the caller's locale at throw time, the way an inline `tru` would be.
+
+  `:error-fallback` is here to keep old translations working until the new one is properly translated"
+  [display-name errors fallback]
   (fn [res]
     (let [status (long (:status res 0))]
       (if-let [msg (get errors status)]
         (msg)
-        (tru "{0} API error (HTTP {1})" display-name status)))))
+        (if fallback
+          (fallback status)
+          (tru "{0} API error (HTTP {1})" display-name status))))))
 
 ;;; --------------------------------------------------- Auth -----------------------------------------------------
 
@@ -206,6 +211,8 @@
     :display-name       - the human name spliced into user-facing messages.
     :errors             - HTTP status -> thunk returning that status's message (see
                           [[status-error-msg-fn]]).
+    :error-fallback     - fn of the status, for a status `:errors` does not name. Each adapter keeps its
+                          own for now for the sake of i18n backward compatibility.
     :headers            - headers every request to this provider carries (e.g. an API version).
     :auth               - how this provider authenticates one request: a fn of the descriptor and the
                           request (`:credentials`, `:ai-proxy?`, `:method`, `:path`, and the encoded
@@ -216,9 +223,9 @@
     :supports-ai-proxy? - whether the Metabase Cloud AI proxy can serve this provider. Defaults to
                           false, which makes [[request!]] reject a request that asked for the proxy.
                           Distinct from a request's own `:ai-proxy?`, which is a caller asking for it."
-  [{:keys [slug display-name errors auth] :as descriptor} :- ProviderSpec]
+  [{:keys [slug display-name errors error-fallback auth] :as descriptor} :- ProviderSpec]
   (assoc descriptor
-         :error-msg (status-error-msg-fn display-name errors)
+         :error-msg (status-error-msg-fn display-name errors error-fallback)
          :auth      (or auth bearer-auth)
          :span      (keyword (str "metabot." slug) "request")))
 

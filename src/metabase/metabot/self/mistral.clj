@@ -17,12 +17,13 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "mistral"
-    :display-name "Mistral"
-    :errors       {401 #(tru "Mistral API key expired or invalid")
-                   404 #(tru "Mistral API endpoint was not found — check the base URL")
-                   429 #(tru "Mistral has rate limited us")
-                   500 #(tru "Mistral returned an internal server error")}}))
+   {:slug              "mistral"
+    :display-name      "Mistral"
+    :error-fallback    #(tru "Mistral API error (HTTP {0})" %)
+    :errors            {401 #(tru "Mistral API key expired or invalid")
+                        404 #(tru "Mistral API endpoint was not found — check the base URL")
+                        429 #(tru "Mistral has rate limited us")
+                        500 #(tru "Mistral returned an internal server error")}}))
 
 (def supported-models
   "Mistral models offered in the Metabot model picker, keyed by model id.

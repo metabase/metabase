@@ -21,14 +21,15 @@
   does not exist. 429 covers rate limiting *and* an exhausted account balance, which Moonshot reports with the
   same status."
   (adapter/provider
-   {:slug         "moonshot"
-    :display-name "Moonshot"
-    :errors       {400 #(tru "Moonshot rejected the request — check the model and request parameters")
-                   401 #(tru "Moonshot API key expired or invalid")
-                   403 #(tru "Moonshot denied access — check the API key''s permissions")
-                   404 #(tru "Moonshot API endpoint or model was not found — check the base URL and model")
-                   429 #(tru "Moonshot has rate limited us, or the account balance is exhausted")
-                   500 #(tru "Moonshot returned an internal server error")}}))
+   {:slug              "moonshot"
+    :display-name      "Moonshot"
+    :error-fallback    #(tru "Moonshot API error (HTTP {0})" %)
+    :errors            {400 #(tru "Moonshot rejected the request — check the model and request parameters")
+                        401 #(tru "Moonshot API key expired or invalid")
+                        403 #(tru "Moonshot denied access — check the API key''s permissions")
+                        404 #(tru "Moonshot API endpoint or model was not found — check the base URL and model")
+                        429 #(tru "Moonshot has rate limited us, or the account balance is exhausted")
+                        500 #(tru "Moonshot returned an internal server error")}}))
 
 (def supported-models
   "Moonshot models offered in the Metabot model picker, keyed by model id.

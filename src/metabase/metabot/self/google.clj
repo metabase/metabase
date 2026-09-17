@@ -389,17 +389,18 @@
   hands [[adapter/stream!]] is a thunk and [[google-auth]] resolves the credentials itself (see
   [[resolve-credentials]]) — both inside the request span."
   (adapter/provider
-   {:slug         "google"
-    :display-name "Google"
-    :auth         google-auth
-    :errors       {400 #(tru "Google API rejected the request as invalid")
-                   401 #(tru "Google API credentials expired or invalid")
-                   403 #(tru "Google API credentials have insufficient permissions or the API is not enabled for this project")
-                   404 #(tru "Google API endpoint is unavailable or the model was not found")
-                   429 #(tru "Google API has rate limited us")
-                   500 #(tru "Google API returned an internal server error")
-                   501 #(tru "Google API is not available in this location")
-                   503 #(tru "Google API is temporarily unavailable")}}))
+   {:slug              "google"
+    :display-name      "Google"
+    :auth              google-auth
+    :error-fallback    #(tru "Google API error (HTTP {0})" %)
+    :errors            {400 #(tru "Google API rejected the request as invalid")
+                        401 #(tru "Google API credentials expired or invalid")
+                        403 #(tru "Google API credentials have insufficient permissions or the API is not enabled for this project")
+                        404 #(tru "Google API endpoint is unavailable or the model was not found")
+                        429 #(tru "Google API has rate limited us")
+                        500 #(tru "Google API returned an internal server error")
+                        501 #(tru "Google API is not available in this location")
+                        503 #(tru "Google API is temporarily unavailable")}}))
 
 (defn- json-content?
   "Returns true if an HTTP response has a JSON content type."

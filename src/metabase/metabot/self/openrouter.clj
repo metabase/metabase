@@ -22,19 +22,20 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "openrouter"
-    :display-name "OpenRouter"
+   {:slug              "openrouter"
+    :display-name      "OpenRouter"
     ;; attribution headers OpenRouter shows on the account's activity page
-    :headers      {"HTTP-Referer" "https://metabase.com"
-                   "X-Title"      "Metabase"}
-    :errors       {401 #(tru "OpenRouter API key expired or invalid")
-                   402 #(tru "OpenRouter has insufficient credits")
-                   403 #(tru "OpenRouter API key has insufficient permissions")
-                   404 #(tru "OpenRouter model listing endpoint is unavailable")
-                   429 #(tru "OpenRouter has rate limited us")
-                   500 #(tru "OpenRouter returned an internal server error")
-                   502 #(tru "OpenRouter upstream provider returned an error")
-                   503 #(tru "OpenRouter service is unavailable")}}))
+    :headers           {"HTTP-Referer" "https://metabase.com"
+                        "X-Title"      "Metabase"}
+    :error-fallback    #(tru "OpenRouter API error (HTTP {0})" %)
+    :errors            {401 #(tru "OpenRouter API key expired or invalid")
+                        402 #(tru "OpenRouter has insufficient credits")
+                        403 #(tru "OpenRouter API key has insufficient permissions")
+                        404 #(tru "OpenRouter model listing endpoint is unavailable")
+                        429 #(tru "OpenRouter has rate limited us")
+                        500 #(tru "OpenRouter returned an internal server error")
+                        502 #(tru "OpenRouter upstream provider returned an error")
+                        503 #(tru "OpenRouter service is unavailable")}}))
 
 (def supported-models
   "OpenRouter models offered in the Metabot model picker, keyed by model id.
@@ -136,8 +137,8 @@
   ([] (list-models {}))
   ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
-                    (adapter/fetch-catalog provider opts "/v1/models")
-                    :name)))
+                          (adapter/fetch-catalog provider opts "/v1/models")
+                          :name)))
 
 ;;; Streaming response → AISDK v5 chunks
 

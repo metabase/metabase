@@ -207,14 +207,15 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "bedrock"
-    :auth         bedrock-auth
-    :display-name "AWS Bedrock"
-    :errors       {401 #(tru "AWS Bedrock rejected our credentials or request signature")
-                   403 #(tru "AWS Bedrock credentials lack permission for this model or action")
-                   404 #(tru "AWS Bedrock model or endpoint is unavailable in the configured region")
-                   429 #(tru "AWS Bedrock has rate limited us")
-                   500 #(tru "AWS Bedrock is not working but not saying why")}}))
+   {:slug              "bedrock"
+    :auth              bedrock-auth
+    :display-name      "AWS Bedrock"
+    :error-fallback    #(tru "AWS Bedrock API error (HTTP {0})" %)
+    :errors            {401 #(tru "AWS Bedrock rejected our credentials or request signature")
+                        403 #(tru "AWS Bedrock credentials lack permission for this model or action")
+                        404 #(tru "AWS Bedrock model or endpoint is unavailable in the configured region")
+                        429 #(tru "AWS Bedrock has rate limited us")
+                        500 #(tru "AWS Bedrock is not working but not saying why")}}))
 
 ;;; ------------------------------------------------ Model listing ----------------------------------------------
 
@@ -255,7 +256,7 @@
   ([] (list-models {}))
   ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
-                    (filter available-model? (adapter/fetch-catalog provider opts "/v1/models")))))
+                          (filter available-model? (adapter/fetch-catalog provider opts "/v1/models")))))
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
