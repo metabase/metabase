@@ -1,5 +1,5 @@
 diff --git a/node_modules/@loki/target-chrome-core/src/create-chrome-target.js b/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
-index 69878ef..9efc0aa 100644
+index 69878ef..7995a88 100644
 --- a/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
 +++ b/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
 @@ -25,6 +25,26 @@ const {
@@ -29,11 +29,26 @@ index 69878ef..9efc0aa 100644
  const RETRY_LOADING_STORIES_TIMEOUT = 10000;
  const LOADING_STORIES_TIMEOUT = 60000;
  const CAPTURING_SCREENSHOT_TIMEOUT = 30000;
-@@ -178,7 +198,20 @@ function createChromeTarget(
-           result.description.replace(/^Error: /, '').split('\n')[0]
-         );
-       }
--      return result.value && JSON.parse(result.value);
+@@ -169,16 +189,35 @@ function createChromeTarget(
+         .concat(args.map(JSON.stringify))
+         .join(',');
+       const expression = `(() => Promise.resolve((${functionToExecute})(${stringifiedArgs})).then(JSON.stringify))()`;
+-      const { result } = await Runtime.evaluate({
++      const { result, exceptionDetails } = await Runtime.evaluate({
+         expression,
+         awaitPromise: true,
+       });
+       if (result.subtype === 'error') {
++        // Browser-side error. Keep the full description (including the stack)
++        // and the CDP exceptionDetails (script url / line / column of the
++        // throw site) so failures inside Storybook itself are debuggable.
++        const details = exceptionDetails
++          ? `\nexceptionDetails=${JSON.stringify(exceptionDetails, null, 2)}`
++          : '';
++        throw new Error(
++          `${result.description.replace(/^Error: /, '')}${details}`
++        );
++      }
 +      if (!result.value) {
 +        return result.value;
 +      }
@@ -44,10 +59,21 @@ index 69878ef..9efc0aa 100644
 +        const posMatch = /position (\d+)/.exec(error.message);
 +        const pos = posMatch ? Number(posMatch[1]) : 0;
 +        const snippet = text.slice(Math.max(0, pos - 150), pos + 150);
-+        throw new Error(
+         throw new Error(
+-          result.description.replace(/^Error: /, '').split('\n')[0]
 +          `${error.message}; result.type=${result.type}; length=${text.length}; snippet=${JSON.stringify(snippet)}`
-+        );
-+      }
+         );
+       }
+-      return result.value && JSON.parse(result.value);
      };
  
      const ensureNoErrorPresent = async () => {
+@@ -241,7 +280,7 @@ function createChromeTarget(
+       try {
+         return await executeFunctionWithWindow(getSelectorBoxSize, selector);
+       } catch (error) {
+-        if (error.message === 'No visible elements found') {
++        if (error.message.startsWith('No visible elements found')) {
+           throw new Error(
+             `Unable to get position of selector "${selector}". Review the \`chromeSelector\` option and make sure your story doesn't crash.`
+           );
