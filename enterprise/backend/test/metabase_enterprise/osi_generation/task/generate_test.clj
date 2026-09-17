@@ -44,7 +44,49 @@
                               core/available? (constantly true)
                               settings/configured? (constantly true)
                               core/run-generation! (fn [] (throw (ex-info "boom" {})))]
-    (is (nil? ((deref #'task.generate/run!*))))))
+    (is (= {:outcome         :failed
+            :message         "boom"
+            :exception_class "class clojure.lang.ExceptionInfo"}
+           ((deref #'task.generate/run!*))))))
+
+(deftest scheduled-run-records-lifecycle-test
+  (testing "skipped and completed attempts remain successful task executions with their outcome attached"
+    (is (= {:status       :success
+            :task_details {:outcome :skipped, :reason :disabled}}
+           (#'task.generate/history-update {:status :success}
+                                           {:outcome :skipped, :reason :disabled}))))
+  (testing "an isolated generation error is visible as a failed lifecycle entry"
+    (is (= {:status       :failed
+            :task_details {:outcome :failed, :message "boom"}}
+           (#'task.generate/history-update {:status :success}
+                                           {:outcome :failed, :message "boom"})))))
+
+(deftest task-details-have-deterministic-semantic-key-order-test
+  (let [details (:task_details
+                 (#'task.generate/history-update
+                  {:status :success}
+                  {:summary {:reconcile {:execution {:ran_ms 2, :waited_ms 1}
+                                         :index     {:unchanged 3, :deleted 2, :inserted 1}}
+                             :usage {:output-tokens 5, :input-tokens 10}
+                             :llm-calls [{:output-tokens   5
+                                          :duration-ms     1234
+                                          :entity-local-id 7
+                                          :outcome         :generated
+                                          :input-tokens    10
+                                          :entity-type     "table"}]
+                             :errors 0, :already-approved 4, :generated 2, :candidates 6}
+                   :outcome :completed}))]
+    (is (= [:outcome :summary] (vec (keys details))))
+    (is (= [:candidates :generated :already-approved :errors :usage :llm-calls :reconcile]
+           (vec (keys (:summary details)))))
+    (is (= [:input-tokens :output-tokens] (vec (keys (get-in details [:summary :usage])))))
+    (is (= [:index :execution] (vec (keys (get-in details [:summary :reconcile])))))
+    (is (= [:inserted :deleted :unchanged]
+           (vec (keys (get-in details [:summary :reconcile :index])))))
+    (is (= [:waited_ms :ran_ms]
+           (vec (keys (get-in details [:summary :reconcile :execution])))))
+    (is (= [:outcome :entity-type :entity-local-id :duration-ms :input-tokens :output-tokens]
+           (vec (keys (first (get-in details [:summary :llm-calls]))))))))
 
 (deftest job-body-propagates-interruption-and-fatal-errors-test
   (let [run! (deref #'task.generate/run!*)

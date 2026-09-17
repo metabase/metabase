@@ -98,6 +98,29 @@
             (is (= ::called (reconcile/with-index-read-lock ds callback)))
             (is (= 1 @calls) "the callback runs after the exclusive lock is released")))))))
 
+(deftest clear-index-test
+  (let [statements (atom [])]
+    (with-redefs-fn {#'reconcile/with-index-write-lock (fn [datasource f]
+                                                         (is (= ::pgvector datasource))
+                                                         (f ::connection))
+                     #'index-table/vectors-table-exists? (fn [connection]
+                                                           (is (= ::connection connection))
+                                                           true)
+                     #'index-table/vectors-table-sql (constantly "library-index")
+                     #'index-table/meta-table-sql (constantly "library-index-meta")
+                     #'jdbc/execute-one! (fn [connection statement]
+                                           (is (= ::connection connection))
+                                           (swap! statements conj statement)
+                                           {::jdbc/update-count 46})
+                     #'jdbc/execute! (fn [connection statement]
+                                       (is (= ::connection connection))
+                                       (swap! statements conj statement))}
+      #(do
+         (is (= {:deleted 46} (reconcile/clear-index! ::pgvector)))
+         (is (= [["DELETE FROM library-index"]
+                 ["UPDATE library-index-meta SET reconciled_at = NULL WHERE id = 1"]]
+                @statements))))))
+
 (defn- index-rows [ds]
   (jdbc/execute! ds
                  [(format "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text FROM \"%s\""

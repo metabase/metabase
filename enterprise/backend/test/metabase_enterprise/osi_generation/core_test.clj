@@ -29,7 +29,7 @@
 (defn- run-with!
   [cands overrides]
   (let [events (atom [])
-        defaults {#'candidates/candidates (fn [_ _] cands)
+        defaults {#'candidates/selection (fn [_ _] {:candidates cands, :already-approved 0})
                   ;; empty budget so the caps don't bind unless a test opts in; window quota unset.
                   #'throttle/run-budget (constantly {})
                   #'throttle/window-budget (constantly nil)
@@ -40,7 +40,8 @@
                   #'settings/osi-generation-candidate-offset! (fn [_])
                   #'generate/generate-context (constantly {:ai_context {:synonyms ["alias"]}
                                                            :generator-version "v-test"
-                                                           :usage {:input-tokens 2, :output-tokens 1}})
+                                                           :usage {:input-tokens 2, :output-tokens 1}
+                                                           :duration-ms 123})
                   #'core/source-basis-current? (constantly true)
                   #'core/insert-new! (fn [entity-type entity-local-id stamp]
                                        (swap! events conj [:insert (merge stamp
@@ -60,10 +61,17 @@
   (let [{:keys [result events]} (run-with! [(candidate 1)] {})
         stored (second (first @events))]
     (is (= {:generated  1
+            :already-approved 0
             :restamped  0
             :skipped    0
             :errors     0
             :usage      {:input-tokens 2, :output-tokens 1}
+            :llm-calls  [{:entity-type     "table"
+                          :entity-local-id 1
+                          :outcome         :generated
+                          :duration-ms     123
+                          :input-tokens    2
+                          :output-tokens   1}]
             :candidates 1
             :pending    0
             :reconcile  :reconciled}
@@ -78,6 +86,13 @@
     (testing "the write and trailing reconcile both inherit the generation attribution"
       (is (= [[:insert "osi-generation"] [:reconcile "osi-generation"]]
              (mapv (juxt first last) @events))))))
+
+(deftest run-summary-includes-already-approved-members-test
+  (let [{:keys [result]} (run-with! []
+                                    {#'candidates/selection
+                                     (fn [_ _] {:candidates [], :already-approved 3})})]
+    (is (= 3 (:already-approved result)))
+    (is (zero? (:candidates result)))))
 
 (deftest existing-row-write-is-a-full-selection-token-cas-test
   (let [selected-at (java.time.OffsetDateTime/parse "2026-01-02T03:04:05Z")
@@ -207,13 +222,21 @@
                                              {#'generate/generate-context
                                               (constantly {:ai_context {}
                                                            :generator-version "v-test"
-                                                           :usage {:input-tokens 2, :output-tokens 1}})})
+                                                           :usage {:input-tokens 2, :output-tokens 1}
+                                                           :duration-ms 123})})
           stored (second (first @events))]
       (is (= {:generated  1
+              :already-approved 0
               :restamped  0
               :skipped    0
               :errors     0
               :usage      {:input-tokens 2, :output-tokens 1}
+              :llm-calls  [{:entity-type     "table"
+                            :entity-local-id 1
+                            :outcome         :generated
+                            :duration-ms     123
+                            :input-tokens    2
+                            :output-tokens   1}]
               :candidates 1
               :pending    0
               :reconcile  :reconciled}
@@ -285,10 +308,23 @@
                                            (throw (ex-info "write refused" {}))
                                            :generated))})]
       (is (= {:generated  1
+              :already-approved 0
               :restamped  0
               :skipped    0
               :errors     1
               :usage      {:input-tokens 4, :output-tokens 2}
+              :llm-calls  [{:entity-type     "table"
+                            :entity-local-id 1
+                            :outcome         :generated
+                            :duration-ms     123
+                            :input-tokens    2
+                            :output-tokens   1}
+                           {:entity-type     "table"
+                            :entity-local-id 2
+                            :outcome         :error
+                            :duration-ms     123
+                            :input-tokens    2
+                            :output-tokens   1}]
               :candidates 2
               :pending    0
               :reconcile  :reconciled}
@@ -310,9 +346,9 @@
           {:keys [result]} (run-with! cands
                                       {#'core/max-errors-per-run 5
                                        #'throttle/run-budget (constantly {:max-entities 2})
-                                       #'candidates/candidates (fn [limit _offset]
-                                                                 (reset! requested-limit limit)
-                                                                 cands)
+                                       #'candidates/selection (fn [limit _offset]
+                                                                (reset! requested-limit limit)
+                                                                {:candidates cands, :already-approved 0})
                                        #'metrics/record-run! (fn [summary _pending]
                                                                (reset! run-summary summary))})]
       (is (= 8 @requested-limit) "processing cap 2 + error budget 5 + one sentinel")
@@ -357,9 +393,9 @@
                {#'core/max-errors-per-run 2
                 #'settings/osi-generation-candidate-offset (constantly 17)
                 #'settings/osi-generation-candidate-offset! #(reset! stored %)
-                #'candidates/candidates (fn [_limit offset]
-                                          (reset! seen offset)
-                                          failing)})
+                #'candidates/selection (fn [_limit offset]
+                                         (reset! seen offset)
+                                         {:candidates failing, :already-approved 0})})
     (is (= 17 @seen))
     (is (= 19 @stored) "the cursor skips both corrupt candidates examined before the error cap")))
 
@@ -388,7 +424,7 @@
   (let [errors (atom [])]
     (mt/with-dynamic-fn-redefs [throttle/window-budget (constantly nil)
                                 throttle/run-budget (constantly {})
-                                candidates/candidates (fn [_ _] (throw (ex-info "selection failed" {})))
+                                candidates/selection (fn [_ _] (throw (ex-info "selection failed" {})))
                                 metrics/record-error! #(swap! errors conj %)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"selection failed" (core/run-generation!))))
     (is (= [:run-failed] @errors))))
@@ -404,7 +440,7 @@
                                                 :total_tokens      600
                                                 :created_at        (java.time.OffsetDateTime/now)})]
         (try
-          (mt/with-dynamic-fn-redefs [candidates/candidates
+          (mt/with-dynamic-fn-redefs [candidates/selection
                                       (fn [_ _] (throw (AssertionError. "selection reached despite exhausted quota")))
                                       metrics/record-run! (fn [& _])
                                       metrics/record-error! (fn [& _])]
