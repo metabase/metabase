@@ -92,7 +92,7 @@
 (defmethod docker-cmd :postgres
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":5432")
+   "-p" (str "127.0.0.1:" port ":5432")
    ;; "--network" "psql-metabase-network"
    "-e" "POSTGRES_USER=metabase"
    "-e" "POSTGRES_DB=metabase"
@@ -105,7 +105,7 @@
 (defmethod docker-cmd :mysql
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":3306")
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -114,7 +114,7 @@
 (defmethod docker-cmd :mariadb
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":3306")
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -125,7 +125,7 @@
   ["docker" "run" "-d"
    "-e" "MONGO_INITDB_ROOT_USERNAME=metabase"
    "-e" "MONGO_INITDB_ROOT_PASSWORD=metasample123"
-   "-p" (str port ":27017")
+   "-p" (str "127.0.0.1:" port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
 
@@ -141,7 +141,7 @@
 (defmethod docker-cmd :sqlserver
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":1433")
+   "-p" (str "127.0.0.1:" port ":1433")
    "-e" "ACCEPT_EULA=Y"
    "-e" "SA_PASSWORD=P@ssw0rd"
    "--name" container-name
@@ -150,7 +150,7 @@
 (defmethod docker-cmd :oracle
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":1521")
+   "-p" (str "127.0.0.1:" port ":1521")
    "-e" "ORACLE_PASSWORD=password"
    "--name" container-name
    (if (= resolved-version "latest")
