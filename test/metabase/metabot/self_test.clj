@@ -12,7 +12,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
-   [metabase.metabot.self.registry :as registry]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
@@ -20,6 +20,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
@@ -138,6 +139,11 @@
         (is (= (declared capability)
                (some-> (:schema (meta implementation)) mc/form))
             (str provider " " capability)))))
+  (testing "every `:supported-models` allow-list conforms to the schema the shared listing helper takes."
+    (doseq [[provider row] @#'registry/adapters
+            :let  [models (some-> (:supported-models row) deref)]
+            :when models]
+      (is (nil? (mr/explain adapter/SupportedModels models)) provider)))
   (testing "the capability enum and the row schema name the same capabilities, so the two hand-written
             lists cannot drift apart — a capability in one but not the other would either be unlookupable
             or unstorable"
