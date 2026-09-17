@@ -110,39 +110,57 @@
     :update :insert-into :delete-from :group-by :order-by :returning :with :with-columns})
 
 (defn- marker-in-identifier-position?
-  "Whether a marker sits directly in `form`, an identifier slot.
+  "Whether a marker sits in an identifier slot within `form`.
 
-  Stops at a nested query map. A subquery has its own clauses -- `t2/exists?` wraps the whole query
-  in `:select [[[:exists {...}]]]`, and that inner map's `:where` is a real value slot -- so it is
-  checked on its own terms rather than as part of the slot holding it."
+  `form` is the contents of a clause that names columns or tables. A marker directly in it is a
+  mistake. Two things inside are NOT mistakes, so this descends past them:
+
+  - a keyword-headed operator form, whose arguments are values. A computed projection --
+    `[[[:= :engine [:auto/param \"h2\"]] :is_match]]` -- or a `CASE` in an `:order-by` is a real
+    value slot in a clause that otherwise holds identifiers.
+  - a nested query map. A subquery has its own clauses, and [[check-marker-placement!]] scans it
+    separately, so a marker in its `:where` is judged there rather than here."
   [form]
   (cond
-    (map? form)        false
-    (marker-form? form) true
-    (sequential? form) (boolean (some marker-in-identifier-position? form))
-    :else              false))
+    (map? form)             false
+    (marker-form? form)     true
+    ;; `[:= ...]`, `[:case ...]`, `[:exists ...]` -- keyword-headed, so its arguments are values.
+    (operator-form? form)   false
+    (sequential? form)      (boolean (some marker-in-identifier-position? form))
+    :else                   false))
+
+(defn- query-maps
+  "`query` and every map nested anywhere inside it.
+
+  A subquery's clauses have to be scanned on their own terms: `:select` in an outer query holds
+  identifiers, but a subquery sitting there has its own `:where` that holds values -- and its own
+  `:select`, which holds identifiers again."
+  [query]
+  (let [found (volatile! [])]
+    (walk/postwalk (fn [x] (when (map? x) (vswap! found conj x)) x) query)
+    @found))
 
 (defn- check-marker-placement!
-  "Refuse a marker sitting in a clause that holds identifiers.
+  "Refuse a marker sitting in a clause that holds identifiers, in `query` or any subquery of it.
 
   `:join`-family clauses alternate a table and an ON condition, and the condition is a genuine value
   slot, so those are checked one table at a time rather than wholesale."
   [query]
-  (when (map? query)
-    (doseq [[clause v] query
-            :when      (contains? identifier-clauses clause)
-            :let       [join? (str/ends-with? (name clause) "join")
-                        ;; For a join, only the table halves (even indexes) hold identifiers.
-                        to-check (if (and join? (sequential? v))
-                                   (take-nth 2 v)
-                                   [v])]
-            part       to-check
-            :when      (marker-in-identifier-position? part)]
-      (throw (ex-info (str "[:auto/param ...] in a " clause " clause: " (pr-str part)
-                           ". That slot names a column or table, so the marker would compile to the"
-                           " identifier `param` and the value would be dropped. A marker belongs in"
-                           " a value slot.")
-                      {:type ::marker-outside-value-slot, :clause clause, :form part})))))
+  (doseq [m          (query-maps query)
+          [clause v] m
+          :when      (contains? identifier-clauses clause)
+          :let       [join? (str/ends-with? (name clause) "join")
+                      ;; For a join, only the table halves (even indexes) hold identifiers.
+                      to-check (if (and join? (sequential? v))
+                                 (take-nth 2 v)
+                                 [v])]
+          part       to-check
+          :when      (marker-in-identifier-position? part)]
+    (throw (ex-info (str "[:auto/param ...] in a " clause " clause: " (pr-str part)
+                         ". That slot names a column or table, so the marker would compile to the"
+                         " identifier `param` and the value would be dropped. A marker belongs in"
+                         " a value slot.")
+                    {:type ::marker-outside-value-slot, :clause clause, :form part}))))
 
 (defn- auto-param
   "Rewrite `[:auto/param v]` markers in `query` into HoneySQL's `[:param :kN]`, returning
