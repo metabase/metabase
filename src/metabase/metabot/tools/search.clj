@@ -90,11 +90,12 @@
       ("measure" "segment")
       ;; Measures and segments hang off a table rather than a collection, so surface the base table the
       ;; index row already carries. `:portable_entity_id` is attached by [[enrich-with-measure-segment-entity-ids]].
-      (merge common-fields
-             {:database_id       (:database_id result)
-              :base_table_id     (:table_id result)
-              :base_table_name   (:table_name result)
-              :base_table_schema (:table_schema result)})
+      (-> common-fields
+          (merge {:database_id       (:database_id result)
+                  :base_table_id     (:table_id result)
+                  :base_table_name   (:table_name result)
+                  :base_table_schema (:table_schema result)})
+          (m/assoc-some :curated curated))
 
       "transform"
       (merge common-fields
