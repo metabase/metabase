@@ -249,9 +249,11 @@
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-chat-system-prompt "Always respond in French."]
-      (let [rendered (render-template "internal.selmer" all-yes-perms)]
-        (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered))))))
+      (doseq [template ["internal.selmer" "slackbot.selmer"]]
+        (testing template
+          (let [rendered (render-template template all-yes-perms)]
+            (is (re-find #"Custom Instructions" rendered))
+            (is (re-find #"Always respond in French" rendered))))))))
 
 (deftest custom-sql-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
