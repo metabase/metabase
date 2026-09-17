@@ -63,11 +63,15 @@
                     {:tool-name tool-name})))
   ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
   ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
-  (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
+  (when-let [unknown (seq (remove #{:name :scope :description :description-suffix :args :handler :annotations
                                     :output-schema :required-extensions :title :_meta}
                                   (keys tool)))]
     (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
                     {:tool-name tool-name :unknown-keys (vec unknown)})))
+  ;; A non-callable suffix would only blow up at the first `tools/list`, far from the namespace that declared it.
+  (when (and (contains? tool :description-suffix) (not (ifn? (:description-suffix tool))))
+    (throw (ex-info (format "v2 MCP tool %s :description-suffix must be a fn of no arguments" tool-name)
+                    {:tool-name tool-name :description-suffix (:description-suffix tool)})))
   ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
   ;; `ui-resource/supported-extensions`'s output, so the tool would be hidden from and refused to every
   ;; client forever, with no error to say why.
@@ -121,6 +125,11 @@
    `opts` is a map of:
    - `:name` - the mcp public-facing name of the tool
    - `:scope` - the required scope for the tool, published as `securitySchemes`
+   - `:description-suffix` - _optional_ - a fn of no arguments returning text appended to the
+     description on every `tools/list`, for a description that depends on the instance's own data
+     rather than on the code. It runs per list, so it must be cheap. Note that a client may cache
+     a description for the life of its session, so treat the result as something that refreshes on
+     reconnect rather than as live.
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
@@ -213,6 +222,21 @@
   (or @manifest-cache
       (reset! manifest-cache (generate-manifest))))
 
+(defn- with-description-suffix
+  "`entry` with its `:description-suffix` called and appended to the description; unchanged when it declares none.
+   Applied here rather than in [[tool->manifest-entry]] so that [[manifest]] caches only the part that can't change
+   — a suffix read from the app DB has to be recomputed per list, and the cache is flushed only by registration."
+  [{:keys [description-suffix] :as entry}]
+  (cond-> entry
+    description-suffix (update :description str (description-suffix))))
+
+(defn- listable
+  "Manifest entries a client advertising `options` can see: those whose `:required-extensions` it satisfies.
+   Descriptions are still the static ones — [[list-tools]] adds any suffix, [[tools-hash]] deliberately doesn't."
+  [options]
+  (let [supported (mcp.ui-resource/supported-extensions options)]
+    (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)) (manifest))))
+
 (defn list-tools
   "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the client
    extensions `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients
@@ -222,23 +246,26 @@
    ;; Full support because [[tools-hash]] has no session, so the hash must not depend on per-session capabilities.
    (list-tools {:supports-mcp-ui? true}))
   ([options]
-   (let [supported (mcp.ui-resource/supported-extensions options)]
-     (into []
-           (comp
-            ;; has all required extensions
-            (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
-            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
-                                  :securitySchemes :_meta])))
-           (manifest)))))
+   (into []
+         (comp
+          (map with-description-suffix)
+          (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
+                                :securitySchemes :_meta])))
+         (listable options))))
 
 (defn tools-hash
   "Stable 8-character hex hash of the listed tools; polled by the GET/SSE keepalive to emit
    `notifications/tools/list_changed` when the set changes (feature flips). Hashes the JSON
    encoding of the wire-visible schema, so the result never depends on Clojure's `hash` of
-   non-data leaves."
+   non-data leaves.
+
+   Descriptions are out of scope on purpose. A `:description-suffix` may read the app DB, and this
+   runs every 30 seconds on every open keepalive stream; covering descriptions would buy a change
+   notification for a suffix at the price of that query per stream per tick. A suffix therefore
+   reaches a client when it next lists tools, not when it changes."
   []
   (format "%08x"
-          (hash (->> (list-tools)
+          (hash (->> (listable {:supports-mcp-ui? true})
                      (map (juxt :name :inputSchema :outputSchema))
                      (sort-by first)
                      json/encode))))
