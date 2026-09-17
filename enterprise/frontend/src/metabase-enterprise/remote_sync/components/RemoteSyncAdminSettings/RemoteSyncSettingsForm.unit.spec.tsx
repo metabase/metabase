@@ -285,8 +285,10 @@ describe("RemoteSyncSettingsForm", () => {
           expect(screen.getByText("Content to sync")).toBeInTheDocument();
         });
 
-        expect(screen.getByLabelText("Sync Library")).toBeInTheDocument();
-        expect(screen.getByText("Library")).toBeInTheDocument();
+        expect(
+          screen.getByLabelText("Sync semantic layer"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Semantic layer")).toBeInTheDocument();
       });
 
       it("should have library toggle checked by default when library does not exist", async () => {
@@ -301,7 +303,7 @@ describe("RemoteSyncSettingsForm", () => {
           expect(screen.getByText("Content to sync")).toBeInTheDocument();
         });
 
-        const libraryToggle = screen.getByLabelText("Sync Library");
+        const libraryToggle = screen.getByLabelText("Sync semantic layer");
         expect(libraryToggle).toBeChecked();
       });
 
@@ -316,7 +318,7 @@ describe("RemoteSyncSettingsForm", () => {
           expect(screen.getByText("Content to sync")).toBeInTheDocument();
         });
 
-        const libraryToggle = screen.getByLabelText("Sync Library");
+        const libraryToggle = screen.getByLabelText("Sync semantic layer");
         expect(libraryToggle).toBeChecked();
 
         await userEvent.click(libraryToggle);

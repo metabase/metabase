@@ -25,14 +25,14 @@ export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name="repository" c="text-secondary" />
-          <Text fw="medium">{t`Library`}</Text>
+          <Text fw="medium">{t`Semantic layer`}</Text>
         </Flex>
         <Flex align="center" gap="sm">
           <Switch
             checked={isChecked}
             onChange={(e) => handleToggle(e.currentTarget.checked)}
             disabled={isReadOnly}
-            aria-label={t`Sync Library`}
+            aria-label={t`Sync semantic layer`}
           />
           <Text>{t`Sync`}</Text>
         </Flex>

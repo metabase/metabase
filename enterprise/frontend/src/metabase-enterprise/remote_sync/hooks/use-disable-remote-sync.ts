@@ -18,7 +18,7 @@ export const useDisableRemoteSync = () => {
   const handleDisable = useCallback(async () => {
     showDisableConfirmation({
       title: t`Disable Remote Sync?`,
-      message: t`This will clear all remote sync settings. Any changes made to the Library collection after disabling can be overwritten if you enable sync again.`,
+      message: t`This will clear all remote sync settings. Any changes made to the semantic layer collection after disabling can be overwritten if you enable sync again.`,
       confirmButtonText: t`Disable`,
       confirmButtonProps: {
         variant: "filled",

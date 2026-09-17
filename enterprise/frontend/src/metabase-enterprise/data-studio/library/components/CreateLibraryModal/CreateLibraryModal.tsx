@@ -26,7 +26,7 @@ import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 export function CreateLibraryModal({
-  title = t`Create your Library`,
+  title = t`Create your semantic layer`,
   explanatorySentence,
   isOpened,
   onCreate,
@@ -81,7 +81,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
 
   const handleSubmit = async () => {
     const collection = await createLibrary().unwrap();
-    sendSuccessToast(t`Library created`);
+    sendSuccessToast(t`Semantic layer created`);
     trackDataStudioLibraryCreated(collection.id);
     onCreate?.(collection);
   };

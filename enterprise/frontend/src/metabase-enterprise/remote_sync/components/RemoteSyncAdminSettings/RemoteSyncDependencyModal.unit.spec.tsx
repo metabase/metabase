@@ -252,7 +252,7 @@ describe("RemoteSyncDependencyModal", () => {
 
     const modal = await screen.findByRole("dialog");
     expect(
-      within(modal).getByText(/sync with the Library/),
+      within(modal).getByText(/sync with the semantic layer/),
     ).toBeInTheDocument();
     expectNoFixOffered(modal);
   });

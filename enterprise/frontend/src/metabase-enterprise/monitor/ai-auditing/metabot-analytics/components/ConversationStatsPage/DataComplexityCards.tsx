@@ -91,11 +91,11 @@ function DataComplexityCard({
   const { subtitle, title } = match(catalogId)
     .with("library", () => ({
       title: t`Curated semantic layer`,
-      subtitle: t`Metrics and published tables within your Library.`,
+      subtitle: t`Metrics and published tables within your semantic layer.`,
     }))
     .with("universe", () => ({
       title: t`Full semantic layer`,
-      subtitle: t`Library entities plus every active physical table.`,
+      subtitle: t`Semantic layer entities plus every active physical table.`,
     }))
     .with("metabot", () => ({
       title: t`Metabot-visible layer`,

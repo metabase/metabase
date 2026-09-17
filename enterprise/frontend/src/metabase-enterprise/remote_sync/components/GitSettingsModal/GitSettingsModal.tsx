@@ -20,14 +20,14 @@ export const GitSettingsModal = ({
       withCloseButton={false}
       title={
         <Text fw={700} size="1.5rem">
-          {t`Set up remote sync for your Library`}
+          {t`Set up remote sync for your semantic layer`}
         </Text>
       }
       size="xl"
       padding="xxl"
     >
       <Text c="text-secondary" size="md" fw={400} lh="1.25rem" mb="xl">
-        {t`Keep your Library and transforms safely backed up in Git.`}
+        {t`Keep your semantic layer and transforms safely backed up in Git.`}
       </Text>
       <RemoteSyncSettingsForm
         onCancel={onClose}

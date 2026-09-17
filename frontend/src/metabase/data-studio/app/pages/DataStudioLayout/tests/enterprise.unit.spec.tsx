@@ -49,7 +49,7 @@ describe("DataStudioLayout", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Set up remote sync for your Library"),
+          screen.getByText("Set up remote sync for your semantic layer"),
         ).toBeInTheDocument();
       });
     });
@@ -67,7 +67,7 @@ describe("DataStudioLayout", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Set up remote sync for your Library"),
+          screen.getByText("Set up remote sync for your semantic layer"),
         ).toBeInTheDocument();
       });
 
@@ -76,7 +76,7 @@ describe("DataStudioLayout", () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText("Set up remote sync for your Library"),
+          screen.queryByText("Set up remote sync for your semantic layer"),
         ).not.toBeInTheDocument();
       });
     });

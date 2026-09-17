@@ -27,7 +27,7 @@ export function LibraryEmptyState() {
     try {
       setError(null);
       const collection = await createLibrary().unwrap();
-      sendSuccessToast(t`Library created`);
+      sendSuccessToast(t`Semantic layer created`);
       trackDataStudioLibraryCreated(collection.id);
     } catch (error) {
       setError(getErrorMessage(error));
