@@ -597,6 +597,11 @@
      (fn []
        (is (str/ends-with? (described "no_suffix_probe") "Static part."))))))
 
+(defn- var-suffix
+  "Text a test tool appends to its description; exists to be referred to as a var."
+  []
+  " Dynamic part.")
+
 ;; not ^:parallel: exercises register-tool!'s load-time guards
 (deftest registration-validates-description-suffix-test
   (testing "GHY-4522: a :description-suffix that isn't a function is rejected at load time, not at first list"
@@ -607,7 +612,29 @@
                                                     :description        "Static part."
                                                     :description-suffix " not a fn"
                                                     :args               [:map]
-                                                    :handler            (fn [_ _] nil)})))))
+                                                    :handler            (fn [_ _] nil)}))))
+  (testing "GHY-4522: an IFn that is only callable with one argument is rejected too — it would throw
+            ArityException at the first tools/list, which is the deferred failure this guard exists to prevent"
+    (doseq [suffix [:a-keyword {:a 1} #{:a} [:a]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"description-suffix"
+                            (registry/register-tool! {:name               "bad_suffix"
+                                                      :scope              "agent:content:read"
+                                                      :description        "Static part."
+                                                      :description-suffix suffix
+                                                      :args               [:map]
+                                                      :handler            (fn [_ _] nil)}))
+          (pr-str suffix))))
+  (testing "GHY-4522: a var holding a fn of no arguments is accepted"
+    (do-with-temp-tool!
+     {:name               "var_suffix_probe"
+      :scope              "agent:content:read"
+      :description        "Static part."
+      :description-suffix #'var-suffix
+      :args               [:map]
+      :handler            (fn [_ _] nil)}
+     (fn []
+       (is (str/ends-with? (described "var_suffix_probe") "Static part. Dynamic part."))))))
 
 ;; not ^:parallel: registers a tool in the shared registry
 (deftest tools-hash-does-not-compute-description-suffixes-test

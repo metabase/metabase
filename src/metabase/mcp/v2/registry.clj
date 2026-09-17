@@ -69,7 +69,11 @@
     (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
                     {:tool-name tool-name :unknown-keys (vec unknown)})))
   ;; A non-callable suffix would only blow up at the first `tools/list`, far from the namespace that declared it.
-  (when (and (contains? tool :description-suffix) (not (ifn? (:description-suffix tool))))
+  ;; `ifn?` is too loose to catch that: keywords, maps, sets and vectors are IFn but callable only with one
+  ;; argument, so they'd reach the first list and throw `ArityException` there. A var is allowed because one
+  ;; holding a fn of no arguments is callable, and because `:handler` is already registered as a var.
+  (when (and (contains? tool :description-suffix)
+             (not (or (fn? (:description-suffix tool)) (var? (:description-suffix tool)))))
     (throw (ex-info (format "v2 MCP tool %s :description-suffix must be a fn of no arguments" tool-name)
                     {:tool-name tool-name :description-suffix (:description-suffix tool)})))
   ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
