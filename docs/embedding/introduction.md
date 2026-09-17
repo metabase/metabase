@@ -104,7 +104,9 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 ## Embedding hub
 
-Embedding settings live in the [Embedding hub](./embedding-hub.md). To open it, click the **grid** icon in the upper right and select **Embedding hub**. Only admins can see it.
+Embedding settings live in the Embedding hub. To open it, click the **grid** icon in the upper right and select **Embedding hub**. Only admins can see it.
+
+The hub opens on a **Get started** checklist that walks you through your first embed: connecting a database, creating a dashboard, and getting an embed snippet. A second set of steps covers fine-tuning: [permissions](../permissions/embedding.md) and [tenants](./tenants.md), [SSO](./authentication.md), custom [themes](./appearance.md), and [AI](./ai-chat.md). On OSS and Starter plans, the fine-tuning steps are locked.
 
 ## Resources for AI agents
 

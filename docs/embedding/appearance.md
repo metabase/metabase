@@ -54,7 +54,7 @@ In the **Themes** section, you can:
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
 - **Delete a theme.** This deletion is eternal.
 
-The **Branding elements** section on the same page sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows when a question returns no results or a search finds nothing. These are the same settings you'll find in **Admin > Settings > Appearance**; the hub just puts them next to your themes. The logo, colors, and fonts for your Metabase itself live in [Admin > Settings > Appearance](../configuring-metabase/appearance.md).
+The **Branding elements** section on the same page sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows when a question returns no results or a search finds nothing. These are the same settings you'll find in **Admin > Settings > Appearance**; the hub just puts them next to your themes. The logo, colors, and fonts for your Metabase itself live in [Admin > Settings > Appearance](../configuring-metabase/appearance.md). Those Admin settings also control the colors and branding of [full-app embeds](./full-app-embedding.md), which don't use embedding themes.
 
 ![Theme editor](./images/theme-editor.png)
 
@@ -72,7 +72,7 @@ The theme you pick is inlined into the generated `defineMetabaseConfig({ theme: 
 
 ### Reuse a saved theme in the SDK
 
-If you're using the [SDK](./sdk/introduction.md), pass a theme to `MetabaseProvider` with `defineMetabaseTheme`, which accepts the same theme shape that you configure in the Themes admin UI. You can copy a saved theme's values into your code:
+If you're using the [SDK](./sdk/introduction.md), pass a theme to `MetabaseProvider` with `defineMetabaseTheme`, which accepts the same theme shape that you configure in **Embedding hub > Appearance**. You can copy a saved theme's values into your code:
 
 ```tsx
 import {

@@ -255,7 +255,7 @@ If the user has already been assigned to a tenant (for example, through Metabase
 
 By default, Metabase looks for a `@tenant` key in your JWT. To set up a different key:
 
-1. Go to **Embedding hub** > **Authentication** > **User attribute configuration** (or **Admin** > **Settings** > **Authentication** > **JWT**)
+1. Go to **Embedding hub** > **Authentication** > **User attribute configuration**.
 2. Change the **Tenant assignment attribute** key to your preferred identifier.
 
 ### Provisioning tenants and users
