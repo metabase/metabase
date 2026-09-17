@@ -11,8 +11,6 @@ import type Question from "metabase-lib/v1/Question";
 
 import { revertToRevision } from "../actions";
 
-const { getModerationTimelineEvents } = PLUGIN_MODERATION;
-
 interface QuestionActivityTimelineProps {
   question: Question;
 }
@@ -35,7 +33,7 @@ export function QuestionActivityTimeline({
   const moderationReviews = question.getModerationReviews();
 
   const events = useMemo(() => {
-    const moderationEvents = getModerationTimelineEvents(
+    const moderationEvents = PLUGIN_MODERATION.getModerationTimelineEvents(
       moderationReviews,
       currentUser,
     );
