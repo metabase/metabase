@@ -15,7 +15,7 @@
   [{:type "empty" :name "no rows" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID IS NULL"}])
 
 (defmacro ^:private with-transforms-enabled [& body]
-  `(mt/with-premium-features #{:transforms-basic :transforms-test}
+  `(mt/with-premium-features #{:transforms-basic :transforms-testing}
      (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
        ~@body)))
 
@@ -34,7 +34,7 @@
                              [:delete 402 path]
                              [:post 402 (str path "/run")]]]
               (mt/assert-has-premium-feature-error
-               "Transform Tests"
+               "Transforms Testing"
                (apply mt/user-http-request :crowberto request)))))))))
 
 (deftest crud-test

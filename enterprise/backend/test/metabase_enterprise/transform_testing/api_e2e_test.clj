@@ -40,7 +40,7 @@
 (deftest transform-test-lifecycle-test
   (testing "author, read, run, edit, re-run and delete a transform test over the API"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-test}
+      (with-transforms-enabled #{:transforms-basic :transforms-testing}
         (with-people-transform
           (fn [schema table transform-id]
             (let [input   {:table  {:schema schema :name table}
@@ -104,7 +104,7 @@
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-test}
+      (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
                          {:source {:type "python" :source-database (mt/id)}}
@@ -134,7 +134,7 @@
                   (is (not (contains? response :trace))))))))))))
 
 (deftest run-is-gated-test
-  (with-transforms-enabled #{:transforms-basic :transforms-test}
+  (with-transforms-enabled #{:transforms-basic :transforms-testing}
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {test-id :id}      {:transform_id transform-id}]
       (let [run-path (format "ee/transform-test/%d/run" test-id)]

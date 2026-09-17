@@ -306,9 +306,9 @@
   "Should we allow users to use Python transforms?"
   :transforms-python)
 
-(define-premium-feature enable-transform-tests?
+(define-premium-feature enable-transform-testing?
   "Should we allow users to author and run tests against their transforms?"
-  :transforms-test)
+  :transforms-testing)
 
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
@@ -441,7 +441,7 @@
    :tenants                        (enable-tenants?)
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
-   :transforms-test                (enable-transform-tests?)
+   :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
