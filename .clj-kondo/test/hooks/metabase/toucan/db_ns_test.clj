@@ -120,6 +120,37 @@
     (is (=? [{:type :metabase/unsafe-app-db-query, :message #".*reaches a SQL value slot unmarked.*"}]
             (lint-query-call '(t2/select :model/X :locale locale) 'metabase.foo.db)))))
 
+(deftest ^:parallel conditions-map-values-are-linted-test
+  (testing "a conditions map -- the shape the rubric recommends -- is checked"
+    ;; `(t2/update! model {:col v} changes)` filters on v, but it is not a `:where` clause, so
+    ;; neither the query-map walker nor the kv-arg walker used to see it. A namespace written this
+    ;; way passed the lint vacuously.
+    (are [form] (=? [{:type :metabase/unsafe-app-db-query
+                      :message #".*reaches a SQL value slot unmarked.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/update! :model/X {:key k} {:v 1})
+      '(t2/delete! :model/X {:key k})
+      '(t2/update! :model/X {:key [:in ks]} {:v 1})))
+  (testing "a marked or coerced conditions value is not flagged"
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/update! :model/X {:key [:auto/param k]} {:v 1})
+      '(t2/update! :model/X {:id (long id)} {:v 1})))
+  (testing "only the map right after the model is conditions -- the changes map is exempt"
+    ;; rule 1: a written value must arrive as itself, so it is never flagged.
+    (is (empty? (lint-query-call '(t2/update! :model/X {:id (long id)} {:v written})
+                                 'metabase.foo.db)))))
+
+(deftest ^:parallel subquery-values-are-linted-test
+  (testing "a value inside a subquery in a value slot is reached"
+    (is (=? [{:type :metabase/unsafe-app-db-query
+              :message #".*`z`.*reaches a SQL value slot unmarked.*"}]
+            (lint-query-call
+             '(t2/select :model/X {:where [:in :id {:select [:id] :from [:y] :where [:= :z z]}]})
+             'metabase.foo.db))))
+  (testing "the plain token case still works -- descending must not replace it"
+    (is (=? [{:message #"`v`.*reaches a SQL value slot unmarked.*"}]
+            (lint-query-call '(t2/select :model/X {:where [:= :k v]}) 'metabase.foo.db)))))
+
 (deftest ^:parallel conditionally-built-clause-test
   (testing "a value slot inside a conditional form is still reached"
     ;; `value-nodes` used to stop at a list node, so anything a `when`/`if`/`cond->` built was

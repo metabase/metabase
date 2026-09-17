@@ -67,7 +67,9 @@ An `insert!` row value, or the changes map of an `update!`.
 (t2/update! :model/Setting :key [:auto/param setting-key] {:value value})
 ```
 
-A written value never becomes SQL structure, because it is not a where-clause value. And marking one
+A written value is not a where-clause value, so it is not the injection shape this project targets
+(HoneySQL will still resolve a map in a VALUES row or a SET map toward structure, which is what the
+shipped `honeysql_guard` and the write path in GHY-4615 cover). And marking one
 does not just fail to help — it corrupts the write, because the column's `:in` transform runs on
 the marker itself before compile. `[:lift "huh"]` on a `:json` column is stored as the literal
 string `"[\"lift\",\"huh\"]"`: marker destroyed, wrong data persisted. The same applies to any
@@ -93,8 +95,17 @@ A join ON condition compares two columns, and so does `[:= :a.id :b.id]`.
                                 ...]]
 ```
 
-Binding a column reference emits the generated key as an identifier and drops the comparison. The
-lint still flags some of these; it cannot tell the difference. Record it and move on.
+Marking a column reference does not fail loudly — it binds the column NAME as a parameter, so the
+comparison survives but compares against a literal string instead of the column:
+
+```clojure
+(t2/select :model/Setting {:where [:= :key [:auto/param :value]]})
+;; => ["SELECT * FROM SETTING WHERE KEY = ?"  :value]   <- compares to the keyword, not the column
+```
+
+The query still runs and returns the wrong rows. The lint flags some column references and cannot
+tell them from values, so this one is on you: check whether the symbol holds a column before
+marking it. Record it and move on.
 
 ### 3. A literal -> leave it
 
@@ -124,9 +135,11 @@ The lint already implements this rule: `lint-unmarked-values!` only reports symb
 (some-> id long)          ; one that may be nil
 ```
 
-`long` throws on anything that is not a number, so the value is provably numeric by the time it
-reaches a value slot. Use `mapv`, not `map`, so a bad element throws at the call site rather than
-part way through the query.
+`long` throws on a string, map, vector, or keyword, so a request value that is not a number cannot
+reach the value slot. Two edges worth knowing: it silently TRUNCATES a non-integral number
+(`(long 1.9)` is `1`), and it returns the codepoint of a `Character`. Neither can carry SQL, so the
+security guarantee holds — but do not read `long` as full validation. Use `mapv`, not `map`, so a
+bad element throws at the call site rather than part way through the query.
 
 Use `some->` when the parameter's schema admits nil (`[:maybe ::lib.schema.id/user]`), or when the
 call site guards with `when`. `long` throws on nil, and a nil id usually means `IS NULL` rather than
@@ -148,13 +161,29 @@ an error:
                     [:in :perm_type perm-types]]})
 ```
 
-Toucan rewrites `[:in col []]` to `false`, because `IN ()` is invalid SQL, and that rewrite runs
-inside the compile step the marker wraps. A marked empty collection hides the rewrite and leaves
-`IN ()`, which Postgres rejects and H2 quietly accepts.
+Toucan rewrites `[:in col []]` to `FALSE`, because `IN ()` is invalid SQL, and that rewrite runs
+inside the compile step the marker wraps — so marking hides it. The guard refuses a marked empty
+collection rather than guessing, and you get a thrown `::marked-empty-collection` instead of a
+silent bug.
 
-The guard refuses this rather than guessing, so you will see it as a thrown
-`::marked-empty-collection`, not a silent bug. If a collection is provably non-empty (a literal, or
-guarded by `(seq ...)`), marking it is fine.
+**The rewrite is `:in` only.** `:not-in` is not rewritten, so an empty collection there emits
+invalid SQL whether you mark it or not. Verified:
+
+```clojure
+(t2/select :model/Setting {:where [:in :key []]})      ; => "... WHERE FALSE"        fine
+(t2/select :model/Setting {:where [:not-in :key []]})  ; => "... WHERE KEY NOT IN ()" broken
+```
+
+So for `:not-in`, leaving it unmarked is not a safe finished state: the call site has to guarantee
+the collection is non-empty (or branch on `seq`). Record it as a finding if it cannot.
+
+**Which wins when a collection holds ids?** Rule 4 and this rule both apply. Rule 4 wins: coerce
+with `(mapv long ids)` and do not add a marker. The coercion proves each element is numeric, and an
+empty vector still reaches Toucan's `:in` rewrite because `mapv` of nothing is `[]`.
+
+**Where the non-empty proof has to live.** "Provably non-empty" means provable at THIS call, not at
+a caller one file away — a caller's `(seq ...)` guard can be deleted without touching this
+namespace. If the guarantee is not local, treat the collection as possibly empty.
 
 ### 6. Already constrained by the schema -> coerce anyway if it is an id
 
@@ -173,7 +202,8 @@ guarantee. The coercion is.
 
 ### 7. Anything else from outside -> mark it
 
-A string, enum, uuid, path, cron, locale.
+A string, enum, uuid, path, cron, locale, boolean -- anything that did not come from the source
+text. If it arrived as an argument and is not an id, it belongs here.
 
 ```clojure
 ;; settings/db.clj -- same `setting-key` as the insert in rule 1, but filtered on
@@ -285,9 +315,11 @@ Verified against a real app DB on `:model/SearchIndexMetadata`, whose `:engine` 
 ;; => ["... WHERE \"ENGINE\" = \"APPDB\""]
 ```
 
-**The call style is the variable, not the marker.** A marked kv-arg keeps its transform, because
-`value_guard` lifts the `[:auto/param column v]` 3-arity from inside `apply-kv-arg`. Only moving
-the value into a `{:where ...}` map takes it off that path.
+**The call style is the variable, not the marker.** A marked kv-arg keeps its transform because
+`apply-kv-arg` still runs on it: `transform-condition-value` treats a sequential value as an
+operator form and maps the transform over its tail, so `[:auto/param :appdb]` comes out as
+`[:auto/param "appdb"]` with the payload transformed. Only moving the value into a `{:where ...}`
+map takes it off the `apply-kv-arg` path, and that is where the transform is lost.
 
 The third form is broken: the keyword lands in a value slot, HoneySQL formats a keyword there as an
 **identifier**, and the query compares a column to a nonexistent column. It compiles, it runs, and
@@ -316,24 +348,24 @@ before assuming a column is plain.
 
 ## What the mechanism catches for you
 
-`value_guard.clj` refuses these at compile rather than letting them reach SQL. You do not need to
-hand-check for them, but knowing the messages saves debugging time.
+`value_guard.clj` refuses these at compile rather than letting them reach SQL:
 
 | thrown | meaning |
 |---|---|
 | `::malformed-marker` | marker-shaped but not `[:auto/param v]`, e.g. a stray third element |
 | `::marked-operator-form` | the marker wraps a whole comparison — `[:auto/param [:< v]]` instead of `[:< [:auto/param v]]` |
 | `::marked-empty-collection` | rule 5 |
-| `::marker-reached-sql` | a marker survived to SQL, e.g. written in a column or table position |
+| `::marker-reached-sql` | a marker reached a raw `[sql & args]` vector, where nothing can lift it |
+| `::marker-outside-value-slot` | a marker in a clause that names columns or tables — `:select`, `:from`, `:order-by`, … |
 
-A marker in a column or table position is the one case worth naming explicitly, because the failure
-is silent without the guard: HoneySQL formats it as the literal identifier `param` and discards the
-value.
+A marker outside a value slot is refused too, as `::marker-outside-value-slot`. The lift rewrites a
+marker wherever it sits, so without this check one in a `:select`, `:from`, `:order-by` or
+`:group-by` clause compiled to the identifier `PARAM` and silently discarded the value — the one
+place the mechanism used to be silent. A subquery is checked on its own terms, so `t2/exists?`,
+which wraps the query in `:select [[[:exists {...}]]]`, still works.
 
 `nil` needs no special handling. A marked nil passes through as a literal so HoneySQL emits
 `IS NULL`, where a bound parameter would emit `= ?` and match nothing.
-
----
 
 ## Known limits — record, do not solve
 
@@ -349,9 +381,30 @@ rubric, not that work remains.
   clause. It is already safe. The rule: **mark what sits in the value slot after any transformation**,
   not the argument the function received.
 
+### The lint also MISSES things (false negatives)
+
+Everything above is the lint over-flagging. It under-flags too, and zero findings therefore does not
+mean a namespace is converted. Grep for these by hand:
+
+- **A bare conditions map.** `(t2/update! model {:col v} changes)`, `(t2/delete! model {:col v})`,
+  and `mdb/update-or-insert!`'s select map are where-clause values, but they are not `:where`
+  clauses, so the walker did not descend them. Fixed in the foundation PR for `update!`,
+  `update-or-insert!` and `delete!` — but any other fn taking a conditions map is still unchecked.
+- **A positional primary key.** `(t2/update! model id changes)`, `(t2/select model id)`. Not a
+  keyword pair, so nothing sees it. Coerce these by hand.
+- **A value nested in a HoneySQL function-call form**, e.g. `[:= :col [:lower v]]`. The walker
+  treats the inner form as the value and does not descend.
+- **A fn that RETURNS a clause** for a caller to execute outside the Toucan pipeline (via
+  `app-db/query`). The value slots are invisible to the lint and the marker never reaches the
+  compile step that lifts it.
+
 **The gate is not zero findings.** It is that every remaining finding is explained by a rule above or
-a limit here. Never contort code to silence a finding; forcing a value into the rubric because the
-lint asked is a wrong outcome.
+a limit here, AND that you have hand-checked the shapes in this subsection. Never contort code to
+silence a finding; forcing a value into the rubric because the lint asked is a wrong outcome.
+
+**Write the accounting down.** Put the survivor list in the PR description — one line per finding
+with the rule or limit that accounts for it. Reviewers have no other place to look, and an
+unaccounted namespace is indistinguishable from a converted one without it.
 
 ---
 
