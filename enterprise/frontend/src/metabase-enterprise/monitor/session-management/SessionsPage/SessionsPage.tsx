@@ -27,6 +27,7 @@ import type {
 import { SIDEBAR_WIDTH, SessionDetailSidebar } from "../SessionDetailSidebar";
 import { SessionsFilters } from "../SessionsFilters";
 import { SessionsTable } from "../SessionsTable";
+import { SessionsTabs } from "../SessionsTabs";
 
 import {
   DEFAULT_SORT_COLUMN,
@@ -60,6 +61,7 @@ export const SessionsPage = () => {
   );
   const sessions = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
+  const isEndedTab = urlState.tab === "ended";
   const selectedSessions = useMemo(
     () => sessions.filter((session) => rowSelection[session.id]),
     [sessions, rowSelection],
@@ -72,6 +74,7 @@ export const SessionsPage = () => {
     clearSelection,
     urlState.page,
     urlState.query,
+    urlState.tab,
     urlState.provider,
     urlState.last_active,
     urlState.sort_column,
@@ -202,11 +205,16 @@ export const SessionsPage = () => {
                   disabled={total === 0}
                   onClick={revokeAll}
                 >
-                  {t`Revoke all sessions`}
+                  {t`Revoke all active sessions`}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
           </Flex>
+
+          <SessionsTabs
+            tab={urlState.tab}
+            onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
+          />
 
           <Flex gap="md" align="center">
             <DebouncedSearchInput
@@ -227,6 +235,9 @@ export const SessionsPage = () => {
             rowSelection={rowSelection}
             selectedSessionId={sessionId}
             sorting={sorting}
+            emptyLabel={
+              isEndedTab ? t`No ended sessions` : t`No active sessions`
+            }
             onSortingChange={handleSortingChange}
             onRowSelectionChange={setRowSelection}
             onRowClick={navigateToSession}

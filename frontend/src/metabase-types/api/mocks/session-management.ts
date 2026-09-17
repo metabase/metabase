@@ -29,6 +29,10 @@ export const createMockAdminSession = (
   ip_address: "127.0.0.1",
   device_id: "7a6f5e4d-3c2b-4a19-8e7d-6c5b4a392817",
   current: false,
+  status: "live",
+  ended_at: null,
+  end_reason: null,
+  ended_by: null,
   ...opts,
 });
 
