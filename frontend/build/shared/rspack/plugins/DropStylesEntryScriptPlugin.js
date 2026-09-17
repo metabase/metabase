@@ -28,10 +28,13 @@ class DropStylesEntryScriptPlugin {
           PLUGIN_NAME,
           (data, cb) => {
             const files = scripts();
-            data.assetTags.scripts = data.assetTags.scripts.filter(
-              (tag) =>
-                !files.some((file) => tag.attributes.src?.endsWith(file)),
-            );
+            data.assetTags.scripts = data.assetTags.scripts.filter((tag) => {
+              const { src } = tag.attributes;
+              return (
+                typeof src !== "string" ||
+                !files.some((file) => src.endsWith(file))
+              );
+            });
             cb(null, data);
           },
         );
