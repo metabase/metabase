@@ -59,22 +59,28 @@ For each value the lint flags, in order. The first rule that matches wins.
 An `insert!` row value, or the changes map of an `update!`.
 
 ```clojure
-;; settings/db.clj -- left alone
+;; settings/db.clj -- the inserted row's values are left alone
 (t2/insert-returning-instances! :model/Setting :key setting-key :value value)
 
-;; search/db.clj -- the changes map is bare
-(t2/update! :model/SearchIndexMetadata
-            {:engine engine :status :active}   ; conditions
-            {:status :retired})                ; changes -- never marked
+;; settings/db.clj -- `value` is in the changes map, so it stays bare.
+;; `setting-key` is a CONDITION, so rule 7 applies to it instead.
+(t2/update! :model/Setting :key [:auto/param setting-key] {:value value})
 ```
 
-Nothing here becomes SQL structure: it is not a where-clause value. A `define-before-insert` hook
-may also read it before the query compiles — `:model/Setting` encrypts `:value` that way — so a
-marker breaks the write. The lint no longer flags these.
+A written value never becomes SQL structure, because it is not a where-clause value. And marking one
+does not just fail to help — it corrupts the write, because the column's `:in` transform runs on
+the marker itself before compile. `[:lift "huh"]` on a `:json` column is stored as the literal
+string `"[\"lift\",\"huh\"]"`: marker destroyed, wrong data persisted. The same applies to any
+encrypted column, which is `mi/transform-encrypted-json` — an `:in` transform, so a marker reaches
+it and is encrypted as data.
 
-The same is true from the other direction: a marker inside an `update!` changes map is eaten by the
-column transform before compile. `[:lift "huh"]` on a `:json` column is stored as the string
-`"[\"lift\",\"huh\"]"`, the marker destroyed.
+A `define-before-insert` hook can read a written value too, which is another reason the value must
+arrive as itself rather than wrapped.
+
+The lint no longer flags written values.
+
+Do not confuse the changes map with the conditions. `(t2/update! model conditions changes)` — the
+conditions filter and follow rules 2 through 7; only the trailing changes map is exempt.
 
 ### 2. A column rather than a value -> leave it
 
@@ -263,45 +269,44 @@ Toucan applies a model's `deftransforms` `:in` fn **only** in kv-arg position. I
 HoneySQL "an outlet to bypass type transforms" (`toucan2/tools/transformed.clj:88`).
 
 Verified against a real app DB on `:model/SearchIndexMetadata`, whose `:engine` is
-`mi/transform-keyword`:
+`mi/transform-keyword`. All three forms, so the variable is visible:
 
 ```clojure
+;; kv-arg, bare -- transform runs
 (t2/select :model/SearchIndexMetadata :engine :appdb)
-;; => ["SELECT * FROM SEARCH_INDEX_METADATA WHERE ENGINE = ?"  "appdb"]      transform ran
+;; => ["... WHERE \"ENGINE\" = ?"  "appdb"]
 
+;; kv-arg, marked -- transform still runs, byte-identical SQL
+(t2/select :model/SearchIndexMetadata :engine [:auto/param :appdb])
+;; => ["... WHERE \"ENGINE\" = ?"  "appdb"]
+
+;; query map -- transform SKIPPED
 (t2/select :model/SearchIndexMetadata {:where [:= :engine :appdb]})
-;; => ["SELECT * FROM SEARCH_INDEX_METADATA WHERE ENGINE = \"APPDB\""]       transform skipped
+;; => ["... WHERE \"ENGINE\" = \"APPDB\""]
 ```
 
-The second is broken: the keyword lands in a value slot, HoneySQL formats a keyword there as an
-**identifier**, and the query compares a column to a nonexistent column. It compiles. It runs. It
-returns wrong rows or throws at the database.
+**The call style is the variable, not the marker.** A marked kv-arg keeps its transform, because
+`value_guard` lifts the `[:auto/param column v]` 3-arity from inside `apply-kv-arg`. Only moving
+the value into a `{:where ...}` map takes it off that path.
 
-Two instances shipped this way before being caught:
+The third form is broken: the keyword lands in a value slot, HoneySQL formats a keyword there as an
+**identifier**, and the query compares a column to a nonexistent column. It compiles, it runs, and
+it returns wrong rows or throws at the database. Two instances shipped that way before review caught
+them:
 
 - `sync/db.clj` — `:semantic_type :type/Name` became `semantic_type = type."Name"`
 - `collections/db.clj` — `:model/User` `:type :api-key` became `"type" <> "api-key"`
 
-**The rule: a call filtering on a column with a `deftransforms` entry stays a kv-arg.** Transforms
-run there and the value needs no marker. This is the main reason call style is not converted.
+**The rule: a call filtering on a column with a `deftransforms` entry stays a kv-arg**, and the
+value needs no marker there — the transform already binds it. A marker would be redundant rather
+than harmful, so leave it off. This is the main reason call style is not converted.
 
-What breaks is the CALL STYLE, not the marker. A marked kv-arg still runs the transform, because
-`value_guard` lifts the `[:auto/param column v]` 3-arity from inside `apply-kv-arg`. Verified on
-`:model/SearchIndexMetadata`:
+If a call is ALREADY a query map on master and filters on a transformed column, the value must be
+the POST-transform form, written out explicitly:
 
 ```clojure
-(t2/select :model/SearchIndexMetadata :engine :appdb)
-;; => ["... WHERE \"ENGINE\" = ?"  "appdb"]        kv-arg, bare
-
-(t2/select :model/SearchIndexMetadata :engine [:auto/param :appdb])
-;; => ["... WHERE \"ENGINE\" = ?"  "appdb"]        kv-arg, marked -- identical
-
-(t2/select :model/SearchIndexMetadata {:where [:= :engine :appdb]})
-;; => ["... WHERE \"ENGINE\" = \"APPDB\""]          where map -- transform skipped, broken
+[:= :semantic_type [:auto/param "type/Name"]]   ; not the keyword :type/Name
 ```
-
-So a marker on a transformed column in kv-arg position is harmless but redundant: leave it off
-because the transform already binds the value, not because marking would break it.
 
 Models with transforms include `:model/Field`, `:model/Card`, `:model/Collection`, `:model/User`,
 `:model/Database`, `:model/DataPermissions`, `:model/SearchIndexMetadata` and ~90 others. Check
