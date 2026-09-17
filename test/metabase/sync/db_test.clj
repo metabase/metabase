@@ -119,3 +119,33 @@
       (is (not (re-find #"linked-filter" sql))
           "each type binds as a parameter rather than compiling into the statement")
       (is (= #{"linked-filter" "sandbox"} (set (remove number? params)))))))
+
+(deftest ^:synchronized mark-fk-statement-emits-no-param-function-test
+  (testing "the FK statement's values bind as parameters rather than compiling to a PARAM() call"
+    ;; `mark-fk-statement` hands its query map straight to `honey.sql/format`, not to the Toucan
+    ;; pipeline, so `metabase.app-db.value-guard` never lifts a marker there -- `[:auto/param v]`
+    ;; compiles to the nonexistent function call `PARAM(?)`. The values are left unmarked because
+    ;; HoneySQL binds a plain string on its own.
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {t-id :id} {:db_id db-id :name "orders" :schema "public" :active true}
+                   :model/Field    {f-id :id} {:table_id t-id :name "user_id" :active true}
+                   :model/Table    {p-id :id} {:db_id db-id :name "people" :schema "public" :active true}
+                   :model/Field    _          {:table_id p-id :name "id" :active true}]
+      (is (= 1 (sync.db/mark-fk! db-id "public" "orders" "user_id" "public" "people" "id")))
+      (is (= (t2/select-one-fn :fk_target_field_id :model/Field :id f-id)
+             (t2/select-one-pk :model/Field :table_id p-id :name "id")))
+      (testing "a schema or column name that looks like SQL matches nothing"
+        (is (zero? (sync.db/mark-fk! db-id "public" "orders" sql-injection-attempt
+                                     "public" "people" "id")))))))
+
+(deftest ^:synchronized update-field-by-name!-binds-its-conditions-map-test
+  (testing "the conditions map filters on the name it is given rather than interpolating it"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {t-id :id} {:db_id db-id}
+                   :model/Field    {a :id}    {:table_id t-id :name "total" :description nil}
+                   :model/Field    {b :id}    {:table_id t-id :name "other" :description nil}]
+      (is (= 1 (sync.db/update-field-by-name! t-id "total" {:description "d"})))
+      (is (= "d" (t2/select-one-fn :description :model/Field :id a)))
+      (is (nil? (t2/select-one-fn :description :model/Field :id b)))
+      (testing "a field name that looks like SQL matches nothing"
+        (is (zero? (sync.db/update-field-by-name! t-id sql-injection-attempt {:description "x"})))))))

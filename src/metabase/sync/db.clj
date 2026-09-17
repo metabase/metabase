@@ -72,7 +72,8 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Database (long database-id) changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
@@ -223,7 +224,8 @@
   "Apply `changes` to the Table with `table-id`, returning the number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table table-id changes))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Table (long table-id) changes))
 
 (mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
@@ -449,14 +451,15 @@
   "Apply `changes` to the Field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Field (long field-id) changes))
 
 (mu/defn update-field-by-name!
   "Apply `changes` to the Field named `field-name` of the Table with `table-id`, returning the number updated."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string
    changes    :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field {:name field-name, :table_id table-id} changes))
+  (t2/update! :model/Field {:name [:auto/param field-name], :table_id (long table-id)} changes))
 
 (mu/defn reactivate-fields!
   "Mark the Fields with `field-ids` active, returning the number updated."
@@ -475,10 +478,12 @@
   [table-id          :- ::lib.schema.id/table
    indexed-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
   (t2/update! :model/Field {:table_id (long table-id)}
-              ;; This is an `update!` changes map (rubric rule 1) built from a `[:case ...]`
-              ;; operator form the lint does not classify -- both say leave it.
+              ;; `indexed-field-ids` is a collection of ids, so rule 4 wins over rule 5: coerce
+              ;; rather than mark. The local `(seq ...)` guard means the `:in` never sees an empty
+              ;; collection. No marker: this sits inside an `update!` changes map (rule 1), and
+              ;; `[:case ...]` is an operator form the lint does not classify.
               {:database_indexed (if (seq indexed-field-ids)
-                                   [:case [:in :id indexed-field-ids] true :else false]
+                                   [:case [:in :id (mapv long indexed-field-ids)] true :else false]
                                    false)}))
 
 (mu/defn set-top-level-fields-indexed!
@@ -525,9 +530,13 @@
                [:= :u.fk_target_field_id nil]
                [:= :u.semantic_type nil]
                [:= :t.db_id (long db-id)]
-               [:= [:lower :f.name] [:auto/param (u/lower-case-en column-name)]]
-               [:= [:lower :t.name] [:auto/param (u/lower-case-en table-name)]]
-               [:= [:lower :t.schema] [:auto/param (some-> table-schema u/lower-case-en)]]
+               ;; No markers here. This map is handed to `sql/format` by [[mark-fk-statement]], not
+               ;; run through the Toucan pipeline, so the marker is never lifted -- it compiles to
+               ;; the nonexistent function call `PARAM(?)`. HoneySQL binds these plain strings on
+               ;; its own (`LOWER(name) = ?`), so the values are already parameters.
+               [:= [:lower :f.name] (u/lower-case-en column-name)]
+               [:= [:lower :t.name] (u/lower-case-en table-name)]
+               [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
                [:= :f.active true]
                [:not= :f.visibility_type "retired"]
                [:= :t.active true]
@@ -645,7 +654,8 @@
   "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`, returning the number updated."
   [field-id         :- ::lib.schema.id/field
    data-sensitivity :- [:or :keyword :string]]
-  (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Field (long field-id) {:data_sensitivity data-sensitivity}))
 
 (def ^:private classifier-data-sensitivity-clause
   "Honey SQL clause matching Fields whose non-null `data_sensitivity` has no value in the `FieldUserSettings` mirror,
