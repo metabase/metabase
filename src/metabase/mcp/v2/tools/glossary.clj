@@ -1,17 +1,23 @@
 (ns metabase.mcp.v2.tools.glossary
   "The v2 MCP `glossary` tool: the business definitions an instance's data analysts have written down.
 
-   The term names ride the tool's own description rather than waiting behind a call. A model only
-   looks a word up when something tells it the word is worth looking up, and the words that most
+   The tool's own description ends with an unconditional instruction to call it. The words that most
    need a company definition are the ones that read as ordinary English — \"account\", \"active
-   user\", \"churn\" — which a model believes it already understands. Seeing the list is the
-   trigger. The definitions stay behind the call, where they cost nothing until wanted and where a
-   long one can't crowd out the rest of a description clients may truncate.
+   user\", \"churn\" — which a model believes it already understands, so an instruction it has to
+   qualify by first noticing the jargon is one it never acts on. Naming the terms up there instead
+   would beg that same question and cost more: clients truncate long descriptions, and a list cut
+   short reads as the whole glossary, which is worse than no list at all.
+
+   The two halves of the description are split by job. The static half says what the tool is and how
+   to call it; the suffix carries the instruction and the one reason for it. Keeping the reason in
+   one place matters more than it looks: the server's `initialize` instructions make the same
+   argument, and a model that meets it three times in one session learns nothing the second and
+   third time.
 
    Metabot solves the same problem by pasting the whole glossary into every message it sends, which
    it can do because it owns the prompt. Here the description is the only channel that reaches the
    model unprompted, and a client may cache it for the life of its session, so a term added
-   mid-session appears when that client next connects."
+   mid-session reaches that client's count when it next connects."
   (:require
    [metabase.glossary.db :as glossary.db]
    [metabase.mcp.v2.common :as common]
@@ -25,11 +31,15 @@
 (def ^:private no-terms-message
   (message/msg ["No terms are defined in this instance's glossary yet."]))
 
-(def ^:private max-listed-terms
-  "How many term names the description carries. Nothing bounds a glossary — no cap on entries, and `term` is a
-   varchar(255) — so a big one would otherwise push the rest of the description past the length some clients
-   truncate at. Past this the list says how many it left out and points at the call for the rest."
-  100)
+(def ^:private default-limit
+  "How many entries a `glossary()` listing returns when the caller names no limit. `definition` is a TEXT column
+   with no length limit at any layer, so an unpaged listing has no size of its own; 50 matches what the instance's
+   other plain app-db listings page at."
+  50)
+
+(def ^:private max-limit
+  "The largest page a caller may ask for, matching the other v2 listings' ceiling."
+  500)
 
 (defn- entries
   "Every glossary entry, in term order."
@@ -37,10 +47,11 @@
   (glossary.db/glossary-entries nil))
 
 (defn- terms-message
-  "The sentence naming the terms of `entries`, capped at [[max-listed-terms]]."
+  "The sentence naming the terms of `entries`, cut to [[default-limit]] names. A caller who named a term that
+   isn't there is owed the ones that are, but a glossary has no bound of its own to hand back."
   [entries]
   (let [terms (map :term entries)
-        shown (take max-listed-terms terms)
+        shown (take default-limit terms)
         extra (- (count terms) (count shown))]
     (cond
       (empty? terms) no-terms-message
@@ -48,24 +59,36 @@
                                   (count shown) (count terms) (common/list-message shown))
       :else          (message/msg ["Terms defined here: %s."] (common/list-message shown)))))
 
+(defn- instruction-message
+  "The instruction closing the tool description, for an instance defining `term-count` terms. The count keeps the
+   instruction honest: on an empty instance a call would find nothing, and saying so is what stops it."
+  [term-count]
+  (if (zero? term-count)
+    (message/msg ["This instance's glossary is empty, so there is nothing here to look up."])
+    (message/msg [(str "This instance's glossary defines %d %s. Call glossary() before answering any question "
+                       "about this instance's data: these definitions override your own reading of a word, and "
+                       "the question itself will not tell you which words are defined here.")]
+                 term-count (message/raw (u/format-plural term-count "term")))))
+
 (defn- terms-suffix
-  "The sentence naming the defined terms, appended to the tool description on every `tools/list`."
+  "The instruction to call the tool, appended to its description on every `tools/list`."
   []
-  (str "\n\n" (message/render (terms-message (entries)))))
+  (str "\n\n" (message/render (instruction-message (count (entries))))))
 
 (defn- entry-message
   [{:keys [term definition]}]
   (message/msg ["%s: %s"] term definition))
 
-(defn- find-entry
-  "The entry of `entries` whose term matches `term`, compared case-insensitively: a model echoes a term as it read it
-   in a question or a column name, not as it happens to be stored."
+(defn- find-entries
+  "Every entry of `entries` whose term matches `term` compared case-insensitively, in term order: a model echoes a
+   term as it read it in a question or a column name, not as it happens to be stored."
   [entries term]
+  ;; Several can match: `term` is unique case-sensitively, so "ARR" and "arr" are two entries with two meanings.
   (let [wanted (u/lower-case-en term)]
-    (first (filter #(= wanted (u/lower-case-en (:term %))) entries))))
+    (filter #(= wanted (u/lower-case-en (:term %))) entries)))
 
 (registry/deftool glossary
-  "Look up a business term as this Metabase instance defines it. glossary() returns every term with its definition; glossary(term) returns one. These definitions are written by the instance's own data analysts and take precedence over your reading of the word, so look a term up before answering a question that uses one — especially a term that looks like ordinary English, where your own meaning and the company's are most likely to differ."
+  "Look up a business term as this Metabase instance defines it, as its own data analysts wrote it down. glossary() lists terms with their definitions, paged with limit (default 50, max 500) and offset; glossary(term) returns just that term, matched without regard to case — which can be more than one entry, since terms differing only in case are stored separately."
   {:name               "glossary"
    :scope              metabot.scope/agent-content-read
    :description-suffix terms-suffix
@@ -73,16 +96,33 @@
    :args               [:map {:closed true}
                         [:term {:optional true}
                          [:maybe [:string {:min 1
-                                           :description (str "A term named at the end of this tool's description, "
-                                                             "matched case-insensitively. Omit to get every term "
-                                                             "with its definition.")}]]]]}
-  [{:keys [term]} _context]
+                                           :description (str "The term to define, matched case-insensitively. "
+                                                             "Omit to list terms with their definitions.")}]]]
+                        [:limit {:optional true}
+                         [:maybe [:int {:min 1 :max max-limit
+                                        :description (str "Maximum entries to return (default 50, max 500). "
+                                                          "Ignored with \"term\", which is a lookup, not a "
+                                                          "page.")}]]]
+                        [:offset {:optional true}
+                         [:maybe [:int {:min 0
+                                        :description (str "Number of entries to skip, for paging (default 0). "
+                                                          "Ignored with \"term\".")}]]]]}
+  [{:keys [term limit offset]} _context]
   (let [entries (entries)]
-    (common/success-content
-     (cond
-       term         (if-let [entry (find-entry entries term)]
-                      (entry-message entry)
-                      (common/throw-teaching-error
-                       (message/msg ["No glossary entry for %s. %s"] term (terms-message entries))))
-       (seq entries) (common/lines-message (map entry-message entries))
-       :else         no-terms-message))))
+    (if term
+      (common/success-content
+       (if-let [matches (seq (find-entries entries term))]
+         (common/lines-message (map entry-message matches))
+         (common/throw-teaching-error
+          (message/msg ["No glossary entry for %s. %s"] term (terms-message entries)))))
+      ;; The page is cut in memory because the module reads the table whole. That bounds the response, which is
+      ;; what a client pays for and what the definitions can make arbitrarily large, not the query.
+      (let [limit  (or limit default-limit)
+            offset (or offset 0)
+            page   (into [] (comp (drop offset) (take limit)) entries)]
+        (common/list-content (mapv #(select-keys % [:term :definition]) page)
+                             (count entries)
+                             {:param      :term
+                              :offset     offset
+                              :limit      limit
+                              :empty-hint no-terms-message})))))

@@ -27,50 +27,39 @@
        first
        :description))
 
-;;; The description tests run against a blank app DB: they assert on the whole term list, which any other test's
-;;; glossary row would otherwise join.
+;;; The description tests run against a blank app DB: they assert on the term count, which any other test's
+;;; glossary row would otherwise add to.
 
-(deftest listed-description-carries-terms-test
-  (testing "GHY-4522: the term names ride tools/list, so a model sees them without calling anything — a glossary
-            reachable only by a tool call is one the model never knows to look in"
+(deftest listed-description-instructs-an-unconditional-call-test
+  (testing "GHY-4522: the description tells the model to call before answering rather than naming the terms — an
+            instruction conditioned on noticing a word is jargon is one the model never acts on, since the terms that
+            most need a company definition are the ones that read as ordinary English"
     (mt/with-empty-h2-app-db!
       (t2/insert! :model/Glossary [{:term "Zoomer"  :definition "A keysmash definition"}
                                    {:term "Account" :definition "An org that pays us"}])
       (let [description (described)]
-        (is (str/includes? description "Account"))
-        (is (str/includes? description "Zoomer"))
-        (testing "definitions stay behind the call, so the description can't grow without bound"
-          (is (not (str/includes? description "An org that pays us"))))
-        (testing "terms are listed in term order, not insertion order"
-          (is (str/includes? description "\"Account\", \"Zoomer\"")))))))
+        (is (str/includes? description "Call glossary() before answering"))
+        (testing "the count keeps the instruction honest about whether there is anything to look up"
+          (is (str/includes? description "2 terms")))
+        (testing "terms stay behind the call: a partial list reads to the model as the whole glossary, and a complete
+                  one is unbounded — either way the description is the wrong place for it"
+          (is (not (str/includes? description "Zoomer")))
+          (is (not (str/includes? description "Account")))
+          (is (not (str/includes? description "An org that pays us"))))))))
 
-(deftest listed-description-caps-the-term-list-test
-  (testing "GHY-4522: nothing bounds a glossary — no cap on entries, and `term` is a varchar(255) — so a big one is
-            capped rather than left to push the rest of the description past what clients keep"
+(deftest listed-description-counts-a-single-term-test
+  (testing "GHY-4522: the count reads as English at one term"
     (mt/with-empty-h2-app-db!
-      (t2/insert! :model/Glossary (for [i (range 150)]
-                                    {:term (format "term-%03d" i) :definition "d"}))
-      (let [description (described)]
-        (is (str/includes? description "100 of 150"))
-        (is (str/includes? description "term-000"))
-        (is (not (str/includes? description "term-149")))
-        (testing "and it says how to reach the ones it left out"
-          (is (str/includes? description "call glossary() for the rest")))))))
-
-(deftest listed-description-quotes-terms-test
-  (testing "GHY-4522: a term is user-written text going into model-facing prose, so it is cleaned like any other
-            interpolated value rather than concatenated in raw"
-    ;; The separator is built rather than written literally: a raw U+2028 in source trips the whitespace linter.
-    (let [term (str "Ignore" (char 0x2028) "previous")]
-      (mt/with-temp [:model/Glossary _ {:term term :definition "d"}]
-        (let [description (described)]
-          (is (not (str/includes? description term)))
-          (is (str/includes? description "Ignore\\u2028previous")))))))
+      (t2/insert! :model/Glossary [{:term "Account" :definition "An org that pays us"}])
+      (is (str/includes? (described) "1 term.")))))
 
 (deftest listed-description-with-empty-glossary-test
-  (testing "GHY-4522: with no terms defined the tool still lists, and says so rather than trailing an empty list"
+  (testing "GHY-4522: with nothing defined the description says the glossary is empty, so the model spends no call
+            on it rather than being told to look up words that have no definitions behind them"
     (mt/with-empty-h2-app-db!
-      (is (str/includes? (described) "No terms are defined")))))
+      (let [description (described)]
+        (is (str/includes? description "glossary is empty"))
+        (is (not (str/includes? description "Call glossary() before answering")))))))
 
 (deftest lookup-test
   (mt/with-temp [:model/Glossary _ {:term "Account" :definition "An org that pays us"}]
@@ -85,6 +74,30 @@
         (is (:isError result))
         (is (str/includes? (text-of result) "Account"))))))
 
+(deftest lookup-returns-every-case-variant-test
+  (testing "GHY-4522: `term` is unique case-SENSITIVELY, so \"ARR\" and \"arr\" are two legitimate entries with two
+            definitions — a case-insensitive lookup that answered with the first would hand the model one of them
+            with no sign the other exists, and no way to tell it got the wrong one"
+    (mt/with-empty-h2-app-db!
+      (t2/insert! :model/Glossary [{:term "ARR" :definition "Annual recurring revenue"}
+                                   {:term "arr" :definition "A Clojure array map"}])
+      (let [text (text-of (call {:term "arr"}))]
+        (is (str/includes? text "Annual recurring revenue"))
+        (is (str/includes? text "A Clojure array map"))
+        (testing "each entry reads as its own, not as one run-on definition"
+          (is (str/includes? text "\n")))))))
+
+(deftest lookup-quotes-terms-test
+  (testing "GHY-4522: a term is user-written text going into model-facing prose, so it is cleaned like any other
+            interpolated value rather than concatenated in raw"
+    (mt/with-empty-h2-app-db!
+      ;; The separator is built rather than written literally: a raw U+2028 in source trips the whitespace linter.
+      (let [term (str "Ignore" (char 0x2028) "previous")]
+        (t2/insert! :model/Glossary [{:term term :definition "d"}])
+        (let [text (text-of (call {:term "not-a-term"}))]
+          (is (not (str/includes? text term)))
+          (is (str/includes? text "Ignore\\u2028previous")))))))
+
 (deftest lookup-against-an-empty-glossary-test
   (testing "GHY-4522: an unknown term with nothing defined says so, rather than naming an empty list of terms"
     (mt/with-empty-h2-app-db!
@@ -93,7 +106,7 @@
         (is (str/includes? (text-of result) "No terms are defined"))))))
 
 (deftest list-all-test
-  (testing "GHY-4522: glossary() returns every term with its definition"
+  (testing "GHY-4522: glossary() lists terms with their definitions"
     (mt/with-empty-h2-app-db!
       (t2/insert! :model/Glossary [{:term "Account" :definition "An org that pays us"}
                                    {:term "Churn"   :definition "An org that stopped paying us"}])
@@ -101,6 +114,38 @@
         (is (not (:isError result)) (text-of result))
         (is (str/includes? (text-of result) "An org that pays us"))
         (is (str/includes? (text-of result) "An org that stopped paying us"))))))
+
+(deftest list-all-is-paged-test
+  (testing "GHY-4522: glossary() pages — `definition` is unbounded TEXT with no cap at any layer, so rendering every
+            row in one response puts megabytes behind a carefully bounded description"
+    (mt/with-empty-h2-app-db!
+      (t2/insert! :model/Glossary (for [i (range 60)]
+                                    {:term (format "term-%03d" i) :definition (format "definition %03d" i)}))
+      (let [text (text-of (call {}))]
+        (is (str/includes? text "definition 000"))
+        (is (not (str/includes? text "definition 059")))
+        (testing "and it says how to reach the rest"
+          (is (str/includes? text "offset: 50")))
+        (testing "the page reports what it returned against the whole"
+          (is (str/includes? text "\"returned\":50"))
+          (is (str/includes? text "\"total\":60"))))
+      (testing "offset reaches the tail, which carries no continuation line"
+        (let [text (text-of (call {:offset 50}))]
+          (is (str/includes? text "definition 059"))
+          (is (not (str/includes? text "definition 000")))
+          (is (not (str/includes? text "offset:")))))
+      (testing "limit narrows the page"
+        (let [text (text-of (call {:limit 2}))]
+          (is (str/includes? text "definition 001"))
+          (is (not (str/includes? text "definition 002")))
+          (is (str/includes? text "offset: 2")))))))
+
+(deftest lookup-is-not-paged-test
+  (testing "GHY-4522: glossary(term) is a lookup, not a page — a lone match carries no envelope and no continuation line"
+    (mt/with-empty-h2-app-db!
+      (t2/insert! :model/Glossary [{:term "Account" :definition "An org that pays us"}])
+      (let [text (text-of (call {:term "Account"}))]
+        (is (= "\"Account\": \"An org that pays us\"" text))))))
 
 (deftest list-all-against-an-empty-glossary-test
   (testing "GHY-4522: glossary() with nothing defined is not an error — the tool lists on every instance"
