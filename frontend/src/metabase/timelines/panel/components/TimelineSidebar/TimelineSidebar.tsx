@@ -10,13 +10,17 @@ import {
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
-import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type {
+  TimelineEventsVisibilityIntent,
+  TimelineEventsVisibilityUpdate,
+} from "metabase/visualizations/types";
 import type { TimeseriesXAxis } from "metabase/viz-core";
 import type {
   CollectionId,
   Timeline,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventSource,
 } from "metabase-types/api";
 
 import TimelinePanel from "../../containers/TimelinePanel";
@@ -38,7 +42,12 @@ export interface TimelineSidebarProps {
   selectedEventIds: TimelineEventId[];
   focusedEventIds?: TimelineEventId[] | null;
   xAxis?: TimeseriesXAxis | null;
-  onUpdateVisibility: (update: TimelineEventsVisibilityUpdate) => void;
+  /** where events created from this sidebar are reported as coming from */
+  eventSource?: TimelineEventSource;
+  onUpdateVisibility: (
+    update: TimelineEventsVisibilityUpdate,
+    intent: TimelineEventsVisibilityIntent,
+  ) => void;
   onSelectEvents: (events: TimelineEvent[]) => void;
   onDeselectEvents: () => void;
   onShowAllEvents?: () => void;
@@ -53,6 +62,7 @@ export const TimelineSidebar = ({
   selectedEventIds,
   focusedEventIds = null,
   xAxis = null,
+  eventSource,
   onUpdateVisibility,
   onSelectEvents,
   onDeselectEvents,
@@ -79,40 +89,50 @@ export const TimelineSidebar = ({
 
   const handleShowTimelineEvents = useCallback(
     (events: TimelineEvent[]) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        showTimelineEvents(visibility, events, allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          showTimelineEvents(visibility, events, allTimelines),
+        "show",
       ),
     [onUpdateVisibility],
   );
 
   const handleHideTimelineEvents = useCallback(
     (events: TimelineEvent[]) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        hideTimelineEvents(visibility, events, allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          hideTimelineEvents(visibility, events, allTimelines),
+        "hide",
       ),
     [onUpdateVisibility],
   );
 
   const handleShowTimeline = useCallback(
     (timeline: Timeline) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        showTimelines(visibility, [timeline.id], allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          showTimelines(visibility, [timeline.id], allTimelines),
+        "show",
       ),
     [onUpdateVisibility],
   );
 
   const handleHideTimeline = useCallback(
     (timeline: Timeline) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        hideTimelines(visibility, [timeline.id], allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          hideTimelines(visibility, [timeline.id], allTimelines),
+        "hide",
       ),
     [onUpdateVisibility],
   );
 
   const handleEventCreated = useCallback(
     (event: TimelineEvent) =>
-      onUpdateVisibility((visibility, allTimelines) =>
-        showCreatedTimelineEvent(visibility, event, allTimelines),
+      onUpdateVisibility(
+        (visibility, allTimelines) =>
+          showCreatedTimelineEvent(visibility, event, allTimelines),
+        "create",
       ),
     [onUpdateVisibility],
   );
@@ -169,6 +189,7 @@ export const TimelineSidebar = ({
       <TimelineEventModals
         modal={modal}
         collectionId={collectionId}
+        source={eventSource}
         onEventCreated={handleEventCreated}
         onClose={handleCloseModal}
       />

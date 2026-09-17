@@ -2409,7 +2409,7 @@
 (deftest public-and-signed-dashboard-timeline-selections-test
   (let [secret (u.random/secure-hex 32)]
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding-static true
+                                       enable-embedding-modular true
                                        embedding-secret-key secret]
       (mt/with-temp [:model/Collection collection {}
                      :model/Timeline first-timeline  {:collection_id (:id collection)}
@@ -2466,7 +2466,7 @@
 (deftest public-and-signed-dashboard-timeline-display-changes-test
   (let [secret (u.random/secure-hex 32)]
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding-static true
+                                       enable-embedding-modular true
                                        embedding-secret-key secret]
       (mt/with-temp [:model/Timeline timeline {}
                      :model/TimelineEvent event {:timeline_id (:id timeline)}
@@ -2490,7 +2490,7 @@
 (deftest public-and-signed-dashboard-timeline-display-permissions-test
   (let [secret (u.random/secure-hex 32)]
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding-static true
+                                       enable-embedding-modular true
                                        embedding-secret-key secret]
       (mt/with-temp [:model/Collection collection {}
                      :model/Timeline timeline {:collection_id (:id collection)}
