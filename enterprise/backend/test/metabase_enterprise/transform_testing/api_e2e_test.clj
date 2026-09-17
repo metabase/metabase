@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transform-testing.test-util :as transform-testing.test-util]
+   [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -129,8 +130,10 @@
                   (is (re-find (re-pattern (str "(?i)" table)) (:message response)))
                   ;; The refusal's own ex-data rides along, so the offending tables are readable as
                   ;; data and not only out of the prose. Derived from the metadata rather than
-                  ;; written out: engines differ on the case they fold identifiers to.
-                  (is (= [(str schema "." table)] (:tables response)))
+                  ;; written out: engines differ on the case they fold identifiers to, and MySQL
+                  ;; reports no schema at all.
+                  (is (= [(transform-testing.validator/table-label {:schema schema :name table})]
+                         (:tables response)))
                   (is (not (contains? response :trace))))))))))))
 
 (deftest run-is-gated-test
