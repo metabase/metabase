@@ -159,10 +159,12 @@
                     :filename  "src/metabase/x/core.clj"
                     :module    'x
                     :deps      []}]
-          metrics (module-metrics/metrics deps {'x {}})]
-      (is (=? [{:module 'x
-                :api    {:declared-namespace-count 3}}]
-              metrics)))))
+          config  {'x {}}]
+      (is (=? {:module  [{:module 'x
+                          :api    {:declared-namespace-count 3}}]
+               :repo    {:encapsulation {:api-namespace-count 3}}}
+              {:module (module-metrics/metrics deps config)
+               :repo   (module-metrics/repo-metrics deps config)})))))
 
 (deftest ^:parallel repo-metrics-test
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames

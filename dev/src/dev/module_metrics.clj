@@ -59,9 +59,9 @@
 
 (defn- api-namespace-count
   "Count of a module's public API namespaces: its full namespace count when `:api` is `:any`, else the
-  number of declared `:api` entries."
+  number of [[declared-api-namespaces]]."
   [config module->nses m]
-  (let [a (get-in config [m :api])]
+  (let [a (declared-api-namespaces config m)]
     (if (= a :any)
       (count (get module->nses m))
       (count a))))
