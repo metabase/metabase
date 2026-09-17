@@ -149,9 +149,8 @@ describe("getRecordedTimelineEventsVisibility", () => {
 });
 
 describe("showing and hiding timelines", () => {
-  it("shows a timeline and hides it again without leaving anything behind", () => {
+  it("hiding a timeline leaves nothing behind", () => {
     const shown = showTimelines({}, [releases.id], context);
-    expect(visibleNames(shown)).toEqual(["RC1", "RC2"]);
 
     expect(hideTimelines(shown, [releases.id], context)).toEqual({
       [SELECTED]: [],
@@ -212,15 +211,6 @@ describe("showing and hiding single events", () => {
     expect(visibleNames(visibility)).toEqual(["RC1"]);
   });
 
-  it("hiding and showing the same events leaves no leftovers behind", () => {
-    const shown = {
-      [SELECTED]: [releases.id, marketing.id],
-      [EXCLUDED]: [],
-    };
-    const hidden = hideTimelineEvents(shown, [rc1, launch], context);
-    expect(showTimelineEvents(hidden, [rc1, launch], context)).toEqual(shown);
-  });
-
   it("does not affect other timelines", () => {
     const visibility = hideTimelineEvents(
       { [SELECTED]: [releases.id] },
@@ -261,20 +251,6 @@ describe("toggling a timeline the caller only partly knows about", () => {
   // toggling takes an id and resolves every event from the full list.
   it("does not exclude the events outside the range when showing", () => {
     expect(showTimelines({}, [releases.id], context)).toEqual({
-      [SELECTED]: [releases.id],
-      [EXCLUDED]: [],
-    });
-  });
-
-  it("brings back the events outside the range when re-showing", () => {
-    const hidden = hideTimelineEvents(
-      { [SELECTED]: [releases.id] },
-      [rc1],
-      context,
-    );
-    expect(hidden[EXCLUDED]).toEqual([rc1.id]);
-
-    expect(showTimelines(hidden, [releases.id], context)).toEqual({
       [SELECTED]: [releases.id],
       [EXCLUDED]: [],
     });

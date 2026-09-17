@@ -139,7 +139,9 @@ const DashboardActionMenuInner = ({
             {withTimelineEvents && (
               <Menu.Item
                 leftSection={<Icon name="calendar" />}
-                onClick={() => dispatch(openEventsSidebar())}
+                onClick={() =>
+                  dispatch(openEventsSidebar({}, "dashboard_menu"))
+                }
               >
                 {t`Events`}
               </Menu.Item>

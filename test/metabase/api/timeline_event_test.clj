@@ -106,6 +106,17 @@
         (is (some #(nil? (hawk.approx/=?-diff* {:data {"event" "new_event_created"}} %))
                   (snowplow-test/pop-event-data-and-user-id!)))))))
 
+(deftest create-timeline-event-tracks-dashboard-source-test
+  (testing "POST /api/timeline-event reports a dashboard as the source of a new event"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Timeline   {tl-id :id}   {:collection_id coll-id}]
+        (mt/user-http-request :crowberto :post 200 "timeline-event"
+                              {:name "RC1" :timestamp "2027-10-20" :timezone "UTC"
+                               :time_matters false :timeline_id tl-id :source "dashboard"})
+        (is (some #(nil? (hawk.approx/=?-diff* {:data {"event" "new_event_created" "source" "dashboard"}} %))
+                  (snowplow-test/pop-event-data-and-user-id!)))))))
+
 (deftest delete-timeline-event-test
   (testing "DELETE /api/timeline-event/:id"
     (mt/with-temp [:model/Collection    {collection-id :id} {:name "Example Data"}
