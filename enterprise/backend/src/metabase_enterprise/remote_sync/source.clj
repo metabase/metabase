@@ -150,7 +150,7 @@
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
   `:force-push-casualties` (remote content a force push would discard; see
-  [[remote-sync.merge/force-push-casualties]]):
+  [[remote-sync.merge/force-push-casualties]]), via [[remote-sync.merge/merge-with-casualties]]:
   - `base-snapshot` - the last successfully synced state (the merge base)
   - `stream`        - the local state to serialize (ours)
   - `snapshot`      - the current remote tip (theirs)
@@ -162,8 +162,7 @@
   (let [ours   (serialize-specs stream task-id :total total)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (assoc (remote-sync.merge/three-way-merge base ours theirs)
-           :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))))
+    (remote-sync.merge/merge-with-casualties base ours theirs)))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged

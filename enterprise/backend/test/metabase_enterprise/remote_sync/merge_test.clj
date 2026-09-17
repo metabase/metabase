@@ -1,7 +1,8 @@
 (ns metabase-enterprise.remote-sync.merge-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.merge :as remote-sync.merge]))
+   [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
+   [metabase.util.yaml :as yaml]))
 
 (defn- card
   "Builds a `{:path :content}` spec for a Card with the given entity `id`, `name` (which drives the on-disk
@@ -186,3 +187,22 @@
               []
               [(card "A" "a")]
               [(card "A" "a")]))))))
+
+(deftest merge-with-casualties-indexes-each-side-once-test
+  (let [base     [(card "A" "a") (card "B" "b")]
+        ours     [(card "A" "a" "x: ours\n") (card "B" "b")]
+        theirs   [(card "A" "a" "x: theirs\n") (card "C" "c")]
+        expected (assoc (remote-sync.merge/three-way-merge base ours theirs)
+                        :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))
+        parses   (atom 0)
+        orig     yaml/parse-string
+        counting (fn [f] (reset! parses 0) (f) @parses)]
+    (with-redefs [yaml/parse-string (fn [& args] (swap! parses inc) (apply orig args))]
+      (testing "the combined result equals the two functions run separately"
+        (is (= expected (remote-sync.merge/merge-with-casualties base ours theirs))))
+      (testing "combining saves exactly one identity parse per document across the three sides"
+        (let [separate (counting #(do (remote-sync.merge/three-way-merge base ours theirs)
+                                      (remote-sync.merge/force-push-casualties base ours theirs)))
+              combined (counting #(remote-sync.merge/merge-with-casualties base ours theirs))]
+          (is (= (+ (count base) (count ours) (count theirs))
+                 (- separate combined))))))))
