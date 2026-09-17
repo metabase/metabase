@@ -25,10 +25,10 @@ export const createTimelineWithEvents = ({
       events.map((query) =>
         createTimelineEvent({ ...query, timeline_id: timeline.id }),
       ),
-    ).then((events) => {
+    ).then((responses) => {
       return {
         timeline,
-        events,
+        events: responses.map(({ body }) => body),
       };
     });
   });

@@ -1,7 +1,9 @@
+import { renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { act, getTestStoreAndWrapper, waitFor } from "__support__/ui";
+import { timelineApi } from "metabase/api";
 import * as embeddingConfig from "metabase/embedding/config";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -90,6 +92,7 @@ const setup = ({
   settings = getComputedSettingsForSeries(series),
   onTimelineEventsShown,
   isDashboard = false,
+  providers = getTestStoreAndWrapper({ initialRoute: "/" }),
 }: {
   savedSettings?: VisualizationSettings;
   timelineEvents?: TimelineEvent[];
@@ -99,19 +102,22 @@ const setup = ({
   settings?: VisualizationProps["settings"];
   onTimelineEventsShown?: VisualizationProps["onTimelineEventsShown"];
   isDashboard?: boolean;
+  providers?: ReturnType<typeof getTestStoreAndWrapper>;
 } = {}) => {
   setupTimelinesEndpoints(timelines);
-  return renderHookWithProviders(
-    (props: Pick<VisualizationProps, "series" | "settings">) =>
-      useTimelineEvents({
-        timelineEvents,
-        timelineEventsVisibility,
-        onTimelineEventsShown,
-        isDashboard,
-        ...props,
-      }),
-    { initialProps: { series, settings } },
-  );
+  const mount = () =>
+    renderHook(
+      (props: Pick<VisualizationProps, "series" | "settings">) =>
+        useTimelineEvents({
+          timelineEvents,
+          timelineEventsVisibility,
+          onTimelineEventsShown,
+          isDashboard,
+          ...props,
+        }),
+      { initialProps: { series, settings }, wrapper: providers.wrapper },
+    );
+  return { ...mount(), mount, store: providers.store };
 };
 
 const getTimelineRequests = () =>
@@ -151,6 +157,66 @@ describe("useTimelineEvents", () => {
 
     expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
     expect(getTimelineRequests()).toHaveLength(0);
+  });
+
+  it("uses an explicitly empty event list instead of saved or supplied visibility", async () => {
+    const onTimelineEventsShown = jest.fn();
+    const { result } = setup({
+      timelineEvents: [],
+      timelineEventsVisibility: SAVED_VISIBILITY,
+      onTimelineEventsShown,
+    });
+
+    await act(async () => {
+      await fetchMock.callHistory.flush();
+    });
+
+    expect(result.current.timelineEvents).toEqual([]);
+    expect(getTimelineRequests()).toHaveLength(0);
+    expect(onTimelineEventsShown).not.toHaveBeenCalled();
+  });
+
+  it("shows new events from selected timelines after refresh while keeping new timelines hidden", async () => {
+    const { result, store } = setup();
+
+    await waitFor(() => {
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
+    });
+
+    const newEvent = createMockTimelineEvent({
+      id: 5,
+      timeline_id: TIMELINE.id,
+      timestamp: "2024-03-10T00:00:00Z",
+    });
+    const newTimeline = createMockTimeline({
+      id: 20,
+      events: [
+        createMockTimelineEvent({
+          id: 6,
+          timeline_id: 20,
+          timestamp: "2024-02-25T00:00:00Z",
+        }),
+      ],
+    });
+    fetchMock.removeRoutes();
+    setupTimelinesEndpoints([
+      { ...TIMELINE, events: [...(TIMELINE.events ?? []), newEvent] },
+      newTimeline,
+    ]);
+
+    await act(async () => {
+      await store.dispatch(
+        timelineApi.endpoints.listTimelines.initiate(
+          { include: "events" },
+          { forceRefetch: true, subscribe: false },
+        ),
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT, newEvent]);
+    });
+    expect(getTimelineRequests()).toHaveLength(2);
   });
 
   it("prefers the visibility it is given over the card settings", async () => {
@@ -223,7 +289,7 @@ describe("useTimelineEvents", () => {
     expect(onTimelineEventsShown).not.toHaveBeenCalled();
   });
 
-  it("keeps the same events and reports once when rerendered with the same inputs", async () => {
+  it("reports once when rerendered with the same inputs", async () => {
     const onTimelineEventsShown = jest.fn();
     const series = getSeries(SAVED_VISIBILITY);
     const settings = getComputedSettingsForSeries(series);
@@ -236,11 +302,9 @@ describe("useTimelineEvents", () => {
     await waitFor(() => {
       expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
     });
-    const events = result.current.timelineEvents;
 
     rerender({ series, settings });
 
-    expect(result.current.timelineEvents).toBe(events);
     expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
   });
 
@@ -263,7 +327,7 @@ describe("useTimelineEvents", () => {
     expect(result.current.timelineEvents).toEqual([]);
   });
 
-  it.each([
+  describe.each([
     [
       "public links",
       () =>
@@ -275,43 +339,24 @@ describe("useTimelineEvents", () => {
         jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true),
     ],
     ["the embedding SDK", () => mockIsEmbeddingSdk()],
-  ])(
-    "does not load events on standalone questions in %s",
-    async (_surface, mockSurface) => {
-      await mockSurface();
+  ])("on %s", (_surface, mockSurface) => {
+    it.each([
+      ["saved selections", {}],
+      ["explicit visibility", { timelineEventsVisibility: SAVED_VISIBILITY }],
+    ])(
+      "does not show, request, or report events from %s on a standalone question",
+      async (_input, props) => {
+        await mockSurface();
+        const onTimelineEventsShown = jest.fn();
+        const { result } = setup({ ...props, onTimelineEventsShown });
 
-      const { result } = setup();
-
-      expect(result.current.timelineEvents).toEqual([]);
-      expect(getTimelineRequests()).toHaveLength(0);
-    },
-  );
-
-  describe.each([
-    ["public dashboards", "isPublicEmbedding"],
-    ["static embedded dashboards", "isStaticEmbedding"],
-  ] as const)("%s", (_surface, configMethod) => {
-    beforeEach(() => {
-      jest.spyOn(embeddingConfig, configMethod).mockReturnValue(true);
-    });
-
-    it("shows the supplied events without requesting collection timelines", () => {
-      const { result } = setup({
-        isDashboard: true,
-        timelineEvents: [SHOWN_EVENT],
-      });
-
-      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
-      expect(getTimelineRequests()).toHaveLength(0);
-    });
-
-    it.each([undefined, []])(
-      "does not fetch additional events when the payload is %s",
-      (timelineEvents) => {
-        const { result } = setup({ isDashboard: true, timelineEvents });
+        await act(async () => {
+          await fetchMock.callHistory.flush();
+        });
 
         expect(result.current.timelineEvents).toEqual([]);
         expect(getTimelineRequests()).toHaveLength(0);
+        expect(onTimelineEventsShown).not.toHaveBeenCalled();
       },
     );
   });

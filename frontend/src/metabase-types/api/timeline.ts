@@ -8,7 +8,11 @@ import type { UserInfo } from "./user";
 
 export type TimelineId = number;
 export type TimelineEventId = number;
-export type TimelineEventSource = "question" | "collections" | "api";
+export type TimelineEventSource =
+  | "question"
+  | "dashboard"
+  | "collections"
+  | "api";
 
 export type TimelineIcon =
   | "info"
