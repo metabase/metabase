@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.usage :as api-keys.usage]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -141,3 +142,17 @@
       [:model/ApiKeyUsageLog {log-id :id} (log-row {:client_name "brand-new-client"})]
       (is (= "brand-new-client"
              (:client_display_name (find-row (query-view [log-id]) log-id)))))))
+
+(deftest user-display-name-has-a-plain-string-type-on-h2-test
+  (testing "user_display_name isn't typed VARCHAR_IGNORECASE on H2 (#EMB-2154)"
+    ;; core_user.email is declared VARCHAR_IGNORECASE on H2 for case-insensitive lookups, and
+    ;; COALESCE(name-concat, email) inherits that type. Metabase's H2 type mapper doesn't
+    ;; recognize VARCHAR_IGNORECASE, so it falls back to an unknown column type, and
+    ;; metabase-lib silently excludes unknown-typed columns from the FE's sortable columns —
+    ;; the view's own `CAST(... AS VARCHAR)` is what keeps this column a plain, sortable string.
+    (when (= (mdb/db-type) :h2)
+      (let [column-type (-> (t2/query "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+                                        WHERE TABLE_NAME = 'V_API_KEY_USAGE'
+                                          AND COLUMN_NAME = 'USER_DISPLAY_NAME'")
+                            first :data_type)]
+        (is (not= "VARCHAR_IGNORECASE" column-type))))))
