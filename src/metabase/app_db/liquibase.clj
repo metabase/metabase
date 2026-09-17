@@ -431,9 +431,10 @@
 
 (def dev-version
   "The constant version recorded by builds that have no real release version (local development, where
-  `version.properties` is absent). Every dev deployment records this same version: dev deployments are told apart by
-  their `deployment_id`, not by version, so a dev `migrate down` steps back one *deployment* (see
-  [[rollback-major-version!]]) rather than one major."
+  `version.properties` is absent). Every dev deployment records this same version, so the release paths -- the
+  boot-time downgrade check and `migrate down` -- refuse a schema whose newest deployment is a dev one and point at the
+  development tooling, which tells deployments apart by `deployment_id` instead (see [[rollback-to-deployment!]] and
+  `dev.migrate/rollback!`)."
   (format "x.%d.0.0" dev-major))
 
 (defn synthetic-dev-major?
@@ -1121,9 +1122,9 @@
              :when (= major (version->major metabase_version))]
          deployment_id)))
 
-(defn- previous-deployment-id
+(defn previous-deployment-id
   "The `deployment_id` of the second-newest recorded deployment -- the boundary for rolling back just the newest one --
-  or nil when there is no earlier deployment."
+  or nil when there is no earlier deployment. Used by the development rollback tooling (`dev.migrate/rollback!`)."
   [^Connection conn ^Database database]
   (ensure-databasechangelog-versions-table! conn)
   (when (empty? (recorded-deployments conn))
@@ -1255,9 +1256,7 @@
 (defn- refuse-to-roll-back-newer-schema!
   "Throw unless `force` when the schema was migrated by a NEWER Metabase version than this binary: this binary's
   changelog does not contain those changesets, so Liquibase cannot reverse their DDL -- it would only delete their
-  bookkeeping rows (including the legacy-version-tracking marker) and leave the schema silently corrupted. (A dev
-  binary is at [[dev-major]], above every real major, so this never fires for dev-on-dev workflows; it does protect a
-  release binary pointed at a dev-written DB.)"
+  bookkeeping rows (including the legacy-version-tracking marker) and leave the schema silently corrupted."
   [^Connection conn ^Database database force]
   (when-not force
     (let [schema-major (current-schema-major conn database)
@@ -1297,6 +1296,32 @@
           (warn-about-unreversible-rows! liquibase changesets-to-drop)
           (delete-deployment-rows! conn changelog-table deployments-to-drop))))))
 
+(defn- refuse-dev-migrated-schema!
+  "Throw when the schema's newest deployment was made by a development build. Every dev deployment records the same
+  [[dev-version]], so there is no release major to step back to; the development tooling rolls back by deployment
+  instead (see [[rollback-to-deployment!]])."
+  [^Connection conn ^Database database]
+  (when (synthetic-dev-major? (current-schema-major conn database))
+    (throw (ex-info (format (str "This database was last migrated by a development build (%s), so there is no release "
+                                 "version to roll back to. Roll back its deployments from a development checkout with "
+                                 "`clojure -M:dev:migrate rollback last-deployment` (dev.migrate/rollback!), or rebuild "
+                                 "the database.")
+                            dev-version)
+                    {:schema-major dev-major}))))
+
+(defn rollback-to-deployment!
+  "Roll back every changeset that ran after the latest changelog row of `boundary-deployment-id`, whatever versions
+  are recorded -- the development rollback (`dev.migrate/rollback!`), where each `migrate up` run is its own
+  deployment. The id must be a deployment in the `databasechangelog_version` table (see [[previous-deployment-id]] for
+  the usual 'one run back' target)."
+  [conn ^Liquibase liquibase boundary-deployment-id]
+  (ensure-databasechangelog-versions-table! conn)
+  (when-not (some #(= boundary-deployment-id (:deployment_id %)) (recorded-deployments conn))
+    (throw (IllegalArgumentException.
+            (format "%s is not a recorded deployment (see the %s table)."
+                    (pr-str boundary-deployment-id) databasechangelog-versions-table))))
+  (rollback-to-deployments! conn liquibase #{boundary-deployment-id} (str "deployment " boundary-deployment-id)))
+
 (defn rollback-major-version!
   "Roll back all migrations that ran after the most recent deployment of `target` -- an integer major version (or a
   numeric string like `\"64\"`). The target must be a major recorded in the `databasechangelog_version` table (see
@@ -1304,28 +1329,23 @@
   (the last upgrade boundary); when `force` is true, any recorded major in history.
 
   Without a target, rolls back to the previous *recorded* major -- one recorded major back even when the upgrade
-  skipped majors or the current major shipped no migrations. In dev every deployment records the same [[dev-version]],
-  so majors cannot tell dev deployments apart: while the schema is at [[dev-major]] the default instead rolls back the
-  newest *deployment* (the last `migrate up` run).
+  skipped majors or the current major shipped no migrations.
 
-  Unless `force` is true, refuses to run when the schema was migrated by a NEWER Metabase version than this binary --
-  see [[refuse-to-roll-back-newer-schema!]]; run `migrate down` from the newer binary instead."
+  Refuses a schema whose newest deployment was made by a development build (see [[refuse-dev-migrated-schema!]]), and,
+  unless `force` is true, one migrated by a NEWER Metabase version than this binary -- see
+  [[refuse-to-roll-back-newer-schema!]]; run `migrate down` from the newer binary instead."
   ([conn ^Liquibase liquibase force]
    (let [lb-db (.getDatabase liquibase)]
      (ensure-databasechangelog-versions-table! conn)
-     (if (synthetic-dev-major? (current-schema-major conn lb-db))
-       (do
-         (refuse-to-roll-back-newer-schema! conn lb-db force)
-         (if-let [boundary (previous-deployment-id conn lb-db)]
-           (rollback-to-deployments! conn liquibase #{boundary} (str "deployment " boundary))
-           (log/info "No earlier deployment to roll back to; nothing to do.")))
-       (if-let [target (previous-recorded-major conn lb-db force)]
-         (rollback-major-version! conn liquibase force target)
-         (log/info "No earlier recorded Metabase version to roll back to; nothing to do.")))))
+     (refuse-dev-migrated-schema! conn lb-db)
+     (if-let [target (previous-recorded-major conn lb-db force)]
+       (rollback-major-version! conn liquibase force target)
+       (log/info "No earlier recorded Metabase version to roll back to; nothing to do."))))
 
   ([conn ^Liquibase liquibase force target]
    (let [lb-db (.getDatabase liquibase)]
      (ensure-databasechangelog-versions-table! conn)
+     (refuse-dev-migrated-schema! conn lb-db)
      (refuse-to-roll-back-newer-schema! conn lb-db force)
      (let [target-major (resolve-rollback-major (rollback-candidate-versions conn lb-db force) target)]
        (when (nil? target-major)

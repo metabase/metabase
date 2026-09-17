@@ -231,14 +231,16 @@
           (or (nil? recorded-major) (nil? current-major) (>= current-major recorded-major))
           nil
 
-          ;; The DB was last written by a *development* build.
-          ;; Never block a real binary on that -- the dev DB may carry un-released migrations, but that is the developer's to
-          ;; sort out, not a reason to refuse to boot. Just warn.
+          ;; The DB was last migrated by a *development* build: it may carry un-released migrations this binary knows
+          ;; nothing about. Refuse, pointing at the development tooling that can roll those deployments back.
           (liquibase/synthetic-dev-major? recorded-major)
-          (log/warn (u/format-color 'yellow
-                                    (str "This database was last written by a development build (%s), which is "
-                                         "newer than this version (v%d). If your database is acting weird, you may need to rebuild it.")
-                                    recorded-version current-major))
+          (throw (ex-info
+                  (str (u/format-color 'red (trs "ERROR: Development build detected."))
+                       "\n\n"
+                       (trs "This database was last migrated by a development build ({0}), which this version (v{1}) cannot use." recorded-version current-major)
+                       "\n\n"
+                       (trs "Roll back its development deployments from a development checkout with `clojure -M:dev:migrate rollback last-deployment` (dev.migrate/rollback!), or rebuild the database."))
+                  {}))
 
           ;; A genuine downgrade: a newer *released* version migrated this database.
           :else

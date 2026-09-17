@@ -188,11 +188,12 @@
                 ;; fabricated relative to it (999 above it, the dev version further above), so its exact value is irrelevant
                 binary-major   64]
             (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" binary-major))]
-              (testing "a recorded synthetic (development) version does NOT block a real binary -- it only warns"
+              (testing "a recorded development version blocks a real binary, pointing at the dev tooling"
                 (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = '%s'" versions-table liquibase/dev-version)])
                 (is (= liquibase/dev-version (liquibase/last-deployment-version conn db)))
-                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
-                    "a dev build having touched the DB is the developer's problem, not a reason to refuse to boot"))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo #"(?s)development build.*dev\.migrate"
+                     (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
               (testing "a recorded real version newer than this binary is a genuine downgrade and blocks"
                 (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.999.0'" versions-table)])
                 (is (= "x.999.0" (liquibase/last-deployment-version conn db)))

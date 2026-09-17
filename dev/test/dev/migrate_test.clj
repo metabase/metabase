@@ -34,9 +34,24 @@
             (is (true? (applied? "dev_run_a")) "the earlier deployment survives")
             (is (= [liquibase/dev-version] (versions)) "the rolled-back deployment's version row is gone too")
             (is (= ["v9999.legacy-version-tracking"] (markers)) "the surviving deployment's marker is kept")
-            (testing "migrate! :down with no target is the same operation, and no longer passes a nil target"
-              (dev.migrate/migrate! :down)
-              (is (true? (applied? "dev_run_a")) "a single remaining deployment has nothing earlier to roll back to: no-op"))))))))
+            (testing "migrate! has no :down -- rollbacks are rollback!'s job"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback! :last-deployment"
+                                    (dev.migrate/migrate! :down)))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback! :last-deployment"
+                                    (dev.migrate/migrate! :down-force)))
+              (is (true? (applied? "dev_run_a")) "and nothing was touched"))
+            (testing "with a single deployment left there is nothing earlier: clean no-op"
+              (dev.migrate/rollback! :last-deployment)
+              (is (true? (applied? "dev_run_a"))))
+            (testing "rollback! :deployment <id> rolls back everything after that deployment"
+              (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"]
+                (dev.migrate/migrate!))
+              (is (true? (applied? "dev_run_b")))
+              (let [base-dep (:deployment_id (first (jdbc/query {:datasource (mdb/data-source)}
+                                                                [(format "SELECT deployment_id FROM %s WHERE id = 'dev_run_a'" ct)])))]
+                (dev.migrate/rollback! :deployment base-dep)
+                (is (false? (applied? "dev_run_b")))
+                (is (true? (applied? "dev_run_a")))))))))))
 
 (deftest migration-sql-by-id-test
   (doseq [[id test] {"v50.2024-05-08T09:00:01"

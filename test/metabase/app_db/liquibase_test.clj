@@ -810,9 +810,8 @@
             (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'unknown_to_this_changelog'" ct)]))
                 "its bookkeeping row is still cleared, as before")))))))
 
-(deftest dev-default-rollback-targets-previous-deployment-test
-  (testing "in dev every deployment records the same constant version, so `migrate down` with no target rolls back the
-            newest deployment rather than resolving a major"
+(deftest rollback-to-deployment-test
+  (testing "rollback-to-deployment! rolls back everything after the given deployment, whatever versions are recorded"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (liquibase/with-liquibase [liquibase conn]
@@ -820,7 +819,9 @@
                 changelog-table (liquibase/changelog-table-name liquibase)
                 versions-table  liquibase/databasechangelog-versions-table
                 now             (java.time.Instant/now)
-                ago             (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+                ago             (fn [m] (.minus now (java.time.Duration/ofMinutes m)))
+                ids             (fn [] (mapv :id (jdbc/query {:connection conn} [(format "SELECT id FROM %s ORDER BY orderexecuted" changelog-table)])))
+                deps            (fn [] (mapv :deployment_id (jdbc/query {:connection conn} [(format "SELECT deployment_id FROM %s ORDER BY deployed_at" versions-table)])))]
             (liquibase/ensure-databasechangelog-versions-table! conn)
             ;; three dev "restarts", each its own deployment at the same constant dev version
             (insert-changelog-row! conn changelog-table "base01"   "dev1" 1)
@@ -830,30 +831,30 @@
             (insert-version-row! conn versions-table "dev2" liquibase/dev-version (ago 20))
             (insert-version-row! conn versions-table "dev3" liquibase/dev-version (ago 10))
             (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
-              (is (= liquibase/dev-major (liquibase/current-schema-major conn db) (liquibase/current-recorded-major))
-                  "the binary and the schema are both at the constant dev major")
-              (is (nil? (liquibase/previous-recorded-major conn db false))
-                  "there is no earlier *major* to step back to -- majors cannot tell dev deployments apart")
-              (liquibase/rollback-major-version! conn liquibase false)
-              (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'newmig03'" changelog-table)]))
-                  "the newest deployment's changeset was rolled back")
-              (is (= ["base01" "mig02"]
-                     (mapv :id (jdbc/query {:connection conn} [(format "SELECT id FROM %s ORDER BY orderexecuted" changelog-table)])))
-                  "only the newest deployment was rolled back; the one before it is the new head")
-              (is (= ["dev1" "dev2"]
-                     (mapv :deployment_id (jdbc/query {:connection conn} [(format "SELECT deployment_id FROM %s ORDER BY deployed_at" versions-table)])))
-                  "the rolled-back deployment's version row is gone")
-              (testing "a second `migrate down` steps back one more deployment"
-                (liquibase/rollback-major-version! conn liquibase false)
-                (is (= ["base01"]
-                       (mapv :id (jdbc/query {:connection conn} [(format "SELECT id FROM %s ORDER BY orderexecuted" changelog-table)])))))
-              (testing "with only one deployment left there is nothing earlier to roll back to: a clean no-op"
-                (is (nil? (liquibase/rollback-major-version! conn liquibase false)))
-                (is (= ["base01"]
-                       (mapv :id (jdbc/query {:connection conn} [(format "SELECT id FROM %s ORDER BY orderexecuted" changelog-table)]))))))))))))
+              (testing "the release rollback refuses a dev-migrated schema and points at the dev tooling"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"development build.*dev.migrate"
+                                      (liquibase/rollback-major-version! conn liquibase false)))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"development build.*dev.migrate"
+                                      (liquibase/rollback-major-version! conn liquibase true "9999"))
+                    "even with force and an explicit target")
+                (is (= ["base01" "mig02" "newmig03"] (ids)) "and changed nothing"))
+              (testing "previous-deployment-id is the second-newest deployment"
+                (is (= "dev2" (liquibase/previous-deployment-id conn db))))
+              (liquibase/rollback-to-deployment! conn liquibase "dev2")
+              (is (= ["base01" "mig02"] (ids)) "only the newest deployment was rolled back")
+              (is (= ["dev1" "dev2"] (deps)) "the rolled-back deployment's version row is gone")
+              (testing "a second step back"
+                (liquibase/rollback-to-deployment! conn liquibase (liquibase/previous-deployment-id conn db))
+                (is (= ["base01"] (ids)))
+                (is (= ["dev1"] (deps))))
+              (testing "with only one deployment left there is nothing earlier"
+                (is (nil? (liquibase/previous-deployment-id conn db))))
+              (testing "an unknown deployment id is refused"
+                (is (thrown-with-msg? IllegalArgumentException #"nope.*not a recorded deployment"
+                                      (liquibase/rollback-to-deployment! conn liquibase "nope")))))))))))
 
-(deftest dev-default-rollback-steps-back-to-a-real-deployment-test
-  (testing "a dev deployment on top of a real install rolls back to that install's deployment"
+(deftest rollback-to-deployment-onto-a-release-install-test
+  (testing "rolling a dev deployment back onto a release install leaves a schema the release rollback accepts again"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (liquibase/with-liquibase [liquibase conn]
@@ -869,12 +870,13 @@
             (insert-version-row! conn versions-table "d65"  "x.65.0.0"           (ago 20))
             (insert-version-row! conn versions-table "dev1" liquibase/dev-version (ago 10))
             (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
-              (liquibase/rollback-major-version! conn liquibase false)
+              (is (= "d65" (liquibase/previous-deployment-id conn db)))
+              (liquibase/rollback-to-deployment! conn liquibase "d65")
               (is (= ["real65"]
                      (mapv :id (jdbc/query {:connection conn} [(format "SELECT id FROM %s ORDER BY orderexecuted" changelog-table)])))
                   "the dev deployment was rolled back, the real install kept")
               (is (= 65 (liquibase/current-schema-major conn db)))
-              (testing "now that the schema is at a real major, the default falls back to the previous recorded major (none here)"
+              (testing "the schema is at a real major again, so the release rollback works (nothing earlier here: no-op)"
                 (is (nil? (liquibase/rollback-major-version! conn liquibase false)))))))))))
 
 (deftest record-legacy-version-tracking-test
@@ -1032,12 +1034,25 @@
           (let [db (.getDatabase liquibase)
                 vt liquibase/databasechangelog-versions-table]
             (liquibase/ensure-databasechangelog-versions-table! conn)
-            ;; a single (e.g. fresh dev) deployment -- there is nothing earlier to roll back to
-            (insert-version-row! conn vt "only" liquibase/dev-version (java.time.Instant/now))
-            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+            ;; a single (fresh install) deployment -- there is nothing earlier to roll back to
+            (insert-version-row! conn vt "only" "x.65.0.0" (java.time.Instant/now))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")]
               (is (nil? (liquibase/previous-recorded-major conn db false)))
               (is (nil? (liquibase/rollback-major-version! conn liquibase false))
                   "no earlier recorded version -> logs and returns without throwing"))))))))
+
+(defn- rollback-last-deployment!
+  "What `dev.migrate/rollback! :last-deployment` does: roll back everything after the second-newest deployment, in
+  its own transaction. Returns the boundary deployment id, or nil when there was nothing earlier to roll back to."
+  []
+  (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+    (.setAutoCommit conn false)
+    (liquibase/with-liquibase [liquibase conn]
+      (let [boundary (liquibase/previous-deployment-id conn (.getDatabase liquibase))]
+        (when boundary
+          (liquibase/rollback-to-deployment! conn liquibase boundary))
+        (.commit conn)
+        boundary))))
 
 (defn- versions-table-exists?*
   "Whether `databasechangelog_version` exists, checked without creating it. Unquoted DDL identifiers are folded to
@@ -1079,8 +1094,12 @@
                   "the second run records the same constant dev version against its own deployment")
               (is (not= (dep-of "dev_run_a") (dep-of "dev_run_b"))
                   "each run is its own deployment, even within one process")
-              (mdb/migrate! (mdb/data-source) :down)
-              (is (false? (applied? "dev_run_b")) "migrate down reverts exactly the second run")
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"development build.*dev.migrate"
+                                    (mdb/migrate! (mdb/data-source) :down))
+                  "the release `migrate down` refuses a dev-migrated schema and points at the dev tooling")
+              (is (true? (applied? "dev_run_b")) "...without touching anything")
+              (is (= (dep-of "dev_run_a") (rollback-last-deployment!)))
+              (is (false? (applied? "dev_run_b")) "the dev rollback reverts exactly the second run")
               (is (true? (applied? "dev_run_a")) "the first run's migration survives")
               (is (= [liquibase/dev-version] (versions)) "the second run's version row is gone"))))))))
 
@@ -1219,15 +1238,14 @@
               (is (= [liquibase/dev-version liquibase/dev-version] (versions)))
               (is (= "RERAN" (:exectype (row-of "roc_view")))
                   "sanity: the second run consists of exactly the re-run changeset")
-              (mdb/migrate! (mdb/data-source) :down)
+              (rollback-last-deployment!)
               (is (= [liquibase/dev-version] (versions))
                   "the re-run-only deployment dissolves; the boundary steps back")
               (is (= (:deployment_id (row-of "roc_base")) (:deployment_id (row-of "roc_view")))
                   "the retained re-run row joins the boundary deployment")
               (is (= 3 (view-x)) "the view is not reversed")
-              (mdb/migrate! (mdb/data-source) :down)
-              (is (= [liquibase/dev-version] (versions))
-                  "a further down with no earlier boundary is a clean no-op"))))))))
+              (is (nil? (rollback-last-deployment!)) "a further rollback with no earlier deployment is a clean no-op")
+              (is (= [liquibase/dev-version] (versions))))))))))
 
 (deftest force-migrate-writes-legacy-marker-test
   (testing "migrate force records the vNN.legacy-version-tracking marker just like a normal upgrade, so
