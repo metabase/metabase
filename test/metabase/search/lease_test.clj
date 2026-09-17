@@ -646,6 +646,40 @@
         (t2/delete! :setting :key setting-key)
         (delete-coordinate! coordinate)))))
 
+(deftest deadline-during-release-waits-for-restore-and-removes-lease-test
+  (let [coordinate (coordinate)
+        ^ReentrantReadWriteLock lock (:lock (mdb/app-db))
+        body-entered (promise)
+        body-return  (promise)]
+    (mt/with-dynamic-fn-redefs [deadline/report! (fn [& _])]
+      (let [worker (future
+                     (try
+                       (lease/do-with-lease coordinate
+                                            #(do
+                                               (deliver body-entered deadline/*run-context*)
+                                               @body-return))
+                       (catch Exception e (:type (ex-data e)))))]
+        (try
+          (let [context (deref body-entered 5000 nil)]
+            (is (some? context))
+            (when context
+              (.. lock writeLock lock)
+              (deliver body-return true)
+              (tu/poll-until 5000 (.hasQueuedThread lock (:worker context)))
+              (#'deadline/expire! context)
+              (is (= ::waiting (deref worker 50 ::waiting))
+                  "the timer cannot interrupt cleanup out of its restore-gate wait")
+              (.. lock writeLock unlock)
+              (is (= ::deadline/exceeded (deref worker 5000 ::timeout)))
+              (is (not (t2/exists? :search_index_lease :engine (:engine coordinate)
+                                   :lang_code (:lang_code coordinate) :version (:version coordinate))))))
+          (finally
+            (deliver body-return true)
+            (when (.isWriteLockedByCurrentThread lock)
+              (.. lock writeLock unlock))
+            (deref worker 10000 nil)
+            (delete-coordinate! coordinate)))))))
+
 (deftest deadline-retains-admission-until-heartbeat-exits-test
   (let [coordinate (coordinate)
         entered    (promise)
