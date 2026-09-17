@@ -414,8 +414,8 @@
 (defn- parse-codeowners
   "Active entries of CODEOWNERS `text` as `[normalized-path #{owner-handle ...}]`, last line first, so the
   first ancestor match is the line GitHub applies: it resolves a path to its last matching line, which is
-  not always the deepest. An entry with no owners (an exclusion line, path followed only by a comment)
-  keeps an empty owner set, so a later exclusion overrides a broad owner."
+  not always the deepest.
+  An owner-less entry, such as an exclusion line, keeps an empty owner set and so overrides a broader owner."
   [text]
   (->> (str/split-lines text)
        (map str/trim)
