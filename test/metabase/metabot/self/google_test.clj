@@ -1318,13 +1318,14 @@
           (is (not (contains? body :model))))))))
 
 (deftest google-raw-dedicated-endpoint-host-test
-  (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses"
+  (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses, also when the base URL names Google's host for the location"
     (let [endpoint "2345678901234567890"
           host     (str endpoint ".us-central1-123456789.prediction.vertexai.goog")]
-      (doseq [dns [host (str "https://" host)]]
-        (testing (pr-str dns)
+      (doseq [dns      [host (str "https://" host)]
+              base-url [nil "https://us-central1-aiplatform.googleapis.com"]]
+        (testing (pr-str dns base-url)
           (let [[get-req post-req] (endpoint-requests! (unique-token) (str "endpoints/" endpoint)
-                                                       (endpoint-resource endpoint dns) 1)]
+                                                       (endpoint-resource endpoint dns) 1 :base-url base-url)]
             (is (str/starts-with? (:url get-req) "https://us-central1-aiplatform.googleapis.com/")
                 "the resource itself is read from the shared host")
             (is (= (str "https://" host "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint

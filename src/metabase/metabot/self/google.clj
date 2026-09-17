@@ -387,9 +387,9 @@
 
 (defn- admin-base-url
   "Returns the base URL the admin set outright, say a proxy, or nil when the connection uses Google's own hosts."
-  [{:keys [base-url]}]
+  [{:keys [base-url] :as credentials}]
   (when-let [configured (not-empty base-url)]
-    (when (not= configured llm/google-global-api-base-url)
+    (when-not (#{llm/google-global-api-base-url (location-host (effective-location credentials))} configured)
       configured)))
 
 (defn- endpoint-host
