@@ -55,9 +55,11 @@
         (mapcat value-nodes args)
 
         ;; `[:= col v]`, `[:in col vs]`, `[:between col lo hi]` -- the first argument is the
-        ;; column and the rest are values, whatever the arity.
+        ;; column and the rest are values, whatever the arity. Keep each value AND descend into it,
+        ;; so a subquery in a value slot -- `[:in :id {:select ... :where [:= :z z]}]` -- has its
+        ;; own values checked too. Descending alone would drop the plain-token case.
         (and (keyword? op) (contains? value-operators (symbol (name op))))
-        (rest args)
+        (mapcat #(cons % (value-nodes %)) (rest args))
 
         :else
         (mapcat value-nodes (:children node))))
@@ -82,6 +84,38 @@
   [node]
   (let [f (some-> (first (:children node)) hooks/sexpr)]
     (not (contains? write-fns (some-> f name symbol)))))
+
+(def ^:private conditions-map-fns
+  "Calls whose first argument after the model is a map of CONDITIONS rather than a query map.
+
+  `(t2/update! :model/X {:key k} {:v 1})` filters on `k`, so it is a where-clause value -- but it
+  reaches the query as a plain map entry rather than a `:where` clause, so neither the query-map
+  walker nor the kv-arg walker sees it. The rubric recommends this shape, so it has to be checked."
+  '#{update! update-or-insert! delete!})
+
+(defn- conditions-map-value-nodes
+  "The values of a conditions map passed to one of [[conditions-map-fns]]."
+  [f args]
+  (when (contains? conditions-map-fns (some-> f name symbol))
+    (let [after-model (->> args
+                           (drop-while #(not (and (hooks/keyword-node? %)
+                                                  (= "model" (namespace (hooks/sexpr %))))))
+                           rest)]
+      ;; Only the map immediately after the model is conditions. A later map is the changes map,
+      ;; whose values are written rather than filtered on (rubric rule 1).
+      (when-let [m (first after-model)]
+        (when (hooks/map-node? m)
+          (mapcat (fn [v]
+                    ;; The column comes from the map key, so an operator form here holds only
+                    ;; values -- `{:key [:in ks]}` -- exactly as a kv-arg pair does.
+                    (if (and (hooks/vector-node? v) (not (marked? v)))
+                      (let [[head & args] (:children v)
+                            op            (some-> head hooks/sexpr)]
+                        (if (and (keyword? op) (contains? value-operators (symbol (name op))))
+                          (mapcat #(cons % (value-nodes %)) args)
+                          (cons v (value-nodes v))))
+                      (cons v (value-nodes v))))
+                  (take-nth 2 (rest (:children m)))))))))
 
 (defn- kv-arg-value-nodes
   "The value nodes of a call written as `:column value` pairs.
@@ -127,9 +161,11 @@
   Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
   function is out of reach of a check that does not follow it across a call."
   [node]
-  (doseq [value (let [args (rest (:children node))]
+  (doseq [value (let [args (rest (:children node))
+                      f    (some-> (first (:children node)) hooks/sexpr)]
                   (concat (mapcat value-nodes args)
-                          (kv-arg-value-nodes args)))
+                          (kv-arg-value-nodes args)
+                          (conditions-map-value-nodes f args)))
           :when (and (hooks/token-node? value)
                      (symbol? (hooks/sexpr value))
                      (not (marked? value)))]
