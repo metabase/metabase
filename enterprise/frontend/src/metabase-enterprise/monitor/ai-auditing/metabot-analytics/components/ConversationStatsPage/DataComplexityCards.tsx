@@ -6,6 +6,8 @@ import { getErrorMessage } from "metabase/api/utils";
 import {
   Accordion,
   Alert,
+  Badge,
+  type BadgeColor,
   Box,
   Card,
   Flex,
@@ -43,19 +45,12 @@ import S from "./DataComplexityCards.module.css";
 
 type RatingColorKey = DataComplexityRating | "default";
 
-const RATING_BADGE_BACKGROUND_COLORS = {
-  low: "background_surface-success-strong",
-  medium: "background_surface-warning-strong",
-  high: "background_surface-error",
-  default: "background_page-tertiary",
-} satisfies Record<RatingColorKey, MetabaseColorKey>;
-
-const RATING_BADGE_TEXT_COLORS = {
-  low: "success-secondary",
-  medium: "text-primary",
-  high: "error",
-  default: "text-secondary",
-} satisfies Record<RatingColorKey, MetabaseColorKey>;
+const RATING_BADGE_COLORS = {
+  low: "positive",
+  medium: "warning",
+  high: "negative",
+  default: "neutral",
+} satisfies Record<RatingColorKey, BadgeColor>;
 
 const RATING_TEXT_COLORS = {
   low: "success",
@@ -389,28 +384,17 @@ function ScoreDisplayInline({
       </Text>
     ))
     .with({ score: P.nonNullable }, ({ score, rating }) => {
-      const ratingColorKey = rating ?? "default";
+      const formattedScore = formatNumber(score, { maximumFractionDigits: 0 });
 
       return (
-        <Flex
+        <Badge
+          size="sm"
+          color={RATING_BADGE_COLORS[rating ?? "default"]}
           ml="auto"
-          px={8}
-          py={4}
-          bdrs="xs"
-          bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
           {...rest}
-          gap="sm"
         >
-          {withTitle && (
-            <Text
-              lh="1rem"
-              c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}
-            >{t`Complexity score`}</Text>
-          )}
-          <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
-            {formatNumber(score, { maximumFractionDigits: 0 })}
-          </Text>
-        </Flex>
+          {withTitle ? t`Complexity score ${formattedScore}` : formattedScore}
+        </Badge>
       );
     })
     .exhaustive();

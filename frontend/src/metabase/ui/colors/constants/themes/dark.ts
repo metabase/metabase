@@ -125,7 +125,6 @@ const actualColors = {
   "background_surface-selected":
     "color-mix(in srgb, var(--mb-color-core-brand) 21%, transparent)",
   "background_surface-success": baseColors.palm[90],
-  "background_surface-success-strong": baseColors.palm[70],
   "background_surface-warning": baseColors.dubloon[90],
   "background_surface-warning-strong": baseColors.dubloon[70],
   "border-brand": baseColors.brand[80],
