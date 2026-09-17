@@ -155,7 +155,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -357,17 +357,9 @@
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
-  [{:keys [id type query source] :as _item}]
-  (let [t (normalize-type type)]
-    (cond
-      (and (#{"adhoc" "native"} t) (map? query) id)
-      [(str id) query]
-
-      (and (= "transform" t)
-           (= "query" (normalize-type (:type source)))
-           (map? (:query source))
-           id)
-      [(str id) (:query source)])))
+  [{:keys [id type query]}]
+  (when (and (#{"adhoc" "native"} (normalize-type type)) (map? query) id)
+    [(str id) query]))
 
 (defn- seed-state
   "Seed state with queries from viewing context."
@@ -445,9 +437,9 @@
 (defn- client-content-ids
   "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the
   agent's own tools wrote. A refusal to present one of these is a real access attempt and gets
-  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh
-  map keeps this to the context of the turn being served, which is where the distinction comes
-  from - the conversation's `:state` carries no provenance."
+  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh map
+  keeps this to what the client sent this turn; [[metabase.metabot.agent.memory/add-client-ids]]
+  adds it to what earlier turns recorded."
   [context]
   (let [seeded (-> {} (seed-state context) (seed-charts context))]
     (into (set (keys (:queries seeded)))
@@ -461,7 +453,6 @@
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
-   :transforms_codegen        :permission/metabot-sql-generation
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 
@@ -491,9 +482,9 @@
                          (seed-state context)
                          (seed-chart-configs context)
                          (seed-charts context))
-        memory       (assoc (memory/initialize messages seeded context)
-                            :conversation-id conversation-id
-                            :client-ids (client-content-ids context))
+        memory       (-> (memory/initialize messages seeded context)
+                         (assoc :conversation-id conversation-id)
+                         (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id

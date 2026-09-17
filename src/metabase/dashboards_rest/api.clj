@@ -649,8 +649,7 @@
   endpoints and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
-  ;; published. Publishing itself stays gated.
+  (embedding.validation/check-embedding-enabled)
   (dashboards-rest.db/embeddable-dashboards))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------

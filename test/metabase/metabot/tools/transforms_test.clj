@@ -1,18 +1,18 @@
 (ns metabase.metabot.tools.transforms-test
-  "Tests for agent-level transform tool wrappers, particularly the
-  dependency checking integration in write-transform-sql-tool."
+  "Tests for reading transform definitions."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.tools.dependencies :as deps]
-   [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tools.transforms :as agent-transforms]
-   [metabase.metabot.tools.transforms.write :as transforms-write]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------- read tool integration tests ---------------------------------------------------
 
@@ -48,6 +48,107 @@
             (is (not-any? #(and (map? %) (contains? % "lib/metadata"))
                           (tree-seq coll? seq exported)))))))))
 
+(defn- query-transform-details!
+  "`get_transform_details` output for a transform whose source is `query`, read as rasta with query
+  access to the whole database - so `transforms/get-transform` passes and whatever happens to the
+  source is the export gate's doing."
+  [query]
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    (mt/with-temp [:model/Transform {transform-id :id}
+                   {:name "Orders Rollup" :source {:type "query" :query query}}]
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-current-user (mt/user->id :rasta)
+          (:output (agent-transforms/get-transform-details-tool {:transform_id transform-id})))))))
+
+(deftest get-transform-details-sandboxed-field-test
+  (testing "a source query naming a field the user's sandbox hides renders without its query, since
+           exporting it would resolve that field's id to a name"
+    (let [query (-> (lib/query (mt/metadata-provider)
+                               (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                    (lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) 1)))]
+      (is (str/includes? (query-transform-details! query) "<query>"))
+      (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields (fn [_table-ids] {(mt/id :venues) #{}})]
+        (is (not (str/includes? (query-transform-details! query) "<query>")))))))
+
+(deftest get-transform-details-unpermissionable-source-test
+  (testing "a source query whose permissions cannot be calculated at all still renders, since that is
+           not a refusal - it just renders unresolved, naming nothing the user may not see"
+    (let [output (query-transform-details! {:database (mt/id)
+                                            :type     :query
+                                            :query    {:source-table "card__13371337"}})]
+      (is (str/includes? output "<query>"))
+      (is (str/includes? output ":source-card 13371337")
+          "the card id is still a number, so nothing was resolved to a name"))))
+
+(defn- rendered-source
+  "The source query [[query-export/transform-with-exportable-source]] leaves on a transform whose
+  source is `query`, or nil when it withholds it."
+  [query]
+  (get-in (query-export/transform-with-exportable-source {:source {:type "query" :query query}})
+          [:source :query]))
+
+(deftest transform-source-withholds-native-sql-behind-a-later-stage-test
+  (testing "a native stage under an MBQL stage is still native, so a check that could not be made
+           withholds it instead of printing the SQL in the unresolved fallback"
+    (let [native-stage {:lib/type      :mbql.stage/native
+                        :native        "SELECT * FROM {{snip}}"
+                        :template-tags {"snip" {:type         :snippet
+                                                :name         "snip"
+                                                :display-name "snip"
+                                                :snippet-id   Integer/MAX_VALUE}}}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [stages [[native-stage] [native-stage {:lib/type :mbql.stage/mbql}]]]
+          (is (nil? (rendered-source {:lib/type :mbql/query :database (mt/id) :stages stages}))
+              (str (count stages) " stage(s)")))))))
+
+(deftest transform-source-survives-a-deleted-source-database-test
+  (testing "an orphaned transform keeps its source, which is what an admin repairs it from: there
+           is no metadata left behind a deleted database to resolve anything against"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (t2/delete! :model/Database :id db-id)
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (str/includes? (str (rendered-source {:database db-id
+                                                  :type     :native
+                                                  :native   {:query "SELECT 1"}}))
+                           "SELECT 1"))))))
+
+(deftest get-transform-details-unpermissionable-native-source-test
+  (testing "native SQL stays out when the check could not run, since its table and column names are
+           already plain text and having no provider hides nothing"
+    (let [output (query-transform-details!
+                  {:database (mt/id)
+                   :type     :native
+                   :native   {:query         "SELECT * FROM {{snip}}"
+                              :template-tags {"snip" {:type         :snippet
+                                                      :name         "snip"
+                                                      :display-name "snip"
+                                                      :snippet-id   Integer/MAX_VALUE}}}})]
+      (is (not (str/includes? output "<query>")))
+      (is (not (str/includes? output "SELECT"))))))
+
+(deftest get-transform-details-source-permission-test
+  (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
+           with query access to another table in its database, so the tool never reaches the source"
+    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Orders Rollup"
+                      :source {:type  "query"
+                               :query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (=? {:status-code 403 :output "You don't have permissions to do that."}
+                      (agent-transforms/get-transform-details-tool {:transform_id transform-id}))))
+            (testing "and the query renders once the source table is granted"
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (str/includes? (:output (agent-transforms/get-transform-details-tool {:transform_id transform-id}))
+                                   "<query>"))))))))))
+
 (deftest get-transform-details-python-source-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
@@ -81,174 +182,3 @@
               (let [{:keys [output status-code]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
                 (is (= 403 status-code))
                 (is (= "You don't have permissions to do that." output))))))))))
-
-;;; ----------------------------------- write tool integration tests --------------------------------------------------
-
-(deftest write-transform-sql-tool-test
-  (testing "creates new SQL transform with correct name, SQL content, and output message"
-    (let [memory-atom (atom {:state {}})
-          result (binding [shared/*memory-atom* memory-atom]
-                   (agent-transforms/write-transform-sql-tool
-                    {:edit_action {:mode "replace" :new_content "SELECT id FROM orders"}
-                     :transform_name "Orders Transform"
-                     :database_id (mt/id)}))]
-      (is (= "SELECT id FROM orders"
-             (some-> (get-in result [:structured-output :transform :source :query])
-                     lib/raw-native-query)))
-      (is (= "Transform SQL updated successfully." (:output result)))
-      (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
-
-(deftest write-transform-python-tool-test
-  (when (premium-features/has-feature? :transforms-python)
-    (testing "creates new Python transform with correct body, source tables, and output message"
-      (let [memory-atom (atom {:state {}})
-            result (binding [shared/*memory-atom* memory-atom]
-                     (agent-transforms/write-transform-python-tool
-                      {:edit_action {:mode "replace" :new_content "import common\ndef transform(t): return t"}
-                       :transform_name "Python Transform"
-                       :database_id (mt/id)
-                       :source_tables [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]}))]
-        (is (= "import common\ndef transform(t): return t"
-               (get-in result [:structured-output :transform :source :body])))
-        (is (= [{:alias "t" :table_id 10 :schema "PUBLIC" :database_id (mt/id)}]
-               (get-in result [:structured-output :transform :source :source-tables])))
-        (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))))
-
-(deftest write-transform-tool-nil-transform-id-test
-  (when (premium-features/has-feature? :transforms-python)
-    (testing "SQL: nil transform_id creates fresh transform with nil :id and does not store in memory"
-      (let [memory-atom (atom {:state {:transforms {}}})
-            result (binding [shared/*memory-atom* memory-atom]
-                     (agent-transforms/write-transform-sql-tool
-                      {:transform_id nil
-                       :edit_action {:mode "replace" :new_content "SELECT 1"}
-                       :transform_name "Fresh SQL"
-                       :database_id (mt/id)}))]
-        (is (nil? (get-in result [:structured-output :transform :id])))
-        (is (empty? (get-in @memory-atom [:state :transforms])))
-        (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))
-    (testing "Python: nil transform_id creates fresh transform with nil :id and does not store in memory"
-      (let [memory-atom (atom {:state {:transforms {}}})
-            result (binding [shared/*memory-atom* memory-atom]
-                     (agent-transforms/write-transform-python-tool
-                      {:transform_id nil
-                       :edit_action {:mode "replace" :new_content "import common\ndef transform(): pass"}
-                       :transform_name "Fresh Python"
-                       :database_id (mt/id)
-                       :source_tables [{:alias "t" :table_id 1 :schema "PUBLIC" :database_id (mt/id)}]}))]
-        (is (nil? (get-in result [:structured-output :transform :id])))
-        (is (empty? (get-in @memory-atom [:state :transforms])))
-        (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))))
-
-;;; ----------------------------------- dependency check integration tests -------------------------------------------
-
-(deftest write-transform-sql-dependency-check-no-issues-test
-  (testing "when check-dependencies returns nil (no issues) → result unchanged, no extra instructions"
-    (let [memory-atom (atom {:state {}})
-          base-result {:structured-output {:transform {:id 1
-                                                       :name "Test"
-                                                       :source {:type "query" :query "SELECT 1"}}
-                                           :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                                  deps/check-transform-dependencies    (fn [_] {:structured_output {:success true
-                                                                                                    :bad_transforms []
-                                                                                                    :bad_questions nil}})]
-        (let [result (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool
-                        {:transform_id 1
-                         :edit_action {:mode "replace" :new_content "SELECT 1"}}))]
-          (is (nil? (:instructions result)))
-          (is (some? (:output result))))))))
-
-(deftest write-transform-sql-dependency-check-broken-transforms-test
-  (testing "when check-dependencies returns bad_transforms → instructions appended with transform links"
-    (let [memory-atom (atom {:state {}})
-          base-result {:structured-output {:transform {:id 1
-                                                       :name "Test"
-                                                       :source {:type "query" :query "SELECT id FROM orders"}}
-                                           :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                                  deps/check-transform-dependencies    (fn [_]
-                                                                         {:structured_output
-                                                                          {:success false
-                                                                           :bad_transform_count 1
-                                                                           :bad_transforms [{:transform {:id 2 :name "Downstream Transform"}
-                                                                                             :errors ["Column 'total' not found"]}]
-                                                                           :bad_questions nil}})]
-        (let [result (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool
-                        {:transform_id 1
-                         :edit_action {:mode "replace" :new_content "SELECT id FROM orders"}}))]
-          (is (some? (:instructions result)))
-          (is (str/includes? (:instructions result) "Dependency issues detected"))
-          (is (str/includes? (:instructions result) "Broken transforms"))
-          (is (str/includes? (:instructions result) "Downstream Transform"))
-          (is (str/includes? (:instructions result) "metabase://transform/2")))))))
-
-(deftest write-transform-sql-dependency-check-broken-questions-test
-  (testing "when check-dependencies returns bad_questions → instructions appended with question links"
-    (let [memory-atom (atom {:state {}})
-          base-result {:structured-output {:transform {:id 1
-                                                       :name "Test"
-                                                       :source {:type "query" :query "SELECT id FROM orders"}}
-                                           :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                                  deps/check-transform-dependencies    (fn [_]
-                                                                         {:structured_output
-                                                                          {:success false
-                                                                           :bad_transform_count 0
-                                                                           :bad_transforms []
-                                                                           :bad_question_count 2
-                                                                           :bad_questions [{:question {:id 10 :name "Revenue Report"}
-                                                                                            :errors ["Column 'total' not found"]}
-                                                                                           {:question {:id 11 :name "Monthly Summary"}
-                                                                                            :errors ["Column 'total' not found"]}]}})]
-        (let [result (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool
-                        {:transform_id 1
-                         :edit_action {:mode "replace" :new_content "SELECT id FROM orders"}}))]
-          (is (some? (:instructions result)))
-          (is (str/includes? (:instructions result) "Broken questions"))
-          (is (str/includes? (:instructions result) "Revenue Report"))
-          (is (str/includes? (:instructions result) "metabase://question/10"))
-          (is (str/includes? (:instructions result) "Monthly Summary"))
-          (is (str/includes? (:instructions result) "metabase://question/11")))))))
-
-(deftest write-transform-sql-dependency-check-error-test
-  (testing "when check-dependencies throws → graceful degradation (no crash, result unchanged)"
-    (let [memory-atom (atom {:state {}})
-          base-result {:structured-output {:transform {:id 1
-                                                       :name "Test"
-                                                       :source {:type "query" :query "SELECT 1"}}
-                                           :message "Transform updated successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                                  deps/check-transform-dependencies    (fn [_] (throw (Exception. "DB connection failed")))]
-        (let [result (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool
-                        {:transform_id 1
-                         :edit_action {:mode "replace" :new_content "SELECT 1"}}))]
-          ;; Should succeed without instructions — the dep check failure is logged but not propagated
-          (is (nil? (:instructions result)))
-          (is (some? (:output result))))))))
-
-(deftest write-transform-sql-dependency-check-new-transform-test
-  (testing "new transforms (no transform_id) → dependency check skipped"
-    (let [memory-atom (atom {:state {}})
-          dep-called? (atom false)
-          base-result {:structured-output {:transform {:name "New Transform"
-                                                       :source {:type "query" :query "SELECT 1"}}
-                                           :message "Transform created successfully."}
-                       :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                                  deps/check-transform-dependencies    (fn [_] (reset! dep-called? true) nil)]
-        (let [result (binding [shared/*memory-atom* memory-atom]
-                       (agent-transforms/write-transform-sql-tool
-                        {:edit_action {:mode "replace" :new_content "SELECT 1"}
-                         :transform_name "New Transform"}))]
-          (is (false? @dep-called?))
-          (is (nil? (:instructions result)))
-          (is (some? (:output result))))))))

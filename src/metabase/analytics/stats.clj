@@ -131,13 +131,10 @@
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (analytics.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
-   ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0. The three field names are kept so
-   ;; existing reports keep resolving; they now all report that one flag.
-   :enable_embedding_sdk                 (setting/get :enable-embedding-modular)
-   :enable_embedding_simple              (setting/get :enable-embedding-modular)
+   :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   :enable_embedding_simple              (setting/get :enable-embedding-simple)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
-   :enable_embedding_static              (setting/get :enable-embedding-modular)
-   :enable_embedding_modular             (setting/get :enable-embedding-modular)
+   :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
                                           (setting/get :embedding-app-origin))
    ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
@@ -639,7 +636,6 @@
    [:enable_embedding_simple :boolean]
    [:enable_embedding_interactive :boolean]
    [:enable_embedding_static :boolean]
-   [:enable_embedding_modular :boolean]
    [:embedding_app_origin_set :boolean]
    [:embedding_app_origin_sdk_set :boolean]
    [:embedding_app_origin_interactive_set [:maybe :string]]
@@ -871,7 +867,7 @@
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (setting/get :enable-embedding-modular)
+                (setting/get :enable-embedding-static)
                 (or
                  (analytics.db/embedded-dashboard-exists?)
                  (analytics.db/embedded-card-exists?)))}
@@ -951,7 +947,7 @@
     :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
-    :enabled   (setting/get :enable-embedding-modular)}
+    :enabled   (setting/get :enable-embedding-sdk)}
    {:name      :tenants
     :enabled   (setting/get :use-tenants)
     :available (premium-features/enable-tenants?)}

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -215,6 +214,12 @@ async function setup(
     return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
   }
 
+  setupDatabaseEndpoints(
+    createSampleDatabase(
+      databaseFeatures ? { features: databaseFeatures } : {},
+    ),
+  );
+
   renderWithProviders(
     <ExpressionWidget
       clause={undefined}
@@ -227,13 +232,6 @@ async function setup(
       onClose={onClose}
       {...additionalProps}
     />,
-    databaseFeatures && {
-      storeInitialState: createMockState({
-        entities: createMockEntitiesState({
-          databases: [createSampleDatabase({ features: databaseFeatures })],
-        }),
-      }),
-    },
   );
   await waitFor(() =>
     expect(screen.getByTestId("custom-expression-query-editor")).toHaveProperty(
