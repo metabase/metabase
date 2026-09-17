@@ -8,6 +8,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
+import { getHostReactMajorVersion } from "embedding-sdk-bundle/lib/host-react-version";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
@@ -26,12 +27,20 @@ jest.mock("metabase/visualizations/register", () => ({
   registerVisualizations: jest.fn(),
 }));
 
+// Jest runs React 18 on localhost, which shows the React 18 warning banner.
+// Each test sets the host React major version instead.
+jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  getHostReactMajorVersion: jest.fn(),
+}));
+
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),
+  // The actual helper reads the actual config, not the mocked one below.
+  isEmbeddingEajs: () => true,
   EMBEDDING_SDK_CONFIG: {
     isEmbeddingSdk: true,
     metabaseClientRequestHeader: "embedding-simple",
-    enableEmbeddingSettingKey: "enable-embedding-modular",
+    enableEmbeddingSettingKey: "enable-embedding-simple",
     tokenFeatureKey: "embedding_simple",
   },
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG: {
@@ -43,16 +52,19 @@ jest.mock("metabase/embedding-sdk/config", () => ({
 interface Options {
   hasSimpleEmbeddingFeature?: boolean;
   isSimpleEmbeddingEnabled?: boolean;
+  hostReactMajorVersion?: number;
 }
 
-const setup = (options: Options) => {
+const setup = ({ hostReactMajorVersion = 19, ...options }: Options) => {
+  jest.mocked(getHostReactMajorVersion).mockReturnValue(hostReactMajorVersion);
+
   const tokenFeatures = createMockTokenFeatures({
     embedding_simple: options.hasSimpleEmbeddingFeature ?? true,
   });
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-modular": options.isSimpleEmbeddingEnabled ?? true,
+    "enable-embedding-simple": options.isSimpleEmbeddingEnabled ?? true,
   });
 
   const MINUTE = 60;
@@ -155,5 +167,15 @@ describe("SdkUsageProblemDisplay (simple embedding)", () => {
     ).toBeInTheDocument();
 
     mock.mockRestore();
+  });
+
+  it("does not show the React 18 warning, since the iframe embed runs the React shipped by Metabase", async () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    await setup({ hostReactMajorVersion: 18 });
+
+    expect(
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toBeInTheDocument();
   });
 });

@@ -54,7 +54,7 @@
   :feature    :ai-controls)
 
 (defsetting metabot-chat-system-prompt
-  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot).")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack).")
   :type       :string
   :default    ""
   :visibility :admin
