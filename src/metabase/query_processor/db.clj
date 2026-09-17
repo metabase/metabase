@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as app-db]
+   [metabase.cache.db :as cache.db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.db :as queries.db]
@@ -54,7 +55,7 @@
 (mu/defn delete-cache-entry!
   "Delete the QueryCache entry for `query-hash`."
   [query-hash :- bytes?]
-  (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))
+  (cache.db/delete-query-caches! {:query_hash query-hash}))
 
 (mu/defn delete-cache-entries-updated-before!
   "Delete the QueryCache entries last updated at or before `updated-before`."

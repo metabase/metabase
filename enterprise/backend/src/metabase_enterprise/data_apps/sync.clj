@@ -52,14 +52,14 @@
 (defn- create-draft!
   [slug]
   (let [app (t2/with-transaction [_conn]
-              (when-not (data-apps.db/data-app-exists? slug)
+              (when-not (data-apps.db/data-app-exists? {:name slug})
                 (data-apps.db/insert-data-app!
                  {:name         slug
                   :display_name slug
                   :bundle_path  (format "%s/%s/%s" data-app.config/apps-dir slug data-app.config/config-file-name)
                   :sync_error   (tru "Bundle not synced yet.")
                   :draft        true}))
-              (data-apps.db/non-blob-data-app-by-slug slug))]
+              (data-apps.db/select-one-non-blob-data-app-by-slug slug))]
     (data-app.resources/ensure-resources! app)))
 
 (defn ensure-draft!
@@ -70,7 +70,7 @@
   (try
     (create-draft! slug)
     (catch Throwable e
-      (if (data-apps.db/data-app-exists? slug)
+      (if (data-apps.db/data-app-exists? {:name slug})
         (create-draft! slug)
         (throw e)))))
 
@@ -116,7 +116,7 @@
   "Insert or update by slug. Never writes `:enabled`, so the admin toggle (and the
    DB default of true for new rows) is preserved across syncs."
   [slug row]
-  (if (data-apps.db/data-app-exists? slug)
+  (if (data-apps.db/data-app-exists? {:name slug})
     (data-apps.db/update-data-app-by-slug! slug row)
     (data-apps.db/insert-data-app! (assoc row :name slug))))
 
@@ -209,7 +209,7 @@
             (mark-config-error! existing slug config-error)
             (do
               (upsert-by-name! slug fields)
-              (data-app.resources/ensure-resources! (data-apps.db/non-blob-data-app-by-slug slug))
+              (data-app.resources/ensure-resources! (data-apps.db/select-one-non-blob-data-app-by-slug slug))
               changed?))))
       (catch Throwable e
         (log/warnf "[data-app] failed to sync app %s: %s" slug (ex-message e))
@@ -222,7 +222,7 @@
     {:removed (t2/with-transaction [_conn]
                 (if (seq present-slugs)
                   (data-apps.db/delete-data-apps-not-named! present-slugs)
-                  (data-apps.db/delete-all-data-apps!)))}
+                  (data-apps.db/delete-data-apps! {:draft false})))}
     (catch Throwable e
       (log/warnf "[data-app] pruning failed: %s" (ex-message e))
       {:removed 0 :pruning-error (ex-message e)})))
@@ -257,7 +257,7 @@
         present-slugs (into #{} (map :slug) results)
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
         existing      (into {} (map (juxt :name identity))
-                            (data-apps.db/data-apps-sync-info))
+                            (data-apps.db/select-data-apps-sync-info))
         changed (count (filter (fn [{:keys [slug] :as cfg}]
                                  (sync-app! (get existing slug) (assoc cfg :sha sha :read-file read-file)))
                                results))

@@ -318,7 +318,7 @@
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
+        metabot         (metabot.db/select-one-metabot {:entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id)})
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)

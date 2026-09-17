@@ -204,7 +204,7 @@
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
       (when-not (u.files/exists? dir)
-        (when-let [bundle-bytes (custom-viz-plugin.db/plugin-bundle id)]
+        (when-let [bundle-bytes (:bundle (custom-viz-plugin.db/select-one-custom-viz-plugin {:id id :columns [:bundle]}))]
           (let [actual-hash (bytes-hash bundle-bytes)]
             (when-not (= actual-hash bundle_hash)
               (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
@@ -240,15 +240,15 @@
   "Persist a validated bundle for an existing plugin row, evict stale on-disk
    caches, and return the refreshed row."
   [{:keys [id]} validated]
-  (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
+  (custom-viz-plugin.db/update-custom-viz-plugins! {:id id} (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+  (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
    the inserted row."
   [identifier validated]
-  (custom-viz-plugin.db/insert-plugin!
+  (custom-viz-plugin.db/insert-custom-viz-plugin!
    (merge {:identifier identifier
            :enabled    true}
           (derived-columns validated))))
@@ -419,14 +419,14 @@
   [id dev-bundle-url]
   (let [url (not-empty dev-bundle-url)]
     (some-> url (validate-url! "Dev bundle URL"))
-    (custom-viz-plugin.db/update-plugin! id {:dev_bundle_url url})))
+    (custom-viz-plugin.db/update-custom-viz-plugins! {:id id} {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-    (not-empty (custom-viz-plugin.db/plugin-dev-bundle-url id))))
+    (not-empty (:dev_bundle_url (custom-viz-plugin.db/select-one-custom-viz-plugin {:id id :columns [:dev_bundle_url]})))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 

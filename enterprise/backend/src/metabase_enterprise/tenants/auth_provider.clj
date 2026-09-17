@@ -8,6 +8,12 @@
    [metabase.util :as u]
    [methodical.core :as methodical]))
 
+(defn- tenant-slug
+  "The slug of the Tenant with `tenant-id`, or nil."
+  [tenant-id]
+  (when tenant-id
+    (:slug (tenants.db/select-one-tenant {:id tenant-id :columns [:slug]}))))
+
 (defn- validate-user-and-tenant-slug!
   [{:keys [tenant_id] :as user} existing-tenant user-will-have-tenant?]
   (let [user-exists? (boolean user)
@@ -27,14 +33,14 @@
            user-has-tenant?)
       (throw (ex-info "Tenant claim required for external user"
                       {:user/tenant-id tenant_id
-                       :user/tenant-slug (tenants.db/tenant-slug tenant_id)
+                       :user/tenant-slug (tenant-slug tenant_id)
                        :status-code 403}))
 
       (and user-exists?
            (not= tenant_id (u/id existing-tenant)))
       (throw (ex-info "Tenant ID mismatch with existing user"
                       {:user/tenant-id tenant_id
-                       :user/tenant-slug (tenants.db/tenant-slug tenant_id)
+                       :user/tenant-slug (tenant-slug tenant_id)
                        :tenant-slug/tenant-id (:id existing-tenant)
                        :tenant-slug/slug (:slug existing-tenant)
                        :status-code 403})))))
@@ -91,7 +97,7 @@
 
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
   [provider {:keys [tenant-slug] :as request}]
-  (let [existing-tenant (when tenant-slug (tenants.db/tenant-by-slug tenant-slug))]
+  (let [existing-tenant (when tenant-slug (tenants.db/select-one-tenant {:slug tenant-slug}))]
     (next-method provider (create-tenant-if-not-exists! request existing-tenant))))
 
 (methodical/prefer-method! #'auth-identity/login! :metabase.auth-identity.provider/provider ::create-tenant-if-not-exists)

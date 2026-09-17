@@ -97,12 +97,13 @@
   the next export deletes them from the remote. Rows still in 'create' (never pushed) are dropped outright
   — the remote never received them, so there is nothing to delete there."
   [collection-ids]
-  (let [rows (remote-sync.db/content-rso-statuses collection-ids)
+  (let [rows (remote-sync.db/select-content-remote-sync-object-statuses collection-ids)
         {created true tracked false} (group-by #(= "create" (:status %)) rows)]
     (when (seq created)
-      (remote-sync.db/delete-rsos! (map :id created)))
+      (remote-sync.db/delete-remote-sync-objects! {:id (set (map :id created))}))
     (when (seq tracked)
-      (remote-sync.db/set-rsos-status! (map :id tracked) "removed" (t/offset-date-time)))))
+      (remote-sync.db/update-remote-sync-objects! {:id (set (map :id tracked))}
+                                                  {:status "removed" :status_changed_at (t/offset-date-time)}))))
 
 (defn- restore-removed-rsos!
   "Clears any pending 'removed' status on the given collections' and contents' RemoteSyncObject rows when the
@@ -113,8 +114,8 @@
   Restores to 'update' rather than 'synced': edits made while the collection was un-synced are not tracked,
   so the entity must be re-serialized for the remote to be guaranteed to match local."
   [collection-ids]
-  (when-let [ids (seq (remote-sync.db/removed-content-rso-ids collection-ids))]
-    (remote-sync.db/set-rsos-status! ids "update" (t/offset-date-time))))
+  (when-let [ids (seq (remote-sync.db/select-removed-content-remote-sync-object-pks collection-ids))]
+    (remote-sync.db/update-remote-sync-objects! {:id (set ids)} {:status "update" :status_changed_at (t/offset-date-time)})))
 
 (defn- collection-content-specs
   "Specs for entities tracked by living directly in a remote-synced collection (Card, Dashboard, Document,
@@ -131,11 +132,11 @@
   stays a no-op)."
   [collection-ids]
   (doseq [{:keys [model-key model-type archived-key] :as spec} (collection-content-specs)
-          :let  [tracked  (remote-sync.db/tracked-model-ids model-type)
+          :let  [tracked  (remote-sync.db/select-remote-sync-object-model-ids model-type)
                  entities (remote-sync.db/instances-in-collections model-key collection-ids archived-key)]
           entity entities
           :when  (not (contains? tracked (:id entity)))]
-    (remote-sync.db/insert-rso!
+    (remote-sync.db/insert-remote-sync-object!
      (merge {:model_type        model-type
              :model_id          (:id entity)
              :status            "create"

@@ -70,7 +70,8 @@
   "List all security advisories with match status."
   []
   (api/check-superuser)
-  (let [advisories (t2/hydrate (security-center.db/advisories-newest-first) :acknowledged_by_user)]
+  (let [advisories (t2/hydrate (security-center.db/select-security-advisories {:order-by [[:published_at :desc]]})
+                               :acknowledged_by_user)]
     {:last_checked_at (settings/security-center-last-synced-at)
      :advisories      (mapv advisory-response advisories)}))
 
@@ -84,7 +85,7 @@
   "Acknowledge a security advisory. Stops repeat notifications."
   [{:keys [advisory-id]} :- [:map {:closed true} [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
-  (let [advisory (security-center.db/advisory-by-advisory-id advisory-id)]
+  (let [advisory (security-center.db/select-one-security-advisory {:advisory_id advisory-id})]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 

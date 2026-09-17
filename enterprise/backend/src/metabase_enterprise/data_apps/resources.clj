@@ -16,7 +16,7 @@
 (defn- create-permission-group! [app]
   (let [group (data-apps.db/insert-permission-group! {:name (resource-name app)
                                                       :is_data_app_group true})]
-    (data-apps.db/update-data-app! (:id app) {:permission_group_id (:id group)})
+    (data-apps.db/update-data-app-by-id! (:id app) {:permission_group_id (:id group)})
     group))
 
 (defn- permission-group! [app]
@@ -65,7 +65,7 @@
 (defn- create-resource-collection! [app]
   (let [collection (data-apps.db/insert-resource-collection! {:name (resource-name app)
                                                               :location "/"})]
-    (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
+    (data-apps.db/update-data-app-by-id! (:id app) {:resource_collection_id (:id collection)})
     collection))
 
 (defn- resource-collection! [app]
@@ -77,7 +77,7 @@
   "Create or restore the server-owned permission resources for `app` and return their IDs."
   [app]
   (perms/with-global-permissions-lock
-    (let [app        (data-apps.db/non-blob-data-app (:id app))
+    (let [app        (data-apps.db/select-one-non-blob-data-app (:id app))
           group      (permission-group! app)
           collection (resource-collection! app)]
       (data-apps.db/update-permission-group! (:id group)

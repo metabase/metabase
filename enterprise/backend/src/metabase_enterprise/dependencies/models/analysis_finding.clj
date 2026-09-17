@@ -59,12 +59,13 @@
     (let [update {:analysis_version *current-analysis-finding-version*
                   :result result
                   :stale false}
-          existing-id (dependencies.db/finding-id type instance-id)]
+          existing-id (dependencies.db/select-one-analysis-finding-pk
+                       {:analyzed_entity_type type :analyzed_entity_id instance-id})]
       (if existing-id
-        (dependencies.db/update-finding! existing-id update)
-        (dependencies.db/insert-finding! (assoc update
-                                                :analyzed_entity_type type
-                                                :analyzed_entity_id instance-id)))
+        (dependencies.db/update-analysis-findings! {:id existing-id} update)
+        (dependencies.db/insert-analysis-finding! (assoc update
+                                                         :analyzed_entity_type type
+                                                         :analyzed_entity_id instance-id)))
       (deps.analysis-finding-error/replace-errors-for-entity!
        type
        instance-id
@@ -79,18 +80,20 @@
   Entities without existing findings are ignored - they'll be picked up by the normal job flow."
   [entity-type entity-ids]
   (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
-    (dependencies.db/mark-findings-stale! entity-type batch)))
+    (dependencies.db/update-analysis-findings!
+     {:analyzed_entity_type entity-type :analyzed_entity_id (set batch)}
+     {:stale true})))
 
 (defn has-stale-entities?
   "Check if there are any stale analysis records."
   []
-  (dependencies.db/stale-finding-exists?))
+  (dependencies.db/analysis-finding-exists? {:stale true}))
 
 (defn stale-entity-count
   "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
   detect whether it is still making progress."
   []
-  (dependencies.db/stale-finding-count))
+  (dependencies.db/count-analysis-findings {:stale true}))
 
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,

@@ -33,12 +33,12 @@
   ;; must go out in the same order
   (when (seq items)
     (let [items*      (keep identity items)
-          item-ids    (not-empty (keep :id items*))
+          item-ids    (not-empty (into #{} (keep :id) items*))
           ;; constrain on `:moderated_item_type` too so the `(moderated_item_type, moderated_item_id)` index is used
           item-types  (not-empty (into #{} (map (comp keyword object->type)) items*))
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
-                                  (content-verification.db/moderation-reviews-for-items item-types item-ids)))]
+                                  (content-verification.db/select-moderation-reviews {:moderated_item_type item-types, :moderated_item_id item-ids, :order-by [[:id :desc]]})))]
       (for [item items]
         (if (nil? item)
           nil
@@ -51,7 +51,7 @@
   [moderation-reviews]
   (when (seq moderation-reviews)
     (let [id->user (m/index-by :id
-                               (content-verification.db/users (map :moderator_id moderation-reviews)))]
+                               (content-verification.db/select-users (map :moderator_id moderation-reviews)))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
 
@@ -61,11 +61,11 @@
   [items]
   (when (seq items)
     (let [items*     (keep identity items)
-          item-ids   (seq (keep :id items*))
+          item-ids   (not-empty (into #{} (keep :id) items*))
           ;; constrain on `:moderated_item_type` too so the `(moderated_item_type, moderated_item_id)` index is used
           item-types (not-empty (into #{} (map (comp keyword object->type)) items*))
           type+id->status (when item-ids
-                            (->> (content-verification.db/most-recent-moderation-review-statuses item-types item-ids)
+                            (->> (content-verification.db/select-moderation-reviews {:moderated_item_type item-types, :moderated_item_id item-ids, :most_recent true, :columns [:moderated_item_id :moderated_item_type :status], :order-by [[:id :desc]]})
                                  (group-by (juxt :moderated_item_type :moderated_item_id))
                                  (m/map-vals #(:status (first %)))))]
       (for [item items]

@@ -6,6 +6,7 @@
   `:direction`) to strings; [[keywordize-structured]] turns them back into keywords so a driver can dispatch on
   `:kind`."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -109,12 +110,12 @@
 (mr/def ::table-index
   "A TableIndex as selected from the app DB: every column of `:metabase_table_indexes`."
   [:merge
-   ::table-index.update
+   ::table-index.columns
    [:map {:closed true}
     [:id               ms/PositiveInt]]])
 
-(mr/def ::table-index.update
-  "What an update (or insert) of a TableIndex accepts: every column of `:metabase_table_indexes` except `id`, all optional."
+(mr/def ::table-index.columns
+  "Every column of `:metabase_table_indexes` except `id`, all optional."
   [:map {:closed true}
    [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
    [:index_name       {:optional true} [:maybe :string]]
@@ -125,3 +126,23 @@
    [:created_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:last_executed_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::table-index.create
+  "What an insert of a TableIndex accepts."
+  (mut/select-keys (mr/schema ::table-index.columns)
+                   [:transform_id :index_name :structured :status :error_message :created_by :created_at
+                    :updated_at :last_executed_at]))
+
+(mr/def ::table-index.update
+  "What an update of a TableIndex accepts: no immutable columns."
+  (mut/select-keys (mr/schema ::table-index.columns)
+                   [:transform_id :index_name :structured :status :error_message :created_at
+                    :updated_at :last_executed_at]))
+
+(mr/def ::table-index.partial
+  "A TableIndex row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::table-index [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::table-index.column
+  "A column of `metabase_table_indexes`, for the `:columns` option of the queries in [[metabase.indexes.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::table-index.columns))))

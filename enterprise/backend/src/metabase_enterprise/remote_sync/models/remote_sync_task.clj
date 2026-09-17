@@ -47,11 +47,11 @@
   Throws ExceptionInfo if a running task already exists."
   [sync-task-type :- ::remote-sync-task-type
    user-id :- [:maybe pos-int?]
-   & [additional-fields] :- [:* ::remote-sync.schema/remote-sync-task.update]]
-  (remote-sync.db/insert-task! (merge {:sync_task_type sync-task-type
-                                       :initiated_by user-id
-                                       :progress 0}
-                                      additional-fields)))
+   & [additional-fields] :- [:* ::remote-sync.schema/remote-sync-task.create]]
+  (remote-sync.db/insert-remote-sync-task! (merge {:sync_task_type sync-task-type
+                                                   :initiated_by   user-id
+                                                   :progress       0}
+                                                  additional-fields)))
 
 (defn cancel-sync-task!
   "Marks a sync task as cancelled.
@@ -63,9 +63,9 @@
   This signal will be checked in update-progress! to stop further processing. Note that the worker thread must
   manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
   [task-id]
-  (remote-sync.db/end-task! task-id
-                            {:cancelled true
-                             :error_message "Task cancelled"}))
+  (remote-sync.db/end-remote-sync-task! task-id
+                                        {:cancelled true
+                                         :error_message "Task cancelled"}))
 
 (defn update-progress!
   "Updates the progress of a sync task.
@@ -76,10 +76,10 @@
 
   Throws ExceptionInfo if the task has been marked as cancelled."
   [task-id progress]
-  (when (true? (remote-sync.db/task-cancelled? task-id))
+  (when (true? (remote-sync.db/remote-sync-task-cancelled? task-id))
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
-  (remote-sync.db/report-task-progress! task-id progress))
+  (remote-sync.db/report-remote-sync-task-progress! task-id progress))
 
 (def ^:private default-progress-throttle-ms
   "Minimum ms between throttled (non-boundary) progress writes."
@@ -121,7 +121,7 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id version]
-  (remote-sync.db/update-task! task-id {:version version}))
+  (remote-sync.db/update-remote-sync-tasks! {:id task-id} {:version version}))
 
 (defn complete-sync-task!
   "Marks a sync task as completed.
@@ -133,9 +133,9 @@
   Returns the number of rows updated (should be 1 if successful)."
   ([task-id] (complete-sync-task! task-id nil))
   ([task-id outcome]
-   (remote-sync.db/end-task! task-id
-                             {:progress 1.0
-                              :outcome  outcome})))
+   (remote-sync.db/end-remote-sync-task! task-id
+                                         {:progress 1.0
+                                          :outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.
@@ -144,8 +144,8 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
-  (remote-sync.db/end-task! task-id
-                            {:error_message error-msg}))
+  (remote-sync.db/end-remote-sync-task! task-id
+                                        {:error_message error-msg}))
 
 (defn current-task
   "Gets the current active sync task.
@@ -153,7 +153,7 @@
   Returns the most recent RemoteSyncTask that is still running (started but not ended, and has reported progress
   within the time limit), or nil if no active task exists."
   []
-  (remote-sync.db/current-task (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))))
+  (remote-sync.db/select-current-remote-sync-task (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))))
 
 (defn supersede-stale-tasks!
   "Marks any genuinely stale task rows as cancelled and terminated.
@@ -172,14 +172,14 @@
   []
   (let [cutoff (t/minus (t/offset-date-time)
                         (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
-    (remote-sync.db/supersede-stale-tasks! cutoff)))
+    (remote-sync.db/supersede-stale-remote-sync-tasks! cutoff)))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
 
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
   []
-  (remote-sync.db/most-recent-task))
+  (remote-sync.db/select-most-recent-remote-sync-task))
 
 (defn last-version
   "Gets the version that any changes are built off of.
@@ -187,7 +187,7 @@
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
   tasks exist."
   []
-  (:version (remote-sync.db/last-successful-task)))
+  (:version (remote-sync.db/select-last-successful-remote-sync-task)))
 
 (defn running?
   "Checks if a task is currently running.
@@ -260,8 +260,8 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts]
-  (remote-sync.db/end-task! task-id
-                            {:conflicts conflicts}))
+  (remote-sync.db/end-remote-sync-task! task-id
+                                        {:conflicts conflicts}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 

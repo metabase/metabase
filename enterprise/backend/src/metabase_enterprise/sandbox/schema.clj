@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -40,15 +41,32 @@
 (mr/def ::sandbox
   "A Sandbox as selected from the app DB: every column of `:sandboxes`, plus `:table` some callers hydrate onto it."
   [:merge
-   ::sandbox.update
+   ::sandbox.columns
    [:map {:closed true}
     [:id                   ms/PositiveInt]
     [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
-(mr/def ::sandbox.update
-  "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
+(mr/def ::sandbox.columns
+  "Every column of `:sandboxes` except `id`, all optional."
   [:map {:closed true}
-   [:group_id             {:optional true} [:maybe ms/PositiveInt]]
-   [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
-   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
-   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
+   [:group_id                    {:optional true} [:maybe ms/PositiveInt]]
+   [:table_id                    {:optional true} [:maybe ::lib.schema.id/table]]
+   [:card_id                     {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings        {:optional true} [:maybe ::sandbox.attribute-remappings]]
+   [:dependency_analysis_version {:optional true} [:maybe :int]]])
+
+(mr/def ::sandbox.create
+  "What an insert of a Sandbox accepts."
+  (mut/select-keys (mr/schema ::sandbox.columns) [:group_id :table_id :card_id :attribute_remappings]))
+
+(mr/def ::sandbox.update
+  "What an update of a Sandbox accepts: `group_id` and `table_id` identify the row and are immutable."
+  (mut/select-keys (mr/schema ::sandbox.columns) [:card_id :attribute_remappings]))
+
+(mr/def ::sandbox.partial
+  "A Sandbox row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::sandbox [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::sandbox.column
+  "A column of `:sandboxes`, for the `:columns` option of the queries in [[metabase-enterprise.sandbox.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::sandbox.columns))))

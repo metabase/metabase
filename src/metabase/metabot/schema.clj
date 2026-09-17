@@ -2,6 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -220,11 +221,11 @@
 (mr/def ::ai-usage-log
   "A AiUsageLog as selected from the app DB: every column of `:ai_usage_log`."
   [:merge
-   ::ai-usage-log.update
+   ::ai-usage-log.columns
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
-(mr/def ::ai-usage-log.update
+(mr/def ::ai-usage-log.columns
   "What an update (or insert) of a AiUsageLog accepts: every column of `:ai_usage_log` except `id`, all optional."
   [:map {:closed true}
    [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
@@ -242,14 +243,36 @@
    [:cache_creation_tokens {:optional true} [:maybe :int]]
    [:cache_read_tokens     {:optional true} [:maybe :int]]])
 
+(mr/def ::ai-usage-log.create
+  "What an insert of a AiUsageLog accepts."
+  (mut/select-keys (mr/schema ::ai-usage-log.columns)
+                   [:created_at :source :model :prompt_tokens :completion_tokens :total_tokens :user_id
+                    :tenant_id :conversation_id :profile_id :request_id :ai_proxied :cache_creation_tokens
+                    :cache_read_tokens]))
+
+(mr/def ::ai-usage-log.update
+  "What an update of a AiUsageLog accepts: no immutable columns. AiUsageLog rows are an insert/delete-only log, so
+  nothing currently updates one."
+  (mut/select-keys (mr/schema ::ai-usage-log.columns)
+                   [:source :model :prompt_tokens :completion_tokens :total_tokens :tenant_id :conversation_id
+                    :profile_id :request_id :ai_proxied :cache_creation_tokens :cache_read_tokens]))
+
+(mr/def ::ai-usage-log.partial
+  "An AiUsageLog row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::ai-usage-log [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::ai-usage-log.column
+  "A column of `:ai_usage_log`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::ai-usage-log.columns))))
+
 (mr/def ::metabot
   "A Metabot as selected from the app DB: every column of `:metabot`."
   [:merge
-   ::metabot.update
+   ::metabot.columns
    [:map {:closed true}
     [:id                   ms/PositiveInt]]])
 
-(mr/def ::metabot.update
+(mr/def ::metabot.columns
   "What an update (or insert) of a Metabot accepts: every column of `:metabot` except `id`, all optional."
   [:map {:closed true}
    [:name                 {:optional true} [:maybe :string]]
@@ -260,14 +283,33 @@
    [:use_verified_content {:optional true} [:maybe :boolean]]
    [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
 
+(mr/def ::metabot.create
+  "What an insert of a Metabot accepts."
+  (mut/select-keys (mr/schema ::metabot.columns)
+                   [:name :description :entity_id :created_at :updated_at :use_verified_content :collection_id]))
+
+(mr/def ::metabot.update
+  "What an update of a Metabot accepts: no immutable columns. `:entity_id` and `:created_at` are stamped once on
+  insert and never rewritten."
+  (mut/select-keys (mr/schema ::metabot.columns)
+                   [:name :description :updated_at :use_verified_content :collection_id]))
+
+(mr/def ::metabot.partial
+  "A Metabot row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::metabot.column
+  "A column of `:metabot`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot.columns))))
+
 (mr/def ::metabot-conversation
   "A MetabotConversation as selected from the app DB: every column of `:metabot_conversation`."
   [:merge
-   ::metabot-conversation.update
+   ::metabot-conversation.columns
    [:map {:closed true}
     [:id                          :string]]])
 
-(mr/def ::metabot-conversation.update
+(mr/def ::metabot-conversation.columns
   "What an update (or insert) of a MetabotConversation accepts: every column of `:metabot_conversation` except `id`, all optional."
   [:map {:closed true}
    [:created_at                  {:optional true} [:maybe ms/TemporalInstantOrNow]]
@@ -283,14 +325,36 @@
    [:sanitized_user_agent        {:optional true} [:maybe :string]]
    [:forked_from_conversation_id {:optional true} [:maybe :string]]])
 
+(mr/def ::metabot-conversation.create
+  "What an insert of a MetabotConversation accepts."
+  (mut/select-keys (mr/schema ::metabot-conversation.columns)
+                   [:created_at :user_id :title :ip_address :slack_team_id :slack_channel_id :slack_thread_ts
+                    :embedding_hostname :embedding_path :user_agent :sanitized_user_agent
+                    :forked_from_conversation_id]))
+
+(mr/def ::metabot-conversation.update
+  "What an update of a MetabotConversation accepts: no immutable columns. `:user_id` (the originator) and
+  `:forked_from_conversation_id` are stamped once on insert and never rewritten."
+  (mut/select-keys (mr/schema ::metabot-conversation.columns)
+                   [:title :ip_address :slack_team_id :slack_channel_id :slack_thread_ts :embedding_hostname
+                    :embedding_path :user_agent :sanitized_user_agent]))
+
+(mr/def ::metabot-conversation.partial
+  "A MetabotConversation row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot-conversation [:map {:closed true} [:id {:optional true} :string]]])
+
+(mr/def ::metabot-conversation.column
+  "A column of `:metabot_conversation`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot-conversation.columns))))
+
 (mr/def ::metabot-feedback
   "A MetabotFeedback as selected from the app DB: every column of `:metabot_feedback`."
   [:merge
-   ::metabot-feedback.update
+   ::metabot-feedback.columns
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
-(mr/def ::metabot-feedback.update
+(mr/def ::metabot-feedback.columns
   "What an update (or insert) of a MetabotFeedback accepts: every column of `:metabot_feedback` except `id`, all optional."
   [:map {:closed true}
    [:message_id        {:optional true} [:maybe ms/PositiveInt]]
@@ -300,6 +364,25 @@
    [:created_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:user_id           {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::metabot-feedback.create
+  "What an insert of a MetabotFeedback accepts."
+  (mut/select-keys (mr/schema ::metabot-feedback.columns)
+                   [:message_id :positive :issue_type :freeform_feedback :created_at :updated_at :user_id]))
+
+(mr/def ::metabot-feedback.update
+  "What an update of a MetabotFeedback accepts: no immutable columns. `:user_id` (the submitter) and `:created_at`
+  are stamped once on insert and never rewritten."
+  (mut/select-keys (mr/schema ::metabot-feedback.columns)
+                   [:message_id :positive :issue_type :freeform_feedback :updated_at]))
+
+(mr/def ::metabot-feedback.partial
+  "A MetabotFeedback row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot-feedback [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::metabot-feedback.column
+  "A column of `:metabot_feedback`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot-feedback.columns))))
 
 (mr/def ::metabot-message.data-part
   "One entry of the `:data` column of a MetabotMessage, decoded."
@@ -323,11 +406,11 @@
 (mr/def ::metabot-message
   "A MetabotMessage as selected from the app DB: every column of `:metabot_message`."
   [:merge
-   ::metabot-message.update
+   ::metabot-message.columns
    [:map {:closed true}
     [:id                     ms/PositiveInt]]])
 
-(mr/def ::metabot-message.update
+(mr/def ::metabot-message.columns
   "What an update (or insert) of a MetabotMessage accepts: every column of `:metabot_message` except `id`, all optional."
   [:map {:closed true}
    [:created_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
@@ -351,14 +434,37 @@
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
    [:context_tokens         {:optional true} [:maybe :int]]])
 
+(mr/def ::metabot-message.create
+  "What an insert of a MetabotMessage accepts."
+  (mut/select-keys (mr/schema ::metabot-message.columns)
+                   [:created_at :profile_id :role :data :usage :total_tokens :conversation_id :slack_msg_id
+                    :channel_id :deleted_at :deleted_by_user_id :user_id :ai_proxied :external_id :finished
+                    :error :data_version :state :forked_from_message_id :context_tokens]))
+
+(mr/def ::metabot-message.update
+  "What an update of a MetabotMessage accepts: no immutable columns. `:user_id` (the author), `:created_at`, and
+  `:forked_from_message_id` are stamped once on insert and never rewritten."
+  (mut/select-keys (mr/schema ::metabot-message.columns)
+                   [:profile_id :role :data :usage :total_tokens :conversation_id :slack_msg_id :channel_id
+                    :deleted_at :deleted_by_user_id :ai_proxied :external_id :finished :error :data_version
+                    :state :context_tokens]))
+
+(mr/def ::metabot-message.partial
+  "A MetabotMessage row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot-message [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::metabot-message.column
+  "A column of `:metabot_message`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot-message.columns))))
+
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."
   [:merge
-   ::metabot-prompt.update
+   ::metabot-prompt.columns
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
-(mr/def ::metabot-prompt.update
+(mr/def ::metabot-prompt.columns
   "What an update (or insert) of a MetabotPrompt accepts: every column of `:metabot_prompt` except `id`, all optional."
   [:map {:closed true}
    [:model      {:optional true} [:maybe [:or :keyword :string]]]
@@ -369,14 +475,32 @@
    [:updated_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:metabot_id {:optional true} [:maybe ms/PositiveInt]]])
 
+(mr/def ::metabot-prompt.create
+  "What an insert of a MetabotPrompt accepts."
+  (mut/select-keys (mr/schema ::metabot-prompt.columns)
+                   [:model :card_id :entity_id :prompt :created_at :updated_at :metabot_id]))
+
+(mr/def ::metabot-prompt.update
+  "What an update of a MetabotPrompt accepts: no immutable columns. `:entity_id` and `:created_at` are stamped once
+  on insert and never rewritten."
+  (mut/select-keys (mr/schema ::metabot-prompt.columns) [:model :card_id :prompt :updated_at :metabot_id]))
+
+(mr/def ::metabot-prompt.partial
+  "A MetabotPrompt row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot-prompt [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::metabot-prompt.column
+  "A column of `:metabot_prompt`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot-prompt.columns))))
+
 (mr/def ::metabot-source-feedback
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."
   [:merge
-   ::metabot-source-feedback.update
+   ::metabot-source-feedback.columns
    [:map {:closed true}
     [:id          ms/PositiveInt]]])
 
-(mr/def ::metabot-source-feedback.update
+(mr/def ::metabot-source-feedback.columns
   "What an update (or insert) of a MetabotSourceFeedback accepts: every column of `:metabot_source_feedback` except `id`, all optional."
   [:map {:closed true}
    [:message_id  {:optional true} [:maybe ms/PositiveInt]]
@@ -387,16 +511,52 @@
    [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
+(mr/def ::metabot-source-feedback.create
+  "What an insert of a MetabotSourceFeedback accepts."
+  (mut/select-keys (mr/schema ::metabot-source-feedback.columns)
+                   [:message_id :user_id :source_id :source_type :positive :created_at :updated_at]))
+
+(mr/def ::metabot-source-feedback.update
+  "What an update of a MetabotSourceFeedback accepts: no immutable columns. `:user_id` (the submitter) and
+  `:created_at` are stamped once on insert and never rewritten."
+  (mut/select-keys (mr/schema ::metabot-source-feedback.columns)
+                   [:message_id :source_id :source_type :positive :updated_at]))
+
+(mr/def ::metabot-source-feedback.partial
+  "A MetabotSourceFeedback row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot-source-feedback [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::metabot-source-feedback.column
+  "A column of `:metabot_source_feedback`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot-source-feedback.columns))))
+
 (mr/def ::metabot-used-table
   "A MetabotUsedTable as selected from the app DB: every column of `:metabot_used_table`."
   [:merge
-   ::metabot-used-table.update
+   ::metabot-used-table.columns
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
-(mr/def ::metabot-used-table.update
+(mr/def ::metabot-used-table.columns
   "What an update (or insert) of a MetabotUsedTable accepts: every column of `:metabot_used_table` except `id`, all optional."
   [:map {:closed true}
    [:message_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_id   {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::metabot-used-table.create
+  "What an insert of a MetabotUsedTable accepts."
+  (mut/select-keys (mr/schema ::metabot-used-table.columns) [:message_id :table_id :created_at]))
+
+(mr/def ::metabot-used-table.update
+  "What an update of a MetabotUsedTable accepts: no immutable columns. `:created_at` is stamped once on insert and
+  never rewritten."
+  (mut/select-keys (mr/schema ::metabot-used-table.columns) [:message_id :table_id]))
+
+(mr/def ::metabot-used-table.partial
+  "A MetabotUsedTable row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::metabot-used-table [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::metabot-used-table.column
+  "A column of `:metabot_used_table`, for the `:columns` option of the queries in [[metabase.metabot.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::metabot-used-table.columns))))

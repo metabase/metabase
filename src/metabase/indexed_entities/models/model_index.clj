@@ -88,7 +88,7 @@
 
 (mu/defn ^:private fetch-values
   [model-index :- ::indexed-entities.schema/model-index]
-  (let [model     (indexed-entities.db/card (:model_id model-index))
+  (let [model     (indexed-entities.db/select-card (:model_id model-index))
         fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
@@ -129,9 +129,9 @@
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
-                                              (indexed-entities.db/model-index-values (:id model-index)))]
+                                              (indexed-entities.db/select-model-index-values (:id model-index)))]
     (if-not (str/blank? error-message)
-      (indexed-entities.db/mark-model-index-error! (:id model-index) error-message)
+      (indexed-entities.db/update-model-index-error! (:id model-index) error-message)
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -151,15 +151,15 @@
                          :model_pk       id
                          :model_index_id (:id model-index)})
                       additions-part)))))
-          (indexed-entities.db/mark-model-index-indexed! (:id model-index)
-                                                         (if (> (count values-to-index) max-indexed-values)
-                                                           "overflow"
-                                                           "indexed")))
-        (run! search/update! (indexed-entities.db/model-index-values-reducible (:id model-index)))
+          (indexed-entities.db/update-model-index-indexed! (:id model-index)
+                                                           (if (> (count values-to-index) max-indexed-values)
+                                                             "overflow"
+                                                             "indexed")))
+        (run! search/update! (indexed-entities.db/reducible-select-model-index-values (:id model-index)))
         (catch Exception e
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))
-          (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
+          (indexed-entities.db/update-model-index-error! (:id model-index) (ex-message e)))))))
 
 ;;;; creation
 

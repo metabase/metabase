@@ -27,7 +27,7 @@
 
 (defn- notification-name-by-handler-id
   [notification-handler-id]
-  (let [notification (t2/hydrate (notification.db/notification-for-handler notification-handler-id) :payload)]
+  (let [notification (t2/hydrate (notification.db/select-notification-for-handler notification-handler-id) :payload)]
     (case (:payload_type notification)
       ;; use the card name
       :notification/card (->> notification :payload :card_id notification.db/card-name)
@@ -50,10 +50,11 @@
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (let [recipients (notification.db/raw-value-recipients-for-handler notification-handler-id)
+    (let [recipients (notification.db/select-notification-recipients
+                      {:notification_handler_id notification-handler-id :type :notification-recipient/raw-value})
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
-        (notification.db/delete-recipient! (:id matching-recipient))
+        (notification.db/delete-notification-recipients! {:id (:id matching-recipient)})
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-ex {:details {:email email}
                                                              :object {:id notification-handler-id}})
@@ -74,12 +75,13 @@
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
-    (let [recipients         (notification.db/raw-value-recipients-for-handler notification-handler-id)
+    (let [recipients         (notification.db/select-notification-recipients
+                              {:notification_handler_id notification-handler-id :type :notification-recipient/raw-value})
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if-not matching-recipient
-        (notification.db/insert-recipients! {:type                    :notification-recipient/raw-value
-                                             :details                 {:value email}
-                                             :notification_handler_id notification-handler-id})
+        (notification.db/insert-notification-recipients! {:type                    :notification-recipient/raw-value
+                                                          :details                 {:value email}
+                                                          :notification_handler_id notification-handler-id})
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:details {:email email}
                                                                   :object {:id notification-handler-id}})

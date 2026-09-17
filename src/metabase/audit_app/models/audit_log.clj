@@ -254,7 +254,11 @@
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
       (let [{:keys [user-id model-name model-id details unqualified-topic]}
             (construct-event topic params api/*current-user-id*)]
-        (audit-app.db/insert-audit-log! unqualified-topic details model-name model-id user-id)))))
+        (audit-app.db/insert-audit-log! {:topic    unqualified-topic
+                                         :details  details
+                                         :model    model-name
+                                         :model_id model-id
+                                         :user_id  user-id})))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

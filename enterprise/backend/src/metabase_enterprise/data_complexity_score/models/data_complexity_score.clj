@@ -34,7 +34,8 @@
   "Return the most recently persisted Data Complexity Score row for `fingerprint`, or nil if none exist."
   ([fingerprint] (latest-entry fingerprint "appdb"))
   ([fingerprint source]
-   (data-complexity-score.db/latest-score-entry fingerprint source)))
+   (data-complexity-score.db/select-one-data-complexity-score
+    {:fingerprint fingerprint, :source source, :order-by [[:id :desc]]})))
 
 (defn latest-score
   "Return the latest persisted Data Complexity Score payload for `fingerprint`, or nil if none exist."
@@ -49,14 +50,14 @@
   we never compare it against the app server's clock.
   Lets the scoring task skip a run that would only re-publish a still-fresh score."
   [fingerprint source cooldown-hours]
-  (data-complexity-score.db/scored-within-hours? fingerprint source cooldown-hours))
+  (data-complexity-score.db/data-complexity-score-scored-within-hours? fingerprint source cooldown-hours))
 
 (defn record-score!
   "Persist one append-only Data Complexity Score snapshot."
   [fingerprint source score]
-  (let [id (data-complexity-score.db/insert-score! {:fingerprint fingerprint
-                                                    :source      source
-                                                    :score_data  score})]
+  (let [id (data-complexity-score.db/insert-data-complexity-score! {:fingerprint fingerprint
+                                                                    :source      source
+                                                                    :score_data  score})]
     (if id
-      (score-with-calculated-at (data-complexity-score.db/score-entry id))
+      (score-with-calculated-at (data-complexity-score.db/select-one-data-complexity-score {:id id}))
       (latest-score fingerprint source))))

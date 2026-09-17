@@ -80,12 +80,12 @@
 (defn select-for-transform
   "All index request rows for `transform-id`, ordered for the index manager list."
   [transform-id]
-  (indexes.db/table-indexes-for-transform transform-id))
+  (indexes.db/select-table-indexes {:transform_id transform-id, :order-by [:id]}))
 
 (defn select-applicable-for-transform
   "Rows whose structured definitions should be applied to `transform-id`'s target table."
   [transform-id]
-  (indexes.db/applicable-table-indexes-for-transform transform-id))
+  (indexes.db/select-applicable-table-indexes-for-transform transform-id))
 
 (defn select-for-verification
   "Rows the current execution can update while verifying indexes.
@@ -96,20 +96,20 @@
   [transform-id index-request-ids]
   (concat
    (when (seq index-request-ids)
-     (indexes.db/running-table-indexes transform-id index-request-ids))
-   (indexes.db/delete-pending-table-indexes transform-id)))
+     (indexes.db/select-table-indexes {:transform_id transform-id, :id (set index-request-ids), :status :running, :order-by [:id]}))
+   (indexes.db/select-table-indexes {:transform_id transform-id, :status :delete-pending, :order-by [:id]})))
 
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
   [id]
-  (indexes.db/applicable-table-index id))
+  (indexes.db/select-applicable-table-index id))
 
 (defn pending-changes-for-transform?
   "True when `transform-id` has index changes that require a full rebuild to apply."
   [transform-id]
   (boolean
    (when transform-id
-     (indexes.db/table-index-with-status-exists? transform-id rebuild-forcing-statuses))))
+     (indexes.db/table-index-exists? {:transform_id transform-id, :status rebuild-forcing-statuses}))))
 
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.
@@ -118,14 +118,14 @@
   [index-request-ids]
   (let [ids (set index-request-ids)]
     (when (seq ids)
-      (indexes.db/mark-table-indexes-running! ids runnable-statuses))
+      (indexes.db/update-table-indexes-running! ids runnable-statuses))
     ids))
 
 (defn mark-unverified-running-indexes-failed!
   "Mark rows from [[mark-runnable-indexes-running!]] that are still running as failed."
   [ids message]
   (when (seq ids)
-    (indexes.db/mark-running-table-indexes-failed! ids message)))
+    (indexes.db/update-running-table-indexes-failed! ids message)))
 
 (defn mark-for-revalidation!
   "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
@@ -133,12 +133,12 @@
   [transform-id]
   (when transform-id
     (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
-      (indexes.db/mark-table-indexes-update-pending! ids))))
+      (indexes.db/update-table-indexes-pending! ids))))
 
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."
   [transform-id index-name]
-  (indexes.db/table-index-exists-for-transform? transform-id index-name))
+  (indexes.db/table-index-exists? {:transform_id transform-id, :index_name index-name}))
 
 ;; Inlined into the owning transform's serialization (see the Transform make-spec's `:indexes`). Only the index
 ;; definition travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds

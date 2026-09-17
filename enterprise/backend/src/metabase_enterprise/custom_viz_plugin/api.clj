@@ -150,7 +150,7 @@
             validated    (cache/validate-bundle! bundle-bytes)
             identifier   (get-in validated [:manifest :name])
             _            (api/check-400
-                          (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
+                          (not (custom-viz-plugin.db/custom-viz-plugin-exists? {:identifier identifier}))
                           (format "A custom visualization with identifier \"%s\" already exists." identifier))
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
@@ -180,19 +180,19 @@
         _            (when-let [error (manifest/identifier-error identifier)]
                        (throw (ex-info error {:status-code 400})))
         _            (api/check-400
-                      (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
+                      (not (custom-viz-plugin.db/custom-viz-plugin-exists? {:identifier identifier}))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
-        plugin       (custom-viz-plugin.db/insert-plugin! {:display_name     display-name
-                                                           :identifier       identifier
-                                                           :status           :active
-                                                           :enabled          true
-                                                           :dev_bundle_url   dev_bundle_url
-                                                           :icon             icon
-                                                           :manifest         manifest
-                                                           :metabase_version version-str})]
+        plugin       (custom-viz-plugin.db/insert-custom-viz-plugin! {:display_name     display-name
+                                                                      :identifier       identifier
+                                                                      :status           :active
+                                                                      :enabled          true
+                                                                      :dev_bundle_url   dev_bundle_url
+                                                                      :icon             icon
+                                                                      :manifest         manifest
+                                                                      :metabase_version version-str})]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                             :user-id api/*current-user-id*})
@@ -202,7 +202,7 @@
   "List all registered custom visualization plugins."
   []
   (api/check-superuser)
-  (->> (custom-viz-plugin.db/non-blob-plugins)
+  (->> (custom-viz-plugin.db/select-non-blob-custom-viz-plugins)
        (mapv (comp plugin->response api/read-check))))
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
@@ -211,7 +211,7 @@
    Dev-only plugins are excluded when dev mode is disabled."
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-        plugins   (custom-viz-plugin.db/active-enabled-non-blob-plugins)]
+        plugins   (custom-viz-plugin.db/select-active-enabled-non-blob-custom-viz-plugins)]
     (->> plugins
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
          ;; An identifier containing ":" would collide with another plugin's `custom:<id>:`
@@ -223,8 +223,8 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
-    (custom-viz-plugin.db/delete-plugin! id)
+  (let [plugin (api/write-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))]
+    (custom-viz-plugin.db/delete-custom-viz-plugins! {:id id})
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})
@@ -236,11 +236,11 @@
    _query-params
    body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+  (let [existing (api/write-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))
         updates  (select-keys body [:enabled])]
     (when (seq updates)
-      (custom-viz-plugin.db/update-plugin! id updates))
-    (let [result (custom-viz-plugin.db/non-blob-plugin id)]
+      (custom-viz-plugin.db/update-custom-viz-plugins! {:id id} updates))
+    (let [result (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id)]
       (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                               :previous-object existing
                                                               :user-id         api/*current-user-id*})
@@ -255,7 +255,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [file]} :- BundleUploadParts]
-  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+  (let [existing (api/write-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))
         _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
                                 (format (str "This plugin's identifier (\"%s\") contains \":\", which is no longer allowed. "
                                              "Delete the plugin and upload the bundle under a name without \":\".")
@@ -288,7 +288,7 @@
    respond
    raise]
   (try
-    (let [plugin  (api/read-check (custom-viz-plugin.db/non-blob-plugin id))
+    (let [plugin  (api/read-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))
           dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
@@ -320,7 +320,7 @@
    respond
    raise]
   (try
-    (let [plugin       (api/read-check (custom-viz-plugin.db/non-blob-plugin id))
+    (let [plugin       (api/read-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
@@ -348,7 +348,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
-  (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+  (api/write-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
@@ -396,7 +396,7 @@
    plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
+  (let [plugin (api/write-check (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id))]
     (api/check-400 (dev-only-plugin? plugin)
                    "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
     (let [dev-url      (or (cache/resolve-dev-bundle id)
@@ -404,12 +404,12 @@
           manifest     (or (cache/fetch-dev-manifest dev-url)
                            (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
           version-str  (get-in manifest [:metabase :version])]
-      (custom-viz-plugin.db/update-plugin! id
-                                           {:display_name     (or (:name manifest) (:identifier plugin))
-                                            :icon             (:icon manifest)
-                                            :manifest         manifest
-                                            :metabase_version version-str})
-      (let [result (custom-viz-plugin.db/non-blob-plugin id)]
+      (custom-viz-plugin.db/update-custom-viz-plugins! {:id id}
+                                                       {:display_name     (or (:name manifest) (:identifier plugin))
+                                                        :icon             (:icon manifest)
+                                                        :manifest         manifest
+                                                        :metabase_version version-str})
+      (let [result (custom-viz-plugin.db/select-one-non-blob-custom-viz-plugin id)]
         (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                                 :previous-object plugin
                                                                 :user-id         api/*current-user-id*})

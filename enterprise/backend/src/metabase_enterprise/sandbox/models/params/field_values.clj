@@ -25,7 +25,7 @@
   (when api/*current-user-id*
     (let [group-ids (sandbox.db/user-group-ids api/*current-user-id*)
           sandboxes (when (seq group-ids)
-                      (sandbox.db/sandboxes-for-groups-and-table group-ids table-id))]
+                      (sandbox.db/select-sandboxes {:group_id group-ids :table_id table-id}))]
       (when sandboxes
         (sandboxing/assert-one-sandbox-per-table sandboxes)
         ;; there should be only one gtap per table and we only need one table here

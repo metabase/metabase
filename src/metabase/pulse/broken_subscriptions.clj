@@ -17,7 +17,7 @@
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
   (let [creator (pulse.db/user-name-and-email creator_id)
-        bad-pulse-channels (pulse.db/pulse-channel-kinds-for-pulse bad-pulse-id)]
+        bad-pulse-channels (pulse.db/select-pulse-channels {:pulse_id bad-pulse-id :columns [:id :channel_type :details]})]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -29,7 +29,7 @@
                                           channel-type      :channel_type
                                           {:keys [channel]} :details}]
                                       (case channel-type
-                                        :email (let [pulse-channel-recipient-ids (map :user_id (pulse.db/pulse-channel-recipient-rows pulse-channel-id))
+                                        :email (let [pulse-channel-recipient-ids (map :user_id (pulse.db/select-pulse-channel-recipients {:pulse_channel_id pulse-channel-id :columns [:user_id]}))
                                                      pulse-channel-recipients (when (seq pulse-channel-recipient-ids)
                                                                                 (pulse.db/users-names-and-emails pulse-channel-recipient-ids))]
                                                  (map (fn [{:keys [common_name] :as recipient}]
@@ -50,7 +50,7 @@
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (pulse.db/unarchived-pulses-for-dashboard dashboard-id)
+      (->> (pulse.db/select-pulses {:dashboard_id dashboard-id :archived false :order-by [:id]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))

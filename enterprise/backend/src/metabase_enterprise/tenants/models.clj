@@ -52,7 +52,7 @@
   (mi/instances-with-hydrated-data
    tenants k
    (fn []
-     (->> (tenants.db/active-member-counts (map u/the-id tenants))
+     (->> (tenants.db/count-active-tenant-members (map u/the-id tenants))
           (map (juxt :tenant_id :count))
           (into {})))
    :id
@@ -88,8 +88,9 @@
   :feature :tenants
   [user-or-id]
   (into []
-        (when-let [tenant-id (tenants.db/user-tenant-id (u/the-id user-or-id))]
-          (when-let [tenant-collection-id (tenants.db/tenant-collection-id tenant-id)]
+        (when-let [tenant-id (tenants.db/select-user-tenant-id (u/the-id user-or-id))]
+          (when-let [tenant-collection-id (:tenant_collection_id
+                                           (tenants.db/select-one-tenant {:id tenant-id :columns [:tenant_collection_id]}))]
             (let [descendant-ids (tenants.db/descendant-collection-ids tenant-collection-id)]
               (conj descendant-ids tenant-collection-id))))))
 
@@ -103,7 +104,7 @@
                                     collections)
         collection-id->tenant-name-and-id
         (when (seq tenant-collection-ids)
-          (tenants.db/tenant-names-and-ids-by-collection tenant-collection-ids))]
+          (tenants.db/select-tenant-names-and-ids-by-collection tenant-collection-ids))]
     (mapv (fn [{ttype :type id :id :as coll}]
             (cond-> coll
               (= ttype collection/tenant-specific-root-collection-type)

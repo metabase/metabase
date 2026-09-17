@@ -213,7 +213,7 @@
 
 (methodical/defmethod events/publish-event! ::install-event
   [topic _event]
-  (when-not (audit-app.db/audit-log-topic-exists? "install")
+  (when-not (audit-app.db/audit-log-exists? {:topic "install"})
     (audit-log/record-event! topic {})))
 
 (events/derive! ::database-event ::event)

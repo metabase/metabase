@@ -39,7 +39,7 @@
 (defn- unacknowledged-active-advisories
   "Return all unacknowledged advisories with match_status in (:active :error)."
   []
-  (security-center.db/unacknowledged-advisories-with-statuses ["active" "error"]))
+  (security-center.db/select-security-advisories {:match_status #{"active" "error"} :acknowledged_at_set false}))
 
 (defn send-repeat-notifications!
   "Check all unacknowledged active/error advisories and send repeat notifications

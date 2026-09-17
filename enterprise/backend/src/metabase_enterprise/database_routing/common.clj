@@ -10,7 +10,7 @@
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (database-routing.db/router-user-attribute (u/the-id db-or-id)))
+  (:user_attribute (database-routing.db/select-one-database-router {:database_id (u/the-id db-or-id) :columns [:user_attribute]})))
 
 (def ^:dynamic ^:private *database-routing-on* :unset)
 

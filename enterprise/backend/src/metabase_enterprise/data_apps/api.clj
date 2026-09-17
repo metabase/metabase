@@ -216,7 +216,7 @@
    to return only enabled apps without sync errors."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (let [apps (->> (data-apps.db/non-blob-data-apps available)
+  (let [apps (->> (data-apps.db/select-non-blob-data-apps available)
                   (mapv api/read-check))
         warning-group-ids (when api/*is-superuser?*
                             (data-app.user-access/groups-with-permission-warnings apps))]
@@ -231,9 +231,9 @@
    _query-params
    {:keys [enabled]} :- [:map {:closed true} [:enabled :boolean]]]
   (api/check-superuser)
-  (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
-    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
-    (data-apps.db/non-blob-data-app (:id app))))
+  (let [app (api/check-404 (data-apps.db/select-one-non-blob-data-app-by-slug slug))]
+    (data-apps.db/update-data-app-by-id! (:id app) {:enabled enabled})
+    (data-apps.db/select-one-non-blob-data-app (:id app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
   "Remove a single data app (its row and cached bundle). Intended for clearing out
@@ -254,13 +254,13 @@
    _query-params
    {table-ids :table_ids} :- TableDependenciesRequest]
   (api/check-superuser)
-  (let [app       (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  (let [app       (api/check-404 (data-apps.db/select-one-non-blob-data-app-by-slug slug))
         table-ids (vec (sort table-ids))]
     (api/check-400 (= (set table-ids)
                       (data-apps.db/existing-table-ids table-ids))
                    (tru "One or more tables do not exist."))
-    (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
-    (data-apps.db/non-blob-data-app (:id app))))
+    (data-apps.db/update-data-app-by-id! (:id app) {:table_ids table-ids})
+    (data-apps.db/select-one-non-blob-data-app (:id app))))
 
 (api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
   :- [:sequential PermissionWarning]
@@ -269,7 +269,7 @@
    _query-params
    {user-ids :user_ids} :- PermissionWarningsRequest]
   (api/check-superuser)
-  (let [app   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  (let [app   (api/check-404 (data-apps.db/select-one-non-blob-data-app-by-slug slug))
         users (data-apps.db/users-for-permission-warnings user-ids)]
     (api/check-404 (= (count users) (count user-ids)))
     (api/check-400 (every? :is_active users)
@@ -320,7 +320,7 @@
    _query-params
    query-def :- ::query-definition/query-definition]
   (api/check-superuser)
-  (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  (api/check-404 (data-apps.db/select-one-non-blob-data-app-by-slug slug))
   (let [{source-type :type, table-id :id} (get-in query-def [:stages 0 :source])
         _           (api/check-400 (= (keyword source-type) :table)
                                    "Data app query definitions must use a table source.")
@@ -342,7 +342,7 @@
    _query-params
    {dataset-queries :dataset_queries} :- QueryTableDependenciesRequest]
   (api/check-superuser)
-  (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  (api/check-404 (data-apps.db/select-one-non-blob-data-app-by-slug slug))
   {:table_ids (->> dataset-queries
                    (mapcat (fn [dataset-query]
                              (-> (lib-be/application-database-metadata-provider (:database dataset-query))
@@ -359,12 +359,12 @@
   (api/check-400 (data-app.config/valid-slug? slug)
                  "Data app draft slugs must use lowercase letters, numbers, and dashes.")
   (data-app.sync/ensure-draft! slug)
-  (data-apps.db/non-blob-data-app-by-slug slug))
+  (data-apps.db/select-one-non-blob-data-app-by-slug slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (data-app-response (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
+  (data-app-response (read-check-data-app (data-apps.db/select-one-enabled-non-blob-data-app-by-slug slug))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -376,7 +376,7 @@
    respond
    raise]
   (try
-    (let [row  (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))
+    (let [row  (read-check-data-app (data-apps.db/select-one-enabled-non-blob-data-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
@@ -386,7 +386,7 @@
         (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
 
         :else
-        (let [^bytes bundle (data-apps.db/data-app-bundle (:id row))]
+        (let [^bytes bundle (:bundle (data-apps.db/select-one-data-app {:id (:id row), :columns [:bundle]}))]
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers

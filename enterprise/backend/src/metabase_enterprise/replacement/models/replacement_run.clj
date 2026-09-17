@@ -31,50 +31,50 @@
 (defn create-run!
   "Insert a new pending run. It becomes active when [[start-run!]] is called."
   [source-type source-id target-type target-id user-id]
-  (replacement.db/insert-run! {:source_entity_type source-type
-                               :source_entity_id   source-id
-                               :target_entity_type target-type
-                               :target_entity_id   target-id
-                               :user_id            user-id
-                               :status             :pending
-                               :is_active          nil
-                               :progress           0.0}))
+  (replacement.db/insert-replacement-run! {:source_entity_type source-type
+                                           :source_entity_id   source-id
+                                           :target_entity_type target-type
+                                           :target_entity_id   target-id
+                                           :user_id            user-id
+                                           :status             :pending
+                                           :is_active          nil
+                                           :progress           0.0}))
 
 (defn start-run!
   "Mark the active run as started."
   [run-id]
-  (replacement.db/update-run! run-id
-                              {:status    :started
-                               :is_active true}))
+  (replacement.db/update-replacement-runs! {:id run-id}
+                                           {:status    :started
+                                            :is_active true}))
 
 (defn update-progress!
   "Update progress on the active run."
   [run-id progress]
-  (replacement.db/update-active-run! run-id {:progress progress}))
+  (replacement.db/update-replacement-runs! {:id run-id :is_active true} {:progress progress}))
 
 (defn succeed-run!
   "Mark the active run as succeeded."
   [run-id]
-  (replacement.db/update-active-run! run-id
-                                     {:status    :succeeded
-                                      :progress  1.0
-                                      :is_active nil}))
+  (replacement.db/update-replacement-runs! {:id run-id :is_active true}
+                                           {:status    :succeeded
+                                            :progress  1.0
+                                            :is_active nil}))
 
 (defn fail-run!
   "Mark the active run as failed."
   [run-id message]
-  (replacement.db/update-active-run! run-id
-                                     {:status    :failed
-                                      :is_active nil
-                                      :message   message}))
+  (replacement.db/update-replacement-runs! {:id run-id :is_active true}
+                                           {:status    :failed
+                                            :is_active nil
+                                            :message   message}))
 
 (defn cancel-run!
   "Mark the active run as canceled."
   [run-id]
-  (replacement.db/update-active-run! run-id
-                                     {:status    :canceled
-                                      :is_active nil
-                                      :message   "Canceled by user"}))
+  (replacement.db/update-replacement-runs! {:id run-id :is_active true}
+                                           {:status    :canceled
+                                            :is_active nil
+                                            :message   "Canceled by user"}))
 
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age."
@@ -84,7 +84,7 @@
 (defn active-run
   "Return the single active run, or nil."
   []
-  (replacement.db/active-run))
+  (replacement.db/select-one-replacement-run {:is_active true}))
 
 (def ^:private ^:const progress-batch-size
   "Write progress to DB every N items (and always on the final item)."
@@ -124,7 +124,7 @@
                    (deliver on-complete :run/cancelled))
                  (throw (ex-info "Run canceled" {:run-id run-id})))))))
        (canceled? [_]
-         (not (:is_active (replacement.db/run-active-flag run-id))))
+         (not (:is_active (replacement.db/select-one-replacement-run {:id run-id :columns [:is_active]}))))
        (start-run! [_]
          (start-run! run-id))
        (succeed-run! [_]

@@ -44,7 +44,7 @@
                                         :when (contains? db-changes :view-data)]
                                     db-id))]
       (when (and (seq all-group-ids) (seq all-db-ids))
-        (let [candidate-sandboxes (sandbox.db/candidate-sandboxes-for-groups-and-databases
+        (let [candidate-sandboxes (sandbox.db/select-candidate-sandboxes-for-groups-and-databases
                                    all-group-ids all-db-ids)
               ids-to-delete (into #{}
                                   (comp (filter (partial should-delete-sandbox? changes))
@@ -52,7 +52,7 @@
                                   candidate-sandboxes)]
           (when (seq ids-to-delete)
             (log/debugf "Deleting %d unneeded GTAPs: %s" (count ids-to-delete) (pr-str ids-to-delete))
-            (sandbox.db/delete-sandboxes! ids-to-delete)))))
+            (sandbox.db/delete-sandboxes! {:id ids-to-delete})))))
     (catch Throwable e
       (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
                       {:changes changes}

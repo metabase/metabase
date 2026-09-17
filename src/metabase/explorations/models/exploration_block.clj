@@ -88,14 +88,14 @@
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
+   (when-let [g (explorations.db/select-one-block {:id pk :columns [:exploration_thread_id]})]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defmethod mi/can-write? :model/ExplorationBlock
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
+   (when-let [g (explorations.db/select-one-block {:id pk :columns [:exploration_thread_id]})]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defn dimension-label

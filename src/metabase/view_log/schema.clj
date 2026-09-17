@@ -1,6 +1,7 @@
 (ns metabase.view-log.schema
   "Malli schemas for the view-log module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -12,12 +13,12 @@
 (mr/def ::view-log
   "A ViewLog as selected from the app DB: every column of `:view_log`."
   [:merge
-   ::view-log.update
+   ::view-log.columns
    [:map {:closed true}
     [:id                          ms/PositiveInt]]])
 
-(mr/def ::view-log.update
-  "What an update (or insert) of a ViewLog accepts: every column of `:view_log` except `id`, all optional."
+(mr/def ::view-log.columns
+  "Every column of `:view_log` except `id`, all optional."
   [:map {:closed true}
    [:user_id                     {:optional true} [:maybe ::lib.schema.id/user]]
    [:model                       {:optional true} [:maybe [:or :keyword :string]]]
@@ -38,3 +39,15 @@
    [:embedding_route             {:optional true} [:maybe :string]]
    [:metabase_version            {:optional true} [:maybe :string]]
    [:embedding_client_identifier {:optional true} [:maybe :string]]])
+
+(mr/def ::view-log.create
+  "What an insert of a ViewLog accepts: every column of `:view_log` except `id`, all optional."
+  ::view-log.columns)
+
+(mr/def ::view-log.partial
+  "A ViewLog row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::view-log [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::view-log.column
+  "A column of `view_log`, for the `:columns` option of the queries in [[metabase.view-log.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::view-log.columns))))

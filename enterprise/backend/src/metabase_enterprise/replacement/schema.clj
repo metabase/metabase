@@ -1,5 +1,6 @@
 (ns metabase-enterprise.replacement.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.source-swap.schema :as source-swap.schema]
    [metabase.util.malli.registry :as mr]
@@ -64,12 +65,16 @@
 (mr/def ::replacement-run
   "A ReplacementRun as selected from the app DB: every column of `:source_replacement_run`."
   [:merge
-   ::replacement-run.update
+   ::replacement-run.columns
    [:map {:closed true}
     [:id                 ms/PositiveInt]]])
 
-(mr/def ::replacement-run.update
-  "What an update (or insert) of a ReplacementRun accepts: every column of `:source_replacement_run` except `id`, all optional."
+(mr/def ::replacement-run.partial
+  "A ReplacementRun row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::replacement-run [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::replacement-run.columns
+  "Every column of `:source_replacement_run` except `id`, all optional."
   [:map {:closed true}
    [:source_entity_type {:optional true} [:maybe [:or :keyword :string]]]
    [:source_entity_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -82,3 +87,19 @@
    [:user_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:start_time         {:optional true} [:maybe ms/TemporalInstant]]
    [:end_time           {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::replacement-run.create
+  "What an insert of a ReplacementRun accepts."
+  (mut/select-keys (mr/schema ::replacement-run.columns)
+                   [:source_entity_type :source_entity_id :target_entity_type :target_entity_id :status
+                    :is_active :progress :message :user_id :start_time :end_time]))
+
+(mr/def ::replacement-run.update
+  "What an update of a ReplacementRun accepts: no immutable columns."
+  (mut/select-keys (mr/schema ::replacement-run.columns)
+                   [:status :is_active :progress :message :end_time]))
+
+(mr/def ::replacement-run.column
+  "A column of `source_replacement_run`, for the `:columns` option of the queries in
+  [[metabase-enterprise.replacement.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::replacement-run.columns))))

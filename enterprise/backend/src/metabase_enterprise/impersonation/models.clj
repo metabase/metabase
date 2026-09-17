@@ -25,10 +25,10 @@
   [graph & {:keys [group-ids group-id db-id audit-db?]}]
   (m/deep-merge
    graph
-   (let [impersonations (impersonation.db/impersonations-matching db-id
-                                                                  group-id
-                                                                  group-ids
-                                                                  (when-not audit-db? audit/audit-db-id))]
+   (let [impersonations (impersonation.db/select-impersonations-matching db-id
+                                                                         group-id
+                                                                         group-ids
+                                                                         (when-not audit-db? audit/audit-db-id))]
      (reduce (fn [acc {:keys [db_id group_id]}]
                (assoc-in acc [group_id db_id :view-data] :impersonated))
              {}
@@ -42,8 +42,8 @@
   (doall
    (for [impersonation impersonations]
      (do
-       (impersonation.db/delete-impersonations-for-group-and-database! (:group_id impersonation) (:db_id impersonation))
-       (impersonation.db/insert-impersonation! impersonation)))))
+       (impersonation.db/delete-connection-impersonations! {:group_id (:group_id impersonation), :db_id (:db_id impersonation)})
+       (impersonation.db/insert-connection-impersonation! impersonation)))))
 
 (defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"
@@ -56,7 +56,7 @@
                   :blocked      "is now BLOCKED from all non-data-perms access"
                   "now has granular (sandboxed) data access")
                 database-id)
-    (impersonation.db/delete-impersonations-for-group-and-database! group-id database-id)))
+    (impersonation.db/delete-connection-impersonations! {:group_id group-id, :db_id database-id})))
 
 (defn- delete-impersonations-for-group! [{:keys [group-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s" group-id (pr-str changes))

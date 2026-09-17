@@ -1,6 +1,7 @@
 (ns metabase.security-center.schema
   "Malli schemas for the Security Center module."
   (:require
+   [malli.util :as mut]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -71,12 +72,12 @@
 (mr/def ::security-advisory
   "A SecurityAdvisory as selected from the app DB: every column of `:security_advisory`."
   [:merge
-   ::security-advisory.update
+   ::security-advisory.columns
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
-(mr/def ::security-advisory.update
-  "What an update (or insert) of a SecurityAdvisory accepts: every column of `:security_advisory` except `id`, all optional."
+(mr/def ::security-advisory.columns
+  "Every column of `:security_advisory` except `id`, all optional."
   [:map {:closed true}
    [:advisory_id       {:optional true} [:maybe :string]]
    [:severity          {:optional true} [:maybe [:or :keyword :string]]]
@@ -95,3 +96,27 @@
    [:last_notified_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:download_jar_urls {:optional true} [:maybe ::download-jar-urls]]])
+
+(mr/def ::security-advisory.create
+  "What an insert of a SecurityAdvisory accepts."
+  (mut/select-keys (mr/schema ::security-advisory.columns)
+                   [:advisory_id :severity :title :description :advisory_url :remediation :affected_versions
+                    :matching_query :published_at :fetched_at :match_status :last_evaluated_at :acknowledged_by
+                    :acknowledged_at :last_notified_at :updated_at :download_jar_urls]))
+
+(mr/def ::security-advisory.update
+  "What an update of a SecurityAdvisory accepts: no immutable columns. `:advisory_id` (the external identity) and
+  `:fetched_at` (creation provenance) are never updated."
+  (mut/select-keys (mr/schema ::security-advisory.columns)
+                   [:severity :title :description :advisory_url :remediation :affected_versions :matching_query
+                    :published_at :match_status :last_evaluated_at :acknowledged_by :acknowledged_at
+                    :last_notified_at :updated_at :download_jar_urls]))
+
+(mr/def ::security-advisory.partial
+  "A SecurityAdvisory row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::security-advisory [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::security-advisory.column
+  "A column of `security_advisory`, for the `:columns` option of the queries in
+  [[metabase-enterprise.security-center.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::security-advisory.columns))))

@@ -102,8 +102,8 @@
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
     (when (contains? changes :archived)
       (if (:archived changes)
-        (pulse.db/set-pulse-channels-enabled! (u/the-id notification) false)
-        (pulse.db/set-pulse-channels-enabled! (u/the-id notification) true)))
+        (pulse.db/update-pulse-channels! {:pulse_id (u/the-id notification)} {:enabled false})
+        (pulse.db/update-pulse-channels! {:pulse_id (u/the-id notification)} {:enabled true})))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
@@ -115,7 +115,7 @@
 (t2/define-before-delete :model/Pulse
   [pulse]
   ;; to trigger deleting the scheduled jobs
-  (pulse.db/delete-pulse-channels-for-pulse! (u/the-id pulse)))
+  (pulse.db/delete-pulse-channels! {:pulse_id (u/the-id pulse)}))
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
@@ -301,7 +301,7 @@
   [_model k pulses]
   (mi/instances-with-hydrated-data
    pulses k
-   #(group-by :pulse_id (pulse.db/pulse-channels-for-pulses (map :id pulses)))
+   #(group-by :pulse_id (pulse.db/select-pulse-channels {:pulse_id (set (map :id pulses))}))
    :id
    {:default []}))
 
@@ -312,7 +312,7 @@
 
 (mu/defn- cards* :- [:sequential HybridPulseCard]
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  (pulse.db/select-pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -351,7 +351,7 @@
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id :- NotificationOrId]
-  (some-> (pulse.db/pulse (u/the-id pulse-or-id))
+  (some-> (pulse.db/select-one-pulse {:id (u/the-id pulse-or-id)})
           hydrate-notification
           notification->pulse))
 
@@ -364,9 +364,10 @@
   (let [id   (u/the-id notification-or-id)
         opts (apply hash-map additional-conditions)]
     (some-> (cond
-              (contains? opts :alert_condition) (pulse.db/unarchived-non-alert-pulse id)
-              (contains? opts :archived)        (pulse.db/unarchived-pulse id)
-              :else                             (pulse.db/pulse id))
+              (contains? opts :alert_condition) (pulse.db/select-one-pulse
+                                                 {:id id :archived false :alert_condition_set false})
+              (contains? opts :archived)        (pulse.db/select-one-pulse {:id id :archived false})
+              :else                             (pulse.db/select-one-pulse {:id id}))
             hydrate-notification)))
 
 (mu/defn- notification->alert :- (ms/InstanceOf :model/Pulse)
@@ -383,7 +384,7 @@
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id :- NotificationOrId]
-  (some-> (pulse.db/alert (u/the-id alert-or-id))
+  (some-> (pulse.db/select-one-pulse {:id (u/the-id alert-or-id) :alert_condition_set true})
           hydrate-notification
           notification->alert))
 
@@ -400,7 +401,7 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}} :- [:maybe RetrieveAlertsOpts]]
    (assert boolean? archived?)
-   (for [alert (hydrate-notifications (pulse.db/alerts archived? user-id))
+   (for [alert (hydrate-notifications (pulse.db/select-alerts archived? user-id))
          :let  [alert (notification->alert alert)]
          ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
          ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
@@ -419,7 +420,7 @@
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}} :- RetrievePulsesOpts]
-  (for [pulse (pulse.db/pulses archived? dashboard-id user-id)]
+  (for [pulse (pulse.db/select-dashboard-subscription-pulses archived? dashboard-id user-id)]
     (-> pulse
         (dissoc :lower-name)
         hydrate-notification
@@ -527,7 +528,7 @@
                                  [:archived? {:optional true} boolean?]]]
   (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
-       (pulse.db/alerts-for-card-and-user card-id user-id archived?)))
+       (pulse.db/select-alerts-for-card-and-user card-id user-id archived?)))
 
 (mu/defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
@@ -539,7 +540,7 @@
                                  [:archived? {:optional true} boolean?]]]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
-         (pulse.db/alerts-for-cards card-ids archived?))))
+         (pulse.db/select-alerts-for-cards card-ids archived?))))
 
 (mu/defn card->ref :- CardRef
   "Create a card reference from a card or id"
@@ -563,7 +564,7 @@
   [notification-or-id :- NotificationOrId
    card-refs           :- [:maybe [:sequential CardRef]]]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
+  (pulse.db/delete-pulse-cards! {:pulse_id (u/the-id notification-or-id)})
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
     (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
@@ -589,7 +590,7 @@
     * All previously existing channels will be updated with their most recent information."
   [notification-or-id :- NotificationOrId
    channels           :- [:sequential PulseChannelInput]]
-  (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
+  (let [existing-channels   (pulse.db/select-pulse-channels {:pulse_id (u/the-id notification-or-id)})
         channels            (map-indexed
                              (fn [idx channel]
                                (assoc channel
@@ -617,12 +618,12 @@
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
       (when (seq to-delete)
         (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
-        (pulse.db/delete-pulse-channels! (map :id to-delete))))))
+        (pulse.db/delete-pulse-channels! {:id (set (map :id to-delete))})))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
-  [notification :- ::pulse.schema/pulse.update
+  [notification :- ::pulse.schema/pulse.create
    card-refs    :- [:maybe [:sequential CardRef]]
    channels     :- [:sequential PulseChannelInput]]
   (t2/with-transaction [_conn]
@@ -664,7 +665,7 @@
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id :- NotificationOrId]
-  (pulse.db/pulse-card-refs (u/the-id notification-or-id)))
+  (pulse.db/select-pulse-card-refs (u/the-id notification-or-id)))
 
 (mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id :- NotificationOrId
@@ -681,10 +682,10 @@
 (mu/defn update-notification!
   "Update the supplied keys in a `notification`."
   [notification :- UpdateNotificationInput]
-  (pulse.db/update-pulse! (u/the-id notification)
-                          (u/select-keys-when notification
-                                              :present [:collection_id :collection_position :archived]
-                                              :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+  (pulse.db/update-pulses! {:id (u/the-id notification)}
+                           (u/select-keys-when notification
+                                               :present [:collection_id :collection_position :archived]
+                                               :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))

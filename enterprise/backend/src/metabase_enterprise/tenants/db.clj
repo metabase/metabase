@@ -1,50 +1,88 @@
 (ns metabase-enterprise.tenants.db
-  "Application database queries for the tenants module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
+  "Application database queries for `:model/Tenant`. The queries below follow [[::opts]]; queries that do not fit it,
+  including ones returning other modules' models, live in the tenants-only section at the bottom of this namespace."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.db :as users.db]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn tenant
-  "The Tenant with `tenant-id`, or nil."
-  [tenant-id :- ms/PositiveInt]
-  (t2/select-one :model/Tenant :id tenant-id))
+(mr/def ::filters
+  "Which Tenants a query applies to. Keys mirror the columns of `:tenant`: a scalar matches that value and a set
+  matches any of its values."
+  [:map {:closed true}
+   [:id                   {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:slug                 {:optional true} [:or :string [:set :string]]]
+   [:name                 {:optional true} [:or :string [:set :string]]]
+   [:is_active            {:optional true} :boolean]
+   [:tenant_collection_id {:optional true} [:or ::lib.schema.id/collection [:set ::lib.schema.id/collection]]]])
 
-(mu/defn tenant-by-slug
-  "The Tenant with `slug`, or nil."
-  [slug :- :string]
-  (t2/select-one :model/Tenant :slug slug))
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::tenants.schema/tenant.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::tenants.schema/tenant.column
+                                              [:tuple ::tenants.schema/tenant.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn tenant-slug
-  "The slug of the Tenant with `tenant-id`."
-  [tenant-id :- ms/PositiveInt]
-  (t2/select-one-fn :slug :model/Tenant :id tenant-id))
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Tenant columns))
 
-(mu/defn tenant-collection-id
-  "The root Collection ID of the Tenant with `tenant-id`."
-  [tenant-id :- ms/PositiveInt]
-  (t2/select-one-fn :tenant_collection_id :model/Tenant :id tenant-id))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
-(mu/defn tenants-page
-  "The Tenants in ID order, restricted by `status` (`\"all\"`, `\"active\"`, or `\"deactivated\"`) and paged by the
-  optional `limit` and `offset`."
-  [status :- [:enum "all" "active" "deactivated"]
-   limit  :- [:maybe ms/PositiveInt]
-   offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]
-                                    :where    (case status
-                                                "all"         [:= [:inline 1] [:inline 1]]
-                                                "active"      [:= :is_active true]
-                                                "deactivated" [:= :is_active false])}
-                             limit (assoc :limit limit :offset offset))))
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
-(mu/defn tenant-attributes-reducible
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-tenants :- [:sequential ::tenants.schema/tenant.partial]
+  "The Tenants matching `opts`."
+  ([]
+   (select-tenants nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn select-one-tenant :- [:maybe ::tenants.schema/tenant.partial]
+  "The first Tenant matching `opts`, or nil."
+  ([]
+   (select-one-tenant nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
+
+(mu/defn tenant-exists? :- :boolean
+  "Whether a Tenant matching `opts` exists."
+  [opts :- [:maybe ::opts]]
+  (apply t2/exists? :model/Tenant (->args opts)))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-tenant! :- ::tenants.schema/tenant
+  "Insert the Tenant `row` and return the inserted instance."
+  [row :- ::tenants.schema/tenant.create]
+  (t2/insert-returning-instance! :model/Tenant row))
+
+(mu/defn update-tenants! :- :int
+  "Apply `changes` to every Tenant matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::tenants.schema/tenant.update]
+  (apply t2/update! :model/Tenant (conj (->kv-args opts) changes)))
+
+;;; ------------------------------- Queries used only by the tenants module -------------------------------
+
+(mu/defn reducible-select-tenant-attributes
   "Reducible attribute maps of the Tenants that have attributes."
   []
   (t2/select-fn-reducible :attributes [:model/Tenant :attributes]
@@ -52,15 +90,10 @@
                                    [:not= :attributes nil]
                                    [:not= :attributes "{}"]]}))
 
-(mu/defn tenant-names-and-ids-by-collection
+(mu/defn select-tenant-names-and-ids-by-collection
   "A map of root Collection ID to `[name id]` for the Tenants owning `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-fn->fn :tenant_collection_id (juxt :name :id) :model/Tenant :tenant_collection_id [:in collection-ids]))
-
-(mu/defn active-tenant-exists?
-  "Whether the Tenant with `tenant-id` exists and is active."
-  [tenant-id :- ms/PositiveInt]
-  (t2/exists? :model/Tenant :id tenant-id :is_active true))
 
 (mu/defn tenant-name-or-slug-exists?
   "Whether a Tenant named `tenant-name` or with `slug` exists."
@@ -76,18 +109,7 @@
    tenant-id   :- ms/PositiveInt]
   (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
 
-(mu/defn insert-tenant!
-  "Insert `tenant` and return the new instance."
-  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes])]
-  (t2/insert-returning-instance! :model/Tenant tenant))
-
-(mu/defn update-tenant!
-  "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
-  [tenant-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active])]
-  (t2/update! :model/Tenant {:id tenant-id} changes))
-
-(mu/defn active-member-counts
+(mu/defn count-active-tenant-members
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."
   [tenant-ids :- [:sequential ms/PositiveInt]]
   (t2/query {:select   [[:tenant_id] [[:count :*] :count]]
@@ -98,19 +120,19 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(mu/defn deactivate-tenant-users!
+(mu/defn update-tenant-users-deactivated!
   "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
   number updated."
   [tenant-id :- ms/PositiveInt]
   (users.db/update-users! {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
 
-(mu/defn reactivate-tenant-users!
+(mu/defn update-tenant-users-reactivated!
   "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
   [tenant-id :- ms/PositiveInt]
   (users.db/update-users! {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
                           {:is_active true :deactivated_with_tenant nil}))
 
-(mu/defn user-tenant-id
+(mu/defn select-user-tenant-id
   "The Tenant ID of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
   (:tenant_id (users.db/select-one-user {:id user-id :columns [:tenant_id]})))

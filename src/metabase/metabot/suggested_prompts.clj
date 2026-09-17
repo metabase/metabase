@@ -97,9 +97,9 @@
                 model-prompts  (vec (mapcat ->prompt table_questions models))
                 total          (+ (count metric-prompts) (count model-prompts))]
             (when (seq metric-prompts)
-              (metabot.db/insert-prompts! metric-prompts))
+              (metabot.db/insert-metabot-prompts! metric-prompts))
             (when (seq model-prompts)
-              (metabot.db/insert-prompts! model-prompts))
+              (metabot.db/insert-metabot-prompts! model-prompts))
             (if (zero? total)
               {:status :ai-produced-no-prompts}
               {:status :generated :prompt_count total})))))))
@@ -107,4 +107,4 @@
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
   [metabot-id]
-  (metabot.db/delete-prompts-for-metabot! metabot-id))
+  (metabot.db/delete-metabot-prompts! {:metabot_id metabot-id}))

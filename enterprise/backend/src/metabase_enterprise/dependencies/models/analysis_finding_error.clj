@@ -52,9 +52,10 @@
    entity-id   :- ms/PositiveInt
    errors      :- [:sequential ::error-input]]
   (t2/with-transaction [_conn]
-    (dependencies.db/delete-finding-errors-for-entity! entity-type entity-id)
+    (dependencies.db/delete-analysis-finding-errors!
+     {:analyzed_entity_type entity-type :analyzed_entity_id entity-id})
     (when (seq errors)
-      (dependencies.db/insert-finding-errors!
+      (dependencies.db/insert-analysis-finding-errors!
        (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
                {:analyzed_entity_type (name entity-type)
                 :analyzed_entity_id entity-id
@@ -68,10 +69,12 @@
   "Get all errors caused by a specific source entity."
   [source-entity-type :- [:maybe ::lib.schema.validate/source-entity-type]
    source-entity-id   :- ms/PositiveInt]
-  (dependencies.db/finding-errors-from-source source-entity-type source-entity-id))
+  (dependencies.db/select-analysis-finding-errors
+   {:source_entity_type source-entity-type :source_entity_id source-entity-id}))
 
 (mu/defn errors-for-entity :- [:sequential ::analysis-finding-error]
   "Get all errors for a specific analyzed entity."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
-  (dependencies.db/finding-errors-for-entity entity-type entity-id))
+  (dependencies.db/select-analysis-finding-errors
+   {:analyzed_entity_type entity-type :analyzed_entity_id entity-id}))

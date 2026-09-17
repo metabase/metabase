@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
    [metabase.classloader.core :as classloader]
@@ -328,7 +329,7 @@
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
-                       (assoc-in [:http :configured] (pulse.db/active-http-channel-exists?)))]
+                       (assoc-in [:http :configured] (channel.db/channel-exists? {:type :channel/http :active true})))]
     {:channels (cond
                  (or (perms/sandboxed-or-impersonated-user?)
                      (some? (:tenant_id @api/*current-user*)))
@@ -405,10 +406,10 @@
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [pulse-id (pulse.db/pulse-id id)
-                pc-id    (pulse.db/email-pulse-channel-id pulse-id)
-                pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
-    (pulse.db/delete-pulse-channel-recipient! pcr-id))
+  (api/let-404 [pulse-id (pulse.db/select-one-pulse-pk {:id id})
+                pc-id    (pulse.db/select-one-pulse-channel-pk {:pulse_id pulse-id :channel_type :email})
+                pcr-id   (pulse.db/select-one-pulse-channel-recipient-pk {:pulse_channel_id pc-id :user_id api/*current-user-id*})]
+    (pulse.db/delete-pulse-channel-recipients! {:id pcr-id}))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

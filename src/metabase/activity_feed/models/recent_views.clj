@@ -64,7 +64,7 @@
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
   [user-id context]
-  (->> (activity-feed.db/recent-views-for-user-context user-id context)
+  (->> (activity-feed.db/select-recent-views {:user_id user-id :context context :order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
@@ -110,11 +110,11 @@
     (name model)))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
-  (activity-feed.db/recent-view-ids-to-prune (rv-model->db-model model)
-                                             user-id
-                                             (name context)
-                                             (rv-model->card-type model)
-                                             *recent-views-stored-per-user-per-model*))
+  (activity-feed.db/select-recent-view-ids-to-prune (rv-model->db-model model)
+                                                    user-id
+                                                    (name context)
+                                                    (rv-model->card-type model)
+                                                    *recent-views-stored-per-user-per-model*))
 
 (defn- overflowing-model-buckets [user-id context]
   (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
@@ -150,7 +150,7 @@
                                     (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
                               views)]
           (when (seq prune-ids)
-            (activity-feed.db/delete-recent-views! prune-ids))))
+            (activity-feed.db/delete-recent-views! {:id prune-ids}))))
       (catch Exception e
         (log/error e "Failed to update users recent views")))))
 
@@ -180,7 +180,7 @@
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
   [user-id]
-  (activity-feed.db/most-recently-viewed-dashboard-id user-id (t/minus (t/zoned-date-time) (t/days 1))))
+  (activity-feed.db/select-most-recently-viewed-dashboard-id user-id (t/minus (t/zoned-date-time) (t/days 1))))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -431,11 +431,11 @@
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
   (let [db-models (rv-models->db-models models)]
-    (activity-feed.db/recent-views-with-card-type user-id
-                                                  (map query-context->recent-context context)
-                                                  db-models
-                                                  (keep rv-model->card-type models)
-                                                  (contains? (set context) :selections))))
+    (activity-feed.db/select-recent-views-with-card-type user-id
+                                                         (map query-context->recent-context context)
+                                                         db-models
+                                                         (keep rv-model->card-type models)
+                                                         (contains? (set context) :selections))))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))

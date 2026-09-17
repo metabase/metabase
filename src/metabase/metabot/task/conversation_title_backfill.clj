@@ -66,7 +66,7 @@
 
 (defn- titleless-conversation-ids
   [after-id]
-  (metabot.db/titleless-conversation-ids after-id conversation-page-size))
+  (metabot.db/select-titleless-metabot-conversation-ids after-id conversation-page-size))
 
 (defn- title-source
   [conversation-id]

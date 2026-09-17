@@ -102,7 +102,7 @@
 
 (defn- active-cron-subscription-id->subscription
   []
-  (notification.db/active-cron-subscriptions-by-id))
+  (notification.db/select-active-cron-subscriptions-by-id))
 
 (defn update-send-notification-triggers-timezone!
   "Update the timezone of all SendNotification triggers if the report timezone changes."

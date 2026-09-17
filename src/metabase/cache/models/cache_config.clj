@@ -56,7 +56,7 @@
        (target-collection-id instance)
        :write))))
   ([_model pk]
-   (mi/can-write? (cache.db/cache-config pk))))
+   (mi/can-write? (cache.db/select-one-cache-config {:id pk}))))
 
 (defmethod mi/can-read? :model/CacheConfig
   ([instance]
@@ -66,7 +66,7 @@
      "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
      "question"  (mi/can-read? :model/Card (:model_id instance))))
   ([_model pk]
-   (mi/can-read? (cache.db/cache-config pk))))
+   (mi/can-read? (cache.db/select-one-cache-config {:id pk}))))
 
 (defn- can-set-cache-policy?
   "Check if the current user can set a cache policy for an entity.
@@ -103,7 +103,7 @@
 (defn root-strategy
   "Returns root strategy, if it's defined."
   []
-  (cache.db/root-ttl-cache-config))
+  (cache.db/select-one-cache-config {:model "root" :model_id 0 :strategy :ttl}))
 
 (defn row->config
   "Transform from how cache config is stored to how it's used/exposed in the API."
@@ -155,7 +155,7 @@
          :or   {sort_column :name sort_direction :asc}} sort-params
         ;; Only apply sorting when paginating (limit provided) and not querying by id
         apply-sorting? (and limit (nil? id))]
-    (->> (cache.db/cache-configs-page models collection id (when apply-sorting? sort_column) sort_direction limit offset)
+    (->> (cache.db/select-cache-configs-page models collection id (when apply-sorting? sort_column) sort_direction limit offset)
          (mapv row->config))))
 
 (mu/defn get-list-total
@@ -163,7 +163,7 @@
   [models     :- [:sequential :string]
    collection :- [:maybe ms/PositiveInt]
    id         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (:count (cache.db/cache-config-count-row models collection id)))
+  (:count (cache.db/select-cache-config-count-row models collection id)))
 
 (defn store!
   "Store cache configuration in DB."
@@ -177,8 +177,8 @@
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
   [user-id model model-ids]
-  (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
-    (cache.db/delete-cache-configs! model model-ids)
+  (when-let [current (seq (cache.db/select-cache-configs {:model model :model_id (set model-ids)}))]
+    (cache.db/delete-cache-configs! {:model model :model_id (set model-ids)})
     (doseq [item current]
       (audit-caching-change! user-id
                              (:id item)

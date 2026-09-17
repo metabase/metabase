@@ -86,9 +86,9 @@
   {:model/Card        :metabase.queries.schema/card.columns
    :model/Dashboard   :metabase.dashboards.schema/dashboard.columns
    :model/Document    :metabase.documents.schema/document.columns
-   :model/Exploration :metabase.explorations.schema/exploration.update
-   :model/Measure     :metabase.measures.schema/measure.update
-   :model/Segment     :metabase.segments.schema/segment.update
+   :model/Exploration :metabase.explorations.schema/exploration.columns
+   :model/Measure     :metabase.measures.schema/measure.columns
+   :model/Segment     :metabase.segments.schema/segment.columns
    :model/Transform   :metabase.transforms.schema/transform.columns})
 
 (defn- revision-schema-key [prefix model]

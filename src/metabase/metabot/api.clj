@@ -51,7 +51,7 @@
   can originate one. Permissions are participation-based — a conversation can
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
-  (when-let [conversation (metabot.db/conversation conversation-id)]
+  (when-let [conversation (metabot.db/select-one-metabot-conversation {:id conversation-id})]
     (api/check-403 (mi/can-read? conversation))))
 
 (defn- make-out-of-sync-fn

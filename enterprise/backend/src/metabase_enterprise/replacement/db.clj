@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.db
-  "Application database queries for the replacement module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
+  "Application database queries for `:model/ReplacementRun`. Every function following [[::replacement-run-opts]] is a
+  direct Toucan 2 call with no additional logic; queries that do not fit it live in the replacement-only section at
+  the bottom of this namespace."
   (:require
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase.app-db.core :as mdb]
@@ -12,50 +13,75 @@
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn run
-  "The ReplacementRun with `run-id`, or nil."
-  [run-id :- ms/PositiveInt]
-  (t2/select-one :model/ReplacementRun :id run-id))
+(mr/def ::replacement-run-filters
+  "Which ReplacementRuns a query applies to. Keys mirror the columns of `source_replacement_run`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id        {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:is_active {:optional true} :boolean]])
 
-(mu/defn runs
-  "The ReplacementRuns, newest first, restricted to the `is-active` flag when given."
-  [is-active :- [:maybe :boolean]]
-  (t2/select :model/ReplacementRun
-             (cond-> {:order-by [[:start_time :desc]]}
-               (some? is-active) (assoc :where [:= :is_active is-active]))))
+(mr/def ::replacement-run-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::replacement-run-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::replacement.schema/replacement-run.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::replacement.schema/replacement-run.column
+                                              [:tuple ::replacement.schema/replacement-run.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn active-run
-  "The active ReplacementRun, or nil."
-  []
-  (t2/select-one :model/ReplacementRun :is_active true))
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/ReplacementRun columns))
 
-(mu/defn run-active-flag
-  "The `:is_active` row of the ReplacementRun with `run-id`, or nil."
-  [run-id :- ms/PositiveInt]
-  (t2/select-one [:model/ReplacementRun :is_active] :id run-id))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
-(mu/defn insert-run!
-  "Insert `run` and return the new instance."
-  [run :- ::replacement.schema/replacement-run.update]
-  (t2/insert-returning-instance! :model/ReplacementRun run))
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
-(mu/defn update-run!
-  "Apply `changes` to the ReplacementRun with `run-id`, returning the number updated."
-  [run-id  :- ms/PositiveInt
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-replacement-runs :- [:sequential ::replacement.schema/replacement-run.partial]
+  "The ReplacementRuns matching `opts`."
+  ([]
+   (select-replacement-runs nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::replacement-run-opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn select-one-replacement-run :- [:maybe ::replacement.schema/replacement-run.partial]
+  "The first ReplacementRun matching `opts`, or nil."
+  ([]
+   (select-one-replacement-run nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::replacement-run-opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-replacement-run! :- ::replacement.schema/replacement-run
+  "Insert the ReplacementRun `row` and return the inserted instance."
+  [row :- ::replacement.schema/replacement-run.create]
+  (t2/insert-returning-instance! :model/ReplacementRun row))
+
+(mu/defn update-replacement-runs! :- :int
+  "Apply `changes` to every ReplacementRun matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::replacement-run-opts]
    changes :- ::replacement.schema/replacement-run.update]
-  (t2/update! :model/ReplacementRun :id run-id changes))
+  (apply t2/update! :model/ReplacementRun (conj (->kv-args opts) changes)))
 
-(mu/defn update-active-run!
-  "Apply `changes` to the ReplacementRun with `run-id` if it is active, returning the number updated."
-  [run-id  :- ms/PositiveInt
-   changes :- ::replacement.schema/replacement-run.update]
-  (t2/update! :model/ReplacementRun :id run-id :is_active true changes))
+;;; ------------------------------- Queries used only by the replacement module -------------------------------
 
-(mu/defn time-out-active-runs-older-than!
+(mu/defn time-out-active-runs-older-than! :- :int
   "Mark the active ReplacementRuns started more than `age` `unit`s ago as timed out, returning the number updated."
   [age  :- ms/PositiveInt
    unit :- :keyword]

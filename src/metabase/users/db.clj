@@ -125,7 +125,7 @@
 (mu/defn select-user-pk->instance :- [:map-of ::lib.schema.id/user ::users.schema/user.partial]
   "A map of id to the User matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::user-opts]]
-  (apply t2/select-pk->fn identity (->user-model columns) (->user-args opts)))
+  (apply t2/select-pk->fn identity (u.query/model-with-pk-columns :model/User :id columns) (->user-args opts)))
 
 (mu/defn count-users :- :int
   "The number of Users matching `opts`."

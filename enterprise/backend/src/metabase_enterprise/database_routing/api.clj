@@ -37,9 +37,10 @@
                                                    [:map {:closed true}
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/DatabaseDetails]]]]]]
-  (api/check-400 (database-routing.db/router-exists? router_database_id))
-  (api/check-400 (not (warehouses.db/database-exists? {:router_database_id router_database_id :name (set (map :name destinations))}))
-                 "A destination database with that name already exists.")
+  (api/check-400 (database-routing.db/database-router-exists? {:database_id router_database_id}))
+  (let [existing-names (set (map :name (warehouses.db/select-databases {:router_database_id router_database_id, :columns [:name]})))]
+    (api/check-400 (not (some existing-names (map :name destinations)))
+                   "A destination database with that name already exists."))
   (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (warehouses.db/select-one-database {:id router_database_id})]
     (if-let [invalid-destinations (->> destinations
                                        (keep (fn [{details :details n :name}]
@@ -80,7 +81,7 @@
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :disabled}})
-    (database-routing.db/delete-router! db-id)))
+    (database-routing.db/delete-database-routers! {:database_id db-id})))
 
 (defn- create-or-update-router!
   [db-id user-attribute]
@@ -92,9 +93,9 @@
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :enabled
                                                              :routing_attribute user-attribute}})
-    (if (database-routing.db/router-for-database db-id)
-      (database-routing.db/update-router-user-attribute! db-id user-attribute)
-      (database-routing.db/insert-router! db-id user-attribute))))
+    (if (database-routing.db/select-one-database-router {:database_id db-id})
+      (database-routing.db/update-database-routers! {:database_id db-id} {:user_attribute user-attribute})
+      (database-routing.db/insert-database-router! {:database_id db-id :user_attribute user-attribute}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

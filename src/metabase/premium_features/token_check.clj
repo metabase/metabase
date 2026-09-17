@@ -372,7 +372,7 @@
 (defn- read-cache-from-db
   "Read a cached token status hash from the premium_features_token_cache table. Returns nil if not found."
   [token-hash]
-  (premium-features.db/token-status-cache token-hash))
+  (premium-features.db/select-one-premium-features-cache {:token_hash token-hash :columns [:token_status_hash :updated_at]}))
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
@@ -381,19 +381,21 @@
   [token-hash result-hash]
   (t2/with-connection [_conn (app-db/app-db)]
     (let [now     (t/offset-date-time)
-          updated (premium-features.db/update-token-status-cache! token-hash result-hash now)]
+          updated (premium-features.db/update-premium-features-caches! {:token_hash token-hash}
+                                                                       {:token_status_hash result-hash, :updated_at now})]
       (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
         ;; we should always be updating this row with the timestamp if it's there.
         (try
-          (premium-features.db/insert-token-status-cache! token-hash result-hash now)
+          (premium-features.db/insert-premium-features-cache! {:token_hash token-hash, :token_status_hash result-hash, :updated_at now})
           (catch Exception _e
             ;; Another instance inserted first — update instead.
-            (premium-features.db/update-token-status-cache! token-hash result-hash now)))))))
+            (premium-features.db/update-premium-features-caches! {:token_hash token-hash}
+                                                                 {:token_status_hash result-hash, :updated_at now})))))))
 
 (defn- clear-db-cache!
   "Delete all rows from the premium_features_token_cache table."
   []
-  (premium-features.db/delete-token-status-cache!))
+  (premium-features.db/delete-premium-features-caches! nil))
 
 (defn- extract-locks
   "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.

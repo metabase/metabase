@@ -1,6 +1,7 @@
 (ns metabase.pulse.send
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
+   [metabase.channel.db :as channel.db]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.pulse.db :as pulse.db]
@@ -48,7 +49,7 @@
   "The Channel row of an HTTP pulse channel, or nil for email and Slack pulse channels, which have none."
   [{channel-type :channel_type :as pulse-channel}]
   (when (= :http (keyword channel-type))
-    (pulse.db/channel (:channel_id pulse-channel))))
+    (channel.db/select-one-channel {:id (:channel_id pulse-channel)})))
 
 (defn- get-notification-handler
   [pulse-channel]

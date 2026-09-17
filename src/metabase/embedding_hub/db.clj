@@ -2,6 +2,7 @@
   "Application database queries for the embedding hub module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.embedding.db :as embedding.db]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -96,4 +97,4 @@
 (defn custom-embedding-theme?
   "Whether an EmbeddingTheme that Metabase did not seed exists."
   []
-  (t2/exists? :model/EmbeddingTheme :is_default false))
+  (embedding.db/embedding-theme-exists? {:is_default false}))

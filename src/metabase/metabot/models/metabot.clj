@@ -33,7 +33,7 @@
   (mi/instances-with-hydrated-data
    metabots k
    #(group-by :metabot_id
-              (metabot.db/prompts-for-metabots (map :id metabots)))
+              (metabot.db/select-metabot-prompts {:metabot_id (set (map :id metabots))}))
    :id
    {:default []}))
 

@@ -45,14 +45,14 @@
   ([instance]
    (mi/can-read? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
+   (when-let [thread (explorations.db/select-one-thread {:id pk :columns [:exploration_id]})]
      (mi/can-read? :model/Exploration (:exploration_id thread)))))
 
 (defmethod mi/can-write? :model/ExplorationThread
   ([instance]
    (mi/can-write? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
+   (when-let [thread (explorations.db/select-one-thread {:id pk :columns [:exploration_id]})]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]
@@ -60,7 +60,7 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (t2/hydrate (explorations.db/thread-timelines-for-threads (map :id threads)) :timeline))
+              (t2/hydrate (explorations.db/select-thread-timelines {:exploration_thread_id (set (map :id threads)) :order-by [[:position :asc] [:id :asc]]}) :timeline))
    :id
    {:default []}))
 
@@ -69,6 +69,6 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (t2/hydrate (explorations.db/queries-for-threads (map :id threads)) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
+              (t2/hydrate (explorations.db/select-queries {:exploration_thread_id (set (map :id threads)) :order-by [[:position :asc] [:id :asc]]}) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
    :id
    {:default []}))

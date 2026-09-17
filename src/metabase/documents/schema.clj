@@ -56,12 +56,12 @@
   (mr/schema ::document.columns))
 
 (mr/def ::document.update
-  "What an update of a Document accepts: no immutable columns (`:entity_id`, `:created_at`, `:creator_id`,
-  `:content_type`, and `:exploration_id` are all fixed at creation and never change after that)."
+  "What an update of a Document accepts: no immutable columns (`:entity_id`, `:created_at`, `:creator_id` and
+  `:exploration_id` are all fixed at creation and never change after that)."
   (mut/select-keys (mr/schema ::document.columns)
-                   [:name :document :updated_at :collection_id :archived :archived_directly :last_viewed_at
-                    :view_count :collection_position :public_uuid :made_public_by_id :public_uuid_prefix
-                    :is_placeholder]))
+                   [:name :document :content_type :updated_at :collection_id :archived :archived_directly
+                    :last_viewed_at :view_count :collection_position :public_uuid :made_public_by_id
+                    :public_uuid_prefix :is_placeholder]))
 
 (mr/def ::document.partial
   "A Document row as selected, where a `:columns` narrowing may have left out any column."

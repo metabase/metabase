@@ -52,10 +52,10 @@
   models)."
   {:model/Action                   :metabase.actions.schema/action.for-update
    :model/Card                     :metabase.queries.schema/card.columns
-   :model/Channel                  :metabase.channel.schema/channel.update
-   :model/ChannelTemplate          :metabase.channel.schema/channel-template.update
+   :model/Channel                  :metabase.channel.schema/channel.columns
+   :model/ChannelTemplate          :metabase.channel.schema/channel-template.columns
    :model/Collection               :metabase.collections.schema/collection.columns
-   :model/CustomVizPlugin          :metabase-enterprise.custom-viz-plugin.schema/custom-viz-plugin.update
+   :model/CustomVizPlugin          :metabase-enterprise.custom-viz-plugin.schema/custom-viz-plugin.columns
    :model/Dashboard                :metabase.dashboards.schema/dashboard.columns
    :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.columns
    :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.columns
@@ -63,29 +63,29 @@
    :model/Database                 :metabase.warehouses.schema/database.update
    :model/Dimension                :metabase.warehouse-schema.schema/dimension.columns
    :model/Document                 :metabase.documents.schema/document.columns
-   :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.update
-   :model/Exploration              :metabase.explorations.schema/exploration.update
+   :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.columns
+   :model/Exploration              :metabase.explorations.schema/exploration.columns
    :model/Field                    :metabase.warehouse-schema.schema/field.columns
    :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.columns
    :model/FieldValues              :metabase.warehouse-schema.schema/field-values.columns
    :model/Glossary                 :metabase.glossary.schema/glossary.update
-   :model/HTTPAction               :metabase.actions.schema/httpaction.update
-   :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
-   :model/Measure                  :metabase.measures.schema/measure.update
-   :model/Metabot                  :metabase.metabot.schema/metabot.update
-   :model/MetabotPrompt            :metabase.metabot.schema/metabot-prompt.update
+   :model/HTTPAction               :metabase.actions.schema/httpaction.columns
+   :model/ImplicitAction           :metabase.actions.schema/implicit-action.columns
+   :model/Measure                  :metabase.measures.schema/measure.columns
+   :model/Metabot                  :metabase.metabot.schema/metabot.columns
+   :model/MetabotPrompt            :metabase.metabot.schema/metabot-prompt.columns
    :model/NativeQuerySnippet       :metabase.native-query-snippets.schema/native-query-snippet.columns
-   :model/Notification             :metabase.notification.schema/notification.update
-   :model/NotificationCard         :metabase.notification.schema/notification-card.update
-   :model/NotificationHandler      :metabase.notification.schema/notification-handler.update
-   :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.update
-   :model/NotificationSubscription :metabase.notification.schema/notification-subscription.update
+   :model/Notification             :metabase.notification.schema/notification.columns
+   :model/NotificationCard         :metabase.notification.schema/notification-card.columns
+   :model/NotificationHandler      :metabase.notification.schema/notification-handler.columns
+   :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.columns
+   :model/NotificationSubscription :metabase.notification.schema/notification-subscription.columns
    :model/OsiAiContext             :metabase.osi.schema/osi-ai-context.update
-   :model/PythonLibrary            :metabase-enterprise.transforms-python.schema/python-library.update
-   :model/QueryAction              :metabase.actions.schema/query-action.update
-   :model/Segment                  :metabase.segments.schema/segment.update
+   :model/PythonLibrary            :metabase-enterprise.transforms-python.schema/python-library.columns
+   :model/QueryAction              :metabase.actions.schema/query-action.columns
+   :model/Segment                  :metabase.segments.schema/segment.columns
    :model/Table                    :metabase.warehouse-schema.schema/table.columns
-   :model/TableIndex               :metabase.indexes.schema/table-index.update
+   :model/TableIndex               :metabase.indexes.schema/table-index.columns
    :model/Timeline                 :metabase.timeline.schema/timeline.update
    :model/TimelineEvent            :metabase.timeline.schema/timeline-event.update
    :model/Transform                :metabase.transforms.schema/transform.columns

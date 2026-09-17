@@ -39,7 +39,7 @@
   "A Field, as hydrated onto another Field's `:target`/`:name_field` -- only some columns are fetched for these,
   so it's not a full `::warehouse-schema.schema/field`."
   [:merge
-   ::warehouse-schema.schema/field.update
+   ::warehouse-schema.schema/field.columns
    [:map {:closed true}
     [:id {:optional true} ms/PositiveInt]]])
 

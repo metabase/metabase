@@ -1,65 +1,81 @@
 (ns metabase.content-verification.db
   "Application database queries for the content verification module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The queries below follow [[::opts]]; queries that do not fit it live in the content-verification-only section at
+  the bottom of this namespace."
   (:require
-   [malli.util :as mut]
-   [metabase.app-db.core :as app-db]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(mu/defn moderation-reviews-for-items
-  "The ModerationReviews of the items with `item-types` and `item-ids`, newest first."
-  [item-types :- [:set :keyword]
-   item-ids   :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ModerationReview
-             :moderated_item_type [:in item-types]
-             :moderated_item_id [:in item-ids]
-             {:order-by [[:id :desc]]}))
+(mr/def ::filters
+  "Which ModerationReviews a query applies to. Keys mirror the columns of `moderation_review`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:id                  {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:moderated_item_id   {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:moderated_item_type {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:most_recent         {:optional true} :boolean]])
 
-(mu/defn users
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::content-verification.schema/moderation-review.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::content-verification.schema/moderation-review.column
+                                              [:tuple ::content-verification.schema/moderation-review.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/ModerationReview columns))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-moderation-reviews :- [:sequential ::content-verification.schema/moderation-review.partial]
+  "The ModerationReviews matching `opts`."
+  ([]
+   (select-moderation-reviews nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-moderation-review! :- ::content-verification.schema/moderation-review
+  "Insert the ModerationReview `row` and return the inserted instance."
+  [row :- ::content-verification.schema/moderation-review.create]
+  (t2/insert-returning-instance! :model/ModerationReview row))
+
+(mu/defn update-moderation-reviews! :- :int
+  "Apply `changes` to every ModerationReview matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::content-verification.schema/moderation-review.update]
+  (apply t2/update! :model/ModerationReview (conj (->kv-args opts) changes)))
+
+(mu/defn delete-moderation-reviews! :- :int
+  "Delete every ModerationReview matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/ModerationReview (->args opts)))
+
+;;; ------------------------- Queries used only by the content-verification module -------------------------
+
+(mu/defn select-users :- [:sequential :map]
   "The Users with `user-ids`."
   [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
   (t2/select :model/User :id [:in user-ids]))
-
-(mu/defn moderation-review-ids-for-item
-  "The ids of the ModerationReviews of the item with `item-id` and `item-type`, newest first."
-  [item-id   :- ms/PositiveInt
-   item-type :- [:or :string :keyword]]
-  (app-db/query {:select   [:id]
-                 :from     [:moderation_review]
-                 :where    [:and
-                            [:= :moderated_item_id item-id]
-                            [:= :moderated_item_type item-type]]
-                 :order-by [[:id :desc]]}))
-
-(mu/defn most-recent-moderation-review-statuses
-  "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and
-  `item-ids`, newest first."
-  [item-types :- [:set :keyword]
-   item-ids   :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/ModerationReview :moderated_item_id :moderated_item_type :status]
-             :moderated_item_type [:in item-types]
-             :moderated_item_id [:in item-ids]
-             :most_recent true
-             {:order-by [[:id :desc]]}))
-
-(mu/defn delete-moderation-reviews!
-  "Delete the ModerationReviews with `ids`."
-  [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/ModerationReview :id [:in ids]))
-
-(mu/defn unmark-most-recent-moderation-reviews!
-  "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type`."
-  [item-id   :- ms/PositiveInt
-   item-type :- [:or :string :keyword]]
-  (t2/update! :model/ModerationReview
-              {:moderated_item_id item-id, :moderated_item_type item-type}
-              {:most_recent false}))
-
-(mu/defn insert-moderation-review!
-  "Insert the ModerationReview `row` and return the inserted instance."
-  [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
-  (t2/insert-returning-instance! :model/ModerationReview row))

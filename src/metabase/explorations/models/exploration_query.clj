@@ -24,21 +24,22 @@
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [q (explorations.db/query-thread-id-row pk)]
+   (when-let [q (explorations.db/select-one-query {:id pk :columns [:exploration_thread_id]})]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id q)))))
 
 (defmethod mi/can-write? :model/ExplorationQuery
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [q (explorations.db/query-thread-id-row pk)]
+   (when-let [q (explorations.db/select-one-query {:id pk :columns [:exploration_thread_id]})]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
 
 (defn- hydrate-score-from-result [score-key queries]
   (mi/instances-with-hydrated-data
    queries score-key
    #(u/index-by :exploration_query_id score-key
-                (explorations.db/query-result-scores score-key (map :id queries)))
+                (explorations.db/select-query-results {:exploration_query_id (set (map :id queries))
+                                                       :columns              [:exploration_query_id score-key]}))
    :id))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :interestingness_score]

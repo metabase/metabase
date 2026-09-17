@@ -1,9 +1,13 @@
 (ns metabase-enterprise.dependencies.db
   "Application database queries for the dependencies module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
+  additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions.
+
+  This module is dominated by graph/analysis queries (recursive traversal, batch upserts, big `:in` sets) that do not
+  fit a per-model `::opts` shape; those stay bespoke. Where a query on `:model/Dependency`, `:model/DependencyStatus`,
+  `:model/AnalysisFinding`, or `:model/AnalysisFindingError` obviously fits scalar/set filters, it follows that
+  model's `::opts`; everything else lives in the dependencies-only sections."
   (:require
    [clojure.set :as set]
-   [malli.util :as mut]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.core :as mdb]
@@ -15,7 +19,9 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -622,70 +628,55 @@
   (t2/select-pks-set :model/Transform :source_database_id db-id))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
+;;; The queries on `:model/Dependency` below follow [[::dependency-opts]]; the graph traversal above and the
+;;; single-column read at the bottom of this section do not fit it and stay bespoke.
 
-(mu/defn dependencies-from
-  "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
-             :from_entity_type entity-type
-             :from_entity_id entity-id))
+(mr/def ::dependency-filters
+  "Which Dependencies a query applies to. Keys mirror the columns of `dependency`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:id               {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:from_entity_type {:optional true} [:or EntityType [:set EntityType]]]
+   [:from_entity_id   {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:to_entity_type   {:optional true} [:or EntityType [:set EntityType]]]
+   [:to_entity_id     {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(mu/defn dependency-exists?
-  "Whether the entity `from-type` `from-id` depends on the entity `to-type` `to-id`."
-  [from-type :- EntityType
-   from-id   :- ms/PositiveInt
-   to-type   :- EntityType
-   to-id     :- ms/PositiveInt]
-  (t2/exists? :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
+(mr/def ::dependency-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::dependency-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::dependencies.schema/dependency.column]]]])
 
-(mu/defn insert-dependencies!
+(defn- dependency-model [columns] (u.query/model-with-columns :model/Dependency columns))
+(defn- dependency-args [opts] (u.query/opts->args opts))
+(defn- dependency-kv-args [opts] (u.query/opts->kv-args opts))
+
+(mu/defn select-dependencies :- [:sequential ::dependencies.schema/dependency.partial]
+  "The Dependencies matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::dependency-opts]]
+  (apply t2/select (dependency-model columns) (dependency-args opts)))
+
+(mu/defn dependency-exists? :- :boolean
+  "Whether a Dependency matching `opts` exists."
+  [opts :- [:maybe ::dependency-opts]]
+  (apply t2/exists? :model/Dependency (dependency-args opts)))
+
+(mu/defn insert-dependencies! :- :int
   "Insert the Dependency `rows`, returning the number inserted."
-  [rows :- [:sequential [:map {:closed true}
-                         [:id               {:optional true} ms/PositiveInt]
-                         [:from_entity_type {:optional true} [:maybe [:or :keyword :string]]]
-                         [:from_entity_id   {:optional true} [:maybe ms/PositiveInt]]
-                         [:to_entity_type   {:optional true} [:maybe [:or :keyword :string]]]
-                         [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]]]]
+  [rows :- [:sequential ::dependencies.schema/dependency.create]]
   (t2/insert! :model/Dependency rows))
 
-(mu/defn retarget-dependency!
-  "Point the Dependency of the entity `from-type` `from-id` on the entity `old-to-type` `old-to-id` at the entity
-  `new-to-type` `new-to-id`, returning the number updated."
-  [from-type   :- EntityType
-   from-id     :- ms/PositiveInt
-   old-to-type :- EntityType
-   old-to-id   :- ms/PositiveInt
-   new-to-type :- EntityType
-   new-to-id   :- ms/PositiveInt]
-  (t2/update! :model/Dependency
-              {:from_entity_type from-type :from_entity_id from-id
-               :to_entity_type old-to-type :to_entity_id old-to-id}
-              {:to_entity_type new-to-type :to_entity_id new-to-id}))
+(mu/defn update-dependencies! :- :int
+  "Apply `changes` to every Dependency matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::dependency-opts]
+   changes :- ::dependencies.schema/dependency.update]
+  (apply t2/update! :model/Dependency (conj (dependency-kv-args opts) changes)))
 
-(mu/defn delete-dependencies!
-  "Delete the Dependencies with `dependency-ids`, returning the number deleted."
-  [dependency-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Dependency :id [:in dependency-ids]))
-
-(mu/defn delete-dependency!
-  "Delete the Dependency of the entity `from-type` `from-id` on the entity `to-type` `to-id`, returning the number
-  deleted."
-  [from-type :- EntityType
-   from-id   :- ms/PositiveInt
-   to-type   :- EntityType
-   to-id     :- ms/PositiveInt]
-  (t2/delete! :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
-
-(mu/defn delete-dependencies-from!
-  "Delete the Dependencies of the entity `entity-type` `entity-id`, returning the number deleted."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id entity-id))
+(mu/defn delete-dependencies! :- :int
+  "Delete every Dependency matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::dependency-opts]]
+  (apply t2/delete! :model/Dependency (dependency-args opts)))
 
 (mu/defn downstream-table-ids-of-transform
   "The IDs of the Tables that depend on the Transform with `transform-id`."
@@ -695,30 +686,47 @@
                     :to_entity_type   :transform
                     :to_entity_id     transform-id))
 
-(mu/defn delete-table-dependencies-on-transform!
-  "Delete the Dependencies of the Tables with `table-ids` on the Transform with `transform-id`, returning the
-  number deleted."
-  [table-ids    :- [:sequential ::lib.schema.id/table]
-   transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Dependency
-              :from_entity_type :table
-              :from_entity_id   [:in table-ids]
-              :to_entity_type   :transform
-              :to_entity_id     transform-id))
-
 ;;; ------------------------------------------------ Dependency status ------------------------------------------------
+;;; The queries on `:model/DependencyStatus` below follow [[::dependency-status-opts]]; the upsert helpers (which
+;;; branch on whether a row already exists) do not fit it and stay bespoke.
 
-(mu/defn dependency-status
-  "The DependencyStatus of the entity `entity-type` `entity-id`, or nil."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/select-one :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
+(def ^:private dependency-status-set-columns
+  "Maps the `next_retry_at_set` filter key to the column whose nullness it tests."
+  {:next_retry_at_set :next_retry_at})
 
-(mu/defn delete-dependency-status!
-  "Delete the DependencyStatus of the entity `entity-type` `entity-id`, returning the number deleted."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
+(mr/def ::dependency-status-filters
+  "Which DependencyStatuses a query applies to. Keys mirror the columns of `dependency_status`: a scalar matches
+  that value. `:next_retry_at_set` matches the rows where `:next_retry_at` is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:entity_type       {:optional true} EntityType]
+   [:entity_id         {:optional true} ms/PositiveInt]
+   [:terminal          {:optional true} :boolean]
+   [:next_retry_at_set {:optional true} :boolean]])
+
+(mr/def ::dependency-status-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::dependency-status-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::dependencies.schema/dependency-status.column]]]])
+
+(defn- dependency-status-model [columns] (u.query/model-with-columns :model/DependencyStatus columns))
+(defn- dependency-status-args [opts] (u.query/opts->args opts {:set-columns dependency-status-set-columns}))
+
+(mu/defn select-one-dependency-status :- [:maybe ::dependencies.schema/dependency-status.partial]
+  "The first DependencyStatus matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::dependency-status-opts]]
+  (apply t2/select-one (dependency-status-model columns) (dependency-status-args opts)))
+
+(mu/defn dependency-status-exists? :- :boolean
+  "Whether a DependencyStatus matching `opts` exists."
+  [opts :- [:maybe ::dependency-status-opts]]
+  (apply t2/exists? :model/DependencyStatus (dependency-status-args opts)))
+
+(mu/defn delete-dependency-statuses! :- :int
+  "Delete every DependencyStatus matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::dependency-status-opts]]
+  (apply t2/delete! :model/DependencyStatus (dependency-status-args opts)))
 
 (mu/defn mark-dependency-status-stale!
   "Mark the DependencyStatus of `entity-type` `entity-id` as stale for dependency recalculation, creating it if it
@@ -762,7 +770,7 @@
 (mu/defn pending-retry-exists?
   "Whether a non-terminal DependencyStatus is waiting for a retry."
   []
-  (t2/exists? :model/DependencyStatus :terminal false :next_retry_at [:not= nil]))
+  (dependency-status-exists? {:terminal false :next_retry_at_set true}))
 
 (mu/defn instances-for-dependency-calculation
   "Up to `batch-size` instances of the entity type `entity-type` without a DependencyStatus, or whose status is
@@ -795,51 +803,54 @@
                 :limit     batch-size})))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
+;;; The queries on `:model/AnalysisFinding` below follow [[::analysis-finding-opts]]; the join/aggregate query at the
+;;; bottom of this section does not fit it and stays bespoke.
 
-(mu/defn finding-id
-  "The ID of the AnalysisFinding of the entity `entity-type` `entity-id`, or nil."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/select-one-fn :id [:model/AnalysisFinding :id]
-                    :analyzed_entity_type entity-type
-                    :analyzed_entity_id entity-id))
+(mr/def ::analysis-finding-filters
+  "Which AnalysisFindings a query applies to. Keys mirror the columns of `analysis_finding`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:id                   {:optional true} ms/PositiveInt]
+   [:analyzed_entity_type {:optional true} EntityType]
+   [:analyzed_entity_id   {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:stale                {:optional true} :boolean]])
 
-(mu/defn insert-finding!
-  "Insert the AnalysisFinding `row`, returning the number inserted."
-  [row :- [:map {:closed true}
-           [:id                   {:optional true} ms/PositiveInt]
-           [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
-           [:analysis_version     {:optional true} ms/PositiveInt]
-           [:result               {:optional true} :boolean]
-           [:stale                {:optional true} :boolean]
-           [:analyzed_entity_type {:optional true} [:maybe [:or :keyword :string]]]
-           [:analyzed_entity_id   {:optional true} [:maybe ms/PositiveInt]]]]
-  (t2/insert! :model/AnalysisFinding row))
+(mr/def ::analysis-finding-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::analysis-finding-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::dependencies.schema/analysis-finding.column]]]])
 
-(mu/defn update-finding!
-  "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
-  [finding-id :- ms/PositiveInt
-   changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update [:analyzed_at :analysis_version :result :stale])]
-  (t2/update! :model/AnalysisFinding finding-id changes))
+(defn- analysis-finding-model [columns] (u.query/model-with-columns :model/AnalysisFinding columns))
+(defn- analysis-finding-args [opts] (u.query/opts->args opts))
+(defn- analysis-finding-kv-args [opts] (u.query/opts->kv-args opts))
 
-(mu/defn mark-findings-stale!
-  "Mark the AnalysisFindings of the entities `entity-type` `entity-ids` as stale, returning the number updated."
-  [entity-type :- EntityType
-   entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/AnalysisFinding
-              :analyzed_entity_type entity-type
-              :analyzed_entity_id [:in entity-ids]
-              {:stale true}))
+(mu/defn select-one-analysis-finding-pk :- [:maybe ms/PositiveInt]
+  "The id of the first AnalysisFinding matching `opts`, or nil."
+  [opts :- [:maybe ::analysis-finding-opts]]
+  (apply t2/select-one-pk :model/AnalysisFinding (analysis-finding-args opts)))
 
-(mu/defn stale-finding-exists?
-  "Whether a stale AnalysisFinding exists."
-  []
-  (t2/exists? :model/AnalysisFinding :stale true))
+(mu/defn insert-analysis-finding! :- ::dependencies.schema/analysis-finding
+  "Insert the AnalysisFinding `row` and return the inserted instance."
+  [row :- ::dependencies.schema/analysis-finding.create]
+  (t2/insert-returning-instance! :model/AnalysisFinding row))
 
-(mu/defn stale-finding-count
-  "The number of stale AnalysisFindings."
-  []
-  (t2/count :model/AnalysisFinding :stale true))
+(mu/defn update-analysis-findings! :- :int
+  "Apply `changes` to every AnalysisFinding matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::analysis-finding-opts]
+   changes :- ::dependencies.schema/analysis-finding.update]
+  (apply t2/update! :model/AnalysisFinding (conj (analysis-finding-kv-args opts) changes)))
+
+(mu/defn analysis-finding-exists? :- :boolean
+  "Whether an AnalysisFinding matching `opts` exists."
+  [opts :- [:maybe ::analysis-finding-opts]]
+  (apply t2/exists? :model/AnalysisFinding (analysis-finding-args opts)))
+
+(mu/defn count-analysis-findings :- :int
+  "The number of AnalysisFindings matching `opts`."
+  [opts :- [:maybe ::analysis-finding-opts]]
+  (apply t2/count :model/AnalysisFinding (analysis-finding-args opts)))
 
 (mu/defn instances-for-analysis
   "Up to `batch-size` instances of the entity type `entity-type` whose AnalysisFinding is stale, missing, or below
@@ -904,26 +915,39 @@
                                    [:< :finding/analyzed_at :field_updates/last_field_update]]]}))
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
+;;; The queries on `:model/AnalysisFindingError` below follow [[::analysis-finding-error-opts]]; the visibility-aware
+;;; reads above do not fit it and stay bespoke.
 
-(mu/defn finding-errors-for-entity
-  "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
+(mr/def ::analysis-finding-error-filters
+  "Which AnalysisFindingErrors a query applies to. Keys mirror the columns of `analysis_finding_error`: a scalar
+  matches that value."
+  [:map {:closed true}
+   [:analyzed_entity_type {:optional true} EntityType]
+   [:analyzed_entity_id   {:optional true} ms/PositiveInt]
+   [:source_entity_type   {:optional true} [:maybe EntityType]]
+   [:source_entity_id     {:optional true} ms/PositiveInt]])
 
-(mu/defn finding-errors-from-source
-  "The AnalysisFindingErrors caused by the entity `source-type` `source-id`."
-  [source-type :- [:maybe :metabase.lib.schema.validate/source-entity-type]
-   source-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id source-id))
+(mr/def ::analysis-finding-error-opts
+  "The filters above plus the columns to select."
+  [:merge
+   ::analysis-finding-error-filters
+   [:map {:closed true}
+    [:columns {:optional true} [:sequential ::dependencies.schema/analysis-finding-error.column]]]])
 
-(mu/defn insert-finding-errors!
+(defn- analysis-finding-error-model [columns] (u.query/model-with-columns :model/AnalysisFindingError columns))
+(defn- analysis-finding-error-args [opts] (u.query/opts->args opts))
+
+(mu/defn select-analysis-finding-errors :- [:sequential ::dependencies.schema/analysis-finding-error.partial]
+  "The AnalysisFindingErrors matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::analysis-finding-error-opts]]
+  (apply t2/select (analysis-finding-error-model columns) (analysis-finding-error-args opts)))
+
+(mu/defn insert-analysis-finding-errors! :- :int
   "Insert the AnalysisFindingError `rows`, returning the number inserted."
-  [rows :- [:sequential (mut/select-keys ::dependencies.schema/analysis-finding-error.update [:analyzed_entity_type :analyzed_entity_id :error_type :error_detail :source_entity_type :source_entity_id])]]
+  [rows :- [:sequential ::dependencies.schema/analysis-finding-error.create]]
   (t2/insert! :model/AnalysisFindingError rows))
 
-(mu/defn delete-finding-errors-for-entity!
-  "Delete the AnalysisFindingErrors of the entity `entity-type` `entity-id`, returning the number deleted."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
+(mu/defn delete-analysis-finding-errors! :- :int
+  "Delete every AnalysisFindingError matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::analysis-finding-error-opts]]
+  (apply t2/delete! :model/AnalysisFindingError (analysis-finding-error-args opts)))

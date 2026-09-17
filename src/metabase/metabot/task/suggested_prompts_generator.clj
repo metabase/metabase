@@ -32,12 +32,12 @@
 
 (defn- generate-suggested-prompts-for-metabot! [config-id]
   (let [metabot-eid (get-in metabot.config/metabot-config [config-id :entity-id])
-        metabot-id  (metabot.db/metabot-id-by-entity-id metabot-eid)]
+        metabot-id  (metabot.db/select-one-metabot-pk {:entity_id metabot-eid})]
     (cond
       (nil? metabot-id)
       (log/warnf "No Metabot instance found for %s. Skipping suggested prompt generation." config-id)
 
-      (pos? (metabot.db/prompt-count-for-metabot metabot-id))
+      (pos? (metabot.db/count-metabot-prompts {:metabot_id metabot-id}))
       (log/infof "Suggested prompts are present for %s. Not generating." config-id)
 
       :else

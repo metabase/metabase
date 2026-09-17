@@ -110,7 +110,7 @@
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (search.db/index-metadata-for-engine :appdb)}))))
+                       :index-metadata     (search.db/select-search-index-metadata {:engine :appdb})}))))
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try

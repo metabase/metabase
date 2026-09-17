@@ -1,6 +1,7 @@
 (ns metabase.explorations.schema
   "Malli schemas for the explorations module."
   (:require
+   [malli.util :as mut]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -11,12 +12,12 @@
 (mr/def ::exploration
   "A Exploration as selected from the app DB: every column of `:exploration`."
   [:merge
-   ::exploration.update
+   ::exploration.columns
    [:map {:closed true}
     [:id                  ms/PositiveInt]]])
 
-(mr/def ::exploration.update
-  "What an update (or insert) of a Exploration accepts: every column of `:exploration` except `id`, all optional."
+(mr/def ::exploration.columns
+  "Every column of `:exploration` except `id`, all optional."
   [:map {:closed true}
    [:name                {:optional true} [:maybe :string]]
    [:description         {:optional true} [:maybe :string]]
@@ -28,6 +29,30 @@
    [:entity_id           {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::exploration.create
+  "What an insert of a Exploration accepts: every column of `:exploration` except `id`, all optional."
+  ::exploration.columns)
+
+(mr/def ::exploration.update
+  "What an update of a Exploration accepts: every column of `:exploration` except `id`, `creator_id`, `entity_id`,
+  and `created_at`, all optional."
+  [:map {:closed true}
+   [:name                {:optional true} [:maybe :string]]
+   [:description         {:optional true} [:maybe :string]]
+   [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived            {:optional true} [:maybe :boolean]]
+   [:archived_directly   {:optional true} [:maybe :boolean]]
+   [:collection_position {:optional true} [:maybe :int]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::exploration.partial
+  "A Exploration row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::exploration.column
+  "A column of `exploration`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration.columns))))
 
 (mr/def ::exploration-block.metric.explore-filter
   "One entry of a block metric selection's `:explore_filters` vector, decoded."
@@ -56,20 +81,20 @@
 (mr/def ::exploration-block.dimension
   "One entry of the `:dimensions` column of a ExplorationBlock, decoded."
   [:map {:closed true}
-   [:dimension-id   ms/UUIDString]
+   [:dimension-id   :string]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :string]]
-   [:semantic-type  {:optional true} [:maybe :string]]])
+   [:effective-type {:optional true} [:maybe [:or :keyword :string]]]
+   [:semantic-type  {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
   [:merge
-   ::exploration-block.update
+   ::exploration-block.columns
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
-(mr/def ::exploration-block.update
-  "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
+(mr/def ::exploration-block.columns
+  "Every column of `:exploration_block` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:metrics               {:optional true} [:maybe [:sequential ::exploration-block.metric]]]
@@ -78,15 +103,27 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]])
 
+(mr/def ::exploration-block.create
+  "What an insert of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
+  ::exploration-block.columns)
+
+(mr/def ::exploration-block.partial
+  "A ExplorationBlock row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration-block [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::exploration-block.column
+  "A column of `exploration_block`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-block.columns))))
+
 (mr/def ::exploration-page
   "A ExplorationPage as selected from the app DB: every column of `:exploration_page`."
   [:merge
-   ::exploration-page.update
+   ::exploration-page.columns
    [:map {:closed true}
     [:id                   ms/PositiveInt]]])
 
-(mr/def ::exploration-page.update
-  "What an update (or insert) of a ExplorationPage accepts: every column of `:exploration_page` except `id`, all optional."
+(mr/def ::exploration-page.columns
+  "Every column of `:exploration_page` except `id`, all optional."
   [:map {:closed true}
    [:entity_id            {:optional true} [:maybe :string]]
    [:exploration_block_id {:optional true} [:maybe ms/PositiveInt]]
@@ -98,6 +135,30 @@
    [:hidden               {:optional true} [:maybe :boolean]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at           {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::exploration-page.create
+  "What an insert of a ExplorationPage accepts: every column of `:exploration_page` except `id`, all optional."
+  ::exploration-page.columns)
+
+(mr/def ::exploration-page.update
+  "What an update of a ExplorationPage accepts: every column of `:exploration_page` except `id`, `exploration_block_id`,
+  `entity_id`, and `created_at`, all optional."
+  [:map {:closed true}
+   [:card_id      {:optional true} [:maybe ::lib.schema.id/card]]
+   [:dimension_id {:optional true} [:maybe :string]]
+   [:query_type   {:optional true} [:maybe [:or :keyword :string]]]
+   [:position     {:optional true} [:maybe :int]]
+   [:starred      {:optional true} [:maybe :boolean]]
+   [:hidden       {:optional true} [:maybe :boolean]]
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::exploration-page.partial
+  "A ExplorationPage row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration-page [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::exploration-page.column
+  "A column of `exploration_page`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-page.columns))))
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
@@ -121,12 +182,12 @@
 (mr/def ::exploration-query
   "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
   [:merge
-   ::exploration-query.update
+   ::exploration-query.columns
    [:map {:closed true}
     [:id                     ms/PositiveInt]]])
 
-(mr/def ::exploration-query.update
-  "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."
+(mr/def ::exploration-query.columns
+  "Every column of `:exploration_query` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id  {:optional true} [:maybe ms/PositiveInt]]
    [:page_id                {:optional true} [:maybe ms/PositiveInt]]
@@ -150,6 +211,37 @@
    [:updated_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]])
 
+(mr/def ::exploration-query.create
+  "What an insert of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."
+  ::exploration-query.columns)
+
+(mr/def ::exploration-query.update
+  "What an update of a ExplorationQuery accepts: every column of `:exploration_query` except `id`,
+  `exploration_thread_id`, `entity_id`, and `created_at`, all optional."
+  [:map {:closed true}
+   [:page_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:name                   {:optional true} [:maybe :string]]
+   [:card_id                {:optional true} [:maybe ::lib.schema.id/card]]
+   [:database_id            {:optional true} [:maybe ::lib.schema.id/database]]
+   [:segment_id             {:optional true} [:maybe ::lib.schema.id/segment]]
+   [:dimension_id           {:optional true} [:maybe :string]]
+   [:query_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:display                {:optional true} [:maybe [:or :keyword :string]]]
+   [:visualization_settings {:optional true} [:maybe ::exploration-query.visualization-settings]]
+   [:dataset_query          {:optional true} [:maybe ::exploration-query.dataset-query]]
+   [:params                 {:optional true} [:maybe ::exploration-query.params]]
+   [:position               {:optional true} [:maybe :int]]
+   [:status                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message          {:optional true} [:maybe :string]]
+   [:started_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:finished_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]])
+
+(mr/def ::exploration-query.partial
+  "A ExplorationQuery row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration-query [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::exploration-query-result.chart-stats
   "The `:chart_stats` column of a ExplorationQueryResult, decoded."
   ::chart.types/chart-stats)
@@ -157,12 +249,12 @@
 (mr/def ::exploration-query-result
   "A ExplorationQueryResult as selected from the app DB: every column of `:exploration_query_result`."
   [:merge
-   ::exploration-query-result.update
+   ::exploration-query-result.columns
    [:map {:closed true}
     [:id                               ms/PositiveInt]]])
 
-(mr/def ::exploration-query-result.update
-  "What an update (or insert) of a ExplorationQueryResult accepts: every column of `:exploration_query_result` except `id`, all optional."
+(mr/def ::exploration-query-result.columns
+  "Every column of `:exploration_query_result` except `id`, all optional."
   [:map {:closed true}
    [:exploration_query_id             {:optional true} [:maybe ms/PositiveInt]]
    [:stored_result_id                 {:optional true} [:maybe ms/PositiveInt]]
@@ -172,6 +264,18 @@
    [:chart_stats                      {:optional true} [:maybe ::exploration-query-result.chart-stats]]
    [:metric_description               {:optional true} [:maybe :string]]
    [:chart_description                {:optional true} [:maybe :string]]])
+
+(mr/def ::exploration-query-result.create
+  "What an insert of a ExplorationQueryResult accepts: every column of `:exploration_query_result` except `id`, all optional."
+  ::exploration-query-result.columns)
+
+(mr/def ::exploration-query-result.partial
+  "A ExplorationQueryResult row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration-query-result [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::exploration-query-result.column
+  "A column of `exploration_query_result`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-query-result.columns))))
 
 (mr/def ::exploration-thread.query-plan-transcript.plan-item
   "One entry of the `:plan` a query planner emits."
@@ -233,12 +337,12 @@
 (mr/def ::exploration-thread
   "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
   [:merge
-   ::exploration-thread.update
+   ::exploration-thread.columns
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
-(mr/def ::exploration-thread.update
-  "What an update (or insert) of a ExplorationThread accepts: every column of `:exploration_thread` except `id`, all optional."
+(mr/def ::exploration-thread.columns
+  "Every column of `:exploration_thread` except `id`, all optional."
   [:map {:closed true}
    [:exploration_id        {:optional true} [:maybe ms/PositiveInt]]
    [:name                  {:optional true} [:maybe :string]]
@@ -256,18 +360,63 @@
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
 
+(mr/def ::exploration-thread.create
+  "What an insert of a ExplorationThread accepts: every column of `:exploration_thread` except `id`, all optional."
+  ::exploration-thread.columns)
+
+(mr/def ::exploration-thread.update
+  "What an update of a ExplorationThread accepts: every column of `:exploration_thread` except `id`, `exploration_id`,
+  `entity_id`, and `created_at`, all optional."
+  [:map {:closed true}
+   [:name                  {:optional true} [:maybe :string]]
+   [:prompt                {:optional true} [:maybe :string]]
+   [:position              {:optional true} [:maybe :int]]
+   [:source_page_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:started_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
+   [:completed_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:analysis_started_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:query_plan_transcript {:optional true} [:maybe ::exploration-thread.query-plan-transcript]]
+   [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
+
+(mr/def ::exploration-thread.partial
+  "A ExplorationThread row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration-thread [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::exploration-thread.column
+  "A column of `exploration_thread`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-thread.columns))))
+
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."
   [:merge
-   ::exploration-thread-timeline.update
+   ::exploration-thread-timeline.columns
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
-(mr/def ::exploration-thread-timeline.update
-  "What an update (or insert) of a ExplorationThreadTimeline accepts: every column of `:exploration_thread_timeline` except `id`, all optional."
+(mr/def ::exploration-thread-timeline.columns
+  "Every column of `:exploration_thread_timeline` except `id`, all optional."
   [:map {:closed true}
    [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
    [:position              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::exploration-thread-timeline.create
+  "What an insert of a ExplorationThreadTimeline accepts: every column of `:exploration_thread_timeline` except `id`, all optional."
+  ::exploration-thread-timeline.columns)
+
+(mr/def ::exploration-thread-timeline.partial
+  "A ExplorationThreadTimeline row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::exploration-thread-timeline [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::exploration-thread-timeline.column
+  "A column of `exploration_thread_timeline`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-thread-timeline.columns))))
+
+(mr/def ::exploration-query.column
+  "A column of `exploration_query`, for the `:columns` option of the queries in [[metabase.explorations.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::exploration-query.columns))))

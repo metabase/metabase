@@ -52,7 +52,7 @@
   [pulse-id]
   (tracing/with-span :tasks "task.pulse.clear-orphan-channels" {:pulse/id pulse-id}
     (when-let [ids-to-delete (seq
-                              (for [channel (pulse.db/pulse-channels-without-recipients pulse-id)
+                              (for [channel (pulse.db/select-pulse-channels-without-recipients pulse-id)
                                     :when  (case (:channel_type channel)
                                              :email
                                              (empty? (get-in channel [:details :emails]))
@@ -62,7 +62,7 @@
                                              (nil? (:channel_id channel)))]
                                 (:id channel)))]
       (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-      (pulse.db/delete-pulse-channels! ids-to-delete)
+      (pulse.db/delete-pulse-channels! {:id (set ids-to-delete)})
       (set ids-to-delete))))
 
 (defn- send-pulse!*
@@ -72,7 +72,7 @@
   [pulse-id channel-ids]
   (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
         to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
-        to-send-enabled-channel-ids (pulse.db/enabled-pulse-channel-ids to-send-channel-ids)]
+        to-send-enabled-channel-ids (pulse.db/select-pulse-channel-pks {:id to-send-channel-ids :enabled true})]
     (if (seq to-send-enabled-channel-ids)
       (send-pulse! pulse-id to-send-enabled-channel-ids)
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))

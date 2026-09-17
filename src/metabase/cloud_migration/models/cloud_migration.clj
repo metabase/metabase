@@ -218,7 +218,7 @@
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
-        (cloud-migration.db/set-cloud-migration-state! id :init))
+        (cloud-migration.db/update-cloud-migrations! {:id id} {:state :init}))
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -251,7 +251,7 @@
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do
-            (cloud-migration.db/set-cloud-migration-state! id :error)
+            (cloud-migration.db/update-cloud-migrations! {:id id} {:state :error})
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {} e)))))
       (finally
@@ -290,7 +290,7 @@
   (cloud-migration.db/insert-cloud-migration! (get-store-migration))
 
   ;; get migration
-  @(def mig (cloud-migration.db/latest-cloud-migration))
+  @(def mig (cloud-migration.db/select-one-cloud-migration {:order-by [[:created_at :desc]]}))
 
   ;; migrate
   (migrate! mig)

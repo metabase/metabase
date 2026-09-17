@@ -7,9 +7,59 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mr/def ::remote-sync-object-filters
+  "Which RemoteSyncObjects a query applies to. Keys mirror the columns of `remote_sync_object`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id         {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:model_type {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:model_id   {:optional true} [:or :int [:set :int]]]
+   [:status     {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:file_path  {:optional true} :string]])
+
+(mr/def ::remote-sync-object-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::remote-sync-object-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::remote-sync.schema/remote-sync-object.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::remote-sync.schema/remote-sync-object.column
+                                              [:tuple ::remote-sync.schema/remote-sync-object.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- rso-model-with-columns [columns] (u.query/model-with-columns :model/RemoteSyncObject columns))
+(defn- rso-args [opts] (u.query/opts->args opts))
+(defn- rso-kv-args [opts] (u.query/opts->kv-args opts))
+
+(mr/def ::remote-sync-task-filters
+  "Which RemoteSyncTasks a query applies to. Keys mirror the columns of `remote_sync_task`: a scalar matches that
+  value and a set matches any of its values."
+  [:map {:closed true}
+   [:id {:optional true} ms/PositiveInt]])
+
+(mr/def ::remote-sync-task-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::remote-sync-task-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::remote-sync.schema/remote-sync-task.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::remote-sync.schema/remote-sync-task.column
+                                              [:tuple ::remote-sync.schema/remote-sync-task.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- task-model-with-columns [columns] (u.query/model-with-columns :model/RemoteSyncTask columns))
+(defn- task-args [opts] (u.query/opts->args opts))
+(defn- task-kv-args [opts] (u.query/opts->kv-args opts))
 
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
@@ -412,13 +462,67 @@
                      [:and [:= :model_type model_type] [:= :model_id model_id]]))
         rows))
 
-(mu/defn rso
-  "The RemoteSyncObject of the entity `model-type` `model-id`, or nil."
-  [model-type :- :string
-   model-id   :- ModelId]
-  (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))
+;;; ---- RemoteSyncObject reads ----
 
-(mu/defn lock-rso
+(mu/defn select-remote-sync-objects :- [:sequential ::remote-sync.schema/remote-sync-object.partial]
+  "The RemoteSyncObjects matching `opts`."
+  ([]
+   (select-remote-sync-objects nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::remote-sync-object-opts]]
+   (apply t2/select (rso-model-with-columns columns) (rso-args opts))))
+
+(mu/defn select-one-remote-sync-object :- [:maybe ::remote-sync.schema/remote-sync-object.partial]
+  "The first RemoteSyncObject matching `opts`, or nil."
+  ([]
+   (select-one-remote-sync-object nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::remote-sync-object-opts]]
+   (apply t2/select-one (rso-model-with-columns columns) (rso-args opts))))
+
+(mu/defn select-remote-sync-object-pks :- [:set ms/PositiveInt]
+  "The ids of the RemoteSyncObjects matching `opts`."
+  ([]
+   (select-remote-sync-object-pks nil))
+  ([opts :- [:maybe ::remote-sync-object-opts]]
+   (or (apply t2/select-pks-set :model/RemoteSyncObject (rso-args opts)) #{})))
+
+(mu/defn count-remote-sync-objects :- :int
+  "The number of RemoteSyncObjects matching `opts`."
+  ([]
+   (count-remote-sync-objects nil))
+  ([opts :- [:maybe ::remote-sync-object-opts]]
+   (apply t2/count :model/RemoteSyncObject (rso-args opts))))
+
+(mu/defn remote-sync-object-exists? :- :boolean
+  "Whether a RemoteSyncObject matching `opts` exists."
+  [opts :- [:maybe ::remote-sync-object-opts]]
+  (apply t2/exists? :model/RemoteSyncObject (rso-args opts)))
+
+;;; ---- RemoteSyncObject writes ----
+
+(mu/defn insert-remote-sync-object! :- ::remote-sync.schema/remote-sync-object
+  "Insert the RemoteSyncObject `row` and return the inserted instance."
+  [row :- ::remote-sync.schema/remote-sync-object.create]
+  (t2/insert-returning-instance! :model/RemoteSyncObject row))
+
+(mu/defn insert-remote-sync-objects! :- [:sequential ::remote-sync.schema/remote-sync-object]
+  "Insert the RemoteSyncObject `rows` and return the inserted instances."
+  [rows :- [:sequential ::remote-sync.schema/remote-sync-object.create]]
+  (t2/insert-returning-instances! :model/RemoteSyncObject rows))
+
+(mu/defn update-remote-sync-objects! :- :int
+  "Apply `changes` to every RemoteSyncObject matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::remote-sync-object-opts]
+   changes :- ::remote-sync.schema/remote-sync-object.update]
+  (apply t2/update! :model/RemoteSyncObject (conj (rso-kv-args opts) changes)))
+
+(mu/defn delete-remote-sync-objects! :- :int
+  "Delete every RemoteSyncObject matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::remote-sync-object-opts]]
+  (apply t2/delete! :model/RemoteSyncObject (rso-args opts)))
+
+;;; ---- Queries used only by the remote-sync module (RemoteSyncObject) ----
+
+(mu/defn lock-remote-sync-object
   "The RemoteSyncObject of the entity `model-type` `model-id`, locked for update, or nil."
   [model-type :- :string
    model-id   :- ModelId]
@@ -426,48 +530,12 @@
                  {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
                   :for   :update}))
 
-(mu/defn rso-by-file-path
-  "The RemoteSyncObject at `file-path`, or nil."
-  [file-path :- :string]
-  (t2/select-one :model/RemoteSyncObject :file_path file-path))
-
-(mu/defn rso-exists?
-  "Whether the entity `model-type` `model-id` has a RemoteSyncObject."
-  [model-type :- :string
-   model-id   :- ModelId]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
-
-(mu/defn rso-of-type-exists?
-  "Whether any entity of `model-type` has a RemoteSyncObject."
-  [model-type :- :string]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type))
-
-(mu/defn rso-count-of-type
-  "The number of RemoteSyncObjects of `model-type`."
-  [model-type :- :string]
-  (t2/count :model/RemoteSyncObject :model_type model-type))
-
-(mu/defn rso-keys
-  "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
-  []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
-
-(mu/defn departed-rso-keys
-  "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
-  []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :status [:in ["removed" "delete"]]))
-
-(mu/defn all-rso-ids
-  "The IDs of every RemoteSyncObject."
-  []
-  (t2/select-pks-set :model/RemoteSyncObject))
-
-(mu/defn unsynced-rsos
+(mu/defn select-unsynced-remote-sync-objects
   "The RemoteSyncObjects whose status is not synced."
   []
   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
 
-(mu/defn dirty-rso-exists?
+(mu/defn dirty-remote-sync-object-exists?
   "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
   [excluded-model-types :- [:set :string]]
   (t2/exists? :model/RemoteSyncObject
@@ -476,7 +544,7 @@
                        (when (seq excluded-model-types)
                          [:not-in :model_type excluded-model-types])]}))
 
-(mu/defn dirty-rsos
+(mu/defn select-dirty-remote-sync-objects
   "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
   [excluded-model-types :- [:set :string]]
   (t2/select :model/RemoteSyncObject
@@ -485,18 +553,12 @@
                       (when (seq excluded-model-types)
                         [:not-in :model_type excluded-model-types])]}))
 
-(mu/defn tracked-model-ids
+(mu/defn select-remote-sync-object-model-ids :- [:set :int]
   "The model IDs of the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type))
+  (or (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type) #{}))
 
-(mu/defn rsos-of-models
-  "The RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type :- :string
-   model-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
-
-(mu/defn active-child-rsos
+(mu/defn select-active-child-remote-sync-objects
   "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
   [model-type :- :string
    table-id   :- ::lib.schema.id/table]
@@ -505,12 +567,12 @@
              :model_table_id table-id
              :status [:not-in ["removed" "delete"]]))
 
-(mu/defn content-rso-statuses
+(mu/defn select-content-remote-sync-object-statuses
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
 
-(mu/defn removed-content-rso-ids
+(mu/defn select-removed-content-remote-sync-object-pks
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their
   contents."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
@@ -519,35 +581,7 @@
                               [:= :status "removed"]
                               (contents-rso-expr collection-ids)]}))
 
-(mu/defn insert-rso!
-  "Insert the RemoteSyncObject `row`."
-  [row :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/insert! :model/RemoteSyncObject row))
-
-(mu/defn insert-rsos!
-  "Insert the RemoteSyncObject `rows`."
-  [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
-  (t2/insert! :model/RemoteSyncObject rows))
-
-(mu/defn update-rso!
-  "Apply `changes` to the RemoteSyncObject with `rso-id`."
-  [rso-id  :- ms/PositiveInt
-   changes :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/update! :model/RemoteSyncObject rso-id changes))
-
-(mu/defn set-rsos-status!
-  "Set the status of the RemoteSyncObjects with `rso-ids` to `status` as of `timestamp`."
-  [rso-ids   :- [:sequential ms/PositiveInt]
-   status    :- :string
-   timestamp :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject :id [:in rso-ids] {:status status :status_changed_at timestamp}))
-
-(mu/defn mark-all-rsos-synced!
-  "Mark every RemoteSyncObject as synced as of `timestamp`."
-  [timestamp :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at timestamp}))
-
-(mu/defn mark-rsos-synced!
+(mu/defn mark-remote-sync-objects-synced!
   "Mark the RemoteSyncObjects with `rso-ids` as synced as of `timestamp`, writing the `:file_path` and
   `:content_hash` of those in `metadata-by-id` and keeping the existing values of the others."
   [rso-ids        :- [:sequential ms/PositiveInt]
@@ -574,59 +608,53 @@
                                                     metadata-by-id)
                                             [:else :content_hash]))))))
 
-(mu/defn delete-rso!
-  "Delete the RemoteSyncObject with `rso-id`."
-  [rso-id :- ms/PositiveInt]
-  (t2/delete! :model/RemoteSyncObject rso-id))
-
-(mu/defn delete-rsos!
-  "Delete the RemoteSyncObjects with `rso-ids`."
-  [rso-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/RemoteSyncObject :id [:in rso-ids]))
-
-(mu/defn delete-rso-of!
-  "Delete the RemoteSyncObject of the entity `model-type` `model-id`."
-  [model-type :- :string
-   model-id   :- ModelId]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id))
-
-(mu/defn delete-rsos-of-type!
-  "Delete the RemoteSyncObjects of `model-type`."
-  [model-type :- :string]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type))
-
-(mu/defn delete-rsos-of-models!
-  "Delete the RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type :- :string
-   model-ids  :- [:set ms/PositiveInt]]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
-
-(mu/defn delete-rsos-of-keys!
+(mu/defn delete-remote-sync-objects-of-keys!
   "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`."
-  [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
+  [rows :- [:sequential ::remote-sync.schema/remote-sync-object.columns]]
   (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
-(mu/defn delete-all-rsos!
-  "Delete every RemoteSyncObject."
-  []
-  (t2/delete! :model/RemoteSyncObject))
+;;; ---- RemoteSyncTask reads ----
 
-(mu/defn task
-  "The RemoteSyncTask with `task-id`, or nil."
-  [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask task-id))
+(mu/defn select-remote-sync-tasks :- [:sequential ::remote-sync.schema/remote-sync-task.partial]
+  "The RemoteSyncTasks matching `opts`."
+  ([]
+   (select-remote-sync-tasks nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::remote-sync-task-opts]]
+   (apply t2/select (task-model-with-columns columns) (task-args opts))))
 
-(mu/defn lock-task
+(mu/defn select-one-remote-sync-task :- [:maybe ::remote-sync.schema/remote-sync-task.partial]
+  "The first RemoteSyncTask matching `opts`, or nil."
+  ([]
+   (select-one-remote-sync-task nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::remote-sync-task-opts]]
+   (apply t2/select-one (task-model-with-columns columns) (task-args opts))))
+
+;;; ---- RemoteSyncTask writes ----
+
+(mu/defn insert-remote-sync-task! :- ::remote-sync.schema/remote-sync-task
+  "Insert the RemoteSyncTask `row` and return the inserted instance."
+  [row :- ::remote-sync.schema/remote-sync-task.create]
+  (t2/insert-returning-instance! :model/RemoteSyncTask row))
+
+(mu/defn update-remote-sync-tasks! :- :int
+  "Apply `changes` to every RemoteSyncTask matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::remote-sync-task-opts]
+   changes :- ::remote-sync.schema/remote-sync-task.update]
+  (apply t2/update! :model/RemoteSyncTask (conj (task-kv-args opts) changes)))
+
+;;; ---- Queries used only by the remote-sync module (RemoteSyncTask) ----
+
+(mu/defn lock-remote-sync-task
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
   [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask :id task-id {:for :update}))
 
-(mu/defn task-cancelled?
+(mu/defn remote-sync-task-cancelled?
   "The cancelled flag of the RemoteSyncTask with `task-id`."
   [task-id :- ms/PositiveInt]
   (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
 
-(mu/defn current-task
+(mu/defn select-current-remote-sync-task
   "The newest started, unfinished RemoteSyncTask that reported progress after `progress-cutoff`, or nil."
   [progress-cutoff :- ms/TemporalInstant]
   (t2/select-one :model/RemoteSyncTask
@@ -638,7 +666,7 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(mu/defn most-recent-task
+(mu/defn select-most-recent-remote-sync-task
   "The newest started RemoteSyncTask, or nil."
   []
   (t2/select-one :model/RemoteSyncTask
@@ -648,7 +676,7 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(mu/defn last-successful-task
+(mu/defn select-last-successful-remote-sync-task
   "The newest finished RemoteSyncTask that was neither cancelled nor failed and recorded a version, or nil."
   []
   (t2/select-one :model/RemoteSyncTask
@@ -661,30 +689,19 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(mu/defn insert-task!
-  "Insert `task` and return the new instance."
-  [task :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/insert-returning-instance! :model/RemoteSyncTask task))
-
-(mu/defn update-task!
-  "Apply `changes` to the RemoteSyncTask with `task-id`."
-  [task-id :- ms/PositiveInt
-   changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask task-id changes))
-
-(mu/defn end-task!
+(mu/defn end-remote-sync-task!
   "Apply `changes` to the RemoteSyncTask with `task-id` and mark it ended now."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask task-id (assoc changes :ended_at :%now)))
+  (update-remote-sync-tasks! {:id task-id} (assoc changes :ended_at :%now)))
 
-(mu/defn report-task-progress!
+(mu/defn report-remote-sync-task-progress!
   "Record `progress` for the RemoteSyncTask with `task-id`, stamping the progress report time."
   [task-id  :- ms/PositiveInt
    progress :- number?]
-  (t2/update! :model/RemoteSyncTask task-id {:progress progress, :last_progress_report_at :%now}))
+  (update-remote-sync-tasks! {:id task-id} {:progress progress, :last_progress_report_at :%now}))
 
-(mu/defn supersede-stale-tasks!
+(mu/defn supersede-stale-remote-sync-tasks!
   "Cancel and end now the started, unfinished RemoteSyncTasks that last reported progress before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (t2/query {:update (t2/table-name :model/RemoteSyncTask)
@@ -696,7 +713,7 @@
                       [:= :ended_at nil]
                       [:< :last_progress_report_at cutoff]]}))
 
-(mu/defn delete-tasks-started-before!
+(mu/defn delete-remote-sync-tasks-started-before! :- :int
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff]}))

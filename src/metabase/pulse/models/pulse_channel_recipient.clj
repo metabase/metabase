@@ -13,11 +13,11 @@
 ;;; automatically deleted.
 (t2/define-before-delete :model/PulseChannelRecipient
   [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
-  (let [other-recipients-count (pulse.db/other-pulse-channel-recipient-count channel-id pulse-channel-recipient-id)
+  (let [other-recipients-count (pulse.db/count-other-pulse-channel-recipients channel-id pulse-channel-recipient-id)
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (pulse.db/pulse-channel-details channel-id)
+      (let [details              (:details (pulse.db/select-one-pulse-channel {:id channel-id :columns [:details]}))
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
-          (pulse.db/delete-pulse-channel! channel-id))))))
+          (pulse.db/delete-pulse-channels! {:id channel-id}))))))

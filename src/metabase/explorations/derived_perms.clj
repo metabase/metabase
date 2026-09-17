@@ -90,7 +90,10 @@
   check and the lens comparison, and throws without it. That is also the step that stamps the token,
   so a row that has one but no token is a write-path bug — adjudicated and denied, not skipped."
   [thread-ids]
-  (explorations.db/lens-stamped-queries thread-ids))
+  (explorations.db/select-queries {:exploration_thread_id (set thread-ids)
+                                   :dataset_query_set      true
+                                   :columns                [:id :exploration_thread_id :database_id :dataset_query :data_access_token]
+                                   :order-by               [:id]}))
 
 (defn- lens-stamped-threads
   "The `exploration_thread` rows for `thread-ids` carrying a tracked lens, in the shape the gate takes.
@@ -103,8 +106,12 @@
   stamped, and, unlike the thread's queries, not deleted by a restart. A thread whose Card cannot be
   resolved is still returned, marked [[::indeterminate]] so it denies."
   [thread-ids]
-  (when-let [threads (seq (explorations.db/lens-stamped-threads thread-ids))]
-    (let [blocks    (explorations.db/block-metrics-for-threads-newest-first (map :id threads))
+  (when-let [threads (seq (explorations.db/select-threads {:id                    (set thread-ids)
+                                                           :data_access_token_set true
+                                                           :columns               [:id :data_access_token]}))]
+    (let [blocks    (explorations.db/select-blocks {:exploration_thread_id (set (map :id threads))
+                                                    :columns               [:exploration_thread_id :metrics]
+                                                    :order-by              [[:position :desc] [:id :desc]]})
           ;; descending order + `into {}` (later pairs win) leaves the thread's *first* block
           ;; standing, whose metric is the one the token was computed over.
           card-id   (into {} (keep (fn [b]
@@ -178,7 +185,7 @@
   [exploration-id]
   (if (nil? exploration-id)
     true
-    (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
+    (let [thread-ids (explorations.db/select-thread-pks {:exploration_id exploration-id})]
       (or (empty? thread-ids)
           (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
 
@@ -213,7 +220,7 @@
   withheld. A comment anchored to a page of a thread the viewer can see keeps its context; anything
   else (a Summary block, an unanchored comment, or a page of a gated thread) loses it."
   [exploration-id comments]
-  (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
+  (let [thread-ids (explorations.db/select-thread-pks {:exploration_id exploration-id})]
     (if (or (empty? thread-ids) (not-any? :context comments))
       comments
       (let [visible (thread-ids-with-visible-derived-data thread-ids)]

@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
+   [metabase.cache.db :as cache.db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -332,12 +333,12 @@
 (mu/defn cache-config-exists?
   "Whether any CacheConfig exists."
   []
-  (t2/exists? :model/CacheConfig))
+  (cache.db/cache-config-exists? nil))
 
 (mu/defn preemptive-cache-config-exists?
   "Whether a CacheConfig that refreshes automatically exists."
   []
-  (t2/exists? :model/CacheConfig :refresh_automatically true))
+  (cache.db/cache-config-exists? {:refresh_automatically true}))
 
 (mu/defn database-router-exists?
   "Whether a DatabaseRouter exists."

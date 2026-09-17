@@ -118,7 +118,7 @@
   "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
   [graph & {:keys [group-ids group-id db-id audit?]}]
-  (let [sandboxes (sandbox.db/sandboxes-with-table-info group-id group-ids db-id (when-not audit? audit/audit-db-id))]
+  (let [sandboxes (sandbox.db/select-sandboxes-with-table-info group-id group-ids db-id (when-not audit? audit/audit-db-id))]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
               (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
@@ -129,7 +129,7 @@
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
   the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id} :- [:or ::sandbox.schema/sandbox ::sandbox.schema/sandbox.update]]
+  ([{card-id :card_id, table-id :table_id} :- [:or ::sandbox.schema/sandbox ::sandbox.schema/sandbox.columns]]
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
@@ -168,7 +168,7 @@
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
   Card cannot add fields or change types vs. the original Table."
   [card-id new-result-metadata]
-  (when-let [gtaps-using-this-card (not-empty (sandbox.db/sandboxes-using-card card-id))]
+  (when-let [gtaps-using-this-card (not-empty (sandbox.db/select-sandboxes {:card_id card-id :columns [:id :table_id]}))]
     (let [original-result-metadata (sandbox.db/card-result-metadata card-id)]
       (when-not (= original-result-metadata new-result-metadata)
         (doseq [{table-id :table_id} gtaps-using-this-card]
@@ -210,8 +210,8 @@
        ;; This allows existing values to be "cleared" by being set to nil
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-           (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (let [updated-sandbox (sandbox.db/sandbox id)]
+           (sandbox.db/update-sandboxes! {:id id} (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+         (let [updated-sandbox (sandbox.db/select-one-sandbox {:id id})]
            (events/publish-event! :event/sandbox-update
                                   {:object updated-sandbox
                                    :user-id api/*current-user-id*})

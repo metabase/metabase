@@ -140,7 +140,7 @@
 
 (defn- active-dashsub-pcs
   []
-  (pulse.db/active-dashboard-subscription-channels))
+  (pulse.db/select-active-dashboard-subscription-channels))
 
 (defn init-dashboard-subscription-triggers!
   "Update send pulse triggers for all active pulses.

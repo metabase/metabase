@@ -53,9 +53,11 @@
         ;; the max number is 10, delete the extra, and insert a new one to arrive at 10 again, our invariant.
         ids (into #{} (comp (map :id)
                             (drop (dec max-moderation-reviews)))
-                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
+                  (content-verification.db/select-moderation-reviews
+                   {:moderated_item_id item-id, :moderated_item_type item-type,
+                    :columns [:id], :order-by [[:id :desc]]}))]
     (when (seq ids)
-      (content-verification.db/delete-moderation-reviews! ids))))
+      (content-verification.db/delete-moderation-reviews! {:id ids}))))
 
 (mu/defn create-review!
   "Create a new ModerationReview"
@@ -68,6 +70,7 @@
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (content-verification.db/unmark-most-recent-moderation-reviews! (:moderated_item_id params)
-                                                                    (:moderated_item_type params))
+    (content-verification.db/update-moderation-reviews! {:moderated_item_id   (:moderated_item_id params)
+                                                         :moderated_item_type (:moderated_item_type params)}
+                                                        {:most_recent false})
     (content-verification.db/insert-moderation-review! (assoc params :most_recent true))))

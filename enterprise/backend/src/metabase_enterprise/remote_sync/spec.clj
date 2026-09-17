@@ -491,7 +491,7 @@
                                            (into #{}
                                                  (map (fn [rso]
                                                         (:entity_id (remote-sync.db/instance model-key (:model_id rso)))))
-                                                 (remote-sync.db/rsos-of-models model-type pks))))
+                                                 (remote-sync.db/select-remote-sync-objects {:model_type model-type :model_id (set pks)}))))
                     conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
                     conflicting-entity-ids (if (= model-type "Collection")
                                              (disj conflicting-entity-ids collection/library-entity-id)
@@ -510,7 +510,7 @@
                 model-type (:model-type spec)
                 conditions (export-conditions spec)
                 local-count (remote-sync.db/count-where model-key conditions)
-                synced-count (remote-sync.db/rso-count-of-type model-type)]
+                synced-count (remote-sync.db/count-remote-sync-objects {:model_type model-type})]
             (and (pos? local-count)
                  (> local-count synced-count))))
         specs-for-feature))
@@ -564,7 +564,7 @@
                       unsynced-local (remove
                                       (fn [coll]
                                         (or (contains? import-eids (:entity_id coll))
-                                            (remote-sync.db/rso-exists? "Collection" (:id coll))))
+                                            (remote-sync.db/remote-sync-object-exists? {:model_type "Collection" :model_id (:id coll)})))
                                       local-ns-colls)]
                 :when (seq unsynced-local)]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))

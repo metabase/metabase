@@ -380,7 +380,12 @@
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."
   []
-  (search.db/active-index-created-at (search.spec/index-version-hash) (i18n/site-locale-string)))
+  (:created_at (search.db/select-one-search-index-metadata {:engine     :appdb
+                                                            :version    (search.spec/index-version-hash)
+                                                            :lang_code  (i18n/site-locale-string)
+                                                            :status     :active
+                                                            :columns    [:created_at]
+                                                            :order-by   [[:created_at :desc]]})))
 
 (defn search
   "Use the index table to search for records."
@@ -432,13 +437,13 @@
        (binding [*mocking-tables* true
                  *indexes*        (atom {:active table-name#})]
          (try
-           (search.db/insert-index-metadata! {:engine     :appdb
-                                              :version    version#
-                                              :lang_code  (i18n/site-locale-string)
-                                              :status     :pending
-                                              :index_name (name table-name#)})
+           (search.db/insert-search-index-metadata! {:engine     :appdb
+                                                     :version    version#
+                                                     :lang_code  (i18n/site-locale-string)
+                                                     :status     :pending
+                                                     :index_name (name table-name#)})
            (create-table! table-name#)
            ~@body
            (finally
              (#'drop-table! table-name#)
-             (search.db/delete-index-metadata-by-version! version#)))))))
+             (search.db/delete-search-index-metadata! {:version version#})))))))

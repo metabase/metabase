@@ -87,7 +87,7 @@
 
 (defmethod serdes/load-find-local "CustomVizPlugin" [path]
   (let [{:keys [id]} (last path)]
-    (custom-viz-plugin.db/plugin-by-identifier id)))
+    (custom-viz-plugin.db/select-one-custom-viz-plugin {:identifier id})))
 
 (defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
   [{:label "custom_viz_plugins"} {:label (:identifier entity)}])

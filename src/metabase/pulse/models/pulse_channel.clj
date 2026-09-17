@@ -132,7 +132,7 @@
   [_model _k pcs]
   (when (seq pcs)
     (let [pcid->recipients (-> (group-by :pulse_channel_id
-                                         (pulse.db/active-recipients-for-channels (map :id pcs)))
+                                         (pulse.db/select-active-recipients-for-channels (map :id pcs)))
                                (update-vals #(map (fn [user] (dissoc user :pulse_channel_id)) %)))]
       (for [pc pcs]
         (assoc pc :recipients (concat
@@ -150,9 +150,9 @@
   ;; This function is called by [[metabase.pulse.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to
   ;; be deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
-    (let [other-channels-count (pulse.db/other-pulse-channel-count pulse-id pulse-channel-id)]
+    (let [other-channels-count (pulse.db/count-other-pulse-channels pulse-id pulse-channel-id)]
       (when (zero? other-channels-count)
-        (pulse.db/update-pulse! pulse-id {:archived true}))))
+        (pulse.db/update-pulses! {:id pulse-id} {:archived true}))))
   ;; it's best if this is done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
   ;; remove this pulse from its existing trigger
   (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
@@ -236,7 +236,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (pulse.db/pulse-channel-recipient-user-ids id))
+  (let [recipients-old (set (pulse.db/select-pulse-channel-recipient-user-ids id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
@@ -260,17 +260,17 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (pulse.db/update-pulse-channel! id
-                                    {:details        (cond-> details
-                                                       (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                                     :enabled        enabled
-                                     :schedule_type  schedule_type
-                                     :schedule_hour  (when (not= schedule_type :hourly)
-                                                       schedule_hour)
-                                     :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                                       schedule_day)
-                                     :schedule_frame (when (= schedule_type :monthly)
-                                                       schedule_frame)})
+    (pulse.db/update-pulse-channels! {:id id}
+                                     {:details        (cond-> details
+                                                        (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                                      :enabled        enabled
+                                      :schedule_type  schedule_type
+                                      :schedule_hour  (when (not= schedule_type :hourly)
+                                                        schedule_hour)
+                                      :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                                        schedule_day)
+                                      :schedule_frame (when (= schedule_type :monthly)
+                                                        schedule_frame)})
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
 

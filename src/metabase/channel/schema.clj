@@ -1,6 +1,7 @@
 (ns metabase.channel.schema
   "Malli schemas for the channel module."
   (:require
+   [malli.util :as mut]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -95,8 +96,8 @@
     [:updated_at  ms/TemporalInstant]]
    ::channel.details-by-type])
 
-(mr/def ::channel.update
-  "What an update (or insert) of a Channel accepts: every column of `:channel` except `id`, all optional."
+(mr/def ::channel.columns
+  "Every column of `:channel` except `id`, all optional."
   [:map {:closed true}
    [:name        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -105,6 +106,26 @@
    [:active      {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::channel.create
+  "What an insert of a Channel accepts."
+  (mr/schema ::channel.columns))
+
+(mr/def ::channel.update
+  "What an update of a Channel accepts: no immutable columns (`:created_at` is fixed at creation and never
+  changes after that)."
+  (mut/select-keys (mr/schema ::channel.columns)
+                   [:name :description :type :details :active :updated_at]))
+
+(mr/def ::channel.partial
+  "A Channel row as selected, where a `:columns` narrowing may have left out any column. Uses the loose
+  `::channel.columns` shape rather than `::channel` because a narrowed select may omit `:type`, which
+  `::channel`'s per-type `:details` dispatch requires."
+  [:merge ::channel.columns [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::channel.column
+  "A column of `:channel`, for the `:columns` option of the queries in [[metabase.channel.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::channel.columns))))
 
 (def channel-template-details-types
   "The `:type`s an email template's details can have: a Handlebars template written inline, or one shipped as a resource."
@@ -146,15 +167,39 @@
 (mr/def ::channel-template
   "A ChannelTemplate as selected from the app DB: every column of `:channel_template`."
   [:merge
-   ::channel-template.update
+   ::channel-template.columns
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
-(mr/def ::channel-template.update
-  "What an update (or insert) of a ChannelTemplate accepts: every column of `:channel_template` except `id`, all optional."
+(mr/def ::channel-template.columns
+  "Every column of `:channel_template` except `id`, all optional."
   [:map {:closed true}
    [:name         {:optional true} [:maybe :string]]
    [:channel_type {:optional true} [:maybe [:or :keyword :string]]]
    [:details      {:optional true} [:maybe ::channel-template.details]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstantOrNow]]])
+
+(mr/def ::channel-template.create
+  "What an insert of a ChannelTemplate accepts."
+  (mr/schema ::channel-template.columns))
+
+(mr/def ::channel-template.update
+  "What an update of a ChannelTemplate accepts: no immutable columns (`:created_at` is fixed at creation and
+  never changes after that)."
+  (mut/select-keys (mr/schema ::channel-template.columns)
+                   [:name :channel_type :details :updated_at]))
+
+(mr/def ::channel-template.partial
+  "A ChannelTemplate row as selected, where a `:columns` narrowing may have left out any column. `:details` is
+  typed loosely here (rather than the strict per-type shape) because a stored row can predate the current
+  template-path rules, and a read must not throw on legacy data the way a write would."
+  [:merge
+   ::channel-template.columns
+   [:map {:closed true}
+    [:id      {:optional true} ms/PositiveInt]
+    [:details {:optional true} [:maybe [:map]]]]])
+
+(mr/def ::channel-template.column
+  "A column of `:channel_template`, for the `:columns` option of the queries in [[metabase.channel.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::channel-template.columns))))

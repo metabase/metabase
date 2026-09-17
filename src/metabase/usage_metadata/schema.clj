@@ -4,6 +4,7 @@
   These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
   enforced inside `metabase.usage-metadata.insights` producers."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -116,12 +117,12 @@
 (mr/def ::source-dimension-daily
   "A SourceDimensionDaily as selected from the app DB: every column of `:source_dimension_daily`."
   [:merge
-   ::source-dimension-daily.update
+   ::source-dimension-daily.columns
    [:map {:closed true}
     [:id             ms/PositiveInt]]])
 
-(mr/def ::source-dimension-daily.update
-  "What an update (or insert) of a SourceDimensionDaily accepts: every column of `:source_dimension_daily` except `id`, all optional."
+(mr/def ::source-dimension-daily.columns
+  "Every column of `:source_dimension_daily` except `id`, all optional."
   [:map {:closed true}
    [:source_type    {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id      {:optional true} [:maybe ms/PositiveInt]]
@@ -132,15 +133,27 @@
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
 
+(mr/def ::source-dimension-daily.create
+  "What an insert of a SourceDimensionDaily accepts: every column of `:source_dimension_daily` except `id`, all optional."
+  ::source-dimension-daily.columns)
+
+(mr/def ::source-dimension-daily.partial
+  "A SourceDimensionDaily row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::source-dimension-daily [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::source-dimension-daily.column
+  "A column of `source_dimension_daily`, for the `:columns` option of the queries in [[metabase.usage-metadata.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::source-dimension-daily.columns))))
+
 (mr/def ::source-dimension-profile-daily
   "A SourceDimensionProfileDaily as selected from the app DB: every column of `:source_dimension_profile_daily`."
   [:merge
-   ::source-dimension-profile-daily.update
+   ::source-dimension-profile-daily.columns
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
-(mr/def ::source-dimension-profile-daily.update
-  "What an update (or insert) of a SourceDimensionProfileDaily accepts: every column of `:source_dimension_profile_daily` except `id`, all optional."
+(mr/def ::source-dimension-profile-daily.columns
+  "Every column of `:source_dimension_profile_daily` except `id`, all optional."
   [:map {:closed true}
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
@@ -151,15 +164,27 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-dimension-profile-daily.create
+  "What an insert of a SourceDimensionProfileDaily accepts: every column of `:source_dimension_profile_daily` except `id`, all optional."
+  ::source-dimension-profile-daily.columns)
+
+(mr/def ::source-dimension-profile-daily.partial
+  "A SourceDimensionProfileDaily row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::source-dimension-profile-daily [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::source-dimension-profile-daily.column
+  "A column of `source_dimension_profile_daily`, for the `:columns` option of the queries in [[metabase.usage-metadata.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::source-dimension-profile-daily.columns))))
+
 (mr/def ::source-metric-daily
   "A SourceMetricDaily as selected from the app DB: every column of `:source_metric_daily`."
   [:merge
-   ::source-metric-daily.update
+   ::source-metric-daily.columns
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
-(mr/def ::source-metric-daily.update
-  "What an update (or insert) of a SourceMetricDaily accepts: every column of `:source_metric_daily` except `id`, all optional."
+(mr/def ::source-metric-daily.columns
+  "Every column of `:source_metric_daily` except `id`, all optional."
   [:map {:closed true}
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
@@ -171,15 +196,27 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-metric-daily.create
+  "What an insert of a SourceMetricDaily accepts: every column of `:source_metric_daily` except `id`, all optional."
+  ::source-metric-daily.columns)
+
+(mr/def ::source-metric-daily.partial
+  "A SourceMetricDaily row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::source-metric-daily [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::source-metric-daily.column
+  "A column of `source_metric_daily`, for the `:columns` option of the queries in [[metabase.usage-metadata.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::source-metric-daily.columns))))
+
 (mr/def ::source-segment-composite-daily
   "A SourceSegmentCompositeDaily as selected from the app DB: every column of `:source_segment_composite_daily`."
   [:merge
-   ::source-segment-composite-daily.update
+   ::source-segment-composite-daily.columns
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
-(mr/def ::source-segment-composite-daily.update
-  "What an update (or insert) of a SourceSegmentCompositeDaily accepts: every column of `:source_segment_composite_daily` except `id`, all optional."
+(mr/def ::source-segment-composite-daily.columns
+  "Every column of `:source_segment_composite_daily` except `id`, all optional."
   [:map {:closed true}
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
@@ -190,15 +227,27 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-segment-composite-daily.create
+  "What an insert of a SourceSegmentCompositeDaily accepts: every column of `:source_segment_composite_daily` except `id`, all optional."
+  ::source-segment-composite-daily.columns)
+
+(mr/def ::source-segment-composite-daily.partial
+  "A SourceSegmentCompositeDaily row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::source-segment-composite-daily [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::source-segment-composite-daily.column
+  "A column of `source_segment_composite_daily`, for the `:columns` option of the queries in [[metabase.usage-metadata.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::source-segment-composite-daily.columns))))
+
 (mr/def ::source-segment-daily
   "A SourceSegmentDaily as selected from the app DB: every column of `:source_segment_daily`."
   [:merge
-   ::source-segment-daily.update
+   ::source-segment-daily.columns
    [:map {:closed true}
     [:id             ms/PositiveInt]]])
 
-(mr/def ::source-segment-daily.update
-  "What an update (or insert) of a SourceSegmentDaily accepts: every column of `:source_segment_daily` except `id`, all optional."
+(mr/def ::source-segment-daily.columns
+  "Every column of `:source_segment_daily` except `id`, all optional."
   [:map {:closed true}
    [:source_type    {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id      {:optional true} [:maybe ms/PositiveInt]]
@@ -207,3 +256,15 @@
    [:predicate      {:optional true} [:maybe :string]]
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
+
+(mr/def ::source-segment-daily.create
+  "What an insert of a SourceSegmentDaily accepts: every column of `:source_segment_daily` except `id`, all optional."
+  ::source-segment-daily.columns)
+
+(mr/def ::source-segment-daily.partial
+  "A SourceSegmentDaily row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::source-segment-daily [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::source-segment-daily.column
+  "A column of `source_segment_daily`, for the `:columns` option of the queries in [[metabase.usage-metadata.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::source-segment-daily.columns))))
