@@ -285,6 +285,24 @@ Two instances shipped this way before being caught:
 **The rule: a call filtering on a column with a `deftransforms` entry stays a kv-arg.** Transforms
 run there and the value needs no marker. This is the main reason call style is not converted.
 
+What breaks is the CALL STYLE, not the marker. A marked kv-arg still runs the transform, because
+`value_guard` lifts the `[:auto/param column v]` 3-arity from inside `apply-kv-arg`. Verified on
+`:model/SearchIndexMetadata`:
+
+```clojure
+(t2/select :model/SearchIndexMetadata :engine :appdb)
+;; => ["... WHERE \"ENGINE\" = ?"  "appdb"]        kv-arg, bare
+
+(t2/select :model/SearchIndexMetadata :engine [:auto/param :appdb])
+;; => ["... WHERE \"ENGINE\" = ?"  "appdb"]        kv-arg, marked -- identical
+
+(t2/select :model/SearchIndexMetadata {:where [:= :engine :appdb]})
+;; => ["... WHERE \"ENGINE\" = \"APPDB\""]          where map -- transform skipped, broken
+```
+
+So a marker on a transformed column in kv-arg position is harmless but redundant: leave it off
+because the transform already binds the value, not because marking would break it.
+
 Models with transforms include `:model/Field`, `:model/Card`, `:model/Collection`, `:model/User`,
 `:model/Database`, `:model/DataPermissions`, `:model/SearchIndexMetadata` and ~90 others. Check
 before assuming a column is plain.
