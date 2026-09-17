@@ -120,6 +120,24 @@
     (is (=? [{:type :metabase/unsafe-app-db-query, :message #".*reaches a SQL value slot unmarked.*"}]
             (lint-query-call '(t2/select :model/X :locale locale) 'metabase.foo.db)))))
 
+(deftest ^:parallel conditionally-built-clause-test
+  (testing "a value slot inside a conditional form is still reached"
+    ;; `value-nodes` used to stop at a list node, so anything a `when`/`if`/`cond->` built was
+    ;; invisible -- a false negative in a security lint. permissions/db.clj and collections/db.clj
+    ;; both build clauses this way.
+    (are [form] (=? [{:type :metabase/unsafe-app-db-query
+                      :message #".*reaches a SQL value slot unmarked.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X {:where [:and (when k [:= :key k])]})))
+  (testing "both branches of an if are reached"
+    (is (= 2 (count (lint-query-call
+                     '(t2/select :model/X {:where [:and (if flag [:= :key k] [:= :key other-k])]})
+                     'metabase.foo.db)))))
+  (testing "a marked value inside a conditional form is not flagged"
+    (is (empty? (lint-query-call
+                 '(t2/select :model/X {:where [:and (when k [:= :key [:auto/param k]])]})
+                 'metabase.foo.db)))))
+
 (deftest ^:parallel kv-arg-values-are-linted-test
   (testing "an unmarked value in a kv-arg pair is flagged, so dropping the style check left no gap"
     (are [form] (=? [{:type :metabase/unsafe-app-db-query
