@@ -1346,6 +1346,7 @@
            util
            util.config
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
