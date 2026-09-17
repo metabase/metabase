@@ -132,6 +132,26 @@
                              :friends
                              :blast-radius])))))))
 
+(deftest ^:parallel cyclic-module-is-not-its-own-dependency-test
+  (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
+                              (constantly #{})]
+    (let [deps    [{:namespace 'metabase.x.core
+                    :filename  "src/metabase/x/core.clj"
+                    :module    'x
+                    :deps      [{:namespace 'metabase.y.core, :module 'y}]}
+                   {:namespace 'metabase.y.core
+                    :filename  "src/metabase/y/core.clj"
+                    :module    'y
+                    :deps      [{:namespace 'metabase.x.core, :module 'x}]}]
+          config  {'x {:api #{'metabase.x.core}, :uses #{'y}}
+                   'y {:api #{'metabase.y.core}, :uses #{'x}}}
+          metrics (into {} (map (juxt :module identity)) (module-metrics/metrics deps config))]
+      (is (=? {:dependencies {:transitive-count          1
+                              :reachable-namespace-count 1
+                              :max-depth                 1}
+               :dependents   {:transitive-count 1}}
+              (get metrics 'x))))))
+
 (deftest ^:parallel repo-metrics-test
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
                               (fn [_deps _config _prefix->module source-filenames]

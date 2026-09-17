@@ -152,8 +152,10 @@
         direct-deps-graph        (merge (zipmap modules' (repeat (sorted-set)))
                                         (deps-graph/module-dependencies deps))
         module->paths            (into (sorted-map)
+                                       ;; A module in a cycle reaches itself; it is not its own dependency.
                                        (map (fn [module]
-                                              [module (deps-graph/all-module-deps-paths deps module)]))
+                                              [module (dissoc (deps-graph/all-module-deps-paths deps module)
+                                                              module)]))
                                        modules')
         transitive-deps-graph    (into (sorted-map)
                                        (map (fn [module]
@@ -427,8 +429,8 @@
   "Scan source dependencies."
   ([]
    (deps (config)))
-  ([_config]
-   (deps-graph/dependencies)))
+  ([config]
+   (deps-graph/dependencies (hooks.modules/build-prefix->module config))))
 
 (defn churn-weighted-blast-radius
   "Churn-weighted selective-CI cost: replay the last `days` days of commits (default 90) and, per commit,

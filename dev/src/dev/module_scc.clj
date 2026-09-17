@@ -46,8 +46,8 @@
 (defn cycle-stats
   "How much of `graph` is trapped in mutual dependency, and in how many separate clusters. `:module-count`
   and `:namespace-count` are the modules and namespaces inside some cyclic component; `:edge-count` is the
-  dependency edges with both endpoints in the same component — the requires that would have to be inverted
-  to break every cycle in the graph.
+  dependency edges with both endpoints in the same component. Breaking every cycle takes inverting only some
+  of them, but each one is a candidate.
 
   Namespace weighting via `node->namespace-count` is the honest measure: splitting a cyclic module in the
   config raises the module count without moving a namespace out of the cycle.
@@ -77,7 +77,8 @@
   invisible in the require graph.
 
   A module whose `:model-imports` is `:bypass` contributes no edges, because the config records no imports
-  for it at all."
+  for it at all. Neither does `:model-imports :any`, nor a model exported with `:model-exports :any`, since
+  the config names no models for either; no module declares them today."
   [config]
   (let [owner (into {}
                     (for [[module {:keys [model-exports]}] config
@@ -323,7 +324,8 @@
   `:num-commits-skipped`. That covers frontend and docs commits, and also **test-only commits**:
   `file->module` is built from a source-file scan, so a commit that changes only tests maps to no
   module and is counted as costing nothing, even though selective CI would rerun those tests. The
-  result is therefore the bill for source-changing commits, and it understates total spend."
+  result is therefore the bill for source-changing commits, and it understates total spend.
+  The test files a mixed commit changes are ignored the same way; only its source files select modules."
   [graph module->tests file->module commits]
   (let [dependents (transitive-dependents-graph graph)
         counts     (->> commits
