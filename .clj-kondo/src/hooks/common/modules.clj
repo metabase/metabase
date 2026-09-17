@@ -156,16 +156,22 @@
         (recur ancestor)
         {:ancestor ancestor, :child child}))))
 
+(defn plugin-root
+  "The top-level plugin `module` belongs to, e.g. `module/embedder` for `module/embedder.model`.
+  Returns `nil` when `module` is no plugin."
+  [modules module]
+  (when (plugin-module? module)
+    (last (take-while some? (iterate #(parent-module modules %) module)))))
+
 (defn- plugin-error
   "Explain why `caller` may not use plugin `target`, or return `nil` when `target` is no plugin or `caller`
   sits inside the plugin."
   [modules caller target]
-  (when (plugin-module? target)
-    (let [plugin (last (take-while some? (iterate #(parent-module modules %) target)))]
-      (when-not (descendant-of? modules caller plugin)
-        (format (str "Module %s is a plugin that may not be installed; %s may not use it. Load it through "
-                     "metabase.plugins instead. [:metabase/modules %s :uses]")
-                target caller caller)))))
+  (when-let [plugin (plugin-root modules target)]
+    (when-not (descendant-of? modules caller plugin)
+      (format (str "Module %s is a plugin that may not be installed; %s may not use it. Load it through "
+                   "metabase.plugins instead. [:metabase/modules %s :uses]")
+              target caller caller))))
 
 (defn namability-error
   "Explain why `caller` may not refer to `target` in `:uses`, or return `nil` if it may.

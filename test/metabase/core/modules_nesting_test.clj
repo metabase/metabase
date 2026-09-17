@@ -386,8 +386,13 @@
       (is (some? (modules/namability-error (:metabase/modules config) 'explicit 'module/embedder))))
     (testing "the plugin's own subtree may use it"
       (is (nil? (modules/namability-error (:metabase/modules config)
-                                           'module/embedder.model
-                                           'module/embedder))))))
+                                          'module/embedder.model
+                                          'module/embedder))))))
+
+(deftest ^:parallel plugin-root-test
+  (let [modules '{module/embedder {}, module/embedder.model {}, lib {}}]
+    (is (= '[module/embedder module/embedder nil]
+           (mapv #(modules/plugin-root modules %) '[module/embedder module/embedder.model lib])))))
 
 (deftest ^:parallel usage-error-privacy-scoped-to-nearest-non-opening-ancestor-test
   (testing "An unexported child is private to its nearest non-exporting ancestor's subtree, not the top-level one"

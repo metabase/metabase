@@ -190,6 +190,24 @@
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
 
+(deftest plugin-namespaces-live-in-their-plugin-directory-test
+  (testing "a namespace resolves to plugin module/X exactly when its file sits under modules/X/"
+    (let [config (dev.deps-graph/kondo-config)]
+      (doseq [{:keys [filename module]} (dev.deps-graph/dependencies)
+              :let [file      (#'dev.deps-graph/file->path-relative-to-project-root filename)
+                    directory (second (re-find #"^modules/(?!drivers/)([^/]+)/" file))
+                    plugin    (some->> module (modules/plugin-root config))]
+              :when (or directory plugin)]
+        (testing (format "\n%s resolves to %s" file (pr-str module))
+          (is (= directory (some-> plugin name))))))))
+
+(deftest ^:parallel plugin-files-name-their-namespaces-test
+  (is (= '[metabase-module.embedder.plugin metabase-module.embedder.plugin-test metabase.driver.mongo]
+         (map #'dev.deps-graph/file->namespace
+              ["modules/embedder/src/metabase_module/embedder/plugin.clj"
+               "modules/embedder/test/metabase_module/embedder/plugin_test.clj"
+               "modules/drivers/mongo/src/metabase/driver/mongo.clj"]))))
+
 (deftest ^:parallel uses-references-must-be-namable-test
   (testing "every module named in :uses is visible to the caller"
     (let [config (dev.deps-graph/kondo-config)]

@@ -655,6 +655,7 @@
   [file]
   (-> file
       file->path-relative-to-project-root
+      (str/replace #"^modules/(?:drivers/)?[^/]+/(?=(?:src|test)/)" "")
       (str/replace #"^enterprise/backend/" "")
       (str/replace #"^(?:(?:src)|(?:test))/" "")
       (str/replace #"\.clj[cs]?$" "")

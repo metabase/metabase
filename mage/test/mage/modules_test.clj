@@ -467,6 +467,10 @@
       (is (= 'module/embedder
              (#'mage.modules/file->module prefix->module
                                           "modules/embedder/src/metabase_module/embedder/model.clj"))))
+    (testing "a file in a plugin's directory belongs to it even when its namespace names another module"
+      (is (= 'module/embedder
+             (#'mage.modules/file->module (modules/build-prefix->module '{module/embedder {}, core {}})
+                                          "modules/embedder/src/metabase/core.clj"))))
     (testing "a plugin's other files belong to it too"
       (is (= 'module/embedder
              (#'mage.modules/file->module prefix->module "modules/embedder/deps.edn")))
@@ -486,12 +490,13 @@
            (#'mage.modules/module->test-path-prefix '{module/embedder {}} 'module/embedder)))))
 
 (deftest uses-any-does-not-reach-plugins-test
-  (let [deps '{core            :any
-               search          #{module/embedder}
-               module/embedder #{}
-               util            #{}}]
-    (is (= '{module/embedder #{search}
-             util            #{core}}
+  (let [deps '{core                  :any
+               search                #{module/embedder}
+               module/embedder       #{}
+               module/embedder.model :any
+               util                  #{}}]
+    (is (= '{module/embedder #{module/embedder.model search}
+             util            #{core module/embedder.model}}
            {'module/embedder (#'mage.modules/direct-dependents deps 'module/embedder)
             'util            (#'mage.modules/direct-dependents deps 'util)}))))
 

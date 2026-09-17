@@ -45,17 +45,21 @@
 
 (defn- file->module [prefix->module filename]
   (or
+   ;; A file in a plugin's directory belongs to that plugin, whatever its namespace says.
+   ;; The module config tests reject the mismatch.
+   (when-let [[_match plugin] (re-matches #"^modules/(?!drivers/)([^/]+)/.*$" filename)]
+     (let [root   (symbol "module" plugin)
+           by-ns  (some->> (file->ns-symbol filename) (modules/declared-module prefix->module))
+           config (zipmap (vals prefix->module) (repeat {}))]
+       (if (and by-ns (modules/descendant-of? config by-ns root)) by-ns root)))
    (some->> (file->ns-symbol filename) (modules/declared-module prefix->module))
    ;; otherwise a file inside a directory belongs to the (undeclared) module that directory names
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
      (symbol (str/replace module #"_" "-")))
    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
      (symbol "enterprise" (str/replace module #"_" "-")))
-   (when-let [[_match module] (re-matches #"^modules/[^/]+/(?:src|test)/metabase_module/([^/]+)/.*$" filename)]
-     (symbol "module" (str/replace module #"_" "-")))
-   ;; the rest of a plugin's directory -- deps.edn, resources, its manifest -- belongs to the plugin
-   (when-let [[_match plugin] (re-matches #"^modules/(?!drivers/)([^/]+)/.*$" filename)]
-     (symbol "module" plugin))))
+   (when-let [[_match module] (re-matches #"^(?:src|test)/metabase_module/([^/]+)/.*$" filename)]
+     (symbol "module" (str/replace module #"_" "-")))))
 
 (defn- read-modules-config []
   (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
@@ -115,9 +119,11 @@
   [deps module]
   (into (sorted-set)
         (keep (fn [[a-module module-deps]]
-                ;; `:any` can't reach a plugin, which may not be installed.
+                ;; `:any` reaches a plugin, which may not be installed, only from inside that plugin.
                 (when (if (= module-deps :any)
-                        (not (modules/plugin-module? module))
+                        (if-let [plugin (modules/plugin-root deps module)]
+                          (modules/descendant-of? deps a-module plugin)
+                          true)
                         (contains? module-deps module))
                   a-module)))
         deps))
