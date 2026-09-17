@@ -101,10 +101,11 @@ export type Condition = {
   /** Predicate name to its parsed value, in the order the YAML listed them. */
   predicates: Record<string, unknown>;
   /**
-   * Overrides this block sits out, by id. An override normally settles every
-   * job in every workflow before a block is so much as read; naming one here
-   * says it has no effect here, and the job is decided from its own
-   * conditions exactly as it would be on an ordinary run.
+   * Overrides this block sits out, each named by its id or by a glob over
+   * several. An override normally settles every job in every workflow before a
+   * block is so much as read; naming one here says it has no effect here, and
+   * the job is decided from its own conditions exactly as it would be on an
+   * ordinary run.
    *
    * It is not a condition — it never makes the block match or fail to match.
    */
@@ -296,9 +297,18 @@ export function matchesCondition(condition: Condition, facts: Facts): boolean {
   return holds(condition, matched(condition, facts));
 }
 
-/** True when any block of these sits the named override out. */
+/**
+ * True when any block of these sits the named override out. An entry is a
+ * glob, matched the same way a `labels:` or `branch:` pattern is, so
+ * `protected-branch-*` sits out every override whose id starts that way and a
+ * plain id is simply an exact match.
+ */
 export function ignoresOverride(blocks: Blocks, id: string): boolean {
-  return LADDER.some(({ block }) => blocks[block]?.ignoreOverrides.includes(id));
+  return LADDER.some((rung) => {
+    const patterns = blocks[rung.block]?.ignoreOverrides;
+
+    return patterns !== undefined && matchesAny(patterns, [id]);
+  });
 }
 
 function predicate(name: string): PredicateSpec {
@@ -496,10 +506,12 @@ export function parseCondition(
 /**
  * The overrides a block sits out.
  *
- * Every id has to name an override that exists. An `ignore-overrides` entry is
- * silent when it is right — the block simply behaves as it always did — so a
- * misspelt one would never show up as anything but the override applying after
- * all, on the one run the block was written to survive.
+ * Every entry has to reach an override that exists. Entries are globs, so one
+ * of them may stand for several — `protected-branch-*` for the pair of them —
+ * but one that reaches none is an error. An `ignore-overrides` entry is silent
+ * when it is right — the block simply behaves as it always did — so a misspelt
+ * one would never show up as anything but the override applying after all, on
+ * the one run the block was written to survive.
  */
 function parseIgnoreOverrides(
   value: unknown,
@@ -516,17 +528,17 @@ function parseIgnoreOverrides(
     );
   }
 
-  const ids = stringList(value, `${where}.ignore-overrides`);
+  const patterns = stringList(value, `${where}.ignore-overrides`);
 
-  for (const id of ids) {
-    if (!overrideIds.includes(id)) {
+  for (const pattern of patterns) {
+    if (!matchesAny([pattern], overrideIds)) {
       throw new Error(
-        `${where}.ignore-overrides names unknown override "${id}", expected one of ${overrideIds.join(", ") || "(none declared)"}`,
+        `${where}.ignore-overrides names no override with "${pattern}", expected an id or a glob matching one of ${overrideIds.join(", ") || "(none declared)"}`,
       );
     }
   }
 
-  return ids;
+  return patterns;
 }
 
 /** Reads whichever of `rungs` blocks are present, for jobs and overrides alike. */
@@ -1046,10 +1058,12 @@ function callsIn(body: string[] | undefined): string | undefined {
  * What goes under a job.
  *
  * A call is read straight off the workflow file, since its `uses:` is the only
- * thing that decides it. Everything else is whatever the config already said,
- * copied across untouched — that is the part a person wrote, and a sync that
- * quietly dropped it would turn a careful path filter into "always runs"
- * without anyone noticing.
+ * thing that decides it, and is written first so a job reads as the call it is.
+ * Everything else is whatever the config already said, copied across untouched
+ * — that is the part a person wrote, and a sync that quietly dropped it would
+ * turn a careful path filter into "always runs" without anyone noticing. A job
+ * that calls a workflow is no exception: its blocks gate the call, so they
+ * matter as much there as anywhere, and only the old `calls:` line goes.
  */
 function jobLines(
   job: string,
@@ -1057,16 +1071,15 @@ function jobLines(
   existing: JobText | undefined,
 ): string[] {
   const key = `${" ".repeat(JOB_INDENT)}${job}:`;
-
-  if (calls !== undefined) {
-    return [key, `${" ".repeat(JOB_INDENT + 2)}calls: ${calls}`];
-  }
-
   const { inline = "", body = [] } = existing ?? {};
 
   return [
     inline === "" ? key : `${key} ${inline}`,
-    // A job that no longer calls anything keeps its conditions but not the call.
+    ...(calls === undefined
+      ? []
+      : [`${" ".repeat(JOB_INDENT + 2)}calls: ${calls}`]),
+    // A job that no longer calls anything keeps its conditions but not the
+    // call, and one that still does takes the call from the workflow file.
     ...body.filter((line) => !/^\s*calls:\s/.test(line)),
   ];
 }
@@ -1364,13 +1377,21 @@ function planWorkflows(
 
     // The call is the outer gate: a workflow nobody called runs none of its
     // jobs, whatever its own gate would have allowed.
-    const closed = settled
-      ? null
-      : call && !call.plan.run
+    //
+    // It is asked before `settled`, unlike the gate, because a call an
+    // override has settled is still a call that may not happen: the calling
+    // job may have named that override in `ignore-overrides` and decided, on
+    // its own conditions, not to call at all. Nothing an override says about
+    // the jobs in here can survive that — a workflow that is never entered
+    // runs none of them, and a plan that said otherwise would fail `verify`.
+    const closed =
+      call && !call.plan.run
         ? `the ${call.workflow} workflow does not call it: ${call.plan.reason}`
-        : gate && !gate.run
-          ? gate.reason
-          : null;
+        : settled
+          ? null
+          : gate && !gate.run
+            ? gate.reason
+            : null;
 
     const jobs: Record<string, JobPlan> = {};
 
@@ -1378,7 +1399,10 @@ function planWorkflows(
       // Named so the reason reads the same wherever the job is looked up,
       // rather than making sense only next to the workflow it belongs to.
       const own = closed
-        ? { run: false, reason: `the ${workflow} workflow is skipped: ${closed}` }
+        ? {
+            run: false,
+            reason: `the ${workflow} workflow is skipped: ${closed}`,
+          }
         : planJob(options, facts, override);
 
       if (options.calls === undefined) {
@@ -1403,7 +1427,8 @@ function planWorkflows(
     const workflowPlan: WorkflowPlan = {
       run,
       reason:
-        closed ?? (run ? "a job in it has work to do" : "no job in it has work to do"),
+        closed ??
+        (run ? "a job in it has work to do" : "no job in it has work to do"),
       jobs,
     };
 
@@ -2338,11 +2363,16 @@ async function main(): Promise<number> {
 
 // Bun sets import.meta.main; the repository's TypeScript is configured for
 // Node, whose ImportMeta does not declare it.
+//
+// Awaited in a `then` rather than at the top level, because the unit tests
+// import this file and Jest compiles it to CommonJS, which has no top-level
+// await to compile it to.
 if ((import.meta as ImportMeta & { main?: boolean }).main) {
-  try {
-    process.exit(await main());
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(2);
-  }
+  main().then(
+    (code) => process.exit(code),
+    (error: unknown) => {
+      console.error(error instanceof Error ? error.message : error);
+      process.exit(2);
+    },
+  );
 }

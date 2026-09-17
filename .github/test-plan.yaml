@@ -163,7 +163,7 @@ workflows:
       be-linter-eastwood-test-changed:
         run:
           ignore-overrides:
-            - protected-branch
+            - protected-branch-*
           paths:
             - backend_all
           event:
