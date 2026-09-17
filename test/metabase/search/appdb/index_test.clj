@@ -72,6 +72,11 @@
                              (search.index/rebuild-context :not-the-pending-table))))
       (is (= active (search.index/active-table))))))
 
+(deftest staged-activation-refuses-caller-transaction-test
+  (t2/with-transaction [_conn]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"inside a caller transaction"
+                          (search.index/activate-table! (search.index/rebuild-context :not-published))))))
+
 (defn- index-hits [term]
   (count (search.index/search term)))
 

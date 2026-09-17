@@ -21,7 +21,8 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource)
-   (java.sql Connection SQLException)))
+   (java.sql Connection SQLException)
+   (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,14 +98,19 @@
   An ambient app-db transaction already owns a main-pool connection, so use the isolated pool in that case.
   All SQL inside `f` resolves to the explicitly checked-out connection."
   [f]
-  (let [connectable (when (mdb/in-transaction?)
-                      (coordination-data-source))]
-    ;; A nil connectable reuses this thread's current connection, or the normal app-db pool when there is none.
-    (t2/with-connection [^Connection conn connectable]
-      (when-not (.getAutoCommit conn)
-        (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
-                        {:type ::non-autocommit-lifecycle-connection})))
-      (f conn))))
+  (let [read-lock (.readLock ^ReentrantReadWriteLock (:lock (mdb/app-db)))]
+    (.lockInterruptibly read-lock)
+    (try
+      (let [connectable (when (mdb/in-transaction?)
+                          (coordination-data-source))]
+        ;; The checkout gate alone cannot protect an auxiliary connection already checked out before restore.
+        (t2/with-connection [^Connection conn connectable]
+          (when-not (.getAutoCommit conn)
+            (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
+                            {:type ::non-autocommit-lifecycle-connection})))
+          (f conn)))
+      (finally
+        (.unlock read-lock)))))
 
 (defn- lease-duration-millis []
   (.toMillis ^java.time.Duration *lease-duration*))
@@ -161,15 +167,13 @@
            stolen?          (pos? (search.db/take-over-expired-lease!
                                    conn coordinate now
                                    (select-keys claim [:owner :acquired_at :last_renewed_at :expires_at])))]
-       (cond
-         stolen?
-         (assoc claim :taken-over? true)
-
-         (try-insert-claim! conn claim)
-         claim
-
-         :else
-         nil)))))
+       (when (or stolen? (try-insert-claim! conn claim))
+         ;; A claim statement can wait behind a fenced writer longer than the timestamps sampled above remain valid.
+         (if (search.db/live-lease? conn coordinate owner)
+           (cond-> claim stolen? (assoc :taken-over? true))
+           (do
+             (search.db/delete-lease! conn (:engine claim) (:version claim) (:lang_code claim) owner)
+             nil)))))))
 
 (defn renew!
   "Renew `claim` with a short autocommit operation, or on `conn` when given.
