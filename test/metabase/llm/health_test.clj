@@ -98,13 +98,6 @@
         (is (not-any? #(str/includes? (str %) "sk-ant-secret-echoed") logged)
             "nothing rendered into the log may carry the response body")))))
 
-(deftest forget-clears-without-a-success-test
-  (testing "an explicit forget drops even a fatal failure — the admin re-saving a connection is an ask to try again"
-    (llm.health/record-failure! "forgotten-conn" "no credit" true)
-    (is (some? (llm.health/failure "forgotten-conn")))
-    (llm.health/forget! "forgotten-conn")
-    (is (nil? (llm.health/failure "forgotten-conn")))))
-
 (deftest nil-connection-key-is-ignored-test
   (testing "a call with no connection behind it records nothing rather than a failure against nil"
     (llm.health/record-failure! nil "boom" true)

@@ -108,15 +108,6 @@
     (swap! failures dissoc conn-key))
   nil)
 
-(defn forget!
-  "Drop what is recorded for `conn-key` without a success proving anything: the admin re-saving the connection is an
-  explicit ask to try it again, e.g. after restoring credit or model access on the provider's side. Worst case the
-  next request fails once and re-records the same failure."
-  [conn-key]
-  (when conn-key
-    (swap! failures dissoc conn-key))
-  nil)
-
 (defn forget-superseded!
   "Drop what is recorded for every key whose value in `old` the `new` map does not repeat, treating neither as a
   recovery. `old` and `new` describe how connections were configured before and after a write: a connection that
