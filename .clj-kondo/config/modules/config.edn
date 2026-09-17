@@ -3206,13 +3206,11 @@
            sync
            upload
            util
-           util.classloader
            util.config
            warehouse-schema-overlay
            warehouses
            warehouses.schema
-           warehouses.secrets
-           enterprise/permissions}
+           warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3255,11 +3253,8 @@
            settings
            sync.analyze
            util
-           util.classloader
-           util.config
            warehouse-schema-overlay
-           warehouses
-           enterprise/permissions}
+           warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
