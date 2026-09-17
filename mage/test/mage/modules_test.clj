@@ -284,13 +284,17 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
-  (let [deps (mage.modules/dependencies)
-        all (keys deps)]
-    (filter #(mage.modules/driver-deps-affected? [%]) all)))
+(defn modules-affecting-drivers
+  "Top-level modules that trigger driver tests. A nested module is carved out of its ancestors, so counting it
+  would raise the ceiling every time a triggering module is split."
+  []
+  (let [deps (mage.modules/dependencies)]
+    (->> (keys deps)
+         (remove #(modules/parent-module deps %))
+         (filter #(mage.modules/driver-deps-affected? [%])))))
 
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
+  (testing "The number of top-level modules triggering driver tests should not increase without approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
@@ -312,7 +316,8 @@
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
           ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
           ;;            lib and query-processor, which already trigger driver tests
-          max-allowed-count 47]
+          ;; 2026-09-17 Lowered to 28: only top-level modules count, so carving out a child moves nothing
+          max-allowed-count 28]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
