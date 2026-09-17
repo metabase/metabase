@@ -853,7 +853,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.wait("@getMoveDestinations")
         .its("response.statusCode")
-        .should("be.within", 200, 299);
+        .should("eq", 200);
       H.entityPickerModal()
         .findByText("Orders in a dashboard", { timeout: 10_000 })
         .click();

@@ -115,9 +115,7 @@ export function selectDataset(datasetName: string) {
   });
 
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.wait("@visualizerSearch")
-    .its("response.statusCode")
-    .should("be.within", 200, 299);
+  cy.wait("@visualizerSearch").its("response.statusCode").should("eq", 200);
   dataImporter()
     .findByTestId("datasets-list")
     .findAllByText(datasetName)
