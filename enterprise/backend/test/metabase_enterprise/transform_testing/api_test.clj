@@ -14,6 +14,14 @@
 (def ^:private expectations
   [{:type "empty" :name "no rows" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID IS NULL"}])
 
+(defn- transform
+  "A transform reading the table `inputs` stands in for, writing the table `expectations` reads, so that a test of
+  it is one the write endpoints accept."
+  []
+  {:source {:type  "query"
+            :query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")}
+   :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}})
+
 (defmacro ^:private with-transforms-enabled [& body]
   `(mt/with-premium-features #{:transforms-basic :transforms-testing}
      (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
@@ -39,8 +47,8 @@
 
 (deftest crud-test
   (with-transforms-enabled
-    (mt/with-temp [:model/Transform {transform-id :id} {}
-                   :model/Transform {other-id :id}     {}]
+    (mt/with-temp [:model/Transform {transform-id :id} (transform)
+                   :model/Transform {other-id :id}     (transform)]
       (let [created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
                                           {:transform_id transform-id
                                            :name         "My test"
@@ -74,6 +82,41 @@
             (mt/user-http-request :crowberto :get 404 path))
           (finally
             (t2/delete! :model/TransformTest (:id created))))))))
+
+(deftest write-endpoints-refuse-a-test-that-could-not-run-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform {transform-id :id} (transform)]
+      (testing "POST refuses a test the runner would refuse, as that refusal"
+        (let [response (mt/user-http-request :crowberto :post 400 "ee/transform-test"
+                                             {:transform_id transform-id
+                                              :name         "no inputs"
+                                              :inputs       []
+                                              :expectations expectations})]
+          (is (= "transform-test.missing-inputs" (:error-code response)))
+          (is (= ["PUBLIC.PEOPLE"] (:tables response)))
+          (is (not (t2/exists? :model/TransformTest :name "no inputs")))))
+      (testing "and an expectation reading a table the test does not stand in for"
+        (let [response (mt/user-http-request :crowberto :post 400 "ee/transform-test"
+                                             {:transform_id transform-id
+                                              :name         "leaky expectation"
+                                              :inputs       inputs
+                                              :expectations [{:type "empty" :name "leaks"
+                                                              :sql  "SELECT * FROM PUBLIC.ORDERS"}]})]
+          (is (= "transform-test.unremapped-reference" (:error-code response)))))
+      (testing "PUT refuses an update that would leave the test unrunnable, and changes nothing"
+        (mt/with-temp [:model/TransformTest {test-id :id} {:transform_id transform-id
+                                                           :name         "My test"
+                                                           :inputs       inputs
+                                                           :expectations expectations}]
+          (let [path     (str "ee/transform-test/" test-id)
+                response (mt/user-http-request :crowberto :put 400 path {:inputs []})]
+            (is (= "transform-test.missing-inputs" (:error-code response)))
+            (is (= (:inputs (t2/select-one :model/TransformTest test-id))
+                   (mapv #(update % :format keyword) inputs))))
+          (testing "while an update that touches nothing a run reads is let through"
+            (is (=? {:name "Renamed"}
+                    (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" test-id)
+                                          {:name "Renamed"})))))))))
 
 (deftest validation-test
   (with-transforms-enabled

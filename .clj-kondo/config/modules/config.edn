@@ -4370,7 +4370,8 @@
            sql-tools
            sql-tools.parsing
            transforms.base
-           util}
+           util
+           warehouses}
    :model-exports #{:model/TransformTest}
    :model-imports #{:model/Collection
                     :model/Database

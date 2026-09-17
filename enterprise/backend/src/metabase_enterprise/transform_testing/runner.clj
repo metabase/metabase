@@ -33,10 +33,13 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,6 +47,17 @@
 (comment
   metabase-enterprise.transform-testing.expectations.empty/keep-me
   metabase-enterprise.transform-testing.expectations.equals/keep-me)
+
+(mr/def ::plan
+  "What [[validated-plan]] hands the run that follows it."
+  [:map {:closed true}
+   [:driver       :keyword]
+   [:database     ::warehouses.schema/database]
+   [:input->table [:map-of ::transform-testing.schema/input :string]]
+   [:output-table :string]
+   [:labels       [:map-of :string :string]]
+   [:replacements ::transform-testing.compile/table-replacements]
+   [:compiled     ::transform-testing.compile/compiled-query]])
 
 (defn- table-labels
   "The map from each temp table of the run to the table the author wrote, for rewriting warehouse error messages that
@@ -174,19 +188,23 @@
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
-(mu/defn run-transform-test! :- ::transform-testing.schema/run-result
-  "Run the transform test `transform-test` against temp tables and report what each expectation found.
+(mu/defn- validated-plan :- ::plan
+  "Everything a run needs, resolved and checked but not yet executed: the database and driver the transform runs
+  against, a temp table per input and one for its output, the source rewritten to read them, and the labels a
+  message renders them as.
 
-  Throws a typed refusal from [[metabase-enterprise.transform-testing.errors]] when the run cannot happen. A
-  failing expectation is not a refusal: it rides back as that expectation's own result."
-  [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
-  (let [transform      (testable-transform transform_id)
+  Throws the run's typed refusals — an untestable transform or driver, SQL that will not parse, a test the
+  validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan
+  and discarding it."
+  [transform-id :- ::lib.schema.id/transform
+   inputs       :- ::transform-testing.schema/inputs
+   expectations :- ::transform-testing.schema/expectations]
+  (let [transform      (testable-transform transform-id)
         database       (testable-database transform)
         driver         (keyword (:engine database))
-        source         (parsed-source driver transform transform_id)
+        source         (parsed-source driver transform transform-id)
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)
-        labels         (table-labels transform input->table output-table)
         default-schema (sql.normalize/default-schema driver database)
         replacements   (transform-testing.compile/table-replacements transform input->table output-table default-schema)
         compiled       (transform-testing.compile/compile-transform driver source replacements)]
@@ -198,6 +216,34 @@
       :rewritten-transform (:query compiled)
       :replacements        replacements
       :default-schema      default-schema})
+    {:driver       driver
+     :database     database
+     :input->table input->table
+     :output-table output-table
+     :labels       (table-labels transform input->table output-table)
+     :replacements replacements
+     :compiled     compiled}))
+
+(mu/defn validate-transform-test :- :nil
+  "Refuse a test of the transform `transform-id` with these `inputs` and `expectations` unless it could run: the same
+  checks a run makes, up to but not including the connection.
+
+  Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
+  is turned away as it is authored rather than only when somebody runs it."
+  [transform-id :- ::lib.schema.id/transform
+   inputs       :- ::transform-testing.schema/inputs
+   expectations :- ::transform-testing.schema/expectations]
+  (validated-plan transform-id inputs expectations)
+  nil)
+
+(mu/defn run-transform-test! :- ::transform-testing.schema/run-result
+  "Run the transform test `transform-test` against temp tables and report what each expectation found.
+
+  Throws a typed refusal from [[metabase-enterprise.transform-testing.errors]] when the run cannot happen. A
+  failing expectation is not a refusal: it rides back as that expectation's own result."
+  [{:keys [transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
+  (let [{:keys [driver database input->table output-table labels replacements compiled]}
+        (validated-plan transform_id inputs expectations)]
     (driver/do-with-test-connection
      driver database
      (fn [conn]
