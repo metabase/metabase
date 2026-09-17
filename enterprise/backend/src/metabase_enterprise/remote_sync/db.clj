@@ -320,7 +320,7 @@
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."
   [collections]
-  (into [:or [:in :id (map :id collections)]]
+  (into [:or [:in :id (mapv (comp long :id) collections)]]
         (for [collection collections]
           [:like :location (str (collections/location-path collection) "%")])))
 
