@@ -86,7 +86,7 @@
     (is (= "Anthropic API error (HTTP 0)"
            ((:error-msg @#'claude/provider) {})))))
 
-(deftest ^:parallel every-descriptor-brings-its-own-translated-messages-test
+(deftest every-descriptor-brings-its-own-translated-messages-test
   (testing "each adapter declares its own `:error-fallback` rather than inheriting the shared
             parameterised template, which ships no translations. The rendered English is identical either
             way, so `error-message-test` cannot tell the two apart — this can"
