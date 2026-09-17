@@ -59,7 +59,7 @@
       (testing "a location that looks like SQL matches nothing"
         (is (empty? (collections.db/child-collection-ids "/1/' OR '1'='1" trash false)))))))
 
-(deftest update!-conditions-maps-filter-rather-than-naming-a-where-column
+(deftest update!-kv-arg-conditions-filter-test
   (testing "clear-remote-synced-flags! clears only the remote-synced rows"
     (mt/with-temp [:model/Collection {a :id} {:is_remote_synced true}
                    :model/Collection {b :id} {:is_remote_synced false}]
