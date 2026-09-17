@@ -40,12 +40,12 @@
     id))
 
 (defn- listed-ids
-  "The ids of the live sessions matching `filters`. Every caller passes `:user-id` so a test never sees sessions other
-  tests left lying around."
+  "The ids of the sessions matching `filters` (live ones, unless `:status` says otherwise). Every caller passes
+  `:user-id` so a test never sees sessions other tests left lying around."
   [liveness-params & {:as filters}]
   (into #{}
         (map :id)
-        (sm.db/live-sessions liveness-params filters :created_at :desc nil nil nil)))
+        (sm.db/sessions liveness-params filters :created_at :desc nil nil nil)))
 
 (defn- ago [amount unit]
   (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) (- amount) unit))
@@ -60,11 +60,11 @@
             old   (insert-session! user-id :created_at (ago 61 :second))
             lp    (liveness :max-age-minutes 1)]
         (is (= #{fresh} (listed-ids lp :user-id user-id)))
-        (is (= 1 (sm.db/live-session-count lp {:user-id user-id})))
+        (is (= 1 (sm.db/session-count lp {:user-id user-id})))
         (testing "and is listed again once the cap is wide enough to cover it"
           (let [lp (liveness :max-age-minutes 20160)]
             (is (= #{fresh old} (listed-ids lp :user-id user-id)))
-            (is (= 2 (sm.db/live-session-count lp {:user-id user-id})))))))))
+            (is (= 2 (sm.db/session-count lp {:user-id user-id})))))))))
 
 (deftest live-session-conditions-expires-at-test
   (testing "`expires_at` in the past excludes a session even when it is well within `max-session-age`"
@@ -75,7 +75,7 @@
             lp          (liveness)]
         (is (= #{no-expiry not-yet} (listed-ids lp :user-id user-id)))
         (is (not (contains? (listed-ids lp :user-id user-id) expired)))
-        (is (= 2 (sm.db/live-session-count lp {:user-id user-id})))))))
+        (is (= 2 (sm.db/session-count lp {:user-id user-id})))))))
 
 (deftest live-session-conditions-idle-timeout-test
   (testing "with a session timeout configured, an idle session drops out — and `last_active_at` nil falls back to
@@ -91,7 +91,7 @@
             lp              (liveness :session-timeout-seconds 60)]
         (is (= #{never-touched recently-active} (listed-ids lp :user-id user-id)))
         (is (not (contains? (listed-ids lp :user-id user-id) idle)))
-        (is (= 2 (sm.db/live-session-count lp {:user-id user-id})))))))
+        (is (= 2 (sm.db/session-count lp {:user-id user-id})))))))
 
 (deftest live-session-conditions-inactive-user-test
   (testing "a deactivated user's surviving session rows are dead"
@@ -107,7 +107,7 @@
         (is (t2/exists? (t2/table-name :model/Session) :id id)
             "the session row survives deactivation; it is the predicate that must reject it")
         (is (= #{} (listed-ids lp :user-id user-id)))
-        (is (zero? (sm.db/live-session-count lp {:user-id user-id})))))))
+        (is (zero? (sm.db/session-count lp {:user-id user-id})))))))
 
 (deftest live-session-conditions-mcp-test
   (testing "a session stamped with the `mcp` provider is never live, whatever the filters"
@@ -117,7 +117,7 @@
             _mcp   (insert-session! user-id :auth_identity_id mcp-id)
             lp     (liveness)]
         (is (= #{normal} (listed-ids lp :user-id user-id)))
-        (is (= 1 (sm.db/live-session-count lp {:user-id user-id})))
+        (is (= 1 (sm.db/session-count lp {:user-id user-id})))
         (testing "not even when explicitly asking for the `unknown` provider bucket, which is what a null provider is"
           ;; a list, not a bare string: the single-value coercion happens in the API schema, not down here
           (is (= #{normal} (listed-ids lp :user-id user-id :provider ["unknown"]))))))))
@@ -130,7 +130,7 @@
         (is (= #{id} (listed-ids lp :user-id user-id)))
         (is (= #{id} (listed-ids lp :user-id user-id :ids [id])))
         (is (= #{}   (listed-ids lp :user-id user-id :ids [])))
-        (is (= 0     (sm.db/live-session-count lp {:user-id user-id :ids []}))))))
+        (is (= 0     (sm.db/session-count lp {:user-id user-id :ids []}))))))
   (testing "`filters->where` is request-independent: the same map produces the same clauses"
     (is (= (sm.query/filters->where {:user-id 1 :tenancy :internal})
            (sm.query/filters->where {:user-id 1 :tenancy :internal})))
@@ -149,3 +149,54 @@
         (is (= #{id} (listed-ids lp :user-id user-id
                                  :created-after  #t "2024-03-05T11:00:00Z"
                                  :created-before #t "2024-03-05T13:00:00Z")))))))
+
+(deftest status-conditions-test
+  (mt/with-temp [:model/User         {user-id :id} {}
+                 :model/AuthIdentity {mcp-id :id}  {:user_id user-id :provider "mcp"}]
+    (let [live     (insert-session! user-id)
+          stamped  (insert-session! user-id :key_hashed nil :ended_at (ago 1 :hour) :end_reason "logout")
+          ;; not live, but the sweep has not recorded it yet
+          expired  (insert-session! user-id :expires_at (ago 1 :second))
+          _mcp     (insert-session! user-id :auth_identity_id mcp-id :expires_at (ago 1 :second))
+          lp       (liveness)]
+      (testing "`:live` (the default) is the liveness predicate"
+        (is (= #{live} (listed-ids lp :user-id user-id)))
+        (is (= #{live} (listed-ids lp :user-id user-id :status :live))))
+      (testing "`:ended` is a recorded ending or the negation of liveness, so an unstamped expired row is ended too"
+        (is (= #{stamped expired} (listed-ids lp :user-id user-id :status :ended)))
+        (is (= 2 (sm.db/session-count lp {:user-id user-id :status :ended}))))
+      (testing "`:all` is both"
+        (is (= #{live stamped expired} (listed-ids lp :user-id user-id :status :all)))
+        (is (= 3 (sm.db/session-count lp {:user-id user-id :status :all}))))
+      (testing "an MCP-backed row is excluded under every status"
+        (is (= 4 (t2/count :model/Session :user_id user-id)) "sanity check: the MCP row exists"))
+      (testing "a recorded ending stays ended even though the row would pass the liveness predicates now"
+        (let [revived (insert-session! user-id :key_hashed nil :ended_at (ago 1 :second) :end_reason "admin")]
+          (is (not (contains? (listed-ids lp :user-id user-id) revived)))
+          (is (contains? (listed-ids lp :user-id user-id :status :ended) revived)))))))
+
+(deftest ended-filters-test
+  (testing "`reason` is an exact match on `end_reason`; `ended-after` is inclusive and `ended-before` exclusive"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [t      #t "2024-03-05T12:00:00Z"
+            admin  (insert-session! user-id :key_hashed nil :ended_at t :end_reason "admin")
+            logout (insert-session! user-id :key_hashed nil :ended_at t :end_reason "logout")
+            ;; unstamped: not live, but no `ended_at` for a range to match
+            _blank (insert-session! user-id :expires_at (ago 1 :second))
+            lp     (liveness :max-age-minutes nil)]
+        (is (= #{admin} (listed-ids lp :user-id user-id :status :ended :reason "admin")))
+        (is (= #{admin logout} (listed-ids lp :user-id user-id :status :ended :ended-after t)))
+        (is (= #{} (listed-ids lp :user-id user-id :status :ended :ended-before t)))
+        (is (= #{logout} (listed-ids lp :user-id user-id :status :ended :reason "logout"
+                                     :ended-after  #t "2024-03-05T11:00:00Z"
+                                     :ended-before #t "2024-03-05T13:00:00Z")))
+        (testing "the ended-only filters match nothing under `:live`, since a live session has no ending"
+          (is (= #{} (listed-ids lp :user-id user-id :reason "admin")))
+          (is (= #{} (listed-ids lp :user-id user-id :ended-after t))))))))
+
+(deftest ^:parallel revoke-where-ignores-status-test
+  (testing "`revoke-where` is always the live predicate, whatever `status` the filters carry"
+    (let [lp (liveness)]
+      (is (= (sm.query/revoke-where lp {:user-id 1} nil false)
+             (sm.query/revoke-where lp {:user-id 1 :status :all} nil false)
+             (sm.query/revoke-where lp {:user-id 1 :status :ended} nil false))))))

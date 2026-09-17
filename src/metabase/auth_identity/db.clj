@@ -69,12 +69,18 @@
    provider :- :string]
   (t2/delete! :model/AuthIdentity :user_id user-id :provider provider))
 
-(mu/defn delete-sessions-for-user!
-  "Delete every Session of the User with `user-id`, returning the number deleted. Duplicates
-  `metabase.session.db/delete-sessions-for-user!`; can't delegate to it because the `session` module already depends
-  on `auth-identity`, so the reverse dependency would be a module cycle."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id user-id))
+(mu/defn end-sessions-for-user!
+  "Record that every Session of the User with `user-id` ended because their password changed, clearing each key so
+  none can authenticate again; `ended-by` is who changed it. Returns the number ended."
+  [user-id  :- ::lib.schema.id/user
+   ended-by :- [:maybe ::lib.schema.id/user]]
+  ;; the same write `metabase.session.db/end-sessions!` makes, repeated here rather than delegated: the `session`
+  ;; module already depends on `auth-identity`, so the reverse dependency would be a module cycle
+  (t2/update! :model/Session :user_id user-id :ended_at nil
+              {:ended_at         :%now
+               :end_reason       "password-change"
+               :ended_by_user_id ended-by
+               :key_hashed       nil}))
 
 (mu/defn user
   "The User with `user-id`, or nil."

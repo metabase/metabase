@@ -31,8 +31,8 @@
                           :session_key "test1"
                           :auth_identity_id (t2/select-one-pk :model/AuthIdentity :user_id support-user-id)}]
             (t2/update! :model/SupportAccessGrantLog grant-id {:notes "Updated notes"})
-            (is (some? (t2/select-one :model/Session :id session-id))
-                "Session should still exist after non-revocation update")
+            (is (nil? (t2/select-one-fn :ended_at :model/Session :id session-id))
+                "Session should still be live after non-revocation update")
             (is (nil? (:expires_at (t2/select-one :model/AuthIdentity :provider "password" :user_id support-user-id)))
                 "Auth identity expires_at should remain unchanged")))))))
 
@@ -68,11 +68,13 @@
                                                                 :user_id other-user-id
                                                                 :provider "password")}]
               (let [revoked-timestamp (t/offset-date-time)]
-                (t2/update! :model/SupportAccessGrantLog grant-id {:revoked_at revoked-timestamp})
-                (is (nil? (t2/select-one :model/Session :id support-session-id))
-                    "Support user session should be deleted")
-                (is (some? (t2/select-one :model/Session :id other-session-id))
-                    "Other user session should remain")
+                (t2/update! :model/SupportAccessGrantLog grant-id {:revoked_at         revoked-timestamp
+                                                                   :revoked_by_user_id grant-creator-id})
+                (is (=? {:end_reason "support-grant-revoked", :ended_by_user_id grant-creator-id, :key_hashed nil}
+                        (t2/select-one :model/Session :id support-session-id))
+                    "Support user session should be ended, attributed to the revoker, and its key destroyed")
+                (is (nil? (t2/select-one-fn :ended_at :model/Session :id other-session-id))
+                    "Other user session should remain live")
                 (is (some? (:expires_at (t2/select-one :model/AuthIdentity
                                                        :user_id support-user-id :provider "password")))
                     "Support user auth identity should have expires_at set")

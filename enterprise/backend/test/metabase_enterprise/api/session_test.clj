@@ -209,14 +209,15 @@
 ;;; ---------------------------------------- session cleanup idle sessions test ----------------------------------------
 
 (deftest cleanup-idle-sessions-test
-  (testing "With session-timeout configured, idle sessions are also cleaned up"
+  (testing "With session-timeout configured, idle sessions are recorded as timed out by the sweep"
     (mt/with-premium-features #{:session-timeout-config}
       (mt/with-temporary-setting-values [session-timeout {:amount 5 :unit "minutes"}]
         (mt/with-temp [:model/User {user-id :id}]
           (let [active-id   (session/generate-session-id)
                 active-key  (session/hash-session-key (str (random-uuid)))
                 idle-id     (session/generate-session-id)
-                idle-key    (session/hash-session-key (str (random-uuid)))
+                idle-cookie (session/generate-session-key)
+                idle-key    (session/hash-session-key idle-cookie)
                 no-activity-id (session/generate-session-id)
                 no-activity-key (session/hash-session-key (str (random-uuid)))]
             ;; Active session: last_active_at = now
@@ -233,9 +234,50 @@
                         {:id no-activity-id :key_hashed no-activity-key :user_id user-id
                          :created_at :%now})
             (#'session-cleanup/cleanup-sessions!)
-            (testing "active session is kept"
-              (is (t2/exists? :model/Session :id active-id)))
-            (testing "idle session is deleted"
-              (is (not (t2/exists? :model/Session :id idle-id))))
-            (testing "session with NULL last_active_at but recent created_at is kept"
-              (is (t2/exists? :model/Session :id no-activity-id)))))))))
+            (testing "active session is kept live"
+              (is (nil? (t2/select-one-fn :ended_at :model/Session :id active-id))))
+            (testing "idle session is recorded as timed out, its key destroyed, and the row kept"
+              (is (=? {:end_reason "timed-out", :ended_at some?, :ended_by_user_id nil, :key_hashed nil}
+                      (t2/select-one :model/Session :id idle-id))))
+            (testing "session with NULL last_active_at but recent created_at is kept live"
+              (is (nil? (t2/select-one-fn :ended_at :model/Session :id no-activity-id))))
+            (testing "raising the idle timeout afterwards does not revive the timed-out session"
+              (mt/with-temporary-setting-values [session-timeout {:amount 1 :unit "hours"}]
+                (is (= "Unauthenticated" (mt/client idle-cookie :get 401 "user/current")))))))))))
+
+(deftest cleanup-tenant-deactivated-sessions-test
+  (testing "the sweep records a session of a deactivated tenant's user as tenant-deactivated"
+    (mt/with-additional-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id}  {:name "SM41 T1" :slug "sm41-t1" :is_active true}
+                       :model/User   {external :id}   {:tenant_id tenant-id}
+                       :model/User   {internal :id}   {}]
+          (let [session! (fn [user-id]
+                           (let [id (session/generate-session-id)]
+                             (t2/insert! (t2/table-name :model/Session)
+                                         {:id         id
+                                          :key_hashed (session/hash-session-key (str (random-uuid)))
+                                          :user_id    user-id
+                                          :created_at :%now})
+                             id))
+                ended    (fn [session-id]
+                           (select-keys (t2/select-one :model/Session :id session-id)
+                                        [:end_reason :ended_by_user_id :key_hashed]))
+                external-session (session! external)
+                internal-session (session! internal)]
+            (t2/update! (t2/table-name :model/Tenant) tenant-id {:is_active false})
+            (#'session-cleanup/cleanup-sessions!)
+            (is (= {:end_reason "tenant-deactivated", :ended_by_user_id nil, :key_hashed nil}
+                   (ended external-session)))
+            (is (nil? (:end_reason (ended internal-session)))
+                "a user without a tenant is unaffected")
+            (testing "with tenants switched off, a user with any tenant at all is not live"
+              (t2/update! (t2/table-name :model/Tenant) tenant-id {:is_active true})
+              (mt/with-temporary-setting-values [use-tenants false]
+                ;; switching tenants off deactivates their users, and that deactivation ends their sessions on the
+                ;; spot; reactivate through the raw table and start a fresh session, so that the tenant predicate
+                ;; is the only thing rejecting it
+                (t2/update! (t2/table-name :model/User) external {:is_active true})
+                (let [another (session! external)]
+                  (#'session-cleanup/cleanup-sessions!)
+                  (is (= "tenant-deactivated" (:end_reason (ended another)))))))))))))

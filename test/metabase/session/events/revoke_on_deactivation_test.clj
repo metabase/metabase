@@ -18,27 +18,33 @@
                  :created_at :%now})
     id))
 
+(defn- ending [session-id]
+  (select-keys (t2/select-one :model/Session :id session-id) [:end_reason :ended_by_user_id :key_hashed]))
+
 (deftest revoke-on-event-test
-  (testing ":event/user-credentials-revoked deletes the user's sessions, leaving other users' untouched"
+  (testing ":event/user-credentials-revoked ends the user's sessions, leaving other users' untouched"
     (mt/with-temp [:model/User {victim :id}    {}
                    :model/User {bystander :id} {}]
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
-        (events/publish-event! :event/user-credentials-revoked {:user-id victim})
-        (is (not (t2/exists? :model/Session :id victim-session))
-            "victim's session is deleted")
-        (is (t2/exists? :model/Session :id bystander-session)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (events/publish-event! :event/user-credentials-revoked {:user-id victim}))
+        (is (= {:end_reason "user-deactivated", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
+               (ending victim-session))
+            "victim's session is ended, attributed to the deactivating admin, and its key destroyed")
+        (is (some? (:ended_at (t2/select-one :model/Session :id victim-session))))
+        (is (= {:end_reason nil, :ended_by_user_id nil} (dissoc (ending bystander-session) :key_hashed))
             "an unrelated user's session is untouched")))))
 
 (deftest deactivation-revokes-and-reactivation-does-not-revive-test
-  (testing "deactivating a user deletes their sessions; reactivating does NOT bring them back (SEC-863)"
+  (testing "deactivating a user ends their sessions; reactivating does NOT bring them back (SEC-863)"
     (mt/with-temp [:model/User {user-id :id} {:is_active true}]
       (let [session-id (insert-session! user-id)]
-        (is (t2/exists? :model/Session :id session-id)
-            "session exists while the user is active")
+        (is (nil? (:ended_at (t2/select-one :model/Session :id session-id)))
+            "session is live while the user is active")
         (t2/update! :model/User user-id {:is_active false})
-        (is (not (t2/exists? :model/Session :id session-id))
-            "deactivation revokes the session")
+        (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
+            "deactivation outside a request ends the session with no actor")
         (t2/update! :model/User user-id {:is_active true})
-        (is (not (t2/exists? :model/Session :id session-id))
+        (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "reactivation does not revive the pre-deactivation session")))))

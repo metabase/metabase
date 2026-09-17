@@ -286,11 +286,11 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (session.db/delete-session-by-key-hashed! session-key-hashed)]
+        rows-ended         (session.db/end-sessions! {:key_hashed session-key-hashed} "logout" :self)]
     ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
     ;; would keep resending the dead cookie
     (request/clear-session-cookie
-     (if (pos? rows-deleted)
+     (if (pos? rows-ended)
        api/generic-204-no-content
        {:status 404, :body "Not found."}))))
 
