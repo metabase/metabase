@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -536,15 +537,7 @@
 
 (deftest adhoc-viewing-context-unpermissionable-native-source-test
   (testing "native SQL under a later stage is withheld when its permissions cannot be calculated"
-    (let [query {:lib/type :mbql/query
-                 :database (mt/id)
-                 :stages   [{:lib/type      :mbql.stage/native
-                             :native        "SELECT * FROM {{snip}}"
-                             :template-tags {"snip" {:type         :snippet
-                                                     :name         "snip"
-                                                     :display-name "snip"
-                                                     :snippet-id   Integer/MAX_VALUE}}}
-                            {:lib/type :mbql.stage/mbql}]}]
+    (let [query (test-util/unpermissionable-native-query (mt/id))]
       (mt/with-test-user :rasta
         (is (:unchecked? (shared.content-store/query-for-export query true)))
         (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]

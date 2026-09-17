@@ -428,6 +428,20 @@
               (is (str/includes? (:output result) "references content the user cannot read") uri)
               (is (not (str/includes? (:output result) "ORDERS")) uri))))))))
 
+(deftest read-conversation-unpermissionable-native-query-resource-test
+  (testing "native SQL whose permissions cannot be calculated has its body withheld, whether a tool
+           stored the query or the client sent it"
+    (let [query (test-util/unpermissionable-native-query (mt/id))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (:unchecked? (shared.content-store/query-for-export query false)))
+        (doseq [client-ids [#{} #{"q-1"}]]
+          (binding [tools.shared/*memory-atom* (doto (conversation-query-state query)
+                                                 (swap! assoc-in [:state :client-ids] client-ids))]
+            (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+              (let [result (read-resource/read-resource {:uris [uri]})]
+                (is (str/includes? (:output result) "references content the user cannot read") uri)
+                (is (not (str/includes? (:output result) "SELECT")) uri)))))))))
+
 (deftest read-conversation-source-card-query-resource-test
   (testing "a query sourced from a readable card exports through the card's collection access alone,
            with no database permission of any kind"
