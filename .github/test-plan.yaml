@@ -37,13 +37,27 @@ workflows:
   run-tests:
     jobs:
       should-run:
-      files-changed:
       create-test-plan:
+        run:
+          event:
+            - pull_request
       upload-affected-tests-stats:
       uberjar:
         calls: uberjar
+        run:
+          condition: any
+          paths:
+            - backend_all
+            - frontend_all
+            - e2e_all
       containerize:
         calls: containerize-jar
+        run:
+          condition: any
+          branch:
+            - master
+          labels:
+            - build-docker-uberjar
       e2e-cljs:
         run:
           paths:
@@ -73,23 +87,11 @@ workflows:
         calls: bundle-size
 
   uberjar:
-    run:
-      condition: any
-      paths:
-        - backend_all
-        - frontend_all
-        - e2e_all
     jobs:
       setup:
       build:
 
   containerize-jar:
-    run:
-      condition: any
-      branch:
-        - master
-      labels:
-        - build-docker-uberjar
     jobs:
       containerize:
       verify-docker-pull-amd64:

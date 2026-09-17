@@ -18,83 +18,32 @@ permissions:
   security-events: write
 
 jobs:
-  # `force-run` and `force-skip` are global overrides; `defer` means this
-  # job has no opinion and every downstream gate behaves as it always has.
-  #
-  # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
-  # ref is the stack base. Every PR above it is force-skipped and gets tested
-  # once it reaches the bottom of the stack.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      verdict: ${{ steps.decide.outputs.verdict }}
-    steps:
-      - name: Decide
-        id: decide
-        # Precedence matters for the conditions below.
-        env:
-          VERDICT: >-
-            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
-            || 'defer' }}
-        run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
-
-  files-changed:
-    needs: should-run
-    name: Detect changed files
-    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
-      e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
-      backend_all: ${{ steps.changes.outputs.backend_all }}
-      build_scripts: ${{ steps.changes.outputs.build_scripts }}
-      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-      frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
-      frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
-      frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
-      shared_sources: ${{ steps.changes.outputs.shared_sources }}
-      documentation: ${{ steps.changes.outputs.documentation }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
-      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
-      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
-      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
-      ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
-      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
-      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
-      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
-      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
-      no_source_code_changes: >-
-        ${{ (steps.changes.outputs.documentation == 'true'
-        || steps.changes.outputs.project_ratchet_checks == 'true')
-        && steps.changes.outputs.backend_all == 'false'
-        && steps.changes.outputs.frontend_all == 'false'
-        && steps.changes.outputs.e2e_all == 'false' }}
-
-      all_changed_files: ${{ steps.changes.outputs.all_changed_files }}
-      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
-      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
-      frontend_sources_files: ${{ steps.changes.outputs.frontend_sources_files }}
-      backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
+      plan: ${{ steps.decide.outputs.plan }}
     steps:
       - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
         with:
-          token: ${{ github.token }}
-          # comma separated list of files
-          list-files: csv
-          filters: .github/file-paths.yaml
+          # Enough history to diff against the base of the pull request.
+          fetch-depth: 0
+      - name: Create test plan
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$PR" ]; then
+            node .github/scripts/test-plan.ts create --pr "$PR" --repo "$GITHUB_REPOSITORY"
+          else
+            node .github/scripts/test-plan.ts create \
+              --event "$GITHUB_EVENT_NAME" \
+              --ref "$GITHUB_REF_NAME" \
+              --base "$BEFORE"
+          fi
 
   create-test-plan:
     needs: [should-run, files-changed]
@@ -107,17 +56,25 @@ jobs:
       artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          # comma separated list of files
+          list-files: csv
+          filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
         uses: ./.github/actions/create-test-plan
         with:
-          changed-files: ${{ needs.files-changed.outputs.all_changed_files }}
-          fe-changed-files: ${{ needs.files-changed.outputs.frontend_sources_files }}
-          be-changed-files: ${{ needs.files-changed.outputs.backend_sources_files }}
-          unit-infra-touched: ${{ needs.files-changed.outputs.frontend_unit_infra }}
-          loki-infra-touched: ${{ needs.files-changed.outputs.frontend_loki_infra }}
-          e2e-infra-touched: ${{ needs.files-changed.outputs.e2e_infra }}
-          shared-sources-touched: ${{ needs.files-changed.outputs.shared_sources }}
+          changed-files: ${{ steps.changes.outputs.all_changed_files }}
+          fe-changed-files: ${{ steps.changes.outputs.frontend_sources_files }}
+          be-changed-files: ${{ steps.changes.outputs.backend_sources_files }}
+          unit-infra-touched: ${{ steps.changes.outputs.frontend_unit_infra }}
+          loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
+          e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
+          shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
 
   upload-affected-tests-stats:
     needs: create-test-plan
@@ -144,23 +101,16 @@ jobs:
         run: bun .github/scripts/upload-affected-tests-stats.ts
 
   uberjar:
-    needs: [should-run, files-changed]
-    if: |
-      !cancelled() && needs.should-run.outputs.verdict != 'force-skip' &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.outputs.no_source_code_changes != 'true')
+    needs: [should-run]
+    if: fromJSON(needs.should-run.outputs.plan).workflows.run-tests.uberjar.run
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
+    with:
+      plan: ${{ needs.should-run.outputs.plan }}
 
   containerize:
-    needs: [uberjar]
-    if: >-
-      !cancelled() &&
-      needs.uberjar.result == 'success' &&
-      (
-        (github.event_name == 'push' && github.ref_name == 'master') ||
-        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
-      )
+    needs: [should-run, uberjar]
+    if: fromJSON(needs.should-run.outputs.plan).workflows.run-tests.containerize.run
     name: containerize (${{ matrix.edition }})
     strategy:
       matrix:
