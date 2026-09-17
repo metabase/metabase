@@ -5,8 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
-   [toucan2.honeysql2 :as t2.honeysql])
+   [toucan2.core :as t2])
   (:import
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment)
    (liquibase.change Change)
@@ -36,13 +35,16 @@
                   :limit 1})))
 
 (defn migrate!
-  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
-  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
+  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`,
+  `:down-force`, `:print` and `:release-locks`.
+
+  `:down` with no target rolls back the newest deployment in dev (every dev deployment records the same
+  [[liquibase/dev-version]], so that is the last `migrate!` run), or the previous recorded major on a database last
+  migrated by a release build. An explicit `target` must be a major version recorded in `databasechangelog_version`."
   ([]
    (migrate! :up))
-  ;; do we really use this in dev?
-  ([direction & [version]]
-   (mdb/migrate! (mdb/data-source) direction version)
+  ([direction & [target]]
+   (apply mdb/migrate! (mdb/data-source) direction (when target [target]))
    ;; dev migration CLI; status goes to stdout for the human running it
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
@@ -75,22 +77,6 @@
     (string? x)
     parse-long))
 
-(defn- last-deployment
-  []
-  (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
-                                         :quoted false)]
-    (if (= 1 (:count (t2/query-one {:select [[[:count [:distinct :deployment_id]] :count]]
-                                    :from   [databasechangelog-name]
-                                    :limit  1})))
-      0 ;; don't rollback if there was just one deployment of everything
-      (:count (t2/query-one {:select [[:%count.* :count]]
-                             :from   [databasechangelog-name]
-                             :where  [:= :deployment_id ^:allow-subquery
-                                      {:select   [:deployment_id]
-                                       :from     [databasechangelog-name]
-                                       :order-by [[:orderexecuted :desc]]
-                                       :limit    1}]})))))
-
 (defn reset-checksums!
   []
   (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
@@ -106,21 +92,21 @@
 (mu/defn rollback!
   "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
 
+    ;; Rollback last migration run -- the same as `migrate! :down`, keeping `databasechangelog_version` and the
+    ;; legacy-version-tracking marker in step:
+    (rollback! :last-deployment)
+
     ;; Rollback 2 migrations:
     (rollback! :count 2)
 
-    ;; Rollback last migration run:
-    ;; (rollback! :last-deployment)
-
     ;; rollback to \"v50.2024-03-18T16:00:00\" (inclusive)
-    (rollback! :id \"v50.2024-03-18T16:00:00\")"
-  ([k :- [:enum :last-deployment "last-deployment"]]
-   (let [n (case (keyword k)
-             :last-deployment (last-deployment))]
-     (rollback-n-migrations! n)
-     ;; dev migration CLI; status goes to stdout for the human running it
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
+    (rollback! :id \"v50.2024-03-18T16:00:00\")
+
+  `:count` and `:id` are raw Liquibase rollbacks by changeset position: they do NOT update `databasechangelog_version`
+  or remove the deployment's marker row, so after using them a later `migrate! :down` can misjudge the rollback
+  boundary. Prefer `:last-deployment` unless you need a partial rollback."
+  ([_k :- [:enum :last-deployment "last-deployment"]]
+   (migrate! :down))
 
   ([k      :- [:enum :id :count "id" "count"]
     target :- [:or :int :string]]
