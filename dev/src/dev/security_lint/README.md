@@ -17,8 +17,8 @@ driver module's `src`. `--branch` and `--uncommitted` take as long -- taint and 
 and a changed helper can flip an unchanged endpoint -- and narrow only the text report and the exit status. A
 SARIF report always covers the whole tree.
 
-CI runs it from `.github/workflows/metabase-security-lint.yml`: on every push to `master` and the release branches the
-whole tree, and on a pull request that touches backend source or the linter, with `--branch --base HEAD^1` -- the
+CI runs it from `.github/workflows/metabase-security-lint.yml`: on every push to `master` the whole tree, and
+on a pull request that touches backend source or the linter, with `--branch --base HEAD^1` -- the
 merge commit GitHub checks out, against its base parent. Both print `--summary`: counts by rule, no locations
 and no code, because the repository and its job logs are public; the findings go to code scanning, which only
 people with write access read, and nothing is kept as an artifact. Both upload the whole-tree SARIF to GitHub code scanning under

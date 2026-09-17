@@ -28,8 +28,6 @@
 
 (def ^:private severity-rank {:note 0 :warning 1 :error 2})
 
-(def ^:private severity-rank {:error 2 :warning 1 :note 0})
-
 (defn cap-severity
   "`severity`, lowered to what the least privilege that reaches the finding warrants.
 

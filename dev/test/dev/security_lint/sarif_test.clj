@@ -106,6 +106,26 @@
         (is (= [1] (map :ruleIndex results)))
         (is (= ["warning"] (map :level results)))))))
 
+(deftest every-result-indexes-its-rule-test
+  (testing "every result's ruleIndex points at the rule descriptor with its own ruleId: GitHub reads the severity
+            and the help text from there, and a nil index is a report it rejects"
+    (let [r     (run-report)
+          rules (get-in r [:runs 0 :tool :driver :rules])]
+      (doseq [{:keys [ruleId ruleIndex]} (get-in r [:runs 0 :results])]
+        (is (int? ruleIndex))
+        (is (= ruleId (:id (nth rules ruleIndex)))))))
+  (testing "a finding from a rule the report does not describe is an error, not a result with no index"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no rule"
+                          (sarif/report [(assoc (first findings) :rule-id :metabase-security-lint/nonesuch)]
+                                        {:rules rules :root "/repo"})))))
+
+(deftest fingerprint-key-test
+  (testing "the fingerprint is written under the tool's own key, not GitHub's reserved primaryLocationLineHash,
+            whose value GitHub defines as a hash of the surrounding lines"
+    (let [fps (get-in (run-report) [:runs 0 :results 0 :partialFingerprints])]
+      (is (= [:metabase-security-lint/v1] (keys fps)))
+      (is (string? (:metabase-security-lint/v1 fps))))))
+
 (deftest level-mapping-test
   (let [r (run-report)]
     (testing "clojure severities map onto SARIF levels"
@@ -132,7 +152,7 @@
     (is (= (map :partialFingerprints (get-in (run-report) [:runs 0 :results]))
            (map :partialFingerprints (get-in (run-report) [:runs 0 :results])))))
   (testing "different findings get different fingerprints"
-    (let [fps (map #(get-in % [:partialFingerprints :primaryLocationLineHash])
+    (let [fps (map #(get-in % [:partialFingerprints :metabase-security-lint/v1])
                    (get-in (run-report) [:runs 0 :results]))]
       (is (= 3 (count (distinct fps)))))))
 
@@ -165,7 +185,7 @@
                   :severity :note :message "md5" :form "(MessageDigest/getInstance \"MD5\")"}
                  {:rule-id :metabase-security-lint/weak-hash :file "/repo/src/metabase/d.clj" :row 9 :col 5 :end-row 9 :end-col 30
                   :severity :note :message "md5" :form "(MessageDigest/getInstance \"MD5\")"}]
-          fps   (fn [fs] (mapv #(get-in % [:partialFingerprints :primaryLocationLineHash])
+          fps   (fn [fs] (mapv #(get-in % [:partialFingerprints :metabase-security-lint/v1])
                                (get-in (sarif/report fs {:rules rules :root "/repo"}) [:runs 0 :results])))]
       (is (apply distinct? (fps twice)))
       (testing "and they do not depend on line numbers, so an edit above them does not churn the alerts"
@@ -233,7 +253,7 @@
 (deftest fingerprint-ignores-formatting-test
   (testing "the fingerprint hashes the normalized form, so a reformat does not churn the alert"
     (let [fp (fn [f] (get-in (sarif/report [f] {:rules rules :root "/repo"})
-                             [:runs 0 :results 0 :partialFingerprints :primaryLocationLineHash]))
+                             [:runs 0 :results 0 :partialFingerprints :metabase-security-lint/v1]))
           a  (first findings)]
       (is (= (fp a) (fp (assoc a :snippet "(shell/sh" :row 30))))
       (is (not= (fp a) (fp (assoc a :form "(shell/sh other)"))))

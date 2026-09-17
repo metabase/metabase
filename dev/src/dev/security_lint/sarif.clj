@@ -32,8 +32,11 @@
 
 (def version
   "The tool's version, shown by GitHub on the analysis. Bump it when the output changes meaning -- a rule
-  renamed, a fingerprint computed differently -- so an analysis can be told from the ones before it."
-  "1.0.0")
+  renamed, a fingerprint computed differently -- so an analysis can be told from the ones before it.
+
+  1.1.0: the fingerprint moved from GitHub's reserved `primaryLocationLineHash` to the tool's own
+  `metabase-security-lint/v1` key."
+  "1.1.0")
 
 (def ^:private source-base
   "Where a rule's source is read on GitHub: the alert's help link."
@@ -185,8 +188,9 @@
 (defn- fingerprint
   "What GitHub matches an alert by across analyses: the same value in two uploads is the same alert, carrying its
   dismissal and its history; a value seen for the first time opens an alert, and one no longer seen closes it as
-  fixed. GitHub's own `primaryLocationLineHash` is a hash of the lines around the location, so it survives moves
-  but not edits to the code itself; a supplied one is used verbatim, so the choice of what to hash is ours.
+  fixed. Written under the tool's own key, `metabase-security-lint/v1`: `primaryLocationLineHash` is GitHub's
+  reserved name for its own hash of the lines around the location, which survives moves but not edits to the
+  code itself, and a value supplied under that name would be read as one of those.
 
   This hashes four things and no line number:
 
@@ -212,12 +216,17 @@
   (let [uri      (relativize root file)
         severity (grade severity)
         rule-id* (graded-id rule-id severity)
+        ;; a result must index a rule the report describes: GitHub reads the level and the help from there, and
+        ;; rejects a nil index. A finding from an undescribed rule is a bug in the caller, not a result to emit.
+        index    (or (get rule-index [rule-id severity])
+                     (throw (ex-info (str "SARIF report describes no rule " rule-id " at grade " severity)
+                                     {:rule-id rule-id :severity severity :file file :row row})))
         cflows   (code-flows root finding)
         sentence (str message (when-not (re-find #"[.!?]$" message) "."))
         text     (str/join " " (remove nil? [sentence (reachability-sentence reachable-from callers)
                                              (privilege-sentence min-privilege privilege-entry) (origins-sentence origins)]))]
     (cond-> {:ruleId              rule-id*
-             :ruleIndex           (get rule-index [rule-id severity])
+             :ruleIndex           index
              :level               (level severity)
              ;; GitHub renders the markdown when it is there: the same sentences, and the flagged code in a block
              ;; so a reader of the alert list sees the form without opening the file
@@ -239,7 +248,7 @@
                                    :minimumPrivilege  (some-> min-privilege name)
                                    ;; the boundaries the flagged values crossed: request, app-db/Card, warehouse
                                    :origins           (vec (sort (map #(str (symbol %)) origins)))}
-             :partialFingerprints {:primaryLocationLineHash (fingerprint rule-id* uri form snippet occurrence)}}
+             :partialFingerprints {:metabase-security-lint/v1 (fingerprint rule-id* uri form snippet occurrence)}}
       (seq cflows) (assoc :codeFlows cflows))))
 
 (defn- with-occurrences

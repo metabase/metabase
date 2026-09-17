@@ -282,14 +282,16 @@
               ["./bin/mage project-tests backend" "Run backend checks"]
               ["./bin/mage project-tests migrations" "Run migration checks"]
               ["./bin/mage project-tests modules" "Run module checks"]
-              ["./bin/mage project-tests ratchets" "Check the repository's kondo suppression ratchets"]]
+              ["./bin/mage project-tests ratchets" "Check the repository's kondo suppression ratchets"]
+              ["./bin/mage project-tests security-lint" "Run the security linter's own tests"]]
    :arg-schema [:or
                 [:tuple]
                 [:tuple [:enum {:name "suite"}
                          "backend"
                          "migrations"
                          "modules"
-                         "ratchets"]]]
+                         "ratchets"
+                         "security-lint"]]]
    :requires [[mage.project-tests :as project-tests]]
    :task (task! (if-let [suite (first (:arguments parsed))]
                   (project-tests/run! suite)

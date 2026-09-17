@@ -193,8 +193,9 @@
   "Forms whose method bodies are live code with no caller the graph can attribute: a record's or type's protocol
   implementations, and protocol extensions. They are tagged `:protocol` rather than left unreachable. Modelling
   protocol dispatch properly -- so that `(proto/m x)` reaches each implementation, as a multimethod call does --
-  is the more precise option and would also carry taint; it is not done here."
-  #{"defrecord" "deftype" "extend-protocol" "extend-type" "reify"})
+  is the more precise option and would also carry taint; it is not done here. `defrecord+` is potemkin's
+  `defrecord`, which the codebase uses for its records."
+  #{"defrecord" "defrecord+" "deftype" "extend-protocol" "extend-type" "reify"})
 
 (def not-run-at-load
   "Heads whose body a top-level `def` merely *wraps* rather than runs: `(def x (delay ...))` computes nothing

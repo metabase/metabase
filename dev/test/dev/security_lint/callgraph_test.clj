@@ -511,6 +511,11 @@
     (let [t (cg/extract "f.clj" 't (root "(ns t)\n(defn f [s] (requiring-resolve (symbol s)))\n"))]
       (is (not-any? #(= 'symbol (:head %)) (filter #(re-find #"resolve" (str (:head %))) (:call-sites t)))))))
 
+(deftest potemkin-defrecord-is-a-live-body-test
+  (testing "potemkin's defrecord+ defines a record whose protocol methods are live code, as defrecord's are"
+    (let [t (cg/extract "f.clj" 't (root "(ns t (:require [potemkin :as p]))\n(p/defrecord+ Thing [] SomeProto (act [_] (f)))\n"))]
+      (is (= [:protocol] (map :kind (:entries t)))))))
+
 (deftest load-time-and-live-body-entries-test
   (let [t (cg/extract "f.clj" 't (root "(ns t (:require [toucan2.core :as t2] [metabase.settings.core :refer [defsetting]]))
 (def config (load-config!))

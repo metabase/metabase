@@ -94,7 +94,7 @@
     (when (seq unparsed)
       (println (format "Could not parse %d file(s); they were not scanned:" (count unparsed)))
       (doseq [f unparsed] (println "  " f)))
-    (when (seq disabled)
+    (when (and (seq disabled) (not quiet?))
       (println (format "%d of %d rules are disabled and did not run: %s"
                        (count disabled) (count (rule/all)) (str/join ", " (map (comp name :id) disabled)))))
     (when-not quiet?
