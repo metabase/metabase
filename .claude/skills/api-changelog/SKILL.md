@@ -68,23 +68,25 @@ this tool will not report it. Confirm suspected gaps with
    an artifact of both refs carrying the same stale blob, not an API that did not
    change.
 
-### Group systematic changes before drafting
+### Start from the grouped view
 
-   A single upstream change can produce hundreds of findings. v63 -> master reports
-   239 breaking, but 217 are the identical line `body now rejects undeclared keys`
-   from one PR (#82447, closing `mu/defn` argument schemas). That is **one changelog
-   entry**, not 217.
-
-   Before writing anything, collapse findings by their text and look at the counts:
+   A single upstream change can produce hundreds of findings. `--grouped` collapses
+   identical findings and sorts by blast radius, which is the shape you draft from:
 
    ```bash
-   ./bin/mage openapi-diff --refs <old> <new> --severity breaking \
-     | grep -E "^\s+[+~!-]" | sed 's/^ *//' | sort | uniq -c | sort -rn | head
+   ./bin/mage openapi-diff --refs <old> <new> --severity breaking --grouped
    ```
 
-   A finding repeated across many endpoints is a systematic change: write it once,
-   name the cause, and say which endpoints it spans. The long tail of one-off
-   findings is where the individually-interesting entries are.
+   On the real v63 -> master delta that turns 239 breaking findings into 113
+   distinct changes. The top entry spans 217 endpoints and is one PR (#82447,
+   closing `mu/defn` argument schemas) - **one changelog entry, not 217**.
+
+   Drop `--grouped` when you need the per-endpoint view to check a specific route.
+
+   A change spanning many endpoints is usually one upstream PR: write it once, name
+   the cause, and say which endpoints it spans. The long tail of single-endpoint
+   changes is where the individually-interesting entries are - the v63 -> master run
+   surfaced a `pinned_state` -> `pinned-state` query param rename there.
 
    Findings are classified and sorted breaking-first.
 

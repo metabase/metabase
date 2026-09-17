@@ -183,6 +183,40 @@
                     "/api/zzz" {"post" (op :body (obj {}))}}))]
       (is (= "POST /api/zzz" (:operation (first (:changed d))))))))
 
+(deftest grouping-collapses-systematic-changes-test
+  ;; One upstream PR can close every endpoint's schema at once. That is one changelog entry, so the
+  ;; grouped view must report it once with its blast radius, not once per endpoint.
+  (let [closed (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)
+        old-spec (spec (into {} (for [i (range 8)]
+                                  [(str "/api/n" i) {"post" (op :body (obj {"a" {"type" "string"}}))}])))
+        new-spec (spec (into {} (for [i (range 8)]
+                                  [(str "/api/n" i) {"post" (op :body closed)}])))
+        d (openapi-diff/diff old-spec new-spec)
+        groups (#'openapi-diff/grouped-findings (:changed d))]
+    (testing "8 endpoints with the same change collapse to one group"
+      (is (= 8 (count (:changed d))) "ungrouped still reports per-endpoint")
+      (is (= 1 (count groups)))
+      (is (= 8 (count (:operations (first groups))))))
+    (testing "the group keeps its severity and lists its endpoints"
+      (is (= :breaking (:severity (first groups))))
+      (is (= "POST /api/n0" (first (:operations (first groups))))
+          "operations are sorted so output is stable"))))
+
+(deftest grouping-orders-by-blast-radius-test
+  (testing "the widest-reaching change sorts first, and distinct changes stay distinct"
+    (let [old-spec (spec (merge (into {} (for [i (range 5)]
+                                           [(str "/api/wide" i) {"post" (op :body (obj {"a" {"type" "string"}}))}]))
+                                {"/api/narrow" {"post" (op :body (obj {"b" {"type" "string"}}))}}))
+          new-spec (spec (merge (into {} (for [i (range 5)]
+                                           [(str "/api/wide" i)
+                                            {"post" (op :body (assoc (obj {"a" {"type" "string"}})
+                                                                     "additionalProperties" false))}]))
+                                {"/api/narrow" {"post" (op :body (obj {}))}}))
+          groups (#'openapi-diff/grouped-findings (:changed (openapi-diff/diff old-spec new-spec)))]
+      (is (= 2 (count groups)) "two distinct changes")
+      (is (= 5 (count (:operations (first groups)))) "the 5-endpoint change leads")
+      (is (= 1 (count (:operations (second groups))))))))
+
 (deftest breaking-markers-survive-rendering-test
   ;; Guards the failure mode in mozilla-ai/otari#1315, where a generator dropped breaking-change
   ;; markers at render time and a breaking commit read like any other entry.
