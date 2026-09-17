@@ -19,11 +19,12 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.options :as jdbc.options])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource)
    (java.sql Connection SQLException)
-   (java.util.concurrent TimeUnit)
+   (java.util.concurrent ExecutionException TimeUnit)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -94,6 +95,12 @@
                   (log/warnf "Failed to destroy the previous search lease connection pool: %s" (ex-message e)))))
             gated))))))
 
+(defn- do-with-lease-statement-timeout [thunk]
+  (let [timeout (:timeout jdbc.options/*options*)]
+    (binding [jdbc.options/*options* (assoc jdbc.options/*options* :timeout
+                                            (if (and timeout (pos? timeout)) (min 60 timeout) 60))]
+      (thunk))))
+
 (defn- do-with-lifecycle-connection
   "Run a short autocommit lease lifecycle operation.
 
@@ -115,7 +122,7 @@
            (when-not (.getAutoCommit conn)
              (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
                              {:type ::non-autocommit-lifecycle-connection})))
-           (f conn)))
+           (do-with-lease-statement-timeout #(f conn))))
        (finally
          (.unlock read-lock))))))
 
@@ -190,7 +197,8 @@
    (do-with-lifecycle-connection (fn [conn] (renew! conn claim))))
   ([conn {:keys [owner] :as claim}]
    (deadline/check!)
-   (pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis)))))
+   (do-with-lease-statement-timeout
+    #(pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis))))))
 
 (defn release!
   "Release `claim` only if it still belongs to this owner, preserving interruption.
@@ -410,6 +418,21 @@
                 (throw e)))
             (recur true)))))))
 
+(defn- await-heartbeat! [heartbeat]
+  ;; A cancelled future can be "done" while its SQL still runs. Stop through the loop's promise and join
+  ;; the uncancelled future, retaining local admission even when the run timer interrupts this wait.
+  (loop [interrupted? false]
+    (if (try
+          @heartbeat
+          true
+          (catch InterruptedException _ false)
+          (catch ExecutionException e
+            (log/warnf "Search lease heartbeat exited with an error: %s" (ex-message e))
+            true))
+      (when interrupted?
+        (.interrupt (Thread/currentThread)))
+      (recur true))))
+
 (defn- do-with-lease-impl
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
@@ -452,8 +475,9 @@
                        (thunk))}
          (finally
            (deliver stopped true)
+           (deadline/clear-timeout-interrupt!)
            (when-let [heartbeat @heartbeat]
-             (future-cancel heartbeat))
+             (await-heartbeat! heartbeat))
            (deadline/clear-timeout-interrupt!)
            (try
              (release! claim)

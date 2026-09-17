@@ -89,12 +89,14 @@
         tasks      (volatile! [])
         statement-timeout (:timeout jdbc.options/*options*)]
     (binding [*run-context* context
-              ;; This binding is conveyed to the heartbeat and to streaming source reductions, but never changes
-              ;; global app-db options. Smaller explicit caller limits remain in force.
-              jdbc.options/*options* (assoc jdbc.options/*options* :timeout
-                                            (if (and statement-timeout (pos? statement-timeout))
-                                              (min 60 statement-timeout)
-                                              60))]
+              ;; The timer and guarded boundaries enforce the remaining run budget. JDBC gets a finite cap
+              ;; derived from that budget, not an unrelated one-minute limit on a healthy source scan.
+              jdbc.options/*options* (if (pos? timeout-ms)
+                                       (assoc jdbc.options/*options* :timeout
+                                              (if (and statement-timeout (pos? statement-timeout))
+                                                (min (quot timeout-ms 1000) statement-timeout)
+                                                (quot timeout-ms 1000)))
+                                       jdbc.options/*options*)]
       (try
         (when (pos? timeout-ms)
           (vswap! tasks conj (schedule! timeout-ms (bound-fn [] (expire! context))))

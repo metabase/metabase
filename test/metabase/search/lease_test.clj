@@ -645,3 +645,28 @@
       (finally
         (t2/delete! :setting :key setting-key)
         (delete-coordinate! coordinate)))))
+
+(deftest deadline-retains-admission-until-heartbeat-exits-test
+  (let [coordinate (coordinate)
+        entered    (promise)
+        release    (promise)
+        run        (promise)]
+    (mt/with-dynamic-fn-redefs [deadline/report! (fn [& _])
+                                lease/heartbeat-loop! (fn [& _]
+                                                        (deliver entered true)
+                                                        @release)]
+      (let [worker (future
+                     (try
+                       (lease/do-with-lease coordinate #(deliver run deadline/*run-context*))
+                       (catch Exception e (:type (ex-data e)))))]
+        (try
+          (is (true? (deref entered 5000 false)))
+          (let [context (deref run 5000 nil)]
+            (is (some? context))
+            (when context (#'deadline/expire! context)))
+          (is (= ::waiting (deref worker 50 ::waiting)) "worker joins the still-running heartbeat")
+          (is (= {:acquired? false} (lease/do-with-lease coordinate (constantly :must-not-start))))
+          (finally
+            (deliver release true)))
+        (is (= ::deadline/exceeded (deref worker 5000 ::timeout)))
+        (is (=? {:acquired? true} (lease/do-with-lease coordinate (constantly :next))))))))

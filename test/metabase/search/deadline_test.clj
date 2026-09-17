@@ -19,14 +19,21 @@
 
 (deftest ^:parallel synchronous-run-and-disabled-deadline-test
   (mt/with-dynamic-fn-redefs [search.settings/search-reindex-timeout-minutes (constantly 0)]
-    (let [thread (Thread/currentThread)]
+    (let [options jdbc.options/*options*
+          thread  (Thread/currentThread)]
       (is (= :result
              (deadline/do-with-run (identity-key)
                                    (fn []
                                      (is (identical? thread (Thread/currentThread)))
-                                     (is (= 60 (:timeout jdbc.options/*options*)))
+                                     (is (= options jdbc.options/*options*))
                                      (is (false? (deadline/timed-out?)))
                                      :result)))))))
+
+(deftest ^:parallel statement-budget-follows-run-limit-test
+  (doseq [[minutes prior expected] [[30 0 1800] [30 7 7] [0 0 0] [0 7 7]]]
+    (mt/with-dynamic-fn-redefs [search.settings/search-reindex-timeout-minutes (constantly minutes)]
+      (binding [jdbc.options/*options* {:timeout prior}]
+        (is (= expected (deadline/do-with-run (identity-key) #(:timeout jdbc.options/*options*))))))))
 
 (deftest ^:parallel completion-cancels-late-interruption-test
   (let [callbacks (atom [])]
