@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { METAKEY } from "metabase/utils/browser";
+import { METAKEY, isTouchDevice } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
@@ -17,6 +17,7 @@ import type { CardType, IconName } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -25,6 +26,11 @@ import {
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
+
+jest.mock("metabase/utils/browser", () => ({
+  ...jest.requireActual("metabase/utils/browser"),
+  isTouchDevice: jest.fn(() => false),
+}));
 
 const findAggregationOperator = (
   query: Lib.Query,
@@ -259,6 +265,121 @@ describe("DataStep", () => {
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
+    });
+
+    describe("when searching", () => {
+      afterEach(() => {
+        jest.mocked(isTouchDevice).mockReturnValue(false);
+      });
+
+      const createPeopleQuery = (columnNames?: string[]) =>
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PEOPLE_ID },
+              fields: columnNames?.map((name) => ({
+                type: "column",
+                sourceName: "PEOPLE",
+                name,
+              })),
+            },
+          ],
+        });
+
+      const getSelectedColumnNames = (query: Lib.Query) =>
+        Lib.fieldableColumns(query, 0)
+          .map((column) => Lib.displayInfo(query, 0, column))
+          .filter((columnInfo) => columnInfo.selected)
+          .map((columnInfo) => columnInfo.name);
+
+      const searchAndToggleAllMatches = async (searchText: string) => {
+        await userEvent.click(screen.getByLabelText("Pick columns"));
+        await userEvent.type(
+          screen.getByLabelText("Search columns"),
+          searchText,
+        );
+        await userEvent.click(screen.getByLabelText("Select all of these"));
+      };
+
+      it("should focus the search box when the picker opens", async () => {
+        const query = createPeopleQuery();
+        await setup({ step: createMockNotebookStep({ query }) });
+
+        await userEvent.click(screen.getByLabelText("Pick columns"));
+
+        await waitFor(() =>
+          expect(screen.getByLabelText("Search columns")).toHaveFocus(),
+        );
+      });
+
+      it("should focus 'Select all' instead of the search box on touch devices", async () => {
+        jest.mocked(isTouchDevice).mockReturnValue(true);
+        const query = createPeopleQuery();
+        await setup({ step: createMockNotebookStep({ query }) });
+
+        await userEvent.click(screen.getByLabelText("Pick columns"));
+
+        await waitFor(() =>
+          expect(screen.getByLabelText("Select all")).toHaveFocus(),
+        );
+      });
+
+      it("should close the picker on Escape even with a search query", async () => {
+        const query = createPeopleQuery();
+        await setup({ step: createMockNotebookStep({ query }) });
+        const trigger = screen.getByLabelText("Pick columns");
+
+        await userEvent.click(trigger);
+        await userEvent.type(screen.getByLabelText("Search columns"), "tude");
+        await userEvent.keyboard("{Escape}");
+
+        await waitFor(() =>
+          expect(
+            screen.queryByLabelText("Search columns"),
+          ).not.toBeInTheDocument(),
+        );
+        await waitFor(() => expect(trigger).toHaveFocus());
+      });
+
+      it("should only select the matching columns", async () => {
+        const query = createPeopleQuery(["ID"]);
+        const { getNextQuery } = await setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await searchAndToggleAllMatches("tude");
+
+        expect(getSelectedColumnNames(getNextQuery())).toEqual([
+          "ID",
+          "LATITUDE",
+          "LONGITUDE",
+        ]);
+      });
+
+      it("should keep the first match selected when deselecting every selected column", async () => {
+        const query = createPeopleQuery(["LONGITUDE", "LATITUDE"]);
+        const { getNextQuery } = await setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await searchAndToggleAllMatches("tude");
+
+        expect(getSelectedColumnNames(getNextQuery())).toEqual(["LATITUDE"]);
+      });
+
+      it("should drop the explicit fields once every column is selected", async () => {
+        const columnNames = getSelectedColumnNames(createPeopleQuery()).filter(
+          (name) => name !== "LATITUDE",
+        );
+        const query = createPeopleQuery(columnNames);
+        const { getNextQuery } = await setup({
+          step: createMockNotebookStep({ query }),
+        });
+
+        await searchAndToggleAllMatches("tude");
+
+        expect(Lib.fields(getNextQuery(), 0)).toHaveLength(0);
+      });
     });
 
     it("should not display fields picker in read-only mode", async () => {
