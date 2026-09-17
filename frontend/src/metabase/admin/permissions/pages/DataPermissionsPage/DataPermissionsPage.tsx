@@ -75,7 +75,7 @@ export function DataPermissionsPage() {
       diff={diff}
       isDirty={isDirty}
       helpContent={<DataPermissionsHelp />}
-      canShowSplitPermsModal
+      canShowSplitPermsModal={!isLoading}
     >
       {isLoading ? (
         <Center h="100%" w="100%">
