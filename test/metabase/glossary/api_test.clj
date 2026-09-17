@@ -115,13 +115,16 @@
           (testing "the entry was not modified"
             (is (=? {:term "Existing" :definition "An existing entry"}
                     (t2/select-one :model/Glossary :id gid)))))
-        (testing "regular users can still read the glossary"
-          (is (mt/user-http-request :rasta :get 200 "glossary")))))
+        (testing "regular users can still read the glossary, and the response reports it as not writable"
+          (is (false? (:can_write (mt/user-http-request :rasta :get 200 "glossary")))))
+        (testing "superusers see the glossary as writable"
+          (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary")))))))
     (testing "data analysts can mutate the glossary"
       (mt/with-model-cleanup [:model/Glossary]
         (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id  analyst-id
                                                             :group_id (:id (perms-group/data-analyst))}]
+          (is (true? (:can_write (mt/user-http-request analyst-id :get 200 "glossary"))))
           (let [{gid :id} (mt/user-http-request analyst-id :post 200 "glossary"
                                                 {:term "Analyst" :definition "Created by analyst"})]
             (is (pos-int? gid))

@@ -121,8 +121,11 @@
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`."
+  "Drop the search index table named `table-name`, throwing if it is already gone."
   [table-name :- [:or :keyword :string]]
+  ;; `IF EXISTS` cannot reliably report whether it dropped a table.
+  ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
+  ;; Let an absent table throw so callers can detect races.
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
@@ -266,19 +269,24 @@
   [version :- :string]
   (t2/delete! :model/SearchIndexMetadata :version version))
 
-(mu/defn delete-index-metadata-by-name-on-conn!
-  "Delete the SearchIndexMetadata rows named `index-name`, on `conn`."
+(mu/defn delete-index-metadata-by-name!
+  "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(mu/defn delete-index-metadata!
-  "Delete the SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
+(mu/defn delete-non-active-index-metadata!
+  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string
    index-name :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version version
+              :lang_code lang-code
+              :index_name index-name
+              :status [:not= :active]))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
@@ -308,6 +316,19 @@
    version   :- :string
    lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
+
+(mu/defn lock-pending-index-metadata!
+  "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
+  Must be called inside the transaction that will promote the row."
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
+  (t2/select-one [:model/SearchIndexMetadata :id]
+                 :engine engine
+                 :version version
+                 :lang_code lang-code
+                 :status :pending
+                 {:for :update}))
 
 (mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
