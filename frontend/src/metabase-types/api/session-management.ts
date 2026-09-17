@@ -19,11 +19,29 @@ export type AdminSessionProvider =
 
 export type AdminSessionTenancy = "all" | "internal" | "external";
 
+export type AdminSessionStatus = "live" | "ended";
+
+// A session is only ever live or ended; `all` is accepted by the filter alone
+export type AdminSessionStatusFilter = AdminSessionStatus | "all";
+
+// One value per path that ends a session
+export type AdminSessionEndReason =
+  | "admin"
+  | "logout"
+  | "password-change"
+  | "user-deactivated"
+  | "tenant-deactivated"
+  | "sso-logout"
+  | "support-grant-revoked"
+  | "expired"
+  | "timed-out";
+
 export type AdminSessionSortColumn =
   | "created_at"
   | "last_active_at"
   | "user_email"
-  | "provider";
+  | "provider"
+  | "ended_at";
 
 export type AdminSessionUser = {
   id: UserId;
@@ -45,6 +63,10 @@ export type AdminSession = {
   ip_address: string | null;
   device_id: string | null;
   current: boolean;
+  status: AdminSessionStatus;
+  ended_at: string | null;
+  end_reason: AdminSessionEndReason | null;
+  ended_by: UserId | null;
 };
 
 export type AdminSessionFilters = {
@@ -63,6 +85,10 @@ export type AdminSessionFilters = {
 export type AdminSessionListParams = AdminSessionFilters &
   PaginationRequest & {
     query?: string;
+    status?: AdminSessionStatusFilter;
+    reason?: AdminSessionEndReason;
+    "ended-before"?: string;
+    "ended-after"?: string;
     "sort-column"?: AdminSessionSortColumn;
     "sort-direction"?: SortDirection;
   };

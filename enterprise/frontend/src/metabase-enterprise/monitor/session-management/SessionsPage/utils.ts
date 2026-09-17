@@ -18,11 +18,18 @@ import type {
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
+  DEFAULT_TAB,
   LAST_ACTIVE_VALUES,
   PROVIDER_VALUES,
   SORT_COLUMN_VALUES,
+  TAB_STATUS,
+  TAB_VALUES,
 } from "./constants";
-import type { SessionsLastActive, SessionsUrlState } from "./types";
+import type {
+  SessionsLastActive,
+  SessionsTab,
+  SessionsUrlState,
+} from "./types";
 
 const parseQuery = (param: QueryParam): string => {
   const value = getFirstParamValue(param);
@@ -37,6 +44,14 @@ const isProvider = (value: string): value is AdminSessionProvider =>
 const parseProviders = (param: QueryParam): AdminSessionProvider[] =>
   getAllParamValues(param).filter(isProvider);
 
+export const isTab = (value: string): value is SessionsTab =>
+  TAB_VALUES.some((tab) => tab === value);
+
+const parseTab = (param: QueryParam): SessionsTab => {
+  const value = getFirstParamValue(param);
+  return typeof value === "string" && isTab(value) ? value : DEFAULT_TAB;
+};
+
 export const isLastActive = (value: string): value is SessionsLastActive =>
   LAST_ACTIVE_VALUES.some((preset) => preset === value);
 
@@ -49,6 +64,7 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
     query: parseQuery(query.query),
+    tab: parseTab(query.tab),
     provider: parseProviders(query.provider),
     last_active: parseLastActive(query.last_active),
     sort_column: parseSortColumn(
@@ -64,6 +80,7 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
   serialize: (state) => ({
     page: state.page === 0 ? undefined : String(state.page),
     query: state.query || undefined,
+    tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     provider: state.provider.length === 0 ? undefined : state.provider,
     last_active: state.last_active ?? undefined,
     sort_column:
@@ -89,6 +106,7 @@ export const buildListParams = (
   offset: state.page * pageSize,
   // the endpoint rejects a blank query, so send it only when there is something to search for
   query: state.query || undefined,
+  status: TAB_STATUS[state.tab],
   // an empty list would be sent as no filter at all, which is what we want; a populated one filters on any of them
   provider: state.provider.length === 0 ? undefined : state.provider,
   "last-active-after": lastActiveAfter,

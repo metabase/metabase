@@ -1,12 +1,22 @@
 import type {
   AdminSessionProvider,
   AdminSessionSortColumn,
+  AdminSessionStatusFilter,
   SortDirection,
 } from "metabase-types/api";
 
-import type { SessionsLastActive } from "./types";
+import type { SessionsLastActive, SessionsTab } from "./types";
 
 export const PAGE_SIZE = 50;
+
+export const DEFAULT_TAB: SessionsTab = "active";
+
+export const TAB_VALUES: SessionsTab[] = ["active", "ended"];
+
+export const TAB_STATUS: Record<SessionsTab, AdminSessionStatusFilter> = {
+  active: "live",
+  ended: "ended",
+};
 
 export const LAST_ACTIVE_VALUES: SessionsLastActive[] = [
   "hour",
