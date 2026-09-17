@@ -1,12 +1,14 @@
 import { useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { getStartedConversations } from "metabase/metabot/state";
 import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
-import { connect, useDispatch } from "metabase/redux";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { openNavItem } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
@@ -88,6 +90,22 @@ function MainNavbarInner({
       dispatch(openNavItem(openItem));
     }
   }, [dispatch, openItem]);
+
+  const conversations = useSelector(getStartedConversations);
+
+  useEffect(() => {
+    conversations.forEach((conversation) => {
+      dispatch(
+        openNavItem({
+          key: `metabot-${conversation.conversationId}`,
+          // The title is generated after the first answer, so the row starts generic and renames.
+          name: conversation.title ?? t`New conversation`,
+          url: Urls.metabotConversation(conversation.conversationId),
+          icon: "metabot",
+        }),
+      );
+    });
+  }, [dispatch, conversations]);
 
   return (
     <Sidebar
