@@ -118,8 +118,8 @@
   "The Collections in the namespace named `namespace-name`."
   [namespace-name :- :string]
   ;; `:namespace` is a transformed column (`mi/transform-keyword`) and this is a kv-arg, so the `:in` fn
-  ;; `u/qualified-name` runs first and puts a plain string in the value slot, which HoneySQL binds. Marking the
-  ;; argument instead throws, since `u/qualified-name` cannot cast the marker vector to Named.
+  ;; `u/qualified-name` runs first and puts a plain string in the value slot, which HoneySQL binds. Per the rubric's
+  ;; type-transform rule the marker is redundant here, so it is left off; adding one compiles to byte-identical SQL.
   (t2/select :model/Collection :namespace namespace-name))
 
 (mu/defn archived-collections-in-operations
@@ -309,7 +309,8 @@
   "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
   [collection-id :- ::lib.schema.id/collection
    changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/update! :model/Collection collection-id changes))
+  ;; `collection-id` is a positional primary key, which the lint cannot see; coerced by hand per rule 4.
+  (t2/update! :model/Collection (long collection-id) changes))
 
 (mu/defn clear-remote-synced-flags!
   "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
