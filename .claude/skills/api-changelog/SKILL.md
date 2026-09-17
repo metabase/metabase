@@ -52,13 +52,39 @@ this tool will not report it. Confirm suspected gaps with
 2. Extract and diff:
 
    ```bash
-   git show origin/release-x.63.x:resources/openapi/openapi.json > /tmp/old.json
-   git show origin/release-x.64.x:resources/openapi/openapi.json > /tmp/new.json
-   ./bin/mage openapi-diff /tmp/old.json /tmp/new.json
+   # Preferred: generate both specs from source. ~2 min (two JVM boots), no drift.
+   ./bin/mage openapi-diff --refs origin/release-x.63.x origin/release-x.64.x --severity breaking
 
-   # Only what needs a changelog entry:
+   # Fast, but reads the committed spec, which lags source. Warns when it does.
+   ./bin/mage openapi-diff --refs --committed origin/release-x.63.x origin/release-x.64.x
+
+   # Two spec files directly.
    ./bin/mage openapi-diff /tmp/old.json /tmp/new.json --severity breaking
    ```
+
+   `--refs` checks each ref out into a throwaway worktree and runs that ref's own
+   `generate-openapi-spec`, so it works on any ref and never touches your checkout.
+   Prefer it: `--committed` reports "0 findings" between v63 and master, which is
+   an artifact of both refs carrying the same stale blob, not an API that did not
+   change.
+
+### Group systematic changes before drafting
+
+   A single upstream change can produce hundreds of findings. v63 -> master reports
+   239 breaking, but 217 are the identical line `body now rejects undeclared keys`
+   from one PR (#82447, closing `mu/defn` argument schemas). That is **one changelog
+   entry**, not 217.
+
+   Before writing anything, collapse findings by their text and look at the counts:
+
+   ```bash
+   ./bin/mage openapi-diff --refs <old> <new> --severity breaking \
+     | grep -E "^\s+[+~!-]" | sed 's/^ *//' | sort | uniq -c | sort -rn | head
+   ```
+
+   A finding repeated across many endpoints is a systematic change: write it once,
+   name the cause, and say which endpoints it spans. The long tail of one-off
+   findings is where the individually-interesting entries are.
 
    Findings are classified and sorted breaking-first.
 
