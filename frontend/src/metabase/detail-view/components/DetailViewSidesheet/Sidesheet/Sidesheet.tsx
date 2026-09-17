@@ -39,7 +39,7 @@ export function Sidesheet({
         w={rem(720)}
       >
         <Modal.Body className={S.body} p={0} pt="xl">
-          <Group gap="xl" justify="flex-end" px="xxl">
+          <Group gap="lg" justify="flex-end" px="xxl">
             {actions}
 
             <Tooltip label={t`Close`}>

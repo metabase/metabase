@@ -136,12 +136,9 @@ const actualColors = {
   "border-neutral-strongest": baseColors.orionAlphaInverse[50],
   "border-neutral-subtle": baseColors.orionAlphaInverse[10],
   "border-on_dark": baseColors.orionAlphaInverse[20],
-  "button-default-neutral-default":
-    "var(--mb-color-background_surface-primary)",
-  "button-default-neutral-hover":
-    "var(--mb-color-background_surface-primary-hover)",
-  "button-default-neutral-pressed":
-    "var(--mb-color-background_surface-primary-pressed)",
+  "button-default-neutral-default": baseColors.orion[95], // Matches background_surface-primary
+  "button-default-neutral-hover": baseColors.orionAlphaInverse[20], // Matches background_surface-primary-hover
+  "button-default-neutral-pressed": baseColors.orionAlphaInverse[10], // Matches background_surface-primary-pressed
   "button-filled-brand-default": baseColors.brand[20],
   "button-filled-brand-hover": baseColors.brand[10],
   "button-filled-brand-pressed": baseColors.brand[20],
@@ -166,12 +163,9 @@ const actualColors = {
   "button-light-negative-default": baseColors.orionAlphaInverse[10],
   "button-light-negative-hover": baseColors.orionAlphaInverse[20],
   "button-light-negative-pressed": baseColors.orionAlphaInverse[10],
-  "button-light-neutral-default":
-    "var(--mb-color-background_surface-secondary)",
-  "button-light-neutral-hover":
-    "var(--mb-color-background_surface-secondary-hover)",
-  "button-light-neutral-pressed":
-    "var(--mb-color-background_surface-secondary-pressed)",
+  "button-light-neutral-default": baseColors.orionAlphaInverse[10], // Matches background_surface-secondary
+  "button-light-neutral-hover": baseColors.orionAlphaInverse[20], // Matches background_surface-secondary-hover
+  "button-light-neutral-pressed": baseColors.orionAlphaInverse[10], // Matches background_surface-secondary-pressed
   "button-light-positive-default": baseColors.orionAlphaInverse[10],
   "button-light-positive-hover": baseColors.orionAlphaInverse[20],
   "button-light-positive-pressed": baseColors.orionAlphaInverse[10],
@@ -182,19 +176,19 @@ const actualColors = {
   "button-on_dark-secondary-default": baseColors.orionAlphaInverse[10],
   "button-on_dark-secondary-hover": baseColors.orionAlphaInverse[20],
   "button-on_dark-secondary-pressed": baseColors.orionAlphaInverse[10],
-  "button-subtle-brand-default": "transparent",
+  "button-subtle-brand-default": baseColors.transparent,
   "button-subtle-brand-hover": baseColors.orionAlphaInverse[20],
   "button-subtle-brand-pressed": baseColors.orionAlphaInverse[10],
-  "button-subtle-negative-default": "transparent",
+  "button-subtle-negative-default": baseColors.transparent,
   "button-subtle-negative-hover": baseColors.orionAlphaInverse[20],
   "button-subtle-negative-pressed": baseColors.orionAlphaInverse[10],
-  "button-subtle-neutral-default": "transparent",
+  "button-subtle-neutral-default": baseColors.transparent,
   "button-subtle-neutral-hover": baseColors.orionAlphaInverse[20],
   "button-subtle-neutral-pressed": baseColors.orionAlphaInverse[10],
-  "button-subtle-positive-default": "transparent",
+  "button-subtle-positive-default": baseColors.transparent,
   "button-subtle-positive-hover": baseColors.orionAlphaInverse[20],
   "button-subtle-positive-pressed": baseColors.orionAlphaInverse[10],
-  "button_label-default-neutral-default": "var(--mb-color-text-primary)",
+  "button_label-default-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
   "button_label-filled-brand-default": baseColors.brand[80],
   "button_label-filled-filter-default": baseColors.filter[80],
   "button_label-filled-negative-default": baseColors.lobster[80],
@@ -206,7 +200,7 @@ const actualColors = {
   "button_label-light-filter-hover": baseColors.filter[20],
   "button_label-light-negative-default": baseColors.lobster[30],
   "button_label-light-negative-hover": baseColors.lobster[20],
-  "button_label-light-neutral-default": "var(--mb-color-text-primary)",
+  "button_label-light-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
   "button_label-light-positive-default": baseColors.palm[30],
   "button_label-light-positive-hover": baseColors.palm[20],
   "button_label-on_dark-disabled": baseColors.orionAlphaInverse[40],
@@ -216,7 +210,7 @@ const actualColors = {
   "button_label-subtle-brand-hover": baseColors.brand[20],
   "button_label-subtle-negative-default": baseColors.lobster[30],
   "button_label-subtle-negative-hover": baseColors.lobster[20],
-  "button_label-subtle-neutral-default": "var(--mb-color-text-primary)",
+  "button_label-subtle-neutral-default": baseColors.orionAlphaInverse[80], // Matches text-primary
   "button_label-subtle-positive-default": baseColors.palm[30],
   "button_label-subtle-positive-hover": baseColors.palm[20],
   "core-blue-saturated": baseColors.ocean[40],

@@ -8,6 +8,7 @@
 const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
   black: "hsla(0, 0%, 0%, 1.00)",
+  transparent: "hsla(0, 0%, 100%, 0)",
   gold: "hsla(50.6, 100%, 50%, 1)",
   upsellGem: "hsla(190, 100%, 50%, 1)",
 
@@ -213,9 +214,9 @@ const baseColors = {
 
   // Palm
   palmAlpha: {
-    30: "rgba(80, 159, 0, 0.57)",
-    20: "rgba(87, 172, 0, 0.29)",
-    10: "rgba(105, 208, 0, 0.13)",
+    30: "hsla(90, 100%, 31%, 0.57)",
+    20: "hsla(90, 100%, 34%, 0.29)",
+    10: "hsla(90, 100%, 41%, 0.13)",
   },
 
   palm: {

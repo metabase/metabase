@@ -1,8 +1,14 @@
 import type { ButtonProps as MantineButtonProps } from "@mantine/core";
 import type { ButtonHTMLAttributes } from "react";
 
+/**
+ * @inline
+ */
 export type ButtonSize = "sm" | "md" | "lg" | "compact-sm" | "compact-md";
 
+/**
+ * @inline
+ */
 export type ButtonVariant =
   | "default"
   | "filled"
@@ -12,6 +18,9 @@ export type ButtonVariant =
   | "on-dark-primary"
   | "on-dark-secondary";
 
+/**
+ * @inline
+ */
 export type ButtonColor =
   | "brand"
   | "filter"
