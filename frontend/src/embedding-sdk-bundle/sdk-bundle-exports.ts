@@ -32,11 +32,12 @@ import { resolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-qu
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
+import { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import {
-  DataAppLink,
-  DataAppRouter,
-  dataAppRouting,
-} from "embedding-sdk-bundle/lib/data-app/router";
+  formatDate,
+  formatDateRange,
+} from "embedding-sdk-bundle/lib/format-date-range";
+import { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 
 /**
  * IMPORTANT!
@@ -47,8 +48,8 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,
-  DataAppLink,
-  DataAppRouter,
+  DateRangeCalendar,
+  DateRangePopover,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
@@ -71,6 +72,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   SdkThemeProviderWithStore,
   queryDataset,
   queryQuestion,
-  dataAppRouting,
   executeAction,
+  formatDate,
+  formatDateRange,
 };

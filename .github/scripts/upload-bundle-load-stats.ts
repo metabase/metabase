@@ -29,6 +29,7 @@ interface Condition {
   locale: string;
   scripts: number;
   scriptKb: number;
+  cssKb: number;
   totalKb: number;
   runs: number;
 }
@@ -78,6 +79,7 @@ function buildRows(
     Locale: condition.locale,
     Scripts: condition.scripts,
     "Script kb": condition.scriptKb,
+    "Css kb": condition.cssKb,
     "Total kb": condition.totalKb,
     Runs: condition.runs,
   }));

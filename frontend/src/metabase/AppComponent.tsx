@@ -7,7 +7,6 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
-  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/selectors";
@@ -22,7 +21,6 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
-import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -37,6 +35,7 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
+import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
@@ -74,9 +73,6 @@ export function App() {
   );
   const isMonitorApp = useSelector((state) =>
     getIsMonitorApp(state, routerProps),
-  );
-  const isEmbeddingHubApp = useSelector((state) =>
-    getIsEmbeddingHubApp(state, routerProps),
   );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
   const isAppBarVisible = useSelector((state) =>
@@ -126,11 +122,7 @@ export function App() {
               <NewModals />
               <Metabot
                 hide={
-                  isAdminApp ||
-                  isDataStudioApp ||
-                  isMonitorApp ||
-                  isEmbeddingHubApp ||
-                  isDataApp
+                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
                 }
               />
             </AppContentContainer>

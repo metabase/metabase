@@ -77,6 +77,13 @@
               (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "resolves the provider type, not the admin's name for the connection"
+      (llm.tu/with-connections [{:key    "openrouter-1"
+                                 :type   "openrouter"
+                                 :name   "openrouter-1"
+                                 :config {:api-key "sk-or-v1-test"}}]
+        (is (=? {:provider "openrouter" :model "anthropic/claude-sonnet-4.6" :ai-proxy? false}
+                (#'self/parse-provider-model "openrouter-1/anthropic/claude-sonnet-4.6")))))
     (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
       (llm.tu/with-connections [(llm.tu/connection "vllm")]
         (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
@@ -160,6 +167,22 @@
                   (is (= (when fast? "fast") (get-in @captured [:body :speed])))
                   (is (= (when fast? "fast-mode-2026-02-01")
                          (get-in @captured [:headers "anthropic-beta"]))))))))))))
+
+(deftest call-llm-serves-azure-and-google-connections-test
+  (testing "the Azure and Google adapters accept their connection's resolved config, registry defaults included"
+    (llm.tu/with-default-connections
+      (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
+                                    ["azure/anthropic/claude-deployment"         "/v1/messages"]
+                                    ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5@20251001"]]]
+        (testing model-ref
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (reset! captured req)
+                                                                  {:status 200 :body []})]
+              (run! identity (self/call-llm model-ref nil [{:role :user :content "hi"}] {} {:tag "agent"}))
+              (is (str/includes? (str (:url @captured)) url-part)))))))))
 
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
@@ -1358,7 +1381,7 @@
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
+        (let [labels {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}]
           (testing "increments llm-requests and observes duration on success"
             (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
@@ -1454,13 +1477,22 @@
                                                        :model "test-model"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
             (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
-            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels)))))))))
+            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+          (testing "labels a managed-proxy call with the metabase provider"
+            (mt/with-dynamic-fn-redefs [self.claude/claude
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type :start :id "m1"}
+                                                      {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]))]
+              (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+            (let [managed-labels (assoc labels :model "metabase/anthropic/claude-haiku-4-5" :provider "metabase")]
+              (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests managed-labels)))
+              (is (== 10 (mt/metric-value system :metabase-metabot/llm-input-tokens managed-labels))))))))))
 
 (deftest call-llm-structured-prometheus-test
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
+        (let [labels        {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}
               success-mock  (test-util/mock-llm-response
                              [{:type :start :id "m1"}
                               {:type :tool-input :id "call-1" :function "json"
@@ -1615,6 +1647,35 @@
                                     "tag"                  "test-tag"
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                         token-events))))))))))
+
+;;; ===================== Usage Log Tests =====================
+
+(deftest call-llm-usage-log-test
+  (testing "call-llm and call-llm-structured log the provider type and the model as the provider names it"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")
+                              (llm.tu/connection "metabase")]
+      (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
+            response  (test-util/mock-llm-response
+                       [{:type :start :id "m1"}
+                        {:type :tool-input :id "call-1" :function "json" :arguments {:answer "42"}}
+                        {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged    (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                    self.claude/claude    (constantly response)
+                                    usage/log-ai-usage!   #(swap! logged conj %)]
+          (run! identity (self/call-llm model-ref nil [] {} {:tag "metabot_agent"}))
+          (self/call-llm-structured model-ref [{:role "user" :content "test"}]
+                                    {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
+                                    {:tag "metabot_agent"})
+          (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+        (is (=? (concat (repeat 2 {:model      model-ref
+                                   :provider   "openrouter"
+                                   :model-name "anthropic/claude-sonnet-4.6"})
+                        [{:model      "metabase/anthropic/claude-haiku-4-5"
+                          :provider   "anthropic"
+                          :model-name "claude-haiku-4-5"
+                          :ai-proxied true}])
+                @logged))))))
 
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and

@@ -18,8 +18,8 @@
   [:enum :unknown :active :resolved :not_affected :error])
 
 (mr/def ::version-range
-  "A single affected version range with inclusive min and exclusive fixed."
-  [:map {:closed true}
+  "A single affected version range with inclusive min and exclusive fixed, whose keys are the MetaStore's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "MetaStore affected version range"}
    [:min   ::semver]
    [:fixed ::semver]])
 
@@ -27,8 +27,8 @@
   [:sequential ::version-range])
 
 (mr/def ::download-jar-url
-  "A downloadable JAR for a given fixed version."
-  [:map {:closed true}
+  "A downloadable JAR for a given fixed version, whose keys are the MetaStore's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "MetaStore downloadable JAR"}
    [:version ::semver]
    [:url     :string]])
 
