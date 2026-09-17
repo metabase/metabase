@@ -171,8 +171,7 @@
     (adapter/request! provider {:method      :post
                                 :path        "/v1/messages"
                                 :body        "{}"
-                                :headers     {"Content-Type"      "application/json"
-                                              "anthropic-version" anthropic-version}
+                                :headers     {"anthropic-version" anthropic-version}
                                 :credentials credentials
                                 :ai-proxy?   ai-proxy?})
     (catch Exception e

@@ -184,6 +184,8 @@
   the door single, and an adapter that finds resolution expensive caches it rather than hoisting it out
   — the one that does, parsing a Google service-account key, memoizes in the adapter.
 
+  A request with a `:body` is sent as JSON unless something overrides the header.
+
   `req` carries the caller's `:credentials` and `:ai-proxy?` alongside the wire details (`:method`,
   `:path`, `:as`, `:headers`, and an already-encoded `:body`); `extra` is merged into the
   [[core/request]] opts, for per-provider timeouts and the like."
@@ -198,7 +200,9 @@
    (core/request (auth p req)
                  (merge (cond-> {:method  method
                                  :url     path
-                                 :headers (merge (:headers p) headers)}
+                                 :headers (merge (when body {"Content-Type" "application/json"})
+                                                 (:headers p)
+                                                 headers)}
                           as   (assoc :as as)
                           body (assoc :body body))
                         extra))))
@@ -311,7 +315,8 @@
                         provider whose path is derived from credentials that can fail to resolve
                         (Google) — so that failure lands on the trace, and loses to the refusal.
     :body             - the composed request body. Encoded here.
-    :headers          - extra request headers, beyond the descriptor's own and `Content-Type`.
+    :headers          - extra request headers, beyond the descriptor's own and the `Content-Type`
+                        [[request!]] adds for a request with a body.
     :request-options  - extra [[core/request]] opts, e.g. per-provider timeouts.
     :span-attrs       - extra keys merged into the `with-span` map. They reach its log line; clj-otel
                         drops them from the trace itself, along with the model and the counts, until
@@ -352,7 +357,7 @@
                            :method      :post
                            :path        path
                            :as          :stream
-                           :headers     (merge {"Content-Type" "application/json"} headers)
+                           :headers     headers
                            ;; encoded up front, since a provider may sign over the body
                            :body        (json/encode body)}
                         request-options)

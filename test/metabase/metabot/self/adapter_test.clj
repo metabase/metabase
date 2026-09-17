@@ -254,6 +254,26 @@
                                   :credentials {:api-key  "sk-ant-test"
                                                 :base-url "https://api.anthropic.com"}}))))))
 
+(deftest request-defaults-to-json-for-a-body-test
+  (let [seen (atom nil)
+        p    (adapter/provider {:slug "deepseek" :display-name "DeepSeek"})
+        call (fn [req]
+               (with-redefs [http/request (fn [r] (reset! seen r) {:status 200 :body {}})]
+                 (adapter/request! p (merge {:credentials {:api-key  "sk-test"
+                                                           :base-url "https://api.deepseek.test"}}
+                                            req))))]
+    (testing "a request with a body is JSON, so no call site has to say so — every body any adapter
+              sends is JSON, and Bedrock's signing assumes it"
+      (call {:method :post :path "/v1/messages" :body "{}"})
+      (is (= "application/json" (get (:headers @seen) "Content-Type"))))
+    (testing "a bodyless GET sends none: a provider's model listing has nothing to describe"
+      (call {:method :get :path "/models"})
+      (is (not (contains? (:headers @seen) "Content-Type"))))
+    (testing "and a call site can still override it"
+      (call {:method :post :path "/v1/messages" :body "{}"
+             :headers {"Content-Type" "application/x-ndjson"}})
+      (is (= "application/x-ndjson" (get (:headers @seen) "Content-Type"))))))
+
 (deftest descriptor-headers-reach-the-catalog-test
   (testing "a provider's `:headers` are on its catalog request too, not just its stream"
     (let [seen (atom nil)]
