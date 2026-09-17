@@ -58,6 +58,7 @@
     logger
     mcp
     mcp.oauth-server
+    measures
     metabot
     metabot.agent-api
     metabot.llm
@@ -85,6 +86,7 @@
     run-tracking
     search
     search.entity-retrieval
+    segments
     server
     session
     session.login-history
@@ -94,6 +96,7 @@
     sql-tools.parsing
     sso
     sso.auth-identity
+    staleness
     startup
     sync
     sync.analyze
@@ -111,19 +114,18 @@
     users.tenants
     util
     util.graph
+    warehouse-schema-overlay
     warehouses
     warehouses.schema
     warehouses.secrets
+    xrays
     enterprise/api
     enterprise/custom-viz-plugin
     enterprise/permissions
     enterprise/permissions.impersonation
     enterprise/permissions.sandbox
     enterprise/sso
-    enterprise/sso.scim}
-  segments-knot
-  #{segments
-    xrays}}
+    enterprise/sso.scim}}
  :uses+model-imports
  {api-routes-knot
   #{api-routes
@@ -217,6 +219,7 @@
     sql-tools.parsing
     sso
     sso.auth-identity
+    staleness
     startup
     sync
     sync.analyze
@@ -234,6 +237,7 @@
     users.tenants
     util
     util.graph
+    warehouse-schema-overlay
     warehouses
     warehouses.schema
     warehouses.secrets
