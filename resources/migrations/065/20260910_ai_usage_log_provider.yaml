@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v64.2026-09-10T12:00:00
+      id: v65.2026-09-10T12:00:00
       author: andreis
       comment: Add provider to ai_usage_log
       changes:
@@ -21,7 +21,7 @@ databaseChangeLog:
             columnName: provider
 
   - changeSet:
-      id: v64.2026-09-10T12:00:01
+      id: v65.2026-09-10T12:00:01
       author: andreis
       comment: Add model_name to ai_usage_log
       changes:
