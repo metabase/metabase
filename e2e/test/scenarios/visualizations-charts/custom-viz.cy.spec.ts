@@ -1581,9 +1581,7 @@ describe("admin > custom visualizations", () => {
       H.navigationSidebar().findByText("Home").click();
 
       cy.log("Home recently-viewed section");
-      H.main()
-        .findByText("Pick up where you left off")
-        .parent()
+      cy.findByTestId("recent-items-section")
         .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
