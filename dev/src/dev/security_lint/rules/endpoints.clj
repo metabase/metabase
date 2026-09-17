@@ -176,6 +176,10 @@
              (not (some #(str/starts-with? (name %) "+check") ns-middleware)))
     {:message "Endpoint reaches a model select but no authorization check on any path"}))
 
+(def ^:private credential-verifier
+  "How the functions that check a secret against a stored one are named."
+  #"authenticate|verify|bcrypt|check-password|password-hash")
+
 (defrule credential-endpoint-without-throttle
   {:name        "Credential-checking endpoint with no throttle on any path"
    :enabled     false
@@ -192,7 +196,11 @@
   [{:keys [node reaches]}]
   (when-let [params (taint/defendpoint-params node)]
     (when (and (re-find vocab/credential-params (ast/->str params))
-               (not (reaches-name? reaches #(str/includes? % "throttle"))))
+               ;; a verifier on the path: an endpoint that only measures a password's complexity -- `POST
+               ;; /session/password-check` -- verifies nothing, and nothing there is guessable
+               (reaches-name? reaches #(re-find credential-verifier %))
+               ;; the throttle by its namespace, `metabase.util.throttle/check`, not by a helper's name
+               (not (some #(str/includes? (str %) "throttle") reaches)))
       {:message "Endpoint verifies a credential and reaches no throttle"})))
 
 (defrule endpoint-mounted-without-auth
@@ -231,12 +239,18 @@
                   #"sync/api/notify"                             ; static API key
                   #"content_translation/routes\.clj$"            ; dictionary token in the URL
                   #"custom_viz_plugin/api/sandbox_host\.clj$"]}  ; the sandbox origin's static page
-  [{:keys [endpoint-ns ns-wrappers nearby]}]
+  [{:keys [node endpoint-ns ns-wrappers nearby siblings]}]
   ;; an endpoint whose own body demands a superuser or an application permission has demanded a session first:
   ;; both throw for an anonymous caller. The namespace is still mounted bare, but this endpoint is not the
   ;; next one added to it.
   (when-not (or (some #(re-find vocab/authenticating-wrappers %) ns-wrappers)
-                (some #(contains? #{"check-superuser" "check-has-application-permission"} (name %)) nearby))
+                (some #(contains? #{"check-superuser" "check-has-application-permission"} (name %)) nearby)
+                ;; the mount is one fact about the namespace: reported once, at the first endpoint it leaves
+                ;; bare, rather than once per endpoint. An earlier sibling that demands nothing itself -- its
+                ;; privilege is anonymous, or a session -- already carries the finding.
+                (some #(and (< (:row %) (:row (meta node)))
+                            (contains? #{:anonymous :session} (:privilege %)))
+                      siblings))
     {:message (str endpoint-ns " is mounted under no authentication wrapper")}))
 
 (defrule namespace-authz-outlier

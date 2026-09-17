@@ -468,7 +468,7 @@
         :let  [;; the other endpoints of the namespace, with the privilege each demands, for a rule about consensus
                siblings (for [e (cg/entries reach)
                               :when (and (= filename (:filename e)) (= :http (:kind e)) (not= e entry))]
-                          (select-keys e [:name :method :privilege]))]
+                          (select-keys e [:name :method :privilege :row]))]
         :let  [node    (node-at index (:row entry) (:col entry))
                ;; once per endpoint, not once per rule: with dispatch resolved a closure can hold every driver
                reaches (when node (cg/entry-closure reach entry))]

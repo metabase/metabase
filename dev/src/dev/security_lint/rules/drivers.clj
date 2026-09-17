@@ -11,8 +11,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- driver-method-name
-  "The name of the `metabase.driver` multimethod a `defmethod` form implements, or nil for any other
-  multimethod: `channel/can-connect?` is a different question about a different thing."
+  "The name of the `metabase.driver` multimethod a `defmethod` or `mu/defmethod` form implements, or nil for any
+  other multimethod: `channel/can-connect?` is a different question about a different thing."
   [node ns]
   (let [s (some-> (ast/arg node 0) ast/unmeta n/sexpr)]
     (when (and (symbol? s)
@@ -57,7 +57,8 @@
    :severity    :warning
    :precision   :medium
    :cwe         "CWE-20"
-   :form-triggers #{defmethod}}
+   ;; `mu/defmethod` implements the multimethod as surely as `defmethod` does, and the JDBC drivers use it
+   :form-triggers #{defmethod mu/defmethod}}
   [{:keys [node ns]}]
   (case (driver-method-name node ns)
     "validate-db-details!"
@@ -109,7 +110,7 @@
    :severity    :error
    :precision   :high
    :cwe         "CWE-89"
-   :form-triggers #{defmethod}}
+   :form-triggers #{defmethod mu/defmethod}}
   [{:keys [node]}]
   (when (and (value-clause-method? node) (not (guards-scalar? node)))
     {:message (str (ast/->str (ast/arg node 0)) " " (ast/->str (ast/arg node 1))

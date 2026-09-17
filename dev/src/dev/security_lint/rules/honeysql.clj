@@ -194,7 +194,7 @@
   [{:keys [node] :as ctx}]
   ;; `location-path` and `children-location` build a collection path -- `/1/2/` -- from ids, which carries no
   ;; wildcard however it is used.
-  (let [sanitizers (into coercion-sanitizers [#"^like-" #"-like$" #"^wildcard-" #"location"])
+  (let [sanitizers (into coercion-sanitizers [#"^like-" #"-like$" #"^wildcard-"])
         pattern    (last (ast/children node))
         ;; a collection location or a permission path is ids and slashes: `location-prefix`, `path-form`,
         ;; `children-location` carry no wildcard whatever built them
@@ -296,7 +296,7 @@
    :cwe         "CWE-89"
    ;; The compilers cast HoneySQL forms they built -- `hsql-form`, `expr` -- and a form is not a value. The rule
    ;; is for application code that casts a value it was handed: actions.
-   :exempt-files [#"util/honey_sql_2\.clj$" #"driver/sql/query_processor\.clj$" #"src/metabase/driver/[a-z_]+\.clj$"
+   :exempt-files [#"util/honey_sql_2\.clj$" #"driver/sql/query_processor\.clj$" #"src/metabase/driver/[a-z0-9_]+\.clj$"
                   #"modules/drivers/.*/(query_processor|[a-z_]+_qp)\.clj$" #"query_processor/"]
    :triggers    #{metabase.util.honey-sql-2/cast}}
   [{:keys [node structured-locals] :as ctx}]

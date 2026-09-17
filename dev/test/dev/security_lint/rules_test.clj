@@ -40,6 +40,19 @@
 (defn- flags? [rule-id src] (= 1 (count (check rule-id src))))
 (defn- clean? [rule-id src] (zero? (count (check rule-id src))))
 
+(defn- check-at
+  "Run `rule-id` over `src` written at `relpath` under a temporary root, for the rules whose exemptions read the
+  path."
+  [rule-id relpath src & [policy]]
+  (let [dir (doto (java.io.File. ^String (System/getProperty "java.io.tmpdir") (str "seclint" (System/nanoTime)))
+              .mkdirs .deleteOnExit)
+        f   (java.io.File. dir ^String relpath)]
+    (.mkdirs (.getParentFile f))
+    (.deleteOnExit f)
+    (spit f src)
+    (engine/analyze {:paths [(.getAbsolutePath f)] :rules [(rule/by-id rule-id)] :taint-sources (or policy :any-local)
+                     :root (.getAbsolutePath dir)})))
+
 (use-fixtures :once (fn [f] (rules/all) (f)))
 
 (deftest command-injection-test
@@ -50,10 +63,23 @@
               "(ns t (:require [clojure.java.shell :as shell]))
                (defn f [] (shell/sh \"ls\" \"-la\"))")
       "a fully literal command is fine")
-  (is (clean? :metabase-security-lint/command-injection
+  (is (flags? :metabase-security-lint/command-injection
               "(ns t (:require [clojure.java.shell :as shell]))
                (defn f [x] (shell/sh \"ls\" x))")
-      "passing a value as its own argument is the safe form -- no shell parsing involved"))
+      "a caller-supplied value as its own argument is still the caller's argument to the program")
+  (is (flags? :metabase-security-lint/command-injection
+              "(ns t (:require [clojure.java.shell :as shell]))
+               (defn f [cmd] (shell/sh \"bash\" \"-c\" cmd))")
+      "a caller-supplied value handed to a shell as it is needs no interpolation to be injection")
+  (is (clean? :metabase-security-lint/command-injection
+              "(ns t (:require [clojure.java.shell :as shell] [metabase.util.json :as json]))
+               (defn f [x] (shell/sh \"pbcopy\" :in (json/encode x)))")
+      "a value after a keyword option is the process's input, not its command line")
+  (is (flags? :metabase-security-lint/command-injection
+              "(ns t) (defn f [cmd] (ProcessBuilder. [cmd]))")
+      "ProcessBuilder is the same command line without the helper")
+  (is (clean? :metabase-security-lint/command-injection
+              "(ns t) (defn f [] (ProcessBuilder. [\"ls\" \"-la\"]))")))
 
 (deftest sql-injection-test
   (is (flags? :metabase-security-lint/sql-injection
@@ -79,7 +105,38 @@
   (is (clean? :metabase-security-lint/sql-injection
               "(ns t (:require [next.jdbc :as jdbc]))
                (defn f [db t] (let [args [\"select 1 from x where t = ?\" t]] (jdbc/execute! db args)))")
-      "and through a binding of the vector"))
+      "and through a binding of the vector")
+  (testing "Toucan's raw query functions take the query last, and the application database runs it"
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [toucan2.core :as t2]))
+                 (defn f [t] (t2/query (str \"ANALYZE \" (name t))))"))
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [toucan2.core :as t2]))
+                 (defn f [conn t] (t2/query-one conn (str \"select * from \" t)))"))
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [toucan2.core :as t2]))
+                 (defn f [t] (t2/reducible-query [(str \"select * from \" t)]))"))
+    (is (clean? :metabase-security-lint/sql-injection
+                "(ns t (:require [toucan2.core :as t2]))
+                 (defn f [x] (t2/query [\"select * from t where id = ?\" x]))")
+        "parameterized"))
+  (testing "the other JDBC executors"
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [next.jdbc :as jdbc]))
+                 (defn f [db t rows] (jdbc/execute-batch! db (str \"insert into \" t \" values (?)\") rows {}))"))
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [clojure.java.jdbc :as jdbc]))
+                 (defn f [db t] (jdbc/db-do-prepared db [(str \"delete from \" t)]))"))
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [clojure.java.jdbc :as jdbc]))
+                 (defn f [db t] (jdbc/reducible-query db [(str \"select * from \" t)]))"))
+    (is (flags? :metabase-security-lint/sql-injection
+                "(ns t (:require [clojure.java.jdbc :as jdbc]))
+                 (defn f [db t] (jdbc/db-do-commands db [\"set search_path = public\" (str \"DROP TABLE \" t)]))")
+        "db-do-commands runs every element of the vector, not the first followed by parameters")
+    (is (clean? :metabase-security-lint/sql-injection
+                "(ns t (:require [clojure.java.jdbc :as jdbc]))
+                 (defn f [db] (jdbc/db-do-commands db [\"set search_path = public\" \"analyze\"]))"))))
 
 (deftest unsafe-deserialization-test
   (is (flags? :metabase-security-lint/unsafe-deserialization
@@ -675,16 +732,21 @@
     (is (clean? id (src ":setter :none")) "environment-only")
     (is (clean? id (src ":visibility :admin :type :boolean")) "not a string")
     (is (clean? id "(ns t (:require [metabase.settings.core :refer [defsetting]])) (defsetting page-size \"doc\" :visibility :admin)")
-        "not a URL")))
+        "not a URL")
+    (is (clean? id "(ns t (:require [metabase.settings.core :refer [defsetting]])) (defsetting site-url \"doc\" :visibility :admin)")
+        "site-url is the instance's own address, which the server hands to browsers and never fetches")))
 
 (deftest credential-endpoint-without-throttle-test
-  (let [src "(ns metabase.session.api (:require [metabase.api.macros :as api.macros] [metabase.util.throttle :as throttle]))
-(defn- check-throttle [k] (throttle/check nil k))
-(api.macros/defendpoint :post \"/ok\" \"doc\" [_r _q {:keys [email password]}] (check-throttle email) password)
-(api.macros/defendpoint :post \"/bad\" \"doc\" [_r _q {:keys [email password]}] password)
-(api.macros/defendpoint :post \"/other\" \"doc\" [_r _q {:keys [name]}] name)"
+  (let [src "(ns metabase.session.api (:require [metabase.api.macros :as api.macros] [metabase.util.throttle :as throttle] [metabase.util.password :as u.password]))
+(defn- limit! [k] (throttle/check nil k))
+(api.macros/defendpoint :post \"/ok\" \"doc\" [_r _q {:keys [email password]}] (limit! email) (u.password/verify-password password))
+(api.macros/defendpoint :post \"/bad\" \"doc\" [_r _q {:keys [email password]}] (u.password/verify-password password))
+(api.macros/defendpoint :post \"/other\" \"doc\" [_r _q {:keys [name]}] name)
+(api.macros/defendpoint :post \"/password-check\" \"doc\" [_r _q {:keys [password]}] (u.password/strength password))"
         rows (map :row (check-cg :metabase-security-lint/credential-endpoint-without-throttle src))]
-    (is (= [4] rows) "only the endpoint that takes a credential and reaches no throttle")))
+    (is (= [4] rows)
+        "only the endpoint that verifies a credential and reaches no throttle: the throttle is found by its namespace,
+         not by the helper's name, and an endpoint that only measures a password's complexity verifies nothing")))
 
 (deftest endpoint-mounted-without-auth-test
   (let [routes "(ns metabase.api-routes.routes (:require [metabase.api.macros :as api.macros] [metabase.api.routes.common :as routes.common]))
@@ -705,7 +767,11 @@
         "only the namespace mounted bare; the anonymous-by-design ones are exempt by path")
     (is (empty? (scan routes "(ns metabase.util.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api]))
 (api.macros/defendpoint :get \"/x\" \"doc\" [_r _q _b] (api/check-superuser) 1)"))
-        "an endpoint that demands a superuser in its body has demanded a session")))
+        "an endpoint that demands a superuser in its body has demanded a session")
+    (is (= [2] (map :row (scan routes "(ns metabase.util.api (:require [metabase.api.macros :as api.macros]))
+(api.macros/defendpoint :get \"/x\" \"doc\" [_r _q _b] 1)
+(api.macros/defendpoint :get \"/y\" \"doc\" [_r _q _b] 2)")))
+        "the mount is one fact about the namespace: reported once, at its first endpoint")))
 
 (deftest driver-connection-check-bypassed-test
   (let [id :metabase-security-lint/driver-connection-check-bypassed]
@@ -726,12 +792,22 @@
 (defmethod driver/can-connect? :x [driver details] ((get-method driver/can-connect? :sql-jdbc) driver details))")
         "delegating to the parent runs its validation")
     (is (clean? id "(ns metabase.driver.x (:require [metabase.driver :as driver]))
-(defmethod driver/display-name :x [_] \"X\")") "any other method")))
+(defmethod driver/display-name :x [_] \"X\")") "any other method")
+    (is (flags? id "(ns metabase.driver.x (:require [metabase.driver :as driver] [metabase.util.malli :as mu]))
+(mu/defmethod driver/can-connect? :x [driver details :- :map] (open-a-connection driver details))")
+        "a mu/defmethod implements the multimethod as surely as a defmethod")))
 
 (deftest trust-all-certificates-constructor-test
   (is (flags? :metabase-security-lint/trust-all-certificates
               "(ns t (:import (com.unboundid.util.ssl TrustAllTrustManager))) (defn f [] (TrustAllTrustManager.))")
-      "a library's ready-made trust-everything manager is the same hole without a reify"))
+      "a library's ready-made trust-everything manager is the same hole without a reify")
+  (testing "every spelling of the constructor"
+    (is (flags? :metabase-security-lint/trust-all-certificates
+                "(ns t (:import (com.unboundid.util.ssl TrustAllTrustManager))) (defn f [] (new TrustAllTrustManager))"))
+    (is (flags? :metabase-security-lint/trust-all-certificates
+                "(ns t (:import (com.unboundid.util.ssl TrustAllTrustManager))) (defn f [] (TrustAllTrustManager/new))"))
+    (is (flags? :metabase-security-lint/trust-all-certificates
+                "(ns t) (defn f [] (com.unboundid.util.ssl.TrustAllTrustManager.))"))))
 
 (deftest credential-sent-to-boundary-host-test
   (let [id :metabase-security-lint/credential-sent-to-boundary-host
@@ -950,7 +1026,10 @@
         "through get, and through a binding")
     (is (= [:warning] (map :severity (check-cg id "(ns t (:require [toucan2.core :as t2]))
 (defn f [id] (let [item (t2/select-one :model/Bookmark id)] (t2/select-one (keyword \"model\" (:type item)) :id (:item_id item))))")))
-        "a model name out of a row is a warning")))
+        "a model name out of a row is a warning")
+    (is (= 1 (count (check-cg id "(ns t (:require [toucan2.core :as t2] [metabase.api.macros :as api.macros]))
+(api.macros/defendpoint :post \"/x\" \"doc\" [_r _q body] (t2/select-one (-> body :model keyword) :id (:id body)))")))
+        "a threading macro is not an allow-list lookup, whatever arrows it has in its name")))
 
 (deftest credential-row-logged-test
   (let [id :metabase-security-lint/sensitive-data-in-logs]
@@ -970,7 +1049,11 @@
   (let [id :metabase-security-lint/error-data-discloses-query]
     (is (= 1 (count (check-cg id "(ns t (:require [toucan2.core :as t2]))
 (defn f [id] (let [db (t2/select-one :model/Database id)] (throw (ex-info \"no\" {:status-code 400 :database db}))))")))
-        "a Database row in ex-data reaches the response body with its details")))
+        "a Database row in ex-data reaches the response body with its details")
+    (is (= 1 (count (check-cg id "(ns t (:require [toucan2.core :as t2]))
+(defn f [id] (let [db (t2/select-one :model/Database id)] (throw (ex-info \"sync failed\" {:database db}))))")))
+        "and with no status code: a credential row is a disclosure wherever the throw is caught -- a log, a task
+         history row, a response")))
 
 (deftest path-traversal-severity-test
   (let [id :metabase-security-lint/path-traversal]
@@ -1206,7 +1289,10 @@
         "coerced, it is a number")
     (is (empty? (check-cg id "(ns metabase.driver.x (:require [metabase.util.honey-sql-2 :as h2x]))
 (defn f [expr] (h2x/cast :text expr))"))
-        "a HoneySQL form the compiler built is the compiler's")))
+        "a HoneySQL form the compiler built is the compiler's")
+    (is (empty? (check-at id "src/metabase/driver/h2.clj" "(ns metabase.driver.h2 (:require [metabase.util.honey-sql-2 :as h2x]))
+(defn f [expr] (h2x/cast :text expr))"))
+        "a driver whose name has a digit in it is a driver")))
 
 (deftest namespace-authz-outlier-test
   (let [ns-src (fn [ns body] (str "(ns " ns " (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [metabase.permissions.core :as perms]))
@@ -1263,7 +1349,13 @@
     (is (flags? id "(ns t) (def zone [:re {:error/message \"offset\"} #\"[+-]\\d{2}:\\d{2}\"])") "with options")
     (is (clean? id "(ns t) (def zone [:re #\"^[+-]\\d{2}:\\d{2}$\"])") "anchored at both ends")
     (is (clean? id "(ns t) (def zone [:re #\"\\A[+-]\\d{2}:\\d{2}\\z\"])") "or with \\A and \\z")
-    (is (clean? id "(ns t) (def zone [:re zone-offset-regex])") "a regex built elsewhere is judged there")))
+    (is (clean? id "(ns t) (def zone [:re zone-offset-regex])") "a regex built elsewhere is judged there")
+    (testing "anchored at one end only is anchored at neither, and the message says which end is loose"
+      (is (str/includes? (:message (first (check id "(ns t) (def s [:re #\"^abc\"])"))) "at the end"))
+      (is (str/includes? (:message (first (check id "(ns t) (def s [:re #\"abc$\"])"))) "at the start")))
+    (testing "a pattern written as a string is a pattern too"
+      (is (clean? id "(ns t) (def s [:re \"^abc$\"])"))
+      (is (flags? id "(ns t) (def s [:re \"^abc\"])")))))
 
 (deftest outbound-http-follows-redirects-test
   (let [id :metabase-security-lint/outbound-http-follows-redirects

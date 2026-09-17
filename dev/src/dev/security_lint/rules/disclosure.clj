@@ -18,10 +18,11 @@
                      "reads the definition of the object they were refused.")
    :remediation (str "Put identifiers in ex-data, not definitions: the card id rather than its query. Keep the "
                      "query in a log line if a human needs it.")
-   ;; Reported only for a throw that is an HTTP error by construction -- it carries `:status-code` -- and that a
-   ;; request can reach. Every other `ex-info` with a query in it is somebody's diagnostic, and the query
-   ;; processor and Lib have 83 of them; whether one reaches a caller depends on what catches it, and reporting
-   ;; them all as notes reported nothing anyone acted on.
+   ;; A query is reported only for a throw that is an HTTP error by construction -- it carries `:status-code` --
+   ;; and that a request can reach. Every other `ex-info` with a query in it is somebody's diagnostic, and the
+   ;; query processor and Lib have 83 of them; whether one reaches a caller depends on what catches it, and
+   ;; reporting them all as notes reported nothing anyone acted on. A credential row is reported wherever the
+   ;; throw is caught: a log line, a task-history row and a response body all carry the details.
    :severity    :warning
    :precision   :medium
    :cwe         "CWE-209"
@@ -37,8 +38,8 @@
                       :when (and (ast/symbol-node? v) (vocab/credential-row? (ast/->str v) (taint/origins ctx v)))]
                   (ast/->str k))
         ;; a credential row is a disclosure wherever the throw is caught; a query is one at a caller
-        hits    (concat rows (when endpoint-reachable? queries))]
-    (when (and (seq hits) (ast/map-get data :status-code))
+        hits    (concat rows (when (and endpoint-reachable? (ast/map-get data :status-code)) queries))]
+    (when (seq hits)
       {:message (str "ex-data returned to the caller carries " (str/join ", " (distinct hits)))})))
 
 (defrule throwable-map-outside-sanitizer

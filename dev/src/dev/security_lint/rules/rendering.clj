@@ -51,7 +51,7 @@
    :triggers    #{hiccup.core/html clojure.core/str clojure.core/format}}
   [{:keys [node] :as ctx}]
   (let [head    (ast/head-sym node)
-        html?   (= "html" (name head))
+        html?   (= "html" (some-> head name))
         values  (if html?
                   (rendered-values node)
                   ;; str/format: only when a literal piece is the start of a tag

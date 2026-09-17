@@ -115,7 +115,10 @@
    :constructor-triggers #{TrustAllTrustManager}}
   [{:keys [node]}]
   (cond
-    (str/includes? (str (ast/head-sym node)) "TrustAllTrustManager")
+    ;; the constructor, however spelled: `(TrustAllTrustManager.)`, `(new TrustAllTrustManager)`,
+    ;; `(TrustAllTrustManager/new)` -- anything but the interface-implementing forms
+    (and (not (contains? '#{reify proxy deftype defrecord} (ast/head-sym node)))
+         (str/includes? (ast/->str node) "TrustAllTrustManager"))
     {:message "TrustAllTrustManager accepts every certificate"}
 
     ;; X509ExtendedTrustManager is the same replacement with hostname checks added, not a safer one.

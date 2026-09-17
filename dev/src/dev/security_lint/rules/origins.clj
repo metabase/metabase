@@ -33,7 +33,7 @@
                (and (ast/symbol-node? nd) (re-find #"(?i)password|secret|api[-_]?key|private[-_]?key|credential|access[-_]?key|token" (ast/->str nd))
                     (not (re-find vocab/quantity-word (ast/->str nd))))
                (and (ast/literal-string? nd) (re-find #"(?i)^authorization$" (ast/string-value nd)))
-               (and (ast/keyword-node? nd) (contains? #{:oauth-token :basic-auth :digest-auth} (n/sexpr nd)))))
+               (and (ast/keyword-node? nd) (contains? #{:basic-auth :digest-auth} (n/sexpr nd)))))
          (ast/find-nodes (fn [nd] (or (ast/keyword-node? nd) (ast/symbol-node? nd) (ast/literal-string? nd))) node))))
 
 (defrule credential-sent-to-boundary-host
@@ -57,8 +57,7 @@
         opts (if (ast/map-node? a0) a0 (ast/arg node 1))
         os   (when url (boundary-origins ctx url))]
     (when (and (seq os) opts (credential-in? opts))
-      {:tainted? true
-       :message  (str "Request carries a credential to a host chosen by " (describe os))})))
+      {:message (str "Request carries a credential to a host chosen by " (describe os))})))
 
 (def ^:private query-executors
   "Names of the functions that run a query, matched by name inside an identity-switching form."
@@ -90,8 +89,7 @@
                    :when (and (seq os) (empty? (taint/checks ctx q)))]
                (str head " of a query from " (describe os)))]
     (when (seq runs)
-      {:tainted? true
-       :message  (str (name (ast/head-sym node)) " runs " (str/join "; " (distinct runs)))})))
+      {:message (str (name (ast/head-sym node)) " runs " (str/join "; " (distinct runs)))})))
 
 (def ^:private foreign-kinds
   "Origins that are neither the request nor the application database: written by something outside the
@@ -118,15 +116,15 @@
   (let [value (last (ast/args node))
         os    (when value (into #{} (filter #(contains? foreign-kinds (taint/label-kind %))) (boundary-origins ctx value)))]
     (when (seq os)
-      {:tainted? true
-       :message  (str "Setting value comes from " (describe os))})))
+      {:message (str "Setting value comes from " (describe os))})))
 
 (def ^:private allow-list-lookups
   "The rule's own remediation: `(entity->model name)`, `(get allowed name)` -- the model is one of the map's
   values, whatever the name was. A map called as a function has no name pattern of its own beyond the arrow
   and `-map` conventions; `get` on anything counts, since the value in the model position is then a value of
-  that thing and not the caller's string."
-  (into taint/default-sanitizers ['get 'get-in #"->" #"-map$" #"^resolve-model$"]))
+  that thing and not the caller's string. The arrow needs a name on both sides: `->`, `->>`, `some->` and
+  `cond->` are threading macros, not lookups."
+  (into taint/default-sanitizers ['get 'get-in #".->." #"-map$" #"^resolve-model$"]))
 
 (defrule toucan-model-from-boundary
   {:name        "Toucan model chosen by a value from across a trust boundary"
@@ -158,7 +156,7 @@
         ;; over the untyped positions only, whose labels are the shape refinements; a request value there
         ;; reads as the request
         os    (when (and model (not literal?))
-                (into #{} (comp (remove #{:local}) (map #(if (= :request/untyped %) :request %)))
+                (into #{} (remove #{:local})
                       (taint/origins (assoc ctx :locals (:untyped-locals ctx)) model {:sanitizers allow-list-lookups})))]
     (when (seq os)
       {:tainted? (boolean (some #(contains? #{:request :file :external :warehouse} (taint/label-kind %)) os))

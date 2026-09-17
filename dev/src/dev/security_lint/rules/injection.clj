@@ -20,53 +20,90 @@
    :description (str "A shell command is assembled from a value that isn't known statically. If any part of it "
                      "reaches user input, the shell will happily interpret metacharacters in it.")
    :remediation (str "Pass each argument as its own element -- (sh \"ls\" dir) rather than "
-                     "(sh \"bash\" \"-c\" (str \"ls \" dir)) -- so no shell parsing happens.")
+                     "(sh \"bash\" \"-c\" (str \"ls \" dir)) -- so no shell parsing happens, and validate a "
+                     "caller's value against an allow-list before it becomes an argument at all.")
    :severity    :error
    :precision   :high
    :cwe         "CWE-78"
    :triggers    #{clojure.java.shell/sh
                   babashka.process/sh
                   babashka.process/shell
-                  babashka.process/process}}
+                  babashka.process/process}
+   :constructor-triggers #{ProcessBuilder}}
   [{:keys [node] :as ctx}]
-  (when-let [dynamic (first (filter #(and (ast/dynamic-string? %) (taint/tainted? ctx %)) (ast/args node)))]
-    {:message (str "Shell command interpolates a caller-supplied value: " (ast/->str dynamic))}))
+  ;; Taint alone decides, as in `sql-injection`. `(sh "bash" "-c" cmd)` with a request value as `cmd` needs no
+  ;; interpolation to be injection, and a value as its own argument -- `(sh "ls" dir)` -- is still the caller's
+  ;; argument to the program: a flag, a path. The values after a keyword option -- `:in`, `:dir`, `:env` -- are
+  ;; the process's input and environment, not its command line.
+  (let [positional (loop [[a & more] (ast/args node), out []]
+                     (cond
+                       (nil? a)                              out
+                       (ast/keyword-node? (ast/unmeta a))    (recur (next more) out)
+                       :else                                 (recur more (conj out a))))]
+    (when-let [tainted (first (filter #(taint/tainted? ctx %) positional))]
+      {:message (str "Command line carries a caller-supplied value: " (ast/->str tainted))})))
 
 (def ^:private branching
   "Forms whose value is one of their children's, looked through for the SQL vector's text."
   '#{if if-not when when-not cond do let let* if-let when-let})
 
-(defn- sql-positions
-  "The nodes holding the SQL text for a JDBC call.
+(def ^:private query-last
+  "Toucan's raw query functions take the query last: `(t2/query sql)`, `(t2/query conn sql)`, `(t2/query conn
+  :model/X sql)`."
+  '#{toucan2.core/query toucan2.core/query-one toucan2.core/reducible-query})
 
-  Both next.jdbc and clojure.java.jdbc take `[sql & params]`, so the SQL is the second argument, the first element
-  of it when it is written as a vector, or the first element of a vector bound to it or returned by a branch of
-  it. Looking only here -- rather than anywhere in the subtree -- keeps a `(str ...)` used to build a *parameter*
-  from being reported: `[\"... where s = ?\" schema]` binds `schema`, however it was derived."
+(def ^:private flag-then-commands
+  "`(jdbc/db-do-commands db transaction? [...])`, `(jdbc/db-do-prepared db transaction? [...])`: an optional
+  boolean before the commands, which shifts them one to the right."
+  '#{clojure.java.jdbc/db-do-commands clojure.java.jdbc/db-do-prepared})
+
+(defn- sql-arg
+  "The argument of a query call that holds the SQL, or the `[sql & params]` vector: the second for the JDBC
+  executors, past an optional transaction flag for clojure.java.jdbc's `db-do-*`, the last for Toucan's."
+  [{:keys [site]} node]
+  (let [trigger (:trigger site)
+        args    (ast/args node)
+        flag?   (fn [a] (let [a (some-> a ast/unmeta)] (and a (ast/literal? a) (boolean? (n/sexpr a)))))]
+    (cond
+      (contains? query-last trigger)                                        (last args)
+      (and (contains? flag-then-commands trigger) (flag? (second args)))    (nth args 2 nil)
+      :else                                                                 (second args))))
+
+(defn- sql-positions
+  "The nodes holding the SQL text for a query call.
+
+  next.jdbc, clojure.java.jdbc and Toucan take `[sql & params]` (see [[sql-arg]] for where), so the SQL is the
+  first element of it when it is written as a vector, or the first element of a vector bound to it or returned by
+  a branch of it. Looking only here -- rather than anywhere in the subtree -- keeps a `(str ...)` used to build a
+  *parameter* from being reported: `[\"... where s = ?\" schema]` binds `schema`, however it was derived.
+  `db-do-commands` is the exception: its vector is a list of statements, and every element is SQL."
   [ctx node]
-  (letfn [(texts [a seen]
-            (let [a (ast/unmeta a)]
-              (cond
-                (nil? a) nil
-                (ast/vector-node? a) (some-> (first (ast/children a)) (texts seen))
-                ;; `(into [sql] params)`: the vector's own first element
-                (= 'into (some-> (ast/head-sym a) name symbol)) (texts (ast/arg a 0) seen)
-                (contains? branching (some-> (ast/head-sym a) name symbol))
-                (let [args (ast/args a)
-                      branches (case (name (ast/head-sym a))
-                                 ("if" "if-not" "if-let") (rest args)
-                                 "cond" (take-nth 2 (rest args))
-                                 [(last args)])]
-                  (mapcat #(texts % seen) branches))
-                ;; a local bound to a vector: its first element is the text
-                (and (ast/symbol-node? a) (not (contains? seen a)))
-                (if-let [init (get (:local-inits ctx) ((juxt :row :col) (meta a)))]
-                  (if (ast/vector-node? (ast/unmeta init))
-                    (texts init (conj seen a))
+  (let [every-element? (= 'clojure.java.jdbc/db-do-commands (:trigger (:site ctx)))]
+    (letfn [(texts [a seen]
+              (let [a (ast/unmeta a)]
+                (cond
+                  (nil? a) nil
+                  (ast/vector-node? a) (if every-element?
+                                         (mapcat #(texts % seen) (ast/children a))
+                                         (some-> (first (ast/children a)) (texts seen)))
+                  ;; `(into [sql] params)`: the vector's own first element
+                  (= 'into (some-> (ast/head-sym a) name symbol)) (texts (ast/arg a 0) seen)
+                  (contains? branching (some-> (ast/head-sym a) name symbol))
+                  (let [args (ast/args a)
+                        branches (case (name (ast/head-sym a))
+                                   ("if" "if-not" "if-let") (rest args)
+                                   "cond" (take-nth 2 (rest args))
+                                   [(last args)])]
+                    (mapcat #(texts % seen) branches))
+                  ;; a local bound to a vector: its first element is the text
+                  (and (ast/symbol-node? a) (not (contains? seen a)))
+                  (if-let [init (get (:local-inits ctx) ((juxt :row :col) (meta a)))]
+                    (if (ast/vector-node? (ast/unmeta init))
+                      (texts init (conj seen a))
+                      [a])
                     [a])
-                  [a])
-                :else [a])))]
-    (texts (ast/arg node 1) #{})))
+                  :else [a])))]
+      (texts (sql-arg ctx node) #{}))))
 
 (defrule sql-injection
   {:name        "SQL built by string interpolation"
@@ -81,10 +118,16 @@
    :exempt-files [#"testing_api/"]
    :triggers    #{next.jdbc/execute!
                   next.jdbc/execute-one!
+                  next.jdbc/execute-batch!
                   next.jdbc/plan
                   clojure.java.jdbc/query
                   clojure.java.jdbc/execute!
-                  clojure.java.jdbc/db-do-commands}}
+                  clojure.java.jdbc/db-do-commands
+                  clojure.java.jdbc/db-do-prepared
+                  clojure.java.jdbc/reducible-query
+                  toucan2.core/query
+                  toucan2.core/query-one
+                  toucan2.core/reducible-query}}
   [{:keys [node] :as ctx}]
   ;; Taint alone decides. A parameterized query has a literal in this position, which is never tainted; a
   ;; `(str ...)` over a namespace constant or a quoted identifier is how DDL has to be written, and is not
@@ -118,9 +161,9 @@
    :remediation (str "Resolve the path and check it is still inside the intended root, or select from a fixed "
                      "allow-list of names.")
    ;; Under the call-graph policy a finding here is a path that crossed a boundary -- a request, or connection
-   ;; details whose `*-path` entries any database editor writes -- and is an error. Under `:any-local` every
-   ;; internal caller that builds a path from a parameter fires too, and that is a note: a prompt to check
-   ;; provenance, not an assertion of a bug.
+   ;; details whose `*-path` entries any database editor writes -- and is always an error. The `:note` grade is
+   ;; reachable only under `--taint any-local`, where every internal caller that builds a path from a parameter
+   ;; fires too: a prompt to check provenance, not an assertion of a bug.
    :severity    {:tainted :error :otherwise :note}
    :precision   :medium
    :cwe         "CWE-22"
@@ -134,7 +177,7 @@
   [{:keys [node] :as ctx}]
   ;; `(io/file root name)` with a caller-supplied `name` is traversal whether or not it was built with `str`;
   ;; the other four take the path first and content or options after it
-  (let [args  (if (= "file" (name (ast/head-sym node))) (ast/args node) (take 1 (ast/args node)))
+  (let [args  (if (= "file" (some-> (ast/head-sym node) name)) (ast/args node) (take 1 (ast/args node)))
         args  (remove stream-not-path? args)]
     (when-let [tainted (first (filter #(taint/tainted? ctx % {:sanitizers path-sanitizers}) args))]
       {:tainted? (not (contains? (taint/origins ctx tainted) :local))
@@ -228,9 +271,19 @@
    :cwe         "CWE-20"
    :vector-triggers #{:re}}
   [{:keys [node]}]
-  (let [pattern (some->> (rest (ast/children node)) (map ast/unmeta) (filter #(= :regex (n/tag %))) first)
-        src     (some-> pattern n/string)]
-    (when (and src
-               (not (re-find #"^#\"(\^|\\A)" src))
-               (not (re-find #"(\$|\\z|\\Z)\"$" src)))
-      {:message (str "Malli :re pattern is unanchored, so re-find matches a substring: " src)})))
+  ;; a regex literal or a string: `[:re #"..."]` and `[:re "..."]` are both patterns to Malli
+  (let [pattern (some->> (rest (ast/children node)) (map ast/unmeta)
+                         (filter #(or (= :regex (n/tag %)) (ast/literal-string? %))) first)
+        src     (some-> pattern n/string)
+        body    (when pattern
+                  (if (= :regex (n/tag pattern))
+                    (subs src 2 (dec (count src)))
+                    (ast/string-value pattern)))
+        start?  (some->> body (re-find #"^(\^|\\A)"))
+        end?    (some->> body (re-find #"(\$|\\z|\\Z)$"))]
+    (when (and body (not (and start? end?)))
+      {:message (str "Malli :re pattern is unanchored at the "
+                     (cond (and (not start?) (not end?)) "start and the end"
+                           (not start?)                  "start"
+                           :else                         "end")
+                     ", so re-find matches a substring: " src)})))
