@@ -55,11 +55,10 @@ jobs:
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
-      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
+      frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
@@ -67,6 +66,7 @@ jobs:
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       no_source_code_changes: >-
         ${{ steps.changes.outputs.documentation == 'true'
         && steps.changes.outputs.backend_all == 'false'
@@ -90,16 +90,14 @@ jobs:
           filters: .github/file-paths.yaml
 
   create-test-plan:
-    needs: files-changed
+    needs: [should-run, files-changed]
     name: Create test plan
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && needs.should-run.outputs.verdict == 'defer' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       stats: ${{ steps.compute.outputs.stats }}
-      fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
-      loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
-      e2e_specs_to_run: ${{ steps.compute.outputs.e2e_specs_to_run }}
+      artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
       - name: Create test plan
@@ -238,7 +236,7 @@ jobs:
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   frontend-tests:
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, create-test-plan]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -249,6 +247,8 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' }}
+      # A skipped/failed planner supplies no artifact, so the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
       skip-lint: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' &&
@@ -256,9 +256,12 @@ jobs:
       skip-custom-viz: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.custom_viz_all != 'true' }}
+      skip-ci-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.ci_scripts != 'true' }}
 
   loki-tests:
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, create-test-plan]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -267,9 +270,9 @@ jobs:
     with:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_ci != 'true' &&
-        needs.files-changed.outputs.frontend_sources != 'true' &&
-        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
+        needs.files-changed.outputs.frontend_loki_all != 'true' }}
+      # A skipped/failed planner supplies no artifact, so the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 
   e2e-tests:
     needs: [should-run, files-changed, uberjar]
