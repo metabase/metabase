@@ -13,6 +13,7 @@
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.clarification :as tools.clarification]
    [metabase.metabot.tools.construct :as tools.construct]
+   [metabase.metabot.tools.conversations :as tools.conversations]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
@@ -50,6 +51,10 @@
   retrieve-library-entities-tool]
  [tools.construct
   construct-notebook-query-tool]
+ [tools.conversations
+  conversation-search-tool
+  recent-chats-tool
+  read-conversation-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
@@ -125,7 +130,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"})
+    "read_resource" "conversation_search" "recent_chats" "read_conversation"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks

@@ -426,7 +426,7 @@
       context)))
 
 (defn- set-user-time
-  [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
+  [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_OFFSET_DATE_TIME}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
                         (OffsetDateTime/now))]
     (-> context

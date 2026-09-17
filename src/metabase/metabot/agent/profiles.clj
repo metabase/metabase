@@ -124,7 +124,10 @@
   :prompt-template     "internal.selmer"
   :max-iterations      15
   :external-mcp-tools? true
-  :tools               [#'tools/search-tool
+  :tools               [#'tools/conversation-search-tool
+                        #'tools/recent-chats-tool
+                        #'tools/read-conversation-tool
+                        #'tools/search-tool
                         #'tools/construct-notebook-query-tool
                         #'tools/read-resource-tool
                         #'tools/create-sql-query-tool
@@ -175,7 +178,10 @@
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  15
-  :tools           [#'tools/retrieve-library-entities-tool
+  :tools           [#'tools/conversation-search-tool
+                    #'tools/recent-chats-tool
+                    #'tools/read-conversation-tool
+                    #'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool
@@ -186,7 +192,10 @@
  {:name            :nlq-fallback
   :prompt-template "natural-language-querying-fallback.selmer"
   :max-iterations  15
-  :tools           [#'tools/nlq-search-tool
+  :tools           [#'tools/conversation-search-tool
+                    #'tools/recent-chats-tool
+                    #'tools/read-conversation-tool
+                    #'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool

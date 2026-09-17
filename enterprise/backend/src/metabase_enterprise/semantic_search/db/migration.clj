@@ -23,7 +23,7 @@
     (keyword (str schema ".migration"))
     :migration))
 
-(defn- ensure-schema-exists!
+(defn ensure-schema-exists!
   "Create the module's schema when index-metadata carries one.
   This is the first *persisted* write against the app db in app-db mode; insufficient privileges normally
   surface earlier, at the capability probe's rolled-back CREATE SCHEMA."

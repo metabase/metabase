@@ -26,9 +26,7 @@
           result  (user-context/format-current-time context)]
       (is (some? result))
       (is (string? result))
-      ;; Should contain date components
-      (is (re-find #"2024" result))
-      (is (re-find #"14:30" result))))
+      (is (= "2024-01-15T14:30:00-05:00" result))))
   (testing "uses current_user_time when provided"
     (let [context {:current_user_time "2024-02-01T09:15:00"}
           result  (user-context/format-current-time context)]

@@ -10,6 +10,7 @@
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.conversation-recall-index :as recall-index]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -274,6 +275,38 @@
   (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]}))
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
+
+(defn recall-conversations
+  "Owned conversations with completed recallable turns, newest first, optionally bounded by activity time."
+  [user-id excluded-id {:keys [before after n]}]
+  (t2/query {:select [:c.id :c.title [[:max :m.created_at] :updated_at]]
+             :from [[:metabot_conversation :c]]
+             :join [[:metabot_message :m] [:= :m.conversation_id :c.id]]
+             :where [:and [:= :c.user_id user-id]
+                     (when excluded-id [:not= :c.id excluded-id])
+                     [:in :m.profile_id ["internal" "nlq" "nlq-fallback"]]
+                     [:= :m.deleted_at nil] [:= :m.role "assistant"]
+                     [:= :m.finished true] [:= :m.error nil]]
+             :group-by [:c.id :c.title]
+             :having [:and
+                      (when before [:< [:max :m.created_at] before])
+                      (when after [:> [:max :m.created_at] after])]
+             :order-by [[[:max :m.created_at] :desc] [:c.id :asc]]
+             :limit (or n 3)}))
+
+(defn recall-backfill-page
+  "Conversations in ID order for a resumable index sweep, optionally restricted to one owner."
+  [{:keys [after-id user-id limit] :or {limit 25}}]
+  (t2/select [:model/MetabotConversation :id :user_id]
+             {:where [:and [:not= :user_id nil]
+                      (when after-id [:> :id after-id])
+                      (when user-id [:= :user_id user-id])]
+              :order-by [[:id :asc]] :limit limit}))
+
+(defn message-conversation-id
+  "Conversation ID of a persisted message."
+  [message-id]
+  (t2/select-one-fn :conversation_id :model/MetabotMessage :id message-id))
 
 (mu/defn participant?
   "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
@@ -839,8 +872,9 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
-                                                   :metabot_chart_id        chart-id}))
+  (u/prog1 (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
+                                                            :metabot_chart_id        chart-id})
+    (recall-index/request-sync! conversation-id)))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

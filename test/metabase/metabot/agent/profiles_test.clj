@@ -139,12 +139,14 @@
 
 (deftest embedding-next-matches-nlq-tools-test
   (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
-    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
-          embedding  (tool-names (profiles/get-profile :embedding_next))
-          fallback   (tool-names (profiles/get-profile :nlq-fallback))
+    (let [;; conversation recall only indexes internal/nlq conversations, so its tools are nlq-only
+          recall-tools #{"conversation_search" "recent_chats" "read_conversation"}
+          tool-names   (fn [profile] (set (remove recall-tools (map #(:tool-name (meta %)) (:tools profile)))))
+          embedding    (tool-names (profiles/get-profile :embedding_next))
+          fallback     (tool-names (profiles/get-profile :nlq-fallback))
           ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
-          curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
-                       (tool-names (profiles/get-profile :nlq)))]
+          curated      (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+                         (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
       (is (= fallback embedding))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`

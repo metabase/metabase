@@ -132,6 +132,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
   },
+  conversation_search: {
+    active: () => t`Searching past conversations`,
+    done: () => t`Searched past conversations`,
+  },
   get_field_values: {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,
@@ -150,6 +154,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Reading web page`,
     done: () => t`Read web page`,
   },
+  read_conversation: {
+    active: () => t`Reading a past conversation`,
+    done: () => t`Read a past conversation`,
+  },
   read_resource: {
     active: (count) =>
       count == null
@@ -167,6 +175,10 @@ export const TOOL_MESSAGES = {
             `Read ${count} resources`,
             count,
           ),
+  },
+  recent_chats: {
+    active: () => t`Looking up recent chats`,
+    done: () => t`Looked up recent chats`,
   },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },

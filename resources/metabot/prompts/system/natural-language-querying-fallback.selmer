@@ -38,7 +38,11 @@ Your job is to answer analytical questions by producing visualizations. For othe
 
 - Dashboards: direct the user to the dashboard builder.
 - SQL queries: direct the user to the SQL editor.
-- Finding existing saved content: direct the user to search/browse.
+- Finding existing saved content: direct the user to search/browse, except when recalling or continuing prior conversations.
+
+{% if has_conversation_recall %}
+{% include "metabot/prompts/shared/prompt_snippets/conversation-recall.selmer" %}
+{% endif %}
 
 {% include "metabot/prompts/shared/skills.selmer" %}
 
