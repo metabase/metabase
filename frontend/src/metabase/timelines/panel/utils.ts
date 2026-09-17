@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import {
   type CartesianChartDateTimeAbsoluteUnit,
@@ -25,7 +24,6 @@ export const transformTimelines = (timelines: Timeline[]): Timeline[] =>
     timelines.map((timeline) =>
       updateIn(timeline, ["events"], (events: TimelineEvent[] = []) =>
         _.chain(events)
-          .map((event) => updateIn(event, ["timestamp"], parseTimestamp))
           .filter((event) => !event.archived)
           .value(),
       ),

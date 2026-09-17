@@ -152,6 +152,18 @@ describe("transformTimelines", () => {
 
     expect(timeline.events?.map((event) => event.id)).toEqual([1]);
   });
+
+  it("keeps event timestamps as the strings the API returned", () => {
+    const [timeline] = transformTimelines([
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ timestamp: "2024-03-01T00:45:00-08:00" }),
+        ],
+      }),
+    ]);
+
+    expect(timeline.events?.[0].timestamp).toBe("2024-03-01T00:45:00-08:00");
+  });
 });
 
 describe("filterTimelinesByXAxis", () => {
