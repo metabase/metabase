@@ -13,6 +13,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.search.db :as search.db]
+   [metabase.search.deadline :as deadline]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -185,8 +186,10 @@
   "Renew `claim` with a short autocommit operation, or on `conn` when given.
   Returns false if it expired or changed owner."
   ([claim]
+   (deadline/check!)
    (do-with-lifecycle-connection (fn [conn] (renew! conn claim))))
   ([conn {:keys [owner] :as claim}]
+   (deadline/check!)
    (pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis)))))
 
 (defn release!
@@ -249,11 +252,12 @@
 (defn expected-abort?
   "Whether `error` represents an expected lease safety abort rather than an index implementation failure."
   [error]
-  (contains? #{::lease-lost ::coordinate-obsolete} (:type (ex-data error))))
+  (contains? #{::lease-lost ::coordinate-obsolete ::deadline/exceeded} (:type (ex-data error))))
 
 (defn throw-if-lost!
   "Abort the current leased operation if its owner has been established as stale."
   []
+  (deadline/check!)
   (when (some-> *lease-context* :lost? deref)
     (throw (lost-ex (:claim *lease-context*)))))
 
@@ -302,7 +306,9 @@
    conn
    (fn [conn]
      (assert-current-in-transaction! conn)
-     (thunk conn))))
+     (let [result (thunk conn)]
+       (deadline/check!)
+       result))))
 
 (defn do-with-ddl-connection
   "Run an index-structure `thunk` -- DDL, or the metadata lifecycle rows that track it -- on its own fenced
@@ -370,7 +376,8 @@
                   false))
               (catch Throwable e
                 (record-event! claim :heartbeat-error)
-                (if (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos))
+                (if (or (deadline/timed-out?)
+                        (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos)))
                   (do
                     ;; Database time remains authoritative. This monotonic deadline only stops local work once we can
                     ;; no longer prove that the last successful database renewal could still be live.
@@ -403,14 +410,14 @@
                 (throw e)))
             (recur true)))))))
 
-(defn do-with-lease
+(defn- do-with-lease-impl
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
   By default a busy caller retries without holding a connection for up to [[*acquire-timeout-ms*]], then
   gives up with `{:acquired? false}`.
   Pass `{:wait? false}` for a single non-blocking attempt."
   ([coordinate thunk]
-   (do-with-lease coordinate thunk {}))
+   (do-with-lease-impl coordinate thunk {}))
   ([coordinate thunk {:keys [wait?] :or {wait? true}}]
    (when (mdb/in-transaction?)
      (record-event! (where-coordinate coordinate) :refused-in-transaction)
@@ -457,3 +464,12 @@
                           (ex-message e))))
            (observe-held-duration! claim timer))))
      {:acquired? false})))
+
+(defn do-with-lease
+  "Acquire `coordinate`, run `thunk` synchronously with a heartbeat and deadline, and release afterward.
+  A busy caller retries briefly unless `:wait?` is false. Local overlap returns `{:acquired? false}` immediately."
+  ([coordinate thunk]
+   (do-with-lease coordinate thunk {}))
+  ([coordinate thunk options]
+   (deadline/do-with-run {:app-db-id (mdb/unique-identifier), :engine (:engine coordinate)}
+                         #(do-with-lease-impl coordinate thunk options))))
