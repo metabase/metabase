@@ -47,7 +47,7 @@
   "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
   [search-model :- :string
    id           :- ms/PositiveInt]
-  (t2/query-one (-> (ingestion.query/spec-index-query-where search-model [:= :this.id id])
+  (t2/query-one (-> (ingestion.query/spec-index-query-where search-model [:= :this.id (long id)])
                     (assoc :select [[[:inline 1] :one]] :limit 1))))
 
 (mu/defn spec-index-count
@@ -329,8 +329,8 @@
    lang-code :- :string]
   (t2/select-one [:model/SearchIndexMetadata :id]
                  :engine engine
-                 :version version
-                 :lang_code lang-code
+                 :version [:auto/param version]
+                 :lang_code [:auto/param lang-code]
                  :status :pending
                  {:for :update}))
 
