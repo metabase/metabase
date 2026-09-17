@@ -1855,10 +1855,10 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged [{:path "collections/x.yaml" :content "x"}]
-                                                                        :conflicts []
-                                                                        :summary {:added 2 :updated 1 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                            :conflicts []
+                                                            :summary {:added 2 :updated 1 :removed 0}})
                                     impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                                        (reset! reconciled (source.p/version snap))
                                                                        (when finalize! (finalize!)))]
@@ -1878,10 +1878,10 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged [{:path "collections/x.yaml" :content "x"}]
-                                                                        :conflicts []
-                                                                        :summary {:added 1 :updated 0 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                            :conflicts []
+                                                            :summary {:added 1 :updated 0 :removed 0}})
                                     impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                                        (reset! reconciled (source.p/version snap))
                                                                        (when finalize! (finalize!)))]
@@ -1905,12 +1905,12 @@ serdes/meta:
       (let [reconciled? (atom false)]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged []
-                                                                        :conflicts [{:key [["Card" "A"]]
-                                                                                     :ours {:path "collections/a.yaml" :content "x"}
-                                                                                     :theirs {:path "collections/a.yaml" :content "y"}}]
-                                                                        :summary {:added 0 :updated 0 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged []
+                                                            :conflicts [{:key [["Card" "A"]]
+                                                                         :ours {:path "collections/a.yaml" :content "x"}
+                                                                         :theirs {:path "collections/a.yaml" :content "y"}}]
+                                                            :summary {:added 0 :updated 0 :removed 0}})
                                     impl/load-snapshot!              (fn [_ _ _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -1934,10 +1934,10 @@ serdes/meta:
                                 (snapshot-at [_ _] nil))]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged [{:path "collections/x.yaml" :content "x"}]
-                                                                        :conflicts []
-                                                                        :summary {:added 1 :updated 0 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                            :conflicts []
+                                                            :summary {:added 1 :updated 0 :removed 0}})
                                     impl/load-snapshot!              (fn [_ _ _ & _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -2071,7 +2071,7 @@ serdes/meta:
                                               :model_name "Local Card" :status_changed_at :%now}
                    :model/RemoteSyncObject _ {:model_type "Card" :model_id 9992 :status "synced"
                                               :model_name "Remote Card" :status_changed_at :%now}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged   [{:path "collections/x.yaml" :content "y"}]
                                                           :conflicts []
                                                           :summary  {:added 1 :updated 0 :removed 0}})
@@ -2099,7 +2099,7 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}
                    :model/RemoteSyncObject _ {:model_type "Card" :model_id 8881 :status "delete"
                                               :model_name "Deleted Card" :status_changed_at :%now}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}})
                                   ;; simulate the load wiping and not re-inserting the deleted entity's row, then the
                                   ;; in-transaction finalize (restore-dirty + set-version)
@@ -2121,7 +2121,7 @@ serdes/meta:
                                               :model_name "Locally Deleted" :status_changed_at :%now}
                    :model/RemoteSyncObject _ {:model_type "Card" :model_id 9992 :status "synced"
                                               :model_name "Remote Card" :status_changed_at :%now}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged   [{:path "collections/remote.yaml" :content "y"}]
                                                           :conflicts []
                                                           :summary  {:added 0 :updated 1 :removed 0}})
@@ -2146,7 +2146,7 @@ serdes/meta:
 (deftest import!-merge-conflict-test
   (testing "a local-only merge with a genuine conflict returns :conflict and does not load"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged []
                                                           :conflicts [{:key [["Card" "A"]]
                                                                        :ours {:path "collections/a.yaml" :content "x"}

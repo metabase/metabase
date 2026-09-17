@@ -522,7 +522,11 @@
     - Local changes stay dirty
     - Sets version to remote tip"
   [snapshot base-snapshot task-id sync-timestamp]
-  (let [{:keys [conflicts merged summary]} (source/compute-merge (spec/extract-entities-for-export) snapshot base-snapshot task-id)]
+  (let [{:keys [conflicts merged summary]} (serdes/with-cache
+                                             (let [targets (spec/exportable-entities)]
+                                               (source/compute-merge (spec/extract-entities-for-export targets)
+                                                                     snapshot base-snapshot task-id
+                                                                     :total (spec/exportable-entity-count targets))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -738,9 +742,9 @@
     changes.
 
   Returns a `:success` result with a `:merge-summary`."
-  [source snapshot base-snapshot task-id message sync-timestamp models]
+  [source snapshot base-snapshot task-id message sync-timestamp models total]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id)]
+        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1208,8 +1212,10 @@
                :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
               :else
-              (export-merged! src snapshot base-snapshot task-id message sync-timestamp
-                              (spec/extract-entities-for-export)))
+              (let [targets (spec/exportable-entities)]
+                (export-merged! src snapshot base-snapshot task-id message sync-timestamp
+                                (spec/extract-entities-for-export targets)
+                                (spec/exportable-entity-count targets))))
 
             diverged? ;; and not merge? option
             {:status    :conflict

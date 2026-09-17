@@ -1159,22 +1159,34 @@
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
 
+(defn exportable-entity-count
+  "Number of entities `targets` (a map as returned by [[exportable-entities]]) names. An upper bound on what
+  [[extract-entities-for-export]] yields, suitable for progress reporting."
+  [targets]
+  (transduce (map count) + 0 (vals targets)))
+
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
 
-   Returns a lazy sequence of serialized entities ready for storage.
+   Returns an eduction of serialized entities ready for storage. Every traversal re-runs the extraction, so
+   callers must reduce it once.
+
+   `targets` defaults to [[exportable-entities]]; pass it explicitly when the same map is needed for
+   [[exportable-entity-count]] so the dependency walk runs once.
 
    Only extracts models that:
    1. Have a spec in remote-sync-specs
    2. Are currently enabled (based on :enabled? field)
    3. Are in one of the provided collections (or descendants)"
-  []
-  (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model (merge git-sync-extract-opts
-                                                    {:filter-column (serdes/primary-key model)
-                                                     :filter-ids    (vec ids)}))))
-            cat
-            (exportable-entities)))
+  ([]
+   (extract-entities-for-export (exportable-entities)))
+  ([targets]
+   (eduction (map (fn [[model ids]]
+                    (serdes/extract-all model (merge git-sync-extract-opts
+                                                     {:filter-column (serdes/primary-key model)
+                                                      :filter-ids    (vec ids)}))))
+             cat
+             targets)))
 
 (defn extract-entities-for-rows
   "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a
