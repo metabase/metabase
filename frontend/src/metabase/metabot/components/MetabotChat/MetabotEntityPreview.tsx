@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { noop } from "underscore";
 
 import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
-import type { ShownEntity } from "metabase/api/ai-streaming/schemas";
+import type { EntityPreview } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Anchor, Box, Button, Center, Flex, Icon, Text } from "metabase/ui";
@@ -16,11 +16,11 @@ import type { CardId, IconName } from "metabase-types/api";
 
 import S from "./MetabotInlineChart.module.css";
 
-export function MetabotShownEntity({
+export function MetabotEntityPreview({
   value,
   readonly,
 }: {
-  value: ShownEntity;
+  value: EntityPreview;
   readonly: boolean;
 }) {
   const icon = match(value.type)
@@ -38,7 +38,7 @@ export function MetabotShownEntity({
     value.type === "metric";
 
   return (
-    <Box className={S.container} data-testid="metabot-shown-entity">
+    <Box className={S.container} data-testid="metabot-entity-preview">
       <Flex className={S.header} align="center" gap="sm">
         <Icon name={icon} c="brand" />
         <Anchor

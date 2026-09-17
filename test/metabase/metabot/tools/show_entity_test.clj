@@ -15,7 +15,7 @@
         (let [result (show-entity/show-entity-tool {:entity_type (name card-type) :entity_id (:id card)})
               part   (first (:data-parts result))]
           (is (= [{:type :data
-                   :data-type "shown_entity"
+                   :data-type "entity_preview"
                    :data {:type (name card-type)
                           :id (:id card)
                           :title "Bird sightings"

@@ -6,12 +6,12 @@ import {
   setupCardQueryEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ShownEntity } from "metabase/api/ai-streaming/schemas";
+import type { EntityPreview } from "metabase/api/ai-streaming/schemas";
 import type { Dataset, RawSeries } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { AgentMessage } from "./MetabotChatMessage";
-import { MetabotShownEntity } from "./MetabotShownEntity";
+import { MetabotEntityPreview } from "./MetabotEntityPreview";
 
 jest.mock("metabase/visualizations/components/Visualization", () => ({
   __esModule: true,
@@ -42,7 +42,7 @@ function setup({
   dataset = createMockDataset(),
   archived = false,
 }: {
-  value?: ShownEntity;
+  value?: EntityPreview;
   readonly?: boolean;
   cardStatus?: number;
   queryStatus?: number;
@@ -59,12 +59,12 @@ function setup({
     setupCardQueryEndpoints(card, dataset);
   }
   return renderWithProviders(
-    <MetabotShownEntity value={value} readonly={readonly} />,
+    <MetabotEntityPreview value={value} readonly={readonly} />,
   );
 }
 
-describe("MetabotShownEntity", () => {
-  it("renders a persisted shown entity in a normal assistant reply", () => {
+describe("MetabotEntityPreview", () => {
+  it("renders a persisted entity preview in a normal assistant reply", () => {
     renderWithProviders(
       <AgentMessage
         message={{
@@ -77,7 +77,7 @@ describe("MetabotShownEntity", () => {
               role: "agent",
               type: "data_part",
               part: {
-                type: "data-shown_entity",
+                type: "data-entity_preview",
                 data: {
                   type: "dashboard",
                   id: 42,

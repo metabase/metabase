@@ -531,7 +531,7 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with(
                 { type: "data-todo_list" },
-                { type: "data-shown_entity" },
+                { type: "data-entity_preview" },
                 (part) => {
                   pushDataPart({ type: "data_part", part });
                 },

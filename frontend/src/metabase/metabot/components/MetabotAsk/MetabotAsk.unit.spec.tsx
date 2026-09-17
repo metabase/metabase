@@ -63,7 +63,7 @@ describe("MetabotAsk", () => {
     const agentSpy = mockAgentEndpoint({
       events: [
         {
-          type: "data-shown_entity",
+          type: "data-entity_preview",
           data: {
             type: "question",
             id: card.id,
@@ -99,7 +99,7 @@ describe("MetabotAsk", () => {
     mockAgentEndpoint({
       events: [
         {
-          type: "data-shown_entity",
+          type: "data-entity_preview",
           data: {
             type: "dashboard",
             id: 42,
