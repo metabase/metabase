@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::filters
@@ -50,63 +51,47 @@
     [:columns  {:optional true} [:sequential ::comments.schema/comment-reaction.column]]
     [:order-by {:optional true} [:sequential ::comments.schema/comment-reaction.column]]]])
 
-(defn- filter-clause
-  [column value]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
-
-(defn- order-by-clause
-  [columns]
-  (mapv (fn [column] [column :asc]) columns))
-
 (defn- ->model
   [columns]
-  (if (seq columns)
-    (into [:model/Comment] columns)
-    :model/Comment))
+  (u.query/model-with-columns :model/Comment columns))
 
-(defn- ->honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 (defn- ->comment-reaction-model
   [columns]
-  (if (seq columns)
-    (into [:model/CommentReaction] columns)
-    :model/CommentReaction))
+  (u.query/model-with-columns :model/CommentReaction columns))
 
-(defn- ->comment-reaction-honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+(defn- ->comment-reaction-args
+  [opts]
+  (u.query/opts->args opts))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn select-comments :- [:sequential ::comments.schema/comment]
+(mu/defn select-comments :- [:sequential ::comments.schema/comment.partial]
   "The Comments matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::opts]]
-  (t2/select (->model columns) (->honeysql opts)))
+  (apply t2/select (->model columns) (->args opts)))
 
-(mu/defn select-one-comment :- [:maybe ::comments.schema/comment]
+(mu/defn select-one-comment :- [:maybe ::comments.schema/comment.partial]
   "The first Comment matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::opts]]
-  (t2/select-one (->model columns) (->honeysql opts)))
+  (apply t2/select-one (->model columns) (->args opts)))
 
-(mu/defn select-comment-reactions :- [:sequential ::comments.schema/comment-reaction]
+(mu/defn select-comment-reactions :- [:sequential ::comments.schema/comment-reaction.partial]
   "The CommentReactions matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::comment-reaction-opts]]
-  (t2/select (->comment-reaction-model columns) (->comment-reaction-honeysql opts)))
+  (apply t2/select (->comment-reaction-model columns) (->comment-reaction-args opts)))
 
 (mu/defn comment-reaction-exists? :- :boolean
   "Whether a CommentReaction matching `opts` exists."
   [opts :- [:maybe ::comment-reaction-opts]]
-  (t2/exists? :model/CommentReaction (->comment-reaction-honeysql opts)))
+  (apply t2/exists? :model/CommentReaction (->comment-reaction-args opts)))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
@@ -119,7 +104,7 @@
   "Apply `changes` to every Comment matching `opts`, returning the number updated."
   [opts    :- [:maybe ::opts]
    changes :- ::comments.schema/comment.update]
-  (t2/update! :model/Comment (->honeysql opts) changes))
+  (apply t2/update! :model/Comment (conj (->kv-args opts) changes)))
 
 (mu/defn insert-comment-reaction! :- ::comments.schema/comment-reaction
   "Insert the CommentReaction `row` and return the inserted instance."
@@ -129,14 +114,14 @@
 (mu/defn delete-comment-reactions! :- :int
   "Delete every CommentReaction matching `opts`, returning the number deleted."
   [opts :- [:maybe ::comment-reaction-opts]]
-  (t2/delete! :model/CommentReaction (->comment-reaction-honeysql opts)))
+  (apply t2/delete! :model/CommentReaction (->comment-reaction-args opts)))
 
 ;;; ------------------------------- Queries used only by the comments module -------------------------------
 
 (mu/defn soft-delete-comments! :- :int
   "Mark every Comment matching `opts` deleted now, returning the number updated."
   [opts :- [:maybe ::opts]]
-  (t2/update! :model/Comment (->honeysql opts) {:deleted_at [:now]}))
+  (apply t2/update! :model/Comment (conj (->kv-args opts) {:deleted_at [:now]})))
 
 (mu/defn select-comment-child-target-counts-for-document
   "Rows of `:child_target_id` and `:comment_count` for the document with `document-id`, counting only

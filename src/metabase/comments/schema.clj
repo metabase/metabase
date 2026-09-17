@@ -79,6 +79,10 @@
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
+(mr/def ::comment.partial
+  "A Comment row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::comment [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::comment.update
   "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
   [:map {:closed true}
@@ -105,6 +109,10 @@
    ::comment-reaction.update
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
+
+(mr/def ::comment-reaction.partial
+  "A CommentReaction row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::comment-reaction [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
 
 (mr/def ::comment-reaction.update
   "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."

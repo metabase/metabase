@@ -6,6 +6,7 @@
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -78,33 +79,34 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
+  (users.db/select-one-user {:id user-id}))
 
 (mu/defn user-by-email
   "The User with `email`, or nil."
   [email :- :string]
-  (t2/select-one :model/User :email email))
+  (users.db/select-one-user {:email email}))
 
 (mu/defn user-superuser-flag-by-email
   "The `:id` and `:is_superuser` of the User with `email`, or nil."
   [email :- :string]
-  (t2/select-one [:model/User :id :is_superuser] :email email))
+  (users.db/select-one-user {:email email :columns [:id :is_superuser]}))
 
 (mu/defn user-names-and-emails
   "A map of User ID to first name and email for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
+  (update-vals (users.db/select-user-pk->instance {:id (set user-ids) :columns [:first_name :email]})
+               #(select-keys % [:first_name :email])))
 
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
-  [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
-  (t2/insert-returning-instance! :model/User user))
+  [user :- (mut/select-keys ::users.schema/user.create [:email :first_name :last_name :is_superuser])]
+  (users.db/insert-user! user))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User user-id changes))
+  (users.db/update-users! {:id user-id} changes))
 
 (mu/defn session-exists-for-user?
   "Whether the User with `user-id` has a Session."

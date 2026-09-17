@@ -137,5 +137,5 @@
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
-  (->> (transforms.db/active-jobs)
+  (->> (transforms.db/select-transform-jobs {:active true})
        (run! initialize-job!)))

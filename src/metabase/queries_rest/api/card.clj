@@ -21,6 +21,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries-rest.db :as queries-rest.db]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -54,12 +55,12 @@
 ;; return all Cards. This is the default filter option.
 (defmethod cards-for-filter-option* :all
   [_]
-  (queries-rest.db/unarchived-cards))
+  (queries.db/select-cards {:archived false :order-by [:name]}))
 
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
-  (queries-rest.db/unarchived-cards-by-creator api/*current-user-id*))
+  (queries.db/select-cards {:creator_id api/*current-user-id* :archived false :order-by [:name]}))
 
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
@@ -73,22 +74,22 @@
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]
-  (queries-rest.db/unarchived-cards-for-database database-id))
+  (queries.db/select-cards {:database_id database-id :archived false :order-by [:name]}))
 
 ;; Return all Cards belonging to `Table` with `table-id`.
 (defmethod cards-for-filter-option* :table
   [_ table-id]
-  (queries-rest.db/unarchived-cards-for-table table-id))
+  (queries.db/select-cards {:table_id table-id :archived false :order-by [:name]}))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
   [_]
-  (queries-rest.db/archived-cards))
+  (queries.db/select-cards {:archived true :order-by [:name]}))
 
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
   [_filter-option model-id]
-  (->> (queries-rest.db/cards-using-model model-id)
+  (->> (queries-rest.db/select-cards-using-model model-id)
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card]
                  (some-> card :dataset_query not-empty lib/all-source-card-ids (contains? model-id))))))
@@ -96,7 +97,7 @@
 (mu/defn- cards-for-segment-or-metric
   [model-type :- [:enum :segment :metric]
    model-id   :- pos-int?]
-  (->> (queries-rest.db/cards-with-query-like (str "%" (name model-type) "%" model-id "%"))
+  (->> (queries-rest.db/select-cards-with-query-like (str "%" (name model-type) "%" model-id "%"))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [{query :dataset_query, :as _card}]
                  (when (seq query)
@@ -123,7 +124,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (queries-rest.db/public-cards))
+  (queries.db/select-cards {:public_uuid_set true :archived false :columns [:name :id :public_uuid]}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -136,7 +137,7 @@
   (perms/check-has-application-permission :setting)
   ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
   ;; published. Publishing itself stays gated.
-  (queries-rest.db/embeddable-cards))
+  (queries.db/select-cards {:enable_embedding true :archived false :columns [:name :id]}))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
@@ -208,7 +209,7 @@
   "Get `Card` with ID."
   [id]
   (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
-        raw-card (queries-rest.db/card id)]
+        raw-card (queries.db/select-one-card {:id id})]
     (-> raw-card
         api/read-check
         hydrate-card-details
@@ -349,7 +350,7 @@
        [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
        [:page-size   {:optional true} [:maybe ms/PositiveInt]]
        [:exclude-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
-  (let [matching-cards  (queries-rest.db/compatible-series-cards
+  (let [matching-cards  (queries-rest.db/select-compatible-series-cards
                          (:id card)
                          supported-series-display-type
                          last-cursor
@@ -421,7 +422,7 @@
                                                (fn [ids]
                                                  (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
-        card         (-> (queries-rest.db/card id) api/check-404 api/read-check)
+        card         (-> (queries.db/select-one-card {:id id}) api/check-404 api/read-check)
         card-display (:display card)]
     (when-not (supported-series-display-type card-display)
       (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
@@ -562,7 +563,7 @@
   (let [query (:dataset_query card-updates)]
     (queries/check-card-can-be-saved! query card-type)
     (check-parameter-permissions (:parameters card-updates)
-                                 (or query (queries-rest.db/card-query id)))
+                                 (or query (:dataset_query (queries.db/select-one-card {:id id :columns [:dataset_query]}))))
     (when-some [query (:dataset_query card-updates)]
       (queries/check-no-save-cycle! id query))
     (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
@@ -663,7 +664,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
-    (queries-rest.db/delete-card! id)
+    (queries.db/delete-cards! {:id id})
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -677,7 +678,7 @@
   [new-collection-id-or-nil cards]
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
-        max-position-result (queries-rest.db/max-collection-position new-collection-id-or-nil)
+        max-position-result (queries-rest.db/select-max-collection-position new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
@@ -704,7 +705,7 @@
     (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
+    (let [cards (queries-rest.db/select-cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -774,7 +775,7 @@
   ids. 404s (rather than 403s) on an unpaired id so it doesn't confirm the snapshot exists."
   [card-id stored-result-id sort]
   (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
-  (let [sr (api/check-404 (queries-rest.db/stored-result stored-result-id))]
+  (let [sr (api/check-404 (queries.db/select-one-stored-result {:id stored-result-id}))]
     (queries/assert-can-view-card-snapshots! card-id)
     (api/check-404 (queries/cached-dataset sr sort))))
 
@@ -795,7 +796,7 @@
        [:sort               {:optional true}
         [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
-        card             (api/check-404 (queries-rest.db/card resolved-card-id))]
+        card             (api/check-404 (queries.db/select-one-card {:id resolved-card-id}))]
     (if stored_result_id
       (do
         (api/read-check card)
@@ -846,7 +847,7 @@
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
-   (api/check-404 (queries-rest.db/card card-id)) export-format
+   (api/check-404 (queries.db/select-one-card {:id card-id})) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -876,7 +877,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
-  (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
+  (let [{existing-public-uuid :public_uuid} (queries.db/select-one-card {:id card-id :columns [:public_uuid]})
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    (events/publish-event! :event/card-public-link-created
@@ -923,7 +924,7 @@
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
-  (let [card (api/check-404 (queries-rest.db/card card-id))]
+  (let [card (api/check-404 (queries.db/select-one-card {:id card-id}))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card card :api

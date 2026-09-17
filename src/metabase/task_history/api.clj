@@ -161,7 +161,7 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (task-history.db/task-counts-for-runs run-ids)
+          counts       (task-history.db/select-task-counts-for-runs run-ids)
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -202,8 +202,8 @@
   (let [filters (run-filters params)
         limit   (request/limit)
         offset  (request/offset)
-        runs    (task-history.db/task-runs filters sort-column sort-direction limit offset)]
-    {:total  (task-history.db/task-run-count filters)
+        runs    (task-history.db/select-task-runs-page filters sort-column sort-direction limit offset)]
+    {:total  (task-history.db/count-task-runs-page filters)
      :limit  limit
      :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
@@ -212,8 +212,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (task-history.db/task-run id))
-        tasks (task-history.db/tasks-for-run id)]
+  (let [run   (api/check-404 (task-history.db/select-one-task-run {:id id}))
+        tasks (task-history.db/select-task-histories {:run_id id, :order-by [:started_at]})]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -228,6 +228,6 @@
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)
   (let [[start end] (timestamp-range (:started-at params))]
-    (->> (task-history.db/distinct-run-entities (:run-type params) start end)
+    (->> (task-history.db/select-distinct-run-entities (:run-type params) start end)
          (map #(update % :entity_type keyword))
          hydrate-entity-names)))

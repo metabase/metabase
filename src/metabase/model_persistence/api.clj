@@ -32,7 +32,7 @@
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
   (let [site-uuid-str    (system/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)]
-    (as-> (model-persistence.db/persisted-info-listing persisted-info-id db-ids card-id limit offset) results
+    (as-> (model-persistence.db/select-persisted-info-listing persisted-info-id db-ids card-id limit offset) results
       (t2/hydrate results :creator)
       (map (fn [{:keys [database_id] :as pi}]
              (assoc pi
@@ -48,7 +48,7 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (perms/check-has-application-permission :monitoring)
-  (let [db-ids (model-persistence.db/persisted-database-ids)
+  (let [db-ids (model-persistence.db/select-persisted-info-database-ids)
         writable-db-ids (when (seq db-ids)
                           (perms/prime-database-perms-cache {:db-ids db-ids})
                           (->> (warehouses.db/select-databases {:id db-ids})
@@ -58,7 +58,7 @@
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (model-persistence.db/persisted-model-count-for-databases writable-db-ids)
+               (model-persistence.db/count-persisted-models-for-databases writable-db-ids)
                0)
      :limit  (request/limit)
      :offset (request/offset)}))
@@ -207,7 +207,7 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [card           (model-persistence.db/card card-id)
-                persisted-info (model-persistence.db/persisted-info-for-card card-id)]
+                persisted-info (model-persistence.db/select-one-persisted-info {:card_id card-id})]
     (when (not (queries/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
@@ -230,7 +230,7 @@
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [card (model-persistence.db/card card-id)]
     (api/write-check card)
-    (when-let [persisted-info (model-persistence.db/persisted-info-for-card card-id)]
+    (when-let [persisted-info (model-persistence.db/select-one-persisted-info {:card_id card-id})]
       (api/write-check (when-let [db-id (:database_id persisted-info)]
                          (warehouses.db/select-one-database {:id db-id})))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))

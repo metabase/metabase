@@ -24,7 +24,7 @@
                (get-in (when-let [db-id (:database_id card)]
                          (warehouses.db/select-one-database {:id db-id}))
                        [:settings :persist-models-enabled])
-               (nil? (model-persistence.db/persisted-info-id-for-card (:id card))))
+               (nil? (:id (model-persistence.db/select-one-persisted-info {:card_id (:id card), :columns [:id]}))))
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e
       (log/warnf "Failed to process persisted-info event. %s: %s" topic (ex-message e)))))

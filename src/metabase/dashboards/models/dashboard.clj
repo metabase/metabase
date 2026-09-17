@@ -62,7 +62,7 @@
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
-   (mi/can-write? (dashboards.db/dashboard pk))))
+   (mi/can-write? (dashboards.db/select-one-dashboard {:id pk}))))
 
 (perms/define-collection-based-visibility! :model/Dashboard)
 
@@ -145,7 +145,8 @@
   [_model k dashboards]
   (mi/instances-with-hydrated-data
    dashboards k
-   #(group-by :dashboard_id (dashboards.db/dashboard-tabs-for-dashboards (map :id dashboards)))
+   #(group-by :dashboard_id (dashboards.db/select-dashboard-tabs {:dashboard_id (set (map :id dashboards))
+                                                                  :order-by [:dashboard_id :position :id]}))
    :id
    {:default []}))
 
@@ -154,7 +155,7 @@
   (mi/instances-with-hydrated-data
    dashboards k
    #(group-by :dashboard_id
-              (dashboards.db/dashcards-with-visible-cards-for-dashboards (map :id dashboards)))
+              (dashboards.db/select-dashcards-with-visible-cards-for-dashboards (map :id dashboards)))
    :id
    {:default []}))
 
@@ -165,7 +166,7 @@
   (when (seq dashboards)
     (let [coll-id->level (into {}
                                (map (juxt :id :authority_level))
-                               (dashboards.db/dashboard-collection-authority-levels
+                               (dashboards.db/select-dashboard-collection-authority-levels
                                 (into #{} (map u/the-id) dashboards)))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
@@ -213,7 +214,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (-> (dashboards.db/dashboard (u/the-id dashboard-or-id))
+  (let [dash (-> (dashboards.db/select-one-dashboard {:id (u/the-id dashboard-or-id)})
                  (t2/hydrate [:dashcards :card]))]
     (params/dashcards->param-field-ids (:dashcards dash))))
 
@@ -250,7 +251,7 @@
    Returns `nil`."
   [dashboard     :- ::dashboards.schema/dashboard
    new-dashcards :- [:sequential [:merge
-                                  ::dashboards.schema/dashboard-card.update
+                                  ::dashboards.schema/dashboard-card.columns
                                   [:map {:closed true}
                                    [:id                         ms/PositiveInt]
                                    [:series                     {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
@@ -344,7 +345,7 @@
                                (assoc :description description
                                       :collection_id parent-collection-id
                                       :creator_id api/*current-user-id*))
-                           (lib/normalize ::dashboards.schema/dashboard.update)))
+                           (lib/normalize ::dashboards.schema/dashboard.create)))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
           dashcards-to-add (for [dashcard dashcards]
                              (let [card     (some-> dashcard :card
@@ -451,8 +452,10 @@
   (dashboard-deps false dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
-  (let [dashcards (dashboards.db/dashcard-serdes-columns id)
-        dashboard (dashboards.db/dashboard id)
+  (let [dashcards (dashboards.db/select-dashcards {:dashboard_id id
+                                                   :columns [:id :card_id :action_id :parameter_mappings
+                                                             :visualization_settings]})
+        dashboard (dashboards.db/select-one-dashboard {:id id})
         dash-id   id]
     (merge-with
      merge
@@ -465,7 +468,9 @@
                               card_id (conj card_id))]
                 {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
      (when (not-empty dashcards)
-       (into {} (for [{:keys [id card_id dashboardcard_id]} (dashboards.db/dashcard-series-columns (map :id dashcards))]
+       (into {} (for [{:keys [id card_id dashboardcard_id]} (dashboards.db/select-dashcard-series
+                                                             {:dashboardcard_id (set (map :id dashcards))
+                                                              :columns [:id :card_id :dashboardcard_id]})]
                   {["Card" card_id] {"DashboardCardSeries" id
                                      "DashboardCard"       dashboardcard_id
                                      "Dashboard"           dash-id}})))

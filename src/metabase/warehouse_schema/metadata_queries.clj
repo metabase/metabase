@@ -51,5 +51,5 @@
   "Get the human readable (internally mapped) values of the field specified by `field-id`."
   [field-id :- pos-int?]
   (let [{orig :values, remapped :human_readable_values}
-        (warehouse-schema.db/full-field-values-with-human-readable-values field-id)]
+        (warehouse-schema.db/select-one-field-values-with-human-readable-values field-id)]
     (some->> (seq remapped) (zipmap orig))))

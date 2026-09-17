@@ -13,6 +13,10 @@
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
+(mr/def ::user-key-value.partial
+  "A UserKeyValue row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::user-key-value [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::user-key-value.update
   "What an update (or insert) of a UserKeyValue accepts: every column of `:user_key_value` except `id`, all optional."
   [:map {:closed true}

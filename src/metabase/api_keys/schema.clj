@@ -109,6 +109,19 @@
    ;; added by the model's after-select hook
    [:masked_key           {:optional true} :string]])
 
+(mr/def ::api-key.partial
+  "An ApiKey row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::api-key
+   [:map {:closed true}
+    [:id            {:optional true} ::id]
+    [:key           {:optional true} [:ref ::key.hashed]]
+    [:key_prefix    {:optional true} [:ref ::prefix]]
+    [:creator_id    {:optional true} pos-int?]
+    [:created_at    {:optional true} [:ref ::timestamp]]
+    [:updated_at    {:optional true} [:ref ::timestamp]]
+    [:name          {:optional true} [:ref ::name]]
+    [:updated_by_id {:optional true} pos-int?]]])
+
 (defn- insert-schema [map-schema]
   (into [:map {:closed true}]
         (map (fn [[k properties schema]]
@@ -136,7 +149,7 @@
 
 (mr/def ::api-key.column
   "A column of `api_key`, for the `:columns` option of the queries in [[metabase.api-keys.db]]."
-  (mut/keys (mr/schema ::api-key.update)))
+  (into [:enum] (mut/keys (mr/schema ::api-key.update))))
 
 (mr/def ::api-key.create
   "What an insert of a ApiKey accepts: every column of `:api_key` except `id`, all optional, plus `:metabase.api-keys.core/unhashed-key` consumed by the model's hooks."

@@ -63,6 +63,10 @@
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
+(mr/def ::auth-identity.partial
+  "A AuthIdentity row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::auth-identity [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::auth-identity.update
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
   [:map {:closed true}
@@ -71,7 +75,7 @@
    [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]
    [:metadata     {:optional true} [:maybe ::auth-identity.metadata]]
    [:provider_id  {:optional true} [:maybe :string]]
-   [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_used_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]

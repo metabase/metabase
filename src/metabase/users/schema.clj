@@ -1,6 +1,7 @@
 (ns metabase.users.schema
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -55,14 +56,19 @@
    [:id   ms/PositiveInt]
    [:name ms/NonBlankString]])
 
+(mr/def ::user.settings.undecodable
+  "A `:settings` column of a User read without the key that encrypted it, or holding a value that fails to parse,
+  which the model's transform logs and returns as the raw string."
+  :string)
+
 (mr/def ::user.settings
   "The `:settings` column of a User, decoded."
-  ms/UserSettings)
+  [:or ms/UserSettings ::user.settings.undecodable])
 
 (mr/def ::user
   "A User as selected from the app DB: every column of `:core_user` that the model selects by default, plus `:common_name` added by the model's after-select hook."
   [:merge
-   ::user.update
+   ::user.columns
    [:map {:closed true}
     [:id              ::lib.schema.id/user]
     [:common_name     {:optional true} [:maybe :string]]
@@ -100,8 +106,8 @@
    [:is_data_analyst         :boolean]
    [:common_name             {:optional true} [:maybe :string]]])
 
-(mr/def ::user.update
-  "What an update (or insert) of a User accepts: every column of `:core_user` except `id`, all optional."
+(mr/def ::user.columns
+  "Every column of `:core_user` except `id`, all optional."
   [:map {:closed true}
    [:email                   {:optional true} [:maybe :string]]
    [:first_name              {:optional true} [:maybe :string]]
@@ -129,7 +135,28 @@
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
    [:is_data_analyst         {:optional true} [:maybe :boolean]]])
 
-(mr/def ::user-filters
+(mr/def ::user.create
+  "What an insert of a User accepts: every column of `:core_user` except `id`."
+  (mr/schema ::user.columns))
+
+(mr/def ::user.update
+  "What an update of a User accepts: every column of `:core_user` except `id` and `date_joined`, which is set once at
+  creation."
+  (mut/select-keys
+   (mr/schema ::user.columns)
+   [:email :first_name :last_name :password :password_salt :last_login :is_superuser :is_active :reset_token
+    :reset_triggered :is_qbnewb :login_attributes :updated_at :sso_source :locale :is_datasetnewb :settings :type
+    :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]))
+
+(mr/def ::user.partial
+  "A User row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::user [:map {:closed true} [:id {:optional true} ::lib.schema.id/user]]])
+
+(mr/def ::user.column
+  "A column of `:core_user`, for the `:columns` option of the queries in [[metabase.users.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::user.columns))))
+
+(mr/def ::user-list-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters
   Users on the caller's behalf).
 
@@ -166,14 +193,30 @@
 (mr/def ::user-parameter-value
   "A UserParameterValue as selected from the app DB: every column of `:user_parameter_value`."
   [:merge
-   ::user-parameter-value.update
+   ::user-parameter-value.columns
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
-(mr/def ::user-parameter-value.update
-  "What an update (or insert) of a UserParameterValue accepts: every column of `:user_parameter_value` except `id`, all optional."
+(mr/def ::user-parameter-value.columns
+  "Every column of `:user_parameter_value` except `id`, all optional."
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:parameter_id {:optional true} [:maybe :string]]
    [:value        {:optional true} [:maybe ::user-parameter-value.value]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]])
+
+(mr/def ::user-parameter-value.create
+  "What an insert of a UserParameterValue accepts: every column of `:user_parameter_value` except `id`."
+  (mr/schema ::user-parameter-value.columns))
+
+(mr/def ::user-parameter-value.update
+  "What an update of a UserParameterValue accepts: `:value`, the only column ever changed after creation."
+  (mut/select-keys (mr/schema ::user-parameter-value.columns) [:value]))
+
+(mr/def ::user-parameter-value.partial
+  "A UserParameterValue row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::user-parameter-value [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::user-parameter-value.column
+  "A column of `:user_parameter_value`, for the `:columns` option of the queries in [[metabase.users.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::user-parameter-value.columns))))

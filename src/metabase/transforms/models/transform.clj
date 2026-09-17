@@ -72,14 +72,14 @@
   ([instance]
    (transform-readable? instance))
   ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
+   (when-let [transform (transforms.db/select-one-transform {:id pk})]
      (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
    (transform-writable? instance))
   ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
+   (when-let [transform (transforms.db/select-one-transform {:id pk})]
      (mi/can-write? transform))))
 
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
@@ -266,7 +266,7 @@
     runs
     (let [transform-ids (into #{} (keep :transform_id) runs)
           id->transform (when (seq transform-ids)
-                          (transforms.db/transform-summaries-by-id transform-ids))]
+                          (transforms.db/select-transform-summaries-by-id transform-ids))]
       (for [run runs]
         (assoc run :transform
                (if-let [transform-id (:transform_id run)]
@@ -291,7 +291,7 @@
               (assoc transform :last_checkpoint_value checkpoint_hi_value)
               ;; latest transform value wins, could be reset
               (assoc transform :last_checkpoint_value
-                     (transforms.db/transform-last-checkpoint-value transform-id)))
+                     (:last_checkpoint_value (transforms.db/select-one-transform {:id transform-id :columns [:last_checkpoint_value]}))))
             transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
@@ -300,7 +300,7 @@
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          tag-associations (transforms.db/transform-tag-links transform-ids)
+          tag-associations (transforms.db/select-transform-transform-tags {:transform_id (set transform-ids) :order-by [:position]})
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]
                                    (update acc transform_id (fnil conj []) tag_id))
@@ -361,11 +361,11 @@
       (let [;; Deduplicate while preserving order of first occurrence
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (transforms.db/transform-tag-links [transform-id])
+            current-associations (transforms.db/select-transform-transform-tags {:transform_id transform-id :order-by [:position]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
+                                   (transforms.db/select-transform-tag-pks {:id (set deduped-tag-ids)}))
             ;; Filter to only valid tags, preserving order
             new-tag-ids          (if valid-tag-ids
                                    (filterv valid-tag-ids deduped-tag-ids)
@@ -379,17 +379,17 @@
             new-positions        (zipmap new-tag-ids (range))]
         ;; Delete removed associations
         (when (seq to-delete)
-          (transforms.db/delete-transform-tag-links! transform-id to-delete))
+          (transforms.db/delete-transform-transform-tags! {:transform_id transform-id :tag_id (set to-delete)}))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (transforms.db/set-transform-tag-position! transform-id tag-id new-pos)))
+            (transforms.db/update-transform-transform-tags! {:transform_id transform-id :tag_id tag-id} {:position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (transforms.db/insert-transform-tag-links! (for [tag-id to-insert]
-                                                       {:transform_id transform-id
-                                                        :tag_id       tag-id
-                                                        :position     (get new-positions tag-id)})))))))
+          (transforms.db/insert-transform-transform-tags! (for [tag-id to-insert]
+                                                            {:transform_id transform-id
+                                                             :tag_id       tag-id
+                                                             :position     (get new-positions tag-id)})))))))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
@@ -400,7 +400,8 @@
   (when (seq transforms)
     (let [transform-ids (into #{} (map u/the-id) transforms)
           tag-mappings  (group-by :transform_id
-                                  (transforms.db/transform-tag-links transform-ids))]
+                                  (transforms.db/select-transform-transform-tags
+                                   {:transform_id (set transform-ids) :order-by [:position]}))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
@@ -533,7 +534,7 @@
 
 (defmethod serdes/required "Transform"
   [_model id]
-  (when-let [collection-id (transforms.db/transform-collection-id id)]
+  (when-let [collection-id (:collection_id (transforms.db/select-one-transform {:id id :columns [:collection_id]}))]
     {["Collection" collection-id] {"Transform" id}}))
 
 (defn- maybe-extract-transform-query-text
@@ -554,8 +555,8 @@
   Return empty list if no tag IDs are provided or no transforms are associated with the tags."
   [tag-ids]
   (or (when (seq tag-ids)
-        (when-let [transform-ids (transforms.db/transform-ids-with-tags tag-ids)]
-          (transforms.db/transforms transform-ids)))
+        (when-let [transform-ids (transforms.db/select-transform-ids-with-tags tag-ids)]
+          (transforms.db/select-transforms {:id transform-ids})))
       []))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------

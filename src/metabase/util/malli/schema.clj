@@ -383,6 +383,11 @@
     #(instance? java.time.temporal.Temporal %)]
    (deferred-tru "value must be a valid date/time/datetime")))
 
+(def TemporalInstantOrNow
+  "Like [[TemporalInstant]], but also accepts the HoneySQL `:%now` sigil, which writes the database's own current
+  timestamp. Use it for a temporal column in an `::x.update` schema that callers stamp with `:%now`."
+  [:or TemporalInstant [:= :%now]])
+
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message

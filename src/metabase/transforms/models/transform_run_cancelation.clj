@@ -16,8 +16,8 @@
   "Mark a started run for cancelation."
   [run-id]
   (try
-    (transforms.db/insert-cancelation-for-active-run! run-id)
-    (transforms.db/mark-run-canceling! run-id)
+    (transforms.db/insert-transform-run-cancelation-for-active-run! run-id)
+    (transforms.db/update-transform-runs! {:id run-id} {:status "canceling"})
     (log/infof "Cancelation requested for transform run %s" run-id)
     (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})
     nil
@@ -28,14 +28,14 @@
 (defn reducible-canceled-local-runs
   "Return a reducible sequence of local canceled runs."
   []
-  (transforms.db/cancelations-reducible))
+  (transforms.db/reducible-select-transform-run-cancelations))
 
 (defn delete-cancelation!
   "Delete a cancelation once it has been handled."
   [run-id]
-  (transforms.db/delete-cancelation-for-inactive-run! run-id))
+  (transforms.db/delete-transform-run-cancelation-for-inactive-run! run-id))
 
 (defn delete-old-canceling-runs!
   "Delete cancelations for runs that are no longer running."
   []
-  (transforms.db/delete-cancelations-for-inactive-runs!))
+  (transforms.db/delete-transform-run-cancelations-for-inactive-runs!))

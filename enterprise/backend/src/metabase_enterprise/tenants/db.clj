@@ -6,6 +6,7 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.db :as users.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -101,18 +102,18 @@
   "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
   number updated."
   [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
+  (users.db/update-users! {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
 
 (mu/defn reactivate-tenant-users!
   "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
   [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
-              {:is_active true :deactivated_with_tenant nil}))
+  (users.db/update-users! {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
+                          {:is_active true :deactivated_with_tenant nil}))
 
 (mu/defn user-tenant-id
   "The Tenant ID of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :tenant_id :model/User :id user-id))
+  (:tenant_id (users.db/select-one-user {:id user-id :columns [:tenant_id]})))
 
 (mu/defn collection-with-archived-state
   "The Collection with `collection-id` if its archived flag is `archived?`, or nil."
@@ -127,7 +128,7 @@
 
 (mu/defn insert-collection!
   "Insert `collection` and return its ID."
-  [collection :- ::collections.schema/collection.update]
+  [collection :- ::collections.schema/collection.create]
   (t2/insert-returning-pk! :model/Collection collection))
 
 (mu/defn delete-permissions-with-objects!

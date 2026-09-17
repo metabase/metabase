@@ -1,5 +1,6 @@
 (ns metabase.collections.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -101,7 +102,7 @@
 (mr/def ::collection
   "A Collection as selected from the app DB: every column of `:collection`."
   [:merge
-   ::collection.update
+   ::collection.columns
    [:map {:closed true}
     [:id                   ::lib.schema.id/collection]
     [:can_write            {:optional true} :boolean]
@@ -131,8 +132,8 @@
    [:root [:ref ::root-collection]]
    [:row  [:ref ::collection]]])
 
-(mr/def ::collection.update
-  "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
+(mr/def ::collection.columns
+  "Every column of `:collection` except `id`, all optional."
   [:map {:closed true}
    [:name                 {:optional true} [:maybe :string]]
    [:description          {:optional true} [:maybe :string]]
@@ -149,3 +150,22 @@
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::collection.create
+  "What an insert of a Collection accepts."
+  (mr/schema ::collection.columns))
+
+(mr/def ::collection.update
+  "What an update of a Collection accepts: no immutable columns (`:entity_id` and `:created_at` are fixed at
+  creation and never change after that)."
+  (mut/select-keys (mr/schema ::collection.columns)
+                   [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level
+                    :type :is_sample :archive_operation_id :archived_directly :is_remote_synced]))
+
+(mr/def ::collection.partial
+  "A Collection row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::collection [:map {:closed true} [:id {:optional true} ::lib.schema.id/collection]]])
+
+(mr/def ::collection.column
+  "A column of `:collection`, for the `:columns` option of the queries in [[metabase.collections.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::collection.columns))))

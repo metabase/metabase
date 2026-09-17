@@ -14,6 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::filters
@@ -34,49 +35,29 @@
                                               [:tuple ::login-history.schema/login-history.column [:enum :asc :desc]]]]]
     [:limit    {:optional true} ms/PositiveInt]]])
 
-(defn- order-by-clause
-  [order-by]
-  (mapv (fn [entry]
-          (if (vector? entry) entry [entry :asc]))
-        order-by))
-
-(defn- filter-clause
-  [[column value]]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map filter-clause) filters))
-
 (defn- ->model
   [columns]
-  (if (seq columns)
-    (into [:model/LoginHistory] columns)
-    :model/LoginHistory))
+  (u.query/model-with-columns :model/LoginHistory columns))
 
-(defn- ->honeysql
-  [{:keys [order-by limit] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by :limit))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))
-    limit          (assoc :limit limit)))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn select-login-histories :- [:sequential ::login-history.schema/login-history]
+(mu/defn select-login-histories :- [:sequential ::login-history.schema/login-history.partial]
   "The LoginHistories matching `opts`."
   ([]
    (select-login-histories nil))
   ([{:keys [columns] :as opts} :- [:maybe ::opts]]
-   (t2/select (->model columns) (->honeysql opts))))
+   (apply t2/select (->model columns) (->args opts))))
 
 (mu/defn select-login-history-pks :- [:set ms/PositiveInt]
   "The ids of the LoginHistories matching `opts`."
   ([]
    (select-login-history-pks nil))
   ([opts :- [:maybe ::opts]]
-   (or (t2/select-pks-set :model/LoginHistory (->honeysql opts)) #{})))
+   (or (apply t2/select-pks-set :model/LoginHistory (->args opts)) #{})))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 

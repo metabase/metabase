@@ -11,6 +11,7 @@
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -584,7 +585,7 @@
 (mu/defn stored-result
   "The StoredResult with `stored-result-id`, or nil."
   [stored-result-id :- ms/PositiveInt]
-  (t2/select-one :model/StoredResult :id stored-result-id))
+  (queries.db/select-one-stored-result {:id stored-result-id}))
 
 (mu/defn orphaned-stored-result-ids
   "Up to `limit` `:id` rows of the StoredResults created before `created-before` that no ExplorationQueryResult or
@@ -608,24 +609,18 @@
 
 (mu/defn insert-stored-result!
   "Insert `stored-result` and return its ID."
-  [stored-result :- ::queries.schema/stored-result.update]
-  (first (t2/insert-returning-pks! :model/StoredResult stored-result)))
+  [stored-result :- ::queries.schema/stored-result.create]
+  (queries.db/insert-stored-result! stored-result))
 
 (mu/defn insert-stored-result-use!
   "Insert `stored-result-use`."
-  [stored-result-use :- [:map {:closed true}
-                         [:id                {:optional true} ms/PositiveInt]
-                         [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
-                         [:exploration_id     {:optional true} [:maybe ms/PositiveInt]]
-                         [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
-                         [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
-                         [:card_id            {:optional true} [:maybe ::lib.schema.id/card]]]]
-  (t2/insert! :model/StoredResultUse stored-result-use))
+  [stored-result-use :- ::queries.schema/stored-result-use.create]
+  (queries.db/insert-stored-result-use! stored-result-use))
 
 (mu/defn delete-stored-results!
   "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
   [stored-result-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
+  (queries.db/delete-stored-results! {:id (set stored-result-ids)}))
 
 ;;; ------------------------------------------------ Timelines ------------------------------------------------
 
@@ -721,7 +716,7 @@
 
 (mu/defn insert-document!
   "Insert `document`."
-  [document :- ::documents.schema/document.update]
+  [document :- ::documents.schema/document.create]
   (t2/insert! :model/Document document))
 
 (mu/defn move-summary-documents!

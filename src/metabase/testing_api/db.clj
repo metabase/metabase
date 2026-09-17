@@ -4,7 +4,9 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.permissions.db :as permissions.db]
    [metabase.security-center.schema :as security-center.schema]
+   [metabase.users.db :as users.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,18 +37,18 @@
 (mu/defn permissions-group-id
   "The id of the PermissionsGroup named `group-name`, or nil."
   [group-name :- :string]
-  (t2/select-one-pk :model/PermissionsGroup :name group-name))
+  (permissions.db/select-one-permissions-group-pk {:name group-name}))
 
 (mu/defn insert-permissions-group!
   "Insert a PermissionsGroup named `group-name` and return its id."
   [group-name :- :string]
-  (t2/insert-returning-pk! :model/PermissionsGroup {:name group-name}))
+  (:id (permissions.db/insert-permissions-group! {:name group-name})))
 
 (mu/defn group-membership-exists?
   "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."
   [user-id  :- ::lib.schema.id/user
    group-id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))
+  (permissions.db/permissions-group-membership-exists? {:user_id user-id :group_id group-id}))
 
 (mu/defn delete-ai-usage-logs-for-conversations!
   "Delete the AiUsageLog rows for `conversation-ids`."
@@ -77,7 +79,7 @@
   "Set the `tenant_id` of the User with `user-id`."
   [user-id   :- ::lib.schema.id/user
    tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User user-id {:tenant_id tenant-id}))
+  (users.db/update-users! {:id user-id} {:tenant_id tenant-id}))
 
 (mu/defn delete-ai-usage-logs-for-user-and-source!
   "Delete the AiUsageLog rows of the User with `user-id` from `source`, returning the number deleted."

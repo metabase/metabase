@@ -51,18 +51,18 @@
   with (a literal keyword, not a `require`, to avoid a dependency cycle with every module that owns one of these
   models)."
   {:model/Action                   :metabase.actions.schema/action.for-update
-   :model/Card                     :metabase.queries.schema/card.update
+   :model/Card                     :metabase.queries.schema/card.columns
    :model/Channel                  :metabase.channel.schema/channel.update
    :model/ChannelTemplate          :metabase.channel.schema/channel-template.update
-   :model/Collection               :metabase.collections.schema/collection.update
+   :model/Collection               :metabase.collections.schema/collection.columns
    :model/CustomVizPlugin          :metabase-enterprise.custom-viz-plugin.schema/custom-viz-plugin.update
-   :model/Dashboard                :metabase.dashboards.schema/dashboard.update
-   :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
-   :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
-   :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
+   :model/Dashboard                :metabase.dashboards.schema/dashboard.columns
+   :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.columns
+   :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.columns
+   :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.columns
    :model/Database                 :metabase.warehouses.schema/database.update
    :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
-   :model/Document                 :metabase.documents.schema/document.update
+   :model/Document                 :metabase.documents.schema/document.columns
    :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.update
    :model/Exploration              :metabase.explorations.schema/exploration.update
    :model/Field                    :metabase.warehouse-schema.schema/field.update
@@ -74,7 +74,7 @@
    :model/Measure                  :metabase.measures.schema/measure.update
    :model/Metabot                  :metabase.metabot.schema/metabot.update
    :model/MetabotPrompt            :metabase.metabot.schema/metabot-prompt.update
-   :model/NativeQuerySnippet       :metabase.native-query-snippets.schema/native-query-snippet.update
+   :model/NativeQuerySnippet       :metabase.native-query-snippets.schema/native-query-snippet.columns
    :model/Notification             :metabase.notification.schema/notification.update
    :model/NotificationCard         :metabase.notification.schema/notification-card.update
    :model/NotificationHandler      :metabase.notification.schema/notification-handler.update
@@ -88,11 +88,11 @@
    :model/TableIndex               :metabase.indexes.schema/table-index.update
    :model/Timeline                 :metabase.timeline.schema/timeline.update
    :model/TimelineEvent            :metabase.timeline.schema/timeline-event.update
-   :model/Transform                :metabase.transforms.schema/transform.update
-   :model/TransformJob             :metabase.transforms.schema/transform-job.update
-   :model/TransformJobTransformTag :metabase.transforms.schema/transform-job-transform-tag.update
-   :model/TransformTag             :metabase.transforms.schema/transform-tag.update
-   :model/TransformTransformTag    :metabase.transforms.schema/transform-transform-tag.update})
+   :model/Transform                :metabase.transforms.schema/transform.columns
+   :model/TransformJob             :metabase.transforms.schema/transform-job.columns
+   :model/TransformJobTransformTag :metabase.transforms.schema/transform-job-transform-tag.columns
+   :model/TransformTag             :metabase.transforms.schema/transform-tag.columns
+   :model/TransformTransformTag    :metabase.transforms.schema/transform-transform-tag.columns})
 
 (defn- model-schema-key [prefix model]
   (keyword "metabase.models.db" (str prefix "." (name model))))

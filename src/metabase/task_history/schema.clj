@@ -1,6 +1,7 @@
 (ns metabase.task-history.schema
   "Malli schemas for the task-history module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -168,12 +169,12 @@
 (mr/def ::task-history
   "A TaskHistory as selected from the app DB: every column of `:task_history`."
   [:merge
-   ::task-history.update
+   ::task-history.columns
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
-(mr/def ::task-history.update
-  "What an update (or insert) of a TaskHistory accepts: every column of `:task_history` except `id`, all optional."
+(mr/def ::task-history.columns
+  "Every column of `:task_history` except `id`, all optional."
   [:map {:closed true}
    [:task         {:optional true} [:maybe :string]]
    [:db_id        {:optional true} [:maybe ::lib.schema.id/database]]
@@ -185,15 +186,33 @@
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
    [:logs         {:optional true} [:maybe [:sequential ::task-history.log]]]])
 
+(mr/def ::task-history.create
+  "What an insert of a TaskHistory accepts."
+  (mr/schema ::task-history.columns))
+
+(mr/def ::task-history.update
+  "What an update of a TaskHistory accepts: no immutable columns. `:started_at` (set once, at creation) and
+  `:run_id` (the TaskRun a row was created under) are immutable."
+  (mut/select-keys (mr/schema ::task-history.columns)
+                   [:task :db_id :ended_at :duration :task_details :status :logs]))
+
+(mr/def ::task-history.partial
+  "A TaskHistory row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::task-history [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::task-history.column
+  "A column of `task_history`, for the `:columns` option of the queries in [[metabase.task-history.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::task-history.columns))))
+
 (mr/def ::task-run
   "A TaskRun as selected from the app DB: every column of `:task_run`."
   [:merge
-   ::task-run.update
+   ::task-run.columns
    [:map {:closed true}
     [:id              ms/PositiveInt]]])
 
-(mr/def ::task-run.update
-  "What an update (or insert) of a TaskRun accepts: every column of `:task_run` except `id`, all optional."
+(mr/def ::task-run.columns
+  "Every column of `:task_run` except `id`, all optional."
   [:map {:closed true}
    [:run_type        {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
@@ -204,3 +223,21 @@
    [:process_uuid    {:optional true} [:maybe :string]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::task-run.create
+  "What an insert of a TaskRun accepts."
+  (mr/schema ::task-run.columns))
+
+(mr/def ::task-run.update
+  "What an update of a TaskRun accepts: no immutable columns. `:started_at` (set once, at creation) is immutable."
+  (mut/select-keys (mr/schema ::task-run.columns)
+                   [:run_type :entity_type :entity_id :ended_at :status :process_uuid :updated_at
+                    :notification_id]))
+
+(mr/def ::task-run.partial
+  "A TaskRun row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::task-run [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::task-run.column
+  "A column of `task_run`, for the `:columns` option of the queries in [[metabase.task-history.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::task-run.columns))))

@@ -14,6 +14,10 @@
     [:id                 ms/PositiveInt]
     [:active             {:optional true} :boolean]]])
 
+(mr/def ::login-history.partial
+  "A LoginHistory row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::login-history [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::login-history.update
   "What an update (or insert) of a LoginHistory accepts: every column of `:login_history` except `id`, all optional."
   [:map {:closed true}

@@ -38,22 +38,22 @@
   Snapshots the seed transform's name and entity_id so the run stays displayable after the
   transform is deleted (its FK is SET NULL, as for `transform_run.transform_id`)."
   [source-transform-id direction user-id transform-count]
-  (let [transform (transforms.db/transform-snapshot source-transform-id)]
-    (transforms.db/insert-dag-run! {:source_transform_id        source-transform-id
-                                    :source_transform_name      (:name transform)
-                                    :source_transform_entity_id (:entity_id transform)
-                                    :direction                  direction
-                                    :transform_count            transform-count
-                                    :user_id                    user-id
-                                    :status                     :started
-                                    :is_active                  true})))
+  (let [transform (transforms.db/select-one-transform {:id source-transform-id :columns [:name :entity_id :source_type]})]
+    (transforms.db/insert-transform-dag-run! {:source_transform_id        source-transform-id
+                                              :source_transform_name      (:name transform)
+                                              :source_transform_entity_id (:entity_id transform)
+                                              :direction                  direction
+                                              :transform_count            transform-count
+                                              :user_id                    user-id
+                                              :status                     :started
+                                              :is_active                  true})))
 
 (defn running-run-for-source-transform-id
   "Return the single active DAG run seeded from `source-transform-id`, or nil."
   [source-transform-id]
-  (transforms.db/active-dag-run-for-transform source-transform-id))
+  (transforms.db/select-one-transform-dag-run {:source_transform_id source-transform-id :is_active true}))
 
 (defn transform-runs-for-dag-run
   "Return the transform runs that were part of the given DAG run, ordered by start time."
   [dag-run-id]
-  (transforms.db/runs-for-dag-run dag-run-id))
+  (transforms.db/select-transform-runs {:dag_run_id dag-run-id :order-by [[:start_time :asc]]}))

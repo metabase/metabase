@@ -50,7 +50,11 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
+  (when-let [clean-before-date (:ended_at (first (task-history.db/select-task-histories
+                                                  {:columns  [:ended_at]
+                                                   :order-by [[:ended_at :desc]]
+                                                   :limit    1
+                                                   :offset   num-rows-to-keep})))]
     (task-history.db/delete-task-history-ended-before! clean-before-date)))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
@@ -99,12 +103,12 @@
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
    {:keys [status task sort_column sort_direction]} :- [:maybe FilterAndSortParams]]
-  (task-history.db/task-histories status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
+  (task-history.db/select-task-histories-page status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
   [{:keys [status task]} :- [:maybe FilterAndSortParams]]
-  (task-history.db/task-history-count status task))
+  (task-history.db/count-task-histories-page status task))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
@@ -139,7 +143,7 @@
   (let [updated-info (merge {:ended_at (t/instant)
                              :duration (ns->ms (- (System/nanoTime) startime-ns))}
                             info)]
-    (task-history.db/update-task-history! th-id updated-info)))
+    (task-history.db/update-task-histories! {:id th-id} updated-info)))
 
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."

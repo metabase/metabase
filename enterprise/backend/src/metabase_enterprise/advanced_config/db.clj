@@ -5,6 +5,7 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -43,21 +44,21 @@
 (mu/defn user-by-email
   "The User with `email`, or nil."
   [email :- :string]
-  (t2/select-one :model/User :email email))
+  (users.db/select-one-user {:email email}))
 
 (mu/defn user-columns-by-email
   "The `columns` of the User with `email`, or nil."
   [columns :- [:sequential :keyword]
    email :- :string]
-  (t2/select-one (into [:model/User] columns) :email email))
+  (users.db/select-one-user {:email email :columns columns}))
 
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
-  [user :- ::users.schema/user.update]
-  (t2/insert-returning-instance! :model/User user))
+  [user :- ::users.schema/user.create]
+  (users.db/insert-user! user))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (users.db/update-users! {:id user-id} changes))

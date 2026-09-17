@@ -35,7 +35,7 @@
     query-xform :- [:=> [:cat ::lib.schema/query] ::lib.schema/query]
     rff         :- [:maybe ::qp.schema/rff]]
    {:pre [(pos-int? table-id)]}
-   (let [database-id (warehouse-schema.db/table-database-id table-id)
+   (let [database-id (:db_id (warehouse-schema.db/select-one-table {:id table-id :columns [:db_id] :user-settings? false}))
          mp          (lib-be/application-database-metadata-provider database-id)
          query       (-> (lib/query mp (lib.metadata/table mp table-id))
                          query-xform

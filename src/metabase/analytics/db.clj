@@ -6,6 +6,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
+   [metabase.users.db :as users.db]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,12 +17,12 @@
 (mu/defn first-user-date-joined
   "The earliest join date among all Users, or nil."
   []
-  (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
+  (permissions.db/earliest-user-join-date))
 
 (mu/defn personal-user-stats-columns
   "The active, superuser, last login, and SSO source of every personal User."
   []
-  (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type :personal))
+  (users.db/select-users {:type :personal :columns [:is_active :is_superuser :last_login :sso_source]}))
 
 (mu/defn document-archived-flags
   "The archived flag of every Document."
@@ -56,7 +58,7 @@
 (mu/defn permissions-group-count
   "The number of PermissionsGroups."
   []
-  (t2/count :model/PermissionsGroup))
+  (permissions.db/count-permissions-groups))
 
 (mu/defn dashboard-stats-columns
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."

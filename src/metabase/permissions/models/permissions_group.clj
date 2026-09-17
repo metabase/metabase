@@ -243,12 +243,12 @@
       (binding [*allow-modifying-magic-groups* true]
         (t2/with-transaction [_conn]
           ;; Rename and demote the existing group to a normal visible group
-          (permissions.db/update-group! (:id existing-group)
-                                        {:name             (unique-converted-group-name (:name existing-group))
-                                         :magic_group_type nil})
+          (permissions.db/update-permissions-groups! {:id (:id existing-group)}
+                                                     {:name             (unique-converted-group-name (:name existing-group))
+                                                      :magic_group_type nil})
           ;; Create new empty magic group with default library permissions, reusing the old name
-          (let [{new-group-id :id} (permissions.db/insert-group! {:name             (:name existing-group)
-                                                                  :magic_group_type data-analyst-magic-group-type})]
+          (let [{new-group-id :id} (permissions.db/insert-permissions-group! {:name             (:name existing-group)
+                                                                              :magic_group_type data-analyst-magic-group-type})]
             (grant-library-permissions! new-group-id))
           (permissions.db/clear-data-analyst-flags!))))))
 

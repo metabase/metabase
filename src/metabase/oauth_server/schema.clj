@@ -13,6 +13,10 @@
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
+(mr/def ::oauth-access-token.partial
+  "A OAuthAccessToken row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::oauth-access-token [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::oauth-access-token.update
   "What an update (or insert) of a OAuthAccessToken accepts: every column of `:oauth_access_token` except `id`, all optional."
   [:map {:closed true}
@@ -22,7 +26,7 @@
    [:scope      {:optional true} [:maybe [:sequential :string]]]
    [:expiry     {:optional true} [:maybe :int]]
    [:resource   {:optional true} [:maybe [:or :string [:sequential :string]]]]
-   [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:revoked_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::oauth-access-token.column
@@ -35,6 +39,10 @@
    ::oauth-authorization-code.update
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
+
+(mr/def ::oauth-authorization-code.partial
+  "A OAuthAuthorizationCode row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::oauth-authorization-code [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
 
 (mr/def ::oauth-authorization-code.update
   "What an update (or insert) of a OAuthAuthorizationCode accepts: every column of `:oauth_authorization_code` except `id`, all optional."
@@ -61,6 +69,10 @@
    ::oauth-client.update
    [:map {:closed true}
     [:id                             ms/PositiveInt]]])
+
+(mr/def ::oauth-client.partial
+  "A OAuthClient row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::oauth-client [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
 
 (mr/def ::oauth-client.update
   "What an update (or insert) of a OAuthClient accepts: every column of `:oauth_client` except `id`, all optional."
@@ -109,6 +121,10 @@
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
+(mr/def ::oauth-refresh-token.partial
+  "A OAuthRefreshToken row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::oauth-refresh-token [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::oauth-refresh-token.update
   "What an update (or insert) of a OAuthRefreshToken accepts: every column of `:oauth_refresh_token` except `id`, all optional."
   [:map {:closed true}
@@ -118,7 +134,7 @@
    [:scope      {:optional true} [:maybe [:sequential :string]]]
    [:resource   {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:expiry     {:optional true} [:maybe :int]]
-   [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:revoked_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::oauth-refresh-token.column

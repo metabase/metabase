@@ -12,6 +12,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::filters
@@ -29,37 +30,24 @@
     [:columns  {:optional true} [:sequential ::glossary.schema/glossary.column]]
     [:order-by {:optional true} [:sequential ::glossary.schema/glossary.column]]]])
 
-(defn- filter-clause
-  [column value]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
-
-(defn- order-by-clause
-  [columns]
-  (mapv (fn [column] [column :asc]) columns))
-
 (defn- ->model
   [columns]
-  (if (seq columns)
-    (into [:model/Glossary] columns)
-    :model/Glossary))
+  (u.query/model-with-columns :model/Glossary columns))
 
-(defn- ->honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn select-one-glossary :- [:maybe ::glossary.schema/glossary]
+(mu/defn select-one-glossary :- [:maybe ::glossary.schema/glossary.partial]
   "The first Glossary entry matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::opts]]
-  (t2/select-one (->model columns) (->honeysql opts)))
+  (apply t2/select-one (->model columns) (->args opts)))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
@@ -72,12 +60,12 @@
   "Apply `changes` to every Glossary entry matching `opts`, returning the number updated."
   [opts    :- [:maybe ::opts]
    changes :- ::glossary.schema/glossary.update]
-  (t2/update! :model/Glossary (->honeysql opts) changes))
+  (apply t2/update! :model/Glossary (conj (->kv-args opts) changes)))
 
 (mu/defn delete-glossaries! :- :int
   "Delete every Glossary entry matching `opts`, returning the number deleted."
   [opts :- [:maybe ::opts]]
-  (t2/delete! :model/Glossary (->honeysql opts)))
+  (apply t2/delete! :model/Glossary (->args opts)))
 
 ;;; ------------------------------- Queries used only by the glossary module -------------------------------
 

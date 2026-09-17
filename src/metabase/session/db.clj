@@ -17,6 +17,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::filters
@@ -34,27 +35,16 @@
     [:columns  {:optional true} [:sequential ::session.schema/session.column]]
     [:order-by {:optional true} [:sequential ::session.schema/session.column]]]])
 
-(defn- filter-clause
-  [column value]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
-
-(defn- ->honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (mapv (fn [column] [column :asc]) order-by))))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
 (mu/defn delete-sessions! :- :int
   "Delete every Session matching `opts`, returning the number deleted."
   [opts :- [:maybe ::opts]]
-  (t2/delete! :model/Session (->honeysql opts)))
+  (apply t2/delete! :model/Session (->args opts)))
 
 ;;; ------------------------------------- Queries used only by the session module -------------------------------
 

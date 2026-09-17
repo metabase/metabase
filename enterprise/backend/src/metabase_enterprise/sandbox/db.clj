@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -126,13 +127,13 @@
 (mu/defn personal-user
   "The personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id :type :personal))
+  (users.db/select-one-user {:id user-id :type :personal}))
 
 (mu/defn set-user-login-attributes!
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
   [user-id          :- ::lib.schema.id/user
    login-attributes :- [:maybe users.schema/LoginAttributes]]
-  (t2/update! :model/User user-id {:login_attributes login-attributes}))
+  (users.db/update-users! {:id user-id} {:login_attributes login-attributes}))
 
 (mu/defn user-attributes-reducible
   "Reducible merged JWT and login attribute maps of the Users that have any."

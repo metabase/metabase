@@ -36,7 +36,8 @@
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
   (let [dashboard-id      (:dashboard_id (first tabs))
         tab-ids           (map :id tabs)
-        dashcards         (dashboards.db/dashcards-in-tabs dashboard-id tab-ids)
+        dashcards         (dashboards.db/select-dashcards {:dashboard_id dashboard-id
+                                                           :dashboard_tab_id (set tab-ids)})
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
         tabs              (sort-by :position tabs)]
@@ -46,12 +47,12 @@
 (defmethod mi/perms-objects-set :model/DashboardTab
   [dashtab read-or-write]
   (let [dashboard (or (:dashboard dashtab)
-                      (dashboards.db/dashboard (:dashboard_id dashtab)))]
+                      (dashboards.db/select-one-dashboard {:id (:dashboard_id dashtab)}))]
     (mi/perms-objects-set dashboard read-or-write)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 (defmethod serdes/generate-path "DashboardTab" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
+  [(serdes/infer-self-path "Dashboard" (dashboards.db/select-one-dashboard {:id (:dashboard_id dashcard)}))
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
@@ -65,7 +66,7 @@
 (mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
   [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.update [:map {:closed true} [:id neg-int?]]]]]
+   new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.create [:map {:closed true} [:id neg-int?]]]]]
   (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
                                                                (map #(dissoc % :id))
                                                                (map #(assoc % :dashboard_id dashboard-id))))]
@@ -85,14 +86,14 @@
                                    (select-keys new-tab update-ks))))
                          new-tabs)]
     (doseq [tab to-update-tabs]
-      (dashboards.db/update-dashboard-tab! (:id tab) (select-keys tab update-ks)))
+      (dashboards.db/update-dashboard-tabs! {:id (:id tab)} (select-keys tab update-ks)))
     nil))
 
 (mu/defn delete-tabs! :- nil?
   "Delete tabs of a Dashboard"
   [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (when (seq tab-ids)
-    (dashboards.db/delete-dashboard-tabs! tab-ids))
+    (dashboards.db/delete-dashboard-tabs! {:id (set tab-ids)}))
   nil)
 
 (defn do-update-tabs!

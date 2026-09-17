@@ -46,7 +46,7 @@
     (cond
       ;; you specified both - they must match
       (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (queries.db/dashboard-collection-id dashboard-id)]
+      (let [dashboard-collection-id (queries.db/select-dashboard-collection-id dashboard-id)]
         (api/check-400 (= collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
                             dashboard-collection-id
@@ -55,7 +55,7 @@
 
       specified-collection-id? collection-id
 
-      dashboard-id (queries.db/dashboard-collection-id dashboard-id)
+      dashboard-id (queries.db/select-dashboard-collection-id dashboard-id)
 
       :else nil)))
 

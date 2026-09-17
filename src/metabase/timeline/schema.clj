@@ -13,6 +13,10 @@
    [:map {:closed true}
     [:id            ms/PositiveInt]]])
 
+(mr/def ::timeline.partial
+  "A Timeline row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::timeline [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::timeline.update
   "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
   [:map {:closed true}
@@ -37,6 +41,10 @@
    ::timeline-event.update
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
+
+(mr/def ::timeline-event.partial
+  "A TimelineEvent row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::timeline-event [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
 
 (mr/def ::timeline-event.update
   "What an update (or insert) of a TimelineEvent accepts: every column of `:timeline_event` except `id`, all optional."

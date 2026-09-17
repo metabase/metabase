@@ -58,13 +58,13 @@
 
 (mu/defn insert-job!
   "Insert the TransformJob `job-data` and return the inserted instance."
-  [job-data :- ::transforms.schema/transform-job.update]
+  [job-data :- ::transforms.schema/transform-job.create]
   (t2/insert-returning-instance! :model/TransformJob job-data))
 
 (mu/defn insert-job-tags!
   "Insert the TransformJobTransformTag `rows`."
   [rows :- [:sequential
-            (mut/select-keys ::transforms.schema/transform-job-transform-tag.update [:job_id :tag_id :entity_id :position])]]
+            (mut/select-keys ::transforms.schema/transform-job-transform-tag.columns [:job_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformJobTransformTag rows))
 
 (mu/defn jobs-with-active-flag

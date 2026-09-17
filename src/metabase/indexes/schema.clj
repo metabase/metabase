@@ -124,4 +124,4 @@
    [:created_by       {:optional true} [:maybe :int]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
-   [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:last_executed_at {:optional true} [:maybe ms/TemporalInstantOrNow]]])

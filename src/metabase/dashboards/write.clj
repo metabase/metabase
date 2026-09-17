@@ -201,7 +201,7 @@
   dashcards)
 
 (defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (dashboards.db/dashcards-by-ids dashcard-ids)]
+  (let [dashboard-cards (dashboards.db/select-dashcards {:id (set dashcard-ids)})]
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
@@ -304,7 +304,7 @@
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
                                                (t2/hydrate
-                                                (dashboards.db/dashboard id)
+                                                (dashboards.db/select-one-dashboard {:id id})
                                                 [:dashcards :card]
                                                 :resolved-params))
           changes-stats                      (atom nil)
@@ -327,7 +327,7 @@
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
              (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
-             (dashboards.db/update-dashboard! id updates)
+             (dashboards.db/update-dashboards! {:id id} updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
              ;; Handle broken subscriptions, if any, when parameters changed
@@ -372,7 +372,7 @@
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
            (collections/check-for-remote-sync-update current-dash))
          true))
-      (let [dashboard (dashboards.db/dashboard id)]
+      (let [dashboard (dashboards.db/select-one-dashboard {:id id})]
         ;; skip publishing the event if it's just a change in its collection position
         (when-not (= #{:collection_position}
                      (set (keys dash-updates)))

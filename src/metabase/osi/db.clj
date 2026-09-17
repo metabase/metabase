@@ -11,6 +11,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::filters
@@ -30,32 +31,17 @@
     [:limit    {:optional true} ms/PositiveInt]
     [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(defn- filter-clause
-  [column value]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
-
-(defn- order-by-clause
-  [columns]
-  (mapv (fn [column] [column :asc]) columns))
-
 (defn- ->model
   [columns]
-  (if (seq columns)
-    (into [:model/OsiAiContext] columns)
-    :model/OsiAiContext))
+  (u.query/model-with-columns :model/OsiAiContext columns))
 
-(defn- ->honeysql
-  [{:keys [order-by limit offset] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by :limit :offset))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))
-    limit          (assoc :limit limit)
-    offset         (assoc :offset offset)))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
@@ -64,19 +50,19 @@
   ([]
    (select-osi-ai-contexts nil))
   ([{:keys [columns] :as opts} :- [:maybe ::opts]]
-   (t2/select (->model columns) (->honeysql opts))))
+   (apply t2/select (->model columns) (->args opts))))
 
 (mu/defn select-one-osi-ai-context :- [:maybe ::osi.schema/osi-ai-context]
   "The first OsiAiContext matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::opts]]
-  (t2/select-one (->model columns) (->honeysql opts)))
+  (apply t2/select-one (->model columns) (->args opts)))
 
 (mu/defn count-osi-ai-contexts :- :int
   "The number of OsiAiContexts matching `opts`."
   ([]
    (count-osi-ai-contexts nil))
   ([opts :- [:maybe ::opts]]
-   (t2/count :model/OsiAiContext (->honeysql opts))))
+   (apply t2/count :model/OsiAiContext (->args opts))))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
@@ -84,12 +70,12 @@
   "Apply `changes` to every OsiAiContext matching `opts`, returning the number updated."
   [opts    :- [:maybe ::opts]
    changes :- ::osi.schema/osi-ai-context.update]
-  (t2/update! :model/OsiAiContext (->honeysql opts) changes))
+  (apply t2/update! :model/OsiAiContext (conj (->kv-args opts) changes)))
 
 (mu/defn delete-osi-ai-contexts! :- :int
   "Delete every OsiAiContext matching `opts`, returning the number deleted."
   [opts :- [:maybe ::opts]]
-  (t2/delete! :model/OsiAiContext (->honeysql opts)))
+  (apply t2/delete! :model/OsiAiContext (->args opts)))
 
 ;;; --------------------------------- Queries used only by the osi module ---------------------------------
 

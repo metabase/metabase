@@ -3,6 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.db :as permissions.db]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -66,24 +68,24 @@
 (defn data-app-group?
   "Whether the PermissionsGroup with `id` is managed by a data app."
   [id]
-  (t2/exists? :model/PermissionsGroup :id id :is_data_app_group true))
+  (permissions.db/permissions-group-exists? {:id id :is_data_app_group true}))
 
 (mu/defn insert-permissions-group!
   "Insert a PermissionsGroup and return the inserted instance."
   [group-name    :- :string
    tenant-group? :- :boolean]
-  (t2/insert-returning-instance! :model/PermissionsGroup :name group-name :is_tenant_group tenant-group?))
+  (permissions.db/insert-permissions-group! {:name group-name :is_tenant_group tenant-group?}))
 
 (mu/defn rename-permissions-group!
   "Set the name of the PermissionsGroup with `id`, returning the number updated."
   [id         :- ms/PositiveInt
    group-name :- :string]
-  (t2/update! :model/PermissionsGroup id {:name group-name}))
+  (permissions.db/update-permissions-groups! {:id id} {:name group-name}))
 
 (mu/defn delete-permissions-group!
   "Delete the PermissionsGroup with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id id))
+  (permissions.db/delete-permissions-groups! {:id id}))
 
 (mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
@@ -107,23 +109,23 @@
 (mu/defn non-admin-user-exists?
   "Whether the User with `user-id` exists and is not a superuser."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_superuser false))
+  (users.db/user-exists? {:id user-id :is_superuser false}))
 
 (defn active-user-exists?
   "Whether an active User with `user-id` exists."
   [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
+  (users.db/user-exists? {:id user-id :is_active true}))
 
 (mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroupMembership :id id))
+  (permissions.db/select-one-permissions-group-membership {:id id}))
 
 (mu/defn set-group-membership-manager!
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
+  (permissions.db/update-permissions-group-memberships! {:id id} {:is_group_manager group-manager?}))
 
 (mu/defn data-permissions-reducible
   "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of

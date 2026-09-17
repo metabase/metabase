@@ -1687,8 +1687,8 @@
                    :model/Card     question4    (dependent-card db1-id question2)
                    :model/Card     question5    (dependent-card db1-id question4)]
       ;; H2 returns these rows source-first. Reverse them to cover a valid result order from PostgreSQL.
-      (mt/with-dynamic-fn-redefs [queries.db/card-queries
-                                  (comp reverse (mt/original-fn #'queries.db/card-queries))]
+      (mt/with-dynamic-fn-redefs [queries.db/select-card-queries
+                                  (comp reverse (mt/original-fn #'queries.db/select-card-queries))]
         (mt/with-test-user :crowberto
           (card/update-card! {:card-before-update model
                               :card-updates       {:dataset_query {:lib/type :mbql/query

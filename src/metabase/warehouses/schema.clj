@@ -90,6 +90,10 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
+(mr/def ::database.partial
+  "A Database row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::database [:map {:closed true} [:id {:optional true} ::lib.schema.id/database]]])
+
 (mr/def ::database.column
   "A column of `metabase_database`, for the `:columns` option of the queries in [[metabase.warehouses.db]]."
   (into [:enum :id] (mut/keys (mr/schema ::database.update))))

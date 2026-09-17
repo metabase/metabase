@@ -13,6 +13,10 @@
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
 
+(mr/def ::glossary.partial
+  "A Glossary row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::glossary [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::glossary.update
   "What an update (or insert) of a Glossary accepts: every column of `:glossary` except `id`, all optional."
   [:map {:closed true}

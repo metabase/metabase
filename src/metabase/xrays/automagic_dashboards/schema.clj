@@ -416,7 +416,7 @@
   "A card [[metabase.xrays.transforms.dashboard]] lays out: a saved Card, or an unsaved source-table or text card, with its section layout keys."
   [:or
    [:merge :metabase.queries.schema/card ::transform-card.layout]
-   [:merge :metabase.queries.schema/card.update ::transform-card.layout]])
+   [:merge :metabase.queries.schema/card.columns ::transform-card.layout]])
 
 (mr/def ::card-template
   "A grounded, combined metric augmented with the extra keys the dashboard-populating code

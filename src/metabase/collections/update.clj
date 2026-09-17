@@ -53,7 +53,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (collections.db/collection-location-columns new-parent-id)
+                          (collections.db/select-one-collection {:id new-parent-id, :columns [:location :id :type]})
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -119,9 +119,9 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
-        (collections.db/update-collection! id updates)))
+        (collections.db/update-collections! {:id id} updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (u/prog1 (collections.db/collection id)
+    (u/prog1 (collections.db/select-one-collection {:id id})
       (events/publish-event! :event/collection-update {:object <> :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))))

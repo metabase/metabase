@@ -75,7 +75,7 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (warehouse-schema.db/tables ids)
+     (let [tables (warehouse-schema.db/select-tables {:id (set ids)})
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
@@ -94,7 +94,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
-  (fetch-query-metadata* (warehouse-schema.db/table id) opts))
+  (fetch-query-metadata* (warehouse-schema.db/select-one-table {:id id}) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
@@ -169,7 +169,7 @@
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
-                                     (let [tables (warehouse-schema.db/active-tables-for-database id)
+                                     (let [tables (warehouse-schema.db/select-tables {:db_id id :active true})
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
@@ -178,7 +178,7 @@
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (warehouse-schema.db/active-table-schemas id include-hidden?)
+    (->> (warehouse-schema.db/select-schemas-for-database id include-hidden?)
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -197,8 +197,11 @@
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
    (let [candidate-tables (if include-hidden?
-                            (warehouse-schema.db/active-tables-in-schema db-id schema)
-                            (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
+                            (warehouse-schema.db/select-tables
+                             {:db_id db-id :schema schema :active true :order-by [[:display_name :asc]]})
+                            (warehouse-schema.db/select-tables
+                             {:db_id db-id :schema schema :active true :visibility_type nil
+                              :order-by [[:display_name :asc]]}))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (if-let [f (when config/ee-available?
@@ -223,7 +226,7 @@
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (warehouse-schema.db/fields ids)
+                                         (-> (warehouse-schema.db/select-fields {:id (set ids)})
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -262,7 +265,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (warehouse-schema.db/fields metadata-field-ids)
+                             (-> (warehouse-schema.db/select-fields {:id metadata-field-ids})
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]

@@ -1,16 +1,20 @@
 (ns metabase.transforms.db
   "Application database queries for the transforms module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
-  and transactions."
+  and transactions.
+
+  The queries below follow [[::transform-opts]] and its per-model siblings; queries that do not fit live in the
+  transforms-only section at the bottom of this namespace."
   (:require
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -25,87 +29,126 @@
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
-(mu/defn transform
-  "The Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
+(mr/def ::transform-filters
+  "Which Transforms a query applies to. Keys mirror the columns of `transform`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:id                 {:optional true} [:or ::lib.schema.id/transform [:set ::lib.schema.id/transform]]]
+   [:source_type        {:optional true} [:or :keyword :string [:set [:or :keyword :string]]]]
+   [:source_database_id {:optional true} ::lib.schema.id/database]])
 
-(mu/defn transforms
-  "The Transforms with `transform-ids`."
-  [transform-ids :- [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]
-  (t2/select :model/Transform :id [:in transform-ids]))
+(mr/def ::transform-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform.column
+                                              [:tuple ::transforms.schema/transform.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn transforms-of-source-types
+(defn- ->transform-model
+  [columns]
+  (u.query/model-with-columns :model/Transform columns))
+
+(defn- ->transform-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->transform-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-transforms :- [:sequential ::transforms.schema/transform.partial]
+  "The Transforms matching `opts`."
+  ([]
+   (select-transforms nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::transform-opts]]
+   (apply t2/select (->transform-model columns) (->transform-args opts))))
+
+(mu/defn select-one-transform :- [:maybe ::transforms.schema/transform.partial]
+  "The first Transform matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-opts]]
+  (apply t2/select-one (->transform-model columns) (->transform-args opts)))
+
+(mu/defn insert-transform! :- ::transforms.schema/transform
+  "Insert the Transform `row` and return the inserted instance."
+  [row :- ::transforms.schema/transform.create]
+  (t2/insert-returning-instance! :model/Transform row))
+
+(mu/defn update-transforms! :- :int
+  "Apply `changes` to every Transform matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-opts]
+   changes :- ::transforms.schema/transform.update]
+  (apply t2/update! :model/Transform (conj (->transform-kv-args opts) changes)))
+
+(mu/defn delete-transforms! :- :int
+  "Delete every Transform matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::transform-opts]]
+  (apply t2/delete! :model/Transform (->transform-args opts)))
+
+(mu/defn select-transforms-of-source-types
   "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
   [source-types :- [:set :string]
    database-id  :- [:maybe ::lib.schema.id/database]]
-  (t2/select :model/Transform {:where    [:and
-                                          [:in :source_type source-types]
-                                          (when database-id [:= :source_database_id database-id])]
-                               :order-by [[:id :asc]]}))
+  (select-transforms (cond-> {:source_type source-types, :order-by [:id]}
+                       database-id (assoc :source_database_id database-id))))
 
-(mu/defn transform-dependency-rows
-  "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
-  []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
-
-(mu/defn transform-snapshot
-  "The name, entity ID, and source type of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id))
-
-(mu/defn transform-summaries-by-id
+(mu/defn select-transform-summaries-by-id
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))
 
-(mu/defn transform-names-by-id
+(mu/defn select-transform-names-by-id
   "A map of ID to name for the Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))
 
-(mu/defn transform-last-checkpoint-value
-  "The last checkpoint value of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id))
-
-(mu/defn transform-collection-id
-  "The Collection ID of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :collection_id :model/Transform :id transform-id))
-
-(mu/defn insert-transform!
-  "Insert `transform` and return the new instance."
-  [transform :- ::transforms.schema/transform.update]
-  (t2/insert-returning-instance! :model/Transform transform))
-
-(mu/defn update-transform!
-  "Apply `changes` to the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform
-   changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform transform-id changes))
-
-(mu/defn delete-transform!
-  "Delete the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform transform-id))
-
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
-(mu/defn tag
-  "The TransformTag with `tag-id`, or nil."
-  [tag-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTag :id tag-id))
+(mr/def ::transform-tag-filters
+  "Which TransformTags a query applies to. Keys mirror the columns of `transform_tag`: a scalar matches that value
+  and a set matches any of its values."
+  [:map {:closed true}
+   [:id   {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:name {:optional true} :string]])
 
-(mu/defn existing-tag-ids
-  "The subset of `tag-ids` that exist."
-  [tag-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
+(mr/def ::transform-tag-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-tag-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-tag.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-tag.column
+                                              [:tuple ::transforms.schema/transform-tag.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn tag-name-exists?
-  "Whether a TransformTag named `tag-name` exists."
-  [tag-name :- :string]
-  (t2/exists? :model/TransformTag :name tag-name))
+(defn- ->transform-tag-model
+  [columns]
+  (u.query/model-with-columns :model/TransformTag columns))
+
+(defn- ->transform-tag-args
+  [opts]
+  (u.query/opts->args opts))
+
+(mu/defn select-one-transform-tag :- [:maybe ::transforms.schema/transform-tag.partial]
+  "The first TransformTag matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-tag-opts]]
+  (apply t2/select-one (->transform-tag-model columns) (->transform-tag-args opts)))
+
+(mu/defn select-transform-tag-pks :- [:set ms/PositiveInt]
+  "The ids of the TransformTags matching `opts`."
+  [opts :- [:maybe ::transform-tag-opts]]
+  (or (apply t2/select-pks-set :model/TransformTag (->transform-tag-args opts)) #{}))
+
+(mu/defn transform-tag-exists? :- :boolean
+  "Whether a TransformTag matching `opts` exists."
+  [opts :- [:maybe ::transform-tag-opts]]
+  (apply t2/exists? :model/TransformTag (->transform-tag-args opts)))
 
 (mu/defn tag-name-exists-excluding?
   "Whether a TransformTag named `tag-name` other than `tag-id` exists."
@@ -113,22 +156,66 @@
    tag-id   :- ms/PositiveInt]
   (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
 
-(mu/defn transform-tag-links
-  "The tag links of the Transforms with `transform-ids`, ordered by position."
-  [transform-ids :- [:or [:set [:maybe ::lib.schema.id/transform]] [:sequential [:maybe ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformTransformTag :transform_id [:in transform-ids] {:order-by [[:position :asc]]}))
+;;; ------------------------------------------- Transform/TransformTag links -------------------------------------
 
-(mu/defn transform-tag-links-for-tags
-  "The tag ID and Transform ID of the tag links of the TransformTags with `tag-ids`."
-  [tag-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/TransformTransformTag :tag_id :transform_id] :tag_id [:in tag-ids]))
+(mr/def ::transform-transform-tag-filters
+  "Which TransformTransformTags a query applies to. Keys mirror the columns of `transform_transform_tag`: a scalar
+  matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:transform_id {:optional true} [:or ::lib.schema.id/transform [:set ::lib.schema.id/transform]]]
+   [:tag_id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(mu/defn transform-ids-with-tags
+(mr/def ::transform-transform-tag-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-transform-tag-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-transform-tag.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-transform-tag.column
+                                              [:tuple ::transforms.schema/transform-transform-tag.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->transform-transform-tag-model
+  [columns]
+  (u.query/model-with-columns :model/TransformTransformTag columns))
+
+(defn- ->transform-transform-tag-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->transform-transform-tag-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-transform-transform-tags :- [:sequential ::transforms.schema/transform-transform-tag.partial]
+  "The TransformTransformTags matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-transform-tag-opts]]
+  (apply t2/select (->transform-transform-tag-model columns) (->transform-transform-tag-args opts)))
+
+(mu/defn insert-transform-transform-tags!
+  "Insert the TransformTransformTag `rows`."
+  [rows :- [:sequential ::transforms.schema/transform-transform-tag.create]]
+  (t2/insert! :model/TransformTransformTag rows))
+
+(mu/defn update-transform-transform-tags! :- :int
+  "Apply `changes` to every TransformTransformTag matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-transform-tag-opts]
+   changes :- ::transforms.schema/transform-transform-tag.update]
+  (apply t2/update! :model/TransformTransformTag (conj (->transform-transform-tag-kv-args opts) changes)))
+
+(mu/defn delete-transform-transform-tags! :- :int
+  "Delete every TransformTransformTag matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::transform-transform-tag-filters]]
+  (apply t2/delete! :model/TransformTransformTag (->transform-transform-tag-args opts)))
+
+(mu/defn select-transform-ids-with-tags :- [:set ::lib.schema.id/transform]
   "The IDs of the Transforms tagged with one of `tag-ids`."
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
-  (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
+  (or (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]) #{}))
 
-(mu/defn active-job-schedules-for-transforms
+(mu/defn select-active-job-schedules-for-transforms
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformTransformTag
@@ -140,112 +227,182 @@
                        [:in :ttt.transform_id transform-ids]
                        [:= :job.active true]]}))
 
-(mu/defn insert-transform-tag-links!
-  "Insert the TransformTransformTag `rows`."
-  [rows :- [:sequential
-            (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position])]]
-  (t2/insert! :model/TransformTransformTag rows))
-
-(mu/defn set-transform-tag-position!
-  "Set the position of the tag link between the Transform with `transform-id` and the tag with `tag-id`."
-  [transform-id :- ::lib.schema.id/transform
-   tag-id       :- ms/PositiveInt
-   position     :- ms/IntGreaterThanOrEqualToZero]
-  (t2/update! :model/TransformTransformTag {:transform_id transform-id, :tag_id tag-id} {:position position}))
-
-(mu/defn delete-transform-tag-links!
-  "Delete the links between the Transform with `transform-id` and the tags with `tag-ids`."
-  [transform-id :- ::lib.schema.id/transform
-   tag-ids      :- [:set ms/PositiveInt]]
-  (t2/delete! :model/TransformTransformTag :transform_id transform-id :tag_id [:in tag-ids]))
-
 ;;; ---------------------------------------------- Transform jobs ----------------------------------------------
 
-(mu/defn job
-  "The TransformJob with `job-id`, or nil."
-  [job-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJob :id job-id))
+(mr/def ::transform-job-filters
+  "Which TransformJobs a query applies to. Keys mirror the columns of `transform_job`: a scalar matches that value
+  and a set matches any of its values."
+  [:map {:closed true}
+   [:id     {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:active {:optional true} :boolean]])
 
-(mu/defn active-jobs
-  "The active TransformJobs."
-  []
-  (t2/select :model/TransformJob :active true))
+(mr/def ::transform-job-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-job-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-job.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-job.column
+                                              [:tuple ::transforms.schema/transform-job.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn job-snapshot
-  "The name, entity ID, and built-in type of the TransformJob with `job-id`."
-  [job-id :- ms/PositiveInt]
-  (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id))
+(defn- ->transform-job-model
+  [columns]
+  (u.query/model-with-columns :model/TransformJob columns))
 
-(mu/defn job-names-by-id
+(defn- ->transform-job-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->transform-job-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-transform-jobs :- [:sequential ::transforms.schema/transform-job.partial]
+  "The TransformJobs matching `opts`."
+  ([]
+   (select-transform-jobs nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::transform-job-opts]]
+   (apply t2/select (->transform-job-model columns) (->transform-job-args opts))))
+
+(mu/defn select-one-transform-job :- [:maybe ::transforms.schema/transform-job.partial]
+  "The first TransformJob matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-job-opts]]
+  (apply t2/select-one (->transform-job-model columns) (->transform-job-args opts)))
+
+(mu/defn update-transform-jobs! :- :int
+  "Apply `changes` to every TransformJob matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-job-opts]
+   changes :- ::transforms.schema/transform-job.update]
+  (apply t2/update! :model/TransformJob (conj (->transform-job-kv-args opts) changes)))
+
+(mu/defn select-job-names-by-id
   "A map of ID to name for the TransformJobs with `job-ids`."
   [job-ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
 
-(mu/defn activate-job!
-  "Mark the inactive TransformJob with `job-id` active, returning the number of rows updated."
-  [job-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
+;;; ------------------------------------------- Job/TransformTag links -------------------------------------------
 
-(mu/defn deactivate-job!
-  "Mark the active TransformJob with `job-id` inactive, returning the number of rows updated."
-  [job-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
+(mr/def ::transform-job-transform-tag-filters
+  "Which TransformJobTransformTags a query applies to. Keys mirror the columns of
+  `transform_job_transform_tag`: a scalar matches that value and a set matches any of its values."
+  [:map {:closed true}
+   [:job_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:tag_id {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]])
 
-(mu/defn job-tag-ids
+(mr/def ::transform-job-transform-tag-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-job-transform-tag-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-job-transform-tag.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-job-transform-tag.column
+                                              [:tuple ::transforms.schema/transform-job-transform-tag.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->transform-job-transform-tag-model
+  [columns]
+  (u.query/model-with-columns :model/TransformJobTransformTag columns))
+
+(defn- ->transform-job-transform-tag-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->transform-job-transform-tag-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-transform-job-transform-tags :- [:sequential ::transforms.schema/transform-job-transform-tag.partial]
+  "The TransformJobTransformTags matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-job-transform-tag-opts]]
+  (apply t2/select (->transform-job-transform-tag-model columns) (->transform-job-transform-tag-args opts)))
+
+(mu/defn insert-transform-job-transform-tags!
+  "Insert the TransformJobTransformTag `rows`."
+  [rows :- [:sequential ::transforms.schema/transform-job-transform-tag.create]]
+  (t2/insert! :model/TransformJobTransformTag rows))
+
+(mu/defn update-transform-job-transform-tags! :- :int
+  "Apply `changes` to every TransformJobTransformTag matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-job-transform-tag-opts]
+   changes :- ::transforms.schema/transform-job-transform-tag.update]
+  (apply t2/update! :model/TransformJobTransformTag (conj (->transform-job-transform-tag-kv-args opts) changes)))
+
+(mu/defn delete-transform-job-transform-tags! :- :int
+  "Delete every TransformJobTransformTag matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::transform-job-transform-tag-filters]]
+  (apply t2/delete! :model/TransformJobTransformTag (->transform-job-transform-tag-args opts)))
+
+(mu/defn select-job-tag-ids
   "The IDs of the tags of the TransformJob with `job-id`."
   [job-id :- ms/PositiveInt]
   (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id))
 
-(mu/defn job-tag-links
-  "The tag links of the TransformJobs with `job-ids`, ordered by position."
-  [job-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
-  (t2/select :model/TransformJobTransformTag :job_id [:in job-ids] {:order-by [[:position :asc]]}))
-
-(mu/defn insert-job-tag-links!
-  "Insert the TransformJobTransformTag `rows`."
-  [rows :- [:sequential
-            (mut/select-keys ::transforms.schema/transform-job-transform-tag.update [:job_id :tag_id :entity_id :position])]]
-  (t2/insert! :model/TransformJobTransformTag rows))
-
-(mu/defn set-job-tag-position!
-  "Set the position of the tag link between the TransformJob with `job-id` and the tag with `tag-id`."
-  [job-id   :- ms/PositiveInt
-   tag-id   :- ms/PositiveInt
-   position :- ms/IntGreaterThanOrEqualToZero]
-  (t2/update! :model/TransformJobTransformTag {:job_id job-id, :tag_id tag-id} {:position position}))
-
-(mu/defn delete-job-tag-links!
-  "Delete the links between the TransformJob with `job-id` and the tags with `tag-ids`."
-  [job-id  :- ms/PositiveInt
-   tag-ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/TransformJobTransformTag :job_id job-id :tag_id [:in tag-ids]))
-
 ;;; ---------------------------------------------- Transform runs ----------------------------------------------
 
-(mu/defn run
-  "The TransformRun with `run-id`, or nil."
-  [run-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformRun :id run-id))
+(mr/def ::transform-run-filters
+  "Which TransformRuns a query applies to. Keys mirror the columns of `transform_run`: a scalar matches that value
+  and a set matches any of its values."
+  [:map {:closed true}
+   [:id            {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:transform_id  {:optional true} ::lib.schema.id/transform]
+   [:job_run_id    {:optional true} ms/PositiveInt]
+   [:dag_run_id    {:optional true} ms/PositiveInt]
+   [:is_active     {:optional true} :boolean]])
 
-(mu/defn runs
-  "The TransformRuns with `run-ids`."
-  [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/TransformRun :id [:in run-ids]))
+(mr/def ::transform-run-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-run-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-run.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-run.column
+                                              [:tuple ::transforms.schema/transform-run.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn runs-for-transform
-  "The TransformRuns of the Transform with `transform-id`, newest first."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select :model/TransformRun :transform_id transform-id {:order-by [[:start_time :desc] [:end_time :desc]]}))
+(defn- ->transform-run-model
+  [columns]
+  (u.query/model-with-columns :model/TransformRun columns))
 
-(mu/defn runs-for-job-run
-  "The TransformRuns of the TransformJobRun with `job-run-id`, oldest first."
-  [job-run-id :- ms/PositiveInt]
-  (t2/select :model/TransformRun {:where [:= :job_run_id job-run-id], :order-by [[:start_time :asc]]}))
+(defn- ->transform-run-args
+  [opts]
+  (u.query/opts->args opts))
 
-(mu/defn runs-for-dag-run
-  "The TransformRuns of the TransformDagRun with `dag-run-id`, oldest first."
-  [dag-run-id :- ms/PositiveInt]
-  (t2/select :model/TransformRun {:where [:= :dag_run_id dag-run-id], :order-by [[:start_time :asc]]}))
+(defn- ->transform-run-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-transform-runs :- [:sequential ::transforms.schema/transform-run.partial]
+  "The TransformRuns matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-run-opts]]
+  (apply t2/select (->transform-run-model columns) (->transform-run-args opts)))
+
+(mu/defn select-one-transform-run :- [:maybe ::transforms.schema/transform-run.partial]
+  "The first TransformRun matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-run-opts]]
+  (apply t2/select-one (->transform-run-model columns) (->transform-run-args opts)))
+
+(mu/defn select-transform-run-pks :- [:set ms/PositiveInt]
+  "The ids of the TransformRuns matching `opts`."
+  [opts :- [:maybe ::transform-run-opts]]
+  (or (apply t2/select-pks-set :model/TransformRun (->transform-run-args opts)) #{}))
+
+(mu/defn insert-transform-run! :- ::transforms.schema/transform-run
+  "Insert the TransformRun `row` and return the inserted instance."
+  [row :- ::transforms.schema/transform-run.create]
+  (t2/insert-returning-instance! :model/TransformRun row))
+
+(mu/defn update-transform-runs! :- :int
+  "Apply `changes` to every TransformRun matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-run-opts]
+   changes :- ::transforms.schema/transform-run.update]
+  (apply t2/update! :model/TransformRun (conj (->transform-run-kv-args opts) changes)))
 
 (defn- paged-runs-where
   "Builds a `:where` clause for the paged run listing from plain filter data. `started-at-start`/`started-at-end`
@@ -356,7 +513,7 @@
    [:statuses          [:maybe [:sequential :string]]]
    [:user-id           [:maybe ::lib.schema.id/user]]])
 
-(mu/defn paged-runs
+(mu/defn select-paged-transform-runs
   "Up to `limit` (offset by `offset`) TransformRuns matching `filters` (see [[paged-runs-where]] for the supported
   keys), sorted by `sort-column`/`sort-direction` (translating `status`, `run-method`, and `transform-tags` sort
   columns per `status-labels`/`run-method-labels`/`tag-name-labels`)."
@@ -379,12 +536,12 @@
                              :where where-clause
                              :left-join join-clause))))
 
-(mu/defn paged-run-count
+(mu/defn count-paged-transform-runs
   "The number of TransformRuns matching `filters` (see [[paged-runs-where]] for the supported keys)."
   [filters :- RunFilters]
   (t2/count :model/TransformRun (m/assoc-some {} :where (paged-runs-where filters))))
 
-(mu/defn latest-runs-reducible
+(mu/defn reducible-select-latest-transform-runs
   "Reducible latest TransformRun of each Transform with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/reducible-select :model/TransformRun
@@ -401,26 +558,13 @@
                         :from   [:latest_runs]
                         :where  [:= :rn [:inline 1]]}))
 
-(mu/defn active-run-for-transform
-  "The active TransformRun of the Transform with `transform-id`, or nil. `transform-id` is nil for a
-  transform that hasn't been saved yet, in which case there is no run either."
-  [transform-id :- [:maybe ::lib.schema.id/transform]]
-  (when transform-id
-    (t2/select-one :model/TransformRun :transform_id transform-id :is_active true)))
-
-(mu/defn active-run-ids-of-parent
-  "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."
-  [parent-column :- [:enum :job_run_id :dag_run_id]
-   parent-run-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/TransformRun parent-column parent-run-id :is_active true))
-
-(mu/defn lock-active-runs
+(mu/defn lock-active-transform-runs
   "The active TransformRuns among `run-ids`, locked for update."
   [run-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id run-ids]]
                                   :for   :update}))
 
-(mu/defn last-success-times
+(mu/defn select-last-transform-success-times
   "Rows of Transform ID and the latest `end_time` of its succeeded runs for `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TransformRun
@@ -430,36 +574,9 @@
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
 
-(mu/defn insert-run!
-  "Insert `run` and return the new instance."
-  [run :- ::transforms.schema/transform-run.update]
-  (t2/insert-returning-instance! :model/TransformRun run))
-
-(mu/defn finish-active-run!
-  "Apply `changes` to the TransformRun with `run-id` if it is still active, returning the number of rows updated."
-  [run-id  :- ms/PositiveInt
-   changes :- ::transforms.schema/transform-run.update]
-  (t2/update! :model/TransformRun :id run-id :is_active true changes))
-
-(mu/defn cancel-active-runs!
-  "Mark the active TransformRuns among `run-ids` canceled because the user asked but the run could not be stopped."
-  [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/TransformRun
-              :id [:in run-ids]
-              :is_active true
-              {:status    :canceled
-               :end_time  :%now
-               :is_active nil
-               :message   "Canceled by user but could not guarantee run stopped."}))
-
-(mu/defn mark-run-canceling!
-  "Set the status of the TransformRun with `run-id` to canceling."
-  [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformRun :id run-id {:status "canceling"}))
-
 ;;; -------------------------------------------- Run cancelations --------------------------------------------
 
-(mu/defn insert-cancelation-for-active-run!
+(mu/defn insert-transform-run-cancelation-for-active-run!
   "Record a cancelation request for the TransformRun with `run-id` if it is active and none exists yet."
   [run-id :- ms/PositiveInt]
   (t2/query-one [(str "INSERT INTO transform_run_cancelation (run_id) "
@@ -470,53 +587,125 @@
                       "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation WHERE run_id = ?)")
                  run-id run-id]))
 
-(mu/defn cancelations-reducible
+(mu/defn reducible-select-transform-run-cancelations
   "Reducible TransformRunCancelations."
   []
   (t2/reducible-select :model/TransformRunCancelation))
 
-(mu/defn cancelations-requested-before
+(mu/defn select-transform-run-cancelations-requested-before
   "The run ID and request time of the TransformRunCancelations requested more than `age` `unit`s ago."
   [age  :- ms/PositiveInt
    unit :- :keyword]
   (t2/select [:model/TransformRunCancelation :run_id :time]
              :time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]))
 
-(mu/defn delete-cancelation-for-inactive-run!
+(mu/defn delete-transform-run-cancelation-for-inactive-run!
   "Delete the TransformRunCancelation of the TransformRun with `run-id` if that run is no longer active."
   [run-id :- ms/PositiveInt]
   (t2/delete! :model/TransformRunCancelation {:where [:and [:= :run_id run-id] no-active-run-clause]}))
 
-(mu/defn delete-cancelations-for-inactive-runs!
+(mu/defn delete-transform-run-cancelations-for-inactive-runs!
   "Delete every TransformRunCancelation whose run is no longer active."
   []
   (t2/delete! :model/TransformRunCancelation {:where no-active-run-clause}))
 
 ;;; ------------------------------------------- Job and DAG runs -------------------------------------------
 
-(mu/defn touch-active-job-run!
-  "Stamp `updated_at` on the active TransformJobRun with `run-id`."
-  [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJobRun :id run-id :is_active true {:updated_at :%now}))
+(mr/def ::transform-job-run-filters
+  "Which TransformJobRuns a query applies to. Keys mirror the columns of `transform_job_run`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id         {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:job_id     {:optional true} ms/PositiveInt]
+   [:is_active  {:optional true} :boolean]])
 
-(mu/defn touch-active-dag-run!
-  "Stamp `updated_at` on the active TransformDagRun with `run-id`."
-  [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformDagRun :id run-id :is_active true {:updated_at :%now}))
+(mr/def ::transform-job-run-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-job-run-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-job-run.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-job-run.column
+                                              [:tuple ::transforms.schema/transform-job-run.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn finish-active-job-run!
-  "Apply `changes` to the TransformJobRun with `run-id` if it is still active, returning the number of rows
-  updated."
-  [run-id  :- ms/PositiveInt
+(defn- ->transform-job-run-model
+  [columns]
+  (u.query/model-with-columns :model/TransformJobRun columns))
+
+(defn- ->transform-job-run-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->transform-job-run-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-one-transform-job-run :- [:maybe ::transforms.schema/transform-job-run.partial]
+  "The first TransformJobRun matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-job-run-opts]]
+  (apply t2/select-one (->transform-job-run-model columns) (->transform-job-run-args opts)))
+
+(mu/defn insert-transform-job-run! :- ::transforms.schema/transform-job-run
+  "Insert the TransformJobRun `row` and return the inserted instance."
+  [row :- ::transforms.schema/transform-job-run.create]
+  (t2/insert-returning-instance! :model/TransformJobRun row))
+
+(mu/defn update-transform-job-runs! :- :int
+  "Apply `changes` to every TransformJobRun matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-job-run-opts]
    changes :- ::transforms.schema/transform-job-run.update]
-  (t2/update! :model/TransformJobRun :id run-id :is_active true changes))
+  (apply t2/update! :model/TransformJobRun (conj (->transform-job-run-kv-args opts) changes)))
 
-(mu/defn finish-active-dag-run!
-  "Apply `changes` to the TransformDagRun with `run-id` if it is still active, returning the number of rows
-  updated."
-  [run-id  :- ms/PositiveInt
+(mr/def ::transform-dag-run-filters
+  "Which TransformDagRuns a query applies to. Keys mirror the columns of `transform_dag_run`: a scalar matches
+  that value and a set matches any of its values."
+  [:map {:closed true}
+   [:id                  {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:source_transform_id {:optional true} ::lib.schema.id/transform]
+   [:is_active           {:optional true} :boolean]])
+
+(mr/def ::transform-dag-run-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::transform-dag-run-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::transforms.schema/transform-dag-run.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::transforms.schema/transform-dag-run.column
+                                              [:tuple ::transforms.schema/transform-dag-run.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- ->transform-dag-run-model
+  [columns]
+  (u.query/model-with-columns :model/TransformDagRun columns))
+
+(defn- ->transform-dag-run-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->transform-dag-run-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+(mu/defn select-one-transform-dag-run :- [:maybe ::transforms.schema/transform-dag-run.partial]
+  "The first TransformDagRun matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::transform-dag-run-opts]]
+  (apply t2/select-one (->transform-dag-run-model columns) (->transform-dag-run-args opts)))
+
+(mu/defn insert-transform-dag-run! :- ::transforms.schema/transform-dag-run
+  "Insert the TransformDagRun `row` and return the inserted instance."
+  [row :- ::transforms.schema/transform-dag-run.create]
+  (t2/insert-returning-instance! :model/TransformDagRun row))
+
+(mu/defn update-transform-dag-runs! :- :int
+  "Apply `changes` to every TransformDagRun matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::transform-dag-run-opts]
    changes :- ::transforms.schema/transform-dag-run.update]
-  (t2/update! :model/TransformDagRun :id run-id :is_active true changes))
+  (apply t2/update! :model/TransformDagRun (conj (->transform-dag-run-kv-args opts) changes)))
 
 (defn- job-run-where
   [job-id status run-method started-at-start started-at-end]
@@ -540,7 +729,7 @@
       [[:start_time sort-direction]
        [:end_time   sort-direction nulls-sort]])))
 
-(mu/defn job-runs
+(mu/defn select-paged-transform-job-runs
   "Up to `limit` (offset by `offset`) TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and
   started in [`started-at-start`, `started-at-end`), sorted by `sort-column`/`sort-direction`."
   [job-id            :- [:maybe ms/PositiveInt]
@@ -559,7 +748,7 @@
                (job-run-where job-id status run-method started-at-start started-at-end)
                (assoc :where (job-run-where job-id status run-method started-at-start started-at-end)))))
 
-(mu/defn job-run-count
+(mu/defn count-paged-transform-job-runs
   "The number of TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and started in
   [`started-at-start`, `started-at-end`)."
   [job-id            :- [:maybe ms/PositiveInt]
@@ -572,7 +761,7 @@
               {:where where}
               {})))
 
-(mu/defn latest-job-runs-reducible
+(mu/defn reducible-select-latest-transform-job-runs
   "Reducible latest TransformJobRun of each TransformJob with `job-ids`."
   [job-ids :- [:set ms/PositiveInt]]
   (t2/reducible-select :model/TransformJobRun
@@ -589,12 +778,7 @@
                         :from   [:ranked_runs]
                         :where  [:= :rn [:inline 1]]}))
 
-(mu/defn active-job-run-for-job
-  "The active TransformJobRun of the TransformJob with `job-id`, or nil."
-  [job-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJobRun :job_id job-id :is_active true))
-
-(mu/defn failed-cron-job-runs-between
+(mu/defn select-failed-cron-transform-job-runs-between
   "The job ID, start time, and message of the cron TransformJobRuns that failed or timed out in `[start, end)`,
   oldest first."
   [start :- ms/TemporalInstant
@@ -606,21 +790,6 @@
                          [:>= :start_time start]
                          [:< :start_time end]]
               :order-by [[:start_time :asc]]}))
-
-(mu/defn insert-job-run!
-  "Insert `job-run` and return the new instance."
-  [job-run :- ::transforms.schema/transform-job-run.update]
-  (t2/insert-returning-instance! :model/TransformJobRun job-run))
-
-(mu/defn active-dag-run-for-transform
-  "The active TransformDagRun seeded from the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/TransformDagRun :source_transform_id transform-id :is_active true))
-
-(mu/defn insert-dag-run!
-  "Insert `dag-run` and return the new instance."
-  [dag-run :- ::transforms.schema/transform-dag-run.update]
-  (t2/insert-returning-instance! :model/TransformDagRun dag-run))
 
 ;;; ------------------------------------------ Root run listing ------------------------------------------
 
@@ -723,7 +892,7 @@
       [[:start_time sort-direction]
        [:end_time   sort-direction nulls-sort]])))
 
-(mu/defn root-run-summaries-page
+(mu/defn select-root-run-summaries-page
   "Up to `limit` (offset by `offset`) root-run summary rows -- see [[metabase.transforms.run-listing]] -- of `types`
   (a subset of `#{:job :dag :transform}`, or all three when empty), optionally narrowed to `statuses`,
   `run-methods`, started in [`started-at-start`, `started-at-end`), ended in [`ended-at-start`, `ended-at-end`),
@@ -749,8 +918,8 @@
                            :limit    limit
                            :offset   offset}))))
 
-(mu/defn root-run-summaries-count
-  "The number of root-run summary rows matching the same filters as [[root-run-summaries-page]]."
+(mu/defn count-root-run-summaries
+  "The number of root-run summary rows matching the same filters as [[select-root-run-summaries-page]]."
   [types             :- [:maybe [:sequential :keyword]]
    statuses          :- [:maybe [:sequential :string]]
    run-methods       :- [:maybe [:sequential :string]]
@@ -765,7 +934,7 @@
                 where (assoc :where where))]
     (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))))
 
-(mu/defn app-db-now
+(mu/defn select-app-db-now
   "The current time according to the application database."
   []
   (:now (t2/query-one {:select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) :now]]})))

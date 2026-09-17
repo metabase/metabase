@@ -110,11 +110,11 @@
    Must be called manually for async flows, or automatically via [[with-task-run]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
-  (let [task-statuses (task-history.db/task-statuses-for-run run-id)
+  (let [task-statuses (task-history.db/select-task-history-statuses-for-run run-id)
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (task-history.db/finish-started-task-run! run-id status (t/instant))))
+    (task-history.db/update-task-runs! {:id run-id, :status :started} {:status status, :ended_at (t/instant)})))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.

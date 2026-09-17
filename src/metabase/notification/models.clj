@@ -472,7 +472,7 @@
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
    ;; the hydrated Card, echoed back by clients on update; nothing here reads it
    [:card            {:optional true} [:maybe [:merge
-                                               ::queries.schema/card.update
+                                               ::queries.schema/card.columns
                                                [:map {:closed true}
                                                 [:id                ms/PositiveInt]
                                                 ;; a metric's Card row describes its query on the way out of the database

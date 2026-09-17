@@ -19,7 +19,7 @@
   "The lower-cased `names`, among the Fields of the Table with `table-id`, that have a user-set display name."
   [table-id :- ::lib.schema.id/table
    names    :- [:set :string]]
-  (warehouse-schema/user-renamed-field-names table-id names))
+  (warehouse-schema/select-user-renamed-field-names table-id names))
 
 (mu/defn set-field-display-names!
   "Set the display name of each Field of the Table with `table-id` whose lower-cased name is a key of

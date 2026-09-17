@@ -12,6 +12,10 @@
    [:map {:closed true}
     [:id     ms/PositiveInt]]])
 
+(mr/def ::content-translation.partial
+  "A ContentTranslation row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::content-translation [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::content-translation.update
   "What an update (or insert) of a ContentTranslation accepts: every column of `:content_translation` except `id`, all optional."
   [:map {:closed true}

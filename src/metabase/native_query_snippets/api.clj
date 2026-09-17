@@ -21,7 +21,7 @@
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
-   (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
+   (let [snippets (native-query-snippets.db/select-snippets {:archived archived, :order-by [:name]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -38,7 +38,7 @@
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
   [id :- ms/PositiveInt]
-  (-> (api/read-check (native-query-snippets.db/snippet id))
+  (-> (api/read-check (native-query-snippets.db/select-one-snippet {:id id}))
       (t2/hydrate :creator :is_remote_synced)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -52,7 +52,7 @@
   (get-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (native-query-snippets.db/snippet-name-exists? snippet-name)
+  (when (native-query-snippets.db/snippet-exists? {:name snippet-name})
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
@@ -82,7 +82,7 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (native-query-snippets.db/snippet id)
+  (let [snippet     (native-query-snippets.db/select-one-snippet {:id id})
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})
@@ -92,7 +92,7 @@
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
       (t2/with-transaction [_conn]
-        (native-query-snippets.db/update-snippet! id changes)
+        (native-query-snippets.db/update-snippets! {:id id} changes)
         (collections/check-for-remote-sync-update snippet)))
     (get-native-query-snippet id)))
 

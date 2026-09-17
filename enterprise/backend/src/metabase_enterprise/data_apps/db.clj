@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase.permissions.db :as permissions.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -121,27 +122,27 @@
 (defn permission-group
   "The permission group with `group-id`, or nil."
   [group-id]
-  (t2/select-one :model/PermissionsGroup :id group-id))
+  (permissions.db/select-one-permissions-group {:id group-id}))
 
 (defn insert-permission-group!
   "Insert a permission group and return it."
   [row]
-  (t2/insert-returning-instance! :model/PermissionsGroup row))
+  (permissions.db/insert-permissions-group! row))
 
 (defn update-permission-group!
   "Apply `changes` to the permission group with `group-id`."
   [group-id changes]
-  (t2/update! :model/PermissionsGroup :id group-id changes))
+  (permissions.db/update-permissions-groups! {:id group-id} changes))
 
 (defn delete-permission-group!
   "Delete the permission group with `group-id`."
   [group-id]
-  (t2/delete! :model/PermissionsGroup :id group-id))
+  (permissions.db/delete-permissions-groups! {:id group-id}))
 
 (defn data-app-group-ids
   "The IDs of permission groups owned by data apps."
   []
-  (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
+  (permissions.db/select-permissions-group-pks {:is_data_app_group true}))
 
 (defn databases-with-legacy-permissions
   "Database IDs with legacy View Data permissions from groups not owned by apps."

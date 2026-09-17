@@ -1,15 +1,20 @@
 (ns metabase.collections.db
   "Application database queries for the collections module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
-  and transactions."
+  and transactions.
+
+  The queries below follow [[::opts]]; queries that do not fit it live in the collections-only section at the bottom
+  of this namespace. `:location` is a materialized path (e.g. `/1/4/`): a prefix/descendant/ancestor match is a SQL
+  `LIKE`, which does not fit the equality/IN vocabulary below, so every such query stays bespoke."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -22,115 +27,117 @@
    [:perm_type   {:optional true} [:maybe [:or :keyword :string]]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
 
-;;; ---------------------------------------------- Single Collections ----------------------------------------------
+(mr/def ::filters
+  "Which Collections a query applies to. Keys mirror the columns of `collection`: a scalar matches that value and a
+  set matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows where that
+  column is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id                    {:optional true} [:or ::lib.schema.id/collection [:set ::lib.schema.id/collection]]]
+   [:name                  {:optional true} :string]
+   [:type                  {:optional true} [:or :string [:set :string]]]
+   [:namespace             {:optional true} [:maybe [:or :keyword :string]]]
+   [:location              {:optional true} :string]
+   [:archived              {:optional true} :boolean]
+   [:archive_operation_id  {:optional true} [:or :string [:set :string]]]
+   [:personal_owner_id     {:optional true} ::lib.schema.id/user]
+   [:personal_owner_id_set {:optional true} :boolean]
+   [:is_remote_synced      {:optional true} :boolean]])
 
-(mu/defn collection
-  "The ::collections.schema/collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::collections.schema/collection.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::collections.schema/collection.column
+                                              [:tuple ::collections.schema/collection.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn collection-id-and-namespace
-  "The ID and namespace of the ::collections.schema/collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace] :id collection-id))
+(def ^:private set-columns
+  "Maps each `<column>_set` filter key to the column whose nullness it tests."
+  {:personal_owner_id_set :personal_owner_id})
 
-(mu/defn collection-of-type
-  "The ::collections.schema/collection of `type`, or nil."
-  [type :- :string]
-  (t2/select-one :model/Collection :type type))
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Collection columns))
 
-(mu/defn root-remote-synced-collection
-  "The top-level remote-synced ::collections.schema/collection, or nil."
-  []
-  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts {:set-columns set-columns}))
 
-(mu/defn personal-collection-of-user
-  "The personal ::collections.schema/collection of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/Collection :personal_owner_id user-id))
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns set-columns}))
 
-(mu/defn collection-exists?
-  "Whether a ::collections.schema/collection with `collection-id` exists. `collection-id` may be nil for an item in the root
-  ::collections.schema/collection, which always answers false."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/exists? :model/Collection :id collection-id))
+;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn unarchived-collection-exists?
-  "Whether an unarchived ::collections.schema/collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
+(mu/defn select-collections :- [:sequential ::collections.schema/collection.partial]
+  "The Collections matching `opts`."
+  ([]
+   (select-collections nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
 
-(mu/defn remote-synced-collection-exists?
-  "Whether a remote-synced ::collections.schema/collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :is_remote_synced true))
+(mu/defn select-one-collection :- [:maybe ::collections.schema/collection.partial]
+  "The first Collection matching `opts`, or nil."
+  ([]
+   (select-one-collection nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
 
-(mu/defn personal-collection?
-  "Whether the ::collections.schema/collection with `collection-id` is a personal ::collections.schema/collection."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :personal_owner_id [:not= nil]))
+(mu/defn select-collection-pk->instance :- [:map-of ::lib.schema.id/collection ::collections.schema/collection.partial]
+  "A map of id to the Collection matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::opts]]
+  (apply t2/select-pk->fn identity (->model columns) (->args opts)))
 
-(mu/defn collection-remote-synced?
-  "Whether the ::collections.schema/collection with `collection-id` is remote-synced, or nil if `collection-id` is nil (the root
-  ::collections.schema/collection) or the ::collections.schema/collection does not exist."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id))
+(mu/defn select-collection-pks :- [:set ::lib.schema.id/collection]
+  "The ids of the Collections matching `opts`."
+  ([]
+   (select-collection-pks nil))
+  ([opts :- [:maybe ::opts]]
+   (or (apply t2/select-pks-set :model/Collection (->args opts)) #{})))
 
-(mu/defn collection-namespace
-  "The namespace of the ::collections.schema/collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace :model/Collection :id collection-id))
+(mu/defn count-collections :- :int
+  "The number of Collections matching `opts`."
+  ([]
+   (count-collections nil))
+  ([opts :- [:maybe ::opts]]
+   (apply t2/count :model/Collection (->args opts))))
 
-(mu/defn collection-location
-  "The location of the ::collections.schema/collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :location :model/Collection :id collection-id))
+(mu/defn collection-exists? :- :boolean
+  "Whether a Collection matching `opts` exists."
+  [opts :- [:maybe ::opts]]
+  (apply t2/exists? :model/Collection (->args opts)))
 
-(defn collection-location-columns
-  "The location, id, and type of the Collection with `collection-id`, or nil."
-  [collection-id]
-  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+;;; ------------------------------------------------ Writes -------------------------------------------------
 
-(mu/defn root-collection-type-by-id
-  "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
+(mu/defn insert-collection! :- ::collections.schema/collection
+  "Insert the Collection `row` and return the inserted instance."
+  [row :- ::collections.schema/collection.create]
+  (t2/insert-returning-instance! :model/Collection row))
 
-;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
+(mu/defn update-collections! :- :int
+  "Apply `changes` to every Collection matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::collections.schema/collection.update]
+  (apply t2/update! :model/Collection (conj (->kv-args opts) changes)))
 
-(mu/defn collections-by-id
-  "A map of ID to ::collections.schema/collection for `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
+(mu/defn delete-collections! :- :int
+  "Delete every Collection matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/Collection (->args opts)))
 
-(mu/defn collection-columns-by-id
-  "A map of ID to the `columns` of the Collections with `collection-ids`."
-  [columns        :- [:sequential :keyword]
-   collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity (into [:model/Collection] columns) :id [:in collection-ids]))
-
-(mu/defn collection-archived-flags
-  "A map of ID to `:archived` for `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn :archived :model/Collection :id [:in collection-ids]))
-
-(mu/defn collections-in-namespace
-  "The Collections in the namespace named `namespace-name`."
-  [namespace-name :- :string]
-  (t2/select :model/Collection :namespace namespace-name))
-
-(mu/defn archived-collections-in-operations
-  "The archived Collections belonging to the archive operations with `archive-operation-ids`."
-  [archive-operation-ids :- [:sequential :string]]
-  (t2/select :model/Collection :archive_operation_id [:in archive-operation-ids] :archived true))
+;;; ------------------------------- Queries used only by the collections module -------------------------------
 
 (mu/defn ancestor-summaries
   "The name, ID, and owner of the Collections with `collection-ids`, ordered by location."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :name :id :personal_owner_id] :id [:in collection-ids] {:order-by [:location]}))
+  (select-collections {:id (set collection-ids), :columns [:name :id :personal_owner_id], :order-by [:location]}))
 
 (mu/defn descendant-summaries
-  "The name, ID, location, and description of the descendant Collections of the ::collections.schema/collection at
+  "The name, ID, location, and description of the descendant Collections of the collection at
   `children-location-prefix` (see `metabase.collections.models.collection/children-location`), excluding other
   users' Personal Collections (Personal Collections owned by `current-user-id` are still included). When
   `archived?` is given (true or false, not nil), further restricted to that archived status.
@@ -173,7 +180,7 @@
   [effective-children-clause :- [:maybe vector?]]
   (t2/select [:model/Collection :id :name :description :type] {:where effective-children-clause}))
 
-(mu/defn collections-for-serdes-reducible
+(mu/defn reducible-select-collections-for-serdes
   "A reducible of the Collections to export via serdes, in stable storage order (which keeps filename de-dup suffixes
   stable across exports, see GHY-3754). The Trash is never exported, nor are archived Collections when
   `skip-archived?`. When `collection-set` is non-empty only those Collections are exported (nil in the set counts as
@@ -198,22 +205,6 @@
                                    (when filter-column
                                      [:in filter-column filter-ids])]
                         :order-by serdes/stable-storage-order}))
-
-(mu/defn collection-count-by-ids
-  "The number of Collections among `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/count :model/Collection :id [:in collection-ids]))
-
-(mu/defn collection-count-of-types
-  "The number of Collections with `collection-id` whose type is one of `types`."
-  [collection-id :- ::lib.schema.id/collection
-   types         :- [:sequential :string]]
-  (t2/count :model/Collection :id collection-id :type [:in types]))
-
-(mu/defn remote-synced-collection-count
-  "The number of remote-synced Collections."
-  []
-  (t2/count :model/Collection :is_remote_synced true))
 
 (mu/defn collection-ids-with-location-like
   "The IDs of the Collections whose location matches the SQL `pattern`."
@@ -240,12 +231,6 @@
                      :archive_operation_id [:= archive-operation-id]
                      :archived [:= true]))
 
-(mu/defn collection-ids-of-type
-  "The IDs of the Collections among `collection-ids` of `type`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   type           :- :string]
-  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
-
 (mu/defn child-collection-ids
   "The IDs of the non-trash Collections directly at `location`, excluding archived ones when `skip-archived?`."
   [location       :- :string
@@ -259,20 +244,8 @@
                                [:not= :type trash-type]
                                [:= :type nil]]]}))
 
-(mu/defn remote-synced-root-collection-ids
-  "The IDs of the top-level remote-synced Collections."
-  []
-  (t2/select-pks-set :model/Collection {:where [:and
-                                                [:= :is_remote_synced true]
-                                                [:= :location "/"]]}))
-
-(mu/defn personal-collection-ids
-  "The IDs of every personal ::collections.schema/collection."
-  []
-  (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]))
-
 (mu/defn personal-collection-ids-by-owner
-  "A map of owner User ID to personal ::collections.schema/collection ID for `user-ids`."
+  "A map of owner User ID to personal Collection ID for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-fn->pk :personal_owner_id :model/Collection :personal_owner_id [:in user-ids]))
 
@@ -282,30 +255,14 @@
   (t2/select-fn-set :id :model/Collection
                     {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
 
-(defn collections-matching
+(defn select-collections-matching
   "The Collections matching the Honey SQL `query` map. The caller builds the whole query because it needs clause
   builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so
   can't be called from here without a require cycle (that namespace already requires this one)."
   [query]
   (t2/select :model/Collection query))
 
-;;; ---------------------------------------------- Collection writes ----------------------------------------------
-
-(mu/defn insert-collection!
-  "Insert `collection` and return the new instance."
-  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/insert-returning-instance! :model/Collection collection))
-
-(mu/defn update-collection!
-  "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
-  [collection-id :- ::lib.schema.id/collection
-   changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/update! :model/Collection collection-id changes))
-
-(mu/defn clear-remote-synced-flags!
-  "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
-  []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+;;; -------------------------------------------- Collection write helpers --------------------------------------------
 
 (mu/defn archive-descendant-collections!
   "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location
@@ -350,12 +307,7 @@
                           :is_remote_synced remote-synced?}
                  :where  [:like :location (str orig-children-location "%")]}))
 
-(mu/defn delete-collections-at-location!
-  "Delete the Collections directly at `location`, returning the number deleted."
-  [location :- :string]
-  (t2/delete! :model/Collection :location location))
-
-;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
+;;; ---------------------------------------------- Collection contents ----------------------------------------------
 
 (mu/defn instances-with-columns
   "The `columns` of the instances with `ids`."
@@ -370,7 +322,7 @@
   (t2/select-one model :id id))
 
 (mu/defn collection-namespaces-of
-  "A map of ID to the namespace of the ::collections.schema/collection holding each instance of `model` with `ids`."
+  "A map of ID to the namespace of the Collection holding each instance of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
@@ -450,7 +402,7 @@
   (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
 
 (mu/defn dashboard-ids-in-collection
-  "The IDs of the Dashboards in the ::collections.schema/collection with `collection-id` (nil for the root ::collections.schema/collection), excluding archived
+  "The IDs of the Dashboards in the Collection with `collection-id` (nil for the root Collection), excluding archived
   ones when `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
@@ -478,7 +430,7 @@
                                                               :where  [:= :exploration_id nil]}]]]}))
 
 (mu/defn document-ids-in-collection
-  "The IDs of the non-exploration Documents in the ::collections.schema/collection with `collection-id`, excluding archived ones when
+  "The IDs of the non-exploration Documents in the Collection with `collection-id`, excluding archived ones when
   `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
@@ -488,14 +440,14 @@
                                               (when skip-archived? [:not :archived])]}))
 
 (mu/defn timeline-ids-in-collection
-  "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
+  "The IDs of the Timelines in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Timeline
                      {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
 (mu/defn published-table-ids-in-collection
-  "The IDs of the published Tables in the ::collections.schema/collection with `collection-id`, excluding archived ones when
+  "The IDs of the published Tables in the Collection with `collection-id`, excluding archived ones when
   `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
@@ -506,7 +458,7 @@
                                            (when skip-archived? [:= :archived_at nil])]}))
 
 (mu/defn transform-ids-in-collection
-  "The IDs of the Transforms in the ::collections.schema/collection with `collection-id`."
+  "The IDs of the Transforms in the Collection with `collection-id`."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-pks-set :model/Transform {:where [:= :collection_id collection-id]}))
 
@@ -621,7 +573,7 @@
   (t2/insert! :model/Permissions rows))
 
 (mu/defn delete-permissions-for-collection!
-  "Delete the Permissions rows attached to the ::collections.schema/collection with `collection-id`, returning the number deleted."
+  "Delete the Permissions rows attached to the Collection with `collection-id`, returning the number deleted."
   [collection-id :- ::lib.schema.id/collection]
   (t2/delete! :model/Permissions :collection_id collection-id))
 

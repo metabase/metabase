@@ -28,7 +28,7 @@
    [:value_ref  {:optional true} [:maybe ::model-index.value-ref]]
    [:schedule   {:optional true} [:maybe :string]]
    [:state      {:optional true} [:maybe :string]]
-   [:indexed_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:indexed_at {:optional true} [:maybe ms/TemporalInstantOrNow]]
    [:error      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])

@@ -86,7 +86,7 @@
      dashboards
      :last_used_param_values
      (fn [] ;; return a map of {dashboard-id {parameter-id value}}
-       (let [upvs (users.db/user-parameter-values-for-dashboards user-id (map :id dashboards))]
+       (let [upvs (users.db/select-user-parameter-values {:user_id user-id :dashboard_id (set (map :id dashboards))})]
          (as-> upvs result
            (group-by :dashboard_id result)
            (update-vals result (fn [upvs]

@@ -23,7 +23,7 @@
    [:id                     {:optional true} [:or ::lib.schema.id/database [:set ::lib.schema.id/database]]]
    [:name                   {:optional true} :string]
    [:engine                 {:optional true} [:or ::engine [:set ::engine]]]
-   [:initial_sync_status    {:optional true} [:or :keyword :string]]
+   [:initial_sync_status    {:optional true} :string]
    [:is_sample              {:optional true} :boolean]
    [:is_audit               {:optional true} :boolean]
    [:is_attached_dwh        {:optional true} :boolean]
@@ -56,56 +56,60 @@
   [columns]
   (u.query/model-with-columns :model/Database columns))
 
-(defn- ->honeysql
+(defn- ->args
   [opts]
-  (u.query/opts->honeysql opts {:set-columns set-columns, :lower-columns lower-columns}))
+  (u.query/opts->args opts {:set-columns set-columns, :lower-columns lower-columns}))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns set-columns}))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn select-databases :- [:sequential ::warehouses.schema/database]
+(mu/defn select-databases :- [:sequential ::warehouses.schema/database.partial]
   "The Databases matching `opts`."
   ([]
    (select-databases nil))
   ([{:keys [columns] :as opts} :- [:maybe ::opts]]
-   (t2/select (->model columns) (->honeysql opts))))
+   (apply t2/select (->model columns) (->args opts))))
 
-(mu/defn select-one-database :- [:maybe ::warehouses.schema/database]
+(mu/defn select-one-database :- [:maybe ::warehouses.schema/database.partial]
   "The first Database matching `opts`, or nil."
   ([]
    (select-one-database nil))
   ([{:keys [columns] :as opts} :- [:maybe ::opts]]
-   (t2/select-one (->model columns) (->honeysql opts))))
+   (apply t2/select-one (->model columns) (->args opts))))
 
-(mu/defn select-database-pk->instance :- [:map-of ::lib.schema.id/database ::warehouses.schema/database]
+(mu/defn select-database-pk->instance :- [:map-of ::lib.schema.id/database ::warehouses.schema/database.partial]
   "A map of id to the Database matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::opts]]
-  (t2/select-pk->fn identity (->model columns) (->honeysql opts)))
+  (apply t2/select-pk->fn identity (u.query/model-with-pk-columns :model/Database :id columns) (->args opts)))
 
 (mu/defn select-database-pks :- [:set ::lib.schema.id/database]
   "The ids of the Databases matching `opts`."
   ([]
    (select-database-pks nil))
   ([opts :- [:maybe ::opts]]
-   (or (t2/select-pks-set :model/Database (->honeysql opts)) #{})))
+   (or (apply t2/select-pks-set :model/Database (->args opts)) #{})))
 
 (mu/defn select-one-database-pk :- [:maybe ::lib.schema.id/database]
   "The id of the first Database matching `opts`, or nil."
   ([]
    (select-one-database-pk nil))
   ([opts :- [:maybe ::opts]]
-   (t2/select-one-pk :model/Database (->honeysql opts))))
+   (apply t2/select-one-pk :model/Database (->args opts))))
 
 (mu/defn count-databases :- :int
   "The number of Databases matching `opts`."
   ([]
    (count-databases nil))
   ([opts :- [:maybe ::opts]]
-   (t2/count :model/Database (->honeysql opts))))
+   (apply t2/count :model/Database (->args opts))))
 
 (mu/defn database-exists? :- :boolean
   "Whether a Database matching `opts` exists."
   [opts :- [:maybe ::opts]]
-  (t2/exists? :model/Database (->honeysql opts)))
+  (apply t2/exists? :model/Database (->args opts)))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
@@ -123,18 +127,18 @@
   "Apply `changes` to every Database matching `opts`, returning the number updated."
   [opts    :- [:maybe ::opts]
    changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database (->honeysql opts) changes))
+  (apply t2/update! :model/Database (conj (->kv-args opts) changes)))
 
 (mu/defn update-databases-returning-pks! :- [:sequential ::lib.schema.id/database]
   "Apply `changes` to every Database matching `opts`, returning the ids of the updated rows."
   [opts    :- [:maybe ::opts]
    changes :- ::warehouses.schema/database.update]
-  (t2/update-returning-pks! :model/Database (->honeysql opts) changes))
+  (apply t2/update-returning-pks! :model/Database (conj (->kv-args opts) changes)))
 
 (mu/defn delete-databases! :- :int
   "Delete every Database matching `opts`, returning the number deleted."
   [opts :- [:maybe ::opts]]
-  (t2/delete! :model/Database (->honeysql opts)))
+  (apply t2/delete! :model/Database (->args opts)))
 
 ;;; ------------------------------- Queries used only by the warehouses module -------------------------------
 

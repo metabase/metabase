@@ -15,7 +15,7 @@
   nil: a nonexistent Snippet must fail loudly here rather than silently fall back to root-collection permissions."
   [snippet       :- [:or
                      ::snippets.schema/native-query-snippet
-                     ::snippets.schema/native-query-snippet.update]
+                     ::snippets.schema/native-query-snippet.columns]
    read-or-write :- [:enum :read :write]]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" (:collection_id snippet) read-or-write)))
 

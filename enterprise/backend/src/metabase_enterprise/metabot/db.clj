@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.db :as permissions.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,7 +27,7 @@
 (mu/defn all-groups
   "Every PermissionsGroup, in ID order."
   []
-  (t2/select :model/PermissionsGroup {:order-by [[:id :asc]]}))
+  (permissions.db/select-permissions-groups {:order-by [:id]}))
 
 (mu/defn all-stored-permissions
   "Every MetabotPermissions row, ordered by group and permission type."

@@ -53,7 +53,7 @@
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard.update]
+  [row :- ::dashboards.schema/dashboard.create]
   (t2/insert-returning-instance! :model/Dashboard row))
 
 (mu/defn update-dashboard!
@@ -165,7 +165,7 @@
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."
-  [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position])]]
+  [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.columns [:dashboard_id :name :position])]]
   (t2/insert-returning-pks! :model/DashboardTab rows))
 
 (mu/defn collection

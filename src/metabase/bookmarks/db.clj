@@ -15,26 +15,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(defn- filter-clause
-  [[column value]]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map filter-clause) filters))
-
-(defn- order-by-clause
-  [columns]
-  (mapv (fn [column] [column :asc]) columns))
-
-(defn- ->honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts))
 
 ;;; ------------------------------------------------- CardBookmark -------------------------------------------------
 
@@ -142,59 +128,59 @@
 (mu/defn card-bookmark-exists? :- :boolean
   "Whether a CardBookmark matching `opts` exists."
   [opts :- [:maybe ::card-bookmark-opts]]
-  (t2/exists? :model/CardBookmark (->honeysql opts)))
+  (apply t2/exists? :model/CardBookmark (->args opts)))
 
 (mu/defn dashboard-bookmark-exists? :- :boolean
   "Whether a DashboardBookmark matching `opts` exists."
   [opts :- [:maybe ::dashboard-bookmark-opts]]
-  (t2/exists? :model/DashboardBookmark (->honeysql opts)))
+  (apply t2/exists? :model/DashboardBookmark (->args opts)))
 
 (mu/defn collection-bookmark-exists? :- :boolean
   "Whether a CollectionBookmark matching `opts` exists."
   [opts :- [:maybe ::collection-bookmark-opts]]
-  (t2/exists? :model/CollectionBookmark (->honeysql opts)))
+  (apply t2/exists? :model/CollectionBookmark (->args opts)))
 
 (mu/defn document-bookmark-exists? :- :boolean
   "Whether a DocumentBookmark matching `opts` exists."
   [opts :- [:maybe ::document-bookmark-opts]]
-  (t2/exists? :model/DocumentBookmark (->honeysql opts)))
+  (apply t2/exists? :model/DocumentBookmark (->args opts)))
 
 (mu/defn exploration-bookmark-exists? :- :boolean
   "Whether an ExplorationBookmark matching `opts` exists."
   [opts :- [:maybe ::exploration-bookmark-opts]]
-  (t2/exists? :model/ExplorationBookmark (->honeysql opts)))
+  (apply t2/exists? :model/ExplorationBookmark (->args opts)))
 
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 
 (mu/defn delete-card-bookmarks! :- :int
   "Delete every CardBookmark matching `opts`, returning the number deleted."
   [opts :- [:maybe ::card-bookmark-opts]]
-  (t2/delete! :model/CardBookmark (->honeysql opts)))
+  (apply t2/delete! :model/CardBookmark (->args opts)))
 
 (mu/defn delete-dashboard-bookmarks! :- :int
   "Delete every DashboardBookmark matching `opts`, returning the number deleted."
   [opts :- [:maybe ::dashboard-bookmark-opts]]
-  (t2/delete! :model/DashboardBookmark (->honeysql opts)))
+  (apply t2/delete! :model/DashboardBookmark (->args opts)))
 
 (mu/defn delete-collection-bookmarks! :- :int
   "Delete every CollectionBookmark matching `opts`, returning the number deleted."
   [opts :- [:maybe ::collection-bookmark-opts]]
-  (t2/delete! :model/CollectionBookmark (->honeysql opts)))
+  (apply t2/delete! :model/CollectionBookmark (->args opts)))
 
 (mu/defn delete-document-bookmarks! :- :int
   "Delete every DocumentBookmark matching `opts`, returning the number deleted."
   [opts :- [:maybe ::document-bookmark-opts]]
-  (t2/delete! :model/DocumentBookmark (->honeysql opts)))
+  (apply t2/delete! :model/DocumentBookmark (->args opts)))
 
 (mu/defn delete-exploration-bookmarks! :- :int
   "Delete every ExplorationBookmark matching `opts`, returning the number deleted."
   [opts :- [:maybe ::exploration-bookmark-opts]]
-  (t2/delete! :model/ExplorationBookmark (->honeysql opts)))
+  (apply t2/delete! :model/ExplorationBookmark (->args opts)))
 
 (mu/defn delete-bookmark-orderings! :- :int
   "Delete every BookmarkOrdering matching `opts`, returning the number deleted."
   [opts :- [:maybe ::bookmark-ordering-opts]]
-  (t2/delete! :model/BookmarkOrdering (->honeysql opts)))
+  (apply t2/delete! :model/BookmarkOrdering (->args opts)))
 
 (mu/defn insert-bookmark-orderings! :- [:maybe :int]
   "Insert the BookmarkOrdering `rows`."

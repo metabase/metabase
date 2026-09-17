@@ -46,21 +46,21 @@
        (boolean (when-let [transform-id (:transform_id instance)]
                   (mi/can-read? :model/Transform transform-id)))))
   ([_model pk]
-   (when-let [run (transforms.db/run pk)]
+   (when-let [run (transforms.db/select-one-transform-run {:id pk})]
      (mi/can-read? run))))
 
 (mi/define-simple-hydration-method add-transform-runs
   :transform-runs
   "Add transform-runs for a transform. Must have :id field."
   [transform]
-  (transforms.db/runs-for-transform (:id transform)))
+  (transforms.db/select-transform-runs {:transform_id (:id transform) :order-by [[:start_time :desc] [:end_time :desc]]}))
 
 (defn latest-runs
   "Return the latest runs for `transform-ids`."
   [transform-ids]
   (when (seq transform-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (transforms.db/latest-runs-reducible transform-ids))))
+          (transforms.db/reducible-select-latest-transform-runs transform-ids))))
 
 (defn start-run!
   "Start a run. If `user_id` is provided in properties, it will be stored with the run
@@ -69,15 +69,15 @@
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [transform  (transforms.db/transform-snapshot transform-id)
+   (let [transform  (transforms.db/select-one-transform {:id transform-id :columns [:name :entity_id :source_type]})
          metered-as (premium-features/transform-metered-as (:source_type transform))
-         run (transforms.db/insert-run! (assoc properties
-                                               :transform_id transform-id
-                                               :transform_name (:name transform)
-                                               :transform_entity_id (:entity_id transform)
-                                               :status :started
-                                               :is_active true
-                                               :metered_as metered-as))]
+         run (transforms.db/insert-transform-run! (assoc properties
+                                                         :transform_id transform-id
+                                                         :transform_name (:name transform)
+                                                         :transform_entity_id (:entity_id transform)
+                                                         :status :started
+                                                         :is_active true
+                                                         :metered_as metered-as))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start
                             (cond-> {:object run}
@@ -89,19 +89,19 @@
   ([run-id]
    (succeed-started-run! run-id {}))
   ([run-id properties]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:status    :succeeded
-                                                      :is_active nil}))
+   (u/prog1 (transforms.db/update-transform-runs! {:id run-id :is_active true}
+                                                  (merge properties
+                                                         {:status    :succeeded
+                                                          :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
 (defn fail-started-run!
   "Mark the started active run as failed and inactive."
   [run-id properties]
-  (u/prog1 (transforms.db/finish-active-run! run-id
-                                             (merge properties
-                                                    {:status    :failed
-                                                     :is_active nil}))
+  (u/prog1 (transforms.db/update-transform-runs! {:id run-id :is_active true}
+                                                 (merge properties
+                                                        {:status    :failed
+                                                         :is_active nil}))
     (cancel/delete-cancelation! run-id)))
 
 (defn cancel-run!
@@ -109,10 +109,10 @@
   ([run-id]
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id properties]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:status    :canceled
-                                                      :is_active nil}))
+   (u/prog1 (transforms.db/update-transform-runs! {:id run-id :is_active true}
+                                                  (merge properties
+                                                         {:status    :canceled
+                                                          :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
 (defn- publish-timeout-event!
@@ -131,15 +131,15 @@
   ([run-id]
    (timeout-run! run-id {}))
   ([run-id properties]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:message   "Timed out"
-                                                      :status    :timeout
-                                                      :is_active nil}))
+   (u/prog1 (transforms.db/update-transform-runs! {:id run-id :is_active true}
+                                                  (merge properties
+                                                         {:message   "Timed out"
+                                                          :status    :timeout
+                                                          :is_active nil}))
      (cancel/delete-cancelation! run-id)
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
-       (when-let [run (transforms.db/run run-id)]
+       (when-let [run (transforms.db/select-one-transform-run {:id run-id})]
          (publish-timeout-event! run))))))
 
 (defn- reap-transform-runs!
@@ -195,20 +195,25 @@
   [age unit]
   (t2/with-transaction [_conn]
     (let [times  (into {} (map (juxt :run_id :time))
-                       (transforms.db/cancelations-requested-before age unit))
+                       (transforms.db/select-transform-run-cancelations-requested-before age unit))
           locked (when (seq times)
-                   (transforms.db/lock-active-runs (keys times)))]
+                   (transforms.db/lock-active-transform-runs (keys times)))]
       (when (seq locked)
-        (transforms.db/cancel-active-runs! (mapv :id locked))
+        (transforms.db/update-transform-runs! {:id (set (mapv :id locked)) :is_active true}
+                                              {:status    :canceled
+                                               :end_time  :%now
+                                               :is_active nil
+                                               :message   "Canceled by user but could not guarantee run stopped."})
         (cancel/delete-old-canceling-runs!))
       (mapv #(assoc % :request_time (times (:id %)))
             (when (seq locked)
-              (transforms.db/runs (mapv :id locked)))))))
+              (transforms.db/select-transform-runs {:id (set (mapv :id locked))}))))))
 
 (defn running-run-for-transform-id
   "Return a single active transform run or nil."
   [transform-id]
-  (transforms.db/active-run-for-transform transform-id))
+  (when transform-id
+    (transforms.db/select-one-transform-run {:transform_id transform-id :is_active true})))
 
 (defn last-successful-run-times
   "Map each id in `transform-ids` with a succeeded run to its most recent run's `end_time`. Ids with
@@ -217,7 +222,7 @@
   (when (seq transform-ids)
     (into {}
           (map (juxt :transform_id :last_success))
-          (transforms.db/last-success-times transform-ids))))
+          (transforms.db/select-last-transform-success-times transform-ids))))
 
 (defn- status-labels
   "Display labels for TransformRun status values."
@@ -262,11 +267,11 @@
                            :transform-tag-ids  transform-tag-ids
                            :statuses           statuses
                            :user-id            user-id}
-        runs              (transforms.db/paged-runs filters sort-column sort-direction (status-labels)
-                                                    (run-method-labels) (tag-name-labels) limit offset)
+        runs              (transforms.db/select-paged-transform-runs filters sort-column sort-direction (status-labels)
+                                                                     (run-method-labels) (tag-name-labels) limit offset)
         root-collection   (collection.root/hydrated-root-collection :transforms)]
     {:data   (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
                   (map #(update % :transform collection.root/hydrate-root-collection root-collection)))
      :limit  limit
      :offset offset
-     :total  (transforms.db/paged-run-count filters)}))
+     :total  (transforms.db/count-paged-transform-runs filters)}))

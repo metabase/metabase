@@ -10,6 +10,7 @@
    [metabase.user-key-value.schema :as user-key-value.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::filters
@@ -28,26 +29,20 @@
     [:columns  {:optional true} [:sequential ::user-key-value.schema/user-key-value.column]]
     [:order-by {:optional true} [:sequential ::user-key-value.schema/user-key-value.column]]]])
 
-(defn- filter-clause
-  [[column value]]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map filter-clause) filters))
-
-(defn- ->honeysql
+(defn- ->args
   [opts]
-  {:where (where-clause (dissoc opts :columns :order-by))})
+  (u.query/opts->args opts))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn select-one-user-key-value :- [:maybe ::user-key-value.schema/user-key-value]
+(mu/defn select-one-user-key-value :- [:maybe ::user-key-value.schema/user-key-value.partial]
   "The first UserKeyValue matching `opts`, or nil."
   [opts :- [:maybe ::opts]]
-  (t2/select-one :model/UserKeyValue (->honeysql opts)))
+  (apply t2/select-one :model/UserKeyValue (->args opts)))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
@@ -60,12 +55,12 @@
   "Apply `changes` to every UserKeyValue matching `opts`, returning the number updated."
   [opts    :- [:maybe ::opts]
    changes :- ::user-key-value.schema/user-key-value.update]
-  (t2/update! :model/UserKeyValue (->honeysql opts) changes))
+  (apply t2/update! :model/UserKeyValue (conj (->kv-args opts) changes)))
 
 (mu/defn delete-user-key-values! :- :int
   "Delete every UserKeyValue matching `opts`, returning the number deleted."
   [opts :- [:maybe ::opts]]
-  (t2/delete! :model/UserKeyValue (->honeysql opts)))
+  (apply t2/delete! :model/UserKeyValue (->args opts)))
 
 ;;; ------------------------------- Queries used only by the user-key-value module -------------------------------
 

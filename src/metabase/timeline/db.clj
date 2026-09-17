@@ -13,6 +13,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
 (mr/def ::timeline-filters
@@ -47,65 +48,53 @@
     [:columns  {:optional true} [:sequential ::timeline.schema/timeline-event.column]]
     [:order-by {:optional true} [:sequential ::timeline.schema/timeline-event.column]]]])
 
-(defn- filter-clause
-  [column value]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
-
-(defn- order-by-clause
-  [columns]
-  (mapv (fn [column] [column :asc]) columns))
-
 (defn- ->timeline-model
   [columns]
-  (if (seq columns)
-    (into [:model/Timeline] columns)
-    :model/Timeline))
+  (u.query/model-with-columns :model/Timeline columns))
 
-(defn- ->timeline-honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+(defn- ->timeline-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->timeline-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 (defn- ->timeline-event-model
   [columns]
-  (if (seq columns)
-    (into [:model/TimelineEvent] columns)
-    :model/TimelineEvent))
+  (u.query/model-with-columns :model/TimelineEvent columns))
 
-(defn- ->timeline-event-honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+(defn- ->timeline-event-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- ->timeline-event-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
-(mu/defn select-timelines :- [:sequential ::timeline.schema/timeline]
+(mu/defn select-timelines :- [:sequential ::timeline.schema/timeline.partial]
   "The Timelines matching `opts`."
   ([]
    (select-timelines nil))
   ([{:keys [columns] :as opts} :- [:maybe ::timeline-opts]]
-   (t2/select (->timeline-model columns) (->timeline-honeysql opts))))
+   (apply t2/select (->timeline-model columns) (->timeline-args opts))))
 
-(mu/defn select-one-timeline :- [:maybe ::timeline.schema/timeline]
+(mu/defn select-one-timeline :- [:maybe ::timeline.schema/timeline.partial]
   "The first Timeline matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::timeline-opts]]
-  (t2/select-one (->timeline-model columns) (->timeline-honeysql opts)))
+  (apply t2/select-one (->timeline-model columns) (->timeline-args opts)))
 
-(mu/defn select-timeline-pk->instance :- [:map-of ms/PositiveInt ::timeline.schema/timeline]
+(mu/defn select-timeline-pk->instance :- [:map-of ms/PositiveInt ::timeline.schema/timeline.partial]
   "A map of id to the Timeline matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::timeline-opts]]
-  (t2/select-pk->fn identity (->timeline-model columns) (->timeline-honeysql opts)))
+  (apply t2/select-pk->fn identity (->timeline-model columns) (->timeline-args opts)))
 
-(mu/defn select-one-timeline-event :- [:maybe ::timeline.schema/timeline-event]
+(mu/defn select-one-timeline-event :- [:maybe ::timeline.schema/timeline-event.partial]
   "The first TimelineEvent matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::timeline-event-opts]]
-  (t2/select-one (->timeline-event-model columns) (->timeline-event-honeysql opts)))
+  (apply t2/select-one (->timeline-event-model columns) (->timeline-event-args opts)))
 
 ;;; ------------------------------------------------ Writes -------------------------------------------------
 
@@ -118,12 +107,12 @@
   "Apply `changes` to every Timeline matching `opts`, returning the number updated."
   [opts    :- [:maybe ::timeline-opts]
    changes :- ::timeline.schema/timeline.update]
-  (t2/update! :model/Timeline (->timeline-honeysql opts) changes))
+  (apply t2/update! :model/Timeline (conj (->timeline-kv-args opts) changes)))
 
 (mu/defn delete-timelines! :- :int
   "Delete every Timeline matching `opts`, returning the number deleted."
   [opts :- [:maybe ::timeline-opts]]
-  (t2/delete! :model/Timeline (->timeline-honeysql opts)))
+  (apply t2/delete! :model/Timeline (->timeline-args opts)))
 
 (mu/defn insert-timeline-event! :- ::timeline.schema/timeline-event
   "Insert the TimelineEvent `row` and return the inserted instance."
@@ -134,12 +123,12 @@
   "Apply `changes` to every TimelineEvent matching `opts`, returning the number updated."
   [opts    :- [:maybe ::timeline-event-opts]
    changes :- ::timeline.schema/timeline-event.update]
-  (t2/update! :model/TimelineEvent (->timeline-event-honeysql opts) changes))
+  (apply t2/update! :model/TimelineEvent (conj (->timeline-event-kv-args opts) changes)))
 
 (mu/defn delete-timeline-events! :- :int
   "Delete every TimelineEvent matching `opts`, returning the number deleted."
   [opts :- [:maybe ::timeline-event-opts]]
-  (t2/delete! :model/TimelineEvent (->timeline-event-honeysql opts)))
+  (apply t2/delete! :model/TimelineEvent (->timeline-event-args opts)))
 
 ;;; ------------------------------- Queries used only by the timeline module -------------------------------
 

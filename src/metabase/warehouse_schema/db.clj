@@ -9,19 +9,112 @@
    [metabase.models.db :as models.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
+;;; The queries below follow [[::field-opts]]; queries that do not fit it live in the module-only section at the
+;;; bottom of this namespace.
+
+(mr/def ::field-filters
+  "Which Fields a query applies to. Keys mirror the columns of `metabase_field`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:id                 {:optional true} [:or ::lib.schema.id/field [:set ::lib.schema.id/field]]]
+   [:table_id           {:optional true} [:or ::lib.schema.id/table [:set ::lib.schema.id/table]]]
+   [:parent_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:name               {:optional true} :string]
+   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
+   [:active             {:optional true} :boolean]])
+
+(mr/def ::field-opts
+  "The filters above plus the columns to select, the order to return them in, and whether to merge the
+  FieldUserSettings overlay (`:user-settings?`, default true)."
+  [:merge
+   ::field-filters
+   [:map {:closed true}
+    [:user-settings? {:optional true} :boolean]
+    [:columns        {:optional true} [:sequential ::warehouse-schema.schema/field.column]]
+    [:order-by       {:optional true} [:sequential [:or
+                                                    ::warehouse-schema.schema/field.column
+                                                    [:tuple ::warehouse-schema.schema/field.column [:enum :asc :desc]]]]]
+    [:limit          {:optional true} ms/PositiveInt]
+    [:offset         {:optional true} ms/IntGreaterThanOrEqualToZero]]])
+
+(defn- args-with-from
+  "`args` (a `u.query/opts->args` result) with `from` merged into the trailing HoneySQL map, appending one when
+  `args` has none."
+  [args from]
+  (let [args (vec args)]
+    (if (map? (peek args))
+      (update args (dec (count args)) merge from)
+      (conj args from))))
+
+(defn- field-model
+  [columns]
+  (u.query/model-with-columns :model/Field columns))
+
+(defn- field-plain-args
+  [opts]
+  (u.query/opts->args (dissoc opts :user-settings?)))
+
+(defn- field-args
+  [opts]
+  (args-with-from (field-plain-args opts)
+                  {:from [(warehouse-schema-overlay/field-query {:user-settings? (get opts :user-settings? true)})]}))
+
+(defn- field-kv-args
+  [opts]
+  (u.query/opts->kv-args (dissoc opts :user-settings?)))
+
+;;; ---- Reads ----
+
+(mu/defn select-fields :- [:sequential ::warehouse-schema.schema/field.partial]
+  "The Fields matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::field-opts]]
+  (apply t2/select (field-model columns) (field-args opts)))
+
+(mu/defn select-one-field :- [:maybe ::warehouse-schema.schema/field.partial]
+  "The first Field matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::field-opts]]
+  (apply t2/select-one (field-model columns) (field-args opts)))
+
+(mu/defn select-field-pk->instance :- [:map-of ::lib.schema.id/field ::warehouse-schema.schema/field.partial]
+  "A map of id to the Field matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::field-opts]]
+  (apply t2/select-pk->fn identity (field-model columns) (field-args opts)))
+
+(mu/defn select-field-pks :- [:set ::lib.schema.id/field]
+  "The ids of the Fields matching `opts`."
+  [opts :- [:maybe ::field-opts]]
+  (or (apply t2/select-pks-set :model/Field (field-args opts)) #{}))
+
+(mu/defn select-one-field-pk :- [:maybe ::lib.schema.id/field]
+  "The id of the first Field matching `opts`, or nil."
+  [opts :- [:maybe ::field-opts]]
+  (apply t2/select-one-pk :model/Field (field-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn update-fields! :- :int
+  "Apply `changes` to every Field matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::field-opts]
+   changes :- ::warehouse-schema.schema/field.update]
+  (apply t2/update! :model/Field (conj (field-kv-args opts) changes)))
+
+(mu/defn delete-fields! :- :int
+  "Delete every Field matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::field-opts]]
+  (apply t2/delete! :model/Field (field-plain-args opts)))
+
+;;; ------------------------- Queries used only by the warehouse-schema module -------------------------
+
 (def field-order-rule
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
-
-(mu/defn field
-  "The ::warehouse-schema.schema/field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -29,50 +122,6 @@
   [table-id    :- [:maybe ::lib.schema.id/table]
    field-names :- [:sequential :string]]
   (models.db/field-in-path table-id field-names))
-
-(mu/defn fields
-  "The Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn fields-by-id
-  "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field-table-id-rows
-  "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn field-table-id
-  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn field-id-by-name
-  "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
-  [table-id   :- ::lib.schema.id/table
-   parent-id  :- [:maybe ms/PositiveInt]
-   field-name :- :string]
-  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn field-values-eligibility
-  "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
-                 {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field-ids-for-table
-  "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]
-                                   :where [:= :table_id table-id]}))
-
-(mu/defn active-field-ids-for-table
-  "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (defn- field-order-order-by
   [field-order]
@@ -88,7 +137,7 @@
     :database     [[:database_position :asc]]
     :alphabetical [[:%lower.name :asc]]))
 
-(mu/defn field-ids-for-table-ordered
+(mu/defn select-field-ids-for-table-ordered
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
@@ -96,7 +145,7 @@
   (t2/select [:model/Field :id] :table_id table-id {:from     [(warehouse-schema-overlay/field-query)]
                                                     :order-by (field-order-order-by field-order)}))
 
-(mu/defn active-fields-for-tables
+(mu/defn select-active-fields-for-tables
   "The active, unretired Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field
@@ -106,7 +155,7 @@
              {:from [(warehouse-schema-overlay/field-query)]
               :order-by field-order-rule}))
 
-(mu/defn pk-field-ids-by-table
+(mu/defn select-pk-field-id-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn->fn :table_id :id :model/Field
@@ -115,29 +164,7 @@
                     :visibility_type [:not-in ["sensitive" "retired"]]
                     {:from [(warehouse-schema-overlay/field-query {:alias :f})]}))
 
-(mu/defn update-field!
-  "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- (mut/select-keys ::warehouse-schema.schema/field.update [:position])]
-  (t2/update! :model/Field field-id changes))
-
-(mu/defn clear-fk-targets-to-field!
-  "Clear the FK semantic type and target of every ::warehouse-schema.schema/field targeting the ::warehouse-schema.schema/field with `field-id`, returning the number
-  updated."
-  [field-id :- ::lib.schema.id/field]
-  (t2/update! :model/Field {:fk_target_field_id field-id} {:semantic_type nil, :fk_target_field_id nil}))
-
-(mu/defn delete-child-fields!
-  "Delete the Fields nested under the ::warehouse-schema.schema/field with `parent-id`, returning the number deleted."
-  [parent-id :- ms/PositiveInt]
-  (t2/delete! :model/Field :parent_id parent-id))
-
-(mu/defn delete-fields-for-table!
-  "Delete the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
-  [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/Field :table_id table-id))
-
-(mu/defn user-renamed-field-names :- [:set :string]
+(mu/defn select-user-renamed-field-names :- [:set :string]
   "The lower-cased names, among `names`, of the Fields of the Table with `table-id` whose display name a user set.
   Uploads use it to leave those Fields alone when appending re-derives display names from the CSV header."
   [table-id :- ::lib.schema.id/table
@@ -153,7 +180,7 @@
                                   [:in [:lower :f.name] names]
                                   [:not= :u.display_name nil]]})))
 
-(mu/defn field-names-reducible
+(mu/defn reducible-select-field-names
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/field, plus its user-set display
   name from FieldUserSettings (if any) as `:user_display_name`."
   []
@@ -162,30 +189,85 @@
     :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
     :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))
 
-(mu/defn set-field-display-name!
+(mu/defn set-field-display-name! :- :int
   "Set the display name of the ::warehouse-schema.schema/field with `id`, returning the number updated."
   [id           :- ::lib.schema.id/field
    display-name :- :string]
-  (t2/update! :model/Field id {:display_name display-name}))
+  (update-fields! {:id id} {:display_name display-name}))
 
-;;; -------------------------------------------- FieldUserSettings --------------------------------------------
+;;; The queries below follow [[::field-user-settings-opts]]; queries that do not fit it live in the module-only
+;;; section at the bottom of this namespace.
 
-(mu/defn field-user-settings
-  "The FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, or nil (also for a nil `field-id`, e.g. a ::warehouse-schema.schema/field not yet
-  inserted)."
-  [field-id :- [:maybe ::lib.schema.id/field]]
-  (t2/select-one :model/FieldUserSettings :field_id field-id))
+(mr/def ::field-user-settings-filters
+  "Which FieldUserSettings a query applies to. Keys mirror the columns of `metabase_field_user_settings`: a scalar
+  matches that value (also nil, e.g. a Field not yet inserted) and a set matches any of its values."
+  [:map {:closed true}
+   [:field_id           {:optional true} [:or [:maybe ::lib.schema.id/field] [:set ::lib.schema.id/field]]]
+   [:fk_target_field_id {:optional true} ::lib.schema.id/field]])
 
-(mu/defn field-user-settings-exist?
-  "Whether the ::warehouse-schema.schema/field with `field-id` has a FieldUserSettings row."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings field-id))
+(mr/def ::field-user-settings-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::field-user-settings-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::warehouse-schema.schema/field-user-settings.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::warehouse-schema.schema/field-user-settings.column
+                                              [:tuple ::warehouse-schema.schema/field-user-settings.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(def ^:private field-user-settings-update-keys
-  "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
+(defn- field-user-settings-model
+  [columns]
+  (u.query/model-with-columns :model/FieldUserSettings columns))
 
-(mu/defn field-user-settings-exist-for-table?
+(defn- field-user-settings-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- field-user-settings-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ---- Reads ----
+
+(mu/defn select-one-field-user-settings :- [:maybe ::warehouse-schema.schema/field-user-settings.partial]
+  "The first FieldUserSettings matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::field-user-settings-opts]]
+  (apply t2/select-one (field-user-settings-model columns) (field-user-settings-args opts)))
+
+(mu/defn select-field-user-settings-pks :- [:set ::lib.schema.id/field]
+  "The `field_id`s of the FieldUserSettings matching `opts`."
+  [opts :- [:maybe ::field-user-settings-opts]]
+  (or (apply t2/select-pks-set :model/FieldUserSettings (field-user-settings-args opts)) #{}))
+
+(mu/defn field-user-settings-exists? :- :boolean
+  "Whether a FieldUserSettings matching `opts` exists."
+  [opts :- [:maybe ::field-user-settings-opts]]
+  (apply t2/exists? :model/FieldUserSettings (field-user-settings-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn insert-field-user-settings!
+  "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
+  [rows :- [:or ::warehouse-schema.schema/field-user-settings.create
+            [:sequential ::warehouse-schema.schema/field-user-settings.create]]]
+  (t2/insert! :model/FieldUserSettings rows))
+
+(mu/defn update-field-user-settings! :- :int
+  "Apply `changes` to every FieldUserSettings matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::field-user-settings-opts]
+   changes :- ::warehouse-schema.schema/field-user-settings.update]
+  (apply t2/update! :model/FieldUserSettings (conj (field-user-settings-kv-args opts) changes)))
+
+(mu/defn delete-field-user-settings! :- :int
+  "Delete every FieldUserSettings matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::field-user-settings-opts]]
+  (apply t2/delete! :model/FieldUserSettings (field-user-settings-args opts)))
+
+;;; ------------------------- Queries used only by the warehouse-schema module -------------------------
+
+(mu/defn field-user-settings-exists-for-table? :- :boolean
   "Whether any Field of the ::warehouse-schema.schema/table with `table-id` has a FieldUserSettings row."
   [table-id :- ::lib.schema.id/table]
   (t2/exists? :model/FieldUserSettings
@@ -193,7 +275,7 @@
                :join  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
                :where [:= :f.table_id table-id]}))
 
-(mu/defn field-user-settings-for-tables
+(mu/defn select-field-user-settings-for-tables
   "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/FieldUserSettings
@@ -203,99 +285,100 @@
               :where    [:in :f.table_id table-ids]
               :order-by [[:f.name :asc]]}))
 
-(mu/defn insert-field-user-settings!
-  "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
-  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]]
-  (t2/insert! :model/FieldUserSettings rows))
-
-(mu/defn update-field-user-settings!
-  "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
-  (t2/update! :model/FieldUserSettings field-id changes))
-
-(mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
-  "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (set (t2/select-fn-set :field_id :model/FieldUserSettings :field_id [:in field-ids])))
-
-(mu/defn update-field-user-settings-custom-positions!
+(mu/defn update-field-user-settings-custom-positions! :- :int
   "Set the `custom_position` of the FieldUserSettings of each Field in `field-id->position`, returning the number
   updated."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
   (t2/update! :model/FieldUserSettings :field_id [:in (keys field-id->position)]
               {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :field_id id] position])) field-id->position)}))
 
-(mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/FieldUserSettings :field_id field-id))
-
-(mu/defn clear-user-settings-fk-targets-to-field!
-  "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
-  ::warehouse-schema.schema/field with `field-id`, so the sync values show again. Returns the number updated."
-  [field-id :- ::lib.schema.id/field]
-  (t2/update! :model/FieldUserSettings {:fk_target_field_id field-id}
-              {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}))
-
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
 
-(def ^:private table-user-settings-update-keys
-  "The columns an insert or update of a TableUserSettings accepts."
-  [:table_id :created_at :updated_at :display_name :description :entity_type :visibility_type :caveats
-   :points_of_interest :data_layer :data_source :owner_email :owner_user_id :field_order :show_in_getting_started
-   :data_authority :is_published :collection_id :description_set
-   :visibility_type_set :caveats_set :points_of_interest_set :data_layer_set :data_source_set])
+;;; The queries below follow [[::table-user-settings-opts]]; queries that do not fit it live in the module-only
+;;; section at the bottom of this namespace.
 
-(mu/defn table-user-settings
-  "The TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, or nil (also for a nil `table-id`,
-  e.g. a ::warehouse-schema.schema/table not yet inserted)."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/TableUserSettings :table_id table-id))
+(mr/def ::table-user-settings-filters
+  "Which TableUserSettings a query applies to. Keys mirror the columns of `metabase_table_user_settings`: a scalar
+  matches that value (also nil, e.g. a Table not yet inserted) and a set matches any of its values."
+  [:map {:closed true}
+   [:table_id {:optional true} [:or [:maybe ::lib.schema.id/table] [:set ::lib.schema.id/table]]]])
 
-(mu/defn table-user-settings-exist?
-  "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings table-id))
+(mr/def ::table-user-settings-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::table-user-settings-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::warehouse-schema.schema/table-user-settings.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::warehouse-schema.schema/table-user-settings.column
+                                              [:tuple ::warehouse-schema.schema/table-user-settings.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
-  "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (set (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in table-ids])))
+(defn- table-user-settings-model
+  [columns]
+  (u.query/model-with-columns :model/TableUserSettings columns))
 
-(mu/defn update-table-user-settings-for-tables!
-  "Apply `changes` to the TableUserSettings of the Tables with `table-ids`, returning the number updated."
-  [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings :table_id [:in table-ids] changes))
+(defn- table-user-settings-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- table-user-settings-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ---- Reads ----
+
+(mu/defn select-one-table-user-settings :- [:maybe ::warehouse-schema.schema/table-user-settings.partial]
+  "The first TableUserSettings matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::table-user-settings-opts]]
+  (apply t2/select-one (table-user-settings-model columns) (table-user-settings-args opts)))
+
+(mu/defn select-table-user-settings-pks :- [:set ::lib.schema.id/table]
+  "The `table_id`s of the TableUserSettings matching `opts`."
+  [opts :- [:maybe ::table-user-settings-opts]]
+  (or (apply t2/select-pks-set :model/TableUserSettings (table-user-settings-args opts)) #{}))
+
+(mu/defn table-user-settings-exists? :- :boolean
+  "Whether a TableUserSettings matching `opts` exists."
+  [opts :- [:maybe ::table-user-settings-opts]]
+  (apply t2/exists? :model/TableUserSettings (table-user-settings-args opts)))
+
+;;; ---- Writes ----
 
 (mu/defn insert-table-user-settings!
   "Insert one TableUserSettings map or a sequence of them, returning the number inserted."
-  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]]]
+  [rows :- [:or ::warehouse-schema.schema/table-user-settings.create
+            [:sequential ::warehouse-schema.schema/table-user-settings.create]]]
   (t2/insert! :model/TableUserSettings rows))
 
-(mu/defn update-table-user-settings!
-  "Apply `changes` to the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the
-  number updated."
-  [table-id :- ::lib.schema.id/table
-   changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings table-id changes))
+(mu/defn update-table-user-settings! :- :int
+  "Apply `changes` to every TableUserSettings matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::table-user-settings-opts]
+   changes :- ::warehouse-schema.schema/table-user-settings.update]
+  (apply t2/update! :model/TableUserSettings (conj (table-user-settings-kv-args opts) changes)))
 
-(mu/defn delete-table-user-settings!
-  "Delete the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
-  [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/TableUserSettings :table_id table-id))
+(mu/defn delete-table-user-settings! :- :int
+  "Delete every TableUserSettings matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::table-user-settings-opts]]
+  (apply t2/delete! :model/TableUserSettings (table-user-settings-args opts)))
 
-(mu/defn table-user-settings-with-field-settings
+;;; ------------------------- Queries used only by the warehouse-schema module -------------------------
+
+(def ^:private table-user-settings-value-columns
+  "The columns of a TableUserSettings that hold a user value rather than a `_set` flag or an identity column."
+  (remove (into #{:table_id} (vals warehouse-schema-overlay/table-user-settings-flags))
+          (mut/keys (mr/schema ::warehouse-schema.schema/table-user-settings.columns))))
+
+(mu/defn select-table-user-settings-with-field-settings
   "One TableUserSettings per Table among `table-ids` (all when nil) that has a settings row or a Field with one,
   synthesized as `{:table_id id}` when the Table has no row of its own."
   [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
-  (let [flag-columns  (set (vals warehouse-schema-overlay/table-user-settings-flags))
-        value-columns (remove (some-fn #{:table_id} flag-columns) table-user-settings-update-keys)]
+  (let [flag-columns (set (vals warehouse-schema-overlay/table-user-settings-flags))]
     (t2/select
      :model/TableUserSettings
      {:select    (into [[:t.id :table_id]]
-                       (concat (map #(u/qualified-key :u %) value-columns)
+                       (concat (map #(u/qualified-key :u %) table-user-settings-value-columns)
                                (map (fn [flag] [[:coalesce (u/qualified-key :u flag) false] flag]) flag-columns)))
       :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
       :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]
@@ -309,7 +392,7 @@
                      :join   [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :fu.field_id]]
                      :where  [:= :f.table_id :t.id]}]]]})))
 
-(mu/defn delete-field-user-settings-for-table!
+(mu/defn delete-field-user-settings-for-table! :- :int
   "Delete the FieldUserSettings of the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the
   number deleted."
   [table-id :- ::lib.schema.id/table]
@@ -321,24 +404,65 @@
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
-(mu/defn field-values-of-type
-  "The FieldValues of `type` with `hash-key` for the ::warehouse-schema.schema/field with `field-id`."
-  [field-id :- ::lib.schema.id/field
-   type     :- [:enum :full :sandbox :impersonation :linked-filter :advanced]
-   hash-key :- [:maybe :string]]
-  (t2/select :model/FieldValues :field_id field-id :type type :hash_key hash-key))
+;;; The queries below follow [[::field-values-opts]]; queries that do not fit it live in the module-only section at
+;;; the bottom of this namespace.
 
-(mu/defn full-field-values-for-fields
-  "The full FieldValues of the Fields with `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))
+(mr/def ::field-values-filters
+  "Which FieldValues a query applies to. Keys mirror the columns of `metabase_fieldvalues`: a scalar matches that
+  value (also nil, for `:hash_key`) and a set matches any of its values."
+  [:map {:closed true}
+   [:id       {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:field_id {:optional true} [:or ::lib.schema.id/field [:set ::lib.schema.id/field]]]
+   [:type     {:optional true} [:or :keyword [:set :keyword]]]
+   [:hash_key {:optional true} [:maybe :string]]])
 
-(mu/defn full-field-values-rows
-  "The ::warehouse-schema.schema/field ID and values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select [:model/FieldValues :field_id :values] :field_id field-id :type :full))
+(mr/def ::field-values-opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::field-values-filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::warehouse-schema.schema/field-values.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::warehouse-schema.schema/field-values.column
+                                              [:tuple ::warehouse-schema.schema/field-values.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn full-field-values-for-tables
+(defn- field-values-model
+  [columns]
+  (u.query/model-with-columns :model/FieldValues columns))
+
+(defn- field-values-args
+  [opts]
+  (u.query/opts->args opts))
+
+(defn- field-values-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
+
+;;; ---- Reads ----
+
+(mu/defn select-field-values :- [:sequential ::warehouse-schema.schema/field-values.partial]
+  "The FieldValues matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::field-values-opts]]
+  (apply t2/select (field-values-model columns) (field-values-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn update-field-values! :- :int
+  "Apply `changes` to every FieldValues matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::field-values-opts]
+   changes :- ::warehouse-schema.schema/field-values.update]
+  (apply t2/update! :model/FieldValues (conj (field-values-kv-args opts) changes)))
+
+(mu/defn delete-field-values! :- :int
+  "Delete every FieldValues matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::field-values-opts]]
+  (apply t2/delete! :model/FieldValues (field-values-args opts)))
+
+;;; ------------------------- Queries used only by the warehouse-schema module -------------------------
+
+(mu/defn select-full-field-values-for-tables
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
@@ -349,7 +473,7 @@
                       [:= :field.visibility_type "normal"]
                       [:= :metabase_fieldvalues.type "full"]]}))
 
-(mu/defn full-field-values-with-human-readable-values
+(mu/defn select-one-field-values-with-human-readable-values
   "The values and human-readable values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id` if it has
   human-readable values, or nil."
   [field-id :- ::lib.schema.id/field]
@@ -360,28 +484,11 @@
                           [:not= :human_readable_values nil]
                           [:not= :human_readable_values "{}"]]}))
 
-(mu/defn field-values-last-used-at
+(mu/defn select-field-values-last-used-at
   "The latest `last_used_at` of any FieldValues of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
                     {:where [:= :field_id field-id]}))
-
-(mu/defn full-field-values-by-field
-  "The `columns` of the full FieldValues of the Fields with `field-ids`."
-  [columns   :- [:or :keyword [:sequential :keyword]]
-   field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select columns :field_id [:in field-ids] :type :full))
-
-(mu/defn dimensions-for-fields
-  "The Dimensions of the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Dimension :field_id [:in field-ids]))
-
-(mu/defn update-field-values!
-  "Apply `changes` to the FieldValues with `field-values-id`, returning the number updated."
-  [field-values-id :- ms/PositiveInt
-   changes         :- (mut/select-keys ::warehouse-schema.schema/field-values.update [:has_more_values :values :human_readable_values])]
-  (t2/update! :model/FieldValues field-values-id changes))
 
 (mu/defn find-or-insert-full-field-values!
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting one with `has-more-values`, `values`, and no
@@ -394,66 +501,90 @@
                                          :values                values
                                          :human_readable_values nil})))
 
-(mu/defn touch-field-values!
-  "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."
-  [field-values-id :- ms/PositiveInt]
-  (t2/update! :model/FieldValues field-values-id {:last_used_at :%now}))
+;;; ------------------------------------------------- Dimension -------------------------------------------------
 
-(mu/defn delete-field-values!
-  "Delete the FieldValues with `field-values-ids`, returning the number deleted."
-  [field-values-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/FieldValues :id [:in field-values-ids]))
+(mr/def ::dimension-filters
+  "Which Dimensions a query applies to. Keys mirror the columns of `:dimension`: a scalar matches that value and a
+  set matches any of its values."
+  [:map {:closed true}
+   [:field_id {:optional true} [:or ::lib.schema.id/field [:set ::lib.schema.id/field]]]])
 
-(mu/defn delete-field-values-for-field!
-  "Delete every FieldValues of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/FieldValues :field_id field-id))
-
-(mu/defn delete-field-values-of-types!
-  "Delete the FieldValues of `types` of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field
-   types    :- [:set :keyword]]
-  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]))
+(mu/defn select-dimensions :- [:sequential ::warehouse-schema.schema/dimension]
+  "The Dimensions matching `filters`."
+  [filters :- [:maybe ::dimension-filters]]
+  (apply t2/select :model/Dimension (u.query/opts->args filters)))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
-(mu/defn table
-  "The ::warehouse-schema.schema/table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+;;; The queries below follow [[::table-opts]]; queries that do not fit it live in the module-only section at the
+;;; bottom of this namespace.
 
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+(mr/def ::table-filters
+  "Which Tables a query applies to. Keys mirror the columns of `metabase_table`: a scalar matches that value (also
+  nil, for `:schema` and `:visibility_type`) and a set matches any of its values."
+  [:map {:closed true}
+   [:id              {:optional true} [:or ::lib.schema.id/table [:set ::lib.schema.id/table]]]
+   [:db_id           {:optional true} [:or ::lib.schema.id/database [:set ::lib.schema.id/database]]]
+   [:schema          {:optional true} [:maybe :string]]
+   [:name            {:optional true} :string]
+   [:active          {:optional true} :boolean]
+   [:visibility_type {:optional true} [:maybe [:or :keyword :string]]]])
 
-(mu/defn table-by-name
-  "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]
-   table-name  :- :string]
-  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [(warehouse-schema-overlay/table-query)]}))
+(mr/def ::table-opts
+  "The filters above plus the columns to select, the order to return them in, and whether to merge the
+  TableUserSettings overlay (`:user-settings?`, default true)."
+  [:merge
+   ::table-filters
+   [:map {:closed true}
+    [:user-settings? {:optional true} :boolean]
+    [:columns        {:optional true} [:sequential ::warehouse-schema.schema/table.column]]
+    [:order-by       {:optional true} [:sequential [:or
+                                                    ::warehouse-schema.schema/table.column
+                                                    [:tuple ::warehouse-schema.schema/table.column [:enum :asc :desc]]]]]
+    [:limit          {:optional true} ms/PositiveInt]
+    [:offset         {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn table-name-and-schema
-  "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+(defn- table-model
+  [columns]
+  (u.query/model-with-columns :model/Table columns))
 
-(mu/defn table-database-id
-  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+(defn- table-args
+  [opts]
+  (args-with-from (u.query/opts->args (dissoc opts :user-settings?))
+                  {:from [(warehouse-schema-overlay/table-query {:user-settings? (get opts :user-settings? true)})]}))
 
-(defn active-tables-for-database
-  "The active Tables of the Database with `database-id`."
-  [database-id]
-  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+(defn- table-kv-args
+  [opts]
+  (u.query/opts->kv-args (dissoc opts :user-settings?)))
 
-(defn active-table-schemas
+;;; ---- Reads ----
+
+(mu/defn select-tables :- [:sequential ::warehouse-schema.schema/table.partial]
+  "The Tables matching `opts`."
+  [{:keys [columns] :as opts} :- [:maybe ::table-opts]]
+  (apply t2/select (table-model columns) (table-args opts)))
+
+(mu/defn select-one-table :- [:maybe ::warehouse-schema.schema/table.partial]
+  "The first Table matching `opts`, or nil."
+  [{:keys [columns] :as opts} :- [:maybe ::table-opts]]
+  (apply t2/select-one (table-model columns) (table-args opts)))
+
+;;; ---- Writes ----
+
+(mu/defn update-tables! :- :int
+  "Apply `changes` to every Table matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::table-opts]
+   changes :- ::warehouse-schema.schema/table.update]
+  (apply t2/update! :model/Table (conj (table-kv-args opts) changes)))
+
+;;; ------------------------- Queries used only by the warehouse-schema module -------------------------
+
+(mu/defn select-schemas-for-database :- [:sequential :string]
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
   `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
   hidden -- see `metabase.warehouse-schema.models.table/visibility-types`)."
-  [database-id include-hidden?]
+  [database-id     :- ::lib.schema.id/database
+   include-hidden? :- :boolean]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
@@ -461,27 +592,6 @@
                               :order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
-
-(defn active-tables-in-schema
-  "The active Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id schema]
-  (t2/select :model/Table
-             :db_id database-id
-             :schema schema
-             :active true
-             {:from [(warehouse-schema-overlay/table-query)]
-              :order-by [[:display_name :asc]]}))
-
-(defn active-visible-tables-in-schema
-  "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
-  [database-id schema]
-  (t2/select :model/Table
-             :db_id database-id
-             :schema schema
-             :active true
-             :visibility_type nil
-             {:from [(warehouse-schema-overlay/table-query)]
-              :order-by [[:display_name :asc]]}))
 
 (mu/defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."
@@ -515,7 +625,7 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))
 
-(mu/defn table-names-reducible
+(mu/defn reducible-select-table-names
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus the user's own
   display name (`:user_display_name`), if any."
   []
@@ -525,11 +635,11 @@
     :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
     :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]}))
 
-(mu/defn set-table-display-name!
+(mu/defn set-table-display-name! :- :int
   "Set the display name of the ::warehouse-schema.schema/table with `id`, returning the number updated."
   [id           :- ::lib.schema.id/table
    display-name :- :string]
-  (t2/update! :model/Table id {:display_name display-name}))
+  (update-tables! {:id id} {:display_name display-name}))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 

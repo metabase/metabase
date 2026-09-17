@@ -1,5 +1,6 @@
 (ns metabase.queries.schema
   (:require
+   [malli.util :as mut]
    [metabase.content-verification.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -52,11 +53,11 @@
    [:lib/source_display_name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
-  "Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,
+  "Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.columns`) plus `:id`,
   the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a
   Card before passing it here."
   [:merge
-   ::card.update
+   ::card.columns
    [:map {:closed true}
     [:id                    {:optional true} [:maybe ::lib.schema.id/card]]
     [:persisted/active      {:optional true} [:maybe :boolean]]
@@ -168,8 +169,9 @@
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   ::lib-metric.schema/dimension-mapping)
 
-(mr/def ::card.update
-  "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
+(mr/def ::card.columns
+  "Every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the
+  model's hooks."
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
@@ -218,15 +220,49 @@
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
    [:verified-result-metadata?                 {:optional true} :boolean]])
 
+(mr/def ::card.create
+  "What an insert of a Card accepts."
+  (mut/select-keys (mr/schema ::card.columns)
+                   [:created_at :updated_at :name :description :display :dataset_query :visualization_settings
+                    :creator_id :database_id :table_id :query_type :archived :collection_id :public_uuid
+                    :made_public_by_id :enable_embedding :embedding_params :cache_ttl :result_metadata
+                    :collection_position :entity_id :parameters :parameter_mappings :collection_preview
+                    :metabase_version :type :initially_published_at :cache_invalidated_at :last_used_at :view_count
+                    :archived_directly :dataset_query_metrics_v2_migration_backup :source_card_id :dashboard_id
+                    :document_id :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings
+                    :metabot_conversation_id :metabot_chart_id :verified-result-metadata?]))
+
+(mr/def ::card.update
+  "What an update of a Card accepts: `::card.columns` minus `:entity_id`, `:created_at` and `:creator_id`, which
+  nothing ever updates, and `:card_schema`, which only the model's hooks set."
+  (mut/select-keys (mr/schema ::card.columns)
+                   [:updated_at :name :description :display :dataset_query :visualization_settings :database_id
+                    :table_id :query_type :archived :collection_id :public_uuid :made_public_by_id :enable_embedding
+                    :embedding_params :cache_ttl :result_metadata :collection_position :parameters
+                    :parameter_mappings :collection_preview :metabase_version :type :initially_published_at
+                    :cache_invalidated_at :last_used_at :view_count :archived_directly
+                    :dataset_query_metrics_v2_migration_backup :source_card_id :dashboard_id :document_id
+                    :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings
+                    :metabot_conversation_id :metabot_chart_id :verified-result-metadata?]))
+
+(mr/def ::card.column
+  "A column of `report_card`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::card.columns))))
+
+(mr/def ::card.partial
+  "A Card row as selected, where a `:columns` narrowing may have left out any column. Every key of `::card` is
+  already optional, so this is the same schema."
+  ::card)
+
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
   [:merge
-   ::parameter-card.update
+   ::parameter-card.columns
    [:map {:closed true}
     [:id                        ms/PositiveInt]]])
 
-(mr/def ::parameter-card.update
-  "What an update (or insert) of a ParameterCard accepts: every column of `:parameter_card` except `id`, all optional."
+(mr/def ::parameter-card.columns
+  "Every column of `:parameter_card` except `id`, all optional."
   [:map {:closed true}
    [:updated_at                {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at                {:optional true} [:maybe ms/TemporalInstant]]
@@ -235,22 +271,57 @@
    [:parameterized_object_id   {:optional true} [:maybe ms/PositiveInt]]
    [:parameter_id              {:optional true} [:maybe :string]]])
 
+(mr/def ::parameter-card.create
+  "What an insert of a ParameterCard accepts."
+  (mr/schema ::parameter-card.columns))
+
+(mr/def ::parameter-card.update
+  "What an update of a ParameterCard accepts: `::parameter-card.columns` minus `:created_at`, which nothing ever
+  updates."
+  (mut/select-keys (mr/schema ::parameter-card.columns)
+                   [:updated_at :card_id :parameterized_object_type :parameterized_object_id :parameter_id]))
+
+(mr/def ::parameter-card.column
+  "A column of `parameter_card`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::parameter-card.columns))))
+
+(mr/def ::parameter-card.partial
+  "A ParameterCard row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::parameter-card [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::query.query
   "The `:query` column of a Query, decoded."
   [:ref ::lib-be.schema/maybe-legacy-or-internal-query])
 
 (mr/def ::query
-  "A Query as selected from the app DB: every column of `:query`."
+  "A Query as selected from the app DB: every column of `:query`. Keyed by `:query_hash`; there is no `:id`."
   [:merge
-   ::query.update
+   ::query.columns
    [:map {:closed true}]])
 
-(mr/def ::query.update
-  "What an update (or insert) of a Query accepts: every column of `:query` except `id`, all optional."
+(mr/def ::query.columns
+  "Every column of `:query`, all optional. Keyed by `:query_hash`; there is no `:id`."
   [:map {:closed true}
    [:query_hash             {:optional true} [:maybe [:or bytes? :string]]]
    [:average_execution_time {:optional true} [:maybe :int]]
    [:query                  {:optional true} [:maybe ::query.query]]])
+
+(mr/def ::query.create
+  "What an insert of a Query accepts."
+  (mr/schema ::query.columns))
+
+(mr/def ::query.update
+  "What an update of a Query accepts: `::query.columns` minus `:query_hash`, the primary key."
+  (mut/select-keys (mr/schema ::query.columns) [:average_execution_time :query]))
+
+(mr/def ::query.column
+  "A column of `:query`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum] (mut/keys (mr/schema ::query.columns))))
+
+(mr/def ::query.partial
+  "A Query row as selected, where a `:columns` narrowing may have left out any column. Every key of `::query` is
+  already optional, so this is the same schema."
+  ::query)
 
 (mr/def ::query-execution.lens-params
   "The `:lens_params` column of a QueryExecution, decoded."
@@ -260,13 +331,13 @@
 (mr/def ::query-execution
   "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
   [:merge
-   ::query-execution.update
+   ::query-execution.columns
    [:map {:closed true}
     [:id                          ms/PositiveInt]
     [:row_count                   {:optional true} :int]]])
 
-(mr/def ::query-execution.update
-  "What an update (or insert) of a QueryExecution accepts: every column of `:query_execution` except `id`, all optional."
+(mr/def ::query-execution.columns
+  "Every column of `:query_execution` except `id`, all optional."
   [:map {:closed true}
    [:hash                        {:optional true} [:maybe [:or bytes? :string]]]
    [:started_at                  {:optional true} [:maybe ms/TemporalInstant]]
@@ -304,20 +375,48 @@
    [:metabase_version            {:optional true} [:maybe :string]]
    [:embedding_client_identifier {:optional true} [:maybe :string]]])
 
+(mr/def ::query-execution.create
+  "What an insert of a QueryExecution accepts."
+  (mr/schema ::query-execution.columns))
+
+(mr/def ::query-execution.column
+  "A column of `:query_execution`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::query-execution.columns))))
+
+(mr/def ::query-execution.partial
+  "A QueryExecution row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::query-execution [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::query-table
   "A QueryTable as selected from the app DB: every column of `:query_table`."
   [:merge
-   ::query-table.update
+   ::query-table.columns
    [:map {:closed true}
     [:id       ms/PositiveInt]]])
 
-(mr/def ::query-table.update
-  "What an update (or insert) of a QueryTable accepts: every column of `:query_table` except `id`, all optional."
+(mr/def ::query-table.columns
+  "Every column of `:query_table` except `id`, all optional."
   [:map {:closed true}
    [:card_id  {:optional true} [:maybe ::lib.schema.id/card]]
    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
    [:schema   {:optional true} [:maybe :string]]
    [:table    {:optional true} [:maybe :string]]])
+
+(mr/def ::query-table.create
+  "What an insert of a QueryTable accepts."
+  (mr/schema ::query-table.columns))
+
+(mr/def ::query-table.update
+  "What an update of a QueryTable accepts: every column of `:query_table`, none of which is immutable."
+  (mr/schema ::query-table.columns))
+
+(mr/def ::query-table.column
+  "A column of `:query_table`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::query-table.columns))))
+
+(mr/def ::query-table.partial
+  "A QueryTable row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::query-table [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
 
 (mr/def ::stored-result.dataset-query
   "The `:dataset_query` column of a StoredResult, decoded."
@@ -330,12 +429,12 @@
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:merge
-   ::stored-result.update
+   ::stored-result.columns
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
-(mr/def ::stored-result.update
-  "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
+(mr/def ::stored-result.columns
+  "Every column of `:stored_result` except `id`, all optional."
   [:map {:closed true}
    [:result_data       {:optional true} [:maybe [:or bytes? :string]]]
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
@@ -346,18 +445,53 @@
    [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::stored-result.create
+  "What an insert of a StoredResult accepts."
+  (mr/schema ::stored-result.columns))
+
+(mr/def ::stored-result.update
+  "What an update of a StoredResult accepts: `::stored-result.columns` minus `:creator_id` and `:created_at`, which
+  nothing ever updates."
+  (mut/select-keys (mr/schema ::stored-result.columns)
+                   [:result_data :database_id :dataset_query :data_access_token :row_count :updated_at]))
+
+(mr/def ::stored-result.column
+  "A column of `:stored_result`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::stored-result.columns))))
+
+(mr/def ::stored-result.partial
+  "A StoredResult row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::stored-result [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
 (mr/def ::stored-result-use
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
   [:merge
-   ::stored-result-use.update
+   ::stored-result-use.columns
    [:map {:closed true}
     [:id               ms/PositiveInt]]])
 
-(mr/def ::stored-result-use.update
-  "What an update (or insert) of a StoredResultUse accepts: every column of `:stored_result_use` except `id`, all optional."
+(mr/def ::stored-result-use.columns
+  "Every column of `:stored_result_use` except `id`, all optional."
   [:map {:closed true}
    [:stored_result_id {:optional true} [:maybe ms/PositiveInt]]
    [:exploration_id   {:optional true} [:maybe ms/PositiveInt]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
+
+(mr/def ::stored-result-use.create
+  "What an insert of a StoredResultUse accepts."
+  (mr/schema ::stored-result-use.columns))
+
+(mr/def ::stored-result-use.update
+  "What an update of a StoredResultUse accepts: `::stored-result-use.columns` minus `:created_at`, which nothing
+  ever updates."
+  (mut/select-keys (mr/schema ::stored-result-use.columns) [:stored_result_id :exploration_id :updated_at :card_id]))
+
+(mr/def ::stored-result-use.column
+  "A column of `:stored_result_use`, for the `:columns` option of the queries in [[metabase.queries.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::stored-result-use.columns))))
+
+(mr/def ::stored-result-use.partial
+  "A StoredResultUse row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::stored-result-use [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])

@@ -1,29 +1,98 @@
 (ns metabase.documents.db
   "Application database queries for the documents module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The queries below follow [[::opts]]; queries that do not fit it live in the documents-only section at the bottom
+  of this namespace."
   (:require
    [java-time.api :as t]
    [malli.util :as mut]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn document
-  "The Document with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id))
+(mr/def ::filters
+  "Which Documents a query applies to. Keys mirror the columns of `document`: a scalar matches that value and a set
+  matches any of its values. A nullable column also takes a `<column>_set` key, matching the rows where that column
+  is set (`true`) or null (`false`)."
+  [:map {:closed true}
+   [:id              {:optional true} [:or ms/PositiveInt [:set ms/PositiveInt]]]
+   [:archived        {:optional true} :boolean]
+   [:public_uuid_set {:optional true} :boolean]])
 
-(mu/defn unarchived-document
-  "The Document with `id` if it is not archived, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id :archived false))
+(mr/def ::opts
+  "The filters above plus the columns to select and the order to return them in."
+  [:merge
+   ::filters
+   [:map {:closed true}
+    [:columns  {:optional true} [:sequential ::documents.schema/document.column]]
+    [:order-by {:optional true} [:sequential [:or
+                                              ::documents.schema/document.column
+                                              [:tuple ::documents.schema/document.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(mu/defn visible-unarchived-documents
+(def ^:private set-columns
+  "Maps each `<column>_set` filter key to the column whose nullness it tests."
+  {:public_uuid_set :public_uuid})
+
+(defn- ->model
+  [columns]
+  (u.query/model-with-columns :model/Document columns))
+
+(defn- ->args
+  [opts]
+  (u.query/opts->args opts {:set-columns set-columns}))
+
+(defn- ->kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns set-columns}))
+
+;;; ------------------------------------------------- Reads -------------------------------------------------
+
+(mu/defn select-documents :- [:sequential ::documents.schema/document.partial]
+  "The Documents matching `opts`."
+  ([]
+   (select-documents nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select (->model columns) (->args opts))))
+
+(mu/defn select-one-document :- [:maybe ::documents.schema/document.partial]
+  "The first Document matching `opts`, or nil."
+  ([]
+   (select-one-document nil))
+  ([{:keys [columns] :as opts} :- [:maybe ::opts]]
+   (apply t2/select-one (->model columns) (->args opts))))
+
+;;; ------------------------------------------------ Writes -------------------------------------------------
+
+(mu/defn insert-document! :- ms/PositiveInt
+  "Insert the Document `row` and return its id."
+  [row :- ::documents.schema/document.create]
+  (t2/insert-returning-pk! :model/Document row))
+
+(mu/defn update-documents! :- :int
+  "Apply `changes` to every Document matching `opts`, returning the number updated."
+  [opts    :- [:maybe ::opts]
+   changes :- ::documents.schema/document.update]
+  (apply t2/update! :model/Document (conj (->kv-args opts) changes)))
+
+(mu/defn delete-documents! :- :int
+  "Delete every Document matching `opts`, returning the number deleted."
+  [opts :- [:maybe ::opts]]
+  (apply t2/delete! :model/Document (->args opts)))
+
+;;; ------------------------------------ Queries used only by the documents module ------------------------------------
+
+(mu/defn select-visible-unarchived-documents
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
   []
   (t2/select :model/Document {:where [:and
@@ -31,7 +100,7 @@
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
-(mu/defn documents-for-serdes-reducible
+(mu/defn reducible-select-documents-for-serdes
   "A reducible of the Documents to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the
   set counts as the root collection; an empty or nil set means every collection), further restricted to the rows
   whose `filter-column` is one of `filter-ids` when `filter-column` is given, and ordered ascending by
@@ -56,37 +125,6 @@
                                           [:in filter-column filter-ids])
                                         [:= :exploration_id nil]]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
-
-(mu/defn insert-document!
-  "Insert the Document `row` and return its id."
-  [row :- ::documents.schema/document.update]
-  (t2/insert-returning-pk! :model/Document row))
-
-(mu/defn update-document!
-  "Apply `changes` to the Document with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- ::documents.schema/document.update]
-  (t2/update! :model/Document id changes))
-
-(mu/defn delete-document!
-  "Delete the Document with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Document :id id))
-
-(mu/defn document-public-uuid
-  "The public uuid of the Document with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one-fn :public_uuid :model/Document :id id))
-
-(mu/defn document-exploration-id
-  "The Exploration id of the Document with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one-fn :exploration_id :model/Document :id id))
-
-(mu/defn public-documents
-  "The name, id, and public uuid of the unarchived Documents that are publicly shared."
-  []
-  (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -132,7 +170,7 @@
 (mu/defn unarchived-collection-exists?
   "Whether an unarchived Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
+  (collections.db/collection-exists? {:id collection-id, :archived false}))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."

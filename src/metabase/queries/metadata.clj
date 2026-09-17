@@ -51,13 +51,13 @@
 (defn- field-ids->table-ids
   [field-ids]
   (if (seq field-ids)
-    (queries.db/field-table-ids field-ids)
+    (queries.db/select-field-table-ids field-ids)
     #{}))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
    (when (seq initial-snippet-ids)
-     (let [snippets (into [] (filter mi/can-read?) (queries.db/snippets initial-snippet-ids))]
+     (let [snippets (into [] (filter mi/can-read?) (queries.db/select-snippets initial-snippet-ids))]
        (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
@@ -70,7 +70,7 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (into [] (filter mi/can-read?) (queries.db/snippets nested-snippet-ids)))]
+                                (into [] (filter mi/can-read?) (queries.db/select-snippets nested-snippet-ids)))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
@@ -192,7 +192,7 @@
                    [:set ::lib.schema.id/card]]]]
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
-                      (queries.db/cards ids))]
+                      (queries.db/select-cards {:id (set ids)}))]
       (t2/hydrate cards :can_write))))
 
 (defn- dashcard->click-behaviors [dashcard]
@@ -205,7 +205,7 @@
 (defn- batch-fetch-linked-dashboards
   [dashboard-ids]
   (when (seq dashboard-ids)
-    (let [dashboards (->> (queries.db/dashboards dashboard-ids)
+    (let [dashboards (->> (queries.db/select-dashboards dashboard-ids)
                           (filter mi/can-read?))]
       (t2/hydrate dashboards :can_write :param_fields))))
 

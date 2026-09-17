@@ -4,6 +4,7 @@
   (:require
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -82,8 +83,8 @@
 
 (mu/defn insert-query-execution!
   "Insert the QueryExecution `row` and return its id."
-  [row :- ::queries.schema/query-execution.update]
-  (t2/insert-returning-pk! :model/QueryExecution row))
+  [row :- ::queries.schema/query-execution.create]
+  (queries.db/insert-query-execution! row))
 
 (mu/defn insert-action!
   "Insert the Action `row` and return the inserted instance."

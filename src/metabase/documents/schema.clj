@@ -1,5 +1,6 @@
 (ns metabase.documents.schema
   (:require
+   [malli.util :as mut]
    [metabase.collections.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -18,7 +19,7 @@
   "A Document as selected from the app DB: every column of `:document`, plus `:creator` and `:collection` some
   callers hydrate onto it."
   [:merge
-   ::document.update
+   ::document.columns
    [:map {:closed true}
     [:id                  ms/PositiveInt]
     [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
@@ -28,8 +29,8 @@
     [:can_restore         {:optional true} :boolean]
     [:is_remote_synced    {:optional true} :boolean]]])
 
-(mr/def ::document.update
-  "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."
+(mr/def ::document.columns
+  "Every column of `:document` except `id`, all optional."
   [:map {:closed true}
    [:name                {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
@@ -49,3 +50,23 @@
    [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
+
+(mr/def ::document.create
+  "What an insert of a Document accepts."
+  (mr/schema ::document.columns))
+
+(mr/def ::document.update
+  "What an update of a Document accepts: no immutable columns (`:entity_id`, `:created_at`, `:creator_id`,
+  `:content_type`, and `:exploration_id` are all fixed at creation and never change after that)."
+  (mut/select-keys (mr/schema ::document.columns)
+                   [:name :document :updated_at :collection_id :archived :archived_directly :last_viewed_at
+                    :view_count :collection_position :public_uuid :made_public_by_id :public_uuid_prefix
+                    :is_placeholder]))
+
+(mr/def ::document.partial
+  "A Document row as selected, where a `:columns` narrowing may have left out any column."
+  [:merge ::document [:map {:closed true} [:id {:optional true} ms/PositiveInt]]])
+
+(mr/def ::document.column
+  "A column of `:document`, for the `:columns` option of the queries in [[metabase.documents.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::document.columns))))

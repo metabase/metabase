@@ -124,14 +124,14 @@
    (and (mi/current-user-has-full-permissions? :read instance)
         (content-visible? instance)))
   ([_model pk]
-   (mi/can-read? (documents.db/document pk))))
+   (mi/can-read? (documents.db/select-one-document {:id pk}))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :write instance)
         (content-visible? instance)))
   ([_model pk]
-   (mi/can-write? (documents.db/document pk))))
+   (mi/can-write? (documents.db/select-one-document {:id pk}))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -277,7 +277,7 @@
   publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
   both semantically wrong and an extra, avoidable round-trip."
   [id]
-  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
+  (t2/hydrate (documents.db/select-one-document {:id id}) :creator :can_write :can_delete :can_restore :is_remote_synced))
 
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists.
@@ -339,11 +339,11 @@
                                                                (when-not (empty? cards)
                                                                  (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
                              (when (seq cards-to-update-in-ast)
-                               (documents.db/update-document! document-id
-                                                              (update-cards-in-ast
-                                                               {:document document
-                                                                :content_type prose-mirror/prose-mirror-content-type}
-                                                               cards-to-update-in-ast)))
+                               (documents.db/update-documents! {:id document-id}
+                                                               (update-cards-in-ast
+                                                                {:document document
+                                                                 :content_type prose-mirror/prose-mirror-content-type}
+                                                                cards-to-update-in-ast)))
                              ;; `get-document`, so `:event/document-read` fires: the creator has to find the
                              ;; document they just made in their recents, and that row is written only by this
                              ;; event's handler. Creating is arguably not viewing — but the view count and
@@ -400,18 +400,18 @@
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)
                                                    draft-card-id-map)]
-        (documents.db/update-document! document-id
-                                       (cond-> document-updates
-                                         document (merge (update-cards-in-ast
-                                                          {:document document
-                                                           :content_type (:content_type existing-document)}
-                                                          card-id-map))
-                                         name (assoc :name name)
-                                         (contains? body :collection_id) (assoc :collection_id collection_id)
-                                         ;; First body save clears the auto-created Summary placeholder flag.
-                                         (and (:is_placeholder existing-document)
-                                              (contains? body :document))
-                                         (assoc :is_placeholder false)))
+        (documents.db/update-documents! {:id document-id}
+                                        (cond-> document-updates
+                                          document (merge (update-cards-in-ast
+                                                           {:document document
+                                                            :content_type (:content_type existing-document)}
+                                                           card-id-map))
+                                          name (assoc :name name)
+                                          (contains? body :collection_id) (assoc :collection_id collection_id)
+                                          ;; First body save clears the auto-created Summary placeholder flag.
+                                          (and (:is_placeholder existing-document)
+                                               (contains? body :document))
+                                          (assoc :is_placeholder false)))
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings)))
       (collections/check-for-remote-sync-update existing-document))
@@ -633,10 +633,10 @@
 
 (defmethod serdes/extract-query "Document"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
-  (documents.db/documents-for-serdes-reducible collection-set
-                                               filter-column
-                                               filter-ids
-                                               (serdes/extract-order-columns model-name opts)))
+  (documents.db/reducible-select-documents-for-serdes collection-set
+                                                      filter-column
+                                                      filter-ids
+                                                      (serdes/extract-order-columns model-name opts)))
 
 (defn- document-deps
   [{:keys [content_type] :as document}]
@@ -683,7 +683,7 @@
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]
-  (when-let [document (documents.db/document id)]
+  (when-let [document (documents.db/select-one-document {:id id})]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
        (into {}

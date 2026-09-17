@@ -12,19 +12,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [toucan2.core :as t2]))
 
-(defn- equality-filter-clause
-  [column value]
-  (if (set? value)
-    [:in column value]
-    [:= column value]))
-
-(defn- revocable-filter-clause
-  [column value]
-  (case column
-    :revoked_at_set (if value [:not= :revoked_at nil] [:= :revoked_at nil])
-    (equality-filter-clause column value)))
+(def ^:private revocable-set-columns
+  "Maps the `revoked_at_set` filter key to the column whose nullness it tests."
+  {:revoked_at_set :revoked_at})
 
 ;;; -------------------------------------------------- OAuthClient --------------------------------------------------
 
@@ -41,9 +34,13 @@
    [:map {:closed true}
     [:columns {:optional true} [:sequential ::oauth-server.schema/oauth-client.column]]]])
 
-(defn- oauth-client-where
+(defn- oauth-client-args
   [opts]
-  (into [:and] (map (fn [[column value]] (equality-filter-clause column value))) (dissoc opts :columns)))
+  (u.query/opts->args opts))
+
+(defn- oauth-client-kv-args
+  [opts]
+  (u.query/opts->kv-args opts))
 
 (defn- ->oauth-client-model
   [columns]
@@ -51,20 +48,20 @@
     (into [:model/OAuthClient] columns)
     :model/OAuthClient))
 
-(mu/defn select-one-oauth-client :- [:maybe ::oauth-server.schema/oauth-client]
+(mu/defn select-one-oauth-client :- [:maybe ::oauth-server.schema/oauth-client.partial]
   "The first OAuthClient matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::oauth-client-opts]]
-  (t2/select-one (->oauth-client-model columns) (oauth-client-where opts)))
+  (apply t2/select-one (->oauth-client-model columns) (oauth-client-args opts)))
 
 (mu/defn select-one-oauth-client-pk :- [:maybe ms/PositiveInt]
   "The id of the first OAuthClient matching `opts`, or nil."
   [opts :- [:maybe ::oauth-client-opts]]
-  (t2/select-one-pk :model/OAuthClient (oauth-client-where opts)))
+  (apply t2/select-one-pk :model/OAuthClient (oauth-client-args opts)))
 
 (mu/defn oauth-client-exists? :- :boolean
   "Whether an OAuthClient matching `opts` exists."
   [opts :- [:maybe ::oauth-client-opts]]
-  (t2/exists? :model/OAuthClient (oauth-client-where opts)))
+  (apply t2/exists? :model/OAuthClient (oauth-client-args opts)))
 
 (mu/defn insert-oauth-client! :- ::oauth-server.schema/oauth-client
   "Insert the OAuthClient `row` and return the inserted instance."
@@ -75,7 +72,7 @@
   "Apply `changes` to every OAuthClient matching `opts`, returning the number updated."
   [opts    :- [:maybe ::oauth-client-opts]
    changes :- ::oauth-server.schema/oauth-client.update]
-  (t2/update! :model/OAuthClient (oauth-client-where opts) changes))
+  (apply t2/update! :model/OAuthClient (conj (oauth-client-kv-args opts) changes)))
 
 ;;; ----------------------------------------------- OAuthAccessToken ------------------------------------------------
 
@@ -94,9 +91,13 @@
    [:map {:closed true}
     [:columns {:optional true} [:sequential ::oauth-server.schema/oauth-access-token.column]]]])
 
-(defn- oauth-access-token-where
+(defn- oauth-access-token-args
   [opts]
-  (into [:and] (map (fn [[column value]] (revocable-filter-clause column value))) (dissoc opts :columns)))
+  (u.query/opts->args opts {:set-columns revocable-set-columns}))
+
+(defn- oauth-access-token-kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns revocable-set-columns}))
 
 (defn- ->oauth-access-token-model
   [columns]
@@ -104,10 +105,10 @@
     (into [:model/OAuthAccessToken] columns)
     :model/OAuthAccessToken))
 
-(mu/defn select-one-oauth-access-token :- [:maybe ::oauth-server.schema/oauth-access-token]
+(mu/defn select-one-oauth-access-token :- [:maybe ::oauth-server.schema/oauth-access-token.partial]
   "The first OAuthAccessToken matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::oauth-access-token-opts]]
-  (t2/select-one (->oauth-access-token-model columns) (oauth-access-token-where opts)))
+  (apply t2/select-one (->oauth-access-token-model columns) (oauth-access-token-args opts)))
 
 (mu/defn insert-oauth-access-token! :- ::oauth-server.schema/oauth-access-token
   "Insert the OAuthAccessToken `row` and return the inserted instance."
@@ -118,12 +119,12 @@
   "Apply `changes` to every OAuthAccessToken matching `opts`, returning the number updated."
   [opts    :- [:maybe ::oauth-access-token-opts]
    changes :- ::oauth-server.schema/oauth-access-token.update]
-  (t2/update! :model/OAuthAccessToken (oauth-access-token-where opts) changes))
+  (apply t2/update! :model/OAuthAccessToken (conj (oauth-access-token-kv-args opts) changes)))
 
 (mu/defn delete-oauth-access-tokens! :- :int
   "Delete every OAuthAccessToken matching `opts`, returning the number deleted."
   [opts :- [:maybe ::oauth-access-token-opts]]
-  (t2/delete! :model/OAuthAccessToken (oauth-access-token-where opts)))
+  (apply t2/delete! :model/OAuthAccessToken (oauth-access-token-args opts)))
 
 ;;; ----------------------------------------------- OAuthRefreshToken -----------------------------------------------
 
@@ -142,9 +143,13 @@
    [:map {:closed true}
     [:columns {:optional true} [:sequential ::oauth-server.schema/oauth-refresh-token.column]]]])
 
-(defn- oauth-refresh-token-where
+(defn- oauth-refresh-token-args
   [opts]
-  (into [:and] (map (fn [[column value]] (revocable-filter-clause column value))) (dissoc opts :columns)))
+  (u.query/opts->args opts {:set-columns revocable-set-columns}))
+
+(defn- oauth-refresh-token-kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns revocable-set-columns}))
 
 (defn- ->oauth-refresh-token-model
   [columns]
@@ -152,10 +157,10 @@
     (into [:model/OAuthRefreshToken] columns)
     :model/OAuthRefreshToken))
 
-(mu/defn select-one-oauth-refresh-token :- [:maybe ::oauth-server.schema/oauth-refresh-token]
+(mu/defn select-one-oauth-refresh-token :- [:maybe ::oauth-server.schema/oauth-refresh-token.partial]
   "The first OAuthRefreshToken matching `opts`, or nil."
   [{:keys [columns] :as opts} :- [:maybe ::oauth-refresh-token-opts]]
-  (t2/select-one (->oauth-refresh-token-model columns) (oauth-refresh-token-where opts)))
+  (apply t2/select-one (->oauth-refresh-token-model columns) (oauth-refresh-token-args opts)))
 
 (mu/defn insert-oauth-refresh-token! :- ::oauth-server.schema/oauth-refresh-token
   "Insert the OAuthRefreshToken `row` and return the inserted instance."
@@ -166,12 +171,12 @@
   "Apply `changes` to every OAuthRefreshToken matching `opts`, returning the number updated."
   [opts    :- [:maybe ::oauth-refresh-token-opts]
    changes :- ::oauth-server.schema/oauth-refresh-token.update]
-  (t2/update! :model/OAuthRefreshToken (oauth-refresh-token-where opts) changes))
+  (apply t2/update! :model/OAuthRefreshToken (conj (oauth-refresh-token-kv-args opts) changes)))
 
 (mu/defn delete-oauth-refresh-tokens! :- :int
   "Delete every OAuthRefreshToken matching `opts`, returning the number deleted."
   [opts :- [:maybe ::oauth-refresh-token-opts]]
-  (t2/delete! :model/OAuthRefreshToken (oauth-refresh-token-where opts)))
+  (apply t2/delete! :model/OAuthRefreshToken (oauth-refresh-token-args opts)))
 
 ;;; --------------------------------------------- OAuthAuthorizationCode --------------------------------------------
 
@@ -189,14 +194,18 @@
    [:map {:closed true}
     [:columns {:optional true} [:sequential ::oauth-server.schema/oauth-authorization-code.column]]]])
 
-(defn- oauth-authorization-code-where
+(defn- oauth-authorization-code-args
   [opts]
-  (into [:and] (map (fn [[column value]] (equality-filter-clause column value))) (dissoc opts :columns)))
+  (u.query/opts->args opts {:set-columns revocable-set-columns}))
 
-(mu/defn select-one-oauth-authorization-code :- [:maybe ::oauth-server.schema/oauth-authorization-code]
+(defn- oauth-authorization-code-kv-args
+  [opts]
+  (u.query/opts->kv-args opts {:set-columns revocable-set-columns}))
+
+(mu/defn select-one-oauth-authorization-code :- [:maybe ::oauth-server.schema/oauth-authorization-code.partial]
   "The first OAuthAuthorizationCode matching `opts`, or nil."
   [opts :- [:maybe ::oauth-authorization-code-opts]]
-  (t2/select-one :model/OAuthAuthorizationCode (oauth-authorization-code-where opts)))
+  (apply t2/select-one :model/OAuthAuthorizationCode (oauth-authorization-code-args opts)))
 
 (mu/defn insert-oauth-authorization-code! :- ::oauth-server.schema/oauth-authorization-code
   "Insert the OAuthAuthorizationCode `row` and return the inserted instance."
@@ -206,7 +215,7 @@
 (mu/defn delete-oauth-authorization-codes! :- :int
   "Delete every OAuthAuthorizationCode matching `opts`, returning the number deleted."
   [opts :- [:maybe ::oauth-authorization-code-opts]]
-  (t2/delete! :model/OAuthAuthorizationCode (oauth-authorization-code-where opts)))
+  (apply t2/delete! :model/OAuthAuthorizationCode (oauth-authorization-code-args opts)))
 
 ;;; ------------------------------------------------ OAuthClientEvent -----------------------------------------------
 
