@@ -121,23 +121,28 @@
                 http/request                        (fn [req] {:body req})]
     (thunk)))
 
-(defn- request-log-data!
-  "Run a Claude request with HTTP and streaming stubbed out, and return the data
-  [[adapter/stream!]]'s `with-span` line logged for it, as a map.
+(defn- logged-span-data!
+  "Run `thunk` with HTTP and streaming stubbed out, and return the data [[adapter/stream!]]'s `with-span`
+  line logged for it, as a map.
 
   The log rather than the span: `u.o11y/with-span` renders its whole map into the line but hands only
   `:attributes` to clj-otel, so these keys reach the log and nothing else (BOT-2168). The line is
   `\"<span-name> (<ms>ms) <map>\"`, so the map is everything from the first brace on."
-  [opts]
+  [thunk]
   (let [messages (mt/with-log-messages-for-level [messages [metabase.metabot.self.adapter :info]]
-                   (streamed-request!
-                    #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
-                                                :credentials {:api-key  "sk-ant-test"
-                                                              :base-url "https://api.anthropic.com"}}
-                                               opts)))
+                   (streamed-request! thunk)
                    (mapv :message (messages)))
-        line     (m/find-first #(re-find #"^:metabot\.anthropic/request " %) messages)]
+        line     (m/find-first #(re-find #"^:metabot\.[a-z]+/request " %) messages)]
     (some-> line (subs (str/index-of line "{")) edn/read-string)))
+
+(defn- request-log-data!
+  "[[logged-span-data!]] for a Claude request."
+  [opts]
+  (logged-span-data!
+   #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
+                               :credentials {:api-key  "sk-ant-test"
+                                             :base-url "https://api.anthropic.com"}}
+                              opts))))
 
 (defn- captured-counts!
   "The `:msg-count` / `:tool-count` [[adapter/stream!]] reported for `opts`."
@@ -150,6 +155,21 @@
     (is (= {:model "claude-haiku-4-5" :msg-count 1 :tool-count 0}
            (-> (request-log-data! {:input [{:role :user :content "hi"}]})
                (select-keys [:model :msg-count :tool-count]))))))
+
+(deftest span-attrs-values-are-strings-test
+  (testing "`:family` is stringified at the call site, like every other keyword-valued attribute in the
+            codebase (`(name driver)`, `(name context)`, ...). A bare keyword renders `:anthropic` in the
+            log, and once BOT-2168 hands this map to clj-otel it would export as \":anthropic\" — clj-otel
+            `str`s attribute values, so the colon would survive into the trace"
+    (doseq [[model expected] [["anthropic/my-deployment" "anthropic"]
+                              ["openai/my-deployment"    "openai"]]]
+      (testing model
+        (is (= expected
+               (:family (logged-span-data!
+                         #(azure/azure-raw {:model       model
+                                            :input       [{:role :user :content "hi"}]
+                                            :credentials {:api-key  "az-test"
+                                                          :base-url "https://r.services.ai.azure.com"}})))))))))
 
 (deftest counts-describe-the-callers-request-test
   (testing "tool-count is the tools the caller offered, not the tools that reach the wire"
