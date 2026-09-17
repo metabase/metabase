@@ -13,12 +13,11 @@ import {
   sessionApi,
 } from "metabase/api/session";
 import { getUser, refetchCurrentUser } from "metabase/current-user";
-import { openNavbar } from "metabase/redux/app";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { navigate } from "metabase/router";
 import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
-import { isSmallScreen, reload } from "metabase/utils/dom";
+import { reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import { loadLocalization } from "metabase/utils/localization";
 import type { LoginData } from "metabase-types/api";
@@ -59,9 +58,6 @@ export const completeLogin = createAsyncThunk(
   COMPLETE_LOGIN,
   async (_, { dispatch }) => {
     await dispatch(refreshSession()).unwrap();
-    if (!isSmallScreen()) {
-      dispatch(openNavbar());
-    }
   },
 );
 

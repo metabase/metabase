@@ -14,20 +14,7 @@ import type {
 } from "metabase/redux/store";
 import { LOCATION_CHANGE, navigate } from "metabase/router";
 import { shouldOpenInBlankWindow } from "metabase/urls";
-import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
-
-interface LocationChangeAction {
-  type: string; // "@@router/LOCATION_CHANGE"
-  payload: {
-    pathname: string;
-    search: string;
-    hash: string;
-    action: string;
-    key: string;
-    state?: any;
-    query?: any;
-  };
-}
+import { openInBlankWindow } from "metabase/utils/dom";
 
 const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
@@ -60,45 +47,6 @@ const errorPage = handleActions(
     [LOCATION_CHANGE]: () => null,
   },
   null,
-);
-
-// regexr.com/7r89i
-// Word boundaries are added so partial matches don't collapse the navbar
-// e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
-const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
-
-export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
-  return (
-    !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
-  );
-}
-
-export const OPEN_NAVBAR = "metabase/app/OPEN_NAVBAR";
-export const CLOSE_NAVBAR = "metabase/app/CLOSE_NAVBAR";
-export const TOGGLE_NAVBAR = "metabase/app/TOGGLE_NAVBAR";
-
-export const openNavbar = createAction(OPEN_NAVBAR);
-export const closeNavbar = createAction(CLOSE_NAVBAR);
-export const toggleNavbar = createAction(TOGGLE_NAVBAR);
-
-const isNavbarOpen = handleActions(
-  {
-    [OPEN_NAVBAR]: () => true,
-    [TOGGLE_NAVBAR]: (isOpen) => !isOpen,
-    [CLOSE_NAVBAR]: () => false,
-    [LOCATION_CHANGE]: (
-      prevState: boolean,
-      { payload }: LocationChangeAction,
-    ) => {
-      if (payload.state?.preserveNavbarState) {
-        return prevState;
-      }
-
-      return isNavbarOpenForPathname(payload.pathname, prevState);
-    },
-  },
-  true,
 );
 
 export const OPEN_DIAGNOSTICS = "metabase/app/OPEN_DIAGNOSTIC_MODAL";
@@ -167,7 +115,6 @@ export const { setTempSetting } = tempStorageSlice.actions;
 export default combineReducers({
   detailView,
   errorPage,
-  isNavbarOpen,
   navSection,
   isDndAvailable: (initValue: unknown) => {
     if (typeof initValue === "boolean") {

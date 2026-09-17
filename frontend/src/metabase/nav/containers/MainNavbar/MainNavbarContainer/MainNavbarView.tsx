@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -20,6 +21,8 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
+import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
+import NewItemButton from "metabase/nav/components/NewItemButton";
 import { NavSectionSwitcher } from "metabase/nav/containers/MainNavbar/NavSectionSwitcher";
 import { OfficialNav } from "metabase/nav/containers/MainNavbar/OfficialNav";
 import {
@@ -33,9 +36,8 @@ import {
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
 import { useSetting, useUserSetting } from "metabase/settings";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Group, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
@@ -57,9 +59,9 @@ import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
+import S from "./MainNavbarView.module.css";
 
 type Props = {
-  isOpen: boolean;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
@@ -68,7 +70,6 @@ type Props = {
   canAccessTenantSpecificCollections: boolean;
   canCreateSharedCollection: boolean;
   showExternalCollectionsSection: boolean;
-  handleCloseNavbar: () => void;
   handleLogout: () => void;
   handleCreateNewCollection: () => void;
   reorderBookmarks: ({
@@ -88,7 +89,6 @@ export function MainNavbarView({
   hasDataAccess,
   reorderBookmarks,
   handleCreateNewCollection,
-  handleCloseNavbar,
   sharedTenantCollections,
   canAccessTenantSpecificCollections,
   canCreateSharedCollection,
@@ -119,11 +119,8 @@ export function MainNavbarView({
     "non-entity": nonEntityItem,
   } = _.indexBy(selectedItems, (item) => item.type);
 
-  const onItemSelect = useCallback(() => {
-    if (isSmallScreen()) {
-      handleCloseNavbar();
-    }
-  }, [handleCloseNavbar]);
+  // Kept as a no-op hook point: the rail no longer closes on selection.
+  const onItemSelect = useCallback(() => {}, []);
 
   const handleHomeClick = useCallback(
     (event: MouseEvent) => {
@@ -179,6 +176,7 @@ export function MainNavbarView({
   const showOtherUsersCollections = useShowOtherUsersCollections();
 
   const { section } = useNavSection();
+  const isUnofficial = section === "unofficial";
 
   const collectionsHeading = showExternalCollectionsSection
     ? t`Internal Collections`
@@ -187,7 +185,7 @@ export function MainNavbarView({
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
-        <div>
+        <div className={cx({ [S.hasFooter]: isUnofficial })}>
           <NavSectionSwitcher />
 
           {section === "official" && (
@@ -198,8 +196,15 @@ export function MainNavbarView({
             />
           )}
 
-          {section === "unofficial" && (
+          {isUnofficial && (
             <>
+              <SidebarSection>
+                <Group gap="xs">
+                  <MetabotAppBarButton />
+                  <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+                </Group>
+              </SidebarSection>
+
               <SidebarSection>
                 <PaddedSidebarLink
                   isSelected={nonEntityItem?.url === "/"}
@@ -353,6 +358,12 @@ export function MainNavbarView({
             </ErrorBoundary>
           </SidebarSection>
         </div>
+
+        {isUnofficial && (
+          <Box className={S.footer}>
+            <NewItemButton />
+          </Box>
+        )}
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />

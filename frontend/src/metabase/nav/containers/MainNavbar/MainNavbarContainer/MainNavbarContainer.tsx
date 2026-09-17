@@ -59,12 +59,9 @@ interface Props extends MainNavbarProps {
 
 function MainNavbarContainer({
   selectedItems,
-  isOpen,
   currentUser,
   location,
   params,
-  openNavbar,
-  closeNavbar,
   logout,
   onChangeLocation,
   ...props
@@ -209,13 +206,11 @@ function MainNavbarContainer({
       <MainNavbarView
         {...props}
         bookmarks={bookmarks}
-        isOpen={isOpen}
         collections={collectionTree}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}
         handleCreateNewCollection={onCreateNewCollection}
-        handleCloseNavbar={closeNavbar}
         handleLogout={logout}
         sharedTenantCollections={sharedTenantCollections}
         canAccessTenantSpecificCollections={canAccessTenantSpecificCollections}

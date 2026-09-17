@@ -9,7 +9,7 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";
-import { getIsSavedQuestionChanged, getQuestion } from "metabase/query_builder";
+import { getQuestion } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
@@ -41,36 +41,6 @@ export const getIsDataApp = createSelector([getRouterPath], (path) => {
   return path.startsWith(`${Urls.DATA_APP_ROOT_URL}/`);
 });
 
-export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
-  return path.startsWith("/explore");
-});
-
-export const getIsLogoVisible = createSelector(
-  [selectIsWithinIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
-    return !isEmbeddingIframe || embedOptions.logo;
-  },
-);
-
-export const getIsSearchVisible = createSelector(
-  [selectIsWithinIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
-    return !isEmbeddingIframe || embedOptions.search;
-  },
-);
-
-export const getIsNewButtonVisible = createSelector(
-  [selectIsWithinIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) => {
-    return !isEmbeddingIframe || embedOptions.new_button;
-  },
-);
-
-export const getIsAppSwitcherVisible = createSelector(
-  [selectIsWithinIframe],
-  (isEmbeddingIframe) => !isEmbeddingIframe,
-);
-
 const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
@@ -99,8 +69,6 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 // Paths where collection identity comes from the URL itself, so breadcrumbs
 // can render without needing a question/dashboard/document in redux state.
 const STANDALONE_COLLECTION_BREADCRUMB_PATHS = [/\/collection\//];
-const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
-
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
@@ -147,13 +115,6 @@ export const getIsCollectionPathVisible = createSelector(
   },
 );
 
-export const getIsQuestionLineageVisible = createSelector(
-  [getIsSavedQuestionChanged, getRouterPath],
-  (isSavedQuestionChanged, path) =>
-    isSavedQuestionChanged &&
-    PATHS_WITH_QUESTION_LINEAGE.some((pattern) => pattern.test(path)),
-);
-
 export const getIsNavBarEnabled = createSelector(
   [
     getUser,
@@ -174,31 +135,16 @@ export const getIsNavBarEnabled = createSelector(
   },
 );
 
-const getIsEmbeddedAppBarVisible = createSelector(
-  [
-    getEmbedOptions,
-    getIsQuestionLineageVisible,
-    getIsCollectionPathVisible,
-    getIsNavBarEnabled,
-  ],
-  (
-    embedOptions,
-    isQuestionLineageVisible,
-    isCollectionPathVisible,
-    isNavBarEnabled,
-  ) => {
-    const anyEmbeddedAppBarElementVisible =
-      isNavBarEnabled ||
-      embedOptions.search ||
-      embedOptions.new_button ||
-      embedOptions.logo ||
-      isQuestionLineageVisible ||
-      isCollectionPathVisible;
-    return embedOptions.top_nav && anyEmbeddedAppBarElementVisible;
+const getIsEmbeddedPageHeaderVisible = createSelector(
+  [getEmbedOptions, getIsCollectionPathVisible, getIsNavBarEnabled],
+  (embedOptions, isCollectionPathVisible, isNavBarEnabled) => {
+    const anyEmbeddedHeaderElementVisible =
+      isNavBarEnabled || embedOptions.search || isCollectionPathVisible;
+    return embedOptions.top_nav && anyEmbeddedHeaderElementVisible;
   },
 );
 
-export const getIsAppBarVisible = createSelector(
+export const getIsPageHeaderVisible = createSelector(
   [
     getUser,
     getRouterPath,
@@ -208,7 +154,7 @@ export const getIsAppBarVisible = createSelector(
     getIsMonitorApp,
     getIsEditingDashboard,
     selectIsWithinIframe,
-    getIsEmbeddedAppBarVisible,
+    getIsEmbeddedPageHeaderVisible,
   ],
   (
     currentUser,
@@ -219,13 +165,13 @@ export const getIsAppBarVisible = createSelector(
     isMonitorApp,
     isEditingDashboard,
     isEmbedded,
-    isEmbeddedAppBarVisible,
+    isEmbeddedPageHeaderVisible,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
 
     if (
       !currentUser ||
-      (isEmbedded && !isEmbeddedAppBarVisible) ||
+      (isEmbedded && !isEmbeddedPageHeaderVisible) ||
       isAdminApp ||
       isDataStudioApp ||
       isMonitorApp ||

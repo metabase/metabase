@@ -59,8 +59,10 @@ export function ModelAboutPage() {
       <PaneHeader
         data-testid="model-header"
         icon="model"
-        // The collection lives in the fact rail's "Saved in" row instead.
+        // The collection lives in the fact rail's "Saved in" row instead, and the account
+        // switcher lives in the app-wide page header.
         breadcrumbs={null}
+        showAppSwitcher={false}
         title={<PanelHeaderTitle>{card.name}</PanelHeaderTitle>}
         actions={
           <Button

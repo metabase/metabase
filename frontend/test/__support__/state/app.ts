@@ -2,7 +2,6 @@ import type { AppState } from "metabase/redux/store";
 
 export const createMockAppState = (opts?: Partial<AppState>): AppState => ({
   detailView: null,
-  isNavbarOpen: true,
   navSection: null,
   errorPage: null,
   isDndAvailable: false,

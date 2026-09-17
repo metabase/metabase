@@ -49,7 +49,6 @@ export interface DetailViewState {
 export interface AppState {
   detailView: DetailViewState | null;
   errorPage: AppErrorDescriptor | null;
-  isNavbarOpen: boolean;
   navSection: NavSection | null;
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;

@@ -2,7 +2,6 @@ import type { StoreDashboard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 
 export interface MainNavbarOwnProps {
-  isOpen: boolean;
   location: Location;
   params: {
     slug?: string;
@@ -11,12 +10,7 @@ export interface MainNavbarOwnProps {
   dashboard?: StoreDashboard;
 }
 
-export interface MainNavbarDispatchProps {
-  openNavbar: () => void;
-  closeNavbar: () => void;
-}
-
-export type MainNavbarProps = MainNavbarOwnProps & MainNavbarDispatchProps;
+export type MainNavbarProps = MainNavbarOwnProps;
 
 /**
  * Which half of the app the main rail is showing: curated content (Library plus official
