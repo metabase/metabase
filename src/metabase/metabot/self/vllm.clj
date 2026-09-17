@@ -209,7 +209,6 @@
                                      :method  :post
                                      :path    "/chat/completions"
                                      :as      :json
-                                     :headers {"Content-Type" "application/json"}
                                      :body    (json/encode {:model       model
                                                             :messages    probe-messages
                                                             :tools       [probe-tool]

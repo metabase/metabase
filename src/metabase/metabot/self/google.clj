@@ -467,7 +467,6 @@
   [credentials model]
   (adapter/request! provider {:method      :post
                               :path        (str (model-resource-path credentials model) ":countTokens")
-                              :headers     {"Content-Type" "application/json"}
                               :body        (json/encode count-tokens-probe-body)
                               :credentials credentials}))
 
@@ -502,7 +501,6 @@
   (try
     (adapter/request! provider {:method      :post
                                 :path        (str (model-resource-path credentials model) raw-predict-method)
-                                :headers     {"Content-Type" "application/json"}
                                 :body        "{}"
                                 :credentials credentials})
     (catch Exception e
