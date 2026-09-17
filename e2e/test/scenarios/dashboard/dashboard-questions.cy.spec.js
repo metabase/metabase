@@ -846,9 +846,17 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       cy.log("Move the question to an entirely different dashboard");
+      cy.intercept("GET", "/api/collection/root/items*").as(
+        "getMoveDestinations",
+      );
       H.openQuestionActions("Move");
 
-      H.entityPickerModal().findByText("Orders in a dashboard").click();
+      cy.wait("@getMoveDestinations")
+        .its("response.statusCode")
+        .should("be.within", 200, 299);
+      H.entityPickerModal()
+        .findByText("Orders in a dashboard", { timeout: 10_000 })
+        .click();
       H.entityPickerModal().button("Move").click();
 
       cy.log("Should warn about removing from 2 dashboards");

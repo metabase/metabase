@@ -108,8 +108,19 @@ export function deselectDatasetFromColumnList(datasetName: string) {
 }
 
 export function selectDataset(datasetName: string) {
+  cy.intercept("GET", "/api/search*", (request) => {
+    if (request.query.q === datasetName) {
+      request.alias = "visualizerSearch";
+    }
+  });
+
   cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
+  cy.wait("@visualizerSearch")
+    .its("response.statusCode")
+    .should("be.within", 200, 299);
+  dataImporter()
+    .findByTestId("datasets-list")
+    .findAllByText(datasetName)
     .first()
     .closest("[data-testid='swap-dataset-button']")
     .should("not.have.attr", "aria-pressed", "true")
