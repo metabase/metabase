@@ -14,7 +14,7 @@
 
 (mu/defn insert-table-index!
   "Insert the TableIndex `row` and return the inserted instance."
-  [row :- ::indexes.schema/table-index.update]
+  [row :- ::indexes.schema/table-index.create]
   (t2/insert-returning-instance! :model/TableIndex row))
 
 (mu/defn set-table-index-structured!

@@ -179,7 +179,7 @@
 
 (mu/defn insert-table!
   "Insert `table` and return the new instance."
-  [table :- ::warehouse-schema.schema/table.update]
+  [table :- ::warehouse-schema.schema/table.create]
   (t2/insert-returning-instance! :model/Table table))
 
 (mu/defn update-table!
@@ -401,7 +401,7 @@
 
 (mu/defn insert-fields!
   "Insert the Field `rows` and return their IDs."
-  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
+  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
   (t2/insert-returning-pks! :model/Field rows))
 
 (mu/defn update-field!

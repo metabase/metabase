@@ -123,7 +123,8 @@
       (and (= model :model/Card) (map? (:object revision)) (not (:card_schema (:object revision))))
       (update :object assoc :card_schema queries/starting-card-schema-version)
 
-      model (update :object (partial mi/do-after-select model)))))
+      (and model (map? (:object revision)))
+      (update :object (partial mi/do-after-select model)))))
 
 (defn- delete-old-revisions!
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."

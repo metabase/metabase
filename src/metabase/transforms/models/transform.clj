@@ -280,7 +280,7 @@
   [_model _k transforms]
   (if-not (seq transforms)
     transforms
-    (let [transform-ids (into #{} (map :id) transforms)
+    (let [transform-ids (into #{} (keep :id) transforms)
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
       (for [{transform-id :id :as transform} transforms]
         (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
@@ -299,7 +299,7 @@
   [_model _k transforms]
   (if-not (seq transforms)
     transforms
-    (let [transform-ids (into #{} (map :id) transforms)
+    (let [transform-ids (into #{} (keep :id) transforms)
           tag-associations (transforms.db/select-transform-transform-tags {:transform_id (set transform-ids) :order-by [:position]})
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]

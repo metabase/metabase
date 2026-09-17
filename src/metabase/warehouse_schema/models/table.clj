@@ -586,7 +586,8 @@
     (merge fields settings segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (:name (warehouses.db/select-one-database {:id (:db_id table) :columns [:name]}))]
+  (let [db-name (when-let [database-id (:db_id table)]
+                  (:name (warehouses.db/select-one-database {:id database-id :columns [:name]})))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})

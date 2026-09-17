@@ -21,9 +21,11 @@
                                        (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
-       (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
-                                                (swap! update-operations conj [(name model) id updates])
-                                                (count updates))]
+       (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
+                                                (let [updates (last args)
+                                                      id      (if (= 2 (count args)) (first args) (second args))]
+                                                  (swap! update-operations conj [(name model) id updates])
+                                                  (count updates)))]
          (#'sync-metadata/update-field-metadata-if-needed!
           db
           table

@@ -307,8 +307,14 @@
    [:query                  {:optional true} [:maybe ::query.query]]])
 
 (mr/def ::query.create
-  "What an insert of a Query accepts."
-  (mr/schema ::query.columns))
+  "What an insert of a Query accepts: unlike a selected row, the query text, its hash and its execution time are all
+  required, and the query is whatever the query processor just ran."
+  [:map {:closed true}
+   [:query                  [:or
+                             ::lib-be.schema/empty-query
+                             :metabase.query-processor.schema/any-query]]
+   [:query_hash             bytes?]
+   [:average_execution_time number?]])
 
 (mr/def ::query.update
   "What an update of a Query accepts: `::query.columns` minus `:query_hash`, the primary key."
@@ -319,9 +325,10 @@
   (into [:enum] (mut/keys (mr/schema ::query.columns))))
 
 (mr/def ::query.partial
-  "A Query row as selected, where a `:columns` narrowing may have left out any column. Every key of `::query` is
-  already optional, so this is the same schema."
-  ::query)
+  "A Query row as selected, where a `:columns` narrowing may have left out any column. The `:query` column is typed
+  loosely here because a stored query is whatever was run when the row was written, including legacy MBQL; writes
+  still go through `::query.create`."
+  [:merge ::query [:map {:closed true} [:query {:optional true} [:maybe [:map]]]]])
 
 (mr/def ::query-execution.lens-params
   "The `:lens_params` column of a QueryExecution, decoded."

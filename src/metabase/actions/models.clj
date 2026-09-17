@@ -240,14 +240,17 @@
    primary-key shorthand), and returns the matching Actions."
   [options]
   (if (and (= 1 (count options)) (not (keyword? (first options))))
-    (actions.db/select-actions {:id (first options)})
+    (when-let [id (first options)]
+      (actions.db/select-actions {:id id}))
     (let [opts (apply hash-map options)
           {:keys [id entity_id model_id type archived]} opts]
       (cond
-        (contains? opts :id)        (if (false? archived)
-                                      (actions.db/select-actions {:id id, :archived false})
-                                      (actions.db/select-actions {:id id}))
-        (contains? opts :entity_id) (actions.db/select-actions {:entity_id entity_id})
+        (contains? opts :id)        (when id
+                                      (if (false? archived)
+                                        (actions.db/select-actions {:id id, :archived false})
+                                        (actions.db/select-actions {:id id})))
+        (contains? opts :entity_id) (when entity_id
+                                      (actions.db/select-actions {:entity_id entity_id}))
         (and (contains? opts :model_id) (contains? opts :type))
         (actions.db/select-unarchived-non-http-actions-for-model model_id)
         (contains? opts :type)      (actions.db/select-actions {:type type})

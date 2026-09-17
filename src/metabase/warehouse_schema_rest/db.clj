@@ -45,7 +45,7 @@
 
 (mu/defn insert-dimension!
   "Insert the Dimension `row`."
-  [row :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:field_id :type :name :human_readable_field_id])]
+  [row :- (mut/select-keys ::warehouse-schema.schema/dimension.create [:field_id :type :name :human_readable_field_id])]
   (t2/insert! :model/Dimension row))
 
 (mu/defn update-dimension!

@@ -35,7 +35,7 @@
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
-  (:average_execution_time (queries.db/select-one-query {:query_hash query-hash :columns [:average_execution_time]})))
+  (:average_execution_time (queries.db/select-one-query {:query_hash query-hash})))
 
 (def ^:private smoothing-factor
   "The weight of the latest execution time in the exponential rolling average formula:

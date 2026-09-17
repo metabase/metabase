@@ -439,7 +439,8 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (warehouse-schema.db/select-one-table {:id table_id}))
+  (when table_id
+    (warehouse-schema.db/select-one-table {:id table_id})))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :parent]
   [_model k fields]

@@ -34,9 +34,12 @@
     [:limit    {:optional true} ms/PositiveInt]
     [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(defn- ->model
-  [columns]
-  (u.query/model-with-columns :model/Revision columns))
+(mu/defn- ->model
+  "`columns`, narrowed to a Toucan 2 select target. `:model` rides along with any narrowed select: the after-select
+  hook resolves it to run that model's own `post-select` over the recorded `:object`, and without it the object comes
+  back as raw JSON."
+  [columns :- [:maybe [:sequential :keyword]]]
+  (u.query/model-with-columns :model/Revision (when (seq columns) (distinct (cons :model columns)))))
 
 (defn- ->args
   [opts]
