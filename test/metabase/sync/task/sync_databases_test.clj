@@ -271,7 +271,7 @@
                             :ran-update-field-values? update-field-values-ran?})))))))
 
 #_(defn- cron-schedule-for-next-year []
-    (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
+    (format "0 15 10 * * ? %d" (inc (u.date/extract {:start-of-week :sunday} :year))))
 
 ;; this test fails all the time -- disabled for now until I figure out how to fix it - Cam
 #_(deftest check-sync-tasks-run-test
