@@ -166,13 +166,13 @@
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User {:where [:= :id (long user-id)]}))
+  (t2/exists? :model/User :id (long user-id)))
 
 (mu/defn entity-exists?
   "Whether a `model` row with `id` exists."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/exists? model {:where [:= :id (long id)]}))
+  (t2/exists? model :id (long id)))
 
 (mu/defn index-metadata-for-engine
   "The SearchIndexMetadata rows of `engine`."
@@ -184,9 +184,7 @@
   [table    :- [:or :keyword :string]
    model    :- [:or :keyword :string]
    model-id :- [:or :string ms/PositiveInt]]
-  (t2/select-one table {:where [:and
-                                [:= :model [:auto/param model]]
-                                [:= :model_id [:auto/param model-id]]]}))
+  (t2/select-one table :model [:auto/param model] :model_id [:auto/param model-id]))
 
 (mu/defn delete-all-rows!
   "Delete every row of the search index `table`."
@@ -198,9 +196,7 @@
   [table      :- [:or :keyword :string]
    model      :- [:or :keyword :string]
    model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
-  (t2/delete! table {:where [:and
-                             [:= :model [:auto/param model]]
-                             [:in :model_id [:auto/param model-ids]]]}))
+  (t2/delete! table :model [:auto/param model] :model_id [:in model-ids]))
 
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
@@ -216,7 +212,7 @@
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
-  (t2/exists? :information_schema.tables {:where [:= :table_name [:auto/param table-name]]}))
+  (t2/exists? :information_schema.tables :table_name [:auto/param table-name]))
 
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
@@ -271,13 +267,13 @@
 (mu/defn delete-index-metadata-by-version!
   "Delete the SearchIndexMetadata rows of `version`."
   [version :- :string]
-  (t2/delete! :model/SearchIndexMetadata {:where [:= :version [:auto/param version]]}))
+  (t2/delete! :model/SearchIndexMetadata :version [:auto/param version]))
 
 (mu/defn delete-index-metadata-by-name!
   "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
-  (t2/delete! :conn conn :model/SearchIndexMetadata {:where [:= :index_name [:auto/param index-name]]}))
+  (t2/delete! :conn conn :model/SearchIndexMetadata :index_name [:auto/param index-name]))
 
 (mu/defn delete-non-active-index-metadata!
   "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
@@ -411,7 +407,7 @@
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, or nil."
   []
-  (t2/select-pks-set :model/Database {:where [:= :router_database_id nil]}))
+  (t2/select-pks-set :model/Database :router_database_id nil))
 
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."

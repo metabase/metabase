@@ -41,11 +41,11 @@
         (is (zero? (search.db/delete-expired-pending-index-metadata! injection (t/offset-date-time))))
         (is (= 1 (count (search.db/index-metadata engine version "en")))))
       (testing "an injected index-name deletes nothing"
-        (is (zero? (search.db/delete-index-metadata! engine version "en" injection)))
+        (is (zero? (search.db/delete-non-active-index-metadata! engine version "en" injection)))
         (is (= 1 (count (search.db/index-metadata engine version "en")))))
       (testing "an injected version retires nothing"
         (is (zero? (search.db/retire-active-index-metadata! engine injection "en")))
         (is (= :pending (:status (first (search.db/index-metadata engine version "en"))))))
       (testing "the real coordinates still delete the row"
-        (is (= 1 (search.db/delete-index-metadata! engine version "en" index-1)))
+        (is (= 1 (search.db/delete-non-active-index-metadata! engine version "en" index-1)))
         (is (= [] (search.db/index-metadata engine version "en")))))))
