@@ -29,6 +29,7 @@
                              :native_search_terms}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
           [column {:optional true} ::h2x/expr])))
+
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
   matching `where-clause`, or every row when it is nil.
@@ -119,11 +120,12 @@
   [table-name :- [:or :keyword :string]]
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
-;; `IF EXISTS` cannot reliably report whether it dropped a table: PostgreSQL emits only a JDBC warning, which Toucan
-;; does not expose, and H2 emits nothing. Let an absent table throw so callers can detect races.
 (mu/defn drop-search-index-table!
   "Drop the search index table named `table-name`, throwing if it is already gone."
   [table-name :- [:or :keyword :string]]
+  ;; `IF EXISTS` cannot reliably report whether it dropped a table.
+  ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
+  ;; Let an absent table throw so callers can detect races.
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
@@ -274,8 +276,7 @@
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
 (mu/defn delete-non-active-index-metadata!
-  "Delete the SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name` in any
-  non-active state (pending or retired)."
+  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string

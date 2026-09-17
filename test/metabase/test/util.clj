@@ -1002,8 +1002,8 @@
               reindex?        (some (comp search-relevant? first) models)]
           (doseq [[model pk] models]
             (delete-new-rows! model pk (get model->old-max-id model)))
-          ;; Search has no delete hook, so the body may already have deleted a row while leaving its indexed document
-          ;; behind. Reindex whenever the declared cleanup scope can affect search, even when the final delete is empty.
+          ;; Search has no delete hook, so a row the body deleted may still have its document in the index.
+          ;; Reindex whenever the cleanup scope touches search, even when nothing is left to delete here.
           (when reindex?
             (reindex-search-index!)))))))
 
