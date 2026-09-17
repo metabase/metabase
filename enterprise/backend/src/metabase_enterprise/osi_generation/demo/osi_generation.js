@@ -163,7 +163,7 @@ function statusLabel(status) {
     approved: "Approved",
     "approved-invalidated": "Approved · source changed",
     generated: "Generated",
-    invalidated: "Source changed",
+    invalidated: "Regenerate & reindex",
     missing: "Missing",
     "rewrite-requested": "Rewrite requested",
   }[status];
@@ -249,7 +249,7 @@ function renderEntities() {
   const visible = filteredEntities();
   const totals = Object.fromEntries(["missing", "generated", "invalidated", "approved", "approved-invalidated", "rewrite-requested"].map((key) => [key, 0]));
   state.entities.forEach((entity) => { totals[entityStatus(entity)] += 1; });
-  els.counts.textContent = `${state.entities.length} items · ${totals.missing} missing · ${totals.generated} generated · ${totals.invalidated} source changed · ${totals.approved} approved · ${totals["approved-invalidated"]} approved + changed · ${totals["rewrite-requested"]} queued`;
+  els.counts.textContent = `${state.entities.length} items · ${totals.missing} missing · ${totals.generated} generated · ${totals.invalidated} regenerate + reindex · ${totals.approved} approved · ${totals["approved-invalidated"]} approved + changed · ${totals["rewrite-requested"]} queued`;
 
   if (!visible.length) {
     els.entityList.innerHTML = '<div class="empty">No Library items match these filters.</div>';
@@ -935,8 +935,8 @@ els.saveDescription.addEventListener("click", async () => {
     els.promptDisclosure.dataset.loadedFor = "";
     if (els.promptDisclosure.open) await loadRenderedPrompt();
     showToast(entityStatus(refreshed).startsWith("approved")
-      ? "Source updated; approved context remains protected"
-      : "Source updated; context is now eligible for regeneration");
+      ? "Source updated; approved context remains protected and index sync was requested"
+      : "Source updated; regeneration and index sync were requested");
   } catch (error) {
     showToast(error.message, true);
   } finally {

@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.entity-retrieval.mirror :as entity-retrieval.mirror]
    [metabase.entity-retrieval.spec :as spec]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.permissions.core :as perms]
@@ -74,8 +75,17 @@
       (is (= :invalidated
              (#'osi-generation/context-state entity {:data_source :metabot, :basis nil}))))))
 
+(deftest generated-context-state-changes-when-description-changes-test
+  (with-redefs [spec/entity-basis (fn [_projection value]
+                                    (select-keys value [:description]))]
+    (is (= :invalidated
+           (#'osi-generation/context-state
+            {:description "Current description"}
+            {:data_source :metabot, :basis {:description "Previous description"}})))))
+
 (deftest update-library-description-test
-  (let [update-call (atom nil)]
+  (let [update-call (atom nil)
+        sync-call   (atom nil)]
     (with-redefs [spec/member-entity (fn [projection entity-type entity-id]
                                        (is (= :osi-context projection))
                                        (is (= "metric" entity-type))
@@ -86,10 +96,13 @@
                                             :model/Card)
                   t2/update! (fn [& args]
                                (reset! update-call args)
-                               1)]
+                               1)
+                  entity-retrieval.mirror/request-entity-sync! (fn [& args]
+                                                                 (reset! sync-call args))]
       (is (= {:updated 1}
              (#'osi-generation/update-library-description! "metric" 7 "Changed source")))
-      (is (= [:model/Card :id 7 {:description "Changed source"}] @update-call)))))
+      (is (= [:model/Card :id 7 {:description "Changed source"}] @update-call))
+      (is (= ["metric" 7] @sync-call)))))
 
 (deftest generation-prompt-test
   (let [context {:entity_type "table", :entity_local_id 2, :data_source :metabot

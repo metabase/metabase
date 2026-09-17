@@ -14,6 +14,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.config.core :as config]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.entity-retrieval.mirror :as entity-retrieval.mirror]
    [metabase.entity-retrieval.spec :as spec]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
@@ -120,6 +121,10 @@
         model  (api/check-404 (spec/entity-type->model (:entity_type entity)))
         updated (t2/update! model :id (:entity_local_id entity) {:description description})]
     (api/check-500 (= 1 updated))
+    ;; Source description changes bypass the OsiAiContext model hooks, so request the same targeted
+    ;; reconciliation those hooks use. This demo endpoint should not leave its visible index stale until
+    ;; the periodic full-reconcile backstop runs.
+    (entity-retrieval.mirror/request-entity-sync! entity-type entity-local-id)
     {:updated updated}))
 
 (defn- generation-prompt
