@@ -123,7 +123,8 @@
        str/split-lines
        (filter #(re-find #"\.clj[cs]?$" %))))
 
-(def ^:private source-root #"^(?:enterprise/backend/)?(?:src|test)/|^modules/drivers/[^/]+/(?:src|test)/")
+(def ^:private source-root
+  #"^(?:enterprise/backend/)?(?:src|test)/|^modules/drivers/[^/]+/(?:src|test)/|^modules/[^/]+/(?:src|test)/")
 
 (defn- file->ns
   "The namespace a source or test file declares, going by its path."

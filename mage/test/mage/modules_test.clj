@@ -411,14 +411,21 @@
 
 (deftest explorer-file->module-test
   (let [file->module   #'module-explorer/file->module
-        prefix->module (modules/build-prefix->module '{lib {} lib.schema {} driver {}})]
+        prefix->module (modules/build-prefix->module
+                        '{lib                                   {}
+                          lib.schema                            {}
+                          driver                                {}
+                          enterprise/search.embeddings.embedder {:ns-prefix "metabase-enterprise.embedder"}})]
     (testing "files resolve through the declared prefixes, tests included"
       (is (= 'lib.schema (file->module prefix->module "src/metabase/lib/schema/join.cljc")))
       (is (= 'lib.schema (file->module prefix->module "test/metabase/lib/schema_test.cljc")))
       (is (= 'lib (file->module prefix->module "src/metabase/lib/core.cljc"))))
     (testing "driver-plugin files belong to the driver module regardless of namespace"
       (is (= 'driver (file->module prefix->module "modules/drivers/mysql/src/metabase/driver/mysql.clj")))
-      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))))
+      (is (= 'driver (file->module prefix->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))
+    (testing "other plugin files resolve through their namespace"
+      (is (= 'enterprise/search.embeddings.embedder
+             (file->module prefix->module "modules/embedder/src/metabase_enterprise/embedder/model.clj"))))))
 
 (deftest explorer-page-test
   (let [html (module-explorer/page {:modules [{:id "</script>"}]})]
