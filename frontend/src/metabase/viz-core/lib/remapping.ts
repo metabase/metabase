@@ -8,9 +8,9 @@ import type {
 } from "../types";
 
 const getRemapping = (col: RemappingHydratedDatasetColumn) => {
-  // keep an existing Map so extractRemappedColumns is idempotent
+  // copy existing entries so this is idempotent, without mutating the caller's Map
   if (col.remapping) {
-    return col.remapping;
+    return new Map(col.remapping);
   }
   if (col.remapped_to != null) {
     return new Map();

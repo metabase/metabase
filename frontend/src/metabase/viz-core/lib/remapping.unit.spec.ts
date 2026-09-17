@@ -82,6 +82,26 @@ describe("extractRemappedColumns", () => {
     );
   });
 
+  it("does not mutate the input column's remapping Map", () => {
+    const existingRemapping = new Map([[1, "Type A"]]);
+    const data = remappedCategoryData();
+    data.cols[0] = createMockColumn({
+      ...data.cols[0],
+      remapping: existingRemapping,
+    });
+
+    const result = extractRemappedColumns(data);
+
+    expect(existingRemapping).toEqual(new Map([[1, "Type A"]]));
+    expect(result.cols[0]?.remapping).not.toBe(existingRemapping);
+    expect(result.cols[0]?.remapping).toEqual(
+      new Map([
+        [1, "Type A"],
+        [2, "Type B"],
+      ]),
+    );
+  });
+
   it("leaves columns without remapped_to unchanged", () => {
     const data = createMockDatasetData({
       cols: [
