@@ -2,6 +2,7 @@ import { merge } from "icepick";
 import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import type {
   MetabaseColor,
   MetabaseComponentTheme,
@@ -12,6 +13,7 @@ import {
   DEFAULT_SDK_FONT_SIZE,
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
+import { getEmbeddingCartesianColors } from "metabase/embedding-sdk/theme/cartesian-colors";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
   SDK_MISSING_COLORS_FALLBACK,
@@ -24,6 +26,7 @@ import type {
   MetabaseColorKey,
 } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
@@ -41,12 +44,24 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
  * into a Mantine theme override for internal use.
  */
 export function getEmbeddingThemeOverride(
-  theme: MetabaseTheme,
+  userTheme: MetabaseTheme,
   font: string | undefined,
   whitelabeledColors?: ColorSettings | undefined,
+  colorScheme: ResolvedColorScheme = "light",
 ): MantineThemeOverride {
+  const theme = applyThemePreset(userTheme) ?? userTheme;
+  const { axisColor, gridlineColor } = getEmbeddingCartesianColors(
+    {
+      background: theme.colors?.background,
+      foreground: theme.colors?.["text-primary"],
+      border: userTheme.colors?.border,
+    },
+    colorScheme,
+  );
   const components: MetabaseComponentTheme = merge(
-    DEFAULT_EMBEDDED_COMPONENT_THEME,
+    merge(DEFAULT_EMBEDDED_COMPONENT_THEME, {
+      cartesian: { splitLine: { lineStyle: { color: gridlineColor } } },
+    }),
     stripUndefinedKeys(theme.components),
   );
 
@@ -66,7 +81,7 @@ export function getEmbeddingThemeOverride(
     },
 
     components: getEmbeddingComponentOverrides(),
-    colors: {},
+    colors: { "chart-axis": colorTuple(axisColor) },
   };
 
   // Apply whitelabeled colors from appearance settings

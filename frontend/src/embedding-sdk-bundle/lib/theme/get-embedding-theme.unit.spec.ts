@@ -2,6 +2,7 @@ import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
+import { METABASE_DARK_THEME, METABASE_LIGHT_THEME } from "metabase/ui/colors";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
@@ -37,6 +38,9 @@ describe("Transform Embedding Theme Override", () => {
       lineHeight: 1.5,
       fontFamily: "Roboto",
       colors: {
+        "chart-axis": expect.arrayContaining([
+          METABASE_LIGHT_THEME.colors["chart-axis"],
+        ]),
         brand: expect.arrayContaining(["hotpink"]),
         "core-brand": expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
@@ -75,6 +79,9 @@ describe("Transform Embedding Theme Override", () => {
     expect(theme).toEqual({
       fontFamily: "Roboto",
       colors: {
+        "chart-axis": expect.arrayContaining([
+          METABASE_DARK_THEME.colors["chart-axis"],
+        ]),
         "background-primary": expect.arrayContaining(["green"]),
         "background_page-primary": expect.arrayContaining(["green"]),
         "background_surface-primary": expect.arrayContaining(["green"]),

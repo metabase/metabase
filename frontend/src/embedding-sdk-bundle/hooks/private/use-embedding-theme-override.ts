@@ -9,11 +9,16 @@ import {
   isEmbeddingThemeV1,
   isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
+import { getEmbeddingCartesianColors } from "metabase/embedding-sdk/theme/cartesian-colors";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import type { MantineThemeOverride } from "metabase/ui";
+import {
+  DEFAULT_METABASE_COMPONENT_THEME,
+  type MantineThemeOverride,
+  useColorScheme,
+} from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import { getColorShades } from "metabase/ui/utils/colors";
 
@@ -25,6 +30,7 @@ export function useEmbeddingThemeOverride(
 ): MantineThemeOverride | undefined {
   const font = useSelector(getFont);
   const appColors = useSetting("application-colors");
+  const { resolvedColorScheme } = useColorScheme();
 
   return useMemo(() => {
     if (!theme || isEmbeddingThemeV1(theme)) {
@@ -35,9 +41,10 @@ export function useEmbeddingThemeOverride(
       setGlobalEmbeddingColors(themeWithPreset?.colors, appColors ?? {});
 
       return getEmbeddingThemeOverride(
-        themeWithPreset || {},
+        theme || {},
         font,
         appColors ?? {},
+        resolvedColorScheme,
       );
     }
 
@@ -50,6 +57,12 @@ export function useEmbeddingThemeOverride(
         whitelabelColors: appColors ?? {},
         embeddingThemeOverride: theme,
       });
+      const { axisColor, gridlineColor } = getEmbeddingCartesianColors({
+        background: derivedTheme.colors["background_page-primary"],
+        foreground: derivedTheme.colors["text-primary"],
+        border: theme.colors?.border,
+        axis: theme.colors?.["chart-axis"],
+      });
 
       // Convert derived colors to Mantine color tuples
       const colors = Object.fromEntries(
@@ -59,10 +72,20 @@ export function useEmbeddingThemeOverride(
         ]),
       );
 
-      return { colors, fontFamily: font ?? DEFAULT_FONT, components };
+      return {
+        colors: { ...colors, "chart-axis": getColorShades(axisColor) },
+        fontFamily: font ?? DEFAULT_FONT,
+        components,
+        other: {
+          cartesian: {
+            ...DEFAULT_METABASE_COMPONENT_THEME.cartesian,
+            splitLine: { lineStyle: { color: gridlineColor } },
+          },
+        },
+      };
     }
 
     // No theme provided: just return the component overrides for portals
     return { components };
-  }, [appColors, theme, font]);
+  }, [appColors, theme, font, resolvedColorScheme]);
 }
