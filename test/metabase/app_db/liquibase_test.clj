@@ -736,6 +736,78 @@
             (is (= "migrations/2026/foo.yaml" (filename-of "12345"))
                 "an all-digit version-less id in a year directory is recognized by its path, not mistaken for pre-4.2")))))))
 
+(deftest consolidate-repairs-version-less-rows-rewritten-by-old-binaries-test
+  (testing "consolidate-liquibase-changesets! restores the filename of version-less rows that a pre-version-less binary
+            pointed at the legacy changelog"
+    ;; Binaries before this change consolidate with an unguarded `WHEN ID < 'v45.00-001' THEN <legacy file>`, which
+    ;; catches every version-less id sorting before `v` (most of them). Any `migrate` command of such a binary against
+    ;; an upgraded DB -- even one that is then refused as a downgrade -- commits that rewrite via the lock release.
+    ;; Left as-is, the newer binary's `migrate down` can no longer match those rows to its changelog: it clears their
+    ;; bookkeeping without reversing their DDL, and the next upgrade fails with 'already exists'.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [ct          (liquibase/changelog-table-name liquibase)
+                  filename-of (fn [id] (:filename (first (jdbc/query {:connection conn}
+                                                                     [(format "SELECT filename FROM %s WHERE id = ?" ct) id]))))
+                  legacy      "migrations/000_legacy_migrations.yaml"]
+              (liquibase/with-scope-locked liquibase (.update liquibase ""))
+              (is (= "migrations/2026/versionless_dev.yaml" (filename-of "dev_run_a")) "sanity: applied under its year-dir path")
+              ;; what an old binary's consolidation leaves behind, plus rows it must NOT touch: a pre-4.2 numeric id
+              ;; that legitimately lives in the legacy file, the legacy-version-tracking marker, and a version-less row
+              ;; that no longer exists in this changelog (nothing to repair it from)
+              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET filename = ? WHERE id = 'dev_run_a'" ct) legacy])
+              (doseq [[id author filename] [["42" "legacy" legacy]
+                                            ["v65.legacy-version-tracking" "version-tracking" "legacy-version-tracking"]
+                                            ["gone_from_changelog" "test" legacy]]]
+                (jdbc/execute! {:connection conn}
+                               [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id) "
+                                             "VALUES (?, ?, ?, CURRENT_TIMESTAMP, 99, 'EXECUTED', 'dep')")
+                                        ct)
+                                id author filename]))
+              (liquibase/consolidate-liquibase-changesets! conn liquibase)
+              (is (= "migrations/2026/versionless_dev.yaml" (filename-of "dev_run_a"))
+                  "the version-less row is pointed back at the changelog file that defines it")
+              (is (= legacy (filename-of "42")) "a pre-4.2 numeric id stays in the legacy file")
+              (is (= "legacy-version-tracking" (filename-of "v65.legacy-version-tracking")) "the marker is untouched")
+              (is (= legacy (filename-of "gone_from_changelog")) "a row with no changeset to repair from is left alone")
+              (testing "and the repaired row is reversed by a rollback again"
+                (liquibase/ensure-databasechangelog-versions-table! conn)
+                (jdbc/execute! {:connection conn} [(format "DELETE FROM %s WHERE id IN ('42', 'v65.legacy-version-tracking', 'gone_from_changelog')" ct)])
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'd65'" ct)])
+                (insert-version-row! conn liquibase/databasechangelog-versions-table "d64" "x.64.0.0" (.minus (java.time.Instant/now) (java.time.Duration/ofMinutes 20)))
+                (insert-version-row! conn liquibase/databasechangelog-versions-table "d65" "x.65.0.0" (.minus (java.time.Instant/now) (java.time.Duration/ofMinutes 10)))
+                (insert-changelog-row! conn ct "boundary_row" "d64" 0)
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET dateexecuted = ? WHERE id = 'boundary_row'" ct)
+                                                   (java.sql.Timestamp/from (.minus (java.time.Instant/now) (java.time.Duration/ofMinutes 30)))])
+                (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")]
+                  (liquibase/rollback-major-version! conn liquibase false "64"))
+                (is (false? (liquibase/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned")
+                (is (nil? (filename-of "dev_run_a")))))))))))
+
+(deftest rollback-warns-about-rows-it-cannot-reverse-test
+  (testing "rows cleared by a rollback without a matching changeset to reverse are called out, not silently dropped"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [ct  (liquibase/changelog-table-name liquibase)
+                vt  liquibase/databasechangelog-versions-table
+                now (java.time.Instant/now)
+                ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            (insert-changelog-row! conn ct "base" "d64" 1)
+            (insert-changelog-row! conn ct "unknown_to_this_changelog" "d65" 2)
+            (insert-version-row! conn vt "d64" "x.64.0.0" (ago 20))
+            (insert-version-row! conn vt "d65" "x.65.0.0" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")]
+              (mt/with-log-messages-for-level [messages :warn]
+                (liquibase/rollback-major-version! conn liquibase false "64")
+                (is (some #(re-find #"could not be reversed.*unknown_to_this_changelog" (:message %)) (messages))
+                    "names the row whose DDL (if any) is now orphaned")))
+            (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'unknown_to_this_changelog'" ct)]))
+                "its bookkeeping row is still cleared, as before")))))))
+
 (deftest dev-default-rollback-targets-previous-deployment-test
   (testing "in dev every deployment records the same constant version, so `migrate down` with no target rolls back the
             newest deployment rather than resolving a major"

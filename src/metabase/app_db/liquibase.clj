@@ -839,6 +839,37 @@
 (def ^:private legacy-migrations-file "migrations/000_legacy_migrations.yaml")
 (def ^:private update001-migrations-file "migrations/001_update_migrations.yaml")
 
+(defn- repair-version-less-filenames!
+  "Point version-less changelog rows back at the year-directory changelog file that defines them, after an older
+  Metabase binary consolidated them into the legacy/001 file.
+
+  Binaries before version-less changesets consolidate with an unguarded `WHEN ID < 'v45.00-001' THEN <legacy file>`,
+  which catches every version-less id sorting before `v` -- most of them. Any `migrate` command of such a binary
+  against an upgraded database (even one it then refuses as a downgrade) commits that rewrite via the Liquibase lock
+  release, and a boot of it that succeeds does the same. Left in place, the rewritten rows no longer match their
+  changesets, so a later `migrate down` here would clear their bookkeeping without reversing their DDL and the next
+  upgrade would fail on the orphaned objects.
+
+  Pre-4.2 numeric ids legitimately live in the legacy file and `vNN.` ids are never mis-consolidated, so only
+  other ids are candidates; a candidate with no `[author id]` changeset in this changelog is left alone."
+  [^Connection conn ^Liquibase liquibase changelog-table]
+  (let [stray (->> (jdbc/query {:connection conn}
+                               [(format "SELECT id, author FROM %s WHERE filename IN (?, ?) AND id NOT LIKE 'v%%'" changelog-table)
+                                legacy-migrations-file update001-migrations-file])
+                   (remove #(re-matches #"\d+" (:id %))))]
+    (when (seq stray)
+      (let [path-of (into {} (for [^ChangeSet cs (.getChangeSets (.getDatabaseChangeLog liquibase))
+                                   :when (year-directory-migration? (.getFilePath cs))]
+                               [[(.getAuthor cs) (.getId cs)] (.getFilePath cs)]))]
+        (doseq [{:keys [id author]} stray
+                :let [path (path-of [author id])]
+                :when path]
+          (log/warnf "Restoring the changelog filename of version-less changeset %s to %s (an older Metabase version had consolidated it into the legacy changelog file)"
+                     id path)
+          (jdbc/execute! {:connection conn}
+                         [(format "UPDATE %s SET filename = ? WHERE id = ? AND author = ?" changelog-table)
+                          path id author]))))))
+
 (mu/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 
@@ -880,7 +911,8 @@
             "v45.00-001" legacy-migrations-file
             "v56.0000-00-00T00:00:00" update001-migrations-file
             "%/____/%" ;; versionless migrations have a 4-digit string after "migrations/"
-            ]))))))
+            ])
+          (repair-version-less-filenames! conn liquibase liquibase-table-name))))))
 
 (defn latest-applied-major-version
   "Gets the latest version applied to the database."
@@ -1054,6 +1086,27 @@
   [^ChangeSet cs]
   [(.getFilePath cs) (.getAuthor cs) (.getId cs)])
 
+(defn- changelog-keys
+  "The [[changeset-key]]s of every changeset in the changelog `liquibase` was built with."
+  [^Liquibase liquibase]
+  (set (map changeset-key (.getChangeSets (.getDatabaseChangeLog liquibase)))))
+
+(defn- warn-about-unreversible-rows!
+  "Log the rows in `changesets-to-drop` that have no changeset in this changelog to reverse them. Their bookkeeping
+  is cleared with their deployment regardless, so any schema change they made stays behind -- worth shouting about.
+  The legacy-version-tracking marker is bookkeeping only and is expected here."
+  [^Liquibase liquibase changesets-to-drop]
+  (let [known      (changelog-keys liquibase)
+        orphan-ids (->> changesets-to-drop
+                        (remove known)
+                        (remove (fn [[filename]] (= filename legacy-version-tracking-suffix)))
+                        (map peek)
+                        sort)]
+    (when (seq orphan-ids)
+      (log/warnf (str "The following changelog rows were cleared by the rollback but could not be reversed because this "
+                      "changelog does not contain them; any schema changes they made remain in place: %s")
+                 (str/join ", " orphan-ids)))))
+
 (defn- deployments-with-major
   "The `deployment_id`s with any version of `major` recorded. A major can span several deployments: point releases,
   the same build recording across restarts, no-op boot stamps."
@@ -1120,11 +1173,11 @@
   [^Liquibase liquibase ^Database lb-db changesets-to-drop]
   (let [ran-changesets     (.getRanChangeSetList lb-db)
         changelog          (.getDatabaseChangeLog liquibase)
-        changelog-keys     (set (map changeset-key (.getChangeSets changelog)))
+        known              (changelog-keys liquibase)
         changeset-filter   (proxy [ChangeSetFilter] []
                              (accepts [^ChangeSet changeSet]
                                (let [k      (changeset-key changeSet)
-                                     result (and (contains? changesets-to-drop k) (contains? changelog-keys k))]
+                                     result (and (contains? changesets-to-drop k) (contains? known k))]
                                  (ChangeSetFilterResult. result (if result
                                                                   (do
                                                                     (log/infof "Going to roll back changeset %s" changeSet)
@@ -1237,6 +1290,7 @@
             (log/infof "Not reversing %d re-run (runOnChange/force) changeset(s) that predate the rollback target: %s"
                        (count changesets-to-retain) (str/join ", " (sort (map peek changesets-to-retain))))
             (reassign-changeset-rows! conn changelog-table changesets-to-retain boundary-deployment))
+          (warn-about-unreversible-rows! liquibase changesets-to-drop)
           (delete-deployment-rows! conn changelog-table deployments-to-drop))))))
 
 (defn rollback-major-version!
