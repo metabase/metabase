@@ -482,6 +482,10 @@ test/metabase/driver_api @metabase/core-backend-querying-platform
 # src/metabase/embedding
 # test/metabase/embedding
 
+# embedding-hub (Embedding, no :assignee in team.json)
+# src/metabase/embedding_hub
+# test/metabase/embedding_hub
+
 # embedding.rest (Embedding, no :assignee in team.json)
 # src/metabase/embedding_rest
 # test/metabase/embedding_rest
@@ -881,6 +885,10 @@ test/metabase/upload @metabase/graphy
 # warehouses.schema (UX West, no :assignee in team.json)
 # src/metabase/warehouse_schema
 # test/metabase/warehouse_schema
+
+# warehouse-schema-overlay (UX West, no :assignee in team.json)
+# src/metabase/warehouse_schema_overlay
+# test/metabase/warehouse_schema_overlay
 
 # warehouses.schema.rest (UX West, no :assignee in team.json)
 # src/metabase/warehouse_schema_rest
