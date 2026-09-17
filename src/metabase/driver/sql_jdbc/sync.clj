@@ -44,7 +44,8 @@
   get-catalogs
   pattern-based-database-type->base-type
   reducible-fks-for-tables-matching-options
-  reducible-table-fks-from-jdbc-metadata]
+  reducible-table-fks-from-jdbc-metadata
+  reducible-table-metadata]
  [sql-jdbc.describe-database
   describe-database
   fast-active-tables
