@@ -144,6 +144,25 @@
       (is (= ['#{my.api/helper} #{}] (map second (sort-by (comp count second) > @seen)))
           "/a reaches helper, /b reaches nothing"))))
 
+(deftest endpoint-rule-finding-has-a-context-test
+  (testing "an endpoint rule's finding is built with the same context a sink rule's is: it says which boundaries the
+            body's values crossed, and taint inside the rule sees the sanitizers and the bindings of the file"
+    (let [r {:id :test/ep-ctx :name "n" :description "d" :severity :note :precision :low :cwe "C"
+             :endpoint-rule true
+             :detect (fn [{:keys [node] :as ctx}]
+                       (let [thread (first (ast/find-nodes #(= '-> (ast/head-sym %)) node))
+                             id     (first (filter #(= "id" (ast/->str %)) (ast/find-nodes ast/symbol-node? (last (ast/args node)))))]
+                         {:message (pr-str [(taint/tainted? ctx thread) (taint/tainted? ctx id)])}))}
+          path (write-temp! "(ns my.api (:require [metabase.api.macros :as api.macros] [toucan2.core :as t2] [honey.sql :as sql]))
+(api.macros/defendpoint :get \"/:id\" \"doc\" [{:keys [id]} _q _b]
+  (let [card (t2/select-one :model/Card id)]
+    [card (-> {:where [:= :id id]} (sql/format))]))")
+          [f :as fs] (engine/analyze {:paths [path] :rules [r] :taint-sources :call-graph})]
+      (is (= 1 (count fs)))
+      (is (contains? (:origins f) :app-db/Card) "the body reads a Card row")
+      (is (= "[false true]" (:message f))
+          "the formatted query is sanitized by the resolved honey.sql/format; the bare request id is tainted"))))
+
 (deftest rules-sharing-a-trigger-both-fire-test
   (testing "two rules on the same var each get their finding"
     (let [mk (fn [id] {:id id :name "n" :description "d" :severity :error :precision :high :cwe "C"
