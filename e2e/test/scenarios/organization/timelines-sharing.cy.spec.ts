@@ -60,6 +60,28 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     expectSharedDashboardEvents();
   });
 
+  it("should show saved events read-only on an interactively embedded dashboard but keep the events panel on the question", () => {
+    cy.get<DashboardId>("@dashboardId").then((id) =>
+      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}` }),
+    );
+
+    expectReadOnlyDashboardEvents();
+    expectDashCardMenuWithoutEvents();
+    H.openDashboardMenu();
+    H.popover()
+      .should("contain", "Enter fullscreen")
+      .and("not.contain", "Events");
+    cy.realPress("Escape");
+
+    H.getDashboardCard().findByText("Orders by month").click();
+
+    H.timelineEventChip("RC1").should("be.visible");
+    cy.findByTestId("view-footer").icon("calendar").click();
+    H.rightSidebar()
+      .should("contain", "Create event")
+      .and("contain", "Releases");
+  });
+
   it("should not show events on a public document", () => {
     cy.get<CardId>("@questionId").then((id) => {
       H.createDocument({
@@ -141,9 +163,13 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
 
 function expectSharedDashboardEvents() {
   expectReadOnlyDashboardEvents();
+  expectDashCardMenuWithoutEvents();
+  cy.get("@getTimelines.all").should("have.length", 0);
+}
+
+function expectDashCardMenuWithoutEvents() {
   H.getDashboardCard().realHover();
   H.getDashboardCard().findByRole("button", { name: "More options" }).click();
   H.menu().should("be.visible").findByText("Events").should("not.exist");
   cy.realPress("Escape");
-  cy.get("@getTimelines.all").should("have.length", 0);
 }
