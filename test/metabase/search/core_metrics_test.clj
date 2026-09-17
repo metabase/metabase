@@ -93,20 +93,24 @@
   (with-completion-index
     (fn [{:keys [coordinate table] :as rebuild}]
       (search.index/complete-rebuild! rebuild)
-      (let [attempts (atom 0)]
+      (let [attempts (atom 0)
+            indexed  (atom #{:previous})]
         (mt/with-dynamic-fn-redefs [search.index/active-table (constantly table)
-                                    search.index/clear-active-table! (constantly nil)
+                                    search.index/clear-active-table! (fn [_] (reset! indexed #{}))
                                     search.index/delete-obsolete-tables! (constantly nil)
                                     search.index/ensure-ready! (constantly false)
                                     search.index/when-index-created (constantly (t/offset-date-time))
                                     appdb/populate-index! (fn [& _]
                                                             (when (= 1 (swap! attempts inc))
+                                                              (swap! indexed conj :removed-before-retry)
                                                               (throw (ex-info "population failed" {})))
+                                                            (swap! indexed conj :current)
                                                             {})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"population failed"
                                 (search.engine/reindex! :search.engine/appdb {:in-place? true})))
           (is (nil? (search.db/active-index-completion coordinate)))
           (is (= {} (search.engine/init! :search.engine/appdb {})))
+          (is (= #{:current} @indexed) "recovery removes stale rows from the incomplete attempt")
           (is (some? (search.db/active-index-completion coordinate)))
           (is (nil? (search.engine/init! :search.engine/appdb {})) "completed reuse does not populate again")
           (is (= 2 @attempts)))))))

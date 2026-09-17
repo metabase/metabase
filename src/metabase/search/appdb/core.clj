@@ -226,6 +226,8 @@
           (log/info "Populating index")
           (let [rebuild (search.index/rebuild-context (search.index/active-table))]
             (search.index/invalidate-completion! rebuild)
+            (when-not created?
+              (search.index/clear-active-table! (:table rebuild)))
             (u/prog1 (populate-index! :search/reindexing rebuild)
               (search.index/complete-rebuild! rebuild))))))))
 
