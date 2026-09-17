@@ -13,10 +13,10 @@
 ## row insertion and PII gating are later tickets.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/064_update_migrations.yaml
+  - logicalFilePath: migrations/065_update_migrations.yaml
 
   - changeSet:
-      id: v64.2026-09-07T00:00:00
+      id: v65.2026-09-07T00:00:00
       author: sfragnaud
       comment: Add api_key.last_used_at
       changes:
@@ -31,7 +31,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v64.2026-09-07T00:00:01
+      id: v65.2026-09-07T00:00:01
       author: sfragnaud
       comment: Create api_key_usage_log table
       changes:
@@ -125,7 +125,7 @@ databaseChangeLog:
             tableName: api_key_usage_log
 
   - changeSet:
-      id: v64.2026-09-07T00:00:02
+      id: v65.2026-09-07T00:00:02
       author: sfragnaud
       comment: Index on api_key_usage_log.api_key_id
       changes:
@@ -138,7 +138,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v64.2026-09-07T00:00:03
+      id: v65.2026-09-07T00:00:03
       author: sfragnaud
       comment: Index on api_key_usage_log.created_by_id
       changes:
@@ -151,7 +151,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v64.2026-09-07T00:00:04
+      id: v65.2026-09-07T00:00:04
       author: sfragnaud
       comment: Index on api_key_usage_log.occurred_at
       changes:
