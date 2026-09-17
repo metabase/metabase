@@ -351,7 +351,7 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [{:keys [locale] :as time-config} t unit]
+  [time-config t unit {:keys [locale]}]
   (if (= unit :week-of-year)
     (str (u.date/extract (select-keys time-config [:start-of-week]) t unit))
     (when-let [^DateTimeFormatter formatter (some-> unit
@@ -364,52 +364,55 @@
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
-  [time-config input unit]
-  (cond
-    (string? input)
-    (let [time? (common/matches-time? input)
-          date? (common/matches-date? input)
-          date-time? (common/matches-date-time? input)
-          t (cond
-              time? (t/local-time input)
-              date? (t/local-date input)
-              date-time? (coerce-local-date-time input))]
-      (if t
-        (or
-         (format-extraction-unit time-config t unit)
-         (cond
-           time? (t/format "h:mm a" t)
-           date? (t/format "MMM d, yyyy" t)
-           :else (t/format "MMM d, yyyy, h:mm a" t)))
-        input))
-
-    (number? input)
-    (case (keyword unit)
-      :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
-                         " "
-                         (if (<= input 11) "AM" "PM"))
-      :week-of-year (str input)
-      (or
-       (format-extraction-unit time-config
-                               (common/number->timestamp input (assoc time-config :unit unit))
-                               unit)
-       (str input)))
-
-    (instance? java.time.temporal.TemporalAccessor input)
-    (let [input ^java.time.temporal.TemporalAccessor input]
-      (or (format-extraction-unit time-config input unit)
+  ([time-config input unit]
+   (format-unit time-config input unit {}))
+  ([time-config input unit format-options]
+   (cond
+     (string? input)
+     (let [time? (common/matches-time? input)
+           date? (common/matches-date? input)
+           date-time? (common/matches-date-time? input)
+           t (cond
+               time? (t/local-time input)
+               date? (t/local-date input)
+               date-time? (coerce-local-date-time input))]
+       (if t
+         (or
+          (format-extraction-unit time-config t unit format-options)
           (cond
-            ;; no hour, must be date
-            (not (.isSupported input (t/field :hour-of-day)))
-            (t/format "MMM d, yyyy" input)
+            time? (t/format "h:mm a" t)
+            date? (t/format "MMM d, yyyy" t)
+            :else (t/format "MMM d, yyyy, h:mm a" t)))
+         input))
 
-            ;; no day, must be time
-            (not (.isSupported input (t/field :day-of-month)))
-            (t/format "h:mm a" input)
+     (number? input)
+     (case (keyword unit)
+       :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
+                          " "
+                          (if (<= input 11) "AM" "PM"))
+       :week-of-year (str input)
+       (or
+        (format-extraction-unit time-config
+                                (common/number->timestamp input (assoc time-config :unit unit))
+                                unit
+                                format-options)
+        (str input)))
 
-            :else ;; otherwise both date and time
-            (t/format "MMM d, yyyy, h:mm a" input))
-          (str input)))))
+     (instance? java.time.temporal.TemporalAccessor input)
+     (let [input ^java.time.temporal.TemporalAccessor input]
+       (or (format-extraction-unit time-config input unit format-options)
+           (cond
+             ;; no hour, must be date
+             (not (.isSupported input (t/field :hour-of-day)))
+             (t/format "MMM d, yyyy" input)
+
+             ;; no day, must be time
+             (not (.isSupported input (t/field :day-of-month)))
+             (t/format "h:mm a" input)
+
+             :else ;; otherwise both date and time
+             (t/format "MMM d, yyyy, h:mm a" input))
+           (str input))))))
 
 (defn parse-unit
   "Parse a unit of time/date, e.g., 'Wed' or 'August' or '14'."

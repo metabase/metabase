@@ -310,7 +310,7 @@
     (-> (lib.expression/case
          (mapv (fn [raw-value]
                  [(lib.filter/= (lib.util/fresh-uuids expr) raw-value)
-                  (u.time/format-unit (assoc time-config :locale user-locale) raw-value unit)])
+                  (u.time/format-unit time-config raw-value unit {:locale user-locale})])
                (range 1 (inc n))))
         (lib.options/update-options merge opts {:default ""}))))
 
