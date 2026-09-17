@@ -6,11 +6,8 @@ import {
 } from "metabase/ui";
 import { color, staticVizOverrides } from "metabase/ui/colors";
 
-import type { VisualizationTheme } from "../../types";
-import {
-  LARGE_CARTESIAN_CARD_MIN_HEIGHT,
-  LARGE_CARTESIAN_CARD_MIN_WIDTH,
-} from "../constants/layout";
+import type { CartesianChartSize, VisualizationTheme } from "../../types";
+import { CARTESIAN_CHART_BREAKPOINTS } from "../constants/layout";
 
 import { getSizeInPx } from "./size-in-px";
 
@@ -28,12 +25,31 @@ function getPieBorderColor(
   return questionBg;
 }
 
-export function isLargeCartesianCard(size?: { width: number; height: number }) {
-  return (
-    size != null &&
-    size.width >= LARGE_CARTESIAN_CARD_MIN_WIDTH &&
-    size.height >= LARGE_CARTESIAN_CARD_MIN_HEIGHT
-  );
+const CARTESIAN_TICKS: Record<
+  CartesianChartSize,
+  VisualizationTheme["cartesian"]["ticks"]
+> = {
+  small: { fontSize: 12, marginX: 8, marginY: 12 },
+  medium: { fontSize: 12, marginX: 8, marginY: 16 },
+  large: { fontSize: 14, marginX: 12, marginY: 24 },
+};
+
+export function getCartesianChartSize(size?: {
+  width: number;
+  height: number;
+}): CartesianChartSize {
+  if (size === undefined) {
+    return "large";
+  }
+
+  const { medium, large } = CARTESIAN_CHART_BREAKPOINTS;
+  if (size.width >= large.width && size.height >= large.height) {
+    return "large";
+  }
+  if (size.width >= medium.width && size.height >= medium.height) {
+    return "medium";
+  }
+  return "small";
 }
 
 /**
@@ -42,14 +58,12 @@ export function isLargeCartesianCard(size?: { width: number; height: number }) {
 export function getVisualizationTheme({
   theme,
   isDashboard,
-  isCompact,
-  isLargeCard,
+  cartesianSize = "large",
   isStaticViz,
 }: {
   theme: Partial<MantineThemeOther>;
   isDashboard?: boolean;
-  isCompact?: boolean;
-  isLargeCard?: boolean;
+  cartesianSize?: CartesianChartSize;
   isStaticViz?: boolean;
 }): VisualizationTheme {
   const { cartesian, dashboard, question } = theme;
@@ -65,23 +79,16 @@ export function getVisualizationTheme({
   const px = (value: string) =>
     getSizeInPx(value, baseFontSize) ?? baseFontSize ?? 14;
 
-  const isCard = isDashboard || isCompact;
-  let tickMarginY = 24;
-  if (isCard) {
-    tickMarginY = isLargeCard ? 16 : 12;
-  }
-  let tickFontSize = isCard ? 12 : 14;
-  if (theme.hasCustomChartFontSize) {
-    tickFontSize = px(cartesian.label.fontSize);
-  }
+  const ticks = CARTESIAN_TICKS[cartesianSize];
 
   return {
     cartesian: {
       label: { fontSize: px(cartesian.label.fontSize) },
       ticks: {
-        fontSize: tickFontSize,
-        marginX: isCard ? 8 : 12,
-        marginY: tickMarginY,
+        ...ticks,
+        fontSize: theme.hasCustomChartFontSize
+          ? px(cartesian.label.fontSize)
+          : ticks.fontSize,
       },
       goalLine: {
         label: { fontSize: px(cartesian.goalLine.label.fontSize) },

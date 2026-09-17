@@ -5,5 +5,7 @@ export const PLOT_HEIGHT_BREAKPOINTS = {
   large: 400,
 } as const;
 
-export const LARGE_CARTESIAN_CARD_MIN_WIDTH = 640;
-export const LARGE_CARTESIAN_CARD_MIN_HEIGHT = 360;
+export const CARTESIAN_CHART_BREAKPOINTS = {
+  medium: { width: 640, height: 360 },
+  large: { width: 900, height: 480 },
+} as const;

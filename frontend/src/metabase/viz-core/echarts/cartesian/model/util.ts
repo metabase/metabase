@@ -25,9 +25,12 @@ export function getFormattingOptionsWithoutScaling(options: ColumnSettings) {
 
 export function getLabelValueFormatting(
   formatting: "auto" | "compact" | "full" | undefined,
-  isDashboard: boolean,
+  useCompactFormatting: boolean,
 ) {
-  if (isDashboard && (formatting === undefined || formatting === "auto")) {
+  if (
+    useCompactFormatting &&
+    (formatting === undefined || formatting === "auto")
+  ) {
     return "compact";
   }
 

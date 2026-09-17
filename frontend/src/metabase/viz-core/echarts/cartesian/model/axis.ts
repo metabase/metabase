@@ -20,11 +20,7 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { computeNumericDataInterval } from "../../../lib/numeric";
 import { getLineAreaBarComparisonSettings } from "../../../lib/settings";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-  VisualizationGridSize,
-} from "../../../types";
+import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ShowWarning } from "../../types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -502,7 +498,7 @@ interface YAxisModelOptions {
   stackModels?: StackModel[];
   stackType?: StackType;
   formattingOptions?: ColumnSettings;
-  gridSize?: VisualizationGridSize;
+  hasResponsiveTicks?: boolean;
   showLabel?: boolean;
 }
 
@@ -518,7 +514,7 @@ export function getYAxisModel(
     stackModels = [],
     stackType = null,
     formattingOptions,
-    gridSize,
+    hasResponsiveTicks = false,
     showLabel = true,
   } = options;
 
@@ -557,7 +553,7 @@ export function getYAxisModel(
     formatter,
     formatGoal,
     isNormalized: stackType === "normalized",
-    isDashboard: gridSize != null,
+    hasResponsiveTicks,
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
@@ -574,7 +570,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
-  gridSize?: VisualizationGridSize,
+  hasResponsiveTicks = false,
 ) {
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -620,7 +616,7 @@ export function getYAxesModels(
       stackModels: leftStackModels,
       stackType: settings["stackable.stack_type"] ?? null,
       formattingOptions: { compact: isCompactFormatting },
-      gridSize,
+      hasResponsiveTicks,
     },
   );
 
@@ -637,7 +633,7 @@ export function getYAxesModels(
           ? null
           : (settings["stackable.stack_type"] ?? null),
       formattingOptions: { compact: isCompactFormatting },
-      gridSize,
+      hasResponsiveTicks,
     },
   );
 
@@ -653,7 +649,7 @@ export function getYAxesModels(
             columnByDataKey,
             {
               formattingOptions: { compact: isCompactFormatting },
-              gridSize,
+              hasResponsiveTicks,
               showLabel: false,
             },
           ),

@@ -92,19 +92,18 @@ const getChartContext = (): RenderingContext => {
 
 describe("getChartLayout", () => {
   it.each([
-    { name: "full-page", options: {}, fontSize: 14, marginX: 12, marginY: 24 },
+    { name: "large", options: {}, fontSize: 14, marginX: 12, marginY: 24 },
     {
-      name: "dashboard",
-      options: { isDashboard: true },
+      name: "small",
+      options: { cartesianSize: "small" as const },
       fontSize: 12,
       marginX: 8,
       marginY: 12,
     },
     {
-      name: "large dashboard",
+      name: "medium",
       options: {
-        isDashboard: true,
-        isLargeCard: true,
+        cartesianSize: "medium" as const,
       },
       fontSize: 12,
       marginX: 8,
@@ -174,11 +173,11 @@ describe("getChartLayout", () => {
   );
 
   describe.each([
-    { name: "full-page", options: {} },
-    { name: "dashboard", options: { isDashboard: true } },
+    { name: "large", options: {} },
+    { name: "small", options: { cartesianSize: "small" as const } },
     {
-      name: "large dashboard",
-      options: { isDashboard: true, isLargeCard: true },
+      name: "medium",
+      options: { cartesianSize: "medium" as const },
     },
   ])("hidden $name axes", ({ options }) => {
     it.each([false, true])(

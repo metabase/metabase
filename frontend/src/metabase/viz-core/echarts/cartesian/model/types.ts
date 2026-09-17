@@ -185,7 +185,7 @@ export type YAxisModel = {
   formatter: AxisFormatter;
   formatGoal: AxisFormatter;
   splitNumber?: number;
-  isDashboard?: boolean;
+  hasResponsiveTicks?: boolean;
   isNormalized?: boolean;
 };
 

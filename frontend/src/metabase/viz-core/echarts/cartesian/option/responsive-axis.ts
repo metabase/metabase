@@ -47,7 +47,7 @@ function getAxisExtent(
   return [min, max];
 }
 
-export function applyDashboardYAxisTicks(
+export function applyResponsiveYAxisTicks(
   axes: YAXisOption[],
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
@@ -69,7 +69,7 @@ export function applyDashboardYAxisTicks(
 
   return axes.map((axis, index) => {
     const axisModel = axisModels[index];
-    if (!axisModel?.isDashboard || axis.type !== "value") {
+    if (!axisModel?.hasResponsiveTicks || axis.type !== "value") {
       return axis;
     }
     const extent = getAxisExtent(

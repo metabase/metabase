@@ -10,7 +10,6 @@ import { getAreDimensionsAndMetricsValid } from "../../../shared/settings/cartes
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-  VisualizationGridSize,
 } from "../../../types";
 import type { ShowWarning } from "../../types";
 import { OTHER_DATA_KEY } from "../constants/dataset";
@@ -105,8 +104,10 @@ export const getCartesianChartModel = (
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-  gridSize?: VisualizationGridSize,
 ): CartesianChartModel => {
+  const hasResponsiveTicks =
+    renderingContext.cartesianSize != null &&
+    renderingContext.cartesianSize !== "large";
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -187,7 +188,7 @@ export const getCartesianChartModel = (
     ...settings,
     "graph.label_value_formatting": getLabelValueFormatting(
       settings["graph.label_value_formatting"],
-      gridSize != null,
+      hasResponsiveTicks,
     ),
   });
 
@@ -211,7 +212,7 @@ export const getCartesianChartModel = (
       true,
       stackModels,
       isCompactFormatting,
-      gridSize,
+      hasResponsiveTicks,
     );
 
   const trendLinesModel = getTrendLines(

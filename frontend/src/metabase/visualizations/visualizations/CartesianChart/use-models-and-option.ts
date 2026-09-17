@@ -36,19 +36,16 @@ export function useModelsAndOption(
     selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
     isDashboard,
-    isCompact,
-    gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
-  dashboardCardSize: Pick<VisualizationProps, "width" | "height">,
+  containerSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
     isDashboard,
-    isCompact,
-    dashboardCardSize,
+    containerSize,
   });
 
   const seriesToRender = useMemo(
@@ -88,7 +85,6 @@ export function useModelsAndOption(
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
-      gridSize,
     );
 
     if (model.dimensionModel.column) {
@@ -104,7 +100,6 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
-    gridSize,
     tc,
   ]);
 

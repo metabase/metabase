@@ -13,7 +13,7 @@ import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import type { YAxisModel } from "../model/types";
 
 import { buildAxes, createAxisVisibilityOption } from "./axis";
-import { applyDashboardYAxisTicks } from "./dashboard-axis";
+import { applyResponsiveYAxisTicks } from "./responsive-axis";
 
 const renderingContext: RenderingContext = {
   getColor: (name) => name,
@@ -30,7 +30,7 @@ const axisModel: YAxisModel = {
   formatter: String,
   formatGoal: String,
   splitNumber: 5,
-  isDashboard: true,
+  hasResponsiveTicks: true,
 };
 
 function setup({
@@ -69,7 +69,7 @@ function setup({
   );
   return {
     ...axes,
-    yAxis: applyDashboardYAxisTicks(
+    yAxis: applyResponsiveYAxisTicks(
       axes.yAxis,
       chartModel,
       chartLayout,
@@ -78,7 +78,7 @@ function setup({
   };
 }
 
-describe("dashboard Y-axis ticks", () => {
+describe("responsive Y-axis ticks", () => {
   it.each([
     { height: 199, labels: [0, 100], gridlines: [0, 50, 100] },
     { height: 200, labels: [0, 50, 100], gridlines: [0, 50, 100] },
@@ -112,8 +112,10 @@ describe("dashboard Y-axis ticks", () => {
     expect(yAxis[0].axisTick?.customValues).toBeUndefined();
   });
 
-  it("preserves question tick density", () => {
-    const { yAxis } = setup({ model: { ...axisModel, isDashboard: false } });
+  it("preserves native tick density on large charts", () => {
+    const { yAxis } = setup({
+      model: { ...axisModel, hasResponsiveTicks: false },
+    });
     expect(yAxis[0]).toMatchObject({ splitNumber: 5 });
     expect(yAxis[0].axisTick?.customValues).toBeUndefined();
   });

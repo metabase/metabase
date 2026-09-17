@@ -10,24 +10,21 @@ import {
 } from "metabase/utils/measure-text";
 import {
   type RenderingContext,
+  getCartesianChartSize,
   getVisualizationTheme,
-  isLargeCartesianCard,
 } from "metabase/viz-core";
 
 interface RenderingOptions {
   fontFamily: string;
   isDashboard?: boolean;
-  isCompact?: boolean;
-  isFullscreen?: boolean;
-  dashboardCardSize?: { width: number; height: number };
+  containerSize?: { width: number; height: number };
 }
 
 export const useBrowserRenderingContext = (
   options: RenderingOptions,
 ): RenderingContext => {
-  const { fontFamily, isDashboard, isCompact, dashboardCardSize } = options;
-  const isLargeCard =
-    isDashboard || isCompact ? isLargeCartesianCard(dashboardCardSize) : false;
+  const { fontFamily, isDashboard, containerSize } = options;
+  const cartesianSize = getCartesianChartSize(containerSize);
 
   const palette = usePalette();
   const theme = useMantineTheme();
@@ -36,8 +33,7 @@ export const useBrowserRenderingContext = (
     const style = getVisualizationTheme({
       theme: theme.other,
       isDashboard,
-      isCompact,
-      isLargeCard,
+      cartesianSize,
     });
 
     return {
@@ -46,7 +42,8 @@ export const useBrowserRenderingContext = (
       measureTextHeight,
       fontFamily: getFontFamilyValue(fontFamily),
       colorScheme: theme.other?.colorScheme ?? "light",
+      cartesianSize,
       theme: style,
     };
-  }, [fontFamily, palette, theme, isDashboard, isCompact, isLargeCard]);
+  }, [fontFamily, palette, theme, isDashboard, cartesianSize]);
 };

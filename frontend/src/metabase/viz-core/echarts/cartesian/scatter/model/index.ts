@@ -5,7 +5,6 @@ import type {
   ComputedVisualizationSettings,
   Extent,
   RenderingContext,
-  VisualizationGridSize,
 } from "../../../../types";
 import type { ShowWarning } from "../../../types";
 import { getCardsColumns } from "../../model";
@@ -61,8 +60,10 @@ export function getScatterPlotModel(
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-  gridSize?: VisualizationGridSize,
 ): ScatterPlotModel {
+  const hasResponsiveTicks =
+    renderingContext.cartesianSize != null &&
+    renderingContext.cartesianSize !== "large";
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -121,9 +122,9 @@ export function getScatterPlotModel(
       [],
       getLabelValueFormatting(
         settings["graph.label_value_formatting"],
-        gridSize != null,
+        hasResponsiveTicks,
       ) === "compact",
-      gridSize,
+      hasResponsiveTicks,
     );
 
   const trendLinesModel = getTrendLines(

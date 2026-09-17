@@ -42,7 +42,6 @@ export function MetricCardVisualization({
         isRunning={isLoading}
         isDirty
         isResultDirty={false}
-        isCompact
       />
     </DebouncedFrame>
   );

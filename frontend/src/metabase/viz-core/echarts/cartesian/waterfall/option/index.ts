@@ -20,11 +20,11 @@ import type {
 } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
-import { applyDashboardYAxisTicks } from "../../option/dashboard-axis";
 import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../option/goal-line";
+import { applyResponsiveYAxisTicks } from "../../option/responsive-axis";
 import {
   buildEChartsLabelOptions,
   computeContinuousScaleBarWidth,
@@ -267,7 +267,7 @@ export const getWaterfallChartOption = (
     dataset: echartsDataset,
     series: seriesOption,
     ...axes,
-    yAxis: applyDashboardYAxisTicks(
+    yAxis: applyResponsiveYAxisTicks(
       axes.yAxis,
       chartModel,
       chartLayout,

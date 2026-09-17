@@ -39,7 +39,6 @@ function BoxPlotInner({
   width,
   height,
   isDashboard,
-  isCompact,
   isEditing,
   isQueryBuilder,
   isFullscreen,
@@ -82,8 +81,7 @@ function BoxPlotInner({
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
     isDashboard,
-    isCompact,
-    dashboardCardSize: { width, height },
+    containerSize: { width, height },
   });
 
   const showWarning = useCallback(

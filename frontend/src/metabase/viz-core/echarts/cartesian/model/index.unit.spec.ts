@@ -8,9 +8,9 @@ import {
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type {
+  CartesianChartSize,
   ComputedVisualizationSettings,
   RenderingContext,
-  VisualizationGridSize,
 } from "../../../types";
 import { getScatterPlotModel } from "../scatter/model";
 import { getWaterfallChartModel } from "../waterfall/model";
@@ -32,7 +32,7 @@ describe.each([
 
   const buildModel = (
     formatting: "auto" | "compact" | "full" | undefined,
-    gridSize?: VisualizationGridSize,
+    cartesianSize?: CartesianChartSize,
     showValues = false,
     extraSettings: Partial<ComputedVisualizationSettings> = {},
   ) => {
@@ -71,30 +71,42 @@ describe.each([
         ...extraSettings,
       }),
       [],
-      renderingContext,
-      undefined,
-      gridSize,
+      { ...renderingContext, cartesianSize },
     );
   };
 
   it.each(["auto", "compact", undefined] as const)(
-    "uses compact dashboard axis labels with %s formatting",
+    "uses compact axis labels on small charts with %s formatting",
     (formatting) => {
-      const model = buildModel(formatting, { width: 8, height: 6 });
+      const model = buildModel(formatting, "small");
 
       expect(model.leftAxisModel?.formatter(1000)).toBe("1.0k");
       expect(model.leftAxisModel?.formatGoal(1000)).toBe("1,000");
     },
   );
 
-  it("preserves explicit full formatting on dashboards", () => {
-    const model = buildModel("full", { width: 8, height: 6 }, true);
+  it.each(["small", "medium", "large", undefined] as const)(
+    "derives responsive ticks and default formatting from the %s size tier",
+    (cartesianSize) => {
+      const model = buildModel("auto", cartesianSize);
+      const isResponsive =
+        cartesianSize === "small" || cartesianSize === "medium";
+
+      expect(model.leftAxisModel?.hasResponsiveTicks).toBe(isResponsive);
+      expect(model.leftAxisModel?.formatter(1000)).toBe(
+        isResponsive ? "1.0k" : "1,000",
+      );
+    },
+  );
+
+  it("preserves explicit full formatting on small charts", () => {
+    const model = buildModel("full", "small", true);
 
     expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
   });
 
   it.each([false, true])(
-    "preserves automatic formatting outside dashboards with show values set to %s",
+    "preserves automatic formatting on large charts with show values set to %s",
     (showValues) => {
       const model = buildModel("auto", undefined, showValues);
 
@@ -102,8 +114,8 @@ describe.each([
     },
   );
 
-  it("preserves explicit compact formatting outside dashboards", () => {
-    const model = buildModel("compact");
+  it("preserves explicit compact formatting on large charts", () => {
+    const model = buildModel("compact", "large");
 
     expect(model.leftAxisModel?.formatter(1000)).toBe("1.0k");
   });
@@ -114,9 +126,9 @@ describe.each([
       { formatting: "compact", expected: "1.0k" },
       { formatting: "full", expected: "1,000" },
     ] as const)(
-      "uses $formatting formatting for dashboard data labels",
+      "uses $formatting formatting for small chart data labels",
       ({ formatting, expected }) => {
-        const model = buildModel(formatting, { width: 8, height: 6 }, true);
+        const model = buildModel(formatting, "small", true);
         const formatter =
           "waterfallLabelFormatter" in model
             ? model.waterfallLabelFormatter
@@ -128,8 +140,8 @@ describe.each([
   }
 
   if (display === "bar") {
-    it("uses compact dashboard stack totals with automatic formatting", () => {
-      const model = buildModel("auto", { width: 8, height: 6 }, true, {
+    it("uses compact small chart stack totals with automatic formatting", () => {
+      const model = buildModel("auto", "small", true, {
         "stackable.stack_type": "stacked",
         "graph.show_stack_values": "total",
       });

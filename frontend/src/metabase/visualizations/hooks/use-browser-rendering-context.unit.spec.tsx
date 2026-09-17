@@ -13,65 +13,75 @@ function setup(options: Partial<RenderingOptions> = {}) {
 describe("useBrowserRenderingContext", () => {
   it.each([
     {
-      context: "full-page charts",
-      options: {},
+      width: 0,
+      height: 0,
+      size: "small",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+    },
+    {
+      width: 639,
+      height: 700,
+      size: "small",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+    },
+    {
+      width: 1100,
+      height: 359,
+      size: "small",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+    },
+    {
+      width: 640,
+      height: 360,
+      size: "medium",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 16,
+    },
+    {
+      width: 899,
+      height: 700,
+      size: "medium",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 16,
+    },
+    {
+      width: 1100,
+      height: 479,
+      size: "medium",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 16,
+    },
+    {
+      width: 900,
+      height: 480,
+      size: "large",
       fontSize: 14,
       marginX: 12,
       marginY: 24,
     },
     {
-      context: "dashcards",
-      options: { isDashboard: true },
-      fontSize: 12,
-      marginX: 8,
-      marginY: 12,
-    },
-    {
-      context: "full-page charts with the fullscreen flag",
-      options: { isFullscreen: true },
+      width: 1270,
+      height: 486,
+      size: "large",
       fontSize: 14,
       marginX: 12,
       marginY: 24,
-    },
-    {
-      context: "dashboard presentation mode",
-      options: { isDashboard: true, isFullscreen: true },
-      fontSize: 12,
-      marginX: 8,
-      marginY: 12,
-    },
-    {
-      context: "compact metric previews",
-      options: { isCompact: true },
-      fontSize: 12,
-      marginX: 8,
-      marginY: 12,
-    },
-    {
-      context: "wide short cards",
-      options: {
-        isDashboard: true,
-        dashboardCardSize: { width: 900, height: 359 },
-      },
-      fontSize: 12,
-      marginX: 8,
-      marginY: 12,
-    },
-    {
-      context: "narrow tall cards",
-      options: {
-        isDashboard: true,
-        dashboardCardSize: { width: 639, height: 600 },
-      },
-      fontSize: 12,
-      marginX: 8,
-      marginY: 12,
     },
   ])(
-    "uses tick styling for $context",
-    ({ options, fontSize, marginX, marginY }) => {
-      const { result } = setup(options);
+    "uses $size styling for a $width by $height container",
+    ({ width, height, size, fontSize, marginX, marginY }) => {
+      const { result } = setup({ containerSize: { width, height } });
 
+      expect(result.current.cartesianSize).toBe(size);
       expect(result.current.theme.cartesian.ticks).toEqual({
         fontSize,
         marginX,
@@ -81,64 +91,86 @@ describe("useBrowserRenderingContext", () => {
     },
   );
 
-  it("updates the tick gap when a dashcard crosses the large-card threshold", () => {
-    const { result, rerender } = setup({
-      isDashboard: true,
-      dashboardCardSize: { width: 639, height: 360 },
-    });
+  it.each([false, true])(
+    "uses the same size policy with isDashboard=%s",
+    (isDashboard) => {
+      const { result } = setup({
+        isDashboard,
+        containerSize: { width: 800, height: 400 },
+      });
 
-    expect(result.current.theme.cartesian.ticks.marginY).toBe(12);
+      expect(result.current.cartesianSize).toBe("medium");
+      expect(result.current.theme.cartesian.ticks).toEqual({
+        fontSize: 12,
+        marginX: 8,
+        marginY: 16,
+      });
+    },
+  );
 
-    rerender({
-      fontFamily: "Lato",
-      isDashboard: true,
-      dashboardCardSize: { width: 640, height: 360 },
-    });
+  it("keeps the default rendering style when dimensions are not supplied", () => {
+    const { result } = setup();
 
+    expect(result.current.cartesianSize).toBe("large");
     expect(result.current.theme.cartesian.ticks).toEqual({
-      fontSize: 12,
-      marginX: 8,
-      marginY: 16,
+      fontSize: 14,
+      marginX: 12,
+      marginY: 24,
     });
+  });
+
+  it("updates presentation when either dimension crosses a breakpoint", () => {
+    const { result, rerender } = setup({
+      containerSize: { width: 639, height: 480 },
+    });
+
+    expect(result.current.cartesianSize).toBe("small");
 
     rerender({
       fontFamily: "Lato",
-      isDashboard: true,
-      dashboardCardSize: { width: 640, height: 359 },
+      containerSize: { width: 640, height: 480 },
     });
+    expect(result.current.cartesianSize).toBe("medium");
+    expect(result.current.theme.cartesian.ticks.marginY).toBe(16);
 
-    expect(result.current.theme.cartesian.ticks.marginY).toBe(12);
+    rerender({
+      fontFamily: "Lato",
+      containerSize: { width: 900, height: 480 },
+    });
+    expect(result.current.cartesianSize).toBe("large");
+    expect(result.current.theme.cartesian.ticks.fontSize).toBe(14);
+
+    rerender({
+      fontFamily: "Lato",
+      containerSize: { width: 900, height: 479 },
+    });
+    expect(result.current.cartesianSize).toBe("medium");
+    expect(result.current.theme.cartesian.ticks.fontSize).toBe(12);
   });
 
   it.each([
     {
-      context: "large dashcards",
-      options: { isDashboard: true },
-      before: { width: 640, height: 360 },
-      after: { width: 700, height: 400 },
-    },
-    {
-      context: "small dashcards",
-      options: { isDashboard: true },
+      size: "small",
       before: { width: 300, height: 200 },
       after: { width: 600, height: 350 },
     },
     {
-      context: "full-page charts",
-      options: {},
-      before: { width: 300, height: 200 },
-      after: { width: 1000, height: 800 },
+      size: "medium",
+      before: { width: 640, height: 360 },
+      after: { width: 890, height: 470 },
+    },
+    {
+      size: "large",
+      before: { width: 900, height: 480 },
+      after: { width: 1500, height: 900 },
     },
   ])(
-    "reuses the rendering context when $context resize within the same style",
-    ({ options, before, after }) => {
-      const { result, rerender } = setup({
-        ...options,
-        dashboardCardSize: before,
-      });
+    "reuses the context while resizing within the $size tier",
+    ({ before, after }) => {
+      const { result, rerender } = setup({ containerSize: before });
       const previousContext = result.current;
 
-      rerender({ fontFamily: "Lato", ...options, dashboardCardSize: after });
+      rerender({ fontFamily: "Lato", containerSize: after });
 
       expect(result.current).toBe(previousContext);
     },

@@ -5,7 +5,6 @@ import { getNumberOr } from "../../../../lib/settings/row-values";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-  VisualizationGridSize,
 } from "../../../../types";
 import type { ShowWarning } from "../../../types";
 import { getYAxisModel } from "../../model/axis";
@@ -39,8 +38,10 @@ export const getWaterfallChartModel = (
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-  gridSize?: VisualizationGridSize,
 ): WaterfallChartModel => {
+  const hasResponsiveTicks =
+    renderingContext.cartesianSize != null &&
+    renderingContext.cartesianSize !== "large";
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;
@@ -98,7 +99,7 @@ export const getWaterfallChartModel = (
 
   const labelValueFormatting = getLabelValueFormatting(
     settings["graph.label_value_formatting"],
-    gridSize != null,
+    hasResponsiveTicks,
   );
   const { formatter: waterfallLabelFormatter, isCompact } =
     getWaterfallLabelFormatter(seriesModel, transformedDataset, {
@@ -124,7 +125,7 @@ export const getWaterfallChartModel = (
       formattingOptions: {
         compact: labelValueFormatting === "compact" || isCompact,
       },
-      gridSize,
+      hasResponsiveTicks,
     },
   );
 
