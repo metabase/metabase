@@ -1,0 +1,26 @@
+diff --git a/node_modules/@loki/target-chrome-core/src/create-chrome-target.js b/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
+index 69878ef..12eb244 100644
+--- a/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
++++ b/node_modules/@loki/target-chrome-core/src/create-chrome-target.js
+@@ -178,7 +178,20 @@ function createChromeTarget(
+           result.description.replace(/^Error: /, '').split('\n')[0]
+         );
+       }
+-      return result.value && JSON.parse(result.value);
++      if (!result.value) {
++        return result.value;
++      }
++      try {
++        return JSON.parse(result.value);
++      } catch (error) {
++        const text = String(result.value);
++        const posMatch = /position (\d+)/.exec(error.message);
++        const pos = posMatch ? Number(posMatch[1]) : 0;
++        const snippet = text.slice(Math.max(0, pos - 150), pos + 150);
++        throw new Error(
++          `${error.message}; result.type=${result.type}; length=${text.length}; snippet=${JSON.stringify(snippet)}`
++        );
++      }
+     };
+ 
+     const ensureNoErrorPresent = async () => {

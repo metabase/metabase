@@ -20,3 +20,138 @@ index ea8f45c..2663c4b 100644
  };
  
  module.exports = disablePointerEvents;
+diff --git a/node_modules/@loki/browser/src/get-stories.js b/node_modules/@loki/browser/src/get-stories.js
+index 8d62d36..4c5170a 100644
+--- a/node_modules/@loki/browser/src/get-stories.js
++++ b/node_modules/@loki/browser/src/get-stories.js
+@@ -31,14 +31,8 @@ const getStories = async (window) => {
+     }
+   };
+ 
+-  if (window.__STORYBOOK_PREVIEW__ && window.__STORYBOOK_PREVIEW__.extract) {
+-    // New official API to extract stories from preview
+-    await window.__STORYBOOK_PREVIEW__.extract();
+-
+-    // Deprecated, will be removed in V9
+-    const stories = window.__STORYBOOK_PREVIEW__.storyStore.raw();
+-
+-    return stories
++  const sanitizeStories = (stories) => {
++    const mapped = stories
+       .map((component) => ({
+         id: component.id,
+         kind: component.kind,
+@@ -53,6 +47,90 @@ const getStories = async (window) => {
+         ),
+       }))
+       .filter(({ parameters }) => !parameters.loki || !parameters.loki.skip);
++
++    const findBadValue = (value, path) => {
++      const valueType = typeof value;
++      if (valueType === 'bigint') {
++        return path + '=bigint';
++      }
++      if (valueType === 'number' && !Number.isFinite(value)) {
++        return path + '=' + String(value);
++      }
++      if (!value || valueType !== 'object') {
++        return null;
++      }
++      if (Array.isArray(value)) {
++        for (let j = 0; j < value.length; j += 1) {
++          const found = findBadValue(value[j], path + '[' + j + ']');
++          if (found) {
++            return found;
++          }
++        }
++        return null;
++      }
++      const keys = Object.keys(value);
++      for (let j = 0; j < keys.length; j += 1) {
++        const found = findBadValue(value[keys[j]], path + '.' + keys[j]);
++        if (found) {
++          return found;
++        }
++      }
++      return null;
++    };
++
++    for (let i = 0; i < mapped.length; i += 1) {
++      const story = mapped[i];
++      const bad = findBadValue(story, story.id || String(i));
++      if (bad) {
++        throw new Error('Story has non-JSON value ' + bad);
++      }
++      try {
++        JSON.parse(JSON.stringify(story));
++      } catch (error) {
++        throw new Error(
++          'Story JSON failed id=' +
++            story.id +
++            ' kind=' +
++            story.kind +
++            ' story=' +
++            story.story +
++            ' keys=' +
++            Object.keys(story.parameters || {}).join(',') +
++            ' err=' +
++            error.message
++        );
++      }
++    }
++
++    const allJson = JSON.stringify(mapped);
++    try {
++      JSON.parse(allJson);
++    } catch (error) {
++      const posMatch = error.message.match(/position (\d+)/);
++      const pos = posMatch ? Number(posMatch[1]) : 0;
++      throw new Error(
++        'Combined stories JSON failed count=' +
++          mapped.length +
++          ' length=' +
++          allJson.length +
++          ' err=' +
++          error.message +
++          ' slice=' +
++          allJson.substring(Math.max(0, pos - 120), pos + 120)
++      );
++    }
++
++    return mapped;
++  };
++
++  if (window.__STORYBOOK_PREVIEW__ && window.__STORYBOOK_PREVIEW__.extract) {
++    // New official API to extract stories from preview
++    await window.__STORYBOOK_PREVIEW__.extract();
++
++    // Deprecated, will be removed in V9
++    const stories = window.__STORYBOOK_PREVIEW__.storyStore.raw();
++
++    return sanitizeStories(stories);
+   }
+ 
+   if (
+@@ -62,21 +140,7 @@ const getStories = async (window) => {
+     await window.__STORYBOOK_CLIENT_API__.storyStore.cacheAllCSFFiles();
+   }
+ 
+-  return getStorybook()
+-    .map((component) => ({
+-      id: component.id,
+-      kind: component.kind,
+-      story: component.story,
+-      parameters: Object.fromEntries(
+-        Object.entries(component.parameters || {}).filter(
+-          ([key, value]) =>
+-            !key.startsWith('__') &&
+-            !blockedParams.includes(key) &&
+-            isSerializable(value)
+-        )
+-      ),
+-    }))
+-    .filter(({ parameters }) => !parameters.loki || !parameters.loki.skip);
++  return sanitizeStories(getStorybook());
+ };
+ 
+ module.exports = getStories;
