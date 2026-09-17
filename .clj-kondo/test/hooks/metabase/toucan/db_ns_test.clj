@@ -214,3 +214,53 @@
   (testing "a value operator with an unexpected arity still has its args examined"
     (is (seq (lint-query-call '(t2/select :model/X {:where [:= :a b c]}) 'metabase.foo.db)))
     (is (seq (lint-query-call '(t2/select :model/X {:where [:between :a lo hi]}) 'metabase.foo.db)))))
+
+(deftest ^:parallel operator-coverage-test
+  (testing "comparison operators HoneySQL accepts as aliases for not= are checked"
+    ;; The set used to list only `not=`, so `[:!= :col v]` -- live in collections/db.clj -- was
+    ;; silently unchecked even though HoneySQL binds it as `<>`.
+    (are [form] (=? [{:message #"`v`.*reaches a SQL value slot unmarked.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X {:where [:!= :k v]})
+      '(t2/select :model/X {:where [:<> :k v]})
+      '(t2/select :model/X {:where [:is-distinct-from :k v]})))
+  (testing "a two-value operator reports both values"
+    (is (= 2 (count (lint-query-call '(t2/select :model/X {:where [:not-between :k lo hi]})
+                                     'metabase.foo.db)))))
+  (testing "a value wrapped in a function-call form is reached"
+    ;; `[:lower v]` compiles to `LOWER(?)`, so `v` is a real bind slot.
+    (are [form] (seq (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X {:where [:= :k [:lower v]]})
+      '(t2/select :model/X {:where [:= :k [:cast v :text]]})
+      '(t2/select :model/X :k [:lower v])))
+  (testing "values in a literal collection are reached"
+    ;; `[:in :k [a b]]` binds each element -- `IN (?, ?)`.
+    (is (= 2 (count (lint-query-call '(t2/select :model/X {:where [:in :k [a b]]})
+                                     'metabase.foo.db))))))
+
+(deftest ^:parallel no-duplicate-findings-test
+  (testing "a multi-arg operator in a kv-arg reports each value exactly once"
+    ;; value-nodes misreads `[:between lo hi]` as a clause (lo as column), while
+    ;; kv-arg-value-nodes reads it correctly, so the walkers overlap on `hi`. Deduping by source
+    ;; position makes that harmless.
+    (is (= 2 (count (lint-query-call '(t2/select :model/X :d [:between lo hi]) 'metabase.foo.db))))
+    (is (= 2 (count (lint-query-call '(t2/delete! :model/X {:d [:between lo hi]})
+                                     'metabase.foo.db)))))
+  (testing "a query map passed where conditions go reports each value once"
+    ;; `{:where ...}` is a query map that value-nodes already walks; treating it as conditions too
+    ;; reported everything twice. Live in mcp/db.clj, metabot/db.clj, testing_api/db.clj.
+    (is (= 1 (count (lint-query-call '(t2/delete! :model/X {:where [:= :k k]}) 'metabase.foo.db))))
+    (is (= 2 (count (lint-query-call '(t2/update! :model/X {:where [:and [:= :a a] [:= :b b]]} {:v 1})
+                                     'metabase.foo.db))))))
+
+(deftest ^:parallel two-arity-update-changes-map-test
+  (testing "update!'s lone trailing map is CHANGES, not conditions, so its values are not flagged"
+    ;; Toucan's arglist ends in the changes map. remote_sync/db.clj's mark-all-rsos-synced! is this
+    ;; shape; flagging `written` would contradict rubric rule 1.
+    (is (empty? (lint-query-call '(t2/update! :model/X {:v written}) 'metabase.foo.db))))
+  (testing "delete! has no changes map, so its lone map is always conditions"
+    (is (=? [{:message #"`k`.*"}]
+            (lint-query-call '(t2/delete! :model/X {:k k}) 'metabase.foo.db))))
+  (testing "update!'s FIRST map is still conditions when a changes map follows"
+    (is (=? [{:message #"`k`.*"}]
+            (lint-query-call '(t2/update! :model/X {:k k} {:v 1}) 'metabase.foo.db)))))

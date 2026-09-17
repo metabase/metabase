@@ -82,7 +82,18 @@
                          (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))
       {:select [[:auto/param "name"]] :from [:t]}
       {:select [:*] :from [[[:auto/param "t"]]]}
-      {:select [:*] :from [:t] :order-by [[:auto/param "a"]]}
+      ;; an ALIAS slot -- HoneySQL tells [expr alias] apart positionally, so a marker after
+      ;; index 0 is always an identifier. This compiled to `FROM t AS param k` before.
+      {:select [:*] :from [[:t [:auto/param "al"]]]}
+      {:select [[:a [:auto/param "al"]]] :from [:t]}
+      ;; :cross-join takes only tables -- no ON condition -- so every element is an identifier
+      {:select [:*] :from [:a] :cross-join [:b [:auto/param "c"]]}
+      {:create-table :t :with-columns [[[:auto/param "c"] :int]]}))
+  (testing ":order-by and :group-by bind a param, so a marker there is a no-op rather than a drop"
+    ;; `{:order-by [[[:param :k] :asc]]}` compiles to `ORDER BY ? ASC` with the value bound --
+    ;; nothing is discarded, so refusing it would turn a harmless mistake into an exception.
+    (are [query] (nil? (#'value-guard/check-marker-placement! query))
+      {:select [:*] :from [:t] :order-by [[[:auto/param "a"] :asc]]}
       {:select [:*] :from [:t] :group-by [[:auto/param "a"]]}))
   (testing "a marker in a genuine value slot is left alone"
     (are [query] (nil? (#'value-guard/check-marker-placement! query))
