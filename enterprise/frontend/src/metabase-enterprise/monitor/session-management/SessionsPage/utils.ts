@@ -11,6 +11,7 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import { dayjs } from "metabase/dayjs";
 import type {
+  AdminSessionEndReason,
   AdminSessionListParams,
   AdminSessionProvider,
 } from "metabase-types/api";
@@ -19,15 +20,16 @@ import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
   DEFAULT_TAB,
-  LAST_ACTIVE_VALUES,
+  END_REASON_VALUES,
   PROVIDER_VALUES,
   SORT_COLUMN_VALUES,
   TAB_STATUS,
   TAB_VALUES,
+  TIME_PRESET_VALUES,
 } from "./constants";
 import type {
-  SessionsLastActive,
   SessionsTab,
+  SessionsTimePreset,
   SessionsUrlState,
 } from "./types";
 
@@ -52,12 +54,20 @@ const parseTab = (param: QueryParam): SessionsTab => {
   return typeof value === "string" && isTab(value) ? value : DEFAULT_TAB;
 };
 
-export const isLastActive = (value: string): value is SessionsLastActive =>
-  LAST_ACTIVE_VALUES.some((preset) => preset === value);
+export const isTimePreset = (value: string): value is SessionsTimePreset =>
+  TIME_PRESET_VALUES.some((preset) => preset === value);
 
-const parseLastActive = (param: QueryParam): SessionsLastActive | null => {
+const parseTimePreset = (param: QueryParam): SessionsTimePreset | null => {
   const value = getFirstParamValue(param);
-  return typeof value === "string" && isLastActive(value) ? value : null;
+  return typeof value === "string" && isTimePreset(value) ? value : null;
+};
+
+export const isEndReason = (value: string): value is AdminSessionEndReason =>
+  END_REASON_VALUES.some((reason) => reason === value);
+
+const parseEndReason = (param: QueryParam): AdminSessionEndReason | null => {
+  const value = getFirstParamValue(param);
+  return typeof value === "string" && isEndReason(value) ? value : null;
 };
 
 export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
@@ -66,7 +76,9 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
     query: parseQuery(query.query),
     tab: parseTab(query.tab),
     provider: parseProviders(query.provider),
-    last_active: parseLastActive(query.last_active),
+    last_active: parseTimePreset(query.last_active),
+    ended: parseTimePreset(query.ended),
+    reason: parseEndReason(query.reason),
     sort_column: parseSortColumn(
       query.sort_column,
       SORT_COLUMN_VALUES,
@@ -83,6 +95,8 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
     tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     provider: state.provider.length === 0 ? undefined : state.provider,
     last_active: state.last_active ?? undefined,
+    ended: state.ended ?? undefined,
+    reason: state.reason ?? undefined,
     sort_column:
       state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
     sort_direction:
@@ -92,8 +106,8 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
   }),
 };
 
-export const getLastActiveCutoff = (
-  preset: SessionsLastActive | null,
+export const getTimePresetCutoff = (
+  preset: SessionsTimePreset | null,
 ): string | undefined =>
   preset === null ? undefined : dayjs().subtract(1, preset).toISOString();
 
@@ -101,15 +115,22 @@ export const buildListParams = (
   state: SessionsUrlState,
   pageSize: number,
   lastActiveAfter: string | undefined,
-): AdminSessionListParams => ({
-  limit: pageSize,
-  offset: state.page * pageSize,
-  // the endpoint rejects a blank query, so send it only when there is something to search for
-  query: state.query || undefined,
-  status: TAB_STATUS[state.tab],
-  // an empty list would be sent as no filter at all, which is what we want; a populated one filters on any of them
-  provider: state.provider.length === 0 ? undefined : state.provider,
-  "last-active-after": lastActiveAfter,
-  "sort-column": state.sort_column,
-  "sort-direction": state.sort_direction,
-});
+  endedAfter: string | undefined,
+): AdminSessionListParams => {
+  // The ended-only criteria never match a live session, so each tab sends only the filters it shows
+  const isEnded = state.tab === "ended";
+  return {
+    limit: pageSize,
+    offset: state.page * pageSize,
+    // the endpoint rejects a blank query, so send it only when there is something to search for
+    query: state.query || undefined,
+    status: TAB_STATUS[state.tab],
+    // an empty list would be sent as no filter at all, which is what we want; a populated one filters on any of them
+    provider: state.provider.length === 0 ? undefined : state.provider,
+    "last-active-after": isEnded ? undefined : lastActiveAfter,
+    "ended-after": isEnded ? endedAfter : undefined,
+    reason: isEnded ? (state.reason ?? undefined) : undefined,
+    "sort-column": state.sort_column,
+    "sort-direction": state.sort_direction,
+  };
+};

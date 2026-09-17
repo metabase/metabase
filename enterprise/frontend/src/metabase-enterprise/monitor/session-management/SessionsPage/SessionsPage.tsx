@@ -16,7 +16,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { ActionIcon, Flex, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
 import type {
@@ -37,7 +37,7 @@ import {
 } from "./constants";
 import type { RouteParams } from "./types";
 import { useSessionRevocation } from "./use-session-revocation";
-import { buildListParams, getLastActiveCutoff, urlStateConfig } from "./utils";
+import { buildListParams, getTimePresetCutoff, urlStateConfig } from "./utils";
 
 export const SessionsPage = () => {
   usePageTitle(t`Session management`);
@@ -51,13 +51,17 @@ export const SessionsPage = () => {
   const clearSelection = useCallback(() => setRowSelection({}), []);
 
   const lastActiveAfter = useMemo(
-    () => getLastActiveCutoff(urlState.last_active),
+    () => getTimePresetCutoff(urlState.last_active),
     [urlState.last_active],
+  );
+  const endedAfter = useMemo(
+    () => getTimePresetCutoff(urlState.ended),
+    [urlState.ended],
   );
 
   const { data, isLoading, isFetching, error } = useAbortableQuery(
     useLazyListSessionsQuery,
-    buildListParams(urlState, PAGE_SIZE, lastActiveAfter),
+    buildListParams(urlState, PAGE_SIZE, lastActiveAfter, endedAfter),
   );
   const sessions = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
@@ -77,6 +81,8 @@ export const SessionsPage = () => {
     urlState.tab,
     urlState.provider,
     urlState.last_active,
+    urlState.ended,
+    urlState.reason,
     urlState.sort_column,
     urlState.sort_direction,
   ]);
@@ -216,6 +222,12 @@ export const SessionsPage = () => {
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
+          {isEndedTab && (
+            <Text size="sm" c="text-secondary">
+              {t`Ended sessions are kept for 30 days.`}
+            </Text>
+          )}
+
           <Flex gap="md" align="center">
             <DebouncedSearchInput
               value={urlState.query}
@@ -231,6 +243,7 @@ export const SessionsPage = () => {
             error={error}
             isFetching={isFetching}
             isLoading={isLoading}
+            isEndedTab={isEndedTab}
             page={urlState.page}
             rowSelection={rowSelection}
             selectedSessionId={sessionId}
