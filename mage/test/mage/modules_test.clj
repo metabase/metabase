@@ -284,13 +284,22 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers
-  "Modules that trigger driver tests, leaving out a nested module whose parent triggers them too.
+(defn- counted-triggering-modules
+  "The `triggering?` modules of `deps`, leaving out a nested module whose parent triggers too.
   Splitting a triggering module then moves nothing, while a triggering child of a quiet parent still counts."
+  [deps triggering?]
+  (let [triggering (set (filter triggering? (keys deps)))]
+    (set (remove #(some-> (modules/parent-module deps %) triggering) triggering))))
+
+(deftest counted-triggering-modules-test
+  (let [deps {'foo #{} 'foo.child #{} 'bar #{} 'bar.child #{} 'baz #{}}]
+    (is (= #{'foo.child 'bar}
+           (counted-triggering-modules deps #{'foo.child 'bar 'bar.child})))))
+
+(defn modules-affecting-drivers
+  "Modules that trigger driver tests, as [[counted-triggering-modules]] counts them."
   []
-  (let [deps       (mage.modules/dependencies)
-        triggering (set (filter #(mage.modules/driver-deps-affected? [%]) (keys deps)))]
-    (remove #(some-> (modules/parent-module deps %) triggering) triggering)))
+  (counted-triggering-modules (mage.modules/dependencies) #(mage.modules/driver-deps-affected? [%])))
 
 (deftest module-graph-may-not-become-more-connected
   (testing "The number of modules triggering driver tests should not increase without explicit approval.
