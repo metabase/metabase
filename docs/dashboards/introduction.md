@@ -130,6 +130,8 @@ https://www.example.com/{{path}}
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `path`). Parameters are only supported for non-Metabase URLs (that is, URLs that you manually enter, not URLs you search and select from your Metabase). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
 
+Admins control which domains iframes can load from in [Allowed domains for iframes in dashboards](../configuring-metabase/domains.md#allowed-domains-for-iframes-in-dashboards).
+
 ## Iframe cards
 
 [Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:

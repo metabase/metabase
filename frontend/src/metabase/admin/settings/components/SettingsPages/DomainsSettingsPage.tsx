@@ -42,10 +42,10 @@ export function DomainsSettingsPage() {
       "csp-img-allowed-hosts",
     ]);
 
-  const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
+  const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/domains", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
-  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/settings", {
+  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/domains", {
     anchor: "allowed-domains-for-images",
   });
 

@@ -427,6 +427,8 @@ categories:
             url: "configuring-metabase/setting-up-metabase"
           - name: "General settings"
             url: "configuring-metabase/settings"
+          - name: "Domains"
+            url: "configuring-metabase/domains"
           - name: "Set up email"
             url: "configuring-metabase/email"
           - name: "Set up Slack"

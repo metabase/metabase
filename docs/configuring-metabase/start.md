@@ -14,6 +14,10 @@ A walkthrough of when you first boot up your Metabase.
 
 Site name, report timezone, and more settings.
 
+## [Domains](./domains.md)
+
+Allow iframes and images from other domains.
+
 ## [Email](./email.md)
 
 Set up email for [Alerts](../questions/alerts.md) and [Dashboard subscriptions](../dashboards/subscriptions.md).

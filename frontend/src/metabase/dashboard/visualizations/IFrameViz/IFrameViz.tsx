@@ -163,7 +163,7 @@ function IFrameVizInner({
 function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "configuring-metabase/settings",
+    "configuring-metabase/domains",
     { anchor: "allowed-domains-for-iframes-in-dashboards" },
   );
 

@@ -16,6 +16,8 @@ By default, Metabase will automatically provision a domain name for your Metabas
 
 [Pro and Enterprise](https://www.metabase.com/pricing) plans allow you to add a custom domain. Setting a custom domain will update your instance's [Site URL](../configuring-metabase/settings.md#site-url). The Site URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios.
 
+> This page is about the web address of your Metabase Cloud instance. To control which domains dashboards can embed iframes and images from, see [Domains](../configuring-metabase/domains.md) in your admin settings.
+
 ## Add a custom domain to your Metabase
 
 To add a custom domain to your Metabase:

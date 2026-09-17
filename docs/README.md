@@ -233,6 +233,7 @@ Metabase's reference documentation.
 - [Configuration overview](./configuring-metabase/start.md)
 - [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 - [General settings](./configuring-metabase/settings.md)
+- [Domains](./configuring-metabase/domains.md)
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Webhooks](./configuring-metabase/webhooks.md)
