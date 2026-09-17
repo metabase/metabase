@@ -26,6 +26,7 @@
   Nothing here catches that: HoneySQL gives no signal for a param it did not consume, and which
   positions bind is a decision it makes per operator, so it cannot be inferred from the query."
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
@@ -99,6 +100,50 @@
   []
   (keyword (str "p" (Long/toUnsignedString (.nextLong (ThreadLocalRandom/current)) 36))))
 
+(def ^:private identifier-clauses
+  "Top-level query-map keys whose contents HoneySQL formats as identifiers rather than values.
+
+  A marker in one of these is always a mistake, and a silent one: the lift below rewrites a marker
+  in ANY position into `[:param k]`, which HoneySQL formats in an identifier slot as the literal
+  identifier `PARAM`, discarding the value. Nothing downstream can notice, so refuse here."
+  #{:select :select-distinct :from :join :left-join :right-join :inner-join :full-join :cross-join
+    :update :insert-into :delete-from :group-by :order-by :returning :with :with-columns})
+
+(defn- marker-in-identifier-position?
+  "Whether a marker sits directly in `form`, an identifier slot.
+
+  Stops at a nested query map. A subquery has its own clauses -- `t2/exists?` wraps the whole query
+  in `:select [[[:exists {...}]]]`, and that inner map's `:where` is a real value slot -- so it is
+  checked on its own terms rather than as part of the slot holding it."
+  [form]
+  (cond
+    (map? form)        false
+    (marker-form? form) true
+    (sequential? form) (boolean (some marker-in-identifier-position? form))
+    :else              false))
+
+(defn- check-marker-placement!
+  "Refuse a marker sitting in a clause that holds identifiers.
+
+  `:join`-family clauses alternate a table and an ON condition, and the condition is a genuine value
+  slot, so those are checked one table at a time rather than wholesale."
+  [query]
+  (when (map? query)
+    (doseq [[clause v] query
+            :when      (contains? identifier-clauses clause)
+            :let       [join? (str/ends-with? (name clause) "join")
+                        ;; For a join, only the table halves (even indexes) hold identifiers.
+                        to-check (if (and join? (sequential? v))
+                                   (take-nth 2 v)
+                                   [v])]
+            part       to-check
+            :when      (marker-in-identifier-position? part)]
+      (throw (ex-info (str "[:auto/param ...] in a " clause " clause: " (pr-str part)
+                           ". That slot names a column or table, so the marker would compile to the"
+                           " identifier `param` and the value would be dropped. A marker belongs in"
+                           " a value slot.")
+                      {:type ::marker-outside-value-slot, :clause clause, :form part})))))
+
 (defn- auto-param
   "Rewrite `[:auto/param v]` markers in `query` into HoneySQL's `[:param :kN]`, returning
   `[rewritten-query params-map]`.
@@ -165,7 +210,8 @@
   (if-not (map? built-query)
     (do (assert-no-marker-survived! built-query)
         (next-method query-type model built-query))
-    (let [[query params] (auto-param built-query)]
+    (let [_              (check-marker-placement! built-query)
+          [query params] (auto-param built-query)]
       (assert-no-marker-survived! query)
       (if-not (seq params)
         (next-method query-type model query)

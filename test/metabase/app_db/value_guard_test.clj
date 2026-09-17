@@ -72,3 +72,28 @@
 (deftest ^:parallel leaves-an-unmarked-query-alone-test
   (let [query {:select [:*] :from [:t] :where [:= :a 1]}]
     (is (= [query {}] (#'value-guard/auto-param query)))))
+
+(deftest ^:parallel refuses-a-marker-outside-a-value-slot-test
+  (testing "a marker in a clause that names columns or tables is refused"
+    ;; Without this the lift rewrites the marker wherever it sits, and HoneySQL formats the result
+    ;; in an identifier slot as the literal identifier `param` -- dropping the value with no signal.
+    (are [query] (= ::value-guard/marker-outside-value-slot
+                    (try (#'value-guard/check-marker-placement! query) nil
+                         (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))
+      {:select [[:auto/param "name"]] :from [:t]}
+      {:select [:*] :from [[[:auto/param "t"]]]}
+      {:select [:*] :from [:t] :order-by [[:auto/param "a"]]}
+      {:select [:*] :from [:t] :group-by [[:auto/param "a"]]}))
+  (testing "a marker in a genuine value slot is left alone"
+    (are [query] (nil? (#'value-guard/check-marker-placement! query))
+      {:select [:*] :from [:t] :where [:= :a [:auto/param 1]]}
+      {:where [:auto/param :locale "de"]}
+      ;; a join alternates table and ON condition; the condition is a value slot
+      {:select [:*] :from [:t] :join [:u [:= :t.a [:auto/param 1]]]}))
+  (testing "a subquery has its own clauses, so an outer identifier slot holding one is not scanned"
+    ;; `t2/exists?` wraps the whole query in `:select [[[:exists {...}]]]`, and that inner map's
+    ;; `:where` is a real value slot. Scanning the outer `:select` wholesale would reject it.
+    (is (nil? (#'value-guard/check-marker-placement!
+               {:select [[[:exists {:select [[[:inline 1]]]
+                                    :from   [[:content_translation]]
+                                    :where  [:auto/param :locale "de"]}] :exists]]})))))
