@@ -22,6 +22,7 @@ jest.mock("embedding-sdk-bundle/store/listener-middleware", () => ({
   startSdkListening: jest.fn(),
 }));
 jest.mock("metabase/dashboard/selectors", () => ({
+  ...jest.requireActual("metabase/dashboard/selectors"),
   getDashboardComplete: jest.fn(),
   getParameterValues: jest.fn(),
   getParameters: jest.fn(),
