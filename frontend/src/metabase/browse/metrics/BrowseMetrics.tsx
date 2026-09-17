@@ -86,7 +86,7 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-primary" id={titleId}>
+            <Title order={1} c="text-primary" id={titleId}>
               <Group gap="sm">
                 <Icon size={24} c="icon-brand" name="metric" />
                 {t`Metrics`}
@@ -163,7 +163,7 @@ function MetricsEmptyState({
           title={t`Create Metrics to define the official way to calculate important numbers for your team`}
           message={
             <Box>
-              <Text mt="sm" maw="25rem">
+              <Text lh="1.25rem" mt="sm" maw="25rem">
                 {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
               </Text>
               <Flex pt="lg" align="center" justify="center" gap="lg">

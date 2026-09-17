@@ -5,15 +5,13 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import {
-  useHelpUrl,
-  useSetupGuideReturnPath,
-} from "metabase/embedding/setup-guide/hooks";
+import { useHelpUrl } from "metabase/embedding/setup-guide/hooks";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 
+const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+
 export const TestJwtStep = () => {
-  const returnPath = useSetupGuideReturnPath();
   const [sendToast] = useToast();
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -52,7 +50,7 @@ export const TestJwtStep = () => {
 
         <Button
           component={Link}
-          to={returnPath}
+          to={SETUP_GUIDE_PATH}
           variant="filled"
           onClick={onDone}
         >
@@ -65,7 +63,6 @@ export const TestJwtStep = () => {
 
 const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
   const helpUrl = useHelpUrl();
-  const returnPath = useSetupGuideReturnPath();
 
   return (
     <Stack gap="xl">
@@ -80,7 +77,7 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
           <Text fw={700} mb="xxs">{t`404 error after SSO sign-in`}</Text>
 
           <Text size="md" c="text-secondary" lh="lg">
-            {t`If after clicking on "Sign in with SSO", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available.`}
+            {t`If after clicking on "Sign in with SSO", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available.`}
           </Text>
         </div>
 
@@ -110,7 +107,7 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
           >{t`User provisioning disabled for JWT SSO`}</Text>
 
           <Text size="md" c="text-secondary" lh="lg">
-            {t`If after being redirected from your app to Metabase, you see an error message "Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO.`}
+            {t`If after being redirected from your app to Metabase, you see an error message "Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO.`}
           </Text>
         </div>
       </Stack>
@@ -122,7 +119,7 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
 
         <Button
           component={Link}
-          to={returnPath}
+          to={SETUP_GUIDE_PATH}
           variant="filled"
           onClick={onDone}
         >

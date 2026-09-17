@@ -67,7 +67,7 @@
 
 (mu/defn insert-embedding-themes!
   "Insert the EmbeddingTheme `rows`. Only seeding - the Light/Dark themes written on the first visit
-  to the embedding hub - sets `is_default`, so the single-row insert above leaves it out."
+  to the themes page - sets `is_default`, so the single-row insert above leaves it out."
   [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings :is_default])]]
   (t2/insert! :model/EmbeddingTheme rows))
 

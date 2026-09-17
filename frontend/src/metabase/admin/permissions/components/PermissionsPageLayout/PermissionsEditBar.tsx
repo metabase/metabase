@@ -2,14 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
 import { Button } from "metabase/ui";
 
 import { PermissionsConfirm } from "../PermissionsConfirm";
-
-import S from "./PermissionsEditBar.module.css";
 
 interface PermissionsEditBarProps {
   diff?: PermissionsGraphDiff;
@@ -25,7 +22,6 @@ export function PermissionsEditBar({
   onSave,
 }: PermissionsEditBarProps) {
   const [modelOpened, { open: openModal, close: closeModal }] = useDisclosure();
-  const isEmbeddingHub = isEmbeddingHubPermissions();
   const saveButton = (
     <Button
       key="save"
@@ -44,8 +40,7 @@ export function PermissionsEditBar({
   return (
     <>
       <EditBar
-        admin={!isEmbeddingHub}
-        className={isEmbeddingHub ? S.hubEditBar : undefined}
+        admin
         title={t`You've made changes to permissions.`}
         buttons={[cancelButton, saveButton]}
       />

@@ -28,7 +28,7 @@ export const HomeRecentSection = () => {
   }
 
   return (
-    <div>
+    <div data-testid="recent-items-section">
       <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
       <div className={S.SectionBody}>
         {recentsFilter(recentItems).map((item, index) => (
