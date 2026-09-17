@@ -1,6 +1,8 @@
 (ns metabase.metabot.self.adapter-test
   (:require
    [clj-http.client :as http]
+   [clojure.edn :as edn]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.metabot.self.adapter :as adapter]
@@ -18,7 +20,7 @@
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
-   [metabase.tracing.test-util :as tracing.tu]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -119,33 +121,35 @@
                 http/request                        (fn [req] {:body req})]
     (thunk)))
 
-(defn- request-span!
-  "Run a Claude request with HTTP and streaming stubbed out, and return the request span
-  [[adapter/stream!]] opened for it, as `{:name ... :attrs ...}`."
+(defn- request-log-data!
+  "Run a Claude request with HTTP and streaming stubbed out, and return the data
+  [[adapter/stream!]]'s `with-span` line logged for it, as a map.
+
+  The log rather than the span: `u.o11y/with-span` renders its whole map into the line but hands only
+  `:attributes` to clj-otel, so these keys reach the log and nothing else (BOT-2168). The line is
+  `\"<span-name> (<ms>ms) <map>\"`, so the map is everything from the first brace on."
   [opts]
-  (tracing.tu/with-span-exporter [exporter]
-    (streamed-request!
-     #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
-                                 :credentials {:api-key  "sk-ant-test"
-                                               :base-url "https://api.anthropic.com"}}
-                                opts)))
-    (first (tracing.tu/finished-spans exporter))))
+  (let [messages (mt/with-log-messages-for-level [messages [metabase.metabot.self.adapter :info]]
+                   (streamed-request!
+                    #(claude/claude-raw (merge {:model       "claude-haiku-4-5"
+                                                :credentials {:api-key  "sk-ant-test"
+                                                              :base-url "https://api.anthropic.com"}}
+                                               opts)))
+                   (mapv :message (messages)))
+        line     (m/find-first #(re-find #"^:metabot\.anthropic/request " %) messages)]
+    (some-> line (subs (str/index-of line "{")) edn/read-string)))
 
 (defn- captured-counts!
-  "The `:msg-count` / `:tool-count` [[adapter/stream!]] reported for `opts`, off the request span.
-
-  Attribute names arrive snake_cased: clj-otel rewrites them to OpenTelemetry's naming convention."
+  "The `:msg-count` / `:tool-count` [[adapter/stream!]] reported for `opts`."
   [opts]
-  (let [attrs (:attrs (request-span! opts))]
-    {:msg-count (get attrs "msg_count") :tool-count (get attrs "tool_count")}))
+  (select-keys (request-log-data! opts) [:msg-count :tool-count]))
 
-(deftest request-shape-reaches-the-span-test
-  (testing "the model and the counts arrive as span attributes rather than as flat keys, which clj-otel
-            reads from nowhere and drops without a warning"
-    (let [span (request-span! {:input [{:role :user :content "hi"}]})]
-      (is (= ":metabot.anthropic/request" (:name span)))
-      (is (= {"model" "claude-haiku-4-5" "msg_count" 1 "tool_count" 0}
-             (select-keys (:attrs span) ["model" "msg_count" "tool_count"]))))))
+(deftest request-shape-reaches-the-log-test
+  (testing "the model and the counts stay flat keys, which is what `with-span` renders into its line;
+            nesting them under `:attributes` would reach the trace but bury them in the log"
+    (is (= {:model "claude-haiku-4-5" :msg-count 1 :tool-count 0}
+           (-> (request-log-data! {:input [{:role :user :content "hi"}]})
+               (select-keys [:model :msg-count :tool-count]))))))
 
 (deftest counts-describe-the-callers-request-test
   (testing "tool-count is the tools the caller offered, not the tools that reach the wire"
