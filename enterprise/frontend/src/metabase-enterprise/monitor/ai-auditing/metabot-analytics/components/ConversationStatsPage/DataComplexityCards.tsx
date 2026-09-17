@@ -44,7 +44,7 @@ import S from "./DataComplexityCards.module.css";
 type RatingColorKey = DataComplexityRating | "default";
 
 const RATING_BADGE_BACKGROUND_COLORS = {
-  low: "feedback-positive-selected",
+  low: "background_surface-success-strong",
   medium: "background_surface-warning-strong",
   high: "background_surface-error",
   default: "background_page-tertiary",

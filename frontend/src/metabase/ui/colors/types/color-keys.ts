@@ -115,6 +115,7 @@ export type MetabaseColorKey =
   | "background_surface-secondary-pressed"
   | "background_surface-selected"
   | "background_surface-success"
+  | "background_surface-success-strong"
   | "background_surface-warning"
   | "background_surface-warning-strong"
   | "border-brand"
