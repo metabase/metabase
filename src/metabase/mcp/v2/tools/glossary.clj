@@ -39,19 +39,6 @@
   []
   (glossary.db/glossary-entries nil))
 
-(defn- terms-message
-  "The sentence naming the terms of `entries`, cut to [[default-limit]] names. A caller who named a term that
-   isn't there is owed the ones that are, but a glossary has no bound of its own to hand back."
-  [entries]
-  (let [terms (map :term entries)
-        shown (take default-limit terms)
-        extra (- (count terms) (count shown))]
-    (cond
-      (empty? terms) no-terms-message
-      (pos? extra)   (message/msg ["Terms defined here, %d of %d — call glossary() for the rest: %s."]
-                                  (count shown) (count terms) (common/list-message shown))
-      :else          (message/msg ["Terms defined here: %s."] (common/list-message shown)))))
-
 (defn- entry-message
   [{:keys [term definition]}]
   (message/msg ["%s: %s"] term definition))
@@ -60,7 +47,6 @@
   "Every entry of `entries` whose term matches `term` compared case-insensitively, in term order: a model echoes a
    term as it read it in a question or a column name, not as it happens to be stored."
   [entries term]
-  ;; Several can match: `term` is unique case-sensitively, so "ARR" and "arr" are two entries with two meanings.
   (let [wanted (u/lower-case-en term)]
     (filter #(= wanted (u/lower-case-en (:term %))) entries)))
 
@@ -90,7 +76,7 @@
        (if-let [matches (seq (find-entries entries term))]
          (common/lines-message (map entry-message matches))
          (common/throw-teaching-error
-          (message/msg ["No glossary entry for %s. %s"] term (terms-message entries)))))
+          (message/msg ["No glossary entry for %s."] term))))
       ;; The page is cut in memory because the module reads the table whole. That bounds the response, which is
       ;; what a client pays for and what the definitions can make arbitrarily large, not the query.
       (let [limit  (or limit default-limit)
