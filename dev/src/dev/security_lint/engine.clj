@@ -461,7 +461,7 @@
   These ask what an endpoint *reaches* -- an enablement check, a token verification, a model read with no
   authorization on the way -- which is a question about the call graph, not about any one call site. They only
   run under the `:call-graph` policy, since that is where the graph exists."
-  [rules reach ns-sym index filename root {:keys [bindings labels origin-calls]}]
+  [rules reach ns-sym index filename root {:keys [bindings labels origin-calls sanitized-calls shape-feeders local-inits]}]
   (for [entry (cg/entries reach)
         ;; these rules are about HTTP endpoints; a job or a queue consumer is not one
         :when (and (= filename (:filename entry)) (= :http (:kind entry)))
@@ -497,14 +497,20 @@
                        ;; parameters carry -- the checks among them
                        :bindings            bindings
                        :labels              labels
-                       ;; so `taint/origins` and `taint/checks` work on the endpoint's own body
+                       ;; so `taint/origins` and `taint/checks` work on the endpoint's own body -- with the
+                       ;; sanitizers, the bindings and the feeders a sink rule's context carries, so a
+                       ;; `(-> {...} (sql/format))` reads as clean here as it does at a sink
                        :locals              (taint/boundary-labels labels)
+                       :boundary-locals     (taint/boundary-labels labels)
                        :origin-calls        origin-calls
+                       :sanitized-calls     sanitized-calls
+                       :shape-feeders       shape-feeders
+                       :local-inits         local-inits
                        :reachable-from      #{:http}
                        :endpoint-reachable? true}
                result ((:detect rule) ctx)]
         :when result]
-    (assoc (finding site node result #{:http})
+    (assoc (finding site node result #{:http} ctx)
            :flows {:http {:count   1
                           :entries [(:name entry)]
                           :path    [{:name (:name entry) :kind :http :filename filename
@@ -643,10 +649,14 @@
         (when (and reach (seq endpoint-rules))
           (for [filename (sort (distinct (map :filename (cg/entries reach))))
                 :when    (contains? roots filename)
-                f        (endpoint-findings endpoint-rules reach (get ns-by-file filename)
-                                            (get indexes filename) filename root
-                                            {:bindings     (get bindings filename {})
-                                             :labels       (get cg-pos filename {})
-                                             :origin-calls (get origin-pos filename {})})]
+                :let     [index (get indexes filename)]
+                f        (endpoint-findings endpoint-rules reach (get ns-by-file filename) index filename root
+                                            {:bindings        (get bindings filename {})
+                                             :labels          (get cg-pos filename {})
+                                             :origin-calls    (get origin-pos filename {})
+                                             :sanitized-calls (get sanitized-pos filename #{})
+                                             :shape-feeders   (get feeders-pos filename {})
+                                             :local-inits     (taint/local-inits (:nodes index) (get locals-by-file filename)
+                                                                                 (get uses filename))})]
             f)))))
      {:unparsed @unparsed})))
