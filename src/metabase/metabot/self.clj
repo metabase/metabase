@@ -84,7 +84,7 @@
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
-  optional AWS key material and region (see [[bedrock/list-models]])."
+  optional AWS key material and region (see [[metabase.metabot.self.bedrock/list-models]])."
   ([provider]
    ((registry/required provider :list-models)))
   ([provider opts]

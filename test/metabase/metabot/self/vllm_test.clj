@@ -560,7 +560,7 @@
           (is (false? (#'self/retryable-error? e))))))))
 
 (deftest vllm-http-errors-still-reach-the-status-specific-message-test
-  (testing "the IOException catch runs first, so a non-2xx must still be translated by `vllm-error-msg`"
+  (testing "the IOException catch runs first, so a non-2xx must still be translated by the descriptor's `:errors`"
     (with-redefs [http/request (fn [_] (throw (ex-info "clj-http: status 401"
                                                        {:status 401 :body "{\"message\":\"Unauthorized\"}"})))]
       (is (thrown-with-msg?
