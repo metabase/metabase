@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMount } from "react-use";
+import { useLatest, useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
@@ -220,14 +220,20 @@ export const NativeQueryEditorRoot = forwardRef<
     }
   }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
+  // The editor reconfigures itself whenever the identity of its callbacks
+  // changes, so they must not depend on the query, which changes on every
+  // keystroke.
+  const queryRef = useLatest(query);
+  const questionRef = useLatest(question);
+
   const handleChange = useCallback(
     (queryText: string) => {
-      if (query.queryText() !== queryText) {
-        const updatedQuery = query.setQueryText(queryText);
-        setDatasetQuery(updatedQuery);
+      const currentQuery = queryRef.current;
+      if (currentQuery.queryText() !== queryText) {
+        setDatasetQuery(currentQuery.setQueryText(queryText));
       }
     },
-    [query, setDatasetQuery],
+    [queryRef, setDatasetQuery],
   );
 
   const handleSnippetUpdate = useCallback(
@@ -255,7 +261,7 @@ export const NativeQueryEditorRoot = forwardRef<
   }, [setIsNativeEditorOpen, shouldOpenDataReference, isNativeEditorOpen]);
 
   const handleFormatQuery = useCallback(async () => {
-    const query = question.query();
+    const query = questionRef.current.query();
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
     const canFormatQuery = engine != null && canFormatForEngine(engine);
@@ -271,7 +277,7 @@ export const NativeQueryEditorRoot = forwardRef<
     const formattedQuery = await formatQuery(queryText, engine);
     handleChange(formattedQuery);
     focusEditor();
-  }, [question, focusEditor, handleChange]);
+  }, [questionRef, focusEditor, handleChange]);
 
   const handleResize = useCallback(
     (height: number) => {
