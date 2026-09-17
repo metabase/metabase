@@ -136,6 +136,8 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
 export type LineSize = "S" | "M" | "L";
 
+export type LineStyle = "solid" | "dashed" | "dotted";
+
 export type SeriesSettings = {
   title?: string;
   color?: string;
@@ -145,11 +147,13 @@ export type SeriesSettings = {
   display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
-  "line.style"?: "solid" | "dashed" | "dotted";
+  "line.style"?: LineStyle;
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
   show_series_trendline?: boolean;
+  "trendline.color"?: string;
+  "trendline.style"?: LineStyle;
 };
 
 export type SeriesOrderSetting = {
