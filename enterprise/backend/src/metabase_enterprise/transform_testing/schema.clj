@@ -19,6 +19,25 @@
         (str "unknown " (name dispatch-key) " " (pr-str (get value dispatch-key)) ", must be one of: " known)
         (str "must be a map whose " (name dispatch-key) " is one of: " known)))))
 
+(defn- rows-match-columns?
+  "Whether every row of a `rows` value carries a value for each declared column and none besides, which is nothing to
+  answer when no column is declared -- the columns have their own schema to fail."
+  [{:keys [columns rows]}]
+  (let [declared (into #{} (map :name) columns)]
+    (or (empty? declared)
+        (every? (fn [row] (and (map? row) (= declared (set (keys row))))) rows))))
+
+(defn- rows-match-columns-message
+  "What the first row that does not carry exactly its declared columns got wrong."
+  [{{:keys [columns rows]} :value} _options]
+  (let [declared (into #{} (map :name) columns)
+        offender (first (remove (fn [row] (and (map? row) (= declared (set (keys row))))) rows))
+        missing  (sort (remove (set (keys offender)) declared))
+        extra    (sort (remove declared (keys offender)))]
+    (str "every row must carry exactly the declared columns"
+         (when (seq missing) (str "; missing " (str/join ", " (map pr-str missing))))
+         (when (seq extra) (str "; not declared: " (str/join ", " (map pr-str extra)))))))
+
 (mr/def ::table
   "A table read by the transform under test, by schema and name."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
@@ -48,11 +67,17 @@
    [:sql    ::lib.schema.common/non-blank-string]])
 
 (mr/def ::rows-data
-  "Test data written out in the request: the columns, with the type each is cast to, and the rows."
-  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:format  {:decode/normalize lib.schema.common/normalize-keyword} [:= :rows]]
-   [:columns [:sequential {:min 1} ::column]]
-   [:rows    [:sequential ::row]]])
+  "Test data written out in the request: the columns, with the type each is cast to, and the rows.
+
+  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names
+  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author
+  asked for."
+  [:and
+   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+    [:format  {:decode/normalize lib.schema.common/normalize-keyword} [:= :rows]]
+    [:columns [:sequential {:min 1} ::column]]
+    [:rows    [:sequential ::row]]]
+   [:fn {:error/fn rows-match-columns-message} rows-match-columns?]])
 
 (mr/def ::input
   "An input table of the transform under test, replaced with test data."

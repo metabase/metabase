@@ -41,6 +41,20 @@
   [raw]
   (mr/validate ::transform-testing.schema/expectations (normalized raw)))
 
+(defn- explained
+  "Every message the explanation of `value` against `schema` carries, wherever in the structure it sits, without
+  the value each one echoes back."
+  [schema value]
+  (into #{}
+        (comp (filter string?)
+              (map #(first (str/split % #", received: "))))
+        (tree-seq coll? seq (mu/explain schema value))))
+
+(defn- normalized-inputs
+  "`raw` normalized as the model's `:in` transform normalizes an `:inputs` value."
+  [raw]
+  (lib/normalize ::transform-testing.schema/inputs raw))
+
 (defn- records
   "The expectation records `raw` builds into, as the runner builds them."
   [raw]
@@ -93,6 +107,42 @@
     (is (not (valid? [(empty-sql "dup") (empty-sql "other") (empty-sql "dup")]))))
   (testing "names differing in case are different names"
     (is (valid? [(empty-sql "dup") (empty-sql "DUP")]))))
+
+(deftest rows-must-carry-exactly-the-declared-columns-test
+  (testing "a row naming a column that was not declared is refused"
+    (is (not (valid? [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}] [{"id" 1 "nope" 2}])])))
+    (is (= #{"every row must carry exactly the declared columns; not declared: \"nope\""}
+           (explained ::transform-testing.schema/expectations
+                      (normalized [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}]
+                                                [{"id" 1 "nope" 2}])])))))
+  (testing "a row leaving a declared column out is refused, rather than becoming a null cell"
+    (is (= #{"every row must carry exactly the declared columns; missing \"name\""}
+           (explained ::transform-testing.schema/expectations
+                      (normalized [(equals-rows "n"
+                                                [{"name" "id" "database_type" "INTEGER"}
+                                                 {"name" "name" "database_type" "VARCHAR(5)"}]
+                                                [{"id" 1}])])))))
+  (testing "the message names what one offending row got wrong, both ways at once"
+    (is (= #{"every row must carry exactly the declared columns; missing \"name\"; not declared: \"nope\""}
+           (explained ::transform-testing.schema/expectations
+                      (normalized [(equals-rows "n"
+                                                [{"name" "id" "database_type" "INTEGER"}
+                                                 {"name" "name" "database_type" "VARCHAR(5)"}]
+                                                [{"id" 1 "nope" 2}])])))))
+  (testing "a declared column holding a null is carried by the row, not left out"
+    (is (valid? [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}] [{"id" nil}])])))
+  (testing "no rows at all declares columns and stands for an empty table"
+    (is (valid? [(equals-rows "n" [{"name" "id" "database_type" "INTEGER"}] [])])))
+  (testing "and an input's rows answer to its columns the same way"
+    (is (mr/validate ::transform-testing.schema/inputs
+                     (normalized-inputs [{"table" {"name" "PEOPLE"} "format" "rows"
+                                          "columns" [{"name" "ID" "database_type" "INTEGER"}]
+                                          "rows" [{"ID" 1}]}])))
+    (is (= #{"every row must carry exactly the declared columns; not declared: \"NOPE\""}
+           (explained ::transform-testing.schema/inputs
+                      (normalized-inputs [{"table" {"name" "PEOPLE"} "format" "rows"
+                                           "columns" [{"name" "ID" "database_type" "INTEGER"}]
+                                           "rows" [{"ID" 1 "NOPE" 2}]}]))))))
 
 (deftest refuses-a-malformed-expectation-test
   (testing "an unknown type matches no branch"
@@ -167,15 +217,6 @@
           (is (some? e))
           (testing "and the refusal is the schema's own explanation"
             (is (some? (:error (ex-data e))))))))))
-
-(defn- explained
-  "Every message the explanation of `value` against `schema` carries, wherever in the structure it sits, without
-  the value each one echoes back."
-  [schema value]
-  (into #{}
-        (comp (filter string?)
-              (map #(first (str/split % #", received: "))))
-        (tree-seq coll? seq (mu/explain schema value))))
 
 (deftest the-schema-explains-its-own-refusals-test
   (testing "an unknown type names the types there are"
