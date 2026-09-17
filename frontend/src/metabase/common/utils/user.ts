@@ -24,6 +24,22 @@ export function prepareInitials(namedParty: Named): string | null {
   }
 }
 
+/**
+ * Stable seed for one named party's avatar. Every surface showing the same person must derive the
+ * same seed, so this prefers the server-computed `common_name` (a full name, or the email when
+ * there is no name) and falls back only when a caller has less than that.
+ */
+export function avatarSeed(namedParty: Named): string {
+  if (isUser(namedParty)) {
+    const fullName = [namedParty.first_name, namedParty.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    return namedParty.common_name || fullName || namedParty.email || "";
+  }
+  return namedParty.name;
+}
+
 function emailInitials(user: PartialUser) {
   const email = [user.email, user.common_name].find((maybeEmail) =>
     isEmail(maybeEmail),
@@ -36,7 +52,7 @@ function emailInitials(user: PartialUser) {
   return null;
 }
 
-const isUser = (user: Named): user is PartialUser => {
+export const isUser = (user: Named): user is PartialUser => {
   return "common_name" in user || "email" in user;
 };
 

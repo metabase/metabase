@@ -19,6 +19,10 @@ export const getDetailViewState = (state: State) => {
   return state.app.detailView;
 };
 
+export const getNavSectionOverride = (state: State) => {
+  return state.app.navSection;
+};
+
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;

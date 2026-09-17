@@ -2,8 +2,9 @@ import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { Avatar, Group, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
+import { Group, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -45,7 +46,9 @@ export const MenuItemComponent = ({
     {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
-      {item.model === "user" && <Avatar name={item.label} size={16} />}
+      {item.model === "user" && (
+        <UserAvatar user={{ name: item.label }} size={16} decorative />
+      )}
 
       {item.model !== "user" && (
         <EntityIcon

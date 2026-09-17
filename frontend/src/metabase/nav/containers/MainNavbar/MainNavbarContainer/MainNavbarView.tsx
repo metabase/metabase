@@ -20,7 +20,8 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
-import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import { NavSectionSwitcher } from "metabase/nav/containers/MainNavbar/NavSectionSwitcher";
+import { OfficialNav } from "metabase/nav/containers/MainNavbar/OfficialNav";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_REMOTE_SYNC,
@@ -50,6 +51,7 @@ import {
   trackNewCollectionFromNavInitiated,
 } from "../analytics";
 import type { SelectedItem } from "../types";
+import { useNavSection } from "../use-nav-section";
 
 import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
@@ -176,6 +178,8 @@ export function MainNavbarView({
 
   const showOtherUsersCollections = useShowOtherUsersCollections();
 
+  const { section } = useNavSection();
+
   const collectionsHeading = showExternalCollectionsSection
     ? t`Internal Collections`
     : t`Collections`;
@@ -184,133 +188,160 @@ export function MainNavbarView({
     <ErrorBoundary>
       <SidebarContentRoot>
         <div>
-          <SidebarSection>
-            <PaddedSidebarLink
-              isSelected={nonEntityItem?.url === "/"}
-              icon="home"
-              onClick={handleHomeClick}
-              url="/"
-            >
-              {t`Home`}
-            </PaddedSidebarLink>
-          </SidebarSection>
+          <NavSectionSwitcher />
 
-          {shouldDisplayGettingStarted && (
-            <SidebarSection>
-              <ErrorBoundary>
-                <GettingStartedSection
-                  nonEntityItem={nonEntityItem}
-                  onAddDataModalOpen={() => {
-                    trackAddDataModalOpened("getting-started");
-                    openAddDataModal();
-                  }}
+          {section === "official" && (
+            <OfficialNav
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+            />
+          )}
+
+          {section === "unofficial" && (
+            <>
+              <SidebarSection>
+                <PaddedSidebarLink
+                  isSelected={nonEntityItem?.url === "/"}
+                  icon="home"
+                  onClick={handleHomeClick}
+                  url="/"
                 >
-                  {examplesCollection && (
+                  {t`Home`}
+                </PaddedSidebarLink>
+              </SidebarSection>
+
+              {shouldDisplayGettingStarted && (
+                <SidebarSection>
+                  <ErrorBoundary>
+                    <GettingStartedSection
+                      nonEntityItem={nonEntityItem}
+                      onAddDataModalOpen={() => {
+                        trackAddDataModalOpened("getting-started");
+                        openAddDataModal();
+                      }}
+                    >
+                      {examplesCollection && (
+                        <Tree
+                          data={[examplesCollection]}
+                          selectedId={collectionItem?.id}
+                          onSelect={onItemSelect}
+                          TreeNode={SidebarCollectionLink}
+                          role="tree"
+                          aria-label="examples-collection-tree"
+                        />
+                      )}
+                    </GettingStartedSection>
+                  </ErrorBoundary>
+                </SidebarSection>
+              )}
+
+              {bookmarks.length > 0 && (
+                <SidebarSection>
+                  <ErrorBoundary>
+                    <BookmarkList
+                      bookmarks={bookmarks}
+                      selectedItem={cardItem ?? dashboardItem ?? collectionItem}
+                      onSelect={onItemSelect}
+                      reorderBookmarks={reorderBookmarks}
+                      onToggle={setExpandBookmarks}
+                      initialState={expandBookmarks ? "expanded" : "collapsed"}
+                    />
+                  </ErrorBoundary>
+                </SidebarSection>
+              )}
+
+              {/* Tenant users don't see the section about "External collections" */}
+              {showExternalCollectionsSection && (
+                <PLUGIN_TENANTS.MainNavSharedCollections
+                  canAccessTenantSpecificCollections={
+                    canAccessTenantSpecificCollections
+                  }
+                  canCreateSharedCollection={canCreateSharedCollection}
+                  sharedTenantCollections={sharedTenantCollections}
+                />
+              )}
+
+              <SidebarSection>
+                <ErrorBoundary>
+                  <CollapseSection
+                    header={
+                      <SidebarHeading>{collectionsHeading}</SidebarHeading>
+                    }
+                    initialState={expandCollections ? "expanded" : "collapsed"}
+                    iconPosition="right"
+                    iconSize={8}
+                    onToggle={setExpandCollections}
+                    rightAction={
+                      canWriteToCollections && !isTenantUser ? (
+                        <Tooltip label={t`Create a new collection`}>
+                          <ActionIcon
+                            aria-label={t`Create a new collection`}
+                            color="text-secondary"
+                            onClick={() => {
+                              trackNewCollectionFromNavInitiated();
+                              handleCreateNewCollection();
+                            }}
+                          >
+                            <Icon name="add" />
+                          </ActionIcon>
+                        </Tooltip>
+                      ) : null
+                    }
+                    role="section"
+                    aria-label={t`Collections`}
+                  >
+                    {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+                      <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+                        collections={regularCollections}
+                        selectedId={collectionItem?.id}
+                        onSelect={onItemSelect}
+                      />
+                    ) : (
+                      <Tree
+                        data={regularCollections}
+                        selectedId={collectionItem?.id}
+                        onSelect={onItemSelect}
+                        TreeNode={SidebarCollectionLink}
+                        role="tree"
+                        aria-label="collection-tree"
+                      />
+                    )}
+                    {showOtherUsersCollections && (
+                      <PaddedSidebarLink
+                        icon="group"
+                        url={OTHER_USERS_COLLECTIONS_URL}
+                      >
+                        {t`Other users' personal collections`}
+                      </PaddedSidebarLink>
+                    )}
+                  </CollapseSection>
+                </ErrorBoundary>
+              </SidebarSection>
+
+              {PLUGIN_DATA_APPS.isEnabled && (
+                <PLUGIN_DATA_APPS.MainNavbarSection
+                  onItemSelect={onItemSelect}
+                />
+              )}
+
+              {trashCollection && (
+                <TrashSidebarSection>
+                  <ErrorBoundary>
                     <Tree
-                      data={[examplesCollection]}
+                      data={[trashCollection]}
                       selectedId={collectionItem?.id}
                       onSelect={onItemSelect}
                       TreeNode={SidebarCollectionLink}
                       role="tree"
-                      aria-label="examples-collection-tree"
                     />
-                  )}
-                </GettingStartedSection>
-              </ErrorBoundary>
-            </SidebarSection>
+                  </ErrorBoundary>
+                </TrashSidebarSection>
+              )}
+            </>
           )}
 
-          {bookmarks.length > 0 && (
-            <SidebarSection>
-              <ErrorBoundary>
-                <BookmarkList
-                  bookmarks={bookmarks}
-                  selectedItem={cardItem ?? dashboardItem ?? collectionItem}
-                  onSelect={onItemSelect}
-                  reorderBookmarks={reorderBookmarks}
-                  onToggle={setExpandBookmarks}
-                  initialState={expandBookmarks ? "expanded" : "collapsed"}
-                />
-              </ErrorBoundary>
-            </SidebarSection>
-          )}
-
-          {/* Tenant users don't see the section about "External collections" */}
-          {showExternalCollectionsSection && (
-            <PLUGIN_TENANTS.MainNavSharedCollections
-              canAccessTenantSpecificCollections={
-                canAccessTenantSpecificCollections
-              }
-              canCreateSharedCollection={canCreateSharedCollection}
-              sharedTenantCollections={sharedTenantCollections}
-            />
-          )}
-
-          <NavbarLibrarySection
-            collections={collections}
-            selectedId={collectionItem?.id}
-            onItemSelect={onItemSelect}
-          />
-
-          <SidebarSection>
-            <ErrorBoundary>
-              <CollapseSection
-                header={<SidebarHeading>{collectionsHeading}</SidebarHeading>}
-                initialState={expandCollections ? "expanded" : "collapsed"}
-                iconPosition="right"
-                iconSize={8}
-                onToggle={setExpandCollections}
-                rightAction={
-                  canWriteToCollections && !isTenantUser ? (
-                    <Tooltip label={t`Create a new collection`}>
-                      <ActionIcon
-                        aria-label={t`Create a new collection`}
-                        color="text-secondary"
-                        onClick={() => {
-                          trackNewCollectionFromNavInitiated();
-                          handleCreateNewCollection();
-                        }}
-                      >
-                        <Icon name="add" />
-                      </ActionIcon>
-                    </Tooltip>
-                  ) : null
-                }
-                role="section"
-                aria-label={t`Collections`}
-              >
-                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                    collections={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                  />
-                ) : (
-                  <Tree
-                    data={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                    TreeNode={SidebarCollectionLink}
-                    role="tree"
-                    aria-label="collection-tree"
-                  />
-                )}
-                {showOtherUsersCollections && (
-                  <PaddedSidebarLink
-                    icon="group"
-                    url={OTHER_USERS_COLLECTIONS_URL}
-                  >
-                    {t`Other users' personal collections`}
-                  </PaddedSidebarLink>
-                )}
-              </CollapseSection>
-            </ErrorBoundary>
-          </SidebarSection>
-
-          {PLUGIN_DATA_APPS.isEnabled && (
-            <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
-          )}
-
+          {/* Both sections need the Data links: they are the only way to the list pages. */}
           <SidebarSection>
             <ErrorBoundary>
               <BrowseNavSection
@@ -321,20 +352,6 @@ export function MainNavbarView({
               />
             </ErrorBoundary>
           </SidebarSection>
-
-          {trashCollection && (
-            <TrashSidebarSection>
-              <ErrorBoundary>
-                <Tree
-                  data={[trashCollection]}
-                  selectedId={collectionItem?.id}
-                  onSelect={onItemSelect}
-                  TreeNode={SidebarCollectionLink}
-                  role="tree"
-                />
-              </ErrorBoundary>
-            </TrashSidebarSection>
-          )}
         </div>
       </SidebarContentRoot>
 

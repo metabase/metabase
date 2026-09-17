@@ -1,0 +1,4 @@
+.header {
+  border-bottom: 1px solid var(--mb-color-border);
+  min-height: 2.5rem;
+}

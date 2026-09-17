@@ -9,8 +9,8 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Flex, Group } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
+import { MetricBackLink } from "./MetricBackLink";
 import { MetricNameInput } from "./MetricNameInput";
-import { MetricTabs } from "./MetricTabs";
 import { MetricToolbar } from "./MetricToolbar";
 
 interface MetricHeaderProps {
@@ -47,7 +47,7 @@ export function MetricHeader({
         </Flex>
       }
       icon="metric"
-      tabs={<MetricTabs card={card} urls={urls} />}
+      tabs={<MetricBackLink card={card} urls={urls} />}
       actions={
         <Group wrap="nowrap" align="center">
           {actions}

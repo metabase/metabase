@@ -4,12 +4,14 @@ import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
+import { DetailPanel } from "metabase/common/components/DetailPanel";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { useDocsUrl } from "metabase/common/hooks";
 import { canUserCreateQueries } from "metabase/current-user";
+import { useNavSection } from "metabase/nav/containers/MainNavbar/use-nav-section";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -17,17 +19,15 @@ import {
   Box,
   Button,
   Flex,
-  Group,
   Icon,
-  Stack,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
 
-import S from "../components/BrowseContainer.module.css";
+import { BrowsePageLayout } from "../components/BrowsePageLayout";
+import { partitionByAuthority } from "../utils";
 
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
@@ -48,6 +48,14 @@ export function BrowseMetrics() {
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
+  const { section, setSection } = useNavSection();
+  const { official, unofficial } = useMemo(
+    () => partitionByAuthority(metrics ?? []),
+    [metrics],
+  );
+  const isOfficial = section === "official";
+  const shown = isOfficial ? official : unofficial;
+
   const { data: libraryMetricCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
@@ -63,84 +71,80 @@ export function BrowseMetrics() {
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
   return (
-    <Flex
-      className={S.browseContainer}
-      flex={1}
-      direction="column"
-      wrap="nowrap"
-      pt="lg"
-      aria-labelledby={titleId}
-    >
-      <Flex
-        className={S.browseHeader}
-        direction="column"
-        role="heading"
-        data-testid="browse-metrics-header"
-      >
-        <Flex maw="64rem" mx="auto" w="100%">
-          <Flex
-            w="100%"
-            h="2.25rem"
-            direction="row"
-            justify="space-between"
-            align="center"
+    <BrowsePageLayout
+      icon="metric"
+      title={t`Metrics`}
+      titleId={titleId}
+      testId="browse-metrics-header"
+      meta={[
+        t`Showing ${shown.length} of ${official.length + unofficial.length} metrics`,
+        isOfficial ? t`Official only` : t`Unofficial only`,
+      ]}
+      description={t`The numbers your team has agreed on. Official metrics live in the Library or in a collection marked official; the rest are in the Unofficial half of the sidebar.`}
+      actions={
+        <>
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            onClick={() => setSection(isOfficial ? "unofficial" : "official")}
           >
-            <Title order={1} c="text-primary" id={titleId}>
-              <Group gap="sm">
-                <Icon size={24} c="icon-brand" name="metric" />
-                {t`Metrics`}
-              </Group>
-            </Title>
-            <Group gap="xxs">
-              {canCreateMetric && (
-                <Tooltip label={t`Create a new metric`} position="bottom">
-                  <ActionIcon
-                    aria-label={t`Create a new metric`}
-                    size={32}
-                    variant="viewHeader"
-                    component={ForwardRefLink}
-                    to={newMetricLink}
-                    onClick={() => {
-                      trackNewMetricInitiated();
-                      trackMetricCreateStarted("browse_metrics");
-                    }}
-                  >
-                    <Icon name="add" />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-              {hasVerifiedMetrics && (
-                <MetricFilterControls
-                  metricFilters={metricFilters}
-                  setMetricFilters={setMetricFilters}
-                />
-              )}
-            </Group>
-          </Flex>
-        </Flex>
-      </Flex>
-      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
-        <Flex maw="64rem" mx="auto" w="100%">
-          <Stack mb="xl" gap="lg" w="100%">
-            {isEmpty ? (
-              <MetricsEmptyState
-                canCreateMetric={canCreateMetric}
-                newMetricLink={newMetricLink}
-              />
-            ) : (
-              <DelayedLoadingAndErrorWrapper
-                error={error}
-                loading={isLoading}
-                style={{ flex: 1 }}
-                loader={<MetricsTable skeleton />}
+            {isOfficial ? t`Show unofficial` : t`Show official`}
+          </Button>
+          {canCreateMetric && (
+            <Tooltip label={t`Create a new metric`} position="bottom">
+              <ActionIcon
+                aria-label={t`Create a new metric`}
+                size={32}
+                variant="viewHeader"
+                component={ForwardRefLink}
+                to={newMetricLink}
+                onClick={() => {
+                  trackNewMetricInitiated();
+                  trackMetricCreateStarted("browse_metrics");
+                }}
               >
-                <MetricsTable metrics={metrics} />
-              </DelayedLoadingAndErrorWrapper>
+                <Icon name="add" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {hasVerifiedMetrics && (
+            <MetricFilterControls
+              metricFilters={metricFilters}
+              setMetricFilters={setMetricFilters}
+            />
+          )}
+        </>
+      }
+    >
+      {isEmpty ? (
+        <MetricsEmptyState
+          canCreateMetric={canCreateMetric}
+          newMetricLink={newMetricLink}
+        />
+      ) : (
+        <DetailPanel
+          flush
+          title={isOfficial ? t`Official metrics` : t`Unofficial metrics`}
+        >
+          <DelayedLoadingAndErrorWrapper
+            error={error}
+            loading={isLoading}
+            style={{ flex: 1 }}
+            loader={<MetricsTable skeleton />}
+          >
+            {shown.length === 0 ? (
+              <Text p="lg" c="text-secondary">
+                {isOfficial
+                  ? t`No official metrics yet. Publish a metric to the Library, or mark its collection official.`
+                  : t`Every metric is official.`}
+              </Text>
+            ) : (
+              <MetricsTable metrics={shown} />
             )}
-          </Stack>
-        </Flex>
-      </Flex>
-    </Flex>
+          </DelayedLoadingAndErrorWrapper>
+        </DetailPanel>
+      )}
+    </BrowsePageLayout>
   );
 }
 

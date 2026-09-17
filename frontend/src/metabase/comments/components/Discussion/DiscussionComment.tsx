@@ -7,9 +7,10 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import { Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -114,7 +115,7 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<Avatar name={comment.creator?.common_name} />}
+      bullet={<UserAvatar user={comment.creator} size="1.5rem" decorative />}
       aria-current={isTarget ? "location" : undefined}
       data-testid="discussion-comment"
       id={commentNodeId}

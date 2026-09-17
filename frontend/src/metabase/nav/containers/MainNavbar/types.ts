@@ -18,6 +18,12 @@ export interface MainNavbarDispatchProps {
 
 export type MainNavbarProps = MainNavbarOwnProps & MainNavbarDispatchProps;
 
+/**
+ * Which half of the app the main rail is showing: curated content (Library plus official
+ * collections) or the user's own creation-oriented nav.
+ */
+export type NavSection = "official" | "unofficial";
+
 export interface SelectedItem {
   type: "card" | "collection" | "dashboard" | "non-entity";
   id?: number | string;

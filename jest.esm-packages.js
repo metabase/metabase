@@ -5,6 +5,7 @@
  * This list is used by both jest.config.js and jest.tz.unit.conf.js
  */
 const esmPackages = [
+  "@dicebear\\+.*",
   "@metabase\\+track",
   "@modelcontextprotocol\\+ext-apps",
   "bail",

@@ -5,12 +5,12 @@ import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPag
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import { useHelpLink } from "metabase/common/hooks";
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
-import { prepareInitials } from "metabase/common/utils/user";
 import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
@@ -39,7 +39,6 @@ import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 
-import S from "./AppSwitcher.module.css";
 import { useGetCurrentApp } from "./useGetCurrentApp";
 
 const CURRENT_APP_ICON_OVERRIDES: {
@@ -193,15 +192,22 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
                 size={16}
               />
             </ActionIcon>
+          ) : user ? (
+            <UserAvatar
+              user={user}
+              radius="lg"
+              size={32}
+              bd="1px solid var(--mb-color-border-neutral)"
+              data-testid="app-switcher-target"
+            />
           ) : (
             <Avatar
               radius="lg"
               size={32}
-              className={S.Avatar}
               bd="1px solid var(--mb-color-border-neutral)"
               data-testid="app-switcher-target"
             >
-              {user ? prepareInitials(user) : "?"}
+              ?
             </Avatar>
           )}
         </Menu.Target>
@@ -214,9 +220,13 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               data-testid="mode-switcher-profile-link"
             >
               <Group wrap="nowrap">
-                <Avatar color="core-brand" radius="lg" size={32}>
-                  {user ? prepareInitials(user) : "?"}
-                </Avatar>
+                {user ? (
+                  <UserAvatar user={user} radius="lg" size={32} decorative />
+                ) : (
+                  <Avatar color="core-brand" radius="lg" size={32}>
+                    ?
+                  </Avatar>
+                )}
                 <Stack gap="xxs">
                   <Text lh="xs">{user?.first_name}</Text>
                   <Text c="text-disabled" fz="md" lh="xs">

@@ -4,6 +4,7 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 
+import type { NavSection } from "metabase/nav/containers/MainNavbar/types";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
@@ -129,6 +130,20 @@ const detailView = handleActions(
   null,
 );
 
+export const SET_NAV_SECTION = "metabase/app/SET_NAV_SECTION";
+
+export const setNavSection = createAction<NavSection>(SET_NAV_SECTION);
+
+// `null` means "not chosen yet", so a deep link gets to decide its own section.
+const navSection = handleActions<NavSection | null>(
+  {
+    [SET_NAV_SECTION]: {
+      next: (_state, { payload }) => payload,
+    },
+  },
+  null,
+);
+
 const tempStorageSlice = createSlice({
   name: "tempStorage",
   // Unjustified type cast. FIXME
@@ -153,6 +168,7 @@ export default combineReducers({
   detailView,
   errorPage,
   isNavbarOpen,
+  navSection,
   isDndAvailable: (initValue: unknown) => {
     if (typeof initValue === "boolean") {
       return initValue;

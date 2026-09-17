@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useListRecentsQuery } from "metabase/api";
+import { DetailPanel } from "metabase/common/components/DetailPanel";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -11,6 +12,7 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
+import { useNavSection } from "metabase/nav/containers/MainNavbar/use-nav-section";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -20,8 +22,6 @@ import {
   ActionIcon,
   Box,
   Button,
-  Flex,
-  Group,
   Icon,
   Stack,
   Text,
@@ -30,7 +30,8 @@ import {
 } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 
-import S from "../components/BrowseContainer.module.css";
+import { BrowsePageLayout } from "../components/BrowsePageLayout";
+import { partitionByAuthority } from "../utils";
 
 import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -57,6 +58,14 @@ export const BrowseModels = () => {
   const isEmpty = !isLoading && !error && models.length === 0;
   const titleId = useMemo(() => _.uniqueId("browse-models"), []);
 
+  const { section, setSection } = useNavSection();
+  const { official, unofficial } = useMemo(
+    () => partitionByAuthority(models),
+    [models],
+  );
+  const isOfficial = section === "official";
+  const shown = isOfficial ? official : unofficial;
+
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const isEmbeddingIframe = isWithinIframe();
@@ -65,110 +74,106 @@ export const BrowseModels = () => {
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
 
   return (
-    <Flex
-      className={S.browseContainer}
-      flex={1}
-      direction="column"
-      wrap="nowrap"
-      pt="lg"
-      aria-labelledby={titleId}
-    >
-      <Flex
-        className={S.browseHeader}
-        direction="column"
-        role="heading"
-        data-testid="browse-models-header"
-      >
-        <Flex maw="64rem" mx="auto" w="100%">
-          <Flex
-            w="100%"
-            h="2.25rem"
-            direction="row"
-            justify="space-between"
-            align="center"
+    <BrowsePageLayout
+      icon="model"
+      title={t`Models`}
+      titleId={titleId}
+      testId="browse-models-header"
+      meta={[
+        t`Showing ${shown.length} of ${official.length + unofficial.length} models`,
+        isOfficial ? t`Official only` : t`Unofficial only`,
+      ]}
+      description={t`Cleaned-up, combined tables ready to query. Official models live in the Library or in a collection marked official; the rest are in the Unofficial half of the sidebar.`}
+      actions={
+        <>
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            onClick={() => setSection(isOfficial ? "unofficial" : "official")}
           >
-            <Title order={1} c="text-primary" id={titleId}>
-              <Group gap="sm">
-                <Icon size={24} c="icon-brand" name="model" />
-                {t`Models`}
-              </Group>
-            </Title>
-            <Group gap="xxs">
-              {canCreateNewModel && (
-                <Tooltip label={t`Create a new model`} position="bottom">
-                  <ActionIcon
-                    aria-label={t`Create a new model`}
-                    size={32}
-                    variant="viewHeader"
-                    component={ForwardRefLink}
-                    to="/model/new"
-                    onClick={() => trackNewModelInitiated()}
-                  >
-                    <Icon name="add" />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-              {hasVerifiedModels && (
-                <ModelFilterControls
-                  modelFilters={modelFilters}
-                  setModelFilters={setModelFilters}
-                />
-              )}
-            </Group>
-          </Flex>
-        </Flex>
-      </Flex>
-      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
-        <Flex maw="64rem" mx="auto" w="100%">
-          <Stack mb="xl" gap="lg" w="100%">
-            {isEmpty ? (
-              <Stack gap="xl" align="center" data-testid="empty-state">
-                {showMetabaseLinks && (
-                  <Box maw="45rem" w="100%">
-                    <ModelsVideo autoplay={0} />
-                  </Box>
-                )}
-                <Stack gap="xxs" maw="28rem">
-                  <Title
-                    order={2}
-                    ta="center"
-                  >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text
-                    ta="center"
-                    lh="1.25rem"
-                  >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
-                </Stack>
-                {showMetabaseLinks && (
-                  <Button variant="subtle" p={0}>
-                    <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
-                  </Button>
-                )}
-              </Stack>
-            ) : (
-              <>
-                <ModelExplanationBanner />
-                <DelayedLoadingAndErrorWrapper
-                  error={error}
-                  loading={isLoading}
-                  style={{ flex: 1 }}
-                  loader={<RecentModels skeleton />}
-                >
-                  <RecentModels models={recentModels} />
-                </DelayedLoadingAndErrorWrapper>
-                <DelayedLoadingAndErrorWrapper
-                  error={error}
-                  loading={isLoading}
-                  style={{ flex: 1 }}
-                  loader={<ModelsTable skeleton />}
-                >
-                  <ModelsTable models={models} />
-                </DelayedLoadingAndErrorWrapper>
-              </>
-            )}
+            {isOfficial ? t`Show unofficial` : t`Show official`}
+          </Button>
+          {canCreateNewModel && (
+            <Tooltip label={t`Create a new model`} position="bottom">
+              <ActionIcon
+                aria-label={t`Create a new model`}
+                size={32}
+                variant="viewHeader"
+                component={ForwardRefLink}
+                to="/model/new"
+                onClick={() => trackNewModelInitiated()}
+              >
+                <Icon name="add" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {hasVerifiedModels && (
+            <ModelFilterControls
+              modelFilters={modelFilters}
+              setModelFilters={setModelFilters}
+            />
+          )}
+        </>
+      }
+    >
+      {isEmpty ? (
+        <Stack gap="xl" align="center" data-testid="empty-state">
+          {showMetabaseLinks && (
+            <Box maw="45rem" w="100%">
+              <ModelsVideo autoplay={0} />
+            </Box>
+          )}
+          <Stack gap="xxs" maw="28rem">
+            <Title
+              order={2}
+              ta="center"
+            >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
+            <Text
+              ta="center"
+              lh="1.25rem"
+            >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
           </Stack>
-        </Flex>
-      </Flex>
-    </Flex>
+          {showMetabaseLinks && (
+            <Button variant="subtle" p={0}>
+              <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
+            </Button>
+          )}
+        </Stack>
+      ) : (
+        <>
+          <ModelExplanationBanner />
+          <DelayedLoadingAndErrorWrapper
+            error={error}
+            loading={isLoading}
+            style={{ flex: 1 }}
+            loader={<RecentModels skeleton />}
+          >
+            <RecentModels models={recentModels} />
+          </DelayedLoadingAndErrorWrapper>
+          <DetailPanel
+            flush
+            title={isOfficial ? t`Official models` : t`Unofficial models`}
+          >
+            <DelayedLoadingAndErrorWrapper
+              error={error}
+              loading={isLoading}
+              style={{ flex: 1 }}
+              loader={<ModelsTable skeleton />}
+            >
+              {shown.length === 0 ? (
+                <Text p="lg" c="text-secondary">
+                  {isOfficial
+                    ? t`No official models yet. Publish a model to the Library, or mark its collection official.`
+                    : t`Every model is official.`}
+                </Text>
+              ) : (
+                <ModelsTable models={shown} />
+              )}
+            </DelayedLoadingAndErrorWrapper>
+          </DetailPanel>
+        </>
+      )}
+    </BrowsePageLayout>
   );
 };
 

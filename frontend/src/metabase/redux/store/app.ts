@@ -1,3 +1,4 @@
+import type { NavSection } from "metabase/nav/containers/MainNavbar/types";
 import type { Table } from "metabase-types/api";
 import type { CollectionId } from "metabase-types/api/collection";
 
@@ -49,6 +50,7 @@ export interface AppState {
   detailView: DetailViewState | null;
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
+  navSection: NavSection | null;
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;
   tempStorage: TempStorage;
