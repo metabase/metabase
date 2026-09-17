@@ -331,7 +331,7 @@
                      {:path       path
                       :body       req
                       :headers    headers
-                      :span-attrs {:family family}})))
+                      :span-attrs {:family (name family)}})))
 
 (defn- model->aisdk-chunks-xf
   "The SSE->AISDK translating transducer for a Bedrock model id.

@@ -561,7 +561,7 @@
                                           :anthropic (raw-predict/request-body (model-id model) opts)
                                           ;; `opts` carries the defaulted model: the thinking directive keys off it
                                           :google    (stream-generate-content/request-body opts))
-                      :span-attrs       {:family family}
+                      :span-attrs       {:family (name family)}
                       ;; both read only `:location`, which resolution does not touch, so the raw map serves and
                       ;; neither can mask a resolution failure with one of its own
                       :error-msg        (google-res->msg credentials)
