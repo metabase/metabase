@@ -325,7 +325,7 @@
                                                                      @stop-reason
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                                                             :raw-finish-reason @stop-reason)))
-              ;; An error envelope in place of a chunk, which vLLM sends when generation fails partway through
+              ;; An error in the stream, e.g. a failure partway through generation
               (some? error)                                    (-> (cond-> @current-type (close!))
                                                                    (rf {:type      :error
                                                                         :errorText (or (:message error) (pr-str error))}))))))))))

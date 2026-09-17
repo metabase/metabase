@@ -1400,16 +1400,14 @@
 
 (deftest google-endpoint-stream-error-test
   (testing "the error vLLM sends when generation fails partway through a stream arrives after the text so far"
-    (is (=? [{:type :start :id "chatcmpl-ax0rf4cmhpnc2ssrhic9rq"}
-             {:type :text :text "It's"}
+    (is (=? [{:type :start :id "chatcmpl-2"}
+             {:type :text :text "Hello"}
              {:type :error :error {:message "Internal server error"}}]
-            (endpoint-parts-for! "1234567890123456789"
-                                 [{:id "chatcmpl-ax0rf4cmhpnc2ssrhic9rq" :model "gemma-4-26b-a4b"
-                                   :choices [{:index 0 :delta {:content "It"} :finish_reason nil}]}
-                                  {:id "chatcmpl-ax0rf4cmhpnc2ssrhic9rq" :model "gemma-4-26b-a4b"
-                                   :choices [{:index 0 :delta {:content "'"} :finish_reason nil}]}
-                                  {:id "chatcmpl-ax0rf4cmhpnc2ssrhic9rq" :model "gemma-4-26b-a4b"
-                                   :choices [{:index 0 :delta {:content "s"} :finish_reason nil}]}
+            (endpoint-parts-for! "4567890123456789012"
+                                 [{:id "chatcmpl-2" :model "glm-5.2"
+                                   :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                                  {:id "chatcmpl-2" :model "glm-5.2"
+                                   :choices [{:index 0 :delta {:content "lo"} :finish_reason nil}]}
                                   {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}])))))
 
 (deftest endpoint-model-knowledge-test
