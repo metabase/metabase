@@ -107,8 +107,10 @@
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:create-sample-content? true})))
         (testing "migrations are executed in the order they are defined"
+          ;; the vNN.legacy-version-tracking marker is bookkeeping written by the migration run, not a changeset
           (is (= (mdb.test-util/all-liquibase-ids false driver/*driver* conn)
-                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
+                 (remove #(re-find #"legacy-version-tracking$" %)
+                         (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]})))))))))
 
 (deftest setup-db-no-auto-migrate-test
   (mt/test-drivers #{:h2 :mysql :postgres}

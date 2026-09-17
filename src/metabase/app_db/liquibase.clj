@@ -144,7 +144,7 @@
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
   [conn-or-data-source :- [:or (ms/InstanceOfClass Connection) (ms/InstanceOfClass javax.sql.DataSource)]
-   f :- fn?]
+   f                   :- fn?]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (let [f* (fn [^Liquibase liquibase]
              ;; trigger creation of liquibase's databasechangelog tables if needed, without updating any checksums

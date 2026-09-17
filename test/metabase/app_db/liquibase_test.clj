@@ -263,10 +263,12 @@
               changelog-table (liquibase/changelog-table-name liquibase)]
           (liquibase/ensure-databasechangelog-versions-table! conn)
           (liquibase/with-scope-locked liquibase (.update liquibase ""))
-          ;; simulate an existing instance with no recorded versions, split across two deployments
+          ;; simulate an existing instance with no recorded versions, split across two deployments by execution
+          ;; position (not by id: the most recent changesets may be version-less, which carry no major in their id)
           (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" versions-table)])
-          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'older' WHERE id NOT LIKE 'v6%%'" changelog-table)])
-          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'newer' WHERE id LIKE 'v6%%'" changelog-table)])
+          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'older'" changelog-table)])
+          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'newer' WHERE orderexecuted > (SELECT MAX(orderexecuted) - 10 FROM %s)"
+                                                     changelog-table changelog-table)])
           (liquibase/backfill-databasechangelog-versions! conn db)
           (let [rows   (jdbc/query {:connection conn} [(format "SELECT deployment_id, metabase_version, deployed_at FROM %s" versions-table)])
                 by-dep (into {} (map (juxt :deployment_id :metabase_version)) rows)
