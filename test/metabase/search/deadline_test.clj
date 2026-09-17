@@ -11,10 +11,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- identity-key []
-  {:app-db-id (str (random-uuid)), :engine "appdb"})
+(defonce ^:private test-app-db-id (atom 0))
 
-(deftest synchronous-run-and-disabled-deadline-test
+(defn- identity-key []
+  ;; Production application-db IDs are positive; keep synthetic runs in a disjoint numeric range.
+  {:app-db-id (swap! test-app-db-id dec), :engine "appdb"})
+
+(deftest ^:parallel synchronous-run-and-disabled-deadline-test
   (mt/with-dynamic-fn-redefs [search.settings/search-reindex-timeout-minutes (constantly 0)]
     (let [thread (Thread/currentThread)]
       (is (= :result
@@ -25,7 +28,7 @@
                                      (is (false? (deadline/timed-out?)))
                                      :result)))))))
 
-(deftest completion-cancels-late-interruption-test
+(deftest ^:parallel completion-cancels-late-interruption-test
   (let [callbacks (atom [])]
     (mt/with-dynamic-fn-redefs [search.settings/search-reindex-timeout-minutes (constantly 60)
                                 deadline/schedule! (fn [_ f] (swap! callbacks conj f) nil)]
@@ -33,7 +36,7 @@
     (doseq [callback @callbacks] (callback))
     (is (false? (.isInterrupted (Thread/currentThread))))))
 
-(deftest timer-interrupts-worker-and-releases-local-slot-test
+(deftest ^:parallel timer-interrupts-worker-and-releases-local-slot-test
   (let [identity (identity-key)
         schedule (dynamic-redefs/original-fn #'deadline/schedule!)]
     (mt/with-dynamic-fn-redefs [search.settings/search-reindex-timeout-minutes (constantly 60)
@@ -48,7 +51,7 @@
       (is (false? (.isInterrupted (Thread/currentThread))))
       (is (= :next (deadline/do-with-run identity (constantly :next)))))))
 
-(deftest ignored-interrupt-is-reported-without-replacement-test
+(deftest ^:parallel ignored-interrupt-is-reported-without-replacement-test
   (let [identity (identity-key)
         release  (CountDownLatch. 1)
         stuck    (promise)
@@ -79,10 +82,10 @@
         (is (= ::deadline/exceeded (deref worker 5000 ::timeout)))
         (is (= :next (deadline/do-with-run identity (constantly :next))))))))
 
-(deftest expired-run-rejects-new-work-before-timer-test
+(deftest ^:parallel expired-run-rejects-new-work-before-timer-test
   (let [context {:identity   (identity-key)
                  :run-id     "expired-test"
-                 :started-ns 0
+                 :started-ns (- (System/nanoTime) 1000)
                  :state      (atom {:exited? false, :status :running})
                  :timeout-ns 1
                  :worker     (Thread/currentThread)}]

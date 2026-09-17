@@ -19,6 +19,20 @@
   [:maybe [:or (ms/InstanceOfClass clojure.lang.IReduceInit)
            (ms/InstanceOfClass clojure.lang.Seqable)]])
 
+(mr/def ::deadline-identity
+  [:map {:closed true}
+   [:app-db-id :int]
+   [:engine :string]])
+
+(mr/def ::deadline-context
+  [:map {:closed true}
+   [:identity ::deadline-identity]
+   [:run-id :string]
+   [:started-ns :int]
+   [:state (ms/InstanceOfClass clojure.lang.Atom)]
+   [:timeout-ns :int]
+   [:worker (ms/InstanceOfClass Thread)]])
+
 (mr/def ::search-index-metadata
   "A SearchIndexMetadata as selected from the app DB: every column of `:search_index_metadata`."
   [:merge

@@ -7,6 +7,7 @@
    [metabase.app-db.schema-migrations-test.impl :as migrations.impl]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
+   [metabase.search.deadline :as deadline]
    [metabase.search.engine :as search.engine]
    [metabase.search.lease :as lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
@@ -620,3 +621,27 @@
             (deliver release-sql true)
             @claim
             (delete-coordinate! coordinate)))))))
+
+(deftest deadline-before-commit-rolls-back-and-releases-lease-test
+  (let [coordinate (coordinate)
+        setting-key (str "search-deadline-" (random-uuid))]
+    (try
+      (t2/insert! :setting {:key setting-key, :value "before"})
+      (mt/with-dynamic-fn-redefs [deadline/report! (fn [& _])]
+        (is (= ::deadline/exceeded
+               (:type
+                (ex-data
+                 (try
+                   (lease/do-with-lease
+                    coordinate
+                    #(lease/do-with-mutation-connection
+                      (fn [conn]
+                        (t2/update! :conn conn :setting :key setting-key {:value "after"})
+                        (#'deadline/expire! deadline/*run-context*))))
+                   (catch Exception e e)))))))
+      (is (= "before" (t2/select-one-fn :value :setting :key setting-key)))
+      (is (not (t2/exists? :search_index_lease :engine (:engine coordinate)
+                           :lang_code (:lang_code coordinate) :version (:version coordinate))))
+      (finally
+        (t2/delete! :setting :key setting-key)
+        (delete-coordinate! coordinate)))))
