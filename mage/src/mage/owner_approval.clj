@@ -380,8 +380,13 @@
 
 ;;; Every status, in stacking order (green at the bottom, no-owner grey on top), with its color.
 (def ^:private status-cats
-  [["full" "#30a46c"] ["partial" "#f5a623"] ["none" "#e5484d"] ["incomplete" "#a5a8b5"]
-   ["n/a" "#8b8d98"] ["no-pr" "#b9bbc6"] ["no-owner" "#d0d3d9"]])
+  [["full"       "#30a46c"]
+   ["partial"    "#f5a623"]
+   ["none"       "#e5484d"]
+   ["incomplete" "#a5a8b5"]
+   ["n/a"        "#8b8d98"]
+   ["no-pr"      "#b9bbc6"]
+   ["no-owner"   "#d0d3d9"]])
 
 (defn- monthly-stats
   "Ordered `[[month {status count ... :total n}] ...]` over all `rows`, keyed by status string."
@@ -717,8 +722,13 @@ Close by giving the team a team.json assignee, then generating its rules.</p>
         by-status (frequencies (map :status rows))]
     ;; terminal glimpse: full composition over all PRs, then the rate among assessable
     (println (format "\n%s merged PRs (%s assessable)\n" n-total n-assess))
-    (doseq [[s color-fn] [["full" c/green] ["partial" c/yellow] ["none" c/red]
-                          ["incomplete" c/gray] ["n/a" c/gray] ["no-pr" c/gray] ["no-owner" c/dark]]]
+    (doseq [[s color-fn] [["full"       c/green]
+                          ["partial"    c/yellow]
+                          ["none"       c/red]
+                          ["incomplete" c/gray]
+                          ["n/a"        c/gray]
+                          ["no-pr"      c/gray]
+                          ["no-owner"   c/dark]]]
       (println (bar s (get by-status s 0) n-total color-fn)))
     ;; Snapshot the current checkout (HEAD): the assignees + generated CODEOWNERS the metric measures live
     ;; on the working branch, so origin/master reads 0% until the work merges.
