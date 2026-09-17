@@ -1866,6 +1866,17 @@
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
 
+(deftest reset-contention-is-a-retryable-conflict-test
+  (let [events (atom [])]
+    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [& args] (swap! events conj args))
+                                search.engine/active-engines (constantly [:search.engine/appdb])
+                                search/with-engine-lease (fn [& _] {:acquired? false})]
+      (is (= {:error-code "search-index-busy"
+              :message    "Search index reset is busy; retry after the current operation finishes"}
+             (mt/user-http-request :crowberto :post 409 "search/re-init")))
+      (is (not-any? (comp #{:metabase-api/unhandled-errors :metabase-search/index-error} first) @events)
+          "expected contention is not counted as an initialization or unhandled API error"))))
+
 (deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table

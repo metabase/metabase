@@ -110,9 +110,10 @@
   (seq (search.engine/active-engines)))
 
 (defn- report-failure!
-  "Log an `operation` failure and count it unless it is an expected lease abort."
+  "Log an `operation` failure and count it unless it is expected contention or a lease abort."
   [operation e]
-  (if (search.lease/expected-abort? e)
+  (if (or (= ::index-busy (:type (ex-data e)))
+          (search.lease/expected-abort? e))
     (log/infof "Search %s stopped safely: %s" operation (ex-message e))
     (do
       (log/errorf "Search %s failed: %s" operation (ex-message e))
