@@ -25,7 +25,6 @@ import {
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
-import { closeNavbar } from "metabase/redux/app";
 import {
   editSummary,
   setIsNativeEditorOpen,
@@ -39,7 +38,6 @@ import {
   useNavigationType,
   useParams,
 } from "metabase/router";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/settings";
 import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
@@ -205,7 +203,6 @@ const mapStateToProps = (state: State) => {
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
-    isNavBarOpen: getIsNavbarOpen(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
     isHeaderVisible: getIsHeaderVisible(state),
@@ -319,7 +316,6 @@ const mapDispatchToProps = {
   zoomInRow,
 
   // other
-  closeNavbar,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -346,9 +342,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     question,
     originalQuestion,
     uiControls,
-    isNativeEditorOpen,
-    isAnySidebarOpen,
-    closeNavbar,
     initializeQB,
     locationChanged,
     setUIControls,
@@ -411,8 +404,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
-  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
-  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
 
@@ -480,21 +471,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB();
     clearTimeout(timeout.current);
   });
-
-  useEffect(() => {
-    if (
-      (isAnySidebarOpen && !wasShowingAnySidebar) ||
-      (isNativeEditorOpen && !wasNativeEditorOpen)
-    ) {
-      closeNavbar();
-    }
-  }, [
-    isAnySidebarOpen,
-    wasShowingAnySidebar,
-    isNativeEditorOpen,
-    wasNativeEditorOpen,
-    closeNavbar,
-  ]);
 
   useEffect(() => {
     // Gate on the timelines actually being loaded (not just bookmarks), and

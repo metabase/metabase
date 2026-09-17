@@ -30,7 +30,6 @@ import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
 import { useListApiKeysQuery } from "../../settings/api/api-key";
-import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
 import { SearchFilter } from "./SearchFilter";
@@ -229,7 +228,7 @@ function GroupNameCell({ group }: { group: GroupInfo }) {
       className={CS.link}
       gap="md"
     >
-      <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />
+      <UserAvatar user={{ name }} />
       <Box component="span" fw={700} c="core-brand">
         {name}
       </Box>

@@ -9,18 +9,15 @@ import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { useLocation, useParams } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import type { User } from "metabase-types/api";
 
 type NavbarProps = {
-  isOpen: boolean;
   user: User | null;
   adminPaths: AdminPath[];
   dashboard?: StoreDashboard;
 };
 
 const mapStateToProps = (state: State) => ({
-  isOpen: getIsNavbarOpen(state),
   user: getUser(state),
   adminPaths: getAdminPaths(state),
   // Can't use the dashboard entity loader instead.
@@ -29,7 +26,7 @@ const mapStateToProps = (state: State) => ({
   dashboard: getDashboard(state),
 });
 
-function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
+function NavbarInner({ user, adminPaths, dashboard }: NavbarProps) {
   const location = useLocation();
   const params = useParams();
   useListDatabasesQuery();
@@ -45,12 +42,7 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
   return isAdminApp ? (
     <AdminNavbar path={location.pathname} adminPaths={adminPaths} />
   ) : (
-    <MainNavbar
-      isOpen={isOpen}
-      location={location}
-      params={params}
-      dashboard={dashboard}
-    />
+    <MainNavbar location={location} params={params} dashboard={dashboard} />
   );
 }
 

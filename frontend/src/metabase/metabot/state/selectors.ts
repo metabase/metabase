@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
@@ -17,6 +18,7 @@ import {
 import type {
   MetabotAgentId,
   MetabotContextUsage,
+  MetabotConversationState,
   MetabotMessage,
 } from "./types";
 import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
@@ -94,6 +96,47 @@ export const getMetabotConversation = createSelector(
 
 export const getHasConversation = (state: State, conversationId: string) =>
   Boolean(getMetabotState(state).conversations[conversationId]);
+
+export type StartedConversation = {
+  conversationId: string;
+  title: string | undefined;
+};
+
+/**
+ * Agents that answer in place rather than in a conversation anyone goes back to: the native
+ * editor's suggestion agent and the explorations one. Their threads have no conversation page.
+ */
+const IN_PLACE_AGENT_IDS: MetabotAgentId[] = ["sql", "explorations"];
+
+/**
+ * The conversations the user has actually said something in, in creation order. Empty ones are
+ * skipped: an agent always holds a conversation, so listing those would show a row for Metabot
+ * merely existing. The result keeps its identity while the ids and titles are unchanged, so a
+ * streaming answer does not churn every consumer.
+ */
+export const getStartedConversations = createSelector(
+  getMetabotState,
+  (state): StartedConversation[] => {
+    const inPlaceIds = new Set(
+      IN_PLACE_AGENT_IDS.map(
+        (agentId) => state.agents[agentId]?.conversationId,
+      ),
+    );
+
+    return Object.values(state.conversations)
+      .filter(
+        (convo): convo is MetabotConversationState =>
+          convo != null &&
+          convo.messages.length > 0 &&
+          !inPlaceIds.has(convo.conversationId),
+      )
+      .map((convo) => ({
+        conversationId: convo.conversationId,
+        title: convo.title,
+      }));
+  },
+  { memoizeOptions: { resultEqualityCheck: _.isEqual } },
+);
 
 export const getMetabotVisible = createSelector(
   getMetabotAgent,

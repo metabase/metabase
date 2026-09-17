@@ -4,13 +4,13 @@ import { t } from "ttag";
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
+import { useHeaderCollection } from "metabase/common/hooks/use-header-collection";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
 import type { Card } from "metabase-types/api";
 
-import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
 import { MetricHeader } from "../MetricHeader";
 
 interface MetricPageShellProps {
@@ -34,6 +34,8 @@ export function MetricPageShell({
   const [deleteCard] = useDeleteCardMutation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useHeaderCollection(card.collection_id);
 
   return (
     <>
@@ -77,13 +79,7 @@ export function MetricPageShell({
         actions={actions}
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
-        breadcrumbs={
-          renderBreadcrumbs ? (
-            renderBreadcrumbs(card)
-          ) : (
-            <CollectionBreadcrumbs card={card} />
-          )
-        }
+        breadcrumbs={renderBreadcrumbs?.(card)}
       />
     </>
   );

@@ -22,6 +22,7 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useNavigate } from "metabase/router";
 import {
@@ -32,6 +33,7 @@ import {
   Menu,
   Repeat,
   Skeleton,
+  Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName, SortingOptions } from "metabase-types/api";
@@ -72,11 +74,17 @@ const collectionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
 };
 
+const ownerProps: ResponsiveProps = {
+  ...sharedProps,
+  hideAtContainerBreakpoint: "md",
+};
+
 const menuProps = {
   ...sharedProps,
 };
 
 const DOTMENU_WIDTH = 34;
+const OWNER_WIDTH = 180;
 
 export function MetricsTable({
   skeleton = false,
@@ -89,7 +97,7 @@ export function MetricsTable({
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
-  const collectionWidth = 30;
+  const collectionWidth = 26;
   const descriptionWidth = 100 - collectionWidth;
 
   return (
@@ -99,6 +107,7 @@ export function MetricsTable({
         <col className={BrowseTableS.nameColumn} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
+        <TableColumn {...ownerProps} width={OWNER_WIDTH} />
         <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
         <Columns.RightEdge.Col />
       </colgroup>
@@ -142,6 +151,10 @@ export function MetricsTable({
           >
             {t`Description`}
           </SortableColumnHeader>
+          {/* Not sortable: `SortColumn` only covers name/collection/description. */}
+          <ColumnHeader {...ownerProps} style={{ paddingInline: ".5rem" }}>
+            {t`Owner`}
+          </ColumnHeader>
           <ColumnHeader
             style={{
               paddingInline: ".5rem",
@@ -208,6 +221,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       <NameCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
+      <OwnerCell metric={metric} />
       <MenuCell metric={metric} />
       <Columns.RightEdge.Cell />
     </tr>
@@ -306,6 +320,27 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         <SkeletonText />
       )}
+    </td>
+  );
+}
+
+function OwnerCell({ metric }: { metric?: MetricResult }) {
+  const name = metric
+    ? (metric.last_editor_common_name ?? metric.creator_common_name)
+    : null;
+
+  return (
+    <td className={cx(BrowseTableS.cell, BrowseTableS.hideAtMd)}>
+      {!metric ? (
+        <SkeletonText />
+      ) : name ? (
+        <Flex align="center" gap="sm">
+          <UserAvatar user={{ common_name: name }} size="1.25rem" decorative />
+          <Text size="sm" truncate>
+            {name}
+          </Text>
+        </Flex>
+      ) : null}
     </td>
   );
 }

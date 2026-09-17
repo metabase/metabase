@@ -4,9 +4,9 @@ import type { RouterProps } from "metabase/selectors/app";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
-  getIsAppBarVisible,
   getIsCollectionPathVisible,
   getIsNavBarEnabled,
+  getIsPageHeaderVisible,
 } from "./selectors";
 
 const createLocation = (pathname: string): Location =>
@@ -48,11 +48,11 @@ describe("getIsCollectionPathVisible", () => {
   });
 });
 
-describe("NavBar / AppBar visibility", () => {
+describe("NavBar / page header visibility", () => {
   const stateWithUser = () =>
     createMockState({ currentUser: createMockUser() });
 
-  it("hides the navbar and app bar within Monitor, Data Studio", () => {
+  it("hides the navbar and page header within Monitor, Data Studio", () => {
     const state = stateWithUser();
 
     expect(getIsNavBarEnabled(state, createRouterProps("/monitor"))).toBe(
@@ -62,22 +62,22 @@ describe("NavBar / AppBar visibility", () => {
       false,
     );
 
-    expect(getIsAppBarVisible(state, createRouterProps("/monitor"))).toBe(
+    expect(getIsPageHeaderVisible(state, createRouterProps("/monitor"))).toBe(
       false,
     );
-    expect(getIsAppBarVisible(state, createRouterProps("/data-studio"))).toBe(
-      false,
-    );
+    expect(
+      getIsPageHeaderVisible(state, createRouterProps("/data-studio")),
+    ).toBe(false);
   });
 
-  it("keeps the navbar and app bar on a regular page", () => {
+  it("keeps the navbar and page header on a regular page", () => {
     const state = stateWithUser();
 
     expect(
       getIsNavBarEnabled(state, createRouterProps("/browse/databases")),
     ).toBe(true);
     expect(
-      getIsAppBarVisible(state, createRouterProps("/browse/databases")),
+      getIsPageHeaderVisible(state, createRouterProps("/browse/databases")),
     ).toBe(true);
   });
 });

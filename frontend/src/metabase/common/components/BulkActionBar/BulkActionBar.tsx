@@ -2,8 +2,6 @@ import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { useSelector } from "metabase/redux";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { type BoxProps, Flex, Portal, Text } from "metabase/ui";
 
 import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
@@ -13,7 +11,6 @@ type BulkActionsProps = {
   message: string;
   children: React.ReactNode | React.ReactNode[];
   className?: string;
-  isNavbarOpen?: boolean;
 };
 
 /**
@@ -27,8 +24,7 @@ type BulkActionsProps = {
  * @returns
  */
 export const BulkActionBar = (props: BulkActionsProps) => {
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
-  return <BulkActionBarPortal {...props} isNavbarOpen={isNavbarOpen} />;
+  return <BulkActionBarPortal {...props} />;
 };
 
 export const BulkActionBarPortal = ({
@@ -36,7 +32,6 @@ export const BulkActionBarPortal = ({
   message,
   children,
   className,
-  isNavbarOpen = true,
   ...props
 }: BulkActionsProps & BoxProps & HTMLAttributes<HTMLDivElement>) => {
   if (!opened) {
@@ -44,10 +39,7 @@ export const BulkActionBarPortal = ({
   }
   return (
     <Portal>
-      <BulkActionsToast
-        isNavbarOpen={isNavbarOpen}
-        className={cx(className, Animation.popToast)}
-      >
+      <BulkActionsToast className={cx(className, Animation.popToast)}>
         <ToastCard data-testid="toast-card" {...props}>
           {message && <Text color="text-primary-inverse">{message}</Text>}
           <Flex gap="sm" align="center">

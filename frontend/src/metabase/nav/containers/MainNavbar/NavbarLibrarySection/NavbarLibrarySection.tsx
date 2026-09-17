@@ -14,13 +14,20 @@ import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
-import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { OfficialNavTreeNode } from "metabase/nav/containers/MainNavbar/OfficialNav/OfficialNavTreeNode";
+import { buildOfficialNavTree } from "metabase/nav/containers/MainNavbar/OfficialNav/official-nav-tree";
+import type { OfficialNavItem } from "metabase/nav/containers/MainNavbar/OfficialNav/use-official-nav-items";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
-import type { Collection, CollectionType } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionType,
+} from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
   collections: Collection[];
+  itemsByCollectionId: Map<CollectionId, OfficialNavItem[]>;
   selectedId?: string | number;
   onItemSelect: () => void;
 };
@@ -87,6 +94,7 @@ function buildSectionTree(
 
 export function NavbarLibrarySection({
   collections,
+  itemsByCollectionId,
   selectedId,
   onItemSelect,
 }: LibraryCollectionSectionProps) {
@@ -117,10 +125,12 @@ export function NavbarLibrarySection({
       t`Metrics`,
     );
 
-    return [dataTree, metricsTree].filter(
+    const sections = [dataTree, metricsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
-  }, [collections]);
+
+    return buildOfficialNavTree(sections, itemsByCollectionId);
+  }, [collections, itemsByCollectionId]);
 
   const showChangesBadge = useCallback(
     (itemId?: number | string) => {
@@ -152,7 +162,7 @@ export function NavbarLibrarySection({
             data={libraryTree}
             selectedId={selectedId}
             onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
+            TreeNode={OfficialNavTreeNode}
             role="tree"
             aria-label="library-collection-tree"
             rightSection={(item) =>

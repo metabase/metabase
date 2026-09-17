@@ -490,7 +490,7 @@ describe("BrowseModels", () => {
     expect(recentModelsGrid).not.toBeInTheDocument();
   });
 
-  it("should render links that point directly to /model/{id}-{slug} (metabase#55166)", async () => {
+  it("links recents to the model and table rows to its detail page (metabase#55166)", async () => {
     const { router } = setup({ modelCount: 25 });
     const recentModelsGrid = await screen.findByRole("grid", {
       name: /Recents/,
@@ -508,10 +508,10 @@ describe("BrowseModels", () => {
 
     expect(
       within(modelsTable).getByRole("link", { name: /Model 20/ }),
-    ).toHaveAttribute("href", "/model/20-model-20");
+    ).toHaveAttribute("href", "/model/20-model-20/detail");
     expect(
       within(modelsTable).getByRole("link", { name: /Model 21/ }),
-    ).toHaveAttribute("href", "/model/21-model-21");
+    ).toHaveAttribute("href", "/model/21-model-21/detail");
 
     expect(screen.queryByTestId("model-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(recentModelsGrid).getByText("Model 1"));

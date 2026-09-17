@@ -1,12 +1,8 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getUserId } from "metabase/current-user";
-import { useSelector } from "metabase/redux";
 import { Center, Stack, Text, Timeline } from "metabase/ui";
-import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type { RevisionEntityType } from "metabase-types/api";
 
 import { RevisionItem } from "./RevisionItem";
@@ -27,22 +23,11 @@ export function RevisionHistoryTimeline({
   definitionLabel,
   definitionType,
 }: RevisionHistoryTimelineProps) {
-  const currentUserId = useSelector(getUserId);
   const {
     data: revisions,
     isLoading,
     error,
   } = useListRevisionsQuery({ entity: entityType, id: entityId });
-
-  const userColorAssignments = useMemo(() => {
-    if (!revisions || currentUserId == null) {
-      return {};
-    }
-    return assignUserColors(
-      revisions.map((r) => String(r.user.id)),
-      String(currentUserId),
-    );
-  }, [revisions, currentUserId]);
 
   if (isLoading || error != null) {
     return (
@@ -67,7 +52,6 @@ export function RevisionHistoryTimeline({
           <RevisionItem
             key={revision.id}
             revision={revision}
-            userColor={userColorAssignments[String(revision.user.id)]}
             getActionDescription={getActionDescription}
             definitionLabel={definitionLabel}
             definitionType={definitionType}

@@ -10,8 +10,6 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/common/search/types";
-import { useSelector } from "metabase/redux";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { Box, Button, Center, Icon, Popover, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
@@ -37,7 +35,6 @@ export const DropdownSidebarFilter = ({
   isOpen: isPopoverOpen,
   onOpenChange,
 }: DropdownSidebarFilterProps) => {
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
   const isSmallScreen = useIsSmallScreen();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -62,11 +59,12 @@ export const DropdownSidebarFilter = ({
     return () => window.removeEventListener("resize", handleResize, false);
   }, [dropdownRef, popoverWidth]);
 
+  // The nav rail is always shown, so a small screen must not also show this popover.
   useLayoutEffect(() => {
-    if (isNavbarOpen && isSmallScreen) {
+    if (isSmallScreen) {
       onOpenChange(false);
     }
-  }, [isNavbarOpen, isSmallScreen, onOpenChange]);
+  }, [isSmallScreen, onOpenChange]);
 
   const onApplyFilter = (value: SearchFilterPropTypes) => {
     onChange(value);

@@ -20,7 +20,7 @@ export const GettingStartedSection = ({
   onAddDataModalOpen: () => void;
 }>) => {
   const canAddData = useCanAddData();
-  const [opened, { toggle }] = useDisclosure(true);
+  const [opened, { toggle }] = useDisclosure(false);
 
   const ONBOARDING_URL = "/getting-started";
   const isOnboardingPageSelected = nonEntityItem?.url === ONBOARDING_URL;

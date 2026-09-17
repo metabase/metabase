@@ -92,6 +92,7 @@ export const setup = ({
       element={
         <NavbarLibrarySection
           collections={collections}
+          itemsByCollectionId={new Map()}
           selectedId={undefined}
           onItemSelect={jest.fn()}
         />

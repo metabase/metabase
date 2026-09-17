@@ -1,4 +1,7 @@
-import type { Table } from "metabase-types/api";
+import type {
+  NavSection,
+  OpenNavItem,
+} from "metabase/nav/containers/MainNavbar/types";
 import type { CollectionId } from "metabase-types/api/collection";
 
 export type ChecklistItemValue =
@@ -39,16 +42,28 @@ export type TempStorageKey = keyof TempStorage;
 export type TempStorageValue<Key extends TempStorageKey = TempStorageKey> =
   TempStorage[Key];
 
-export interface DetailViewState {
-  rowName: string;
-  table: Table;
+/**
+ * The collection the current page lives in, published by the page itself so
+ * the app header can render its breadcrumbs. `collectionId: null` is the root
+ * collection.
+ */
+export interface PageCollection {
   collectionId: CollectionId | null;
 }
 
+/**
+ * Which page background the current page paints, so the app header above it can
+ * match instead of cutting a lighter strip across the top.
+ */
+export type PageBackground = "primary" | "secondary";
+
 export interface AppState {
-  detailView: DetailViewState | null;
+  /** `null` when no page has claimed a collection. */
+  pageCollection: PageCollection | null;
+  pageBackground: PageBackground;
   errorPage: AppErrorDescriptor | null;
-  isNavbarOpen: boolean;
+  navSection: NavSection | null;
+  openNavItems: OpenNavItem[];
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;
   tempStorage: TempStorage;

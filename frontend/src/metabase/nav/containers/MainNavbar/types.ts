@@ -1,8 +1,8 @@
 import type { StoreDashboard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
+import type { IconName } from "metabase-types/api";
 
 export interface MainNavbarOwnProps {
-  isOpen: boolean;
   location: Location;
   params: {
     slug?: string;
@@ -11,15 +11,29 @@ export interface MainNavbarOwnProps {
   dashboard?: StoreDashboard;
 }
 
-export interface MainNavbarDispatchProps {
-  openNavbar: () => void;
-  closeNavbar: () => void;
-}
+export type MainNavbarProps = MainNavbarOwnProps;
 
-export type MainNavbarProps = MainNavbarOwnProps & MainNavbarDispatchProps;
+/**
+ * Which half of the app the main rail is showing: curated content (Library plus official
+ * collections) or the user's own creation-oriented nav.
+ */
+export type NavSection = "official" | "unofficial";
 
 export interface SelectedItem {
   type: "card" | "collection" | "dashboard" | "non-entity";
   id?: number | string;
   url?: string;
 }
+
+/**
+ * An entity the user has opened during this page session. The rail lists them so several things
+ * can be open at once and switched between, and closing one keeps the work — it only takes the
+ * row out of the list.
+ */
+export type OpenNavItem = {
+  /** `${model}-${id}`, so reopening the same thing replaces its row rather than adding one. */
+  key: string;
+  name: string;
+  url: string;
+  icon: IconName;
+};

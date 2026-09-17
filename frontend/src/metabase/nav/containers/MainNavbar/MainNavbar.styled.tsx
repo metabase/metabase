@@ -2,21 +2,19 @@
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import {
-  breakpointMaxSmall,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import { Box, type BoxProps } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
 import { ExpandToggleButton } from "./SidebarItems/SidebarItems.styled";
 
 export const Sidebar = styled.aside<{
-  isOpen: boolean;
+  /** Only the Metabot rail hides itself; the main nav is always shown. */
+  isOpen?: boolean;
   side: "left" | "right";
   width?: string;
 }>`
-  ${({ isOpen }) => (isOpen ? "" : "display: none")};
+  ${({ isOpen = true }) => (isOpen ? "" : "display: none")};
 
   height: 100%;
   position: relative;
@@ -39,22 +37,19 @@ export const Sidebar = styled.aside<{
   }
 `;
 
-export const NavRoot = styled.nav<{ isOpen: boolean }>`
+export const NavRoot = styled.nav`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   padding-top: var(--mantine-spacing-sm);
   height: 100%;
+  width: 100%;
   background-color: transparent;
   overflow-x: hidden;
   overflow-y: auto;
 
-  ${breakpointMinSmall} {
-    width: ${(props) => (props.isOpen ? "100%" : 0)};
-  }
-
   ${breakpointMaxSmall} {
-    width: ${(props) => (props.isOpen ? "90vw" : 0)};
+    width: 90vw;
   }
 `;
 
