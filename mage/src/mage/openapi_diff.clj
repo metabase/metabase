@@ -21,6 +21,7 @@
    ;; mage runs under babashka, which bundles cheshire; metabase.util.json isn't on its classpath
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [mage.shell :as shell]
@@ -367,19 +368,72 @@
     (println "# Legend: + added  - removed  ~ modified  ! requiredness changed")
     (println "# Breaking = requires MORE from the caller, or provides LESS to the caller.")))
 
-(defn cli-diff
-  "Entry point for `./bin/mage openapi-diff OLD.json NEW.json [--severity breaking|additive]`."
-  [{:keys [arguments options]}]
-  (let [[old-path new-path] arguments
-        min-severity (case (some-> (:severity options) str/lower-case)
-                       "breaking" breaking
-                       "additive" additive
-                       nil)]
-    (print-diff (diff (json/parse-string (slurp old-path))
-                      (json/parse-string (slurp new-path)))
-                min-severity)))
-
 (def ^:private spec-path "resources/openapi/openapi.json")
+
+(defn- spec-blob-exists?
+  "Whether `ref` has a committed openapi.json."
+  [ref]
+  (zero? (:exit (shell/sh* {:quiet? true} "git" "rev-parse" "--verify" "--quiet"
+                           (str ref ":" spec-path)))))
+
+(defn- committed-spec!
+  "Write `ref`'s committed spec to `out-path`. Returns out-path.
+
+  Shells out with output redirected rather than capturing: the spec is megabytes of JSON, and
+  line-splitting then rejoining it is both wasteful and lossy on trailing whitespace."
+  [ref out-path]
+  (let [{:keys [exit]} (shell/sh* {:quiet? true}
+                                  "sh" "-c" (str "git show " ref ":" spec-path " > " out-path))]
+    (when-not (zero? exit)
+      (u/exit (str "Could not read " spec-path " at " ref
+                   ". Try a fully-qualified ref such as origin/" ref ".") 1))
+    out-path))
+
+(defn- generated-spec!
+  "Generate `ref`'s spec from source in a throwaway worktree and copy it to `out-path`.
+
+  Generating beats reading the committed blob because the committed spec only updates on PRs
+  labelled `openapi-self-healing`, so it lags the source it claims to describe. Costs a JVM boot.
+
+  Runs the ref's OWN `generate-openapi-spec` command, which writes to the worktree's copy of
+  `resources/openapi/openapi.json`; the worktree is then discarded, so no checkout is modified and
+  no support is needed from the ref beyond that command already existing. Returns nil when the ref
+  cannot be built."
+  [ref out-path]
+  (let [worktree (str "/tmp/openapi-diff-" (str/replace ref #"[^A-Za-z0-9]" "_") "-" (System/currentTimeMillis))]
+    (println (str "  generating " ref " from source (JVM boot, ~2 min)..."))
+    (try
+      (let [{:keys [exit err]} (shell/sh* {:quiet? true} "git" "worktree" "add" "--detach" worktree ref)]
+        (when-not (zero? exit)
+          (u/exit (str "Could not create a worktree for " ref ":\n" (str/join "\n" err)) 1)))
+      (let [{:keys [exit err]} (shell/sh* {:quiet? true :dir worktree :timeout-ms 900000}
+                                          "clojure" "-M:run:ee" "generate-openapi-spec")
+            generated (io/file worktree spec-path)]
+        (if (and (zero? exit) (.exists generated))
+          (do (io/copy generated (io/file out-path)) out-path)
+          (do (println (str "  Could not generate a spec at " ref
+                            " (old refs may not build with the current toolchain)."))
+              (doseq [line (take-last 3 (remove #(re-find #"(?i)reflection warning" %) err))]
+                (println (str "  " line)))
+              nil)))
+      (finally
+        (shell/sh* {:quiet? true} "git" "worktree" "remove" "--force" worktree)))))
+
+(defn- spec-for-ref!
+  "Materialize `ref`'s spec at `out-path`. Returns `[path stale?]`.
+
+  Generates from source unless `committed?`. A generation failure falls back to the committed blob,
+  which is reported as stale so the caller can say so rather than presenting a possibly-empty diff
+  as authoritative."
+  [ref out-path committed?]
+  (if committed?
+    [(committed-spec! ref out-path) true]
+    (if-let [generated (generated-spec! ref out-path)]
+      [generated false]
+      (if (spec-blob-exists? ref)
+        (do (println (str "  Falling back to " ref "'s committed spec."))
+            [(committed-spec! ref out-path) true])
+        (u/exit (str "Could not generate a spec at " ref ", and it has no committed spec.") 1)))))
 
 (defn- last-commit-date
   "ISO date of the last commit touching `paths`, or nil when none."
@@ -416,3 +470,35 @@
         (u/exit 1))
 
       :else (println "\nOK: spec is current relative to API source."))))
+
+(defn cli-diff
+  "Entry point for `./bin/mage openapi-diff`.
+
+  Takes either two spec files, or two git refs with `--refs`. With `--refs` each ref's spec is
+  generated from its source in a throwaway worktree, which is slower than reading the committed
+  blob but is not subject to its drift."
+  [{:keys [arguments options]}]
+  (let [[old-arg new-arg] arguments
+        min-severity (case (some-> (:severity options) str/lower-case)
+                       "breaking" breaking
+                       "additive" additive
+                       nil)
+        [old-path new-path stale-refs]
+        (if (:refs options)
+          (let [dir (str "/tmp/openapi-diff-specs-" (System/currentTimeMillis))
+                committed? (boolean (:committed options))]
+            (.mkdirs (io/file dir))
+            (let [[op ostale] (spec-for-ref! old-arg (str dir "/old.json") committed?)
+                  [np nstale] (spec-for-ref! new-arg (str dir "/new.json") committed?)]
+              [op np (cond-> [] ostale (conj old-arg) nstale (conj new-arg))]))
+          [old-arg new-arg []])]
+    (when (:refs options) (println))
+    (print-diff (diff (json/parse-string (slurp old-path))
+                      (json/parse-string (slurp new-path)))
+                min-severity)
+    (when (seq stale-refs)
+      (println)
+      (println (str "# WARNING: used the committed spec for " (str/join " and " stale-refs) "."))
+      (println "# The committed spec only updates on PRs labelled `openapi-self-healing`, so it lags")
+      (println "# source. This diff UNDER-REPORTS: changes never regenerated into the spec are absent,")
+      (println "# and an empty result does not mean there were no changes."))))
