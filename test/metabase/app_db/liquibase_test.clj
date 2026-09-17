@@ -788,6 +788,32 @@
                 (is (false? (liquibase/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned")
                 (is (nil? (filename-of "dev_run_a")))))))))))
 
+(deftest rollback-to-deployment-repairs-rewritten-filenames-test
+  (testing "the deployment rollback repairs version-less filenames an older binary rewrote, without relying on the
+            release migrate! path having consolidated first (dev.migrate/rollback! does not go through migrate!)"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [ct  (liquibase/changelog-table-name liquibase)
+                  vt  liquibase/databasechangelog-versions-table
+                  now (java.time.Instant/now)
+                  ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+              (liquibase/with-scope-locked liquibase (.update liquibase ""))
+              (liquibase/ensure-databasechangelog-versions-table! conn)
+              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'dev2'" ct)])
+              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET filename = 'migrations/000_legacy_migrations.yaml' WHERE id = 'dev_run_a'" ct)])
+              (insert-changelog-row! conn ct "boundary_row" "dev1" 0)
+              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET dateexecuted = ? WHERE id = 'boundary_row'" ct)
+                                                 (java.sql.Timestamp/from (ago 30))])
+              (insert-version-row! conn vt "dev1" liquibase/dev-version (ago 20))
+              (insert-version-row! conn vt "dev2" liquibase/dev-version (ago 10))
+              (mt/with-log-messages-for-level [messages :warn]
+                (liquibase/rollback-to-deployment! conn liquibase "dev1")
+                (is (some #(re-find #"Restoring the changelog filename of version-less changeset dev_run_a" (:message %)) (messages)))
+                (is (not-any? #(re-find #"could not be reversed" (:message %)) (messages))))
+              (is (false? (liquibase/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned"))))))))
+
 (deftest rollback-warns-about-rows-it-cannot-reverse-test
   (testing "rows cleared by a rollback without a matching changeset to reverse are called out, not silently dropped"
     (mt/test-drivers #{:h2 :mysql :postgres}

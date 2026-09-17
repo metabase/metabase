@@ -1268,11 +1268,16 @@
 
 (defn- rollback-to-deployments!
   "Roll back every changeset that ran after the latest changelog row of the `boundary-deps` deployments (see
-  [[rollback-plan]]). `target` is only used for logging and error messages."
+  [[rollback-plan]]). `target` is only used for logging and error messages.
+
+  Repairs version-less changelog filenames first (see [[repair-version-less-filenames!]]): the rows must match their
+  changesets to be reversed, and not every caller has been through [[consolidate-liquibase-changesets!]] -- the
+  development rollback ([[rollback-to-deployment!]]) has not."
   [conn ^Liquibase liquibase boundary-deps target]
   (with-scope-locked liquibase
     (let [lb-db           (.getDatabase liquibase)
           changelog-table (changelog-table-name liquibase)
+          _               (repair-version-less-filenames! conn liquibase changelog-table)
           {:keys [changesets-to-drop changesets-to-retain boundary-deployment deployments-to-drop]}
           (rollback-plan conn changelog-table boundary-deps)]
       (log/infof "Rolling back app database schema to %s" target)
