@@ -437,22 +437,43 @@
                   (map second)))))))
 
 (deftest metabot-weights-test
-  (testing "with Metabot weights, metrics outrank questions and models, including recently viewed models"
-    ;; Create the index table outside `with-temp`'s transaction; see [[user-recency-test]].
-    (search.tu/with-temp-index-table
-      (let [user-id  (mt/user->id :crowberto)
-            now      (Instant/now)
-            long-ago (.minus now 365 ChronoUnit/DAYS)]
-        (mt/with-temp [:model/Card        {model-id :id} {}
-                       :model/Card        {question-id :id} {}
-                       :model/Card        {metric-id :id} {}
-                       :model/RecentViews _ {:model "card" :model_id model-id :user_id user-id :timestamp now}]
-          (with-index-contents
-            [{:model "dataset" :id model-id    :name "foo model"    :last_viewed_at now}
-             {:model "card"    :id question-id :name "foo question" :last_viewed_at long-ago}
-             {:model "metric"  :id metric-id   :name "foo metric"   :last_viewed_at long-ago}]
-            (is (= [metric-id question-id model-id]
-                   (map second (search-results* "foo" :context :metabot :current-user-id user-id)))))))))
+  (testing "with Metabot weights, recency does not lift a result into a higher tier"
+    (let [user-id  (mt/user->id :crowberto)
+          now      (Instant/now)
+          long-ago (.minus now 365 ChronoUnit/DAYS)
+          viewed   (fn [model model-id] {:model model :model_id model-id :user_id user-id :timestamp now})
+          ranked   (fn [search-string]
+                     (map second (search-results* search-string :context :metabot :current-user-id user-id)))]
+      ;; Create each index table outside `with-temp`'s transaction; see [[user-recency-test]].
+      (testing "a recent model stays below a stale question and metric"
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card        {model-id :id} {}
+                         :model/Card        {question-id :id} {}
+                         :model/Card        {metric-id :id} {}
+                         :model/RecentViews _ (viewed "card" model-id)]
+            (with-index-contents
+              [{:model "dataset" :id model-id    :name "foo model"    :last_viewed_at now}
+               {:model "card"    :id question-id :name "foo question" :last_viewed_at long-ago}
+               {:model "metric"  :id metric-id   :name "foo metric"   :last_viewed_at long-ago}]
+              (is (= [metric-id question-id model-id] (ranked "foo")))))))
+      (testing "a recent final-layer table stays below a stale metric"
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Table       {table-id :id} {}
+                         :model/Card        {metric-id :id} {}
+                         :model/RecentViews _ (viewed "table" table-id)]
+            (with-index-contents
+              [{:model "table"  :id table-id  :name "foo table"  :last_viewed_at now :data_layer "final"}
+               {:model "metric" :id metric-id :name "foo metric" :last_viewed_at long-ago}]
+              (is (= [metric-id table-id] (ranked "foo")))))))
+      (testing "a recent model stays below a stale table without a data layer"
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card        {model-id :id} {}
+                         :model/Table       {table-id :id} {}
+                         :model/RecentViews _ (viewed "card" model-id)]
+            (with-index-contents
+              [{:model "dataset" :id model-id :name "foo model" :last_viewed_at now}
+               {:model "table"   :id table-id :name "foo table" :last_viewed_at long-ago}]
+              (is (= [table-id model-id] (ranked "foo")))))))))
   (testing "with Metabot weights, a metric outranks a final-layer table"
     (with-index-contents
       [{:model "table"  :id 1 :name "foo table"  :data_layer "final"}
