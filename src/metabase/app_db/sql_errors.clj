@@ -6,6 +6,8 @@
 
 (set! *warn-on-reflection* true)
 
+;; These registries are cumulative shared app-db SQL vocabulary.
+;; Keep recognized states and vendor codes even when no current caller uses them.
 (def sql-states
   "SQLSTATE codes returned by supported application databases."
   {;; PostgreSQL, missing table.
@@ -23,6 +25,9 @@
 
 (def error-codes
   "Vendor-specific error codes returned by supported application databases."
+  ;; MySQL and MariaDB use SQLSTATE 23000 for every integrity-constraint failure, so `ER_DUP_ENTRY` (1062)
+  ;; identifies duplicate keys. Check a vendor code only after its SQLSTATE has matched: H2 and MySQL both use small
+  ;; integers, so a bare code lookup could classify an H2 error as a MySQL or MariaDB error.
   {:mysql/duplicate-entry 1062})
 
 ;; Keep this in step with `impl-table-known-to-not-exist?` in the H2, Postgres, and MySQL drivers.
@@ -42,8 +47,7 @@
       (= (sql-states :unique-violation) state)
       :duplicate-key
 
-      ;; MySQL and MariaDB use 23000 for every constraint failure, so a duplicate key shows only in the vendor code.
-      ;; Vendor codes mean nothing across vendors, so check the code only once the SQLSTATE has matched.
+      ;; Vendor codes are meaningful only after the SQLSTATE has matched.
       (and (= (sql-states :integrity-constraint-violation) state)
            (= (error-codes :mysql/duplicate-entry) (.getErrorCode e)))
       :duplicate-key)))
