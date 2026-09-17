@@ -62,6 +62,9 @@
                                 [:and
                                  [:= :is_sample true]
                                  [:= :metadata_sync_schedule [:auto/param old-sample-metadata-cron]]]
+                                ;; Both cron sets are left unmarked: `[:set :string]` admits the
+                                ;; empty set, and marking an empty collection is refused (rubric
+                                ;; rule 5).
                                 [:in :metadata_sync_schedule metadata-crons]
                                 [:in :cache_field_values_schedule cache-field-values-crons]]}))
 
@@ -191,8 +194,10 @@
                        :db_id (long database-id)
                        {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
                         :where    [:and sync-tables-clause
-                                   (when (seq schema-names) [:in :schema schema-names])
-                                   (when (seq table-names) [:in :name table-names])]
+                                   ;; Both are guarded by `seq`, so marking them cannot hit the
+                                   ;; empty-collection refusal (rubric rule 5).
+                                   (when (seq schema-names) [:in :schema [:auto/param schema-names]])
+                                   (when (seq table-names) [:in :name [:auto/param table-names]])]
                         :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn sync-tables-by-earliest-analyzed-reducible
@@ -357,6 +362,7 @@
    lower-names :- [:sequential :string]]
   (t2/select :model/Field
              :table_id (long table-id)
+             ;; `[:sequential :string]` admits the empty seq, so leave it unmarked (rubric rule 5).
              :%lower.name [:in lower-names]
              :parent_id (some-> parent-id long)
              :active false {:from [(warehouse-schema-overlay/field-query)]}))
@@ -400,6 +406,7 @@
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
+  ;; `field-names` is left unmarked: `[:sequential :string]` admits the empty seq (rubric rule 5).
   (t2/select-pks-vec :model/Field :name [:in field-names] :table_id (long table-id) :parent_id nil {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn top-level-field-ids-by-schema-table-and-name-reducible
@@ -411,6 +418,8 @@
                        :from      [(warehouse-schema-overlay/field-query {:alias :f})]
                        :inner-join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
                        :where      [:and
+                                    ;; `[:composite ...]` is a known limit of the lint, and HoneySQL
+                                    ;; already binds each element of the triples as a parameter.
                                     [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
                                     [:= :t.db_id (long database-id)]
                                     [:= :parent_id nil]]}))
@@ -466,6 +475,8 @@
   [table-id          :- ::lib.schema.id/table
    indexed-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
   (t2/update! :model/Field {:table_id (long table-id)}
+              ;; This is an `update!` changes map (rubric rule 1) built from a `[:case ...]`
+              ;; operator form the lint does not classify -- both say leave it.
               {:database_indexed (if (seq indexed-field-ids)
                                    [:case [:in :id indexed-field-ids] true :else false]
                                    false)}))
@@ -684,6 +695,9 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
+  ;; `types` stays unmarked: `:type` carries `mi/transform-keyword`, which maps over the vector in
+  ;; the value slot, so `[:in [:auto/param types]]` compiles to `IN (?, (?, ?))` with the marker
+  ;; keyword bound as the string "auto/param". The transform already binds each element.
   (t2/count :model/FieldValues :field_id (long field-id) :type [:in types]
             :created_at (before-max-age-value max-age-days)))
 
@@ -692,5 +706,6 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
+  ;; Unmarked for the same reason as the count above: the `:type` transform would eat the marker.
   (t2/delete! :model/FieldValues :field_id (long field-id) :type [:in types]
               :created_at (before-max-age-value max-age-days)))

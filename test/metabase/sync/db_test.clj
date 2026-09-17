@@ -93,3 +93,29 @@
       (is (= 1 (sync.db/set-fields-fingerprint-version! [a] 3)))
       (is (= 3 (t2/select-one-fn :fingerprint_version :model/Field :id a)))
       (is (= 1 (t2/select-one-fn :fingerprint_version :model/Field :id b))))))
+
+(deftest ^:synchronized bound-conditional-in-clauses-test
+  (testing "the seq-guarded :schema/:name narrowing binds its collections"
+    (mt/with-temp [:model/Database db {:name "vdb"}
+                   :model/Table    t1 {:db_id (:id db) :name "orders" :schema "public" :active true}]
+      (is (= [(:id t1)]
+             (into [] (map :id) (sync.db/sync-tables-reducible (:id db) ["public"] ["orders"]))))
+      (testing "a schema or table name that looks like SQL matches nothing"
+        (is (= [] (into [] (map :id) (sync.db/sync-tables-reducible (:id db) [sql-injection-attempt] nil))))
+        (is (= [] (into [] (map :id) (sync.db/sync-tables-reducible (:id db) nil [sql-injection-attempt])))))
+      (testing "an empty narrowing drops the clause rather than marking an empty collection"
+        (is (= [(:id t1)]
+               (into [] (map :id) (sync.db/sync-tables-reducible (:id db) [] []))))))))
+
+(deftest transformed-in-collection-stays-unmarked-test
+  (testing "marking a transformed column's `[:in coll]` would be eaten by the transform"
+    ;; `:model/FieldValues` `:type` is `mi/transform-keyword`. In kv-arg position the transform maps
+    ;; over whatever sits in the value slot, so it already binds each element -- and it would map
+    ;; over a marker vector too, binding the literal string "auto/param" as a parameter. This pins
+    ;; why `advanced-field-values-count-before` leaves `types` unmarked.
+    (let [[sql & params] (t2/compile (t2/count :model/FieldValues
+                                               :field_id (long 1)
+                                               :type [:in #{:linked-filter :sandbox}]))]
+      (is (not (re-find #"linked-filter" sql))
+          "each type binds as a parameter rather than compiling into the statement")
+      (is (= #{"linked-filter" "sandbox"} (set (remove number? params)))))))
