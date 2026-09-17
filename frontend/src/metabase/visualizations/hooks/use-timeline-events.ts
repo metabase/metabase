@@ -29,7 +29,10 @@ interface UseTimelineEventsProps {
   timelineEvents?: TimelineEvent[];
   timelineEventsVisibility?: TimelineEventsVisibility;
   onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
   isDashboard?: boolean;
+  width?: number;
+  height?: number;
 }
 
 interface UseTimelineEventsResult {
@@ -53,7 +56,10 @@ export function useTimelineEvents({
   settings,
   series,
   onTimelineEventsShown,
+  onTimelineEventsEnabledChange,
   isDashboard = false,
+  width = 0,
+  height = 0,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
   const isEnabled = isTimelineEventsEnabled(settings);
   const visibility = isEnabled
@@ -100,6 +106,14 @@ export function useTimelineEvents({
       onTimelineEventsShown?.();
     }
   }, [timelineEvents, onTimelineEventsShown]);
+
+  // getDashboardAdjustedSettings turns events off for small cards and while unmeasured (0x0)
+  const isMeasured = width > 0 && height > 0;
+  useEffect(() => {
+    if (isMeasured) {
+      onTimelineEventsEnabledChange?.(isEnabled);
+    }
+  }, [isMeasured, isEnabled, onTimelineEventsEnabledChange]);
 
   return { timelineEvents, isLoading, isError };
 }
