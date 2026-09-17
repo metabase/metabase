@@ -74,19 +74,30 @@
     nil))
 
 (defn- superuser-test?
-  "Whether a conditional's test is the session's superuser flag: `superuser?` destructured from the request's
-  `:is-superuser?`, `api/*is-superuser?*`, `(:is-superuser? request)`, or one of those under `and`."
-  [test]
+  "Whether a conditional's test is the session's superuser flag: `api/*is-superuser?*` (qualified or not),
+  `(:is-superuser? request)` read off a parameter named like a Ring request, a symbol in `flag-names` -- one a
+  parameter destructured from its `:is-superuser?` key, see [[superuser-flag-names]] -- or one of those under
+  `and`.
+
+  A plain parameter named `is-superuser?` is not the flag: it holds whatever the caller passed, and
+  `data-permissions.sql` takes one to build a query for any user."
+  [test flag-names]
   (let [test (ast/unmeta test)]
     (boolean
      (cond
-       (ast/symbol-node? test) (re-find #"^\*?is-superuser\?\*?$|^superuser\?$" (name (n/sexpr test)))
-       (ast/call? test)        (let [head (ast/head-sym test)]
+       (ast/symbol-node? test) (let [nm (name (n/sexpr test))]
+                                 (or (= "*is-superuser?*" nm) (contains? flag-names nm)))
+       (ast/call? test)        (let [head  (ast/head-sym test)
+                                     [h a] (ast/children test)
+                                     a     (some-> a ast/unmeta)]
                                  (cond
-                                   (= 'and head)                (some superuser-test? (ast/args test))
-                                   (ast/keyword-node? (first (ast/children test)))
-                                   (= :is-superuser? (n/sexpr (first (ast/children test))))
-                                   :else                        false))
+                                   (= 'and head)
+                                   (some #(superuser-test? % flag-names) (ast/args test))
+
+                                   (and (ast/keyword-node? h) (= :is-superuser? (n/sexpr h)))
+                                   (and a (ast/symbol-node? a) (contains? request-param-names (name (n/sexpr a))))
+
+                                   :else false))
        :else                   false))))
 
 (defn- positive-checks
@@ -142,6 +153,56 @@
               (when (ast/call? body)
                 (first (filter ast/vector-node? (map ast/unmeta (ast/children body))))))
             args))))
+
+(defn- superuser-flag-names
+  "The names a file binds from a parameter's `:is-superuser?` key: `{:keys [is-superuser?]}` and `{superuser?
+  :is-superuser?}` in the parameters of a `defn`, an anonymous fn or a `defendpoint`. Only those symbols stand
+  for the session's flag when a conditional tests them; see [[superuser-test?]]."
+  [root-node]
+  (into #{}
+        (for [node (ast/find-nodes ast/call? root-node)
+              :let [head (ast/head-sym node)
+                    dp   (taint/defendpoint-params node)]
+              al   (cond
+                     dp                                                      [dp]
+                     (and head (or (defn-head? head) (contains? fn-heads head))) (arglists (ast/args node))
+                     :else                                                   nil)
+              slot (ast/children al)
+              :let [sym (get (ast/destructured-keys (ast/unmeta slot)) :is-superuser?)]
+              :when sym]
+          (name (n/sexpr sym)))))
+
+(def ^:private branch-positions
+  "For each conditional form, the index of its first argument that runs only on some branch: everything from
+  there on is a branch. The test of an `if`, the seed of a `some->`, the first form of an `or` and the binding
+  of an `if-let` always run; a `try`'s body and its `finally` do too, so only its `catch` clauses count, see
+  [[branch-regions]]."
+  {"if" 1 "if-not" 1 "when" 1 "when-not" 1 "cond" 1 "case" 1 "condp" 2
+   "when-let" 1 "if-let" 1 "when-some" 1 "if-some" 1
+   "or" 1 "and" 1 "some->" 1 "some->>" 1 "cond->" 1 "cond->>" 1})
+
+(defn- branch-regions
+  "The regions of `node`'s tree that run only on some branch, by row: `{row [region ...]}`. A call site inside
+  one is *conditional* -- a `check-superuser` a helper runs only under `(when x ...)` or in a `catch` clause is no
+  guarantee the caller holds a superuser, so it must not raise the privilege an endpoint demands."
+  [filename root-node]
+  (let [regions (for [node (ast/find-nodes ast/call? root-node)
+                      :let [head (some-> (ast/head-sym node) name)
+                            args (ast/args node)]
+                      :when head
+                      branch (if (= "try" head)
+                               (filter #(= "catch" (some-> % ast/unmeta ast/head-sym name)) args)
+                               (when-let [i (get branch-positions head)] (drop i args)))]
+                  (assoc (meta branch) :filename filename))]
+    (reduce (fn [acc {:keys [row end-row] :as r}]
+              (reduce #(update %1 %2 (fnil conj []) r) acc (range row (inc (or end-row row)))))
+            {}
+            regions)))
+
+(defn- conditional-site?
+  "Whether a call site sits inside a branch region; see [[branch-regions]]."
+  [by-row {:keys [row col]}]
+  (boolean (some #(within? % row col) (get by-row row))))
 
 (def ^:private tail-through
   "Forms whose value is the value of one of their children: the tail positions to look through for what a
@@ -848,7 +909,9 @@
         enforced-ns? (boolean (some (fn [nd]
                                       (and (ast/call? nd) (= 'ns (ast/head-sym nd))
                                            (contains? (meta-keys (first (ast/args nd))) :instrument/always)))
-                                    (ast/children root-node)))]
+                                    (ast/children root-node)))
+        ;; the symbols that stand for the session's superuser flag, for [[superuser-test?]]
+        flag-names   (superuser-flag-names root-node)]
     (doseq [node (ast/find-nodes ast/call? root-node)]
       (let [head (ast/head-sym node)
             args (ast/args node)]
@@ -1092,7 +1155,7 @@
             ;; `(when superuser? ...)`, `(if api/*is-superuser?* ...)`: the branch is a superuser's whoever reached
             ;; the function -- middleware that runs for anonymous callers and writes a setting only under this
             ;; flag, say. What is under it grades as a superuser's, see [[min-privilege-entry]].
-            (when (and test (seq body) (superuser-test? test))
+            (when (and test (seq body) (superuser-test? test flag-names))
               (let [b0 (meta (first body))
                     bn (meta (last body))]
                 (vswap! privilege-guards conj {:privilege :superuser
@@ -1295,9 +1358,13 @@
             :when (and nm (ast/symbol-node? nm))]
       (vswap! handler-defs conj {:var     (symbol (str ns-sym) (str (n/sexpr nm)))
                                  :targets (handler-targets (rest (ast/args nd)) ns-sym)}))
-    (let [ns-form (first (filter #(and (ast/call? %) (= 'ns (ast/head-sym %))) (ast/children root-node)))]
+    (let [ns-form  (first (filter #(and (ast/call? %) (= 'ns (ast/head-sym %))) (ast/children root-node)))
+          ;; a site that runs only on some branch is tagged, so the privilege an entry demands can be read from
+          ;; the checks it *always* runs; see [[branch-regions]]
+          branches (branch-regions filename root-node)
+          sites    (mapv #(cond-> % (conditional-site? branches (:pos %)) (assoc :conditional? true)) @sites)]
       {:ns ns-sym :params @params :inits @inits :calls @calls :sources @sources
-       :fns @fns :entries @entries :guards @guards :privilege-guards @privilege-guards :call-sites @sites :ns-middleware @ns-middleware
+       :fns @fns :entries @entries :guards @guards :privilege-guards @privilege-guards :call-sites sites :ns-middleware @ns-middleware
        :wraps @wraps :handler-defs @handler-defs
        :tail-terms @tail-terms
        :numeric-regions @numeric :string-regions @strings :registry-regions @registry :keyed-regions @keyed
@@ -1514,6 +1581,11 @@
         ;; executions only, for deciding whether an endpoint *runs* a check (over-approximation would hide a
         ;; missing one -- six model-read findings vanished when a referenced check counted as executed)
         call-edges (build-edges (remove :value? all-calls))
+        ;; and the executions that run on every path: what an entry *always* runs is what grades its privilege.
+        ;; A `check-superuser` under `(when x ...)` or in a `catch` clause read as a superuser-only endpoint and
+        ;; capped every finding past it at a note.
+        unconditional? (fn [c] (not (or (:value? c) (:conditional? c))))
+        unconditional-edges (build-edges (filter unconditional? all-calls))
         ;; frontier BFS: expand only what the last round added. Re-expanding the whole seen-set each round was
         ;; harmless at closures of ~90 functions; once multimethod dispatch pulls every driver into a closure it
         ;; is not.
@@ -1529,15 +1601,17 @@
         calls-by-file (group-by #(:filename (:pos %)) all-calls)
         ;; scoped to the entry's own file -- the third time a whole-codebase scan per position has appeared in
         ;; this file, and at 744 endpoints x 192k sites it was 2.8s of a 3.2s function
+        own-sites  (fn [e pred]
+                     (into #{} (comp (filter #(and (pred %)
+                                                   (within? e (:row (:pos %)) (:col (:pos %)))
+                                                   ;; the site at the entry's own start is the
+                                                   ;; defendpoint form itself, not something it calls
+                                                   (not= [(:row e) (:col e)]
+                                                         [(:row (:pos %)) (:col (:pos %))])))
+                                     (map resolve-to))
+                           (get calls-by-file (:filename e))))
         entry-recs (for [e entries]
-                     (assoc e :seeds (into #{} (comp (filter #(and (not (:value? %))
-                                                                   (within? e (:row (:pos %)) (:col (:pos %)))
-                                                                   ;; the site at the entry's own start is the
-                                                                   ;; defendpoint form itself, not something it calls
-                                                                   (not= [(:row e) (:col e)]
-                                                                         [(:row (:pos %)) (:col (:pos %))])))
-                                                     (map resolve-to))
-                                           (get calls-by-file (:filename e)))))
+                     (assoc e :seeds (own-sites e (complement :value?))))
         ;; one closure per entry kind, so a finding can say what reaches it: a request, a job, a queue...
         kinds      (into #{:http :middleware} (map :kind) entries)
         refs-in    (fn [e] (into #{} (comp (filter #(and (:value? %)
@@ -1558,7 +1632,11 @@
                      (if (= :http (:kind e))
                        (assoc e :privilege (entry-privilege {:ns-wrappers   (get wrappers (get ns-of (:filename e)) #{})
                                                              :ns-middleware (get middleware (:filename e) #{})
-                                                             :nearby        (entry-neighbourhood {:call-edges call-edges} e 2)
+                                                             ;; the checks on every path from the entry: its own
+                                                             ;; unconditional calls, then two hops along the
+                                                             ;; unconditional edges
+                                                             :nearby        (entry-neighbourhood {:call-edges unconditional-edges}
+                                                                                                 {:seeds (own-sites e unconditional?)} 2)
                                                              :ns            (get ns-of (:filename e))
                                                              :method        (:method e)}))
                        e))

@@ -339,6 +339,52 @@
       (is (= :superuser (at 9 5)) "the then-branch of (if api/*is-superuser?* ...)")
       (is (= :session   (at 10 5)) "not the else-branch"))))
 
+(def ^:private conditional-check-src
+  "(ns metabase.a.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api]))
+(defn- maybe-gate [x] (when x (api/check-superuser)))
+(defn- rescue-gate [] (try (check-a) (catch Exception _ (api/check-superuser))))
+(defn- gate [] (api/check-superuser))
+(defn- branch-gate [x] (if x (api/check-superuser) (check-b)))
+(api.macros/defendpoint :get \"/maybe\" \"doc\" [_r _q _b] (maybe-gate 1))
+(api.macros/defendpoint :get \"/rescue\" \"doc\" [_r _q _b] (rescue-gate))
+(api.macros/defendpoint :get \"/always\" \"doc\" [_r _q _b] (gate))
+(api.macros/defendpoint :get \"/branch\" \"doc\" [_r _q _b] (branch-gate 1))
+(api.macros/defendpoint :get \"/inline\" \"doc\" [_r _q _b] (when (flag) (api/check-superuser)) 1)
+(api.macros/defendpoint :get \"/inline-always\" \"doc\" [_r _q _b] (api/check-superuser) 1)
+")
+
+(deftest conditional-check-does-not-grade-test
+  (testing "a check that runs only on some branch does not raise the privilege an endpoint demands: the other
+            branch is any session's"
+    (let [tables {"routes.clj" (cg/extract "routes.clj" 'metabase.api-routes.routes (root privilege-routes))
+                  "a.clj"      (cg/extract "a.clj" 'metabase.a.api (root conditional-check-src))}
+          reach  (cg/reachable-regions {:tables tables :resolve {}})
+          at     (fn [row] (:privilege (first (filter #(and (= "a.clj" (:filename %)) (= row (:row %))) (cg/entries reach)))))]
+      (is (= :session   (at 6))  "check-superuser under (when x ...) one hop down")
+      (is (= :session   (at 7))  "check-superuser in a catch clause")
+      (is (= :superuser (at 8))  "an unconditional check-superuser one hop down still grades")
+      (is (= :session   (at 9))  "check-superuser in one branch of an if")
+      (is (= :session   (at 10)) "check-superuser under (when ...) in the endpoint's own body")
+      (is (= :superuser (at 11)) "and unconditional there"))))
+
+(deftest superuser-flag-guard-extraction-test
+  (let [guards (fn [src] (:privilege-guards (cg/extract "f.clj" 't (root src))))]
+    (testing "a bare symbol named like the flag guards only when it was destructured from a parameter's :is-superuser? key"
+      (is (empty? (guards "(ns t)\n(defn f [is-superuser? x] (when is-superuser? (act x)))\n"))
+          "a plain parameter is whatever the caller passed")
+      (is (= 1 (count (guards "(ns t)\n(defn f [{:keys [is-superuser?]} x] (when is-superuser? (act x)))\n"))))
+      (is (= 1 (count (guards "(ns t)\n(defn f [{superuser? :is-superuser?} x] (when superuser? (act x)))\n"))))
+      (is (= 1 (count (guards "(ns t (:require [metabase.api.macros :as api.macros]))\n(api.macros/defendpoint :get \"/x\" \"doc\" [_r _q _b {:keys [is-superuser?]}] (when is-superuser? (act 1)))\n")))
+          "a defendpoint's request slot"))
+    (testing "the flag read off a request parameter"
+      (is (= 1 (count (guards "(ns t)\n(defn f [request x] (when (:is-superuser? request) (act x)))\n"))))
+      (is (empty? (guards "(ns t)\n(defn f [user x] (when (:is-superuser? user) (act x)))\n"))
+          "read off some other map, a User row's flag is that user's"))
+    (testing "the dynamic var, qualified or not, alone or under and"
+      (is (= 1 (count (guards "(ns t (:require [metabase.api.common :as api]))\n(defn f [x] (when api/*is-superuser?* (act x)))\n"))))
+      (is (= 1 (count (guards "(ns t)\n(defn f [x] (if *is-superuser?* (act x) (act 0)))\n"))))
+      (is (= 1 (count (guards "(ns t (:require [metabase.api.common :as api]))\n(defn f [x] (when (and x api/*is-superuser?*) (act x)))\n")))))))
+
 (deftest nullary-higher-order-call-test
   (testing "a bare (map) does not crash extraction"
     (is (map? (cg/extract "f.clj" 't (root "(ns t)\n(defn f [] (map))\n(defn g [] (-> 1))\n"))))))
