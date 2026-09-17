@@ -228,35 +228,134 @@
                                 (mt/user-http-request :rasta :post 403 url params)))
                         (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
+(defn- write-query
+  "A native write query targeting `db-id`."
+  [db-id]
+  {:type     "native"
+   :database db-id
+   :native   {:query "update people set source = 'pwned' where id = 1"}})
+
+(defn- cross-db-native-action
+  "A native query action whose declared `:database_id` and whose query's own `:database` disagree."
+  [model-id declared-db-id query-db-id]
+  {:name          "cross db native action"
+   :type          "query"
+   :model_id      model-id
+   :database_id   declared-db-id
+   :dataset_query (write-query query-db-id)
+   :parameters    []})
+
+(defn- model-card-def
+  "A model Card on the current test database, in `user`'s personal collection so they can write to it."
+  [user]
+  {:type          :model
+   :dataset_query (mt/native-query {:query "select * from checkins limit 1"})
+   :collection_id (:id (collection/user->personal-collection (mt/user->id user)))})
+
+(defn- set-native-perms!
+  [db-id level]
+  (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries level))
+
+(defn- do-with-two-actions-enabled-dbs!
+  "Runs `f` with two test databases that both have actions enabled, passing it `[model-db-id query-db-id]`. The model
+  lives on the first; the cross-database query targets the second."
+  [f]
+  (mt/dataset test-data
+    (let [query-db-id (mt/id)]
+      (mt/with-actions-enabled
+        (mt/dataset time-test-data
+          (mt/with-actions-enabled
+            (let [model-db-id (mt/id)]
+              (is (not= model-db-id query-db-id))
+              (f model-db-id query-db-id))))))))
+
 (deftest action-query-db-differs-from-declared-db-test
   (testing "a query action cannot execute against a database other than the one its query targets"
     (mt/dataset test-data
-      (let [target-db-id (mt/id)]                          ;; the DB the malicious query really targets; actions OFF here
+      (let [target-db-id (mt/id)]                          ;; the DB the query really targets; actions OFF here
         (mt/dataset time-test-data
           (mt/with-actions-enabled                         ;; actions enabled only on the model's DB (time-test-data)
             (let [model-db-id (mt/id)]
               (is (not= model-db-id target-db-id))
-              (mt/with-temp [:model/Card model {:type          :model
-                                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
-                (let [;; declare :database_id as the model's own (enabled) DB to try to pass every enablement gate...
-                      ;; ...while the query points at target-db-id, whose actions are disabled.
-                      action {:type          :query
-                              :model_id      (:id model)
-                              :database_id   model-db-id
-                              :name          "sneaky cross db action"
-                              :dataset_query {:type     "native"
-                                              :database target-db-id
-                                              :native   {:query "update people set source = 'pwned' where id = 1"}}
-                              :parameters    []}
-                      created (mt/user-http-request :crowberto :post 200 "action" action)]
-                  (testing "the declared database_id is overwritten with the query's real database on save"
-                    (is (= target-db-id (:database_id created))))
-                  (testing "execution is blocked because actions are disabled on the query's real DB"
-                    (is (partial= {:message "Actions are not enabled."
-                                   :data    {:database-id target-db-id}}
-                                  (mt/user-http-request :crowberto :post 400
-                                                        (format "action/%s/execute" (:id created))
-                                                        {:parameters {}})))))))))))))
+              ;; persisted through the model layer rather than the API, because the API now refuses this outright --
+              ;; see action-creation-checks-actions-enabled-on-query-database-test. This covers the second gate: an
+              ;; action that got stored some other way still cannot execute against the query's real DB.
+              (mt/with-actions [_model {:type          :model
+                                        :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}
+                                ;; declare :database_id as the model's (enabled) DB while the query points at
+                                ;; target-db-id, whose actions are off
+                                {action-id :action-id} {:type          :query
+                                                        :database_id   model-db-id
+                                                        :name          "sneaky cross db action"
+                                                        :dataset_query (write-query target-db-id)
+                                                        :parameters    []}]
+                (testing "the declared database_id is overwritten with the query's real database on save"
+                  (is (=? {:database_id target-db-id}
+                          (mt/user-http-request :crowberto :get 200 (format "action/%s" action-id)))))
+                (testing "execution is blocked because actions are disabled on the query's real DB"
+                  (is (=? {:message "Actions are not enabled."
+                           :data    {:database-id target-db-id}}
+                          (mt/user-http-request :crowberto :post 400
+                                                (format "action/%s/execute" action-id)
+                                                {:parameters {}}))))))))))))
+
+(deftest native-query-action-create-perms-use-query-database-test
+  (testing "POST /api/action needs native permission on the database the query targets, not the declared database_id"
+    (do-with-two-actions-enabled-dbs!
+     (fn [model-db-id query-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (perms.test-util/with-restored-data-perms!
+           (mt/with-temp [:model/Card {model-id :id} (model-card-def :rasta)]
+             (let [action (cross-db-native-action model-id model-db-id query-db-id)]
+               (testing "native permission on the declared database is not enough"
+                 (set-native-perms! model-db-id :query-builder-and-native)
+                 (set-native-perms! query-db-id :query-builder)
+                 (is (= "You don't have permissions to do that."
+                        (mt/user-http-request :rasta :post 403 "action" action))))
+               (testing "native permission on the database the query targets is what unlocks it"
+                 (set-native-perms! query-db-id :query-builder-and-native)
+                 (is (=? {:type        "query"
+                          :database_id query-db-id}
+                         (mt/user-http-request :rasta :post 200 "action" action))))))))))))
+
+(deftest native-query-action-update-perms-use-query-database-test
+  (testing "PUT /api/action/:id needs native permission on the database the updated query targets"
+    (do-with-two-actions-enabled-dbs!
+     (fn [model-db-id query-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (perms.test-util/with-restored-data-perms!
+           (mt/with-temp [:model/Card {model-id :id} (model-card-def :rasta)]
+             (set-native-perms! model-db-id :query-builder-and-native)
+             (set-native-perms! query-db-id :query-builder)
+             (let [created  (mt/user-http-request :rasta :post 200 "action"
+                                                  (cross-db-native-action model-id model-db-id model-db-id))
+                   repoint  {:database_id   model-db-id
+                             :dataset_query (write-query query-db-id)}
+                   url      (str "action/" (:id created))]
+               (testing "repointing the query at another database needs native permission on that database"
+                 (is (= "You don't have permissions to do that."
+                        (mt/user-http-request :rasta :put 403 url repoint))))
+               (testing "with native permission on the query's database the update succeeds"
+                 (set-native-perms! query-db-id :query-builder-and-native)
+                 (is (=? {:database_id query-db-id}
+                         (mt/user-http-request :rasta :put 200 url repoint))))))))))))
+
+(deftest action-creation-checks-actions-enabled-on-query-database-test
+  (testing "POST /api/action checks actions-enabled on the database the query targets"
+    (mt/dataset test-data
+      (let [query-db-id (mt/id)]                           ;; actions stay DISABLED here
+        (mt/dataset time-test-data
+          (mt/with-actions-enabled                         ;; enabled only on the model's DB
+            (let [model-db-id (mt/id)]
+              (is (not= model-db-id query-db-id))
+              (mt/with-model-cleanup [:model/Action]
+                (mt/with-temp [:model/Card {model-id :id}
+                               {:type          :model
+                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                  (is (=? {:message "Actions are not enabled."
+                           :data    {:database-id query-db-id}}
+                          (mt/user-http-request :crowberto :post 400 "action"
+                                                (cross-db-native-action model-id model-db-id query-db-id)))))))))))))
 
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!

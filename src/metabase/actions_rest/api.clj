@@ -21,11 +21,38 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- query->database-id
+  "The database a `dataset-query` executes against, when it names one."
+  [dataset-query]
+  (when (map? dataset-query)
+    (:database dataset-query)))
+
+(defn- query-action-database-id
+  "The database a query action executes against.
+  Either the `dataset-query` `:database` or `database-id`"
+  [database-id dataset-query]
+  ;; the query's `:database` wins when present since that is what the action executes and `metabase.actions.models`
+  ;; derives the stored `:database_id` column from it as well.
+  (or (query->database-id dataset-query)
+      database-id))
+
+(defn- updated-query-action-database-id
+  "The database `action` moves a query action to, or nil when the update cannot change it.
+
+  Derived exactly as `metabase.actions.models` derives the stored `:database_id` column: the incoming query's
+  `:database` wins, then the existing query's, so a declared `:database_id` only reaches the database when neither
+  query names one."
+  [action existing-action]
+  (when (= :query (or (:type action) (:type existing-action)))
+    (or (query->database-id (:dataset_query action))
+        (when-not (query->database-id (:dataset_query existing-action))
+          (:database_id action)))))
+
 (defn- check-native-query-perms!
   "Creating or updating a native query action requires ad-hoc native query permission on the target database."
   [database-id dataset-query]
   (when (and (seq dataset-query) (lib/native? dataset-query))
-    (when-let [db-id (or database-id (:database dataset-query))]
+    (when-let [db-id (query-action-database-id database-id dataset-query)]
       (api/check-403
        (= :query-builder-and-native
           (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries db-id))))))
@@ -97,12 +124,16 @@
                     {:type        action-type
                      :status-code 400})))
   (check-native-query-perms! database_id (:dataset_query action))
-  (let [model (api/write-check :model/Card model_id)]
+  (let [model       (api/write-check :model/Card model_id)
+        query-db-id (when (= action-type :query)
+                      (query-action-database-id database_id (:dataset_query action)))]
     (when (and (= action-type :implicit)
                (not (queries/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
-    (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
+    (doseq [db-id (distinct (cond-> [(:database_id model)]
+                              database_id (conj database_id)
+                              query-db-id (conj query-db-id)))]
       (actions/check-actions-enabled-for-database!
        (actions-rest.db/database db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
@@ -140,8 +171,11 @@
     (when-let [model-id (:model_id action)]
       (when (not= model-id (:model_id existing-action))
         (api/write-check :model/Card model-id)))
-    (when-let [dataset-query (:dataset_query action)]
+    (when-let [dataset-query (not-empty (:dataset_query action))]
       (check-native-query-perms! (:database_id action) dataset-query))
+    (when-let [new-db-id (updated-query-action-database-id action existing-action)]
+      (actions/check-actions-enabled-for-database!
+       (actions-rest.db/database new-db-id)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
