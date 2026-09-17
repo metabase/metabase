@@ -1,8 +1,8 @@
-(ns metabase.task.secure-delegate-test
+(ns metabase.task.secure-delegate.core-test
   (:require
    [clojure.test :refer :all]
    [metabase.classloader.core :as classloader]
-   [metabase.task.secure-delegate :as secure-delegate]
+   [metabase.task.secure-delegate.core :as secure-delegate]
    [metabase.util.deserialization-allowlist :as dal])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream ObjectOutputStream)
@@ -73,7 +73,8 @@
 (deftest getObjectFromBlob-override-canary-test
   (testing "each secure delegate declares its OWN getObjectFromBlob(ResultSet, String) — if a Quartz
             bump renames or re-signs that method our override silently stops overriding, and this fails"
-    (doseq [class-name ["metabase.task.SecureStdDelegate" "metabase.task.SecurePostgresDelegate"]]
+    (doseq [class-name ["metabase.task.secure_delegate.SecureStdDelegate"
+                        "metabase.task.secure_delegate.SecurePostgresDelegate"]]
       (let [k (Class/forName class-name true (classloader/the-classloader))
             m (.getMethod k "getObjectFromBlob" (into-array Class [ResultSet String]))]
         (is (= k (.getDeclaringClass m))
