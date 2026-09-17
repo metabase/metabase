@@ -185,11 +185,12 @@
 
 (defn all-tool-entries
   "Every registered tool's manifest entry, name-sorted and unfiltered: nothing is dropped for scope or
-   client extensions, and each entry still carries its `:scope` and `:required-extensions`. For internal
-   consumers that need the whole surface, such as the docs generator — a `tools/list` answer goes through
-   [[list-tools]]."
+   client extensions, and each entry still carries its `:scope` and `:required-extensions`. `:description` is
+   the tool's own, not the manifest's, which prepends the permission a `tools/list` client needs. For
+   internal consumers that need the whole surface, such as the docs generator — a `tools/list` answer goes
+   through [[list-tools]]."
   []
-  (manifest))
+  (mapv #(assoc % :description (:description (get @tools* (:name %)))) (manifest)))
 
 (defn list-tools
   "Return the tool definitions for the v2 MCP `tools/list` response, filtered by `token-scopes`

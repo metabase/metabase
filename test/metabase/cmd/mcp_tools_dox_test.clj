@@ -260,11 +260,17 @@
       (doseq [{:keys [name scope]} tools]
         (is (string? scope) (str "no scope for " name))
         (is (api-scope/registered-scope? scope) (str name " uses unregistered scope " (pr-str scope)))))
-    (testing "the page covers everything a fully-authorized client can be offered to a model"
+    (testing "the page covers everything tools/list can offer a model"
+      ;; `list-tools` filters by client extensions only; scopes are checked at call time
       (is (every? (set (map :name tools))
-                  (->> (v2.registry/list-tools nil {:supports-mcp-ui? true})
+                  (->> (v2.registry/list-tools {:supports-mcp-ui? true})
                        (remove #'mcp-tools-dox/app-only?)
                        (map :name)))))
+    (testing "an entry's description is the tool's own, without the permission preamble tools/list prepends"
+      ;; the page states the scope as a bullet; the manifest opens every description with it for clients that
+      ;; replace a scope denial with their own text
+      (doseq [{:keys [name description]} tools]
+        (is (not (str/starts-with? description "Requires the ")) (str name " carries the tools/list preamble"))))
     (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page flags them"
       ;; `:inline-ui?` keys off `:_meta`; keep it in step with the extension the tool actually requires
       (doseq [{:keys [name _meta required-extensions]} tools]
