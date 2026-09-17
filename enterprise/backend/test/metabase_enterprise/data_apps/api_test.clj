@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -737,15 +738,24 @@
                   :allowed_hosts ["https://api.example.com"])
       ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
       (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-      (testing "the bundle response carries the app's allowed_hosts as a JSON header"
-        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-          (is (= "[\"https://api.example.com\"]"
-                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))
-      (testing "an app with no allowed_hosts still sends the header as an empty JSON array"
-        (t2/update! :model/DataApp :name "demo" {:allowed_hosts []})
-        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-          (is (= "[]"
-                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
+      (testing "the bundle response normalizes the configured product analytics origin"
+        (mt/with-temporary-setting-values
+          [metaplow-url "HTTPS://product-analytics-ingestion.metabase.com/api/send"]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+            (is (= (json/encode ["https://api.example.com"
+                                 "https://product-analytics-ingestion.metabase.com"])
+                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))
+      (testing "the configured staging origin replaces the production origin"
+        (mt/with-temporary-setting-values [metaplow-url "https://product-analytics-ingestion.staging.metabase.com/api/send"]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+            (is (= (json/encode ["https://api.example.com"
+                                 "https://product-analytics-ingestion.staging.metabase.com"])
+                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))
+      (testing "an unset product analytics URL leaves the app's allowlist unchanged"
+        (mt/with-temporary-setting-values [metaplow-url nil]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+            (is (= (json/encode ["https://api.example.com"])
+                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))))))
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps-preview}
