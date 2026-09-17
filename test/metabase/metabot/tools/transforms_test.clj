@@ -67,7 +67,7 @@
                                (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
                     (lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) 1)))]
       (is (str/includes? (query-transform-details! query) "<query>"))
-      (with-redefs [metabot.perms/sandbox-restricted-fields (fn [_table-ids] {(mt/id :venues) #{}})]
+      (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields (fn [_table-ids] {(mt/id :venues) #{}})]
         (is (not (str/includes? (query-transform-details! query) "<query>")))))))
 
 (deftest get-transform-details-unpermissionable-source-test
