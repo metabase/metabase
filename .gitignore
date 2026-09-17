@@ -217,5 +217,6 @@ dependency-graph.json
 
 # mage modules-tree --html output
 /modules.html
+
 # mage owner-approval audit cache + reports
 .mage-cache/
