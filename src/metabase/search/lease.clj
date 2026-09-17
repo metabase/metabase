@@ -22,6 +22,7 @@
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource)
    (java.sql Connection SQLException)
+   (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -97,20 +98,25 @@
 
   An ambient app-db transaction already owns a main-pool connection, so use the isolated pool in that case.
   All SQL inside `f` resolves to the explicitly checked-out connection."
-  [f]
-  (let [read-lock (.readLock ^ReentrantReadWriteLock (:lock (mdb/app-db)))]
-    (.lockInterruptibly read-lock)
-    (try
-      (let [connectable (when (mdb/in-transaction?)
-                          (coordination-data-source))]
-        ;; The checkout gate alone cannot protect an auxiliary connection already checked out before restore.
-        (t2/with-connection [^Connection conn connectable]
-          (when-not (.getAutoCommit conn)
-            (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
-                            {:type ::non-autocommit-lifecycle-connection})))
-          (f conn)))
-      (finally
-        (.unlock read-lock)))))
+  ([f]
+   (do-with-lifecycle-connection f nil))
+  ([f lock-deadline-ns]
+   (let [read-lock (.readLock ^ReentrantReadWriteLock (:lock (mdb/app-db)))]
+     (if lock-deadline-ns
+       (when-not (.tryLock read-lock (max 0 (- lock-deadline-ns (System/nanoTime))) TimeUnit/NANOSECONDS)
+         (throw (ex-info "Search lease release timed out waiting for restore" {:type ::release-timeout})))
+       (.lockInterruptibly read-lock))
+     (try
+       (let [connectable (when (mdb/in-transaction?)
+                           (coordination-data-source))]
+         ;; The checkout gate alone cannot protect an auxiliary connection already checked out before restore.
+         (t2/with-connection [^Connection conn connectable]
+           (when-not (.getAutoCommit conn)
+             (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
+                             {:type ::non-autocommit-lifecycle-connection})))
+           (f conn)))
+       (finally
+         (.unlock read-lock))))))
 
 (defn- lease-duration-millis []
   (.toMillis ^java.time.Duration *lease-duration*))
@@ -184,16 +190,29 @@
    (pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis)))))
 
 (defn release!
-  "Release `claim` with a short autocommit operation, only if it still belongs to this owner."
+  "Release `claim` only if it still belongs to this owner, preserving interruption.
+  Restore-gate waits and interrupted retries share a five-second budget; database errors propagate."
   [{:keys [owner] :as claim}]
-  (let [interrupted? (Thread/interrupted)]
+  (let [deadline-ns  (+ (System/nanoTime) (.toNanos TimeUnit/SECONDS 5))
+        interrupted? (volatile! (Thread/interrupted))]
     (try
-      (do-with-lifecycle-connection
-       (fn [conn]
-         (let [{:keys [engine version lang_code]} (where-coordinate claim)]
-           (pos? (search.db/delete-lease! conn engine version lang_code owner)))))
+      (loop []
+        (when (>= (System/nanoTime) deadline-ns)
+          (throw (ex-info "Search lease release exhausted its interruption retry budget" {:type ::release-timeout})))
+        (let [result (try
+                       (do-with-lifecycle-connection
+                        (fn [conn]
+                          (let [{:keys [engine version lang_code]} (where-coordinate claim)]
+                            (pos? (search.db/delete-lease! conn engine version lang_code owner))))
+                        deadline-ns)
+                       (catch InterruptedException _
+                         (vreset! interrupted? true)
+                         ::interrupted))]
+          (if (= ::interrupted result)
+            (recur)
+            result)))
       (finally
-        (when interrupted?
+        (when @interrupted?
           (.interrupt (Thread/currentThread)))))))
 
 (defn- labels [claim event]
