@@ -172,7 +172,7 @@
      (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
      (completing
       (fn [acc documents]
-        (search.lease/throw-if-lost!)
+        (search.lease/assert-current!)
         (->> documents
              (mapv #(semantic.gate/search-doc->gate-doc % now))
              (semantic.gate/gate-documents! pgvector index-metadata))

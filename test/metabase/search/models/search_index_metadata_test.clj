@@ -99,7 +99,6 @@
   (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
     (let [engine        :something-futureproof
           n             5
-          kept          3
           versions      (map str (repeatedly n random-uuid))
           ;; to make things interesting, we're not using the latest one
           our-version   (nth versions 3)
@@ -110,20 +109,17 @@
         ;; use the version as the index name, for convenience
         (search-index-metadata/create-pending! engine v v))
       (is (= n (- (index-count) initial-count)))
-      (testing "It deletes all but N of the versions"
+      (testing "Version order is not evidence that a deployment stopped using its index"
         (search-index-metadata/delete-obsolete! our-version)
-        (is (= kept (index-count))))
+        (is (= (+ initial-count n) (index-count))))
       (testing "It is idempotent"
         (search-index-metadata/delete-obsolete! our-version)
-        (is (= kept (index-count))))
-      (testing "It keeps the latest versions"
-        (is (= (set (take-last 3 versions))
-               (t2/select-fn-set :version :model/SearchIndexMetadata))))
-      (testing "After 1 day, it deletes version which are neither the latest, nor used by this instance"
+        (is (= (+ initial-count n) (index-count))))
+      (testing "Age alone does not establish that rollback or a live deployment no longer needs a version"
         (mt/with-dynamic-fn-redefs [t/zoned-date-time (constantly (t/plus (t/zoned-date-time) (t/days 1) (t/minutes 1)))]
           (search-index-metadata/delete-obsolete! our-version)
-          (is (= #{our-version (last versions)}
-                 (t2/select-fn-set :version :model/SearchIndexMetadata))))))))
+          (is (= (set versions)
+                 (t2/select-fn-set :version :model/SearchIndexMetadata :engine engine))))))))
 
 (comment
   (t2/delete! :model/SearchIndexMetadata :engine :something-futureproof))

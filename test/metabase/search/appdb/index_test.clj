@@ -37,8 +37,34 @@
        (try
          ~@body
          (finally
-           (t2/delete! :model/SearchIndexMetadata :version version#)
+           (t2/delete! :model/SearchIndexMetadata :version (search.index/index-version))
            (search.index/delete-obsolete-tables!))))))
+
+(deftest ^:parallel lease-and-metadata-identity-test
+  (is (= (search.index/index-version)
+         (:version (search.lease/coordinates :search.engine/appdb)))))
+
+(deftest strict-document-construction-test
+  (mt/with-dynamic-fn-redefs [search.ingestion/->document (fn [_] (throw (ex-info "bad document" {})))]
+    (binding [search.ingestion/*fail-on-error* true]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bad document"
+                            (into [] (#'search.ingestion/query->documents [{:model "card", :id 1}])))))))
+
+(deftest strict-batch-failure-test
+  (t2/with-connection [conn]
+    (binding [search.ingestion/*fail-on-error* true]
+      (is (thrown? Exception
+                   (#'search.index/safe-batch-upsert! conn :pending
+                                                      (constantly :search_index_intentionally_missing)
+                                                      [{:model "card", :model_id "1"}]))))))
+
+(deftest activate-exact-populated-table-test
+  (search.tu/with-temp-index-table
+    (let [active (search.index/active-table)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Pending index was replaced"
+                            (search.index/activate-table!
+                             (search.index/rebuild-context :not-the-pending-table))))
+      (is (= active (search.index/active-table))))))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
@@ -586,7 +612,7 @@
             active-after  (search.index/gen-table-name)
             pending-after (search.index/gen-table-name)
             period        @#'search.index/sync-tracking-period
-            version       (search.spec/index-version-hash)]
+            version       (search.index/index-version)]
         (search-index-metadata/create-pending! :appdb version active-after)
         (search.index/create-table! active-after)
         (search-index-metadata/active-pending! :appdb version)
@@ -606,7 +632,7 @@
       (let [active-table (search.index/active-table)
             pending-old  (search.index/gen-table-name)
             pending-new  (search.index/gen-table-name)
-            version      (search.spec/index-version-hash)]
+            version      (search.index/index-version)]
         ;; Set up old pending table (more than a day old)
         (search.index/create-table! pending-old)
         (search-index-metadata/create-pending! :appdb version pending-old)
@@ -856,7 +882,7 @@
   (when (search/supports-index?)
     (with-temp-index-version "index-age-test"
       (let [table-name (search.index/gen-table-name)
-            version (search.spec/index-version-hash)]
+            version (search.index/index-version)]
         (testing "Nil age if no active table"
           (is (nil? (#'search.index/when-index-created))))
         (testing "Returns age of active table"
