@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [dev.security-lint.ast :as ast]
    [dev.security-lint.rule :refer [defrule]]
+   [dev.security-lint.toucan :as toucan]
    [dev.security-lint.vocabulary :as vocab]
    [rewrite-clj.node :as n]))
 
@@ -74,7 +75,7 @@
   literal in the changes position -- except a value written into a JSON column, which is a document going back
   where documents live, encoded on the way."
   [node]
-  (let [args    (rest (ast/args node))  ; after the model
+  (let [args    (toucan/args-after-model node)
         column? (fn [k] (and (ast/keyword-node? k) (not (contains? vocab/json-columns (n/sexpr k)))))]
     (concat
      ;; `:id x :name y`

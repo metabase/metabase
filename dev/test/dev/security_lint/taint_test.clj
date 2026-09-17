@@ -66,6 +66,14 @@
     (is (false? (taint/sanitizer? 'str taint/default-sanitizers)))
     (is (false? (taint/sanitizer? 'format taint/default-sanitizers)))))
 
+(deftest param-slots-test
+  (testing "a defendpoint's parameter vector pairs each slot with the schema after its `:-`, or nil"
+    (let [dp    (taint/defendpoint-params
+                  (z/node (z/of-string "(api.macros/defendpoint :get \"/\" \"doc\" [{:keys [id]} :- [:map [:id :int]] {:keys [q]} :- [:map [:q :string]] body])")))
+          slots (taint/param-slots dp)]
+      (is (= [["{:keys [id]}" "[:map [:id :int]]"] ["{:keys [q]}" "[:map [:q :string]]"] ["body" nil]]
+             (map (fn [[slot schema]] [(ast/->str slot) (some-> schema ast/->str)]) slots))))))
+
 (deftest numeric-param-regions-test
   (let [src  "(ns t)
 (api.macros/defendpoint :post \"/x/:id\" \"doc\"

@@ -10,8 +10,8 @@
    [dev.security-lint.ast :as ast]
    [dev.security-lint.rule :refer [defrule]]
    [dev.security-lint.taint :as taint]
-   [dev.security-lint.vocabulary :as vocab]
-   [rewrite-clj.node :as n]))
+   [dev.security-lint.toucan :as toucan]
+   [dev.security-lint.vocabulary :as vocab]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,8 +19,20 @@
 
 (def ^:private not-a-model-id
   "Ids that name no row the caller could choose: a client's load id for a dashboard, a session, a request, the
-  current user as the session middleware bound them, an SSO client or browser id, a serialization entity id."
-  #"load[-_]id$|session[-_]id$|request[-_]id$|^metabase-user-id$|^request-user-id$|^browser-id$|^client[-_]id$|^provider[-_]id$|entity[-_]id$|^dimension[-_]id$")
+  current user as the session middleware bound them, an SSO client or browser id, a serialization entity id.
+  `load_id` is anchored to a word: a `payload_id` names a row."
+  #"(^|[-_])load[-_]id$|session[-_]id$|request[-_]id$|^metabase-user-id$|^request-user-id$|^browser-id$|^client[-_]id$|^provider[-_]id$|entity[-_]id$|^dimension[-_]id$")
+
+(def ^:private authz-exempt-files
+  "Endpoints authenticated by something other than a session, and authorized by the token rather than by checks.
+  Each entry names the mechanism."
+  [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/"   ; public uuid, signed embed token
+   #"session/api\.clj$"                                           ; login: there is no user yet
+   #"testing_api/"                                                ; test builds only
+   #"scim/"                                                       ; SCIM bearer token
+   #"(pulse|notification)/api/unsubscribe\.clj$"                  ; hash carried in the emailed link
+   #"sync/api/notify"                                             ; static API key
+   #"oauth_server/api/"])                                         ; OAuth protocol flow
 
 (def ^:private unowned-models
   "Models nobody permission-checks a row of: settings are not rows, and the rest are scoped to the current
@@ -39,7 +51,7 @@
   [node params]
   (let [listing? (and (= ":get" (some-> (ast/arg node 0) ast/->str))
                       (= "/" (some-> (ast/arg node 1) ast/unmeta ast/string-value)))]
-    (for [[i slot] (map-indexed vector (ast/children params))
+    (for [[i [slot _]] (map-indexed vector (taint/param-slots params))
           :let  [slot (ast/unmeta slot)]
           :when (and (ast/map-node? slot) (not (and listing? (= 1 i))))
           sym   (ast/find-nodes ast/symbol-node? slot)
@@ -61,12 +73,7 @@
    :precision   :medium
    :cwe         "CWE-862"
    :endpoint-rule true
-   ;; authenticated by something other than a session, and authorized by the token rather than by checks
-   :exempt-files [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/" #"session/api\.clj$"
-                  #"testing_api/" #"scim/"                          ; SCIM bearer token
-                  #"(pulse|notification)/api/unsubscribe\.clj$"     ; hash carried in the emailed link
-                  #"sync/api/notify"                                ; static API key
-                  #"oauth_server/api/"]}                            ; OAuth protocol flow
+   :exempt-files authz-exempt-files}
   [{:keys [node bindings ns-middleware nearby]}]
   ;; a superuser-only endpoint authorizes the caller, and the caller may name any object
   (when-not (or (some #(str/starts-with? (name %) "+check") ns-middleware)
@@ -85,12 +92,6 @@
           {:message (str "Request id" (when (next unchecked) "s") " never permission-checked on any path: "
                          (str/join ", " (distinct unchecked)))})))))
 
-(defn- target-model [node]
-  (let [m (some-> (ast/arg node 0) ast/unmeta)
-        m (if (and (ast/vector-node? m) (seq (ast/children m))) (first (ast/children m)) m)]
-    (when (and m (ast/keyword-node? m) (= "model" (namespace (n/sexpr m))))
-      (name (n/sexpr m)))))
-
 (defrule write-checked-against-other-model
   {:name        "Model write authorized by a check on the wrong object"
    :enabled     false
@@ -105,15 +106,16 @@
    :cwe         "CWE-863"
    :triggers    #{toucan2.core/update! toucan2.core/delete!}}
   [{:keys [node] :as ctx}]
-  (when-let [target (target-model node)]
-    (let [pk      (ast/arg node 1)
+  (when-let [target (toucan/target-model node)]
+    (let [pk      (toucan/pk-arg node)
           checks  (when pk (taint/checks ctx pk))
           models  (into #{} (keep #(when (namespace %) (name %))) checks)
           ;; a write scoped to the current user -- `:checked/owner` -- is authorized whatever the model
           allowed (conj (get vocab/model-parents target #{}) target "owner")]
       (when (and (seq checks)
-                 ;; an unnamed check -- `(api/write-check obj)` on the fetched object -- authorizes the object
-                 (not (contains? checks :checked))
+                 ;; an unnamed check -- `(api/write-check obj)` on the fetched object, `(api/write-check
+                 ;; (:card_id body))` on one of its keys -- authorizes the object: `:checked`, `:checked.card_id`
+                 (not-any? #(nil? (namespace %)) checks)
                  (empty? (filter allowed models)))
         {:message (str "Write to " target " is authorized by a check on " (str/join ", " (sort models)) " only")}))))
 
@@ -129,9 +131,7 @@
    :precision   :medium
    :cwe         "CWE-862"
    :accessor-triggers #{#"(^|[-_])id$"}
-   :exempt-files [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/" #"session/api\.clj$"
-                  #"testing_api/" #"scim/" #"(pulse|notification)/api/unsubscribe\.clj$" #"sync/api/notify"
-                  #"oauth_server/api/"]}
+   :exempt-files authz-exempt-files}
   [{:keys [node] :as ctx}]
   (let [[m k] (ast/accessor node)
         m     (ast/unmeta m)
@@ -170,9 +170,7 @@
    :precision   :low
    :cwe         "CWE-862"
    :endpoint-rule true
-   :exempt-files [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/" #"session/api\.clj$"
-                  #"testing_api/" #"scim/" #"(pulse|notification)/api/unsubscribe\.clj$" #"sync/api/notify"
-                  #"oauth_server/api/" #"mcp/"]}
+   :exempt-files (conj authz-exempt-files #"mcp/")}   ; bearer token, checked in the handler
   [{:keys [node ns-middleware nearby] :as ctx}]
   (when-not (or (some #(str/starts-with? (name %) "+check") ns-middleware)
                 (some #(contains? #{"check-superuser" "check-data-analyst"} (name %)) nearby))
@@ -224,10 +222,9 @@
    :precision   :medium
    :cwe         "CWE-862"
    :endpoint-rule true
-   :exempt-files [#"public_sharing_rest/" #"embedding_rest/" #"embedding_hub/" #"session/api\.clj$"
-                  #"testing_api/" #"scim/" #"(pulse|notification)/api/unsubscribe\.clj$" #"sync/api/notify"
-                  #"oauth_server/api/" #"setup_rest/"
-                  #"sso/api"]}    ; login and logout write the session; the IdP's assertion is the authorization
+   :exempt-files (conj authz-exempt-files
+                       #"setup_rest/"   ; the setup token, first run only
+                       #"sso/api")}     ; login and logout write the session; the IdP's assertion is the authorization
   [{:keys [nearby-deep ns-middleware]}]
   (when-not (some #(str/starts-with? (name %) "+check") ns-middleware)
     ;; Both within four hops: `api -> core -> db.clj -> t2` is where an endpoint's own write and its own check

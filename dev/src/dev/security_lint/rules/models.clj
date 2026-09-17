@@ -5,12 +5,11 @@
    [dev.security-lint.ast :as ast]
    [dev.security-lint.rule :refer [defrule]]
    [dev.security-lint.taint :as taint]
+   [dev.security-lint.toucan :as toucan]
    [dev.security-lint.vocabulary :as vocab]
    [rewrite-clj.node :as n]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private foreign-kinds #{:warehouse :file :external})
 
 (defn- dal-file?
   "Toucan 2 calls are confined to each module's `db` namespace by a linter rule of their own, and those
@@ -22,14 +21,6 @@
   permission, a credential or an owner."
   [filename]
   (boolean (re-find #"(/db\.clj$|/app_db/)" filename)))
-
-(defn- target-model
-  "The model a Toucan write names, as written: `Card` for `:model/Card`, nil for a computed model."
-  [node]
-  (let [m (some-> (ast/arg node 0) ast/unmeta)
-        m (if (and (ast/vector-node? m) (seq (ast/children m))) (first (ast/children m)) m)]
-    (when (and m (ast/keyword-node? m) (= "model" (namespace (n/sexpr m))))
-      (name (n/sexpr m)))))
 
 (defrule mass-assignment
   {:name        "Map from across a trust boundary written straight into a model"
@@ -59,8 +50,11 @@
                   toucan2.core/insert-returning-pk!}}
   [{:keys [node filename] :as ctx}]
   (let [changes (last (ast/args node))
-        ;; `(t2/insert! :model/Session :id id :user_id user-id)`: columns named one by one, as a map literal does
-        kwargs? (some-> (ast/arg node 1) ast/unmeta ast/keyword-node?)]
+        ;; `(t2/insert! :model/Session :id id :user_id user-id)`: columns named one by one, as a map literal does.
+        ;; Only an insert: `(t2/update! :model/ApiKey :id id changes)` takes its conditions as keywords and its
+        ;; changes map last, and the map is as forwarded as ever.
+        kwargs? (and (str/starts-with? (name (ast/head-sym node)) "insert")
+                     (some-> (ast/arg node 1) ast/unmeta ast/keyword-node?))]
     ;; A map literal names the columns it sets, and so does `(select-keys m [...])` -- the fix this rule
     ;; recommends. The dangerous shape is a whole map arriving from elsewhere. `select-keys` is deliberately not
     ;; a general sanitizer: its *values* are as tainted as they were, which matters to the injection rules.
@@ -68,7 +62,7 @@
                (not kwargs?)
                (not (ast/map-node? changes))
                (not= 'select-keys (some-> (ast/head-sym changes) name symbol)))
-      (let [target  (target-model node)
+      (let [target  (toucan/target-model node)
             dal?    (dal-file? filename)
             ;; what every caller handed this parameter: a map literal or a `select-keys` -- keys the code chose
             ;; -- or something opaque. `{k value}` counts as opaque: its one key is a value.
@@ -80,7 +74,7 @@
             classify
             (fn [os]
               (let [os      (into #{} (remove #{:request/untyped :request/structured}) os)
-                    foreign (filter #(contains? foreign-kinds (taint/label-kind %)) os)
+                    foreign (filter #(contains? toucan/foreign-kinds (taint/label-kind %)) os)
                     ;; a row of one model written into another: what revert and copy do. A setting is not a row.
                     other   (filter #(and (= :app-db (taint/label-kind %)) (namespace %) target
                                           (not= target (name %)) (not= "setting" (name %)))
