@@ -1364,32 +1364,39 @@
       (is (= (str proxy "/v1/projects/my-project/locations/us-central1/endpoints/" endpoint "/chat/completions")
              (:url post-req))))))
 
+(defn- endpoint-parts-for!
+  "The AISDK parts [[metabase.metabot.self.google/google]] yields for `endpoint` streaming `events`, on the credentials
+  a connection saved by connecting to it resolves to, the probed model among them."
+  [endpoint events]
+  (mt/with-dynamic-fn-redefs [debug/capture-stream (fn [r _] r)
+                              http/request         (stub-endpoint (atom []) (endpoint-resource endpoint) events)]
+    (into []
+          (self.core/aisdk-xf)
+          (google {:model       (str "endpoints/" endpoint)
+                   :input       [{:role :user :content "hi"}]
+                   :credentials {:auth-method        "oauth-token"
+                                 :oauth-access-token (unique-token)
+                                 :project-id         "my-project"
+                                 :location           "us-central1"
+                                 :base-url           "https://aiplatform.googleapis.com"
+                                 :probed-model       (str "endpoints/" endpoint)}}))))
+
 (deftest google-endpoint-stream-test
   (testing "an endpoint's Chat Completions events off the wire are translated by the vLLM chunk translation"
-    (let [endpoint "4567890123456789012"
-          events   [{:id "chatcmpl-1" :model "glm-5.2"
-                     :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
-                    {:id "chatcmpl-1" :model "glm-5.2"
-                     :choices [{:index 0 :delta {:content "lo"} :finish_reason nil}]}
-                    {:id "chatcmpl-1" :model "glm-5.2"
-                     :choices [{:index 0 :delta {} :finish_reason "stop"}]}
-                    {:id "chatcmpl-1" :model "glm-5.2" :choices []
-                     :usage {:prompt_tokens 5 :completion_tokens 2}}]]
-      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  (unique-token)
-                                         llm.settings/llm-google-service-account-key nil
-                                         llm.settings/llm-google-project-id          "my-project"
-                                         llm.settings/llm-google-location            "us-central1"]
-        (mt/with-dynamic-fn-redefs [debug/capture-stream (fn [r _] r)
-                                    http/request         (stub-endpoint (atom []) (endpoint-resource endpoint) events)]
-          (is (=? [{:type :start :id "chatcmpl-1"}
-                   {:type :text :text "Hello"}
-                   {:type  :usage
-                    :model "glm-5.2"
-                    :usage {:promptTokens 5 :completionTokens 2}}]
-                  (into []
-                        (self.core/aisdk-xf)
-                        (google {:model (str "endpoints/" endpoint)
-                                 :input [{:role :user :content "hi"}]})))))))))
+    (is (=? [{:type :start :id "chatcmpl-1"}
+             {:type :text :text "Hello"}
+             {:type  :usage
+              :model "glm-5.2"
+              :usage {:promptTokens 5 :completionTokens 2}}]
+            (endpoint-parts-for! "4567890123456789012"
+                                 [{:id "chatcmpl-1" :model "glm-5.2"
+                                   :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                                  {:id "chatcmpl-1" :model "glm-5.2"
+                                   :choices [{:index 0 :delta {:content "lo"} :finish_reason nil}]}
+                                  {:id "chatcmpl-1" :model "glm-5.2"
+                                   :choices [{:index 0 :delta {} :finish_reason "stop"}]}
+                                  {:id "chatcmpl-1" :model "glm-5.2" :choices []
+                                   :usage {:prompt_tokens 5 :completion_tokens 2}}])))))
 
 (deftest endpoint-model-knowledge-test
   (testing "what an endpoint serves is not knowable from its name"
