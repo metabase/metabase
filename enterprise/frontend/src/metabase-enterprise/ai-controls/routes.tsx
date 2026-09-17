@@ -1,32 +1,37 @@
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured";
+import {
+  RequireMcpEnabled,
+  RequireMetabotConfigured,
+} from "./components/RequireMetabotConfigured";
 
 /**
  * The AI settings pages, each in its own chunk.
  *
- * The nine loaders below resolve to four page modules, and those four share
+ * The ten loaders below resolve to five page modules, and those five share
  * under a tenth of their weight, so one chunk for the section would make a
  * visit to any single tab pay for all of them.
  *
- * `RequireMetabotConfigured` is not split. It redirects away when Metabot is
- * unconfigured, so splitting it would put a fetch in front of a redirect that
- * renders nothing.
+ * The gates are not split. They redirect away when their feature is off, so
+ * splitting them would put a fetch in front of a redirect that renders nothing.
  */
-const metabotFeatureAccessPage = () =>
+const aiFeatureAccessPage = () =>
   import(
-    /* webpackChunkName: "metabot-feature-access" */ "./pages/MetabotFeatureAccessPage"
-  ).then(({ MetabotFeatureAccessPage }) => ({
-    Component: MetabotFeatureAccessPage,
+    /* webpackChunkName: "ai-feature-access" */ "./pages/AiFeatureAccessPage"
+  ).then(({ AiFeatureAccessPage }) => ({ Component: AiFeatureAccessPage }));
+
+const aiFeatureAccessUpsellPage = () =>
+  import(
+    /* webpackChunkName: "ai-feature-access" */ "./pages/AiFeatureAccessPage"
+  ).then(({ AiFeatureAccessUpsellPage }) => ({
+    Component: AiFeatureAccessUpsellPage,
   }));
 
-const metabotFeatureAccessUpsellPage = () =>
+const mcpToolsAccessPage = () =>
   import(
-    /* webpackChunkName: "metabot-feature-access" */ "./pages/MetabotFeatureAccessPage"
-  ).then(({ MetabotFeatureAccessUpsellPage }) => ({
-    Component: MetabotFeatureAccessUpsellPage,
-  }));
+    /* webpackChunkName: "mcp-tools-access" */ "./pages/McpToolsAccessPage"
+  ).then(({ McpToolsAccessPage }) => ({ Component: McpToolsAccessPage }));
 
 const metabotUsageLimitsPage = () =>
   import(
@@ -83,6 +88,7 @@ const metabotSystemPromptsUpsellPage = () =>
  */
 const PATHS = {
   featureAccess: "usage-controls/ai-feature-access",
+  mcpToolsAccess: "usage-controls/mcp-tools-access",
   usageLimits: "usage-controls/ai-usage-limits",
   customization: "customization",
   systemPrompts: "system-prompts",
@@ -101,14 +107,12 @@ const adminAiPath = (path: string) => `${Urls.adminAiSettings()}/${path}`;
  * covers both. The three system prompt tabs are one module too, which is why the
  * prefix they share is registered once.
  */
+registerPagePrefetch(adminAiPath(PATHS.featureAccess), aiFeatureAccessPage);
 registerPagePrefetch(
   adminAiPath(PATHS.featureAccess),
-  metabotFeatureAccessPage,
+  aiFeatureAccessUpsellPage,
 );
-registerPagePrefetch(
-  adminAiPath(PATHS.featureAccess),
-  metabotFeatureAccessUpsellPage,
-);
+registerPagePrefetch(adminAiPath(PATHS.mcpToolsAccess), mcpToolsAccessPage);
 registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
 registerPagePrefetch(
   adminAiPath(PATHS.customization),
@@ -122,36 +126,50 @@ registerPagePrefetch(adminAiPath(PATHS.systemPrompts), metabotChatPromptPage);
 
 export function getAiControlsRoutes() {
   return (
-    <Route element={<RequireMetabotConfigured />}>
+    <>
+      <Route element={<RequireMetabotConfigured />}>
+        <Route
+          key="ai-feature-access"
+          path={PATHS.featureAccess}
+          lazy={aiFeatureAccessPage}
+        />
+        <Route
+          key="ai-usage-limits"
+          path={PATHS.usageLimits}
+          lazy={metabotUsageLimitsPage}
+        />
+        <Route
+          key="customization"
+          path={PATHS.customization}
+          lazy={metabotCustomizationPage}
+        />
+        <Route
+          key="system-prompts-metabot-chat"
+          path={PATHS.chatPrompt}
+          lazy={metabotChatPromptPage}
+        />
+        <Route
+          key="system-prompts-natural-language-queries"
+          path={PATHS.naturalLanguagePrompt}
+          lazy={naturalLanguagePromptPage}
+        />
+        <Route
+          key="system-prompts-sql-generation"
+          path={PATHS.sqlGenerationPrompt}
+          lazy={sqlGenerationPromptPage}
+        />
+      </Route>
+    </>
+  );
+}
+
+export function getMcpToolsAccessRoutes() {
+  return (
+    <Route element={<RequireMcpEnabled />}>
       <Route
-        key="ai-feature-access"
-        path={PATHS.featureAccess}
-        lazy={metabotFeatureAccessPage}
-      />
-      <Route
-        key="ai-usage-limits"
-        path={PATHS.usageLimits}
-        lazy={metabotUsageLimitsPage}
-      />
-      <Route
-        key="customization"
-        path={PATHS.customization}
-        lazy={metabotCustomizationPage}
-      />
-      <Route
-        key="system-prompts-metabot-chat"
-        path={PATHS.chatPrompt}
-        lazy={metabotChatPromptPage}
-      />
-      <Route
-        key="system-prompts-natural-language-queries"
-        path={PATHS.naturalLanguagePrompt}
-        lazy={naturalLanguagePromptPage}
-      />
-      <Route
-        key="system-prompts-sql-generation"
-        path={PATHS.sqlGenerationPrompt}
-        lazy={sqlGenerationPromptPage}
+        key="mcp-tools-access"
+        path={PATHS.mcpToolsAccess}
+        lazy={mcpToolsAccessPage}
       />
     </Route>
   );
@@ -163,7 +181,7 @@ export function getAiControlsUpsellRoutes() {
       <Route
         key="ai-feature-access"
         path={PATHS.featureAccess}
-        lazy={metabotFeatureAccessUpsellPage}
+        lazy={aiFeatureAccessUpsellPage}
       />
       <Route
         key="customization"
