@@ -7,15 +7,6 @@ import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
 const { H } = cy;
 
-/**
- * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from
- * `ensure-scopes-checked` — the endpoint declares no `:scope` at all, so a narrowed request
- * may not reach it. `unsupported_scope` comes from `enforce-scope` — the endpoint is scoped,
- * but not for the scope the request carries. Either one inside a data app means a route the
- * SDK really uses was never tagged `data-apps:base`.
- */
-const SCOPE_ERRORS = ["scope_not_permitted", "unsupported_scope"];
-
 const TIMEOUT = 30000;
 
 describe("scenarios > data apps > backend scope", () => {
@@ -28,27 +19,11 @@ describe("scenarios > data apps > backend scope", () => {
   /**
    * The unit and middleware tests can only assert the endpoints we already thought to list.
    * This one works the other way round: drive the SDK surface a data app actually exposes and
-   * let the backend tell us what it refuses. Every request the sandbox makes is marked
-   * `X-Metabase-Client: data-app` and therefore confined to `data-apps:base`, so any scope
-   * rejection recorded here is a missing tag rather than a permission problem — the session
-   * is an admin.
+   * let the backend tell us what it refuses. The scope guard `H.openDataApp` installs records
+   * every rejection and the root `afterEach` fails the test on any, so this spec only has to
+   * exercise the surface.
    */
   it("serves the whole InteractiveQuestion surface without refusing a request for scope", () => {
-    const denials: string[] = [];
-
-    cy.intercept("/api/**", (req) => {
-      // `after:response` rather than a `req.continue` callback: the latter buffers the
-      // body, which would sit in front of the streamed `/api/dataset` responses.
-      req.on("after:response", (res) => {
-        // `res.body` is typed as `any` by Cypress and is whatever the endpoint returned;
-        // the scope middleware answers with a JSON `{error, message}` body.
-        const error = (res.body as { error?: string } | undefined)?.error;
-        if (res.statusCode === 403 && SCOPE_ERRORS.includes(error ?? "")) {
-          denials.push(`${req.method} ${new URL(req.url).pathname} → ${error}`);
-        }
-      });
-    });
-
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
       testEnv: TEST_ENV,
@@ -130,10 +105,6 @@ describe("scenarios > data apps > backend scope", () => {
       cy.findByText("Back to visualization", { timeout: TIMEOUT }).should(
         "not.exist",
       );
-    });
-
-    cy.then(() => {
-      expect(denials, `scope rejections:\n${denials.join("\n")}`).to.be.empty;
     });
   });
 });
