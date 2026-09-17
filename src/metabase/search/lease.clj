@@ -186,10 +186,15 @@
 (defn release!
   "Release `claim` with a short autocommit operation, only if it still belongs to this owner."
   [{:keys [owner] :as claim}]
-  (do-with-lifecycle-connection
-   (fn [conn]
-     (let [{:keys [engine version lang_code]} (where-coordinate claim)]
-       (pos? (search.db/delete-lease! conn engine version lang_code owner))))))
+  (let [interrupted? (Thread/interrupted)]
+    (try
+      (do-with-lifecycle-connection
+       (fn [conn]
+         (let [{:keys [engine version lang_code]} (where-coordinate claim)]
+           (pos? (search.db/delete-lease! conn engine version lang_code owner)))))
+      (finally
+        (when interrupted?
+          (.interrupt (Thread/currentThread)))))))
 
 (defn- labels [claim event]
   {:engine (:engine claim), :event event})

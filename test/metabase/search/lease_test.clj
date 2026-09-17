@@ -315,7 +315,9 @@
           (let [db-now      #(:now (t2/query-one ["SELECT CURRENT_TIMESTAMP AS now"]))
                 fence-taken (db-now)]
             (tu/poll-until 5000 (t/after? (db-now) (t/plus fence-taken lease/*lease-duration*))))
-          (reset! contender (future (lease/try-acquire! coordinate)))
+          ;; Only the original owner needs to expire quickly. The contender must survive its lock wait.
+          (reset! contender (binding [lease/*lease-duration* (t/minutes 1)]
+                              (future (lease/try-acquire! coordinate))))
           (is (= ::blocked (deref @contender 50 ::blocked))
               "takeover waits for the transaction containing the protected mutation")
           (deliver allow-write true)
@@ -472,7 +474,10 @@
                          (.await locked 5 TimeUnit/SECONDS)
                          (lease/try-acquire! coordinate))
                        (finally
-                         (.countDown done))))]
+                         (try
+                           (delete-coordinate! coordinate)
+                           (finally
+                             (.countDown done))))))]
     (is (.await in-txn 5 TimeUnit/SECONDS))
     (.. lock writeLock lock)
     (.countDown locked)
@@ -485,10 +490,24 @@
       (finally
         (when (.isWriteLockedByCurrentThread lock)
           (.. lock writeLock unlock))
-        ;; The worker cannot be interrupted while blocked on the non-interruptible gate, so wait for it to
-        ;; actually finish before deleting the row it may still acquire.
-        (is (.await done 10 TimeUnit/SECONDS) "restore-gate worker finishes before cleanup")
-        (.await done)
+        ;; The worker owns cleanup, so a late acquisition cannot race a deletion on this thread.
+        (when-not (.await done 10 TimeUnit/SECONDS)
+          (future-cancel attempt)
+          (is (.await done 5 TimeUnit/SECONDS) "restore-gate worker exits and cleans up after cancellation"))))))
+
+(deftest interrupted-release-preserves-interrupt-and-removes-lease-test
+  (let [coordinate (coordinate)
+        claim      (lease/try-acquire! coordinate)]
+    (try
+      (.interrupt (Thread/currentThread))
+      (let [released?    (lease/release! claim)
+            interrupted? (Thread/interrupted)]
+        (is (true? released?))
+        (is (true? interrupted?)))
+      (is (not (t2/exists? :search_index_lease :engine (:engine coordinate)
+                           :lang_code (:lang_code coordinate) :version (:version coordinate))))
+      (finally
+        (Thread/interrupted)
         (delete-coordinate! coordinate)))))
 
 (deftest expired-during-acquisition-never-authorizes-body-test
