@@ -57,6 +57,7 @@
     {
       "name": "Metabot",
       "label": ".Team/Metabot",
+      "assignee": "@metabase/metabot",
       "members": [
         "retro",
         "sloansparger",
