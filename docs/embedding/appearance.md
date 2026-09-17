@@ -54,7 +54,7 @@ In the **Themes** section, you can:
 - **Duplicate a theme.** Handy if you want to vary an existing theme.
 - **Delete a theme.** This deletion is eternal.
 
-The **Branding elements** section on the same page sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows when a question returns no results or a search finds nothing. These are the same settings you'll find in **Admin > Settings > Appearance**; the hub just puts them next to your themes. The logo, colors, and fonts for your Metabase itself live in [Admin > Settings > Appearance](../configuring-metabase/appearance.md). Those Admin settings also control the colors and branding of [full-app embeds](./full-app-embedding.md), which don't use embedding themes.
+The **Branding elements** section on the same page sets the [loading message](../configuring-metabase/appearance.md#loading-message) and the [illustrations](../configuring-metabase/appearance.md#metabase-illustrations) Metabase shows for empty results. These are the same settings as [Admin > Settings > Appearance](../configuring-metabase/appearance.md), which also controls your Metabase's logo, colors, and fonts and the look of [full-app embeds](./full-app-embedding.md) (which don't use embedding themes).
 
 ![Theme editor](./images/theme-editor.png)
 

@@ -135,7 +135,7 @@ Otherwise, this whole thing is hopeless.
 
 We'll also need to update our JWT Provider URI in Metabase. By default, this URI is where the SDK will redirect login requests.
 
-From any Metabase page, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Authentication**. You'll see the JWT form. It's the same form as **Admin** > **Settings** > **Authentication** > **JWT**.
+From any Metabase page, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Authentication**.
 
 ### JWT Identity provider URI
 

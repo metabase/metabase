@@ -27,11 +27,11 @@ Here's a high-level overview:
 
 ### 1. Enable JWT SSO in your Metabase
 
-1. Configure JWT by going to **Embedding hub** > **Authentication**. It's the same JWT form you'll find in **Admin** > **Settings** > **Authentication** > **JWT**.
+1. Configure JWT by going to **Embedding hub** > **Authentication**.
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
 3. Generate a key and copy it to your clipboard.
 
-The hub only shows the JWT form. If you'd rather use SAML, set it up in **Admin** > **Settings** > **Authentication** instead. If SAML is already set up and JWT isn't, the hub's Authentication page won't show the JWT form at all. Instead you'll see a **SAML is configured** card with a **Go to Admin** link.
+The hub only shows the JWT form. If SAML is already configured, the hub's Authentication page links you to Admin settings instead.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 
@@ -301,7 +301,7 @@ Go to **Embedding hub** > **Security** and add your embedding domain under **Cro
 
 When you use `useExistingUserSession: true` during development on a different domain, the browser must send the existing Metabase session cookie cross-origin into the iframe. To allow this, you'll need to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Embedding hub** > **Security** > **SameSite cookie setting** (Pro and Enterprise plans).
+You can set session cookie's SameSite value in **Embedding hub** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 

@@ -19,7 +19,7 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 2. Go to **Security**.
 3. Toggle on **Enable embedding**. On Pro and Enterprise plans, the toggle is called **Modular embedding and SDK for React**.
 
-This one toggle turns on guest embeds, modular embedding, and the SDK for React. There's no separate toggle for guest embeds.
+There's no separate toggle for guest embeds: this one also turns on modular embedding and the SDK for React.
 
 ## Creating a guest embed
 
@@ -27,7 +27,7 @@ This one toggle turns on guest embeds, modular embedding, and the SDK for React.
 
 To create a guest embed:
 
-1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed", or click **New embed** in the Embedding hub sidebar.
+1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed".
 2. Click the **Share** icon.
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
@@ -478,7 +478,7 @@ Metabase adds the banner to guest embeds (both charts and dashboards) on the OSS
 Your embedding secret key is used to sign JWTs for all of your embeds. Metabase generates a key for you when you turn on embedding.
 
 1. Go to **Embedding hub > Security**.
-2. Under **Secret key for guest embeds**, click **Regenerate key**. (If you don't have a key yet, the button says **Generate key**.)
+2. Under **Secret key for guest embeds**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 

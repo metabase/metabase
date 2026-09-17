@@ -110,7 +110,7 @@ You can also switch strategies from **Admin settings > People**: click the **gea
 
 ![Edit tenant strategy](./images/edit-tenant-strategy.png)
 
-Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get additional pages in the Embedding hub (**Tenancy** and **Permissions**) and in Admin settings (**People** and **Permissions**).
+Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get additional settings in the Embedding hub's **Tenancy** and **Permissions** pages (and in **Admin settings > People** and **Permissions**).
 
 If you have an existing permissions and collection setup that you'd like to translate to use tenants, see [Changing tenant strategy](#changing-tenant-strategy).
 
@@ -119,8 +119,6 @@ Once you enable multi-tenant strategy, keep in mind that switching _from_ multi-
 ## Create new tenants in Metabase
 
 _Embedding hub > Tenancy > Tenants_
-
-The tenant pages in the Embedding hub are the same pages you'll find under **Admin settings > People**. Use whichever is handier.
 
 ![New tenant user](./images/new-tenant.png)
 
@@ -299,8 +297,6 @@ Some common auth error messages and what they mean:
 ## Data permissions for tenants
 
 _Embedding hub > Permissions_
-
-**Embedding hub > Permissions** is the same permissions editor as **Admin settings > Permissions**.
 
 Data permissions control what data people can see on charts and dashboards, and what they can do with that data. To control _which_ charts people see, you can use [collection permissions](#collection-permissions-for-tenants) instead.
 
