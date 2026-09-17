@@ -285,8 +285,8 @@
 ;;; =============================================================================
 
 (defn modules-affecting-drivers
-  "Modules that trigger driver tests, leaving out a nested module whose parent triggers them too. Splitting a
-  triggering module then moves nothing, while a triggering child of a quiet parent still counts."
+  "Modules that trigger driver tests, leaving out a nested module whose parent triggers them too.
+  Splitting a triggering module then moves nothing, while a triggering child of a quiet parent still counts."
   []
   (let [deps       (mage.modules/dependencies)
         triggering (set (filter #(mage.modules/driver-deps-affected? [%]) (keys deps)))]
