@@ -177,7 +177,7 @@ embedding_sdk_host_sample_apps:
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
 snowplow: &snowplow
-  - ".github/workflows/snowplow.yml"
+  - ".github/workflows/lint.yml"
   - "snowplow/**"
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
@@ -206,7 +206,7 @@ yaml:
   - "**/*.yaml"
 
 codeql:
-  - ".github/workflows/codeql.yml"
+  - ".github/workflows/lint.yml"
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
 
@@ -214,7 +214,7 @@ i18n:
   - *default
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
-  - ".github/workflows/i18n.yml"
+  - ".github/workflows/lint.yml"
   - *sources
 
 cljs:
@@ -228,7 +228,7 @@ serialization_baseline:
   - "test_resources/serialization_baseline/**"
 
 openapi:
-  - ".github/workflows/openapi.yml"
+  - ".github/workflows/lint.yml"
   - "src/metabase/api/**"
   - "src/metabase/api_routes/**"
   - "src/metabase/*_rest/api.clj"
