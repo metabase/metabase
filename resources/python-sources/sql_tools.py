@@ -90,6 +90,24 @@ def table_parts(table):
         return None
     return (table.catalog or None, table.db or None, name)
 
+def dml_target_tables(ast):
+    """Tables a DML statement writes to, which scope traversal does not report.
+
+    `optimizer.build_scope` is SELECT-oriented: it returns None for a bare DML
+    statement, and for DML wrapping a SELECT it scopes only the inner query. Either
+    way the write target -- the table a permission check cares most about -- is
+    never a `scope.sources` entry.
+
+    Returns Table nodes found outside any SELECT subtree, so a table that scope
+    traversal already reports is not re-derived here.
+    """
+    if not isinstance(ast, (exp.Update, exp.Delete, exp.Insert, exp.Merge,
+                            exp.TruncateTable)):
+        return []
+    inner = {id(t) for sel in ast.find_all(exp.Select) for t in sel.find_all(exp.Table)}
+    return [t for t in ast.find_all(exp.Table) if id(t) not in inner]
+
+
 def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
     Extract table references from a SQL query.
@@ -116,12 +134,19 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     root_scope = optimizer.build_scope(ast)
 
     tables = set()
-    for scope in root_scope.traverse():
-        for source in scope.sources.values():
-            if isinstance(source, exp.Table):
-                parts = table_parts(source)
-                if parts is not None:
-                    tables.add(parts)
+    # None for a bare DML statement (no SELECT for scope to build around).
+    if root_scope is not None:
+        for scope in root_scope.traverse():
+            for source in scope.sources.values():
+                if isinstance(source, exp.Table):
+                    parts = table_parts(source)
+                    if parts is not None:
+                        tables.add(parts)
+
+    for target in dml_target_tables(ast):
+        parts = table_parts(target)
+        if parts is not None:
+            tables.add(parts)
 
     # Sort for deterministic output (nulls sort first via empty string)
     return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1] or "", x[2])))
@@ -169,8 +194,25 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
     # Track scopes with unqualified wildcards
     unqualified_wildcard_scopes = []
 
+    # An UPDATE's SET clause assigns to columns of the write target, but the target is
+    # not a scope source, so the unqualified-column fallback below would attribute them
+    # to whatever the subquery reads: `UPDATE orders SET total = (SELECT max(id) FROM
+    # customers)` yielded `customers.total`. Scope to `Update.expressions` (the SET list
+    # itself) -- a broader walk picks up WHERE-clause equalities too.
+    set_targets = dml_target_tables(ast) if isinstance(ast, exp.Update) else []
+    set_columns = set()
+    for target in set_targets:
+        parts = table_parts(target)
+        if parts is None:
+            continue
+        for assignment in ast.expressions:
+            if isinstance(assignment, exp.EQ) and isinstance(assignment.this, exp.Column) \
+                    and not assignment.this.table:
+                set_columns.add(assignment.this.name)
+                fields.add(parts + (assignment.this.name,))
+
     # Traverse all scopes to find column references
-    for scope in root_scope.traverse():
+    for scope in (root_scope.traverse() if root_scope is not None else ()):
         # Build a mapping of table aliases to table_parts tuples (catalog, schema, table)
         # Only include actual tables, not CTEs or subqueries
         alias_to_table_parts = {}
@@ -210,9 +252,10 @@ def referenced_fields(sql: str, dialect: str = "postgres") -> str:
                 if parts is not None:
                     fields.add(parts + (column_name,))
             else:
-                # Column without explicit table qualifier
-                # If there's only one source table, use that
-                if len(alias_to_table_parts) == 1:
+                # Column without explicit table qualifier.
+                # One source table means it can only have come from there -- except for
+                # a name already attributed to an UPDATE's write target above.
+                if len(alias_to_table_parts) == 1 and column_name not in set_columns:
                     parts = list(alias_to_table_parts.values())[0]
                     fields.add(parts + (column_name,))
 

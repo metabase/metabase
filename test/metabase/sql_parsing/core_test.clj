@@ -37,6 +37,43 @@
             "postgres"
             "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active")))))
 
+(deftest ^:parallel dml-write-target-test
+  (testing "the table a DML statement writes to is reported, not just its sources"
+    (testing "with a subquery -- the target used to be dropped"
+      (is (= [[nil "public" "wide"] [nil "sales" "chain_a"]]
+             (sql-parsing/referenced-tables
+              "postgres" "UPDATE public.wide SET id = (SELECT max(id) FROM sales.chain_a)")))
+      (is (= [[nil "public" "wide"] [nil "sales" "accounts"]]
+             (sql-parsing/referenced-tables
+              "postgres" "DELETE FROM sales.accounts WHERE id IN (SELECT id FROM public.wide)")))
+      (is (= [[nil nil "customers"] [nil nil "orders"]]
+             (sql-parsing/referenced-tables
+              "postgres" "INSERT INTO orders (id) SELECT id FROM customers"))))
+    (testing "without a subquery -- these used to throw"
+      (is (= [[nil nil "orders"]]
+             (sql-parsing/referenced-tables "postgres" "UPDATE orders SET total = 1")))
+      (is (= [[nil nil "orders"]]
+             (sql-parsing/referenced-tables "postgres" "DELETE FROM orders WHERE id = 1")))
+      (is (= [[nil nil "orders"]]
+             (sql-parsing/referenced-tables "postgres" "INSERT INTO orders (id) VALUES (1)")))
+      (is (= [[nil nil "orders"]]
+             (sql-parsing/referenced-tables "postgres" "TRUNCATE TABLE orders"))))
+    (testing "MERGE reports both target and source"
+      (is (= [[nil nil "customers"] [nil nil "orders"]]
+             (sql-parsing/referenced-tables
+              "postgres"
+              "MERGE INTO orders t USING customers s ON t.id = s.id WHEN MATCHED THEN UPDATE SET total = 1")))))
+  (testing "a CTE shadowing a real table is still not reported as a table"
+    (is (= []
+           (sql-parsing/referenced-tables
+            "postgres" "WITH secrets AS (SELECT 1) SELECT * FROM secrets")))))
+
+(deftest ^:parallel dml-field-attribution-test
+  (testing "columns assigned in a SET clause belong to the write target, not the subquery source"
+    (is (= [[nil nil "customers" "id"] [nil nil "orders" "total"]]
+           (sql-parsing/referenced-fields
+            "postgres" "UPDATE orders SET total = (SELECT max(id) FROM customers)")))))
+
 (deftest ^:parallel cte-test
   (testing "CTE (WITH clause) parsing"
     (is (= [[nil nil "users"]]
