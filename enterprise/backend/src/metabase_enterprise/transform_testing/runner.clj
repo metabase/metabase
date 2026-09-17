@@ -89,7 +89,7 @@
           (transform-testing.executor/create-temp-table! driver conn table query)))
       (->> (expectations.protocol/probes expectation (assoc context :temp-tables @temp-tables))
            (run-probes! driver conn)
-           (expectations.protocol/interpret expectation))
+           (expectations.protocol/interpret expectation context))
       (catch Exception e
         {:name   (:name expectation)
          :type   (:type expectation)

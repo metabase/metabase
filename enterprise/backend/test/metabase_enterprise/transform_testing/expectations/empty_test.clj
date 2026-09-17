@@ -45,6 +45,7 @@
   "`interpret` over `rows`, as the runner delivers them: the probe's rows and its column metadata."
   [rows]
   (expectations.protocol/interpret @an-expectation
+                                   {}
                                    {:violations {:rows rows :columns violation-columns}}))
 
 (deftest interpret-no-rows-test

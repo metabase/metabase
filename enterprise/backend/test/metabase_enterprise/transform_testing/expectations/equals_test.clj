@@ -42,6 +42,11 @@
    {:name "NAME" :database_type "CHARACTER VARYING"}
    {:name "__mb_delta" :database_type "BIGINT"}])
 
+(def ^:private output-columns
+  "The output table's own columns, as `table-columns` reports them: no delta, warehouse spellings."
+  [{:name "ID" :database_type "INTEGER"}
+   {:name "NAME" :database_type "CHARACTER VARYING"}])
+
 (def ^:private reported-columns
   "What `interpret` should report for [[id+name]]: the author's names, the warehouse's types."
   [{:name "id" :database_type "INTEGER"}
@@ -61,6 +66,7 @@
   signed multiplicity."
   [comparison]
   (expectations.protocol/interpret (equals-rows id+name [{"id" 1 "name" "abc"}])
+                                   {:output-columns output-columns}
                                    (probe-results comparison)))
 
 (defn- resolve-cols
@@ -95,7 +101,8 @@
 
 (deftest interpret-row-counts-test
   (let [two-rows [{"id" 1 "name" "abc"} {"id" 2 "name" "def"}]
-        counts   #(:row-counts (expectations.protocol/interpret (equals-rows id+name two-rows) %))]
+        counts   #(:row-counts (expectations.protocol/interpret (equals-rows id+name two-rows)
+                                                                {:output-columns output-columns} %))]
     (testing ":expected counts the declared rows; :actual comes from the row-count probe"
       (is (= {:actual 7 :expected 2} (counts (probe-results [] [[7]])))))
     (testing "a probe count is coerced to a long — JDBC may hand back a BigDecimal"
@@ -164,13 +171,15 @@
   (let [expectation (equals-rows id+name [{"id" 1 "name" "abc"}])]
     (is (= ["ID" "NAME"] (resolve-cols id+name ["ID" "NAME"])))
     (is (= [{"id" 1 "name" "abc"}]
-           (:extra-rows (expectations.protocol/interpret expectation (probe-results [[1 "abc" 1]])))))))
+           (:extra-rows (expectations.protocol/interpret expectation {:output-columns output-columns}
+                                                         (probe-results [[1 "abc" 1]])))))))
 
 (deftest interpret-cell-rendering-test
   (testing "a BigDecimal keeps its scale"
     (let [expectation (equals-rows [{:name "amount" :database_type "DECIMAL(10,2)"}] [{"amount" 1.5}])
           result      (expectations.protocol/interpret
                        expectation
+                       {:output-columns [{:name "AMOUNT" :database_type "NUMERIC"}]}
                        (probe-results [[1.50M 1] [1.5M -1]] [[1]]
                                       [{:name "AMOUNT" :database_type "NUMERIC"}
                                        {:name "__mb_delta" :database_type "BIGINT"}]))]

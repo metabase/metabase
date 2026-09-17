@@ -50,7 +50,7 @@
                   :params   []
                   :max-rows expectations.report/row-cap}})
 
-  (interpret [_this results]
+  (interpret [_this _context results]
     (let [{:keys [rows columns]} (:violations results)
           rows                   (vec rows)
           [sample dropped]       (expectations.report/capped rows)

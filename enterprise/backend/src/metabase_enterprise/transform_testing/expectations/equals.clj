@@ -132,7 +132,7 @@
                           :max-rows (inc expectations.report/row-cap))
      :actual-count (assoc (transform-testing.compile/row-count-query driver output-table) :max-rows 1)})
 
-  (interpret [_this results]
+  (interpret [this {:keys [output-columns]} results]
     (let [column-names (mapv :name columns)
           ;; A comparison row is the declared columns followed by the signed multiplicity: how many
           ;; times too often the row appears in the output (+) or in the expectation (-).
@@ -155,12 +155,12 @@
           [extra   extra-dropped]   (expand pos?)
           [missing missing-dropped] (expand neg?)
           actual-count (some-> results :actual-count :rows ffirst long)
-          ;; The comparison selects the resolved output columns in declared order, then the delta,
-          ;; so dropping the delta lines its column metadata up with what the author declared.
-          reported     (mapv (fn [declared {:keys [database_type]}]
-                               {:name declared :database_type database_type})
+          ;; name -> the output table's type for each column
+          output-type  (into {} (map (juxt :name :database_type)) output-columns)
+          reported     (mapv (fn [declared resolved]
+                               {:name declared :database_type (output-type resolved)})
                              column-names
-                             (butlast (:columns (:comparison results))))]
+                             (resolve-columns this output-columns))]
       ;; Every key is always present: a consumer should not have to tell nil from [].
       (cond-> {:name            name
                :type            :equals
@@ -193,7 +193,7 @@
     (throw (not-implemented name)))
   (probes [_this _context]
     (throw (not-implemented name)))
-  (interpret [_this _results]
+  (interpret [_this _context _results]
     (throw (not-implemented name))))
 
 ;;; --------------------------------------------- Building ----------------------------------------------
