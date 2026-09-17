@@ -10,7 +10,7 @@
   "SQLSTATE codes returned by supported application databases."
   {;; PostgreSQL, missing table.
    :undefined-table                         "42P01"
-   ;; MySQL and H2, missing table.
+   ;; MySQL, MariaDB, and H2, missing table.
    :table-or-view-not-found                 "42S02"
    ;; H2, missing table when it can suggest a similar name.
    :table-or-view-not-found-with-candidates "42S03"
@@ -18,7 +18,7 @@
    :table-or-view-not-found-database-empty  "42S04"
    ;; PostgreSQL and H2, duplicate key.
    :unique-violation                        "23505"
-   ;; MySQL, every kind of constraint failure.
+   ;; MySQL and MariaDB, every kind of constraint failure.
    :integrity-constraint-violation          "23000"})
 
 (def error-codes
@@ -42,7 +42,7 @@
       (= (sql-states :unique-violation) state)
       :duplicate-key
 
-      ;; MySQL uses 23000 for every constraint failure, so only the vendor code tells a duplicate key apart.
+      ;; MySQL and MariaDB use 23000 for every constraint failure, so a duplicate key shows only in the vendor code.
       ;; Vendor codes mean nothing across vendors, so check the code only once the SQLSTATE has matched.
       (and (= (sql-states :integrity-constraint-violation) state)
            (= (error-codes :mysql/duplicate-entry) (.getErrorCode e)))
