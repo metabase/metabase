@@ -1,11 +1,12 @@
 import type {
+  AdminSessionEndReason,
   AdminSessionProvider,
   AdminSessionSortColumn,
   AdminSessionStatusFilter,
   SortDirection,
 } from "metabase-types/api";
 
-import type { SessionsLastActive, SessionsTab } from "./types";
+import type { SessionsTab, SessionsTimePreset } from "./types";
 
 export const PAGE_SIZE = 50;
 
@@ -18,11 +19,24 @@ export const TAB_STATUS: Record<SessionsTab, AdminSessionStatusFilter> = {
   ended: "ended",
 };
 
-export const LAST_ACTIVE_VALUES: SessionsLastActive[] = [
+export const TIME_PRESET_VALUES: SessionsTimePreset[] = [
   "hour",
   "day",
   "week",
   "month",
+];
+
+// Every path that ends a session. The endpoint takes one at a time, not a list.
+export const END_REASON_VALUES: AdminSessionEndReason[] = [
+  "admin",
+  "logout",
+  "password-change",
+  "user-deactivated",
+  "tenant-deactivated",
+  "sso-logout",
+  "support-grant-revoked",
+  "expired",
+  "timed-out",
 ];
 
 // The auth methods the endpoint accepts as a filter. `unknown` is the bucket for sessions with no auth identity row,

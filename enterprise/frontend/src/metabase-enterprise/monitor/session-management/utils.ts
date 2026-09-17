@@ -1,9 +1,13 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import type { AdminSessionType, AdminSessionUser } from "metabase-types/api";
+import type {
+  AdminSessionEndReason,
+  AdminSessionType,
+  AdminSessionUser,
+} from "metabase-types/api";
 
-import type { SessionsLastActive } from "./SessionsPage/types";
+import type { SessionsTimePreset } from "./SessionsPage/types";
 
 export const getSessionUserName = (user: AdminSessionUser): string =>
   user.common_name ?? user.email;
@@ -27,10 +31,23 @@ export const getSessionTypeLabel = (type: AdminSessionType): string =>
     .with("full-app-embed", () => t`Embedded`)
     .exhaustive();
 
-export const getLastActiveLabel = (preset: SessionsLastActive): string =>
+export const getTimePresetLabel = (preset: SessionsTimePreset): string =>
   match(preset)
     .with("hour", () => t`Past hour`)
     .with("day", () => t`Past day`)
     .with("week", () => t`Past week`)
     .with("month", () => t`Past month`)
+    .exhaustive();
+
+export const getEndReasonLabel = (reason: AdminSessionEndReason): string =>
+  match(reason)
+    .with("admin", () => t`Revoked by admin`)
+    .with("logout", () => t`Signed out`)
+    .with("password-change", () => t`Password changed`)
+    .with("user-deactivated", () => t`User deactivated`)
+    .with("tenant-deactivated", () => t`Tenant deactivated`)
+    .with("sso-logout", () => t`SSO logout`)
+    .with("support-grant-revoked", () => t`Support access revoked`)
+    .with("expired", () => t`Expired`)
+    .with("timed-out", () => t`Timed out`)
     .exhaustive();
