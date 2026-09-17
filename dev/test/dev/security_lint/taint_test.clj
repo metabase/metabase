@@ -387,6 +387,27 @@
     (testing "a request parameter itself was handed in by no call: no shape, and the shape labels are not origins"
       (is (= "[() (:request)]" (get by-row 28))))))
 
+(deftest shape-convergence-test
+  (testing "a parameter fed by a map of its own elements converges: the nesting of `vals-` labels is capped and the
+            rounds are bounded, where each round once added one level and the loop never closed"
+    (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
+                :triggers '#{t/sink}
+                :detect (fn [{:keys [node] :as ctx}]
+                          {:message (pr-str (sort (taint/shape ctx (ast/arg node 0))))})}
+          src  "(ns t (:require [metabase.util :as u]))
+(defn sink [x] x)
+(defn- index [rows] (sink rows) (index (u/for-map [r rows] [(:id r) r])))
+(defn- deeper [m] (sink m) (deeper {:a (u/for-map [[k v] m] [k {:b v}])}))
+(defn- start [] (index [{:id 1}]) (deeper {:a {:b 1}}))"
+          run  (future (into {} (map (juxt :row :message)) (engine/analyze {:paths [(temp! src)] :rules [rule]})))
+          res  (deref run 20000 ::timeout)]
+      (is (not= ::timeout res) "the analysis terminates")
+      (when (map? res)
+        (is (contains? #{"(:shape/opaque)" "(:shape/keyed :shape/opaque)"} (get res 3))
+            "past the cap the map is opaque: its keys are values")
+        (is (= "(:shape/keyed)" (get res 4))
+            "a literal handed on stays keyed however deep its values go")))))
+
 (deftest shape-terms-test
   (let [rule {:id :test/shape :name "n" :description "d" :severity :error :precision :high :cwe "C"
               :triggers '#{t/sink}

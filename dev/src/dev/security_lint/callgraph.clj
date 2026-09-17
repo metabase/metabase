@@ -2051,11 +2051,28 @@
   are already unusual; the cap is a backstop for graphs the visited set does not cut."
   8)
 
+(def ^:private max-vals-depth
+  "How many `vals-` levels a shape label carries before the map is simply opaque. A parameter fed by a map of its
+  own elements -- `(index (u/for-map [r rows] [(:id r) r]))` -- would otherwise gain a level per round and the
+  fixpoint would never close; three levels is deeper than any real row-of-rows in this codebase."
+  3)
+
+(def ^:private max-shape-rounds
+  "A backstop on the [[param-shapes]] fixpoint, as [[max-vals-depth]] is on the labels. Every real tree closes
+  in a handful of rounds; a graph that still moves after this many is reported as it stands."
+  16)
+
 (defn- wrap-vals
   "The labels of a map whose values carry `labels`: `#{:shape/keyed}` becomes `#{:shape/vals-keyed}`, and a
-  level deeper for each nesting -- `:shape/vals-vals-keyed` for a map of maps of literal rows."
+  level deeper for each nesting -- `:shape/vals-vals-keyed` for a map of maps of literal rows -- up to
+  [[max-vals-depth]], past which the map is opaque."
   [labels]
-  (into #{} (map #(keyword "shape" (str "vals-" (name %)))) labels))
+  (into #{} (map (fn [l]
+                   (let [nm (name l)]
+                     (if (>= (count (re-seq #"vals-" nm)) max-vals-depth)
+                       :shape/opaque
+                       (keyword "shape" (str "vals-" nm))))))
+        labels))
 
 (defn- unwrap-vals
   "The labels of one value of a map carrying `labels`: one `vals-` off each; a label with none -- a keyed
@@ -2164,7 +2181,7 @@
                            (when-let [nsym (get ns-of filename)]
                              (symbol (str nsym) (str head))))
                          head))]
-    (loop [m {}]
+    (loop [m {}, round 0]
       (let [;; what a function or a binding holds under a key, once per round: the walk through feeds and tails
             ;; fans out, and without this a parameter fed by hundreds of calls was walked once per path
             key-memo  (atom {})
@@ -2229,7 +2246,7 @@
                              m)))
                        m
                        feeds)]
-        (if (= m m')
+        (if (or (= m m') (>= round max-shape-rounds))
           (let [;; which calls contributed the opaque half, by the parameter they feed
                 direct  (reduce (fn [acc {:keys [to term pos fq region]}]
                                   (if (opaque-labels? (eval-term term #{}))
@@ -2278,7 +2295,7 @@
                                boundary)
                :feeders (into {} (for [[id fs] direct]
                                    [id (into [] (comp (mapcat #(expand % #{id} 0)) (distinct)) fs)]))}))
-          (recur m'))))))
+          (recur m' (inc round)))))))
 
 (defn propagate
   "Grow `:sources` to a fixpoint over the call graph, carrying labels. See [[propagate*]], of which this returns
