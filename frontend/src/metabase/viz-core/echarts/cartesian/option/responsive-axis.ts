@@ -6,12 +6,21 @@ import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ChartLayout } from "../layout/types";
 import type { BaseCartesianChartModel, YAxisModel } from "../model/types";
 
-import { getGoalLineParams, getGoalLineValue } from "./goal-line";
+import { getGoalLineValue } from "./goal-line";
 import { getResponsiveYAxisTicks } from "./y-axis-ticks";
+
+type ChartAxisModels = Pick<
+  BaseCartesianChartModel,
+  | "leftAxisModel"
+  | "rightAxisModel"
+  | "splitPanelYAxisModels"
+  | "trendLinesModel"
+  | "yAxisScaleTransforms"
+>;
 
 function getAxisExtent(
   axisModel: YAxisModel,
-  chartModel: BaseCartesianChartModel,
+  chartModel: ChartAxisModels,
   settings: ComputedVisualizationSettings,
   hasGoal: boolean,
 ): Extent {
@@ -29,10 +38,10 @@ function getAxisExtent(
     settings["graph.goal_value"] != null
   ) {
     includeValue(
-      getGoalLineValue(
-        settings["graph.goal_value"],
-        getGoalLineParams(chartModel),
-      ),
+      getGoalLineValue(settings["graph.goal_value"], {
+        isNormalized: chartModel.leftAxisModel?.isNormalized ?? false,
+        toEChartsAxisValue: chartModel.yAxisScaleTransforms.toEChartsAxisValue,
+      }),
     );
   }
 
@@ -49,7 +58,7 @@ function getAxisExtent(
 
 export function applyResponsiveYAxisTicks(
   axes: YAXisOption[],
-  chartModel: BaseCartesianChartModel,
+  chartModel: ChartAxisModels,
   chartLayout: ChartLayout,
   settings: ComputedVisualizationSettings,
 ): YAXisOption[] {

@@ -11,7 +11,11 @@ import {
 
 import type { CartesianChartColumns } from "../../../lib/graph/columns";
 import { getCartesianChartColumns } from "../../../lib/graph/columns";
-import type { ComputedVisualizationSettings, Extent } from "../../../types";
+import type {
+  CartesianChartSize,
+  ComputedVisualizationSettings,
+  Extent,
+} from "../../../types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,
@@ -42,6 +46,7 @@ import type {
   SeriesFormatters,
   YAxisModel,
 } from "../../cartesian/model/types";
+import { getLabelValueFormatting } from "../../cartesian/model/util";
 import type { ShowWarning } from "../../types";
 
 import { computeMultiSeriesBoxPlotData } from "./dataset";
@@ -308,6 +313,8 @@ const createBoxPlotYAxisModel = (
   columnByDataKey: Record<string, DatasetColumn>,
   seriesExtents: SeriesExtents,
   yAxisScaleTransforms: ReturnType<typeof getAxisTransforms>,
+  isCompactFormatting: boolean | undefined,
+  hasResponsiveTicks: boolean,
 ): YAxisModel | null => {
   if (dataKeys.length === 0) {
     return null;
@@ -319,6 +326,13 @@ const createBoxPlotYAxisModel = (
     dataset,
     settings,
     columnByDataKey,
+    {
+      hasResponsiveTicks,
+      formattingOptions:
+        isCompactFormatting === undefined
+          ? undefined
+          : { compact: isCompactFormatting },
+    },
   );
 
   if (yAxisModel) {
@@ -338,6 +352,8 @@ const getBoxPlotYAxesModels = (
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<string, DatasetColumn>,
   yAxisScaleTransforms: ReturnType<typeof getAxisTransforms>,
+  isCompactFormatting: boolean | undefined,
+  hasResponsiveTicks: boolean,
 ): BoxPlotYAxesModels => {
   const seriesExtents = computeBoxPlotSeriesExtents(dataBySeriesAndXValue);
   const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
@@ -373,6 +389,8 @@ const getBoxPlotYAxesModels = (
       columnByDataKey,
       seriesExtents,
       yAxisScaleTransforms,
+      isCompactFormatting,
+      hasResponsiveTicks,
     ),
     rightAxisModel: createBoxPlotYAxisModel(
       visibleRightKeys,
@@ -382,6 +400,8 @@ const getBoxPlotYAxesModels = (
       columnByDataKey,
       seriesExtents,
       yAxisScaleTransforms,
+      isCompactFormatting,
+      hasResponsiveTicks,
     ),
     leftAxisSeriesKeys,
     rightAxisSeriesKeys,
@@ -393,7 +413,13 @@ export const getBoxPlotModel = (
   settings: ComputedVisualizationSettings,
   hiddenSeries: string[] = [],
   showWarning?: ShowWarning,
+  cartesianSize?: CartesianChartSize,
 ): BoxPlotChartModel => {
+  const hasResponsiveTicks = cartesianSize != null && cartesianSize !== "large";
+  const labelValueFormatting = getLabelValueFormatting(
+    settings["graph.label_value_formatting"],
+    hasResponsiveTicks,
+  );
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;
 
@@ -444,7 +470,13 @@ export const getBoxPlotModel = (
     boxPlotData?.outlierBelowPointsDataset ?? [];
   const nonOutlierPointsDataset = boxPlotData?.nonOutlierPointsDataset ?? [];
 
-  const labelSettings = getLabelSettings(settings, seriesModels);
+  const labelSettings = getLabelSettings(
+    {
+      ...settings,
+      "graph.label_value_formatting": labelValueFormatting,
+    },
+    seriesModels,
+  );
 
   const {
     leftAxisModel,
@@ -458,6 +490,8 @@ export const getBoxPlotModel = (
     settings,
     columnByDataKey,
     yAxisScaleTransforms,
+    cartesianSize == null ? undefined : labelValueFormatting === "compact",
+    hasResponsiveTicks,
   );
 
   const breakoutColumn =

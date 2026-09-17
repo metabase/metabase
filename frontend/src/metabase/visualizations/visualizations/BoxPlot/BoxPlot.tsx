@@ -96,8 +96,15 @@ function BoxPlotInner({
         settings,
         Array.from(hiddenSeries),
         showWarning,
+        renderingContext.cartesianSize,
       ),
-    [rawSeriesWithRemappings, settings, hiddenSeries, showWarning],
+    [
+      rawSeriesWithRemappings,
+      settings,
+      hiddenSeries,
+      showWarning,
+      renderingContext.cartesianSize,
+    ],
   );
 
   const description = settings["card.description"];
