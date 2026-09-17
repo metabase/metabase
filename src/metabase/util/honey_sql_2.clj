@@ -419,52 +419,51 @@
    [:fn {:error/message "::h2x/typed Honey SQL form"} typed?]
    [:sequential [:or [:ref ::honeysql-expr] ::honeysql-clause-opts]]])
 
-(defn- ascii-letter?
-  "Whether `c` is an unaccented ASCII letter."
-  [c]
-  (or (<= (int \a) (int c) (int \z))
-      (<= (int \A) (int c) (int \Z))))
+(def ^:private raw-type-name-regex
+  "The shape of a plain SQL type name, from the grammar the supported engines report their types in:
 
-(defn- type-name-char-ok?
-  "Whether `c` may appear in a raw type name at parenthesis nesting `depth`."
-  [c depth]
-  (or (ascii-letter? c)
-      (<= (int \0) (int c) (int \9))
-      (contains? #{\_ \space} c)
-      ;; A comma separates a type's arguments, so it belongs inside the parentheses that opened them. At the top
-      ;; level it would end the type and start a second expression, which is exactly what a splice must not allow:
-      ;; Postgres emits `(…)::«type»` in a select list, where `text, (SELECT secret FROM users)` would add a column.
-      (and (= c \,) (pos? depth))))
+      type   ::= word ((' ')+ word | args)*     `double precision`, `TIMESTAMP(6) WITH TIME ZONE`
+      args   ::= '(' arg (',' arg)* ')'         `varchar(10)`, `Decimal(38, 19)`, `Map(String, Int32)`
+      arg    ::= type | number | quoted         `Nullable(DateTime64(3, 'GMT0'))`
+      word   ::= letter (letter | digit | '_')*
+      quoted ::= a single-quoted run holding no quote, backslash or line break
+      suffix ::= '[]'*                          `int[]`, `varchar(50)[]`
+
+  The pattern is built from the innermost type outwards, each turn letting a type take the previous one as an
+  argument; the innermost takes none, which bounds arguments at four deep. That covers what a warehouse reports
+  (`Array(Nullable(Tuple(String, Int32)))` is three); anything deeper is quoted as an identifier rather than
+  spliced.
+
+  A quoted argument is how a type carries a name it cannot spell as a token — the timezone of
+  `DateTime64(3, 'GMT0')`, which ClickHouse reports for an ordinary timestamp column and accepts back as a cast
+  target. Its content is a string to the engine, so nothing in it can end the expression the type sits in, so long
+  as the engine and this pattern agree on where it ends: a backslash is out because ClickHouse and MySQL read `\\'`
+  as a quote in the string rather than as its end, and the two readings would then part company over which
+  parentheses are structural."
+  (let [word   "[A-Za-z][A-Za-z0-9_]*"
+        number "[0-9]+"
+        quoted "'[^'\\\\\\n]*'"]
+    (re-pattern
+     (str (reduce (fn [type _]
+                    (let [arg  (str "(?:" type "|" number "|" quoted ")")
+                          args (str "\\(" arg "(?: *, *" arg ")*\\)")]
+                      (str word "(?:(?: +" word ")|" args ")*")))
+                  word
+                  (range 4))
+          "(?:\\[\\])*"))))
 
 (defn raw-type-name?
-  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores and spaces, arguments in balanced
-  parentheses (`varchar(10)`, `Map(String, Nullable(Int32))`) and a trailing `[]` for an array — and is therefore safe
+  "Whether `sql-type` is a plain SQL type name — the shape [[raw-type-name-regex]] spells out — and is therefore safe
   to splice into SQL unquoted.
 
-  Nothing here can end the expression the type sits in: no quote, semicolon, dot or comment marker is allowed, no
-  parenthesis closes one this name did not open, and a comma only ever separates arguments. Cast targets that don't
-  match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected instead of
-  being emitted raw."
+  Nothing a name of that shape holds can end the expression it is spliced into: it is words, arguments in balanced
+  parentheses, and an array suffix, so it carries no semicolon, dot or comment marker, no parenthesis that closes
+  one it did not open, and no comma or quote outside an argument list. Postgres, for one, emits `(…)::«type»` in a
+  select list, where `text, (SELECT secret FROM users)` would add a column. Cast targets that don't match (e.g. a
+  `database-type` coming from field metadata) must be quoted as identifiers or rejected instead of being emitted
+  raw."
   [sql-type]
-  (let [^String s (name sql-type)
-        len       (.length s)]
-    (boolean
-     (and (pos? len)
-          (ascii-letter? (.charAt s 0))
-          ;; `inc`, `dec` and `+` are this namespace's own Honey SQL builders, so the arithmetic here is unchecked
-          (loop [i 0, depth 0]
-            (if (= i len)
-              (zero? depth)
-              (let [c      (.charAt s i)
-                    next-i (unchecked-inc i)]
-                (case c
-                  \( (recur next-i (unchecked-inc depth))
-                  \) (when (pos? depth) (recur next-i (unchecked-dec depth)))
-                  ;; `int[]`, `varchar(50)[]` — an array suffix, never a subscript with something in it
-                  \[ (when (and (zero? depth) (< next-i len) (= \] (.charAt s next-i)))
-                       (recur (unchecked-add i 2) depth))
-                  (when (type-name-char-ok? c depth)
-                    (recur next-i depth))))))))))
+  (boolean (re-matches raw-type-name-regex (name sql-type))))
 
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."

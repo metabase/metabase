@@ -153,6 +153,10 @@
   (testing "a sane bare type-name token is emitted raw, since most dialects reject a quoted type name in a CAST"
     (is (= ["SELECT CAST(? AS date)" "toucan"]
            (sql/format {:select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
+  (testing "a type name carrying a quoted argument is emitted raw, which is the only form ClickHouse accepts"
+    (is (= ["SELECT CAST(? AS Nullable(DateTime64(3, 'GMT0')))" "toucan"]
+           (sql/format {:select [[(h2x/cast "Nullable(DateTime64(3, 'GMT0'))" "toucan")]]}
+                       {:quoted true, :dialect :ansi}))))
   (testing "a type name that isn't a bare token is quoted, so a hostile type cannot inject SQL"
     (is (= ["SELECT CAST(? AS \"date) UNION SELECT 1 --\")" "toucan"]
            (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
@@ -173,7 +177,19 @@
     (are [sql-type] (h2x/raw-type-name? sql-type)
       "Nullable(String)"
       "LowCardinality(Nullable(String))"
-      "Map(String, Nullable(Int32))"))
+      "Map(String, Nullable(Int32))"
+      "Variant(Decimal(38, 19), Float64)"
+      "Array(Nullable(Tuple(String, Int32)))"))
+  (testing "a quoted argument, which is how ClickHouse writes the timezone of a timestamp column"
+    (are [sql-type] (h2x/raw-type-name? sql-type)
+      "DateTime64(3, 'GMT0')"
+      "Nullable(DateTime64(9, 'UTC'))"
+      "DateTime('Europe/Amsterdam')"
+      "Nullable('a')"
+      "T('(')"))
+  (testing "an argument list nested deeper than the rule goes is quoted rather than spliced"
+    (is (h2x/raw-type-name? "A(B(C(D(String))))"))
+    (is (not (h2x/raw-type-name? "A(B(C(D(E(String)))))"))))
   (testing "an array suffix, and a type name that continues after its precision"
     (are [sql-type] (h2x/raw-type-name? sql-type)
       "int[]"
@@ -187,8 +203,13 @@
       "int) UNION SELECT 1 --"
       "(int)"
       "Nullable(String"
-      ;; quotes and comment markers stay out whatever the parentheses do
-      "Nullable('a')"
+      "date' AND 1 = 1"
+      "T('a') 'b'"
+      "DateTime64(3, 'GMT0)"
+      "DateTime64(3, 'GM\\'T0')"
+      "T('(')) , (SELECT secret FROM users"
+      "T('((')) , 1"
+      ;; comment markers stay out whatever the parentheses do
       "int/*x*/"
       "int-1"
       ;; `[]` is an array suffix, not a subscript
@@ -206,7 +227,14 @@
                        (sql/format {:select [[(h2x/cast sql-type :x)]]} {:quoted true, :dialect :ansi}))
       "bigint UNION SELECT secret FROM users"
       "Map(String, Nullable(Int32))"
-      "int[]")))
+      "T('(') UNION ALL SELECT password FROM users"
+      "Nullable(DateTime64(3, 'GMT0'))"
+      "int[]"))
+  (testing "a type name that would close the CAST early is quoted as an identifier instead"
+    (are [sql-type] (= [(str "SELECT CAST(\"x\" AS \"" sql-type "\")")]
+                       (sql/format {:select [[(h2x/cast sql-type :x)]]} {:quoted true, :dialect :ansi}))
+      "T('(')) , (SELECT secret FROM users"
+      "date' AND 1 = 1")))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))
