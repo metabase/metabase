@@ -44,10 +44,10 @@
   (transduce (map (fn [node] (count (filter component (get graph node))))) + 0 component))
 
 (defn cycle-stats
-  "How much of `graph` is trapped in mutual dependency, and in how many separate clusters. `:module-count`
-  and `:namespace-count` are the modules and namespaces inside some cyclic component; `:edge-count` is the
-  dependency edges with both endpoints in the same component. Breaking every cycle takes inverting only some
-  of them, but each one is a candidate.
+  "How much of `graph` is trapped in mutual dependency, and in how many separate clusters.
+  The counts `:module-count` and `:namespace-count` are the modules and namespaces inside some cyclic
+  component, and `:edge-count` the dependency edges with both endpoints in the same component.
+  Breaking every cycle takes inverting only some of them, but each one is a candidate.
 
   Namespace weighting via `node->namespace-count` is the honest measure: splitting a cyclic module in the
   config raises the module count without moving a namespace out of the cycle.
@@ -71,14 +71,14 @@
 ;; TODO (Chris 2026-09-17) -- #82386 adds `dev.deps-graph/model-import-dependencies`, which also follows
 ;; `:model-imports :any` through the scanned references. Switch to it once that lands.
 (defn model-import-dependencies
-  "Module => the modules whose models it imports, read off the `:model-exports`/`:model-imports` boundaries
-  in `config`. These are real coupling that the `:uses` graph does not carry: a module can depend on another
-  module's row shapes without requiring any of its namespaces, so cycles that only exist through models are
-  invisible in the require graph.
+  "Module => the modules whose models it imports, read off the `:model-exports`/`:model-imports`
+  boundaries in `config`.
+  These are real coupling that the `:uses` graph does not carry: a module can depend on another module's row
+  shapes without requiring any of its namespaces, so cycles that only exist through models are invisible.
 
-  A module whose `:model-imports` is `:bypass` contributes no edges, because the config records no imports
-  for it at all. Neither does `:model-imports :any`, nor a model exported with `:model-exports :any`, since
-  the config names no models for either; no module declares them today."
+  A `:bypass` module contributes no edges, because the config records no imports for it at all.
+  Neither does `:model-imports :any`, nor a model exported with `:model-exports :any`, since the config
+  names no models for either; no module declares them today."
   [config]
   (let [owner (into {}
                     (for [[module {:keys [model-exports]}] config
@@ -320,11 +320,10 @@
   nobody touches contributes nothing to CI spend no matter how upstream it is. `file->module` maps
   source filename → module; `module->tests` maps module → set of its test files.
 
-  Commits touching no module-owned file are excluded from the distribution and reported in
-  `:num-commits-skipped`. That covers frontend and docs commits, and also **test-only commits**:
-  `file->module` is built from a source-file scan, so a commit that changes only tests maps to no
-  module and is left out of the distribution, even though selective CI would rerun those tests. The
-  result is therefore the bill for source-changing commits, and it understates total spend.
+  Commits touching no module-owned file stay out of the distribution and count in `:num-commits-skipped`.
+  That covers frontend and docs commits, and also **test-only commits**: `file->module` comes from a
+  source-file scan, so a commit that changes only tests maps to no module, though selective CI reruns them.
+  The result is therefore the bill for source-changing commits, and it understates total spend.
   The test files a mixed commit changes are ignored the same way; only its source files select modules."
   [graph module->tests file->module commits]
   (let [dependents (transitive-dependents-graph graph)
