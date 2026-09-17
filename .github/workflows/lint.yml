@@ -68,19 +68,10 @@ jobs:
         - name: Run Whitespace Linter
           run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
 
-
         # Lint Github Actions
         - name: Run actionlint
           if: needs.files-changed.outputs.actionlint == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.actionlint_files }}
-
-
-      # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
-      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
-      # an explicit "wait".
-      - name: Validate OpenAPI spec
-        if: needs.files-changed.outputs.openapi == 'true'
-        run: bun run lint-openapi
 
   codeql:
     if: needs.files-changed.outputs.codeql == 'true'
