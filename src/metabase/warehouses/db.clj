@@ -6,6 +6,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.query :as u.query]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -36,40 +38,27 @@
    ::filters
    [:map {:closed true}
     [:columns  {:optional true} [:sequential ::warehouses.schema/database.column]]
-    [:order-by {:optional true} [:sequential ::warehouses.schema/database.column]]]])
+    [:order-by {:optional true} [:sequential [:or
+                                              ::warehouses.schema/database.column
+                                              [:tuple ::warehouses.schema/database.column [:enum :asc :desc]]]]]
+    [:limit    {:optional true} ms/PositiveInt]
+    [:offset   {:optional true} ms/IntGreaterThanOrEqualToZero]]])
 
-(def ^:private case-insensitive-order-columns
+(def ^:private set-columns
+  "Maps each `<column>_set` filter key to the column whose nullness it tests."
+  {:router_database_id_set :router_database_id})
+
+(def ^:private lower-columns
   "Text columns ordered case-insensitively, so `Zebra` does not sort ahead of `apple`."
   #{:name :engine :description})
 
-(defn- order-by-clause
-  [columns]
-  (mapv (fn [column]
-          [(if (case-insensitive-order-columns column) [:lower column] column) :asc])
-        columns))
-
-(defn- filter-clause
-  [column value]
-  (case column
-    :router_database_id_set [(if value :not= :=) :router_database_id nil]
-    (if (set? value)
-      [:in column value]
-      [:= column value])))
-
-(defn- where-clause
-  [filters]
-  (into [:and] (map (fn [[column value]] (filter-clause column value))) filters))
-
 (defn- ->model
   [columns]
-  (if (seq columns)
-    (into [:model/Database] columns)
-    :model/Database))
+  (u.query/model-with-columns :model/Database columns))
 
 (defn- ->honeysql
-  [{:keys [order-by] :as opts}]
-  (cond-> {:where (where-clause (dissoc opts :columns :order-by))}
-    (seq order-by) (assoc :order-by (order-by-clause order-by))))
+  [opts]
+  (u.query/opts->honeysql opts {:set-columns set-columns, :lower-columns lower-columns}))
 
 ;;; ------------------------------------------------- Reads -------------------------------------------------
 
@@ -124,6 +113,11 @@
   "Insert the Database `row` and return the inserted instance."
   [row :- ::warehouses.schema/database.update]
   (t2/insert-returning-instance! :model/Database row))
+
+(mu/defn insert-databases! :- [:sequential ::warehouses.schema/database]
+  "Insert the Database `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouses.schema/database.update]]
+  (t2/insert-returning-instances! :model/Database rows))
 
 (mu/defn update-databases! :- :int
   "Apply `changes` to every Database matching `opts`, returning the number updated."
