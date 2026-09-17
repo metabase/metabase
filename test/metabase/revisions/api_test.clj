@@ -1024,6 +1024,30 @@
                  (mt/user-http-request :rasta :post "revision/revert"
                                        {:entity :card :id (:id card) :revision_id prev-rev-id}))))))))
 
+(deftest revert-card-with-restricted-timeline-test
+  (testing "POST /api/revision/revert restoring a card's selected timeline needs read perms for that timeline"
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline timeline {:collection_id (:id restricted)}
+                   :model/Card {card-id :id} {:display :line
+                                              :visualization_settings
+                                              {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (create-card-revision! card-id true :crowberto)
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:visualization_settings {}})
+      (let [selected-timeline-ids #(t2/select-one-fn (comp :timeline.selected_timeline_ids :visualization_settings)
+                                                     :model/Card :id card-id)
+            revision-id           (t2/select-one-pk :model/Revision :model "Card" :model_id card-id
+                                                    {:order-by [[:id :asc]]})
+            revert-req            {:entity :card :id card-id :revision_id revision-id}]
+        (is (nil? (selected-timeline-ids)))
+        (testing "is rejected for a user who can edit the card but cannot read the timeline"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "revision/revert" revert-req)))
+          (is (nil? (selected-timeline-ids))))
+        (testing "is allowed for a user who can read the timeline"
+          (mt/user-http-request :crowberto :post 200 "revision/revert" revert-req)
+          (is (= [(:id timeline)] (selected-timeline-ids))))))))
+
 (deftest revert-model-restores-metadata-and-viz-settings-test
   (testing "Reverting a model restores result_metadata and visualization_settings together (#45926)"
     (mt/with-temp [:model/Card {card-id :id} (assoc (mt/card-with-metadata
