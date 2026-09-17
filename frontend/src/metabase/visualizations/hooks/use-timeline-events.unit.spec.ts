@@ -91,7 +91,10 @@ const setup = ({
   series = getSeries(savedSettings),
   settings = getComputedSettingsForSeries(series),
   onTimelineEventsShown,
+  onTimelineEventsEnabledChange,
   isDashboard = false,
+  width,
+  height,
   providers = getTestStoreAndWrapper({ initialRoute: "/" }),
 }: {
   savedSettings?: VisualizationSettings;
@@ -101,7 +104,10 @@ const setup = ({
   series?: RawSeries;
   settings?: VisualizationProps["settings"];
   onTimelineEventsShown?: VisualizationProps["onTimelineEventsShown"];
+  onTimelineEventsEnabledChange?: VisualizationProps["onTimelineEventsEnabledChange"];
   isDashboard?: boolean;
+  width?: number;
+  height?: number;
   providers?: ReturnType<typeof getTestStoreAndWrapper>;
 } = {}) => {
   setupTimelinesEndpoints(timelines);
@@ -112,7 +118,10 @@ const setup = ({
           timelineEvents,
           timelineEventsVisibility,
           onTimelineEventsShown,
+          onTimelineEventsEnabledChange,
           isDashboard,
+          width,
+          height,
           ...props,
         }),
       { initialProps: { series, settings }, wrapper: providers.wrapper },
@@ -306,6 +315,25 @@ describe("useTimelineEvents", () => {
     rerender({ series, settings });
 
     expect(onTimelineEventsShown).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports whether a measured chart has events enabled as its settings change", () => {
+    const onTimelineEventsEnabledChange = jest.fn();
+    const series = getSeries(SAVED_VISIBILITY);
+    const settings = getComputedSettingsForSeries(series);
+    const { rerender } = setup({
+      series,
+      settings: { ...settings, "timeline_events.enabled": false },
+      width: 400,
+      height: 300,
+      onTimelineEventsEnabledChange,
+    });
+
+    expect(onTimelineEventsEnabledChange).toHaveBeenCalledWith(false);
+
+    rerender({ series, settings });
+
+    expect(onTimelineEventsEnabledChange).toHaveBeenLastCalledWith(true);
   });
 
   it("drops the events when the settings turn the chart into a non-timeseries one", async () => {
