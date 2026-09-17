@@ -88,9 +88,9 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/advanced_permissions
 # enterprise/backend/test/metabase_enterprise/advanced_permissions
 
-# metabot.agent-api (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/agent_api
-# enterprise/backend/test/metabase_enterprise/agent_api
+# metabot.agent-api (Metabot)
+enterprise/backend/src/metabase_enterprise/agent_api @metabase/metabot
+enterprise/backend/test/metabase_enterprise/agent_api @metabase/metabot
 
 # analytics (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/analytics
@@ -157,9 +157,9 @@ enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @meta
 # enterprise/backend/src/metabase_enterprise/data_apps
 # enterprise/backend/test/metabase_enterprise/data_apps
 
-# metabot.data-complexity-score (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/data_complexity_score
-# enterprise/backend/test/metabase_enterprise/data_complexity_score
+# metabot.data-complexity-score (Metabot)
+enterprise/backend/src/metabase_enterprise/data_complexity_score @metabase/metabot
+enterprise/backend/test/metabase_enterprise/data_complexity_score @metabase/metabot
 
 # data-studio (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/data_studio
@@ -185,13 +185,13 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/embedding_hub
 # enterprise/backend/test/metabase_enterprise/embedding_hub
 
-# search.embeddings (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/embeddings
-# enterprise/backend/test/metabase_enterprise/embeddings
+# search.embeddings (Metabot)
+enterprise/backend/src/metabase_enterprise/embeddings @metabase/metabot
+enterprise/backend/test/metabase_enterprise/embeddings @metabase/metabot
 
-# search.entity-retrieval (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/entity_retrieval
-# enterprise/backend/test/metabase_enterprise/entity_retrieval
+# search.entity-retrieval (Metabot)
+enterprise/backend/src/metabase_enterprise/entity_retrieval @metabase/metabot
+enterprise/backend/test/metabase_enterprise/entity_retrieval @metabase/metabot
 
 # warehouses (Gadget, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/erd
@@ -217,21 +217,21 @@ enterprise/backend/test/metabase_enterprise/impersonation @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/library
 # enterprise/backend/test/metabase_enterprise/library
 
-# mcp (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/mcp
-# enterprise/backend/test/metabase_enterprise/mcp
+# mcp (Metabot)
+enterprise/backend/src/metabase_enterprise/mcp @metabase/metabot
+enterprise/backend/test/metabase_enterprise/mcp @metabase/metabot
 
 # memoize-monitor (Graphy)
 enterprise/backend/src/metabase_enterprise/memoize_monitor @metabase/graphy
 enterprise/backend/test/metabase_enterprise/memoize_monitor @metabase/graphy
 
-# metabot (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/metabot
-# enterprise/backend/test/metabase_enterprise/metabot
+# metabot (Metabot)
+enterprise/backend/src/metabase_enterprise/metabot @metabase/metabot
+enterprise/backend/test/metabase_enterprise/metabot @metabase/metabot
 
-# metabot.analytics (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/metabot_analytics
-# enterprise/backend/test/metabase_enterprise/metabot_analytics
+# metabot.analytics (Metabot)
+enterprise/backend/src/metabase_enterprise/metabot_analytics @metabase/metabot
+enterprise/backend/test/metabase_enterprise/metabot_analytics @metabase/metabot
 
 # mfa (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/mfa
@@ -269,9 +269,9 @@ enterprise/backend/test/metabase_enterprise/replacement @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/security_center
 # enterprise/backend/test/metabase_enterprise/security_center
 
-# search.semantic (Metabot, no :assignee in team.json)
-# enterprise/backend/src/metabase_enterprise/semantic_search
-# enterprise/backend/test/metabase_enterprise/semantic_search
+# search.semantic (Metabot)
+enterprise/backend/src/metabase_enterprise/semantic_search @metabase/metabot
+enterprise/backend/test/metabase_enterprise/semantic_search @metabase/metabot
 
 # serialization (Graphy)
 enterprise/backend/src/metabase_enterprise/serialization @metabase/graphy
@@ -325,17 +325,17 @@ enterprise/backend/test/metabase_enterprise/transforms_python @metabase/graphy
 # src/metabase/activity_feed
 # test/metabase/activity_feed
 
-# metabot.agent-api (Metabot, no :assignee in team.json)
-# src/metabase/agent_api
-# test/metabase/agent_api
+# metabot.agent-api (Metabot)
+src/metabase/agent_api @metabase/metabot
+test/metabase/agent_api @metabase/metabot
 
-# lib.agent-lib (Metabot, no :assignee in team.json)
-# src/metabase/agent_lib
-# test/metabase/agent_lib
+# lib.agent-lib (Metabot)
+src/metabase/agent_lib @metabase/metabot
+test/metabase/agent_lib @metabase/metabot
 
-# ai-tracing (Metabot, no :assignee in team.json)
-# src/metabase/ai_tracing
-# test/metabase/ai_tracing
+# ai-tracing (Metabot)
+src/metabase/ai_tracing @metabase/metabot
+test/metabase/ai_tracing @metabase/metabot
 
 # analytics (UX West, no :assignee in team.json)
 # src/metabase/analytics
@@ -361,8 +361,8 @@ test/metabase/analyze @metabase/graphy
 # src/metabase/api_routes
 # test/metabase/api_routes
 
-# api-scope (Metabot, no :assignee in team.json)
-# src/metabase/api_scope
+# api-scope (Metabot)
+src/metabase/api_scope @metabase/metabot
 
 # app-db (UX West, no :assignee in team.json)
 # src/metabase/app_db
@@ -490,13 +490,13 @@ test/metabase/driver_api @metabase/core-backend-querying-platform
 # src/metabase/embedding_rest
 # test/metabase/embedding_rest
 
-# search.embeddings (Metabot, no :assignee in team.json)
-# src/metabase/embeddings
-# test/metabase/embeddings
+# search.embeddings (Metabot)
+src/metabase/embeddings @metabase/metabot
+test/metabase/embeddings @metabase/metabot
 
-# search.entity-retrieval (Metabot, no :assignee in team.json)
-# src/metabase/entity_retrieval
-# test/metabase/entity_retrieval
+# search.entity-retrieval (Metabot)
+src/metabase/entity_retrieval @metabase/metabot
+test/metabase/entity_retrieval @metabase/metabot
 
 # events (DevEx, no :assignee in team.json)
 # src/metabase/events
@@ -577,9 +577,9 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/lib_metric
 # test/metabase/lib_metric
 
-# metabot.llm (Metabot, no :assignee in team.json)
-# src/metabase/llm
-# test/metabase/llm
+# metabot.llm (Metabot)
+src/metabase/llm @metabase/metabot
+test/metabase/llm @metabase/metabot
 
 # logger (DevEx, no :assignee in team.json)
 # src/metabase/logger
@@ -589,17 +589,17 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/login_history
 # test/metabase/login_history
 
-# mcp (Metabot, no :assignee in team.json)
-# src/metabase/mcp
-# test/metabase/mcp
+# mcp (Metabot)
+src/metabase/mcp @metabase/metabot
+test/metabase/mcp @metabase/metabot
 
 # measures (Graphy)
 src/metabase/measures @metabase/graphy
 test/metabase/measures @metabase/graphy
 
-# metabot (Metabot, no :assignee in team.json)
-# src/metabase/metabot
-# test/metabase/metabot
+# metabot (Metabot)
+src/metabase/metabot @metabase/metabot
+test/metabase/metabot @metabase/metabot
 
 # metrics (UX West, no :assignee in team.json)
 # src/metabase/metrics
@@ -632,9 +632,9 @@ test/metabase/native_query_snippets @metabase/graphy
 # src/metabase/oauth_server
 # test/metabase/oauth_server
 
-# osi (Metabot, no :assignee in team.json)
-# src/metabase/osi
-# test/metabase/osi
+# osi (Metabot)
+src/metabase/osi @metabase/metabot
+test/metabase/osi @metabase/metabot
 
 # parameters (Graphy)
 src/metabase/parameters @metabase/graphy
@@ -755,9 +755,9 @@ test/metabase/segments @metabase/graphy
 # src/metabase/setup_rest
 # test/metabase/setup_rest
 
-# metabot.slackbot (Metabot, no :assignee in team.json)
-# src/metabase/slackbot
-# test/metabase/slackbot
+# metabot.slackbot (Metabot)
+src/metabase/slackbot @metabase/metabot
+test/metabase/slackbot @metabase/metabot
 
 # lib.source-swap (Graphy)
 src/metabase/source_swap @metabase/graphy
