@@ -167,9 +167,9 @@
    ;; Metabot searches for data sources, so it uses the data picker's library boost.
    ;; This preserves the preference when library-only retrieval falls back to general search.
    {:library             80
-    ;; Recency only breaks ties within a tier: :user-recency plus :recency (2) stays below a question's type boost (3),
-    ;; so a recently viewed model still ranks below a saved question.
-    :user-recency        1
+    ;; Recency only breaks ties within a tier, so :recency plus :user-recency stays below the narrowest tier gap (1).
+    :recency             0.4
+    :user-recency        0.4
     :data-layer          33
     :data-layer/final    1     ; ≈ 33
     :data-layer/internal 0.3   ; ≈ 10
