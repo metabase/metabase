@@ -39,7 +39,7 @@
   [:map {:closed true}
    [:chart_type :string]])
 
-(def ^:private construct-notebook-query-json-schema
+(def construct-notebook-query-json-schema
   "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
   property-less malli `:map` via a `:json-schema` override. It does not participate in validation —
   it only replaces the schema we hand the LLM. Malli would otherwise emit an empty-`properties`

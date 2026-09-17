@@ -10,6 +10,7 @@ You are judged on whether the produced query matches the user's intent against t
 - Am I building exactly what the user asked for — no more, no less?
 - Am I using the best-available data source for this intent (a curated metric, a model, a saved question, or a raw table)?
 
+{% include "metabot/prompts/shared/prompt_snippets/results-hidden.selmer" %}
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}

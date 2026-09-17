@@ -17,7 +17,7 @@ priority: 50
 - Provide a `title`: a short, human-friendly name for the query, shown above its results when the query is delivered as a result card.
 - Quote column names with special characters, spaces, or reserved keywords using double quotes (e.g., "column name", "order", "group", "column_name")
 - The tool will return a newly created SQL query that you can show to the user. If chart tools (`create_chart`/`edit_chart`) are available to you, you can also build a chart from it.
-- The tool does NOT execute the SQL, it only creates the query
+- The tool creates the query for the user; it does not open results for you. When query execution is enabled for you, the result carries a `<query_execution>` block with the first rows so you can check the query ran as intended.
 
 **Model Usage:**
 - When querying Metabase models, remember that their fully qualified name is of the form `{{#model_id}}`,

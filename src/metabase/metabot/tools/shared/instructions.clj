@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.shared.instructions
   "Instruction constants for LLM tool results.
    These guide the LLM on how to interpret and use tool outputs.
-   Matches Python AI Service InstructionResultSchema patterns exactly.")
+   Matches Python AI Service InstructionResultSchema patterns exactly."
+  (:require
+   [metabase.metabot.tools.shared :as shared]))
 
 (def search-result-instructions
   "Instructions for LLM when processing search results."
@@ -69,7 +71,9 @@ Reference items using: [name](metabase://type/id)")
    in the link template. Matches Python CreateSQLQueryToolV2._create_result."
   [query-id]
   (str "The assistant needs to:\n"
-       "- Remember you cannot view the results directly yourself\n"
+       (if shared/*can-see-results?*
+         "- The `<query_execution>` block above is the only part of the result you can see; check it before presenting\n"
+         "- Remember you cannot view the results directly yourself\n")
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"

@@ -232,7 +232,9 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
+  ;; `agent:query:run` rides SQL generation as well as NLQ: a user allowed to write SQL through
+  ;; Metabot may also have Metabot run it and read the rows (`run_query`, execution receipts).
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*" "agent:query:run"}
    ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
    ;; content and data structure, but content *writes* are an other-tools capability. Granting the
    ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.

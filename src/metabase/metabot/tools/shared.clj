@@ -27,6 +27,12 @@
    agent loop so that tools can adapt their output to the active profile."
   nil)
 
+(def ^:dynamic *can-see-results?*
+  "Whether the current agent session executes queries for the model: query-producing tools attach an
+   execution receipt and the `run_query` tool is available. Bound during the agent loop; tools use it
+   to word their instructions."
+  false)
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []

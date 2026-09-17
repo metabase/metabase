@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.entity-retrieval.core :as entity-retrieval]
@@ -8,6 +9,7 @@
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.query-execution :as query-execution]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]))
 
@@ -276,3 +278,57 @@
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params))))))
+
+;;; ---------------------------------------- Execution receipts ----------------------------------------
+
+(defn- product-count-query []
+  {:database (mt/id) :type :query :query {:source-table (mt/id :products) :aggregation [[:count]]}})
+
+(defn ^{:tool-name "create_sql_query" :schema [:map]} fake-query-tool
+  [_]
+  {:output            "<result>\nSQL query successfully constructed.\n</result>\n<instructions>\nx\n</instructions>"
+   :structured-output {:query-id "q9" :query (product-count-query)}})
+
+(defn ^{:tool-name "create_chart" :schema [:map]} fake-chart-tool
+  [_]
+  {:output "<result>chart</result>" :structured-output {:chart-id "c1" :query-id "q9"}})
+
+(defn ^{:tool-name "create_chart" :schema [:map]} fake-queryless-chart-tool
+  [_]
+  {:output "<result>chart</result>" :structured-output {:chart-id "c1" :query-id "missing" :query nil}})
+
+(defn- wrapped-call
+  [tools memory-atom tool-name]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      ((get-in (agent-tools/wrap-tools-with-state tools memory-atom nil :internal) [tool-name :fn]) {}))))
+
+(deftest execution-receipt-test
+  (let [tools {"create_sql_query" #'fake-query-tool
+               "create_chart"     #'fake-chart-tool
+               "run_query"        #'agent-tools/run-query-tool}]
+    (testing "a query tool's result gains a receipt inside its <result> block and an execution summary"
+      (let [memory (atom {})
+            result (wrapped-call tools memory "create_sql_query")]
+        (is (re-find #"(?s)<result>.*<query_execution status=\"completed\" returned=\"1\".*\| 200 \|.*</query_execution>\n</result>"
+                     (:output result)))
+        (is (= {:status "completed" :returned 1 :truncated false}
+               (get-in result [:structured-output :execution])))
+        (is (= "q9" (get-in result [:structured-output :query-id])))
+        (testing "and a chart on the same query reuses the cached execution"
+          (let [executions (atom 0)]
+            (mt/with-dynamic-fn-redefs [query-execution/execute
+                                        (fn [& _] (swap! executions inc) {:status :failed :error "should not run"})]
+              (swap! memory assoc-in [:state :queries "q9"] (product-count-query))
+              (is (str/includes? (:output (wrapped-call tools memory "create_chart")) "| 200 |"))
+              (is (zero? @executions)))))))
+    (testing "a chart whose query cannot be resolved is returned untouched"
+      (is (= "<result>chart</result>"
+             (:output (wrapped-call (assoc tools "create_chart" #'fake-queryless-chart-tool) (atom {}) "create_chart")))))
+    (testing "no receipt without run_query in the tool set"
+      (is (not (str/includes? (:output (wrapped-call (dissoc tools "run_query") (atom {}) "create_sql_query"))
+                              "query_execution"))))
+    (testing "no receipt when the setting is off"
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled false]
+        (is (not (str/includes? (:output (wrapped-call tools (atom {}) "create_sql_query"))
+                                "query_execution")))))))

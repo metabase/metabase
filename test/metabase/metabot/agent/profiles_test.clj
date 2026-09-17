@@ -139,9 +139,10 @@
 
 (deftest embedding-next-matches-nlq-tools-test
   (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
-    (let [;; conversation recall only indexes internal/nlq conversations, so its tools are nlq-only
-          recall-tools #{"conversation_search" "recent_chats" "read_conversation"}
-          tool-names   (fn [profile] (set (remove recall-tools (map #(:tool-name (meta %)) (:tools profile)))))
+    (let [;; conversation recall only indexes internal/nlq conversations, and query execution is not
+          ;; offered to the embedded metabot, so these tools are nlq-only
+          nlq-only-tools #{"conversation_search" "recent_chats" "read_conversation" "run_query"}
+          tool-names     (fn [profile] (set (remove nlq-only-tools (map #(:tool-name (meta %)) (:tools profile)))))
           embedding    (tool-names (profiles/get-profile :embedding_next))
           fallback     (tool-names (profiles/get-profile :nlq-fallback))
           ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
@@ -222,3 +223,15 @@
 (deftest explorations-profile-not-registered-test
   (testing "The :explorations profile is not registered while explorations are disabled"
     (is (nil? (profiles/get-profile :explorations)))))
+
+(deftest run-query-profile-membership-test
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (doseq [profile [:internal :nlq :nlq-fallback]]
+      (is (contains? (profiles/get-tools-for-profile profile ["permission:write_sql_queries"]) "run_query")
+          (str profile " offers run_query")))
+    (doseq [profile [:sql :embedding_next :slackbot]]
+      (is (not (contains? (profiles/get-tools-for-profile profile ["permission:write_sql_queries"]) "run_query"))
+          (str profile " does not offer run_query")))
+    (testing "the setting removes it"
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled false]
+        (is (not (contains? (profiles/get-tools-for-profile :internal []) "run_query")))))))

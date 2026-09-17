@@ -8,6 +8,7 @@
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase.metabot.tools.charts :as tools.charts]
@@ -21,7 +22,9 @@
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.external-mcp :as tools.external-mcp]
    [metabase.metabot.tools.metadata :as tools.metadata]
+   [metabase.metabot.tools.query-execution :as query-execution]
    [metabase.metabot.tools.resources :as tools.resources]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared :as shared]
@@ -51,6 +54,8 @@
   retrieve-library-entities-tool]
  [tools.construct
   construct-notebook-query-tool]
+ [tools.run-query
+  run-query-tool]
  [tools.conversations
   conversation-search-tool
   recent-chats-tool
@@ -130,7 +135,40 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource" "conversation_search" "recent_chats" "read_conversation"})
+    "read_resource" "conversation_search" "recent_chats" "read_conversation" "run_query"})
+
+(def ^:private receipt-tool-names
+  "Tools whose result carries a query the model should see run before presenting it. `run_query`
+  is deliberately absent: it executes on its own."
+  (into query-generation-tool-names #{"create_chart" "edit_chart"}))
+
+(defn- receipt-query
+  [memory-atom structured]
+  (or (:query structured)
+      (when-let [query-id (:query-id structured)]
+        (get-in @memory-atom [:state :queries query-id]))))
+
+(defn- receipt-execution!
+  "Run `query` at the receipt row limit, at most once per query id per turn: a chart built on a
+  query the turn already ran reuses that receipt instead of hitting the warehouse again."
+  [memory-atom query-id query]
+  (let [path [:receipt-cache query-id]]
+    (or (when query-id (get-in @memory-atom path))
+        (let [execution (query-execution/execute query query-execution/receipt-row-limit)]
+          (when query-id (swap! memory-atom assoc-in path execution))
+          execution))))
+
+(defn- attach-receipt
+  [memory-atom result]
+  (let [structured (when (map? result) (:structured-output result))
+        query      (when (map? structured) (receipt-query memory-atom structured))]
+    (if query
+      (let [execution (receipt-execution! memory-atom (:query-id structured) query)
+            xml       (query-execution/execution->xml execution query-execution/receipt-row-limit)]
+        (-> result
+            (update :output #(query-execution/insert-into-result-block (or % "") xml))
+            (update :structured-output assoc :execution (query-execution/execution-summary execution))))
+      result)))
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks
@@ -156,38 +194,47 @@
   Tool-specific *instructions* are no longer carried in the prompt. They live in
   the skill registry (`metabase.metabot.skills`) and are surfaced as a manifest
   in the system prompt, with full bodies loaded on demand via the `load_skill`
-  tool."
+  tool.
+
+  When query execution is enabled and `tools` includes `run_query`, the query- and chart-producing
+  tools also get an execution receipt appended to their output (see [[attach-receipt]])."
   [tools memory-atom metabot-id profile-id]
-  (reduce-kv
-   (fn [acc tool-name tool-var]
-     (let [m          (meta tool-var)
-           base-fn    (if (contains? state-dependent-tools tool-name)
-                        (fn [args]
-                          (binding [shared/*memory-atom* memory-atom
-                                    shared/*metabot-id*  metabot-id
-                                    shared/*profile-id*  profile-id]
-                            (tool-var args)))
-                        (fn [args]
-                          (binding [shared/*metabot-id* metabot-id
-                                    shared/*profile-id* profile-id]
-                            (tool-var args))))
-           tool-scope (:scope m)
-           tool-fn    (if tool-scope
-                        (wrap-with-scope-check base-fn tool-name tool-scope)
-                        base-fn)
-           tool-def   {:tool-name            (:tool-name m)
-                       :doc                  (:doc m)
-                       :schema               (:schema m)
-                       :prompt               (:prompt m)
-                       :decode               (:decode m)
-                       :title-fn             (:title-fn m)
-                       :system-instructions  (:system-instructions m)
-                       :capabilities         (:capabilities m)
-                       :scope                (:scope m)
-                       :fn                   tool-fn}]
-       (assoc acc tool-name tool-def)))
-   {}
-   tools))
+  (let [can-see? (and (metabot.settings/metabot-query-execution-enabled)
+                      (contains? tools "run_query"))]
+    (reduce-kv
+     (fn [acc tool-name tool-var]
+       (let [m          (meta tool-var)
+             receipt?   (and can-see? (contains? receipt-tool-names tool-name))
+             base-fn    (if (contains? state-dependent-tools tool-name)
+                          (fn [args]
+                            (binding [shared/*memory-atom*      memory-atom
+                                      shared/*metabot-id*       metabot-id
+                                      shared/*profile-id*       profile-id
+                                      shared/*can-see-results?* can-see?]
+                              (cond-> (tool-var args)
+                                receipt? (->> (attach-receipt memory-atom)))))
+                          (fn [args]
+                            (binding [shared/*metabot-id*       metabot-id
+                                      shared/*profile-id*       profile-id
+                                      shared/*can-see-results?* can-see?]
+                              (tool-var args))))
+             tool-scope (:scope m)
+             tool-fn    (if tool-scope
+                          (wrap-with-scope-check base-fn tool-name tool-scope)
+                          base-fn)
+             tool-def   {:tool-name            (:tool-name m)
+                         :doc                  (:doc m)
+                         :schema               (:schema m)
+                         :prompt               (:prompt m)
+                         :decode               (:decode m)
+                         :title-fn             (:title-fn m)
+                         :system-instructions  (:system-instructions m)
+                         :capabilities         (:capabilities m)
+                         :scope                (:scope m)
+                         :fn                   tool-fn}]
+         (assoc acc tool-name tool-def)))
+     {}
+     tools)))
 
 (defn with-external-mcp-tools
   "Add the tools of the external MCP servers `user-id` is connected to (see

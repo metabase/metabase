@@ -1482,3 +1482,24 @@
     (is (= 1 (count parts)))
     (is (= {:role "user" :type "text" :message "" :attachments [file]}
            (dissoc (first parts) :id)))))
+
+(deftest ^:parallel parts->storable-content-trims-large-result-rows-test
+  (let [output (fn [n] (str "<query_execution>\n<rows count=\"" n "\">\n| a |\n</rows>\n</query_execution>"))]
+    (testing "a receipt-sized rows block is stored verbatim"
+      (is (= (output 10)
+             (-> (metabot-persistence/parts->storable-content
+                  [{:type :tool-input :id "c1" :function "create_sql_query" :arguments {}}
+                   {:type :tool-output :id "c1" :result {:output (output 10)}}])
+                 first :output :output))))
+    (testing "a larger one is replaced by a note"
+      (is (= "<query_execution>\n<rows omitted=\"true\" count=\"100\">Rows were dropped from the stored history; call run_query again if you need them.</rows>\n</query_execution>"
+             (-> (metabot-persistence/parts->storable-content
+                  [{:type :tool-input :id "c1" :function "run_query" :arguments {}}
+                   {:type :tool-output :id "c1" :result {:output (output 100)}}])
+                 first :output :output))))
+    (testing "the execution summary survives structured-output trimming"
+      (is (= {:query-id "q" :execution {:status "completed"}}
+             (-> (metabot-persistence/parts->storable-content
+                  [{:type :tool-input :id "c1" :function "run_query" :arguments {}}
+                   {:type :tool-output :id "c1" :result {:output "x" :structured-output {:query-id "q" :execution {:status "completed"} :other 1}}}])
+                 first :output :structured_output))))))

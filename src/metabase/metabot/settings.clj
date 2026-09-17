@@ -61,6 +61,14 @@
   :visibility :admin
   :export?    false)
 
+(defsetting metabot-query-execution-enabled
+  (deferred-tru "Whether Metabot may run the queries it writes and read their results itself. When off, Metabot only builds queries and the user is the only one who sees results.")
+  :type       :boolean
+  :visibility :admin
+  :default    true
+  :export?    true
+  :doc        false)
+
 (defsetting metabot-web-search-enabled?
   "Whether a web search API key is configured, which enables Metabot's web tools."
   :type       :boolean

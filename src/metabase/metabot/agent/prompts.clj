@@ -192,6 +192,8 @@
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
+                                  :can_see_results          (and (metabot.settings/metabot-query-execution-enabled)
+                                                                 (contains? tools "run_query"))
                                   :has_conversation_recall  (contains? tools "conversation_search")
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :custom_instructions      (not-empty

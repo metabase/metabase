@@ -14,6 +14,7 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools.query-execution :as query-execution]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -39,7 +40,7 @@
   "Subset of `:structured-output` that must survive persistence so
   `metabase-enterprise.metabot-analytics.queries` can surface generated
   queries on the admin detail page."
-  [:query-id :query-content :query :database :chart-type])
+  [:query-id :query-content :query :database :chart-type :execution])
 
 (defn- trim-structured-output [structured]
   (when (map? structured)
@@ -59,7 +60,8 @@
     (let [structured (trim-structured-output (or (:structured-output result)
                                                  (:structured_output result)))]
       (cond-> (select-keys result [:output])
-        structured (assoc :structured_output structured)))
+        (string? (:output result)) (update :output query-execution/strip-large-rows query-execution/receipt-row-limit)
+        structured                 (assoc :structured_output structured)))
     result))
 
 (defn- internal-parts->storable

@@ -7,8 +7,13 @@ Only answer questions about Metabase features from documentation you've been giv
 {% if has_query_tools %}
 # What you're optimizing for
 
-A single objective: **the query you build should return the data the user asked for on its first execution.** You are judged on whether the produced query matches the user's intent against the actual schema and values in this instance — not on how many tool calls it took or how thoroughly you verified.
+A single objective: **the query you present should return the data the user asked for.** You are judged on whether the produced query matches the user's intent against the actual schema and values in this instance — not on how many tool calls it took or how thoroughly you verified.{% if can_see_results %} Each query you build is run for you first; read its `<query_execution>` block and fix the query before presenting it if the result is not what the user asked for.{% endif %}
 
+{% if can_see_results %}
+{% include "metabot/prompts/shared/prompt_snippets/results-visible.selmer" %}
+{% else %}
+{% include "metabot/prompts/shared/prompt_snippets/results-hidden.selmer" %}
+{% endif %}
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}

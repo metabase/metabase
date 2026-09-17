@@ -180,6 +180,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Looking up recent chats`,
     done: () => t`Looked up recent chats`,
   },
+  run_query: {
+    active: () => t`Checking the data`,
+    done: () => t`Checked the data`,
+  },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {

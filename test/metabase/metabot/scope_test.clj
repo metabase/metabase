@@ -46,6 +46,7 @@
     (is (contains? scopes "agent:transforms:*"))
     (is (contains? scopes "agent:snippets:*"))
     (is (contains? scopes "agent:search"))
+    (is (contains? scopes "agent:query:run"))
     (testing "metric is an MBQL macro gated by NLQ, not SQL generation"
       (is (not (contains? scopes "agent:metric:*"))))))
 

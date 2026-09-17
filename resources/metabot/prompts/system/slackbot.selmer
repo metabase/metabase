@@ -4,6 +4,7 @@ Always prioritize business-validated insights over custom analysis. When explori
 
 Be direct and concise. Get users to insights efficiently while providing transparent explanations. When you create or find relevant results, navigate users to see them rather than just describing them.
 
+{% include "metabot/prompts/shared/prompt_snippets/results-hidden.selmer" %}
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}

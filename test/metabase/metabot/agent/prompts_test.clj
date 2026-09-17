@@ -3,7 +3,10 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -222,3 +225,19 @@
         (is (str/includes? content "`load_mcp_tools`"))))
     (testing "the section is absent without deferred tools"
       (is (not (str/includes? (prompts/build-system-message-content profile {} {} []) "# External tools"))))))
+
+(deftest can-see-results-swaps-the-grounding-section-test
+  (doseq [template ["internal.selmer" "natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
+    (testing template
+      (binding [scope/*current-user-metabot-permissions* {:permission/metabot-nlq :yes :permission/metabot-sql-generation :yes}]
+        (let [with-run-query (prompts/build-system-message-content {:prompt-template template} {} {"run_query" #'tools/run-query-tool} [])
+              without        (prompts/build-system-message-content {:prompt-template template} {} {} [])]
+          (is (str/includes? with-run-query "# How you see query results"))
+          (is (not (str/includes? with-run-query "# Hard constraint: you cannot see query results")))
+          (is (str/includes? without "# Hard constraint: you cannot see query results"))
+          (is (not (str/includes? without "# How you see query results")))))))
+  (testing "the setting turns the section off even when the tool is present"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled false]
+      (binding [scope/*current-user-metabot-permissions* {:permission/metabot-nlq :yes}]
+        (is (str/includes? (prompts/build-system-message-content {:prompt-template "internal.selmer"} {} {"run_query" #'tools/run-query-tool} [])
+                           "# Hard constraint: you cannot see query results"))))))
