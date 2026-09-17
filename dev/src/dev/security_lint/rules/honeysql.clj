@@ -15,6 +15,7 @@
    [dev.security-lint.ast :as ast]
    [dev.security-lint.rule :refer [defrule]]
    [dev.security-lint.taint :as taint]
+   [dev.security-lint.toucan :as toucan]
    [dev.security-lint.vocabulary :as vocab]
    [rewrite-clj.node :as n]))
 
@@ -135,9 +136,11 @@
   query the author built in place.
 
   `(t2/select-one :model/Card x)` and `(t2/update! :model/Card x {...})` hand `x` to Toucan as the primary key
-  if it is a number and as the *query* otherwise; `(t2/select-one :model/Card :id x)` is a where clause."
+  if it is a number and as the *query* otherwise; `(t2/select-one :model/Card :id x)` is a where clause. The
+  position follows the model, which follows the function arguments of the `-fn` variants; see
+  [[dev.security-lint.toucan/model-arg-index]]."
   [node]
-  (let [a (ast/arg node 1)]
+  (let [a (ast/arg node (inc (toucan/model-arg-index node)))]
     (when (and a
                (or (ast/symbol-node? a)
                    (let [h (ast/head-sym a)]
@@ -163,8 +166,7 @@
    :triggers    #{toucan2.core/select toucan2.core/select-one toucan2.core/select-one-fn toucan2.core/select-fn-set
                   toucan2.core/select-fn-vec toucan2.core/select-one-pk toucan2.core/select-pks-set
                   toucan2.core/select-pks-vec toucan2.core/select-fn->fn toucan2.core/select-pk->fn
-                  toucan2.core/update! toucan2.core/delete! toucan2.core/exists? toucan2.core/count
-                  toucan2.core/hydrate}}
+                  toucan2.core/update! toucan2.core/delete! toucan2.core/exists? toucan2.core/count}}
   [{:keys [node untyped-locals] :as ctx}]
   (when-let [a (positional-arg node)]
     ;; `(str x)` is not a coercion here: a string in this position is raw SQL

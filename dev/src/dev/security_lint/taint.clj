@@ -202,6 +202,21 @@
         ::registry
         {}))))
 
+(defn param-slots
+  "The slots of a `defendpoint` parameter vector paired with their schemas, `[[slot schema-or-nil] ...]`: for
+  `[{:keys [id]} :- [:map [:id :int]] _q body]` the route map with its schema, the query slot with nil, the
+  body with nil. Positions are by slot, whatever is annotated: the query slot is the second pair however the
+  route slot was declared."
+  [dp]
+  (let [slots (vec (ast/children dp))]
+    (loop [i 0, acc []]
+      (if (>= i (count slots))
+        acc
+        (let [slot   (nth slots i)
+              schema (when (and (< (+ i 2) (count slots)) (= ":-" (ast/->str (nth slots (inc i)))))
+                       (nth slots (+ i 2)))]
+          (recur (if schema (+ i 3) (inc i)) (conj acc [slot schema])))))))
+
 (defn typed-param-regions
   "Regions of the bindings in a `defendpoint` parameter vector whose schema pins them, by what it pins them to:
   `{:numeric [region ...] :string [region ...] :registry [region ...] :keyed [region ...]}`.
@@ -214,14 +229,7 @@
   `:keyed` is about a map's keys rather than a value's type: `body` above, an `:as` binding, and a destructured
   key whose entry is itself a map schema (see [[keyed-schema?]]). A rule about which columns a map sets reads it."
   [dp filename]
-  (let [slots (vec (ast/children dp))
-        pairs (loop [i 0, acc []]
-                (if (>= i (count slots))
-                  acc
-                  (let [slot   (nth slots i)
-                        schema (when (and (< (+ i 2) (count slots)) (= ":-" (ast/->str (nth slots (inc i)))))
-                                 (nth slots (+ i 2)))]
-                    (recur (if schema (+ i 3) (inc i)) (conj acc [slot schema])))))]
+  (let [pairs (param-slots dp)]
     (reduce (fn [acc [node kind]]
               (update acc kind (fnil conj []) (assoc (meta node) :filename filename)))
             {}

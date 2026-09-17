@@ -229,7 +229,21 @@
                                 :rules [(rule/by-id :metabase-security-lint/mass-assignment)]
                                 :taint-sources :call-graph})]
         (is (= [4] (map :row fs)) "at the endpoint that forwards the document, not at the write")
-        (is (str/includes? (:message (first fs)) "update-user!") "naming what it hands the map to")))))
+        (is (str/includes? (:message (first fs)) "update-user!") "naming what it hands the map to"))))
+  (testing "update! takes its changes map last whatever precedes it; only insert! names columns one by one"
+    (let [dir (doto (java.io.File. ^String (System/getProperty "java.io.tmpdir")
+                                   (str "seclint" (System/nanoTime)))
+                .mkdirs .deleteOnExit)
+          f   (doto (java.io.File. dir "db.clj") .deleteOnExit)]
+      (spit f "(ns t (:require [toucan2.core :as t2] [clj-yaml.core :as yaml] [metabase.api.macros :as api.macros]))
+(defn update-key! [id changes] (t2/update! :model/ApiKey :id id changes))
+(defn new-session! [id uid] (t2/insert! :model/Session :id id :user_id uid))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q body] (update-key! id (yaml/parse-string body)) (new-session! id (:uid body)))")
+      (let [fs (engine/analyze {:paths [(.getAbsolutePath f)]
+                                :rules [(rule/by-id :metabase-security-lint/mass-assignment)]
+                                :taint-sources :call-graph})]
+        (is (= [4] (map :row fs)) "the update! through :id is a forwarded map; the insert! with keyword columns is not")
+        (is (str/includes? (:message (first fs)) "update-key!"))))))
 
 (deftest mass-assignment-by-shape-test
   (let [id :metabase-security-lint/mass-assignment]
@@ -582,7 +596,16 @@
         "an internal caller's parameter is not request-shaped")
     (is (= 1 (count (check-cg id "(ns t (:require [toucan2.core :as t2]))
 (defn handle [request] (t2/select-one :model/Card (get-in request [:params :id])))")))
-        "a Ring request map carries no schema at all")))
+        "a Ring request map carries no schema at all")
+    (testing "the pk-or-query position follows the model, and the model follows the fn arguments"
+      (is (= 1 (count (check-cg id (src "[:map [:id :any]]" "(t2/select-one-fn :name :model/Card id)"))))
+          "select-one-fn takes the fn first")
+      (is (= 1 (count (check-cg id (src "[:map [:id :any]]" "(t2/select-fn->fn :id :name :model/Card id)"))))
+          "select-fn->fn takes two")
+      (is (empty? (check-cg id (src "[:map [:id :any]]" "(t2/select-fn-set :id :model/Card {:where [:= :name id]})")))
+          "a query the author built in place goes through the runtime guard")
+      (is (empty? (check-cg id (src "[:map [:id :any]]" "(t2/hydrate rows id)")))
+          "hydrate takes instances and hydration keys, not a pk-or-query"))))
 
 (deftest like-pattern-from-dynamic-test
   (let [id :metabase-security-lint/like-pattern-from-dynamic]
@@ -987,7 +1010,15 @@
         "an id in a listing's query parameters filters what the caller may see; it names nothing to authorize")
     (is (= 1 (count (check-cg id "(ns metabase.things.api (:require [metabase.api.macros :as api.macros] [toucan2.core :as t2]))
 (api.macros/defendpoint :get \"/\" \"doc\" [_r _q {:keys [creator_id]}] (t2/select :model/Thing :creator_id creator_id))")))
-        "the same id in the body of a listing is still an id")))
+        "the same id in the body of a listing is still an id")
+    (is (empty? (check-cg id "(ns metabase.things.api (:require [metabase.api.macros :as api.macros] [toucan2.core :as t2]))
+(api.macros/defendpoint :get \"/\" \"doc\" [_r :- [:map] {:keys [creator_id]} _b] (t2/select :model/Thing :creator_id creator_id))"))
+        "with the route slot schema-annotated, the query slot is still the second slot")
+    (is (= ["Request id never permission-checked on any path: payload_id"]
+           (map :message (check-cg id "(ns metabase.things.api (:require [metabase.api.macros :as api.macros] [metabase.api.common :as api] [toucan2.core :as t2]))
+(defn- link! [id payload-id] (t2/update! :model/Thing id {:payload_id payload-id}))
+(api.macros/defendpoint :put \"/:id\" \"doc\" [{:keys [id]} _q {:keys [payload_id]}] (api/write-check :model/Thing id) (link! id payload_id))")))
+        "payload_id names a row; only a dashboard's load_id does not")))
 
 (deftest write-checked-against-other-model-test
   (let [id :metabase-security-lint/write-checked-against-other-model]
@@ -1005,7 +1036,13 @@
         "or as the model that owns it")
     (is (empty? (check-cg id "(ns t (:require [metabase.api.common :as api] [toucan2.core :as t2]))
 (defn f [card-id] (let [card (api/write-check (t2/select-one :model/Card card-id))] (t2/update! :model/Card (:id card) {:archived true})))"))
-        "an unnamed check on the fetched object authorizes it")))
+        "an unnamed check on the fetched object authorizes it")
+    (is (= 1 (count (check-cg id "(ns t (:require [metabase.api.common :as api] [toucan2.core :as t2]))
+(defn f [card-id] (api/write-check :model/Database (card-db card-id)) (t2/update! :model/Card :id card-id {:archived true}))")))
+        "the keyword-value form names the row under :id")
+    (is (empty? (check-cg id "(ns t (:require [metabase.api.common :as api] [toucan2.core :as t2]))
+(defn f [body] (api/write-check (:card_id body)) (t2/update! :model/Card (:card_id body) {:archived true}))"))
+        "an unnamed check scoped to the key vouches for the key: no finding, never an empty model list")))
 
 (deftest nested-request-id-never-checked-test
   (let [id  :metabase-security-lint/nested-request-id-never-checked
@@ -1127,6 +1164,8 @@
         "mention ids out of a stored document into [:in ...]")
     (is (flags? id (d "(t2/insert! :model/Dependency {:to_entity_id (get-in dc [:document :attrs :entityId])})"))
         "and into an insert's value slot")
+    (is (flags? id (d "(t2/select-fn->fn :id :name :model/Card :creator_id (get-in dc [:visualization_settings :x]))"))
+        "past the fn arguments of select-fn->fn")
     (is (clean? id (d "(t2/select-one :model/Card :id (long (get-in dc [:visualization_settings :link :entity :id])))"))
         "coerced to a number it is a number")
     (is (clean? id (d "(t2/select-one :model/Card :id (:card_id dc))")) "an id column is an integer")
