@@ -102,7 +102,7 @@
        :private  true} db-id->router-db-id
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (warehouses.db/router-database-id db-id))))
+     (:router_database_id (warehouses.db/select-one-database {:id db-id :columns [:router_database_id]})))))
 
 (defmethod mi/can-read? :model/Database
   ;; Check if user can see this database's metadata.
@@ -188,7 +188,7 @@
         (not is_attached_dwh)))
   ([_model pk]
    (and (can-write? pk)
-        (not (:is_attached_dwh (warehouses.db/database pk))))))
+        (not (:is_attached_dwh (warehouses.db/select-one-database {:id pk :columns [:is_attached_dwh]}))))))
 
 (mu/defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
@@ -258,7 +258,7 @@
                                   (let [keys-remaining (-> test-details keys set)
                                         [_ removed _] (data/diff keys-remaining (-> details keys set))]
                                     (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-                                    (warehouses.db/set-database-details! (:id database) test-details)
+                                    (warehouses.db/update-databases! {:id (:id database)} {:details test-details})
                                     test-details)
                                   (recur tail))
                                 ;; if we go through the list and we can't fine a working detail to test, keep original value
@@ -317,7 +317,7 @@
                  (log/info (u/format-color :blue "Provider detection: updating database {:id %d} from '%s' to '%s'"
                                            (:id database)
                                            (:provider_name database) provider))
-                 (warehouses.db/set-database-provider-name! (:id database) provider)
+                 (warehouses.db/update-databases! {:id (:id database)} {:provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
@@ -346,7 +346,7 @@
   []
   (let [ids (map :id (warehouses.db/health-check-candidate-ids))]
     (when (seq ids)
-      (warehouses.db/databases ids))))
+      (warehouses.db/select-databases {:id (set ids)}))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool. Only one database per unique
@@ -461,7 +461,8 @@
   "This function maintains the invariant that only one database can have uploads_enabled=true."
   [db]
   (when (:uploads_enabled db)
-    (warehouses.db/disable-uploads-for-all-databases!))
+    (warehouses.db/update-databases! {:uploads_enabled true}
+                                     {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
   db)
 
 (defn- assert-router-database-id-not-mutated!
@@ -734,7 +735,7 @@
 
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
-  (warehouses.db/database-by-name id))
+  (warehouses.db/select-one-database {:name id}))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; directory for the database with same-named file inside.

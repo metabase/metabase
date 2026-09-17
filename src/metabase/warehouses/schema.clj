@@ -1,6 +1,7 @@
 (ns metabase.warehouses.schema
   "Malli schemas for the warehouses module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.cron]
    [metabase.util.malli.registry :as mr]
@@ -88,6 +89,10 @@
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::database.column
+  "A column of `metabase_database`, for the `:columns` option of the queries in [[metabase.warehouses.db]]."
+  (into [:enum :id] (mut/keys (mr/schema ::database.update))))
 
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."

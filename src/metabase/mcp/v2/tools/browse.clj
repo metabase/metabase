@@ -33,7 +33,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.table :as schema.table]))
+   [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,9 +117,8 @@
   [database-id]
   (v2.resolve/resolve-and-read-with :model/Database database-id
                                     (fn [id]
-                                      (api/read-check (mcp.db/browsable-database
-                                                       id
-                                                       (schema.table/browsable-databases-honeysql-filter))))))
+                                      (api/read-check (warehouses.db/select-one-database
+                                                       (assoc (schema.table/browsable-database-filters) :id id))))))
 
 ;;; ------------------------------------------------ List plumbing -------------------------------------------------
 
@@ -153,8 +153,9 @@
 (defn- list-databases
   [args]
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
-  (let [rows (mcp.db/browsable-databases database-detailed-keys
-                                         (schema.table/browsable-databases-honeysql-filter))
+  (let [rows (warehouses.db/select-databases (assoc (schema.table/browsable-database-filters)
+                                                    :columns  database-detailed-keys
+                                                    :order-by [:name]))
         ;; `mi/can-read?` below is one permission check per database; load them in one query first.
         _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? rows)]
@@ -480,9 +481,8 @@
           ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
           browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
                              (when (seq db-ids)
-                               (mcp.db/browsable-database-ids
-                                db-ids
-                                (schema.table/browsable-databases-honeysql-filter))))
+                               (warehouses.db/select-database-pks
+                                (assoc (schema.table/browsable-database-filters) :id db-ids))))
           browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
           rows      (filterv browsable? fetched)
           missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)

@@ -67,29 +67,6 @@
   [dashboard-id]
   (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
 
-(defn browsable-database
-  "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
-
-  Takes an assembled clause rather than the values behind it, for the same reason
-  as [[select-users-where]]: which databases an agent may reach at all is a permission decision and
-  belongs with the permission check."
-  [database-id browsable-where]
-  (t2/select-one :model/Database :id database-id {:where browsable-where}))
-
-(defn browsable-databases
-  "The `columns` of the Databases matching the HoneySQL `browsable-where` clause, in name order. Naming the
-  columns keeps the `details`/`settings` blobs from being decrypted on every row."
-  [columns browsable-where]
-  (t2/select (into [:model/Database] columns)
-             {:where    browsable-where
-              :order-by [[:%lower.name :asc]]}))
-
-(defn browsable-database-ids
-  "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
-  expected non-empty — an empty `:in` is a SQL error rather than an empty result, so callers guard it."
-  [database-ids browsable-where]
-  (t2/select-pks-set :model/Database {:where [:and [:in :id database-ids] browsable-where]}))
-
 (defn unarchived-models-in-database
   "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
   [columns database-id]
