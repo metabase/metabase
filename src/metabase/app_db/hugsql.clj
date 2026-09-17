@@ -54,7 +54,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def disarmed-param-types
+(def ^:private disarmed-param-types
   "HugSQL param types that splice raw/unquoted text or compose caller-supplied sqlvecs, and are
   therefore forbidden in Metabase SQL files. Building a query with one throws.
 
@@ -106,11 +106,40 @@
   (into {} (keep (fn [[col fns]] (when-let [f (direction fns)] [col f])))
         (model-transforms model)))
 
+(defn- apply-transform-value
+  "Apply transform `f` to one param value.
+
+  A collection is transformed element-wise, because a collection in a param map is what a
+  `:value*:x` list param binds -- N placeholders, one per element -- so the transform belongs on
+  each element rather than on the collection. Applying `f` to the collection itself would send one
+  mangled parameter where the statement expects N.
+
+  This is the same intent as Toucan's `transform-condition-value`, but not the same shape: there the
+  value is a HoneySQL clause whose first element is an operator (`[:in 1 2 3]`) that must be left
+  alone. A HugSQL param has no operator head, so every element transforms.
+
+  nil is returned untransformed. Toucan does the same -- `wrapped-transforms` guards every xform
+  with `(if-not (some? v) v ...)` -- because NULL needs no wire representation."
+  [f v]
+  (cond
+    ;; `mapv`, not `(into (empty v) ...)`: a seq's `empty` is a list, which `into` conjes onto the
+    ;; front and so reverses the order. Param order is positional in a sqlvec, so reversing it
+    ;; silently misbinds every element. (`non-empty-ids` returns a seq, so this path is live.)
+    (or (sequential? v) (set? v)) (mapv #(apply-transform-value f %) v)
+    (some? v)                     (f v)
+    :else                         nil))
+
 (defn- apply-transforms
-  "Apply `col->fn` to the matching non-nil keys of `m`. nil values are skipped -- NULL needs no
-  wire representation, matching Toucan's own transform behavior."
+  "Apply `col->fn` to the matching keys of `m`.
+
+  Matching is by key name, and `col->fn` is keyed by the model's *column* names while `m` is a
+  HugSQL *param* map. So a param named for a transformed column inherits that column's transform --
+  which is what you want for a column param, and a trap for a param that merely shares the name.
+  Name `.sql` params after the column they bind."
   [col->fn m]
-  (reduce-kv (fn [m col f] (cond-> m (some? (get m col)) (update col f))) m col->fn))
+  (reduce-kv (fn [m col f]
+               (cond-> m (contains? m col) (update col #(apply-transform-value f %))))
+             m col->fn))
 
 ;;; The `deftransforms` registry is populated when the *model* ns loads, which is after this ns, so
 ;;; a stage cannot resolve its transform map at wrap time. It resolves per call instead of caching
@@ -119,12 +148,12 @@
 ;;; column served as its raw stored string. `direction-fns` is a walk over a handful of declared
 ;;; columns, which is nothing beside the database round-trip it accompanies.
 
-(defn wrap-in-transforms
+(defn- wrap-in-transforms
   "Middleware: apply `model`'s `:in` transforms to the param map before `handler` sees it."
   [handler model]
   (fn [params] (handler (apply-transforms (direction-fns model :in) params))))
 
-(defn wrap-out-transforms
+(defn- wrap-out-transforms
   "Middleware: apply `model`'s `:out` transforms to each row `handler` returns, and tag it as a
   Toucan instance of `model` (so `t2/hydrate` and instance-based logic compose downstream)."
   [handler model]
@@ -132,20 +161,30 @@
     (let [outs (direction-fns model :out)]
       (map #(t2.instance/instance model (apply-transforms outs %)) (handler params)))))
 
-(defn reducible-executor
+(defn- reducible-executor
   "Innermost handler: build a sqlvec from `params` and execute it, returning raw rows. Bare
   `t2/query` on a vector -- connection handling only, no model, no build pipeline, no queryable
   that request data could poison."
   [builder]
   (fn [params] (t2/query (builder params))))
 
-;;; ADOPTION RULE: a model's reads may move here only if every read-firing behavior it declares is
-;;; an `:out` transform, which `wrap-out-transforms` re-applies. `define-after-select` is a separate
-;;; Toucan mechanism (a `pipeline/results-transform`, not a `deftransforms` entry) and is NOT
-;;; re-applied yet, so a model declaring one would silently lose it -- for several models that means
-;;; leaking a field the hook exists to scrub. Check with
-;;; `(isa? model :toucan2.tools.after-select/after-select)` before porting; see GHY-4609 for the fix
-;;; and the audited list. The SSO models this namespace serves declare neither.
+;;; ADOPTION RULE, for every read path below -- `select-executor`, `scalar` and `rows` alike.
+;;;
+;;; A model's reads may move here only if every read-firing behavior it declares is re-applied on
+;;; the path you pick. Two things are not:
+;;;
+;;; - `define-after-select` is a separate Toucan mechanism (a `pipeline/results-transform`, not a
+;;;   `deftransforms` entry) and is re-applied by none of these paths. A model declaring one loses
+;;;   it silently, which for several models means leaking a field the hook exists to scrub. Check
+;;;   `(isa? model :toucan2.tools.after-select/after-select)` first; GHY-4609 has the fix and the
+;;;   audited list of 42 seams.
+;;; - `scalar` and `rows` return plain maps and apply NO `:out` transforms at all, by design. Only
+;;;   `select-executor` re-applies them. So "the model's transforms are re-applied" is true of
+;;;   `select-executor` and false of the other two -- pick the path that matches what the caller
+;;;   needs, rather than the one that happens to return the right shape.
+;;;
+;;; The two SSO models this namespace serves declare no after-select, and its three reads use
+;;; `rows`/`scalar` on columns that declare no transforms.
 
 (defn select-executor
   "A `params -> [instance]` fn for a read query: in-transforms, execute, out-transforms + instance.

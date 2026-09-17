@@ -30,8 +30,11 @@
       (is (= #{g1 g2} (set/intersection #{g1 g2} (sso.queries/user-group-ids-excluding user-id #{}))))
       (is (= #{g1} (set/intersection #{g1 g2} (sso.queries/user-group-ids-excluding user-id #{g2})))))
     (testing "an empty exclusion set excludes nothing rather than everything"
-      ;; regression: non-empty-in would bind NULL here, and `x NOT IN (NULL)` is NULL under SQL
-      ;; three-valued logic, so every row was filtered out. non-empty-not-in binds 0 instead.
+      ;; Regression on two counts. `non-empty-ids` binds 0 for an empty set: a NULL sentinel would
+      ;; make `group_id NOT IN (NULL)` evaluate to NULL under SQL three-valued logic, filtering out
+      ;; every row. And the HoneySQL this replaced emitted a literal `NOT IN ()` for an empty
+      ;; vector, which H2 tolerates but Postgres and MySQL reject as a syntax error -- so this path
+      ;; was broken on a real app-db before the port. See `app-db.hugsql/non-empty-ids`.
       (is (set/subset? #{g1 g2} (sso.queries/user-group-ids-excluding user-id #{}))))))
 
 (deftest user-group-ids-among-test
@@ -53,7 +56,12 @@
   (testing "an id set expands to one ? per element; no value reaches the statement text"
     (let [[sql & params] (#'sso.queries/user-group-ids-among-sqlvec
                           {:user-id 1 :group-ids [5 6] :excluded-group-ids [10]})]
-      (is (= "SELECT group_id\nFROM permissions_group_membership\nWHERE user_id = ?\n  AND group_id IN (?,?)\n  AND group_id NOT IN (?)" sql))
+      (is (= (str "SELECT group_id\n"
+                  "FROM permissions_group_membership\n"
+                  "WHERE user_id = ?\n"
+                  "  AND group_id IN (?,?)\n"
+                  "  AND group_id NOT IN (?)")
+             sql))
       (is (= [1 5 6 10] params))))
   (testing "a hostile provider string lands in the params, not the SQL"
     (let [[sql & params] (#'sso.queries/auth-identity-exists-sqlvec
@@ -71,3 +79,22 @@
     (is (seq (t2/query ["SELECT 1 AS r WHERE 5 NOT IN (?)" 0]))))
   (testing "NULL would be wrong for NOT IN -- the bug this helper's shape prevents"
     (is (empty? (t2/query ["SELECT 1 AS r WHERE 5 NOT IN (?)" nil])))))
+
+(deftest ^:parallel no-empty-in-list-in-emitted-sql-test
+  (testing "an empty id collection never emits `IN ()`, which H2 tolerates and Postgres/MySQL reject"
+    ;; This is the class of bug `non-empty-ids` exists to close, asserted on the SQL text so it is
+    ;; caught on every app-db engine rather than only the one CI happens to run the suite under.
+    ;; The HoneySQL this replaced emitted `group_id NOT IN ()` for an empty vector.
+    (doseq [[label sqlvec] {"excluding, empty exclusions"
+                            (#'sso.queries/user-group-ids-excluding-sqlvec
+                             {:user-id 1 :excluded-group-ids (app-db.hugsql/non-empty-ids #{})})
+                            "among, empty exclusions"
+                            (#'sso.queries/user-group-ids-among-sqlvec
+                             {:user-id 1 :group-ids [2]
+                              :excluded-group-ids (app-db.hugsql/non-empty-ids #{})})}]
+      (testing label
+        (let [sql (first sqlvec)]
+          (is (not (str/includes? sql "IN ()"))
+              (str "emitted an empty IN list: " sql))
+          (is (str/includes? sql "IN (?)")
+              "the sentinel should bind as a single placeholder"))))))

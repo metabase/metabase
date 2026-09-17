@@ -29,7 +29,10 @@
 
 (mu/defn user-group-ids-excluding :- [:set ms/PositiveInt]
   "The ids of the PermissionsGroups the User with `user-id` belongs to, other than
-  `excluded-group-ids`."
+  `excluded-group-ids`.
+
+  Returns `#{}` when nothing matches, not `nil` -- the `t2/select-fn-set` this replaced wrapped its
+  result in `not-empty`."
   [user-id            :- ::lib.schema.id/user
    excluded-group-ids :- [:set ms/PositiveInt]]
   (into #{}
@@ -65,10 +68,11 @@
                                {:user-id user-id :provider provider})))
 
 ;;; Writes stay on Toucan 2. A bare sqlvec never enters Toucan's write pipeline, so it would skip
-;;; both `:model/AuthIdentity`'s before-insert/before-update (which hash password credentials and
-;;; run `provider/validate`) and the `metabase.app-db.dml-capture` seam that feeds search-index
-;;; change capture. Neither is recoverable by re-implementing it at the call site: a second copy of
-;;; password hashing that drifts writes an unhashed credential.
+;;; `:model/AuthIdentity`'s before-insert/before-update -- `provider/validate` for both writes here,
+;;; and password hashing for the `:credentials` neither of these two passes but a sibling write
+;;; would -- as well as the `metabase.app-db.dml-capture` seam that feeds search-index change
+;;; capture. Re-implementing a hook at the call site is not a fix: a second copy of password hashing
+;;; that drifts from the first writes an unhashed credential.
 
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."
