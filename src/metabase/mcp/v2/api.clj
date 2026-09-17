@@ -175,7 +175,11 @@
        ;; Must match what the consent screen shows: a tick box per permission, every optional one unticked, so the
        ;; user has to re-tick what the connection already had. Naming this connection's permissions here backfired:
        ;; with that list in context the model sometimes refused a write without calling the tool, and a call that
-       ;; never 403s leaves the client no step-up scope to ask for.
+       ;; never 403s leaves the client no step-up scope to ask for. The unfiltered tool list needs saying because
+       ;; a scope-filtered list is the conventional design and the protocol has no field to signal ours: asked what
+       ;; this connection could do, a model read the roster as a grant and answered with scopes it did not hold.
+       "Every tool is listed whatever this connection holds, so the list says nothing about its permissions; only a "
+       "failed call reveals a missing one.\n"
        "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
        "execution failed\") usually means a missing permission, not an expired login. When a tool call or resource "
        "read needs a permission this connection lacks, tell the user which tool or resource failed, which permission "
