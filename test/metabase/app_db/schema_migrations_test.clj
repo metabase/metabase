@@ -3432,8 +3432,8 @@
                          (t2/insert! :glossary (assoc (row "NRR") :entity_id arr-eid))))))))))
 
 (deftest timeline-event-entity-ids-test
-  (testing "v64.h1c4r5 thru v64.0npr54: existing timeline events get distinct portable IDs, other data unchanged"
-    (impl/test-migrations ["v64.h1c4r5" "v64.0npr54"] [migrate!]
+  (testing "v65.h1c4r5 thru v65.0npr54: existing timeline events get distinct portable IDs, other data unchanged"
+    (impl/test-migrations ["v65.h1c4r5" "v65.0npr54"] [migrate!]
       (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-birds@example.com"
                                                              :password    "password"
                                                              :date_joined :%now
@@ -3466,8 +3466,8 @@
               "new events must carry an entity ID"))))))
 
 (deftest timeline-event-entity-ids-rollback-test
-  (testing "v64.h1c4r5 thru v64.0npr54: rolling back leaves timeline events readable and writable by older code"
-    (impl/test-migrations ["v64.h1c4r5" "v64.0npr54"] [migrate!]
+  (testing "v65.h1c4r5 thru v65.0npr54: rolling back leaves timeline events readable and writable by older code"
+    (impl/test-migrations ["v65.h1c4r5" "v65.0npr54"] [migrate!]
       (let [user-id       (t2/insert-returning-pk! :core_user {:email       "migration-storks@example.com"
                                                                :password    "password"
                                                                :date_joined :%now
