@@ -14,9 +14,8 @@
 
     clojure -X:dev dev.modules-config/-main
 
-  It updates generated values only for modules already in the config. It reports
-  modules that must be added or reordered, because those changes may require a
-  namespace prefix or owner."
+  It updates generated values only for modules already in the config.
+  It reports modules to add or reorder, since those changes may need a namespace prefix or owner."
   (:require
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
@@ -199,8 +198,8 @@
 
   Returns `{module-sym {:api set, :uses set, :model-exports set, :model-imports set}}`.
 
-  The four-argument form is pure. The no-argument form gathers its inputs from
-  [[dev.deps-graph]], running the independent scans concurrently."
+  The four-argument form is pure.
+  The no-argument form gathers inputs from [[dev.deps-graph]], running the independent scans concurrently."
   ([]
    (let [config (deps-graph/kondo-config)
          f-deps (future (deps-graph/dependencies))

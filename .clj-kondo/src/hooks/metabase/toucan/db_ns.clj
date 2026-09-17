@@ -133,8 +133,8 @@
 (defn lint-query-call
   "Report database calls outside their module's `db` namespace, and unsafe read queries inside one.
 
-  Also runs the warehouse-schema-overlay read lint. Returns `input` unchanged so Kondo can continue its
-  normal analysis."
+  Also runs the warehouse-schema-overlay read lint.
+  Returns `input` unchanged so Kondo can continue its normal analysis."
   [{:keys [node ns filename] :as input}]
   (when (and ns
              (not (db-namespace? (modules/config input) ns))

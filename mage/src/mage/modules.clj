@@ -24,13 +24,13 @@
      enterprise/transforms enterprise/transforms.python})
 
 ;;; TODO (Cam 2025-11-07): A test-file change should run only that module's tests,
-;;; not the tests of every source dependent. See DEV-1487.
+;;; not the tests of every source dependent (DEV-1487).
 
 (defn- file->ns-symbol
   "Infer the namespace of a file under a backend source or test root.
 
-  Also works for non-Clojure resources. For example,
-  `src/metabase/lib_be/core.clj` becomes `metabase.lib-be.core`."
+  Also works for non-Clojure resources.
+  For example, `src/metabase/lib_be/core.clj` becomes `metabase.lib-be.core`."
   [filename]
   (when (re-find #"^(?:(?:src|test)/metabase|enterprise/backend/(?:src|test)/metabase_enterprise)/" filename)
     (-> filename

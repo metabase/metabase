@@ -45,7 +45,7 @@
                     (= (:value fst) 'comment)))))))
 
 (defn- walk-parsed-ignore-comments!
-  "Walk a rewrite-clj tree, skipping comments. The consumer `f` may accumulate results through side effects."
+  "Walk a rewrite-clj tree, skipping comments; the consumer `f` may accumulate results through side effects."
   [f tree]
   (letfn [(walk [node]
             (when-not (skip-node? node)
@@ -752,8 +752,8 @@
 (mu/defn- module->test-files :- [:set :string]
   "Test files owned by `module`.
 
-  The two-argument form builds a prefix map. Pass a shared map to the
-  three-argument form when resolving several modules."
+  The two-argument form builds a prefix map.
+  Pass a shared map to the three-argument form when resolving several modules."
   ([modules-config :- ModulesConfig
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
