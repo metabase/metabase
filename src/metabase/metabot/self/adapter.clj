@@ -304,7 +304,9 @@
     :body             - the composed request body. Encoded here.
     :headers          - extra request headers, beyond the descriptor's own and `Content-Type`.
     :request-options  - extra [[core/request]] opts, e.g. per-provider timeouts.
-    :span-attrs       - extra attributes for the span.
+    :span-attrs       - extra keys merged into the `with-span` map. They reach its log line; clj-otel
+                        drops them from the trace itself, along with the model and the counts, until
+                        BOT-2168 fixes the wrapper.
     :error-msg        - replaces the descriptor's own `res->message`, for a provider whose message
                         depends on the connection rather than only on the response. Applies to both
                         phases below.
@@ -322,12 +324,14 @@
         tool-count (count tools)
         res->msg   (or error-msg (:error-msg p))]
     (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
-    ;; BOT-2168 tracks fixing the wrapper.
-    (with-span :info {:name       span
-                      :attributes (merge {:model      model
-                                          :msg-count  msg-count
-                                          :tool-count tool-count}
-                                         span-attrs)}
+    ;; flat keys, which is what `u.o11y/with-span` renders into its log line. clj-otel reads span
+    ;; attributes only from `:attributes` and drops every other key, so these reach the log and not the
+    ;; trace.
+    (with-span :info (merge {:name       span
+                             :model      model
+                             :msg-count  msg-count
+                             :tool-count tool-count}
+                            span-attrs)
       (try
         ;; ahead of `path`, which a provider may derive from credentials that can fail to resolve: a proxied
         ;; request should say the proxy is unsupported, not report whatever is missing from a connection it
