@@ -23,11 +23,10 @@
 ;;; ------------------------------------------------- regions ---------------------------------------------------
 
 (defn within?
-  "Whether [row col] falls inside `region`."
-  [{:keys [row col end-row end-col]} r c]
-  (and row
-       (or (> r row) (and (= r row) (>= c col)))
-       (or (< r end-row) (and (= r end-row) (<= c end-col)))))
+  "Whether [row col] falls inside `region`. See [[dev.security-lint.ast/within?]], of which this is an alias for
+  the engine and the rules that reach it through this namespace."
+  [region r c]
+  (ast/within? region r c))
 
 (def ^:private defn-names #{"defn" "defn-" "defmethod" "defenterprise" "defenterprise-schema"})
 

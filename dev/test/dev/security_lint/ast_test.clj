@@ -108,3 +108,20 @@
     (is (true? (ast/call? (node "#(f % 1)"))))
     (is (= 'f (ast/head-sym (node "#(f % 1)"))))
     (is (= ["%" "1"] (map ast/->str (ast/args (node "#(f % 1)")))))))
+
+(deftest within-test
+  (testing "a region's end column is exclusive: a node ending at column 10 occupies columns up to 9"
+    (let [region {:row 2 :col 3 :end-row 2 :end-col 10}]
+      (is (true?  (ast/within? region 2 3)) "the first column is inside")
+      (is (true?  (ast/within? region 2 9)) "the column before end-col is inside")
+      (is (false? (ast/within? region 2 10)) "end-col itself is outside")
+      (is (false? (ast/within? region 2 2)))
+      (is (false? (ast/within? region 3 1)))))
+  (testing "a multi-line region"
+    (let [region {:row 2 :col 3 :end-row 4 :end-col 2}]
+      (is (true?  (ast/within? region 3 1)))
+      (is (true?  (ast/within? region 4 1)))
+      (is (false? (ast/within? region 4 2)))))
+  (testing "no region holds nothing"
+    (is (false? (ast/within? nil 2 5)))
+    (is (false? (ast/within? {} 2 5)))))

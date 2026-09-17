@@ -11,6 +11,18 @@
 
 (set! *warn-on-reflection* true)
 
+(defn within?
+  "Whether `[r c]` falls inside `region`, a node's position metadata: `{:row :col :end-row :end-col}`.
+
+  The end column is *exclusive*, as rewrite-clj reports it: a node ending at `:end-col 10` occupies columns up to
+  9, and column 10 is the first one after it -- where the next token may start. A nil or empty region holds
+  nothing."
+  [{:keys [row col end-row end-col]} r c]
+  (boolean
+   (and row
+        (or (> r row) (and (= r row) (>= c col)))
+        (or (< r end-row) (and (= r end-row) (< c end-col))))))
+
 (defn ->str
   "Source text of `node`. Handy in tests and finding messages."
   [node]

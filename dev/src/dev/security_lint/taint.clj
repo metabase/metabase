@@ -256,12 +256,6 @@
   [dp filename]
   (get (typed-param-regions dp filename) :numeric []))
 
-(defn- within?
-  "Whether [row col] falls inside `region`, a node's position metadata."
-  [{:keys [row col end-row end-col]} r c]
-  (and (or (> r row) (and (= r row) (>= c col)))
-       (or (< r end-row) (and (= r end-row) (<= c end-col)))))
-
 (defn request-taint-positions
   "Positions of the local usages that trace back to a request.
 
@@ -274,7 +268,7 @@
                          (map meta)
                          (filter :row))
         source?     (fn [{:keys [row col]}]
-                      (boolean (some #(within? % row col) regions)))
+                      (boolean (some #(ast/within? % row col) regions)))
         tainted-ids (into #{} (comp (filter source?) (map :id)) locals)]
     (into #{}
           (comp (filter #(contains? tainted-ids (:id %)))
