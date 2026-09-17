@@ -25,6 +25,7 @@ jobs:
     outputs:
       plan: ${{ steps.decide.outputs.plan }}
       frontend-plan-id: ${{ steps.compute.outputs.artifact-id }}
+      stats: ${{ steps.compute.outputs.stats }}
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v6
@@ -98,7 +99,7 @@ jobs:
       - uses: ./.github/actions/prepare-node-bun
       - name: Upload affected tests stats
         env:
-          STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
+          STATS_JSON: ${{ needs.should-run.outputs.stats }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

@@ -114,12 +114,10 @@ workflows:
         force-skip:
           event:
             - pull_request
-            - workflow_dispatch
       verify-docker-pull-arm:
         force-skip:
           event:
             - pull_request
-            - workflow_dispatch
 
   backend:
     run:
@@ -130,6 +128,7 @@ workflows:
         - project_migration_checks
         - project_ratchet_checks
     jobs:
+      # TODO: likely should add support for gating `steps` as well
       project-checks:
         run:
           condition: any
@@ -198,6 +197,7 @@ workflows:
         run:
           labels:
             - ci:run-semantic-search-tests
+      # TODO: find a better way to conditionally run a part of a matrix, currently suboptimal
       semantic-search-tests-postgres:
       semantic-search-tests-appdb-mode:
         run:

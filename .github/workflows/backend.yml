@@ -49,22 +49,6 @@ env:
   # partition args no longer apply, and legs that hold none of the named tests run nothing.
   PROFILE_TESTS: ${{ inputs.profile }}
   ONLY_TESTS: ${{ inputs.tests }}
-  # `project-checks` runs three suites in one job, so the plan gates the job
-  # and these gate the steps. An override settled the run without asking the
-  # diff which suites it wanted -- and a hand-dispatched run has no plan at
-  # all -- so the honest answer in both cases is to run all three.
-  # (A workflow level `env` cannot read another, so "all of them" is spelled
-  # out in each rather than named once.)
-  PROJECT_BACKEND_CHECKS: >-
-    ${{ inputs.plan == '{}' || fromJSON(inputs.plan).override != null ||
-    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_backend_checks') }}
-  PROJECT_MIGRATION_CHECKS: >-
-    ${{ inputs.plan == '{}' || fromJSON(inputs.plan).override != null ||
-    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_migration_checks') }}
-  PROJECT_RATCHET_CHECKS: >-
-    ${{ inputs.plan == '{}' || fromJSON(inputs.plan).override != null ||
-    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_backend_checks') ||
-    contains(fromJSON(inputs.plan).inputs.changedGroups, 'project_ratchet_checks') }}
 
 jobs:
   project-checks:
@@ -74,6 +58,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       # Bootstrap the shared Mage runtime before concurrent commands try to install it themselves.
@@ -81,15 +71,18 @@ jobs:
         run: ./bin/mage
       - parallel:
         - name: Run backend checks
-          if: ${{ env.PROJECT_BACKEND_CHECKS == 'true' }}
+          if: ${{ steps.changes.outputs.project_backend_checks == 'true' }}
           run: ./bin/mage project-tests backend
         - name: Run migration checks
-          if: ${{ env.PROJECT_MIGRATION_CHECKS == 'true' }}
+          if: ${{ steps.changes.outputs.project_migration_checks == 'true' }}
           run: ./bin/mage project-tests migrations
         # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
         # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
+        # A backend change can shift a budget, so the backend group pulls this in too.
         - name: Run ratchet checks
-          if: ${{ env.PROJECT_RATCHET_CHECKS == 'true' }}
+          if: >-
+            ${{ steps.changes.outputs.project_backend_checks == 'true' ||
+            steps.changes.outputs.project_ratchet_checks == 'true' }}
           run: ./bin/mage kondo-ratchets
 
   project-tests:

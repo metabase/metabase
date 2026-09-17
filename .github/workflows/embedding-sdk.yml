@@ -10,10 +10,6 @@ on:
           plan, and everything runs.
         type: string
         default: '{}'
-      skip:
-        description: Whether to skip running tests due to one of the artifacts failing to build.
-        required: true
-        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -47,9 +43,7 @@ jobs:
 
   embedding-sdk-cli-snippets-type-check:
     needs: build-sdk-package
-    if: >-
-      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-cli-snippets-type-check.run) &&
-      !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-cli-snippets-type-check.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -66,9 +60,7 @@ jobs:
 
   embedding-sdk-docs-snippets-type-check:
     needs: build-sdk-package
-    if: >-
-      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-docs-snippets-type-check.run) &&
-      !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-docs-snippets-type-check.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -85,9 +77,7 @@ jobs:
 
   embedding-sdk-api-documentation-generation-validation:
     needs: build-sdk-package
-    if: >-
-      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-api-documentation-generation-validation.run) &&
-      !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-api-documentation-generation-validation.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -138,9 +128,7 @@ jobs:
   embedding-sdk-component-tests:
     name: "SDK component tests"
     needs: build-sdk-package
-    if: >-
-      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-component-tests.run) &&
-      !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.embedding-sdk-component-tests.run }}
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
     with:
@@ -149,9 +137,7 @@ jobs:
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
     needs: build-sdk-package
-    if: >-
-      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.not-required-embedding-sdk-apps-compatibility-tests.run) &&
-      !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk.jobs.not-required-embedding-sdk-apps-compatibility-tests.run }}
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
     with:
