@@ -126,7 +126,7 @@
                      (format "I couldn't upload %s: %s" name (ex-message e))
 
                      :else
-                     (format "I couldn't upload %s because something went wrong." name))
+                     (format "I couldn't upload %s because something went wrong. Ask your Metabase admin to check the server logs." name))
          :filename name}))))
 
 (defn- upload-files!
