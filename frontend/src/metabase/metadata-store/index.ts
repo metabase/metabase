@@ -1,8 +1,5 @@
 export {
   getFieldRemappings,
-  getMetadata,
-  getMetadataUnfiltered,
-  getMetadataWithHiddenTables,
   getRemappedFieldValue,
   getShallowDatabases,
   getShallowDatabaseSchemas,
