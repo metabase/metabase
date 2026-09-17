@@ -223,7 +223,7 @@
   (t2/select :model/Dependency
              {:where (into [:and
                             [:= src-type (name entity-type)]
-                            [:in src-id entity-ids]]
+                            [:in src-id (mapv long entity-ids)]]
                            (keep identity)
                            [(edge-restriction-expr dst-type dst-id destination-restriction)
                             (edge-restriction-expr src-type src-id source-restriction)])}))
@@ -527,7 +527,7 @@
                     [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
             :where (cond-> [:and
                             [:= :afe.source_entity_type (name source-entity-type)]
-                            [:= :afe.source_entity_id source-entity-id]
+                            [:= :afe.source_entity_id (long source-entity-id)]
                             [:= :af.result false]
                             (visible-entities-expr :afe.analyzed_entity_type :afe.analyzed_entity_id
                                                    {:user-id user-id :is-superuser? is-superuser?
