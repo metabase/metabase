@@ -18,15 +18,18 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- with-completion-index [f]
-  (binding [search.spec/*testing-only-index-version-hash* (str (random-uuid))]
-    (let [{:keys [coordinate table] :as rebuild} (search.index/rebuild-context :completion-test)]
-      (mt/with-temp [:model/SearchIndexMetadata _ {:engine     (:engine coordinate)
-                                                   :index_name (name table)
-                                                   :lang_code  (:lang-code coordinate)
-                                                   :status     :active
-                                                   :version    (:version coordinate)}]
-        (f rebuild)))))
+(defn- with-completion-index
+  ([f]
+   (with-completion-index :completion-test f))
+  ([table f]
+   (binding [search.spec/*testing-only-index-version-hash* (str (random-uuid))]
+     (let [{:keys [coordinate table] :as rebuild} (search.index/rebuild-context table)]
+       (mt/with-temp [:model/SearchIndexMetadata _ {:engine     (:engine coordinate)
+                                                    :index_name (name table)
+                                                    :lang_code  (:lang-code coordinate)
+                                                    :status     :active
+                                                    :version    (:version coordinate)}]
+         (f rebuild))))))
 
 (deftest completion-is-shared-and-survives-collector-restart-test
   (with-completion-index
@@ -90,30 +93,36 @@
     (is (= {} (search.index/index-docs! :search/updating [])))))
 
 (deftest failed-in-place-population-invalidates-and-retries-on-init-test
-  (with-completion-index
-    (fn [{:keys [coordinate table] :as rebuild}]
-      (search.index/complete-rebuild! rebuild)
-      (let [attempts (atom 0)
-            indexed  (atom #{:previous})]
-        (mt/with-dynamic-fn-redefs [search.index/active-table (constantly table)
-                                    search.index/clear-active-table! (fn [_] (reset! indexed #{}))
-                                    search.index/delete-obsolete-tables! (constantly nil)
-                                    search.index/ensure-ready! (constantly false)
-                                    search.index/when-index-created (constantly (t/offset-date-time))
-                                    appdb/populate-index! (fn [& _]
-                                                            (when (= 1 (swap! attempts inc))
-                                                              (swap! indexed conj :removed-before-retry)
-                                                              (throw (ex-info "population failed" {})))
-                                                            (swap! indexed conj :current)
-                                                            {})]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"population failed"
-                                (search.engine/reindex! :search.engine/appdb {:in-place? true})))
-          (is (nil? (search.db/active-index-completion coordinate)))
-          (is (= {} (search.engine/init! :search.engine/appdb {})))
-          (is (= #{:current} @indexed) "recovery removes stale rows from the incomplete attempt")
-          (is (some? (search.db/active-index-completion coordinate)))
-          (is (nil? (search.engine/init! :search.engine/appdb {})) "completed reuse does not populate again")
-          (is (= 2 @attempts)))))))
+  (let [table (keyword (str "completion_test_" (random-uuid)))]
+    ;; H2 DDL implicitly commits, so keep it outside with-temp's rollback-only transaction.
+    (t2/query {:create-table table, :with-columns [[:id :integer]]})
+    (try
+      (with-completion-index table
+        (fn [{:keys [coordinate] :as rebuild}]
+          (t2/insert! table {:id 1})
+          (search.index/complete-rebuild! rebuild)
+          (let [attempts (atom 0)]
+            (mt/with-dynamic-fn-redefs [search.index/active-table (constantly table)
+                                        search.index/delete-obsolete-tables! (constantly nil)
+                                        search.index/ensure-ready! (constantly false)
+                                        search.index/when-index-created (constantly (t/offset-date-time))
+                                        appdb/populate-index! (fn [& _]
+                                                                (when (= 1 (swap! attempts inc))
+                                                                  (t2/insert! table {:id 2})
+                                                                  (throw (ex-info "population failed" {})))
+                                                                (t2/insert! table {:id 3})
+                                                                {})]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"population failed"
+                                    (search.engine/reindex! :search.engine/appdb {:in-place? true})))
+              (is (nil? (search.db/active-index-completion coordinate)))
+              (is (= #{2} (t2/select-fn-set :id table)))
+              (is (= {} (search.engine/init! :search.engine/appdb {})))
+              (is (= #{3} (t2/select-fn-set :id table)) "recovery deletes the stale row before completing")
+              (is (some? (search.db/active-index-completion coordinate)))
+              (is (nil? (search.engine/init! :search.engine/appdb {})) "completed reuse does not populate again")
+              (is (= 2 @attempts))))))
+      (finally
+        (t2/query {:drop-table [table]})))))
 
 (deftest completion-read-failure-removes-stale-metric-test
   (let [cleared (atom [])]
