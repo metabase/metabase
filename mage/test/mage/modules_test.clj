@@ -285,16 +285,15 @@
 ;;; =============================================================================
 
 (defn modules-affecting-drivers
-  "Top-level modules that trigger driver tests. A nested module is carved out of its ancestors, so counting it
-  would raise the ceiling every time a triggering module is split."
+  "Modules that trigger driver tests, leaving out a nested module whose parent triggers them too. Splitting a
+  triggering module then moves nothing, while a triggering child of a quiet parent still counts."
   []
-  (let [deps (mage.modules/dependencies)]
-    (->> (keys deps)
-         (remove #(modules/parent-module deps %))
-         (filter #(mage.modules/driver-deps-affected? [%])))))
+  (let [deps       (mage.modules/dependencies)
+        triggering (set (filter #(mage.modules/driver-deps-affected? [%]) (keys deps)))]
+    (remove #(some-> (modules/parent-module deps %) triggering) triggering)))
 
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of top-level modules triggering driver tests should not increase without approval.
+  (testing "The number of modules triggering driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
@@ -316,8 +315,9 @@
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
           ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
           ;;            lib and query-processor, which already trigger driver tests
-          ;; 2026-09-17 Lowered to 28: only top-level modules count, so carving out a child moves nothing
-          max-allowed-count 28]
+          ;; 2026-09-17 Lowered to 32: a nested module whose parent triggers driver tests no longer counts,
+          ;;            so carving out a child moves nothing
+          max-allowed-count 32]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
