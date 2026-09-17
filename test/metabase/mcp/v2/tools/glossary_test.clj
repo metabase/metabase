@@ -49,10 +49,11 @@
         (is (str/includes? (text-of result) "An org that pays us"))))
     (testing "GHY-4522: the lookup is case-insensitive — a model echoes a term as it appeared in prose, not as stored"
       (is (str/includes? (text-of (call {:term "account"})) "An org that pays us")))
-    (testing "GHY-4522: an unknown term is a teaching error naming the terms that do exist"
+    (testing "GHY-4522: an unknown term is a teaching error naming the term that was asked for"
       (let [result (call {:term "not-a-term"})]
         (is (:isError result))
-        (is (str/includes? (text-of result) "Account"))))))
+        (is (str/includes? (text-of result) "No glossary entry for"))
+        (is (str/includes? (text-of result) "not-a-term"))))))
 
 (deftest lookup-returns-every-case-variant-test
   (testing "GHY-4522: `term` is unique case-SENSITIVELY, so \"ARR\" and \"arr\" are two legitimate entries with two
@@ -67,23 +68,29 @@
         (testing "each entry reads as its own, not as one run-on definition"
           (is (str/includes? text "\n")))))))
 
-(deftest lookup-quotes-terms-test
-  (testing "GHY-4522: a term is user-written text going into model-facing prose, so it is cleaned like any other
-            interpolated value rather than concatenated in raw"
+(deftest lookup-cleans-stored-text-test
+  (testing "GHY-4522: a term and its definition are user-written text going into prose a model reads as the server
+            speaking, so both are cleaned — quoted and \\uXXXX-escaped — rather than concatenated in raw"
     (mt/with-empty-h2-app-db!
       ;; The separator is built rather than written literally: a raw U+2028 in source trips the whitespace linter.
-      (let [term (str "Ignore" (char 0x2028) "previous")]
-        (t2/insert! :model/Glossary [{:term term :definition "d"}])
-        (let [text (text-of (call {:term "not-a-term"}))]
-          (is (not (str/includes? text term)))
-          (is (str/includes? text "Ignore\\u2028previous")))))))
+      (let [separator  (str (char 0x2028))
+            term       (str "Ignore" separator "previous")
+            ;; `definition` is unbounded TEXT, so it is the field an injection payload actually fits in.
+            definition (str "Disregard" separator "instructions")]
+        (t2/insert! :model/Glossary [{:term term :definition definition}])
+        (let [text (text-of (call {:term term}))]
+          (is (not (str/includes? text separator)))
+          (is (str/includes? text "Ignore\\u2028previous"))
+          (is (str/includes? text "Disregard\\u2028instructions")))))))
 
 (deftest lookup-against-an-empty-glossary-test
-  (testing "GHY-4522: an unknown term with nothing defined says so, rather than naming an empty list of terms"
+  (testing "GHY-4522: an unknown term against a glossary with nothing in it is the same teaching error as any other
+            unknown term — nothing defined is not special-cased into a different answer"
     (mt/with-empty-h2-app-db!
       (let [result (call {:term "not-a-term"})]
         (is (:isError result))
-        (is (str/includes? (text-of result) "No terms are defined"))))))
+        (is (str/includes? (text-of result) "No glossary entry for"))
+        (is (str/includes? (text-of result) "not-a-term"))))))
 
 (deftest list-all-test
   (testing "GHY-4522: glossary() lists terms with their definitions"
