@@ -1,0 +1,11 @@
+name: Data
+entity_id: librarylibrarydatadat
+slug: data
+created_at: '2026-09-11T00:00:00Z'
+type: library-data
+parent_id: librarylibrarylibrary
+serdes/meta:
+- id: librarylibrarydatadat
+  label: data
+  model: Collection
+is_remote_synced: true
