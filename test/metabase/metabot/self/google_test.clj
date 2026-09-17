@@ -1440,7 +1440,11 @@
                                   endpoint "/chat/completions")
                     :headers {"Authorization" (str "Bearer " token)}
                     :body    (json/encode {:model "" :messages [{:role "user" :content "hi"}] :max_tokens 1})}]
-                  @calls)))))))
+                  @calls))
+          (testing "a plain model listing reads only the resource"
+            (reset! calls [])
+            (is (= {:models []} (list-models {:model (str "endpoints/" endpoint)})))
+            (is (= [:get] (mapv :method @calls)))))))))
 
 (deftest list-models-endpoint-without-predict-permission-rejected-test
   (testing "a credential that can read the endpoint but not run it is refused, with Google's 403 message"
@@ -1458,7 +1462,7 @@
                                                                       :body    (json/encode {:error {:code    403
                                                                                                      :message "Permission 'aiplatform.endpoints.predict' denied on resource"
                                                                                                      :status  "PERMISSION_DENIED"}})}))))]
-          (let [e (try (list-models {:model (str "endpoints/" endpoint)}) nil (catch Exception e e))]
+          (let [e (try (list-models {:model (str "endpoints/" endpoint) :probe? true}) nil (catch Exception e e))]
             (is (= "Google API credentials have insufficient permissions or the API is not enabled for this project"
                    (ex-message e)))
             (is (=? {:api-error true :status 403} (ex-data e)))))))))

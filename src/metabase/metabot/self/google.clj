@@ -559,9 +559,9 @@
   is how its compute is stopped, so that is checked as well.
 
   Reading the resource takes only `aiplatform.endpoints.get`, which a viewer role carries without
-  `aiplatform.endpoints.predict`, so a one-token completion on the route conversations use, on the host they use, is
-  what proves the credential can run one."
-  [auth credentials model]
+  `aiplatform.endpoints.predict`, so with `probe?` a one-token completion on the route conversations use, on the host
+  they use, is what proves the credential can run one. Without `probe?` nothing is generated."
+  [auth credentials model probe?]
   (let [path     (model-resource-path credentials model)
         endpoint (fetch-endpoint auth path)]
     (when (empty? (:deployedModels endpoint))
@@ -569,23 +569,24 @@
                       {:api-error   true
                        :status-code 400
                        :error-code  :endpoint-has-no-model})))
-    (let [host (endpoint-host credentials endpoint)]
-      (try
-        (core/request (assoc auth :url host)
-                      {:method  :post
-                       :url     (chat-completions-path credentials model)
-                       :headers {"Content-Type" "application/json"}
-                       :body    (json/encode endpoint-probe-body)})
-        (catch Exception e
-          (rethrow-google-api-error! credentials host e))))))
+    (when probe?
+      (let [host (endpoint-host credentials endpoint)]
+        (try
+          (core/request (assoc auth :url host)
+                        {:method  :post
+                         :url     (chat-completions-path credentials model)
+                         :headers {"Content-Type" "application/json"}
+                         :body    (json/encode endpoint-probe-body)})
+          (catch Exception e
+            (rethrow-google-api-error! credentials host e)))))))
 
 (defn- validate-model!
   "Validates `model` against the surface that serves it, and discards the response."
-  [auth credentials model]
+  [auth credentials model probe?]
   (case (model->family model)
     :anthropic        (validate-anthropic-surface! auth credentials model)
     :google           (validate-google-surface! auth credentials model)
-    :chat-completions (validate-endpoint-surface! auth credentials model))
+    :chat-completions (validate-endpoint-surface! auth credentials model probe?))
   nil)
 
 (defn list-models
@@ -597,14 +598,15 @@
   https://github.com/googleapis/python-genai/issues/679
 
   `:probe?` reports the model the probe verified as `:learned-config` `:probed-model`, for the connect and edit paths
-  to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
+  to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts.
+  For an endpoint it also runs a one-token completion, where a plain listing only reads the endpoint's resource."
   ([] (list-models {}))
   ([{:keys [credentials model proposed-model ai-proxy? probe?]}]
    (if-let [model (or (not-empty model) (not-empty proposed-model))]
      (do
        (try
          (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
-           (validate-model! auth credentials model))
+           (validate-model! auth credentials model probe?))
          (catch Exception e
            (rethrow-google-api-error! credentials nil e)))
        (cond-> {:models []}
