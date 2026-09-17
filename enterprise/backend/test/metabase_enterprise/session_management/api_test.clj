@@ -4,12 +4,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.session-management.db :as sm.db]
+   [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.session.db :as session.db]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -50,6 +51,27 @@
 
 (defn- ids [response]
   (mapv :id (:data response)))
+
+(defn- insert-session-with-key!
+  "Insert a `core_session` row for `user-id` the way a login would, returning `[session-id session-key]`. The key is
+  the plaintext credential a client sends in the `X-Metabase-Session` header; only its hash is stored."
+  [user-id & {:as extra-cols}]
+  (let [session-key (session/generate-session-key)
+        session-id  (apply insert-session! user-id
+                           (mapcat identity (merge {:key_hashed (session/hash-session-key session-key)}
+                                                   extra-cols)))]
+    [session-id session-key]))
+
+(defn- ended?
+  "Whether the session's ending has been recorded: `ended_at` set. Every revoke keeps the row, so \"revoked\" means
+  ended, not gone."
+  [session-id]
+  (some? (t2/select-one-fn :ended_at (t2/table-name :model/Session) :id session-id)))
+
+(defn- ending
+  "How the session ended: its reason and actor, and whether its key was destroyed."
+  [session-id]
+  (select-keys (t2/select-one :model/Session :id session-id) [:end_reason :ended_by_user_id :key_hashed]))
 
 (deftest api-requires-session-management-feature-test
   (testing "without the feature every endpoint answers 402, whoever is asking"
@@ -99,6 +121,73 @@
           (testing "the hashed session key is never returned"
             (is (not (contains? item :key_hashed)))
             (is (not (contains? item :anti_csrf_token)))))))))
+
+(deftest ended-sessions-are-hidden-by-default-test
+  (testing "ended rows are absent from both `data` and `total` unless `status` asks for them"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [live    (insert-session! user-id)
+            ended   (insert-session! user-id :key_hashed nil :ended_at (ago 1 :hour) :end_reason "logout")
+            ;; stopped being live since the last sweep, so nothing is recorded on it yet
+            expired (insert-session! user-id :expires_at (ago 1 :second))]
+        (testing "the default is live"
+          (let [response (list-sessions user-id)]
+            (is (= 1 (:total response)))
+            (is (= [live] (ids response)))
+            (is (=? {:status "live", :ended_at nil, :end_reason nil, :ended_by nil} (first (:data response))))))
+        (testing "`status=ended` lists the ended sessions with when, why, and by whom"
+          (let [response (list-sessions user-id :status "ended")]
+            (is (= 2 (:total response)))
+            (is (= #{ended expired} (set (ids response))))
+            (is (=? {:id ended, :status "ended", :ended_at some?, :end_reason "logout", :ended_by nil, :current false}
+                    (m/find-first #(= ended (:id %)) (:data response))))
+            (testing "a session that expired since the last sweep is ended, with those three null"
+              (is (=? {:id expired, :status "ended", :ended_at nil, :end_reason nil, :ended_by nil}
+                      (m/find-first #(= expired (:id %)) (:data response)))))))
+        (testing "`status=all` lists both"
+          (let [response (list-sessions user-id :status "all")]
+            (is (= 3 (:total response)))
+            (is (= #{live ended expired} (set (ids response))))
+            (is (= {live "live", ended "ended", expired "ended"}
+                   (into {} (map (juxt :id :status)) (:data response))))))
+        (testing "any other status is a 400"
+          (is (=? {:errors {:status some?}}
+                  (mt/user-http-request :crowberto :get 400 "ee/session-management" :status "dead"))))))))
+
+(deftest ended-filters-and-sort-test
+  (testing "`reason` and `ended-after` narrow the ended sessions; `sort-column=ended_at` orders them"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [older    (insert-session! user-id :key_hashed nil :ended_at (ago 2 :hour) :end_reason "admin"
+                                      :ended_by_user_id (mt/user->id :crowberto))
+            newer    (insert-session! user-id :key_hashed nil :ended_at (ago 1 :hour) :end_reason "admin"
+                                      :ended_by_user_id (mt/user->id :crowberto))
+            logout   (insert-session! user-id :key_hashed nil :ended_at (ago 3 :hour) :end_reason "logout")
+            _live    (insert-session! user-id)
+            an-hour-and-a-half-ago (u.date/add (t/zoned-date-time) :minute -90)]
+        (let [response (list-sessions user-id :status "ended" :reason "admin")]
+          (is (= 2 (:total response)))
+          (is (= #{older newer} (set (ids response))))
+          (is (every? #(= (mt/user->id :crowberto) (:ended_by %)) (:data response))))
+        (is (= [newer] (ids (list-sessions user-id :status "ended" :ended-after (str an-hour-and-a-half-ago)))))
+        (is (= #{older logout} (set (ids (list-sessions user-id :status "ended"
+                                                        :ended-before (str an-hour-and-a-half-ago))))))
+        (is (= [logout older newer] (ids (list-sessions user-id :status "ended" :sort-column "ended_at"
+                                                        :sort-direction "asc"))))
+        (is (= [newer older logout] (ids (list-sessions user-id :status "ended" :sort-column "ended_at"
+                                                        :sort-direction "desc"))))
+        (testing "`reason` on the live list is a valid request that matches nothing"
+          (is (= 0 (:total (list-sessions user-id :reason "admin")))))
+        (testing "an unknown reason is a 400"
+          (is (=? {:errors {:reason some?}}
+                  (mt/user-http-request :crowberto :get 400 "ee/session-management" :reason "boredom"))))))))
+
+(deftest ended-session-is-never-current-test
+  (testing "the caller's own ended session is `current: false`: a destroyed key cannot match theirs"
+    (mt/with-temp [:model/User {admin-id :id} {:is_superuser true}]
+      (let [[current session-key] (insert-session-with-key! admin-id)
+            revoked               (insert-session! admin-id)]
+        (mt/client session-key :post 200 "ee/session-management/revoke" {:ids [revoked]})
+        (let [response (mt/client session-key :get 200 "ee/session-management" :user-id admin-id :status "all")]
+          (is (= {current true, revoked false} (into {} (map (juxt :id :current)) (:data response)))))))))
 
 (deftest expired-sessions-are-excluded-test
   (testing "expired rows are absent from both `data` and `total`"
@@ -205,8 +294,7 @@
       (let [session-id (insert-session! user-id)]
         (is (some? (mt/user-http-request :crowberto :post 400 "ee/session-management/revoke"
                                          {:query "ann"})))
-        ;; `session-exists?` is defined further down, with the revoke tests
-        (is (t2/exists? (t2/table-name :model/Session) :id session-id)
+        (is (not (ended? session-id))
             "a rejected request revokes nothing")))))
 
 (deftest filter-by-type-test
@@ -368,26 +456,13 @@
 ;;; |                                        POST /api/ee/session-management/revoke                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- insert-session-with-key!
-  "Insert a `core_session` row for `user-id` the way a login would, returning `[session-id session-key]`. The key is
-  the plaintext credential a client sends in the `X-Metabase-Session` header; only its hash is stored."
-  [user-id & {:as extra-cols}]
-  (let [session-key (session/generate-session-key)
-        session-id  (apply insert-session! user-id
-                           (mapcat identity (merge {:key_hashed (session/hash-session-key session-key)}
-                                                   extra-cols)))]
-    [session-id session-key]))
-
-(defn- session-exists? [session-id]
-  (t2/exists? (t2/table-name :model/Session) :id session-id))
-
 (deftest revoke-by-criteria-permissions-test
   (testing "POST /api/ee/session-management/revoke is superuser-only"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [session-id (insert-session! user-id)]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/session-management/revoke" {:ids [session-id]})))
-        (is (session-exists? session-id)
+        (is (not (ended? session-id))
             "a rejected request revokes nothing")))))
 
 (deftest revoke-everything-test
@@ -402,8 +477,8 @@
                 "nothing live still matches, so the caller's own session was excluded from the count too")
             (is (<= 2 (:revoked response)))
             (is (contains? (set (:user_ids response)) user-id))
-            (is (not (session-exists? other)))
-            (is (session-exists? caller)
+            (is (ended? other))
+            (is (not (ended? caller))
                 "the caller stays logged in"))
           (finally
             ;; the sweep took the cached test-user sessions with it; the next request has to log in again
@@ -418,7 +493,7 @@
             cookies              (str/join " " (u/one-or-many (get-in response [:headers "Set-Cookie"])))]
         (is (= 1 (:revoked (:body response))))
         (is (zero? (:remaining (:body response))))
-        (is (not (session-exists? caller)))
+        (is (ended? caller))
         (is (str/includes? cookies "metabase.SESSION=;")
             "the session cookie is cleared, as it is on logout")))))
 
@@ -434,12 +509,36 @@
         (is (= 2 (:revoked response)))
         (is (zero? (:remaining response)))
         (is (= [user-id] (:user_ids response)))
-        (is (not (session-exists? live-a)))
-        (is (not (session-exists? live-b)))
-        (is (session-exists? expired)
+        (testing "a revoked session is recorded as ended by the admin, and its key destroyed"
+          (is (= {:end_reason "admin", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil} (ending live-a)))
+          (is (= {:end_reason "admin", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil} (ending live-b))))
+        (is (not (ended? expired))
             "an expired row is not live, so the revoke leaves it to the nightly sweep")
-        (is (session-exists? untouched)
-            "a live session outside the id list is untouched")))))
+        (is (not (ended? untouched))
+            "a live session outside the id list is untouched")
+        (testing "a repeat is a no-op: the ended ids match nothing"
+          (is (= {:revoked 0, :remaining 0, :user_ids []}
+                 (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
+                                       {:ids [live-a live-b]}))))))))
+
+(deftest revoke-refuses-ended-only-criteria-test
+  (testing "criteria that could only select ended sessions are a 400, and nothing changes"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [live  (insert-session! user-id)
+            ended (insert-session! user-id :key_hashed nil :ended_at (ago 1 :hour) :end_reason "logout")]
+        (doseq [body [{:user-id user-id :status "all"}
+                      {:user-id user-id :status "ended"}
+                      {:user-id user-id :reason "logout"}
+                      {:user-id user-id :ended-before "2030-01-01T00:00:00Z"}
+                      {:user-id user-id :ended-after "2020-01-01T00:00:00Z"}]]
+          (testing (pr-str body)
+            (is (=? {:errors map?}
+                    (mt/user-http-request :crowberto :post 400 "ee/session-management/revoke" body)))))
+        (is (not (ended? live)) "nothing was revoked")
+        (is (= "logout" (:end_reason (ending ended))) "and nothing was touched")
+        (testing "`status: live` is the one value accepted, and means what the default means"
+          (is (= 1 (:revoked (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
+                                                   {:user-id user-id :status "live"})))))))))
 
 (deftest revoke-by-ids-and-provider-test
   (testing "every criterion has to hold: `ids` narrows to a set, `provider` narrows within it"
@@ -453,24 +552,24 @@
             response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke"
                                            {:ids [saml-in password] :provider "saml"})]
         (is (= 1 (:revoked response)))
-        (is (not (session-exists? saml-in)))
-        (is (session-exists? password)
+        (is (ended? saml-in))
+        (is (not (ended? password))
             "in the id list, but not a SAML session")
-        (is (session-exists? saml-out)
+        (is (not (ended? saml-out))
             "a SAML session, but not in the id list")))))
 
-(deftest revoke-batches-the-delete-test
+(deftest revoke-batches-the-update-test
   (testing "a revoke bigger than one statement can name is still revoked in full, and counted in full"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))]
         ;; a real revoke batches at 1000 ids because every id is a bind parameter; two and a half batches of two
         ;; exercises the same code, including the short final batch, without inserting thousands of rows
-        (with-bindings {#'sm.db/*delete-batch-size* 2}
+        (with-bindings {#'session.db/*end-batch-size* 2}
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 5 (:revoked response))
                 "every batch is counted, not just the last one")
             (is (zero? (:remaining response)))
-            (is (not-any? session-exists? session-ids)
+            (is (every? ended? session-ids)
                 "including the rows in the short final batch")))))))
 
 (deftest revoke-race-test
@@ -478,32 +577,33 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [_matched (insert-session! user-id)
             raced    (atom nil)
-            delete!  (mt/original-fn #'sm.db/delete-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [sm.db/delete-sessions-by-ids! (fn [ids]
-                                                                    (reset! raced (insert-session! user-id))
-                                                                    (delete! ids))]
+            end!     (mt/original-fn #'session/end-sessions-by-ids!)]
+        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+                                                                   (reset! raced (insert-session! user-id))
+                                                                   (end! ids reason ended-by))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 1 (:revoked response)))
             (is (= 1 (:remaining response))
                 "the session created after the select is still live and still matches")
-            (is (session-exists? @raced)
+            (is (not (ended? @raced))
                 "and it was not revoked")))))))
 
 (deftest revoke-count-mismatch-is-logged-test
-  (testing "a matched session that disappears before the delete is logged, not hidden in the counts"
+  (testing "a matched session that ends before the update is logged, not hidden in the counts"
     (mt/with-temp [:model/User {user-id :id} {}]
-      (let [kept    (insert-session! user-id)
-            gone    (insert-session! user-id)
-            delete! (mt/original-fn #'sm.db/delete-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [sm.db/delete-sessions-by-ids! (fn [ids]
-                                                                    ;; a logout between the select and the delete
-                                                                    (t2/delete! (t2/table-name :model/Session) :id gone)
-                                                                    (delete! ids))]
+      (let [kept (insert-session! user-id)
+            gone (insert-session! user-id)
+            end! (mt/original-fn #'session/end-sessions-by-ids!)]
+        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+                                                                   ;; a logout between the select and the update
+                                                                   (session.db/end-sessions! {:id [gone]} "logout" :self)
+                                                                   (end! ids reason ended-by))]
           (mt/with-log-messages-for-level [messages [metabase-enterprise.session-management.db :info]]
             (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
-              (is (= 1 (:revoked response)) "only the row actually deleted is counted")
-              (is (not (session-exists? kept)))
-              (is (some #(str/includes? (:message %) "matched 2 session(s) but deleted 1") (messages))
+              (is (= 1 (:revoked response)) "only the row actually ended by the revoke is counted")
+              (is (= "admin" (:end_reason (ending kept))))
+              (is (= "logout" (:end_reason (ending gone))) "the earlier ending is kept")
+              (is (some #(str/includes? (:message %) "matched 2 session(s) but ended 1") (messages))
                   "and the gap is written to the log"))))))))
 
 (deftest revoke-audit-test
@@ -521,7 +621,7 @@
                                                {:ids [a1 a2 b1 mcp]})]
             (is (= 3 (:revoked response)))
             (is (= #{user-a user-b} (set (:user_ids response))))
-            (is (session-exists? mcp)
+            (is (not (ended? mcp))
                 "an MCP-backed session is never live, so it is never matched")
             (testing "the summary row carries the criteria, the count, and what is left"
               (let [{:keys [topic user_id model model_id details]} (mt/latest-audit-log-entry "sessions-revoked")]

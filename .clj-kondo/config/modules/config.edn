@@ -2549,6 +2549,7 @@
            channel
            lib.schema
            request
+           session
            settings
            util}
    :model-exports #{:model/LoginHistory}}
@@ -4266,7 +4267,7 @@
            session
            users
            util}
-   :model-imports #{:model/Session :model/User}}
+   :model-imports #{:model/User}}
 
   enterprise/sso
   {:team "UX West"
@@ -4289,7 +4290,7 @@
            task
            util
            enterprise/sso.scim}
-   :model-imports #{:model/PermissionsGroup :model/Session}}
+   :model-imports #{:model/PermissionsGroup}}
 
   enterprise/sso.auth-identity
   {:team "UX West"
@@ -4343,6 +4344,7 @@
            lib.schema
            models
            request
+           session
            settings
            sso.auth-identity
            system
