@@ -190,11 +190,20 @@
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
+(def ^:private input-box-by-default-types
+  "Parameter types whose widget is an Input box unless `values_query_type` says otherwise. 
+  Mirrors `getDefaultQueryType` in `parameter-source.ts`."
+  #{:string/contains :string/does-not-contain :string/starts-with :string/ends-with
+    :number/<= :number/>= :number/between})
+
 (defn- input-box?
   "Is `parameter`'s widget an Input box (`values_query_type` `none`), the setting that says to offer no list of values?
   The frontend never asks for values for such a widget, so the values routes should not hand them out either."
   [parameter]
-  (= :none (some-> (:values_query_type parameter) keyword)))
+  (let [query-type (some-> (:values_query_type parameter) keyword)]
+    (or (= query-type :none)
+        (and (nil? query-type)
+             (contains? input-box-by-default-types (some-> (:type parameter) keyword))))))
 
 (mu/defn parameter->values :- ms/FieldValuesResult
   "Given a parameter with a custom-values source, return the values. A parameter whose widget is an Input box offers

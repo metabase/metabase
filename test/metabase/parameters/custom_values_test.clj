@@ -374,28 +374,51 @@
                     (constantly mock-default-result))))))))))
 
 (deftest ^:parallel parameter->values-input-box-test
-  (testing "a parameter whose widget is an Input box (values_query_type = none) offers no values, whatever its source"
+  (testing "a parameter whose widget is an Input box offers no values, whatever its source"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query (mt/mbql-query venues))]
-        (doseq [[source-desc source] [["a connected field" {}]
+        (doseq [[widget-desc widget] [["values_query_type = none"                    {:type :string/=, :values_query_type :none}]
+                                      ;; the frontend defaults these to an Input box and never saves the default
+                                      ["string/contains, no values_query_type"      {:type :string/contains}]
+                                      ["string/starts-with, no values_query_type"   {:type :string/starts-with}]
+                                      ["number/between, no values_query_type"       {:type :number/between}]
+                                      ["number/<=, no values_query_type"            {:type :number/<=}]]
+                [source-desc source] [["a connected field" {}]
                                       ["a static list"     {:values_source_type   :static-list
                                                             :values_source_config {:values ["African" "American"]}}]
                                       ["a card"            {:values_source_type   :card
                                                             :values_source_config {:card_id     card-id
                                                                                    :value_field (mt/$ids $venues.name)}}]]
                 query-string [nil "af"]]
-          (testing (format "source: %s, query: %s" source-desc (pr-str query-string))
+          (testing (format "widget: %s, source: %s, query: %s" widget-desc source-desc (pr-str query-string))
             (is (= {:values          []
                     :has_more_values false}
                    (custom-values/parameter->values
-                    (merge {:name              "Name"
-                            :slug              "name"
-                            :id                "_NAME_"
-                            :type              :string/=
-                            :values_query_type :none}
+                    (merge {:name "Name", :slug "name", :id "_NAME_"}
+                           widget
                            source)
                     query-string
                     (fn [] (throw (ex-info "Shouldn't ask the connected field for values" {}))))))))))))
+
+(deftest ^:parallel parameter->values-not-input-box-test
+  (testing "a parameter whose widget is not an Input box still offers values"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [[widget-desc widget] [["string/=, no values_query_type"        {:type :string/=}]
+                                    ["string/contains, values_query_type = list"   {:type :string/contains, :values_query_type :list}]
+                                    ["string/contains, values_query_type = search" {:type :string/contains, :values_query_type :search}]
+                                    ["number/between, values_query_type = list"    {:type :number/between, :values_query_type :list}]]]
+        (testing widget-desc
+          (is (= {:values          [["African"] ["American"]]
+                  :has_more_values false}
+                 (custom-values/parameter->values
+                  (merge {:name                 "Name"
+                          :slug                 "name"
+                          :id                   "_NAME_"
+                          :values_source_type   :static-list
+                          :values_source_config {:values ["African" "American"]}}
+                         widget)
+                  nil
+                  (fn [] (throw (ex-info "Shouldn't ask the connected field for values" {})))))))))))
 
 (deftest ^:parallel parameter->values-join-aliased-value-field-test
   (let [mp (mt/metadata-provider)

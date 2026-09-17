@@ -1526,6 +1526,7 @@
   (testing "A filter set to Input box (values_query_type = none) offers no values, even anonymously (SEC-1211)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [name-param-id     "_NAME_"
+            contains-param-id "_NAME_CONTAINS_"
             category-param-id "_CATEGORY_"
             parameters        [{:id                name-param-id
                                 :name              "Name"
@@ -1533,6 +1534,13 @@
                                 :type              :string/=
                                 :values_query_type "none"
                                 :target            [:dimension [:field (mt/id :venues :name) nil]]}
+                               ;; the frontend defaults a `contains` filter to an Input box without saving
+                               ;; `values_query_type`
+                               {:id     contains-param-id
+                                :name   "Name contains"
+                                :slug   "name_contains"
+                                :type   :string/contains
+                                :target [:dimension [:field (mt/id :venues :name) nil]]}
                                {:id                category-param-id
                                 :name              "Category"
                                 :slug              "category"
@@ -1548,13 +1556,15 @@
                                                :card_id            card-id
                                                :parameter_mappings (for [{:keys [id target]} parameters]
                                                                      {:parameter_id id, :card_id card-id, :target target})}]
+          (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]
+                  param-id     [name-param-id contains-param-id]]
+            (testing (format "GET /api/public/%s/:uuid/params/%s/values" (name model) param-id)
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid param-id)))))
+            (testing (format "GET /api/public/%s/:uuid/params/%s/search/:query" (name model) param-id)
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid param-id "red"))))))
           (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]]
-            (testing (format "GET /api/public/%s/:uuid/params/:param-key/values" (name model))
-              (is (= {:values [], :has_more_values false}
-                     (client/client :get 200 (param-values-url model uuid name-param-id)))))
-            (testing (format "GET /api/public/%s/:uuid/params/:param-key/search/:query" (name model))
-              (is (= {:values [], :has_more_values false}
-                     (client/client :get 200 (param-values-url model uuid name-param-id "red")))))
             (testing (format "GET /api/public/%s/:uuid/params/:param-key/remapping still labels a chosen value" (name model))
               (is (= [2 "American"]
                      (client/client :get 200 (format "public/%s/%s/params/%s/remapping?value=2"
