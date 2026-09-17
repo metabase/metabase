@@ -326,7 +326,7 @@
 
   fix-module-cycles
   {:doc "Record the cyclic module clusters in .clj-kondo/config/modules/cycle-clusters.edn."
-   :examples [["./bin/mage fix-module-cycles" "Record how the clusters changed; under :enforce, only shrinks, splits and dissolutions"]
+   :examples [["./bin/mage fix-module-cycles" "Record how the clusters changed; under :enforce, only shrinks, splits and dissolutions. Refuses an unnamed split"]
               ["./bin/mage fix-module-cycles --seed" "Create the file, naming the clusters as they stand"]]
    :options [["-s" "--seed" "Create the file; only when there is none yet"]]
    :requires [[mage.modules]]
