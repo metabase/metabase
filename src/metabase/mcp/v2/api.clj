@@ -215,10 +215,12 @@
   "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
   inside the OAuth server's default grant ceiling."
   ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
-  ;; `insufficient_scope` naming the union of held and required scopes, and each tool declares its scope in
-  ;; `securitySchemes`, so a client steps up to the rest of the surface rather than being granted it up front. The
-  ;; surface still accepts all of [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered
-  ;; "Invalid scope" for a client that follows the challenge.
+  ;; `insufficient_scope` naming the union of held and required scopes, so a client steps up to the rest of the surface
+  ;; rather than being granted it up front. Each tool also declares its scope in `securitySchemes`, which is draft
+  ;; SEP-1488 (modelcontextprotocol issue 1488) and supported by ChatGPT; it is not in MCP 2025-03-26, the version this
+  ;; server reports, so other clients learn the missing scope from the 403. The surface still accepts all of
+  ;; [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered "Invalid scope" for a client that
+  ;; follows the challenge.
   mcp.paths/v2-baseline-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
