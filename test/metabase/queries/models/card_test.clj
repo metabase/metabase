@@ -846,6 +846,7 @@
    column must project all of these — see [[metabase.queries.card-schema/schema-upgrade-triggers]]."
   {:id                 1
    :type               :question
+   :entity_id          "cardcardcardcardcard1"
    :database_id        1
    :dataset_query      {}
    :result_metadata    nil

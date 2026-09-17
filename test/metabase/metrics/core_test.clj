@@ -1,11 +1,13 @@
 (ns metabase.metrics.core-test
   "Tests for metrics.core dimension sync functionality."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -114,6 +116,76 @@
         (is (some? (:dimensions stored)))
         (is (some? (:dimension_mappings stored)))
         (is (= first-ids next-ids))))))
+
+(defn- uncurate!
+  "Return `card-id` to the state a metric created before curated dimensions shipped is in: no stored dimensions, and
+  a `card_schema` old enough that the 23->24 backfill still runs on read."
+  [card-id]
+  (t2/query-one {:update :report_card
+                 :set    {:card_schema        23
+                          :dimensions         nil
+                          :dimension_mappings nil}
+                 :where  [:= :id card-id]}))
+
+(deftest metric-upgraded-dimension-ids-are-stable-without-a-write-test
+  (testing "Backfilled dimension IDs are stable across reads even without persisting (UXW-4943)"
+    (mt/with-temp [:model/Card metric {:name          "Legacy Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+      (uncurate! (:id metric))
+      (let [ids #(mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))]
+        (is (seq (ids))
+            "the backfill produces dimensions")
+        (is (= (ids) (ids))
+            "two reads agree")
+        (is (nil? (:dimensions (t2/query-one {:select [:dimensions]
+                                              :from   [:report_card]
+                                              :where  [:= :id (:id metric)]})))
+            "and neither read persisted anything")))))
+
+(deftest metric-dimension-ids-are-scoped-to-their-entity-test
+  (testing "Two metrics with a dimension on the same column get different stable IDs (UXW-4943)"
+    (mt/with-temp [:model/Card metric-a {:name          "Legacy Metric A"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :table_id      (mt/id :venues)
+                                         :dataset_query (metric-query)}
+                   :model/Card metric-b {:name          "Legacy Metric B"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :table_id      (mt/id :venues)
+                                         :dataset_query (metric-query)}]
+      (uncurate! (:id metric-a))
+      (uncurate! (:id metric-b))
+      (let [ids #(into #{} (map :id) (:dimensions (t2/select-one :model/Card :id %)))
+            a   (ids (:id metric-a))
+            b   (ids (:id metric-b))]
+        (is (seq a))
+        (is (= (count a) (count b))
+            "the same query produces the same number of dimensions")
+        (is (empty? (set/intersection a b))
+            "but no id is shared between the two metrics")))))
+
+(deftest metric-upgraded-dimensions-serialize-identically-across-reads-test
+  (testing "Pre-curation metrics serialize stably; no remote sync churn (UXW-4943)"
+    (mt/with-temp [:model/Card metric {:name          "Legacy Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+      (uncurate! (:id metric))
+      (let [extract #(serdes/with-cache
+                       (serdes/extract-one "Card" {} (t2/select-one :model/Card :id (:id metric))))
+            before  (extract)]
+        (is (seq (:dimensions before))
+            "the backfilled dimensions are part of what a metric serializes to")
+        (is (= before (extract))
+            "two extractions of the same un-curated metric agree")
+        (metrics/sync-dimensions! :metadata/metric (:id metric))
+        (is (= before (extract))
+            "and persisting the backfill leaves the serialization untouched")))))
 
 (deftest metric-sync-dimensions-picks-no-default-test
   (testing "new metrics are seeded with a curated dimension list and no default dimension"

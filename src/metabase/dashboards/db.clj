@@ -168,7 +168,7 @@
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
-              :visualization_settings :collection_id :card_schema :result_metadata
+              :visualization_settings :collection_id :card_schema :entity_id :result_metadata
               :dimensions :dimension_mappings :series.dashboardcard_id]
              {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
               :where     [:in :series.dashboardcard_id dashcard-ids]
