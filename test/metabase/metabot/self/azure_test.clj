@@ -220,6 +220,7 @@
     "anthropic"                   false
     "openai/gpt-5.4"              true
     "openai/GPT-5.4"              true
+    "openai/gpt-6-astra"          true
     "openai/o3-mini"              true
     "openai/gpt-4.1-mini"         false
     "evilai/some-deployment"      false

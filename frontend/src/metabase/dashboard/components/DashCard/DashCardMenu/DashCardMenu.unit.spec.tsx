@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCardQueryDownloadEndpoint,
   setupLastDownloadFormatEndpoints,
@@ -12,7 +13,6 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { getMetadata } from "metabase/metadata-store";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
@@ -133,7 +133,7 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
   const dashcard = createMockDashboardCard({
     ...card,
@@ -329,7 +329,7 @@ describe("DashCardMenu", () => {
 
 describe("DashCardMenu.shouldRender", () => {
   const dashboard = createMockDashboard();
-  const metadata = getMetadata(
+  const metadata = createMockMetadataFromState(
     createMockState({
       entities: createMockEntitiesState({
         databases: [createSampleDatabase()],
