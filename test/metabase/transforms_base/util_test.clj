@@ -77,7 +77,7 @@
         (mt/with-temp [:model/Table _ {:db_id  (mt/id)
                                        :schema nil
                                        :name   "disable_auto_sync_target"}]
-          (with-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
             (mt/with-temporary-setting-values [disable-auto-sync true]
               (transforms-base.u/activate-table-and-mark-computed!
                (mt/db)

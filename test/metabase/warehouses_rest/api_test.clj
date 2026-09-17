@@ -75,7 +75,7 @@
 
 (defmethod driver/dbms-version ::test-driver
   [_ _]
-  "1.0")
+  {:version "1.0"})
 
 (defmethod driver/describe-database* ::test-driver
   [_ _]
@@ -579,14 +579,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [:model/Database :id :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))))
+                     (dissoc (into {} curr-db) :id)))))))))))
 
 (deftest update-database-test-2
   (testing "PUT /api/database/:id"
@@ -1719,9 +1719,9 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
           ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor.
           ;; The Sync-now endpoint dispatches to the *explicit* sync fns (which bypass disable-auto-sync).
-          (with-redefs [quick-task/submit-task!                   future-call
-                        sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
-                        analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task!                   future-call
+                                      sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                                      analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
@@ -1756,9 +1756,9 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
                                                     :details             details
                                                     :initial_sync_status "incomplete"}]
-          (with-redefs [quick-task/submit-task! (fn [f]
-                                                  (binding [driver.settings/*allow-testing-h2-connections* true]
-                                                    (f)))]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                  (f)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
           (testing "the explicit sync actually ran, not merely dispatched"
             (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))

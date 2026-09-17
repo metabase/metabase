@@ -1,11 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupTableQueryMetadataEndpoint,
   setupUnauthorizedFieldEndpoint,
 } from "__support__/server-mocks";
-import { getMetadata } from "metabase/metadata-store";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import { fetchTableMetadataAndForeignKeys } from "./tables";
@@ -64,7 +64,7 @@ describe("fetchTableMetadataAndForeignKeys", () => {
       fetchMock.callHistory.called(`path:/api/field/${FK_TARGET_FIELD_ID}`),
     ).toBe(true);
 
-    const table = getMetadata(store.getState()).table(TABLE_ID);
+    const table = createMockMetadataFromState(store.getState()).table(TABLE_ID);
     expect(table).toBeDefined();
   });
 
@@ -85,6 +85,8 @@ describe("fetchTableMetadataAndForeignKeys", () => {
     expect(
       fetchMock.callHistory.called(`path:/api/field/${LINKED_FIELD_ID}`),
     ).toBe(false);
-    expect(getMetadata(store.getState()).table(LINKED_TABLE_ID)).toBeDefined();
+    expect(
+      createMockMetadataFromState(store.getState()).table(LINKED_TABLE_ID),
+    ).toBeDefined();
   });
 });

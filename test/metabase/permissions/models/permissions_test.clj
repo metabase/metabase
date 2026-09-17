@@ -114,20 +114,17 @@
 (deftest ^:parallel perms-objects-set-for-parent-collection-test
   (are [input expected] (= expected
                            (apply perms/perms-objects-set-for-parent-collection input))
-    [{:collection_id 1337} :read]  #{"/collection/1337/read/"}
-    [{:collection_id 1337} :write] #{"/collection/1337/"}
-    [{:collection_id nil} :read]   #{"/collection/root/read/"}
-    [{:collection_id nil} :write]  #{"/collection/root/"})
+    [1337 :read]  #{"/collection/1337/read/"}
+    [1337 :write] #{"/collection/1337/"}
+    [nil :read]   #{"/collection/root/read/"}
+    [nil :write]  #{"/collection/root/"})
   (testing "invalid input"
-    (doseq [[reason inputs] {"map must have `:collection_id` key"
-                             [[{} :read]]
-
-                             "must be a map"
-                             [[100 :read]
-                              [nil :read]]
+    (doseq [[reason inputs] {"must be a positive int or nil"
+                             [[-1 :read]
+                              ["100" :read]]
 
                              "read-or-write must be `:read` or `:write`"
-                             [[{:collection_id nil} :readwrite]]}
+                             [[nil :readwrite]]}
             input inputs]
       (testing reason
         (testing (pr-str (cons 'perms-objects-set-for-parent-collection input))

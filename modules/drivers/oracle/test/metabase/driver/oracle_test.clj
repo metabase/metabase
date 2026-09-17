@@ -287,13 +287,13 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-keystore true}}
+                       :visible-if {"ssl-use-keystore" true}}
                       {:name       "ssl-keystore-value"
                        :type       "textFile"
-                       :visible-if {:ssl-keystore-options "uploaded"}}
+                       :visible-if {"ssl-keystore-options" "uploaded"}}
                       {:name       "ssl-keystore-path"
                        :type       "string"
-                       :visible-if {:ssl-keystore-options "local"}}
+                       :visible-if {"ssl-keystore-options" "local"}}
                       {:name "ssl-keystore-password-value"
                        :type "password"}
                       {:name "ssl-use-truststore"}
@@ -303,13 +303,13 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-truststore true}}
+                       :visible-if {"ssl-use-truststore" true}}
                       {:name       "ssl-truststore-value"
                        :type       "textFile"
-                       :visible-if {:ssl-truststore-options "uploaded"}}
+                       :visible-if {"ssl-truststore-options" "uploaded"}}
                       {:name       "ssl-truststore-path"
                        :type       "string"
-                       :visible-if {:ssl-truststore-options "local"}}
+                       :visible-if {"ssl-truststore-options" "local"}}
                       {:name "ssl-truststore-password-value"
                        :type "password"}
                       {:name "tunnel-enabled"}
@@ -329,11 +329,11 @@
                        :visible-if {"tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-value"
                        :type       "textFile"
-                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                       :visible-if {"tunnel-known-hosts-options" "uploaded"
                                     "tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-path"
                        :type       "string"
-                       :visible-if {:tunnel-known-hosts-options "local"
+                       :visible-if {"tunnel-known-hosts-options" "local"
                                     "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
@@ -432,7 +432,9 @@
                                                    :database-type "char"
                                                    :base-type     :type/Text}]})
       (let [hsql (sql.qp/mbql->honeysql :oracle
-                                        {:query {:source-query {:source-table 1
+                                        {:database 1
+                                         :type     :query
+                                         :query {:source-query {:source-table 1
                                                                 :expressions  {"s" [:substring [:field 1 nil] 2]}
                                                                 :fields       [[:field 1 nil]
                                                                                [:expression "s"]]}

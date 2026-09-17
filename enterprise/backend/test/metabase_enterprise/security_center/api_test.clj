@@ -219,7 +219,7 @@
     (mt/with-premium-features #{:admin-security-center}
       (testing "body values are passed through to send-test-notification!"
         (let [captured (atom nil)]
-          (with-redefs [notification/send-test-notification! #(reset! captured %)]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification! #(reset! captured %)]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/raw-value"
                                                        :details {:value "form@example.com"}}
@@ -234,15 +234,15 @@
             (is (= "#form-channel" (:slack-channel @captured))))))
       (testing "body distinguishes explicit nil slack_channel (disable) from missing key (fall back to setting)"
         (let [captured (atom nil)]
-          (with-redefs [notification/send-test-notification! #(reset! captured %)
-                        settings/security-center-slack-channel (constantly "#saved-channel")]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification! #(reset! captured %)
+                                      settings/security-center-slack-channel (constantly "#saved-channel")]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/group"
                                                        :permissions_group_id 2}]
                                    :slack_channel    nil})
             (is (nil? (:slack-channel @captured)) "explicit nil disables Slack for the test"))
-          (with-redefs [notification/send-test-notification! #(reset! captured %)
-                        settings/security-center-slack-channel (constantly "#saved-channel")]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification! #(reset! captured %)
+                                      settings/security-center-slack-channel (constantly "#saved-channel")]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification"
                                   {:email_recipients [{:type "notification-recipient/group"
                                                        :permissions_group_id 2}]})
@@ -250,8 +250,8 @@
       (testing "missing email_recipients falls back to saved setting"
         (let [captured       (atom nil)
               saved-emails   [{:type :notification-recipient/raw-value :details {:value "saved@example.com"}}]]
-          (with-redefs [notification/send-test-notification!         #(reset! captured %)
-                        settings/security-center-email-recipients     (constantly saved-emails)
-                        settings/security-center-slack-channel        (constantly nil)]
+          (mt/with-dynamic-fn-redefs [notification/send-test-notification!         #(reset! captured %)
+                                      settings/security-center-email-recipients     (constantly saved-emails)
+                                      settings/security-center-slack-channel        (constantly nil)]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification" {})
             (is (= saved-emails (:email-recipients @captured)))))))))

@@ -17,6 +17,7 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

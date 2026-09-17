@@ -10,6 +10,7 @@
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schedule :as transforms.schedule]
+   [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]

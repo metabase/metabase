@@ -23,11 +23,7 @@
 (mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MBQL 5 query. Requires bound QP store."
   {:deprecated "0.57.0"}
-  [inner-query :- [:and
-                   :map
-                   [:fn
-                    {:error/message "Should be a legacy MBQL inner query"}
-                    (some-fn :query :source-table :source-query)]]]
+  [inner-query :- :metabase.lib.util/query-like]
   ;; existing usage -- don't use going forward
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.store/cached [:mbql5-query (hash inner-query)]
@@ -43,7 +39,7 @@
 
 (mu/defn legacy-query->mbql5-query :- ::lib.schema/query
   "Convert a legacy outer `legacy-query` to an MBQL 5 query. Requires bound QP store."
-  [legacy-query]
+  [legacy-query :- :metabase.lib.util/legacy-query]
   (lib/query
    (qp.store/metadata-provider)
    ;; if this query has a `:native` query added to it already then remove that so we don't get schema validation
@@ -60,8 +56,8 @@
 
   DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
   {:deprecated "0.64.0"}
-  [legacy-inner-query :- :map
-   legacy-ag-clause]
+  [legacy-inner-query :- :metabase.lib.util/query-like
+   legacy-ag-clause   :- ::mbql.s/Aggregation]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))
