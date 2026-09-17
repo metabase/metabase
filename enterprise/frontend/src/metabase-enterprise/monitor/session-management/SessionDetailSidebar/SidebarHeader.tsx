@@ -24,10 +24,7 @@ export const SidebarHeader = ({
   session,
   prevSessionId,
   nextSessionId,
-  isRevoking,
   onNavigate,
-  onRevokeSession,
-  onRevokeUserSessions,
   onClose,
 }: SidebarHeaderProps) => {
   const dispatch = useDispatch();
@@ -70,7 +67,6 @@ export const SidebarHeader = ({
                 aria-label={t`More actions`}
                 size="lg"
                 c="icon-primary"
-                disabled={isRevoking}
               >
                 <Icon name="ellipsis" />
               </ActionIcon>
@@ -82,24 +78,6 @@ export const SidebarHeader = ({
               >
                 {t`Copy link to clipboard`}
               </Menu.Item>
-              {session && !session.current && (
-                <Menu.Item
-                  c="feedback-negative"
-                  leftSection={<Icon name="exit" />}
-                  onClick={() => onRevokeSession(session)}
-                >
-                  {t`Revoke session`}
-                </Menu.Item>
-              )}
-              {session && (
-                <Menu.Item
-                  c="feedback-negative"
-                  leftSection={<Icon name="exit" />}
-                  onClick={() => onRevokeUserSessions(session)}
-                >
-                  {t`Revoke all sessions for ${getSessionUserName(session.user)}`}
-                </Menu.Item>
-              )}
             </Menu.Dropdown>
           </Menu>
           <ActionIcon
