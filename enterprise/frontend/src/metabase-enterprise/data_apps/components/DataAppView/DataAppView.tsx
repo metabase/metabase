@@ -36,10 +36,10 @@ import { isDataAppMessage } from "../../lib/is-data-app-message";
 
 import S from "./DataAppView.module.css";
 
-const isOutdatedError = isMatching({
+const OUTDATED_ERROR_PATTERN = {
   status: 409,
   data: { "error-code": DATA_APP_OUTDATED_ERROR_CODE, message: P.string },
-});
+};
 
 const CenteredEmptyState = ({
   children,
@@ -254,7 +254,7 @@ export function DataAppView() {
       );
     }
 
-    if (isOutdatedError(metaError)) {
+    if (isMatching(OUTDATED_ERROR_PATTERN, metaError)) {
       return (
         <CenteredEmptyState
           title={t`This data app is outdated`}
