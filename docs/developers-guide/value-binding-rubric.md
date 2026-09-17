@@ -356,17 +356,21 @@ before assuming a column is plain.
 | `::marked-operator-form` | the marker wraps a whole comparison — `[:auto/param [:< v]]` instead of `[:< [:auto/param v]]` |
 | `::marked-empty-collection` | rule 5 |
 | `::marker-reached-sql` | a marker reached a raw `[sql & args]` vector, where nothing can lift it |
-| `::marker-outside-value-slot` | a marker in a clause that names columns or tables — `:select`, `:from`, `:order-by`, … |
+| `::marker-outside-value-slot` | a marker in a slot that names a column or table — a `:select`/`:from` entry, an alias, a join table |
 
-A marker outside a value slot is refused too, as `::marker-outside-value-slot`. The lift rewrites a
-marker wherever it sits, so without this check one in a `:select`, `:from`, `:order-by` or
-`:group-by` clause compiled to the identifier `PARAM` and silently discarded the value — the one
-place the mechanism used to be silent.
+A marker outside a value slot is refused as `::marker-outside-value-slot`. The lift rewrites a
+marker wherever it sits, so without this one in an identifier slot compiled to the identifier
+`PARAM` and silently discarded the value.
 
-The check recurses, so a marker in a SUBQUERY's identifier clause is refused too. And it descends
-past a keyword-headed operator form, because a comparison inside one of those clauses is a genuine
-value slot — a computed projection (`{:select [[[:= :engine [:auto/param "h2"]] :is_match]]}`) or a
-`CASE` sort key is fine, as is a join's ON condition.
+The check is positional, because HoneySQL is: an entry in one of those clauses is `expr` or
+`[expr alias]`, so index 0 may be an expression and everything after it is a name. That is what
+catches `{:from [[:t [:auto/param "al"]]]}`, which a head-shape test read as an operator form.
+It recurses into subqueries, descends past keyword-headed operator forms (so a computed projection
+or a `CASE` sort key is fine), and treats `:cross-join` as a flat list of tables since it has no ON
+condition.
+
+`:order-by` and `:group-by` are deliberately NOT refused: HoneySQL binds a param in both
+(`ORDER BY ?`), so a marker there is a pointless no-op rather than a dropped value.
 
 `nil` needs no special handling. A marked nil passes through as a literal so HoneySQL emits
 `IS NULL`, where a bound parameter would emit `= ?` and match nothing.
@@ -390,17 +394,19 @@ rubric, not that work remains.
 Everything above is the lint over-flagging. It under-flags too, and zero findings therefore does not
 mean a namespace is converted. Grep for these by hand:
 
-- **A bare conditions map.** `(t2/update! model {:col v} changes)`, `(t2/delete! model {:col v})`,
-  and `mdb/update-or-insert!`'s select map are where-clause values, but they are not `:where`
-  clauses, so the walker did not descend them. Fixed in the foundation PR for `update!`,
-  `update-or-insert!` and `delete!` — but any other fn taking a conditions map is still unchecked.
 - **A positional primary key.** `(t2/update! model id changes)`, `(t2/select model id)`. Not a
   keyword pair, so nothing sees it. Coerce these by hand.
-- **A value nested in a HoneySQL function-call form**, e.g. `[:= :col [:lower v]]`. The walker
-  treats the inner form as the value and does not descend.
+- **A non-literal model.** `(t2/select-one model :id id)` -- the walkers find the value slots by
+  locating the `:model/...` keyword, so a model held in a symbol blinds them. `models/db.clj` and
+  `mcp/db.clj` are built this way; a namespace like that can be opted in and pass vacuously.
 - **A fn that RETURNS a clause** for a caller to execute outside the Toucan pipeline (via
   `app-db/query`). The value slots are invisible to the lint and the marker never reaches the
   compile step that lifts it.
+
+Covered now, after review found each of them silent: a bare conditions map
+(`(t2/update! model {:col v} changes)`, `delete!`, `mdb/update-or-insert!`), a value inside a
+function-call form (`[:= :k [:lower v]]`), a literal collection (`[:in :k [a b]]`), the `:!=` /
+`:<>` / `is-distinct-from` operators, and a value inside a subquery.
 
 **The gate is not zero findings.** It is that every remaining finding is explained by a rule above or
 a limit here, AND that you have hand-checked the shapes in this subsection. Never contort code to
