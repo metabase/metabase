@@ -31,13 +31,23 @@
 
 (def ^:private value-operators
   "Operators whose second argument is a value rather than a column."
-  '#{= not= < > <= >= like not-like ilike not-ilike in not-in between})
+  '#{= not= != <> is-distinct-from is-not-distinct-from
+     < > <= >= like not-like ilike not-ilike in not-in between not-between})
 
 (defn- marked?
   "Whether `node` is an `[:auto/param v]` marker."
   [node]
   (and (hooks/vector-node? node)
        (= :auto/param (some-> (first (:children node)) hooks/sexpr))))
+
+(defn- distinct-by
+  "`coll` with only the first element for each distinct `(f element)`."
+  [f coll]
+  (->> coll (reduce (fn [[seen acc] x]
+                      (let [k (f x)]
+                        (if (contains? seen k) [seen acc] [(conj seen k) (conj acc x)])))
+                    [#{} []])
+       second))
 
 (defn- value-nodes
   "The nodes sitting in a value slot of `node`, following the clause shapes a query map uses."
@@ -51,6 +61,11 @@
     (let [[head & args] (:children node)
           op            (some-> head hooks/sexpr)]
       (cond
+        ;; A marker IS the value slot -- never descend into its payload, or the marked value
+        ;; gets reported as though it were bare.
+        (marked? node)
+        nil
+
         (contains? #{:and :or :not} op)
         (mapcat value-nodes args)
 
@@ -61,8 +76,11 @@
         (and (keyword? op) (contains? value-operators (symbol (name op))))
         (mapcat #(cons % (value-nodes %)) (rest args))
 
+        ;; A function-call form -- `[:lower v]` -- or a literal collection -- `[a b]` in an `:in`.
+        ;; Both hold values, so yield the children themselves as candidates as well as
+        ;; descending, since a token child returns nothing on its own.
         :else
-        (mapcat value-nodes (:children node))))
+        (mapcat #(cons % (value-nodes %)) (:children node))))
 
     ;; A clause built conditionally -- `(when flag [:= :col v])`, `(if ... )`, `(cond-> ...)`. The
     ;; value slots are inside, so walk the children rather than stopping. Without this a value
@@ -85,6 +103,25 @@
   (let [f (some-> (first (:children node)) hooks/sexpr)]
     (not (contains? write-fns (some-> f name symbol)))))
 
+(def ^:private clause-keys
+  "Query-map clause keys. A map keyed by these is a query map rather than a map of conditions."
+  #{:select :select-distinct :from :where :join :left-join :right-join :inner-join :full-join
+    :cross-join :group-by :having :order-by :limit :offset :for :union :union-all :with
+    :with-columns :returning :values :set})
+
+(defn- query-map-node?
+  "Whether `node` is a query map rather than a map of column/value conditions.
+
+  `(t2/delete! :model/X {:where [:= :k k]})` passes a query map, whose values [[value-nodes]]
+  already walks -- treating it as conditions too would report every value twice."
+  [node]
+  (boolean (some #(and (hooks/keyword-node? %) (contains? clause-keys (hooks/sexpr %)))
+                 (take-nth 2 (:children node)))))
+
+(def ^:private changes-map-fns
+  "Conditions-map fns whose arglist also ends in a changes map, so a lone trailing map is changes."
+  '#{update! update-or-insert!})
+
 (def ^:private conditions-map-fns
   "Calls whose first argument after the model is a map of CONDITIONS rather than a query map.
 
@@ -103,16 +140,22 @@
                            rest)]
       ;; Only the map immediately after the model is conditions. A later map is the changes map,
       ;; whose values are written rather than filtered on (rubric rule 1).
-      (when-let [m (first after-model)]
-        (when (hooks/map-node? m)
+      ;; `update!`'s arglist ENDS in the changes map, so its first map is conditions only when
+      ;; another argument follows: `(t2/update! model {:v written})` is the two-arity call whose
+      ;; single map is CHANGES, and flagging it would violate rubric rule 1. `delete!` has no
+      ;; changes map, so its map is always conditions.
+      (when-let [m (when (or (not (contains? changes-map-fns (some-> f name symbol)))
+                             (next after-model))
+                     (first after-model))]
+        (when (and (hooks/map-node? m) (not (query-map-node? m)))
           (mapcat (fn [v]
                     ;; The column comes from the map key, so an operator form here holds only
                     ;; values -- `{:key [:in ks]}` -- exactly as a kv-arg pair does.
                     (if (and (hooks/vector-node? v) (not (marked? v)))
-                      (let [[head & args] (:children v)
-                            op            (some-> head hooks/sexpr)]
+                      (let [[head & op-args] (:children v)
+                            op               (some-> head hooks/sexpr)]
                         (if (and (keyword? op) (contains? value-operators (symbol (name op))))
-                          (mapcat #(cons % (value-nodes %)) args)
+                          (mapcat #(cons % (value-nodes %)) op-args)
                           (cons v (value-nodes v))))
                       (cons v (value-nodes v))))
                   (take-nth 2 (rest (:children m)))))))))
@@ -140,8 +183,8 @@
                    (when (and v (hooks/keyword-node? k))
                      (if-not (hooks/vector-node? v)
                        [v]
-                       (let [[head & args] (:children v)
-                             op            (some-> head hooks/sexpr)]
+                       (let [[head & op-args] (:children v)
+                             op               (some-> head hooks/sexpr)]
                          (cond
                            ;; Already marked -- the marker is the value slot.
                            (marked? v) [v]
@@ -151,9 +194,9 @@
                            ;; the first argument is the column.
                            (and (keyword? op)
                                 (contains? value-operators (symbol (name op))))
-                           args
+                           (mapcat #(cons % (value-nodes %)) op-args)
 
-                           :else (value-nodes v))))))))))
+                           :else (cons v (value-nodes v)))))))))))
 
 (defn- lint-unmarked-values!
   "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
@@ -163,9 +206,13 @@
   [node]
   (doseq [value (let [args (rest (:children node))
                       f    (some-> (first (:children node)) hooks/sexpr)]
-                  (concat (mapcat value-nodes args)
-                          (kv-arg-value-nodes args)
-                          (conditions-map-value-nodes f args)))
+                  ;; The three walkers overlap on some shapes -- a multi-arg operator in a kv-arg
+                  ;; reaches both `value-nodes` and `kv-arg-value-nodes` -- so dedupe by source
+                  ;; position rather than trying to keep them disjoint.
+                  (->> (concat (mapcat value-nodes args)
+                               (kv-arg-value-nodes args)
+                               (conditions-map-value-nodes f args))
+                       (distinct-by #(select-keys (meta %) [:row :col]))))
           :when (and (hooks/token-node? value)
                      (symbol? (hooks/sexpr value))
                      (not (marked? value)))]
