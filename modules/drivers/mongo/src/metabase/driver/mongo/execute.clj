@@ -209,7 +209,12 @@
                (reducible-rows cursor first-row (post-process-row row-col-names))))))
 
 ;; https://www.mongodb.com/docs/manual/reference/error-codes/
-(def ^:private bson-object-too-large-code 10334)
+;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/facet/#considerations
+(def ^:private facet-oversize-error-codes
+  "MongoDB command-error codes raised when a `$facet` stage overruns a size limit — 10334 for the 16 MB
+  BSON limit on the outer output document, 4031700 for the 100 MB in-memory limit on a single stage
+  inside a `$facet` branch (which cannot spill to disk)."
+  #{10334 4031700})
 
 (defn- pivot-pipeline?
   "True iff `pipeline` contains a `$facet` stage."
@@ -218,22 +223,22 @@
 
 (defn- translate-cursor-error
   "Wrap a Throwable raised while opening the aggregation cursor into a QP-friendly `ex-info`. Pivot
-  queries that overflow the 16 MB BSON document limit get a message that names the two remediations;
-  everything else gets the generic wrapping."
+  queries whose `$facet` output overruns MongoDB's size limits get a message that names the two
+  remediations; everything else gets the generic wrapping."
   [e native-query]
-  (let [oversize-on-pivot? (and (instance? MongoCommandException e)
-                                (= bson-object-too-large-code
-                                   (.getErrorCode ^MongoCommandException e))
+  (let [code               (when (instance? MongoCommandException e)
+                             (.getErrorCode ^MongoCommandException e))
+        oversize-on-pivot? (and (contains? facet-oversize-error-codes code)
                                 (pivot-pipeline? (:query native-query)))]
     (if oversize-on-pivot?
-      (ex-info (tru (str "Pivot result exceeded MongoDB''s 16 MB document limit. Reduce the pivot''s "
+      (ex-info (tru (str "Pivot result exceeded MongoDB''s $facet size limits. Reduce the pivot''s "
                          "cardinality by adding filters or dropping breakouts with many distinct values, "
                          "or turn off the ''use-native-pivot-tables'' Instance setting to fall back to the "
                          "multi-query pivot path."))
                {:driver     :mongo
                 :native     native-query
                 :type       driver-api/qp.error-type.invalid-query
-                :error-code bson-object-too-large-code}
+                :error-code code}
                e)
       (ex-info (tru "Error executing query: {0}" (ex-message e))
                {:driver :mongo

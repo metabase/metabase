@@ -150,7 +150,9 @@
 (mr/def ::$replace-root-stage
   [:map-of
    [:= "$replaceRoot"]
-   [:map-of [:or :keyword :string] :any]])
+   [:map
+    {:closed true}
+    ["newRoot" ::bson-value]]])
 
 (defn- contains-uncompiled-mbql-clause? [x]
   (cond
@@ -2055,8 +2057,9 @@ function(bin) {
   concatenated with `$concatArrays`, `$unwind`-ed, and `$replaceRoot`-ed to yield a single-column-layout stream,
   then sorted by the pivot-grouping bitmask followed by the breakouts.
 
-  Bounded by the 16 MB BSON limit on the `$facet` output document — a pivot whose branch arrays together
-  exceed 16 MB raises MongoDB error 10334 (translated in [[metabase.driver.mongo.execute]])."
+  Subject to MongoDB's `$facet` size limits — 16 MB on the concatenated output document (raises error
+  10334) and 100 MB in-memory per stage inside a branch, which cannot spill to disk (raises error
+  4031700). Both are translated in [[metabase.driver.mongo.execute]]."
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx :- ::compiled-pipeline]
@@ -2114,7 +2117,7 @@ function(bin) {
                            {$addFields {pivot-facet-rows-field
                                         {"$concatArrays" (mapv #(str "$" %) (keys facet-branches))}}}
                            {$unwind {:path (str "$" pivot-facet-rows-field)}}
-                           {$replaceRoot {:newRoot (str "$" pivot-facet-rows-field)}}
+                           {$replaceRoot {"newRoot" (str "$" pivot-facet-rows-field)}}
                            {$sort outer-sort}]
         projections       (into breakout-aliases
                                 cat

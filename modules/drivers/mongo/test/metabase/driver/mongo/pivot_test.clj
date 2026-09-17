@@ -114,36 +114,42 @@
       (is (every? #(= 1 (get sort-map %)) sort-keys))
       (is (= #{"pivot-grouping" "PRODUCT_ID" "USER_ID"} (set sort-keys))))))
 
-;;; ------------------------------------- 16 MB overflow translation --------------------------------------
+;;; ------------------------------------ $facet size-limit translation ------------------------------------
 
-(defn- bson-object-too-large-exception
-  "A synthetic `MongoCommandException` with error code 10334 (BSONObjectTooLarge), for exercising the
-  execute-layer translator without a live MongoDB."
-  []
+(defn- mongo-command-exception
+  "A synthetic `MongoCommandException` with the given error `code` for exercising the execute-layer
+  translator without a live MongoDB."
+  [code]
   (MongoCommandException.
    (doto (BsonDocument.)
      (.put "ok"     (BsonDouble. 0.0))
-     (.put "code"   (BsonInt32. 10334))
-     (.put "errmsg" (BsonString. "BSONObjectTooLarge")))
+     (.put "code"   (BsonInt32. code))
+     (.put "errmsg" (BsonString. (str "synthetic error " code))))
    (ServerAddress. "test-host")))
 
-(deftest ^:parallel bson-overflow-on-pivot-produces-actionable-error-test
-  (testing "code 10334 on a pipeline that contains $facet is translated with a message naming both remediations"
-    (let [native  {:query      [{"$facet" {"combo_0" []}}]
-                   :collection "orders"}
-          wrapped (#'mongo.execute/translate-cursor-error (bson-object-too-large-exception) native)]
-      (is (= 10334 (:error-code (ex-data wrapped))))
-      (is (= :invalid-query (:type (ex-data wrapped))))
-      (is (str/includes? (ex-message wrapped) "16 MB"))
-      (is (str/includes? (ex-message wrapped) "use-native-pivot-tables")))))
+(deftest ^:parallel facet-oversize-on-pivot-produces-actionable-error-test
+  (testing "on a pipeline that contains $facet, both known oversize codes are translated with a message
+            naming the remediations"
+    (let [native {:query      [{"$facet" {"combo_0" []}}]
+                  :collection "orders"}]
+      (doseq [code [10334    ; 16 MB BSON output document
+                    4031700]] ; 100 MB in-memory $facet stage limit
+        (testing (str "code " code)
+          (let [wrapped (#'mongo.execute/translate-cursor-error (mongo-command-exception code) native)]
+            (is (= code (:error-code (ex-data wrapped))))
+            (is (= :invalid-query (:type (ex-data wrapped))))
+            (is (str/includes? (ex-message wrapped) "$facet"))
+            (is (str/includes? (ex-message wrapped) "use-native-pivot-tables"))))))))
 
-(deftest ^:parallel bson-overflow-on-non-pivot-falls-through-test
-  (testing "code 10334 on a pipeline without $facet gets the generic wrapping (no pivot-specific advice)"
-    (let [native  {:query      [{"$match" {}}]
-                   :collection "orders"}
-          wrapped (#'mongo.execute/translate-cursor-error (bson-object-too-large-exception) native)]
-      (is (nil? (:error-code (ex-data wrapped))))
-      (is (not (str/includes? (ex-message wrapped) "use-native-pivot-tables"))))))
+(deftest ^:parallel facet-oversize-on-non-pivot-falls-through-test
+  (testing "the same codes on a pipeline without $facet get the generic wrapping (no pivot-specific advice)"
+    (let [native {:query      [{"$match" {}}]
+                  :collection "orders"}]
+      (doseq [code [10334 4031700]]
+        (testing (str "code " code)
+          (let [wrapped (#'mongo.execute/translate-cursor-error (mongo-command-exception code) native)]
+            (is (nil? (:error-code (ex-data wrapped))))
+            (is (not (str/includes? (ex-message wrapped) "use-native-pivot-tables")))))))))
 
 (deftest ^:parallel non-mongo-error-falls-through-test
   (testing "a non-MongoCommandException throwable on a pivot pipeline gets the generic wrapping"
