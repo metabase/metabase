@@ -398,7 +398,7 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [{:keys [locale] :as time-config} ^dayjs t unit]
+  [time-config ^dayjs t unit {:keys [locale]}]
   (case unit
     ;; DDD produces zero-padded output, so use the plugin method instead.
     :day-of-year  (str (.dayOfYear t))
@@ -436,53 +436,56 @@
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time.
    Time input formatting is only defined with time units."
-  [time-config input unit]
-  (cond
-    (string? input)
-    (let [time? (common/matches-time? input)
-          date? (common/matches-date? input)
-          date-time? (common/matches-date-time? input)
-          t (cond
-              ;; Anchor to an arbitrary date since time inputs are only defined for
-              ;; :hour-of-day and :minute-of-hour.
-              time? (.utc dayjs (str "2023-01-01T" input))
-              (or date? date-time?) (coerce-local-date-time input))]
-      (if (and t (.isValid t))
-        (or
-         (format-extraction-unit time-config t unit)
+  ([time-config input unit]
+   (format-unit time-config input unit {}))
+  ([time-config input unit format-options]
+   (cond
+     (string? input)
+     (let [time? (common/matches-time? input)
+           date? (common/matches-date? input)
+           date-time? (common/matches-date-time? input)
+           t (cond
+               ;; Anchor to an arbitrary date since time inputs are only defined for
+               ;; :hour-of-day and :minute-of-hour.
+               time? (.utc dayjs (str "2023-01-01T" input))
+               (or date? date-time?) (coerce-local-date-time input))]
+       (if (and t (.isValid t))
+         (or
+          (format-extraction-unit time-config t unit format-options)
+          ;; no locale for default formats
+          (cond
+            time? (.format t "h:mm A")
+            date? (.format t "MMM D, YYYY")
+            date-time? (.format t "MMM D, YYYY, h:mm A")))
+         input))
+
+     (number? input)
+     (case (keyword unit)
+       :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
+                          " "
+                          (if (<= input 11) "AM" "PM"))
+       :week-of-year (str input)
+       (or
+        (format-extraction-unit time-config
+                                (common/number->timestamp input (assoc time-config :unit unit))
+                                unit
+                                format-options)
+        (str input)))
+
+     (dayjs/isDayjs input)
+     (or (format-extraction-unit time-config input unit format-options)
          ;; no locale for default formats
          (cond
-           time? (.format t "h:mm A")
-           date? (.format t "MMM D, YYYY")
-           date-time? (.format t "MMM D, YYYY, h:mm A")))
-        input))
+           ;; no hour, minute, or seconds, must be date
+           (not (has-explicit-time? input))
+           (.format input "MMM D, YYYY")
 
-    (number? input)
-    (case (keyword unit)
-      :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
-                         " "
-                         (if (<= input 11) "AM" "PM"))
-      :week-of-year (str input)
-      (or
-       (format-extraction-unit time-config
-                               (common/number->timestamp input (assoc time-config :unit unit))
-                               unit)
-       (str input)))
+           ;; no year, month, or day, must be a time
+           (not (has-explicit-date? input))
+           (.format input "h:mm A")
 
-    (dayjs/isDayjs input)
-    (or (format-extraction-unit time-config input unit)
-        ;; no locale for default formats
-        (cond
-          ;; no hour, minute, or seconds, must be date
-          (not (has-explicit-time? input))
-          (.format input "MMM D, YYYY")
-
-          ;; no year, month, or day, must be a time
-          (not (has-explicit-date? input))
-          (.format input "h:mm A")
-
-          :else ;; otherwise both date and time
-          (.format input "MMM D, YYYY, h:mm A")))))
+           :else ;; otherwise both date and time
+           (.format input "MMM D, YYYY, h:mm A"))))))
 
 (def ^:private month-abbrev->month
   "Map of English month abbreviations (case-insensitive) to month numbers (0-11)."

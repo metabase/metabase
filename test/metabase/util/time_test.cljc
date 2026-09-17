@@ -66,7 +66,7 @@
   ([value unit]
    (shared.ut/format-unit time-config value unit))
   ([value unit locale]
-   (shared.ut/format-unit (assoc time-config :locale locale) value unit)))
+   (shared.ut/format-unit time-config value unit {:locale locale})))
 
 (deftest string->timestamp-test
   (testing "numbers are parsed into datetimes based on the unit"
