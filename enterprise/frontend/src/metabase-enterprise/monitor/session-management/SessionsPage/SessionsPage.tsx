@@ -36,7 +36,7 @@ import {
 } from "./constants";
 import type { RouteParams } from "./types";
 import { useSessionRevocation } from "./use-session-revocation";
-import { buildListParams, urlStateConfig } from "./utils";
+import { buildListParams, getLastActiveCutoff, urlStateConfig } from "./utils";
 
 export const SessionsPage = () => {
   usePageTitle(t`Session management`);
@@ -49,9 +49,14 @@ export const SessionsPage = () => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelection = useCallback(() => setRowSelection({}), []);
 
+  const lastActiveAfter = useMemo(
+    () => getLastActiveCutoff(urlState.last_active),
+    [urlState.last_active],
+  );
+
   const { data, isLoading, isFetching, error } = useAbortableQuery(
     useLazyListSessionsQuery,
-    buildListParams(urlState, PAGE_SIZE),
+    buildListParams(urlState, PAGE_SIZE, lastActiveAfter),
   );
   const sessions = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
@@ -68,6 +73,7 @@ export const SessionsPage = () => {
     urlState.page,
     urlState.query,
     urlState.provider,
+    urlState.last_active,
     urlState.sort_column,
     urlState.sort_direction,
   ]);
