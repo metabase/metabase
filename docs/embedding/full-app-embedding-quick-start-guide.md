@@ -35,7 +35,7 @@ You could also use the dashboard's [Entity ID](../installation-and-operation/ser
 
 In Metabase, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Security**. Toggle on **Full-app embedding**.
 
-Under **Authorized origins for full-app embedding**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
+Under **Authorized origins for full-app embedding** (at the bottom of the page), add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 

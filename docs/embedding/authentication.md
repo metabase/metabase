@@ -31,7 +31,7 @@ Here's a high-level overview:
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
 3. Generate a key and copy it to your clipboard.
 
-The hub only shows the JWT form. If you'd rather use SAML, set it up in **Admin** > **Settings** > **Authentication** instead. If SAML is already set up and JWT isn't, the hub's Authentication page will point you there.
+The hub only shows the JWT form. If you'd rather use SAML, set it up in **Admin** > **Settings** > **Authentication** instead. If SAML is already set up and JWT isn't, the hub's Authentication page won't show the JWT form at all. Instead you'll see a **SAML is configured** card with a **Go to Admin** link.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 
@@ -301,7 +301,7 @@ Go to **Embedding hub** > **Security** and add your embedding domain under **Cro
 
 When you use `useExistingUserSession: true` during development on a different domain, the browser must send the existing Metabase session cookie cross-origin into the iframe. To allow this, you'll need to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Embedding hub** > **Security** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Embedding hub** > **Security** > **SameSite cookie setting** (Pro and Enterprise plans).
 
 SameSite values include:
 

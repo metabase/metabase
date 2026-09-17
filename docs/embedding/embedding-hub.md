@@ -9,12 +9,12 @@ Embedding settings live in the Embedding hub. To open it, click the **grid** ico
 
 ## Pages in the Embedding hub
 
-- **Get started**: a checklist that walks you through your first embed. The first section covers connecting a database, creating a dashboard, and getting an embed snippet. The second section covers permissions and tenants, SSO, a production embed with SSO, custom themes, and AI, with a short wizard for the permissions and SSO steps. On OSS and Starter plans, the AI step appears in the first section instead.
+- **Get started**: a checklist that walks you through your first embed. **Create your first embed** covers connecting a database, creating a dashboard, and getting an embed snippet. **Fine-tune your embed** covers permissions and tenants, SSO, a production embed with SSO, custom themes, and AI. The permissions and SSO steps open a short wizard. On OSS and Starter plans, the AI step appears in the first section instead.
 - **Security**: one toggle that turns on modular embedding, the SDK for React, and guest embeds, plus a separate **Full-app embedding** toggle on Pro and Enterprise plans. This page also has CORS origins, the secret key for guest embeds, and a list of published guest embeds. On Pro and Enterprise plans, it also has the SameSite cookie setting and, once full-app embedding is on, the authorized origins for full-app embeds.
-- **Authentication**: JWT settings for [SSO](./authentication.md). For SAML and other options, head to **Admin > Settings > Authentication**.
+- **Authentication**: JWT settings for [SSO](./authentication.md). For SAML and other options, head to **Admin > Settings > Authentication**. If SAML is already set up and JWT isn't, this page shows a **SAML is configured** card with a link to Admin instead of the JWT form.
 - **Permissions**: the same permissions editor as **Admin > Permissions**.
 - **Tenancy**: [tenants](./tenants.md), tenant groups, and tenant users.
-- **Appearance**: [themes](./appearance.md) for your embeds, plus the loading message and empty-state illustrations. If full-app embedding is on, this page points you to **Admin > Settings > Appearance** for the colors and branding of full-app embeds.
+- **Appearance**: [themes](./appearance.md) for your embeds, plus the loading message and empty-state illustrations. If full-app embedding is on, this page links to the Admin [appearance settings](../configuring-metabase/appearance.md), which control the colors and branding of full-app embeds.
 - **Localization**: [translation dictionaries](./translations.md) for embedded content.
 
 ## Creating a new embed from the hub
