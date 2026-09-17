@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [some mapv empty? get-in update-keys])
+  (:refer-clojure :exclude [some mapv empty? get-in not-empty update-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -47,7 +47,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [empty? get-in mapv some update-keys]])
+   [metabase.util.performance :as perf :refer [empty? get-in mapv not-empty some update-keys]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))

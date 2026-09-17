@@ -1,5 +1,5 @@
 (ns metabase.driver.mongo.execute
-  (:refer-clojure :exclude [every? mapv])
+  (:refer-clojure :exclude [every? mapv some])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -14,7 +14,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv]])
+   [metabase.util.performance :refer [every? mapv some]])
   (:import
    (com.mongodb MongoCommandException)
    (com.mongodb.client

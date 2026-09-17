@@ -14,6 +14,8 @@
    (com.mongodb MongoCommandException ServerAddress)
    (org.bson BsonDocument BsonDouble BsonInt32 BsonString)))
 
+(set! *warn-on-reflection* true)
+
 (defn- with-pivot
   "Attach a `:pivot` clause to the last stage of `query` from row/column breakout indexes."
   [query row-idxs col-idxs & {:keys [show-row-totals show-column-totals]
