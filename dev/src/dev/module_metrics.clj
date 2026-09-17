@@ -47,11 +47,15 @@
                  (symbol (str prefix "." suffix))))
           ['api 'core 'init])))
 
-(defn- declared-api-namespaces [config module]
+(defn- declared-api-namespaces
+  "The API namespaces `module` declares; a module that leaves `:api` out gets the canonical ones, as the linter
+  resolves it."
+  [config module]
   (let [api (get-in config [module :api])]
-    (if (= api :any)
-      :any
-      (into (sorted-set) api))))
+    (cond
+      (= api :any) :any
+      (nil? api)   (canonical-api-namespaces config module)
+      :else        (into (sorted-set) api))))
 
 (defn- api-namespace-count
   "Count of a module's public API namespaces: its full namespace count when `:api` is `:any`, else the

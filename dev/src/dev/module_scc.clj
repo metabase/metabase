@@ -323,7 +323,7 @@
   Commits touching no module-owned file are excluded from the distribution and reported in
   `:num-commits-skipped`. That covers frontend and docs commits, and also **test-only commits**:
   `file->module` is built from a source-file scan, so a commit that changes only tests maps to no
-  module and is counted as costing nothing, even though selective CI would rerun those tests. The
+  module and is left out of the distribution, even though selective CI would rerun those tests. The
   result is therefore the bill for source-changing commits, and it understates total spend.
   The test files a mixed commit changes are ignored the same way; only its source files select modules."
   [graph module->tests file->module commits]

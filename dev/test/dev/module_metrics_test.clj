@@ -152,6 +152,18 @@
                :dependents   {:transitive-count 1}}
               (get metrics 'x))))))
 
+(deftest ^:parallel missing-api-is-the-canonical-api-test
+  (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
+                              (constantly #{})]
+    (let [deps    [{:namespace 'metabase.x.core
+                    :filename  "src/metabase/x/core.clj"
+                    :module    'x
+                    :deps      []}]
+          metrics (module-metrics/metrics deps {'x {}})]
+      (is (=? [{:module 'x
+                :api    {:declared-namespace-count 3}}]
+              metrics)))))
+
 (deftest ^:parallel repo-metrics-test
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
                               (fn [_deps _config _prefix->module source-filenames]
