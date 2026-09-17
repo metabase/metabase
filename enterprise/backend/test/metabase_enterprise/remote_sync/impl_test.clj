@@ -2021,6 +2021,7 @@ serdes/meta:
   (testing "preview reports a clean merge with a summary when changes don't conflict"
     (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                 source/source-from-settings      (constantly (export-test-source))
+                                spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
                                 source/preview-merge             (fn [_ _ _ _]
                                                                    {:clean? true :conflicts []
@@ -2032,6 +2033,7 @@ serdes/meta:
   (testing "preview reports conflicts when the same entity changed on both sides"
     (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                 source/source-from-settings      (constantly (export-test-source))
+                                spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
                                 source/preview-merge             (fn [_ _ _ _]
                                                                    {:clean? false :conflicts ["Card A (collections/a.yaml)"]
@@ -2039,6 +2041,33 @@ serdes/meta:
       (is (= {:diverged? true :clean? false
               :conflicts ["Card A (collections/a.yaml)"]
               :summary {:added 0 :updated 0 :removed 0}}
+             (impl/preview-export-merge "main"))))))
+
+(deftest preview-export-merge-streams-extraction-test
+  (testing "preview hands the extraction stream to the merge unrealized and walks the targets once"
+    (let [walks    (atom 0)
+          stream   (eduction (map identity) [{:dummy true}])
+          received (atom nil)]
+      (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
+                                  source/source-from-settings      (constantly (export-test-source))
+                                  spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1]})
+                                  spec/extract-entities-for-export (fn [_targets] stream)
+                                  source/preview-merge             (fn [s _ _ _]
+                                                                     (reset! received s)
+                                                                     {:clean? true :conflicts []
+                                                                      :summary {:added 0 :updated 0 :removed 0}})]
+        (impl/preview-export-merge "main")
+        (is (identical? stream @received))
+        (is (= 1 @walks))))))
+
+(deftest preview-export-merge-nothing-exportable-test
+  (testing "preview reports no changes but still diverged when nothing is exportable, without extracting"
+    (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
+                                source/source-from-settings      (constantly (export-test-source))
+                                spec/exportable-entities         (constantly {})
+                                spec/extract-entities-for-export (fn [& _] (throw (ex-info "must not extract" {})))]
+      (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+              :force-push-casualties {:deleted [] :overwritten []}}
              (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-history-rewritten-test
@@ -2051,6 +2080,7 @@ serdes/meta:
                            (snapshot-at [_ _] nil))]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version        (constantly "gone-base")
                                   source/source-from-settings          (constantly no-base-source)
+                                  spec/exportable-entities             (constantly {"Card" [1]})
                                   spec/extract-entities-for-export     (constantly [{:dummy true}])
                                   source/force-push-casualties-no-base (fn [_ _] {:deleted ["Audit Logs"] :overwritten []})]
         (let [result (impl/preview-export-merge "main")]
