@@ -6,8 +6,8 @@
    [[metabase.oauth-server.api.metadata]] — and for the scope sets the v2 surface accepts and advertises.
 
    A leaf namespace, with NO requires, so both the handler and the OAuth server can read it without a
-   dependency cycle. That is load-bearing rather than tidy: `metabase.server.middleware.security` requires
-   `metabase.mcp.core`, so anything `mcp.core` reaches becomes part of the security middleware's load path —
+   dependency cycle. That is load-bearing rather than tidy: `metabase.server.middleware.session` requires
+   `metabase.mcp.core`, so anything `mcp.core` reaches becomes part of the session middleware's load path —
    pulling `metabot.scope` (and through it `premium-features`) in that way deadlocks namespace loading with a
    methodical protocol error at web-server start. Keep this namespace dependency-free.")
 

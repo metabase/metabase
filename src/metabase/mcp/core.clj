@@ -90,8 +90,8 @@
    what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
 
    Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]] rather than from the
-   registries: `metabase.server.middleware.security` requires this namespace, so reaching
-   `mcp.v2.resources` from here would put `metabot.scope` (and `premium-features`) on the security
+   registries: `metabase.server.middleware.session` requires this namespace, so reaching
+   `mcp.v2.resources` from here would put `metabot.scope` (and `premium-features`) on the session
    middleware's load path — the cycle `mcp.paths` exists to prevent. Deriving from the registry is also
    load-order dependent, reporting only the tools whose namespaces happen to be loaded.
    `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
