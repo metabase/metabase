@@ -27,7 +27,6 @@
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
-   [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
    [metabase.explorations.api]
    [metabase.frontend-errors.api]
@@ -191,11 +190,13 @@
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   ;; The MCP Apps iframe credential is accepted for `/dataset` and is stamped unrestricted, so the endpoint
-   ;; scope middleware cannot hold the `agent:sql:run` line here — the guard is what stops a credential lifted
-   ;; out of the resource HTML from POSTing raw SQL. The spec-generation wrapper keeps the guard transparent
-   ;; to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here fails openapi.json generation
-   ;; for the whole /api tree.
+   ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
+   ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
+   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
+   ;; API-key session, or an `mb:full` bearer token), and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
+   ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
                                     agent-api.query-guards/+refuse-unscoped-native-sql)
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
@@ -206,7 +207,6 @@
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
-   "/embedding-hub"        metabase.embedding-hub.api/routes
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)

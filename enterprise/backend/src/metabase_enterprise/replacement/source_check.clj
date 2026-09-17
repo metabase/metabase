@@ -24,7 +24,7 @@
            (replacement.db/card-with-table-exists? sandbox-card-ids table-id))))))
 
 (mu/defn- has-incoming-fks? :- :boolean
-  "Returns true if any active field has a FK pointing to a field in `table-id`."
+  "Returns true if any active field on an active table has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
   (if-let [field-ids (not-empty (replacement.db/active-field-ids-of-table table-id))]
     (replacement.db/active-fk-to-fields-exists? field-ids)

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
@@ -19,9 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
-   [toucan2.core :as t2])
-  (:import
-   (org.postgresql.util PSQLException)))
+   [toucan2.core :as t2]))
 
 (comment
   h2/keep-me
@@ -170,7 +169,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (search.db/delete-index-metadata-by-name-on-conn! safe-conn (name table-name)))
+                        (search.db/delete-index-metadata-by-name! safe-conn (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -232,13 +231,6 @@
         (dissoc :native_query)
         (merge (specialization/extra-entry-fields entity)))))
 
-(defn- table-not-found-exception? [e]
-  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
-  ;; TODO we should handle the MySQL and MariaDB flavors here too
-  (or (instance? PSQLException (ex-cause e))
-      (= mdb/jdbc-sql-syntax-error-exception-classname
-         (some-> e ex-cause class .getName))))
-
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
            {:table-type                table-type
@@ -258,15 +250,13 @@
     (f)))
 
 (defn- safe-batch-upsert!
-  "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
+  "Upsert a batch into the tracked table, refreshing stale tracking once when the table turns out to be missing.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
-  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
-  continue so the rest of the reindex can finish and activate whatever was successfully written.
-
-  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
+  Returns the table name written, or nil if no table is tracked or the batch is skipped.
+  Throws when the tracked table is missing and the refresh names the same table, when the retry hits a missing
+  table again, and on interruption.
+  Any other failure is logged and the batch is skipped."
   [table-type table-name-fn entries]
-  ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
     (let [upsert! (fn [t]
                     (isolate-write! #(specialization/batch-upsert! t entries))
@@ -278,7 +268,7 @@
           (throw ie))
         (catch Exception e
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (table-not-found-exception? e) (not (exists? table-name)))
+          (if (and (sql-errors/table-not-found? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
@@ -288,7 +278,7 @@
                     (.interrupt (Thread/currentThread))
                     (throw ie))
                   (catch Exception e2
-                    (if (table-not-found-exception? e2)
+                    (if (sql-errors/table-not-found? e2)
                       (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
                       (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
                           (log/errorf "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing: %s"
@@ -373,7 +363,7 @@
                    ;; The table can disappear after we read its name, especially during tests.
                    {search-model (try (isolate-write!
                                        #(search.db/delete-index-rows! table-name search-model (set ids)))
-                                      (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                                      (catch Exception e (if (sql-errors/table-not-found? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))
 
@@ -398,9 +388,11 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-non-active-index! :appdb
+                                                                              (search.spec/index-version-hash)
+                                                                              table-name)]
                   (when (pos? deleted)
-                    (log/infof "Deleted %d pending indices" deleted))))
+                    (log/infof "Deleted %d non-active metadata rows for index %s" deleted table-name))))
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]

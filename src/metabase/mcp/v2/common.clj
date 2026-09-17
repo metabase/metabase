@@ -223,6 +223,14 @@
    :collection               (message/raw "collection")
    :subscription             (message/raw "subscription")})
 
+(defn throw-insufficient-scope!
+  "Throw a 403 with caller-facing message `msg`, marked as a refusal for want of `required-scope` so the registry
+   answers it as a scope denial rather than an `isError` result."
+  [msg required-scope]
+  (throw (message-ex-info msg {:status-code     403
+                               ::error-code     error-code-invalid-request
+                               ::required-scope required-scope})))
+
 (defn throw-not-found
   "Throw the collapsed not-found teaching error for `model`, a server-declared model keyword, and the caller's `id`.
    Deliberately identical for \"doesn't exist\" and \"exists but not readable\", so responses never form an

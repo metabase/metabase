@@ -5,13 +5,13 @@
 // on it. Complementary to router/navigate-contract.unit.spec.tsx, which pins the
 // other side: how `navigate` drives the router.
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
 import {
   type NavigateOptions,
   type To,
@@ -49,7 +49,7 @@ function buildSavedQuestion(card: Card): Question {
     databases: [createSampleDatabase()],
     questions: [card],
   });
-  const metadata = getMetadata(createMockState({ entities }));
+  const metadata = createMockMetadataFromState(createMockState({ entities }));
   return checkNotNull(metadata.question(card.id));
 }
 
@@ -57,7 +57,7 @@ function buildPristineTableQuestion(): Question {
   const entities = createMockEntitiesState({
     databases: [createSampleDatabase()],
   });
-  const metadata = getMetadata(createMockState({ entities }));
+  const metadata = createMockMetadataFromState(createMockState({ entities }));
   return checkNotNull(metadata.table(ORDERS_ID)).newQuestion();
 }
 
