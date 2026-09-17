@@ -1,7 +1,7 @@
 import { version as reactVersion } from "react";
 
 // Set at build time from the React version Metabase itself depends on.
-export const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = Number(
+const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = Number(
   process.env.EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
 );
 
@@ -14,12 +14,13 @@ export function getHostReactMajorVersion(): number | null {
 
 // An unknown version is treated as supported: rendering is better than
 // blocking on a detection gap.
-export function isHostReactVersionSupported(
-  minimumSupportedMajorVersion = MINIMUM_SUPPORTED_REACT_MAJOR_VERSION,
-): boolean {
+export function isHostReactVersionSupported(): boolean {
   const majorVersion = getHostReactMajorVersion();
 
-  return majorVersion === null || majorVersion >= minimumSupportedMajorVersion;
+  return (
+    majorVersion === null ||
+    majorVersion >= MINIMUM_SUPPORTED_REACT_MAJOR_VERSION
+  );
 }
 
 export function getUnsupportedReactVersionMessage(): string {
