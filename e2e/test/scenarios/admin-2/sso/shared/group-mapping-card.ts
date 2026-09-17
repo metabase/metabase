@@ -1,16 +1,24 @@
 const { H } = cy;
 
+type GroupMappingCardOptions = {
+  sectionTestId: string;
+  nameLabel: string;
+};
+
 /**
  * Helpers for the group mapping card the SSO pages share.
  * Callers alias PUT /api/setting/* as @updateSetting and PUT /api/setting as @updateSettings.
  */
-export const groupMappingCardHelpers = ({ sectionTestId, nameLabel }) => {
+export const groupMappingCardHelpers = ({
+  sectionTestId,
+  nameLabel,
+}: GroupMappingCardOptions) => {
   const groupMappingSection = () => cy.findByTestId(sectionTestId);
 
   const groupMappingSwitch = () =>
     cy.findByRole("switch", { name: "Group mapping" });
 
-  const mappingRow = (name) =>
+  const mappingRow = (name: string) =>
     cy.contains('[data-testid="group-mapping-row"]', name);
 
   const newMappingButton = () =>
@@ -22,7 +30,7 @@ export const groupMappingCardHelpers = ({ sectionTestId, nameLabel }) => {
   const clickGroupMappingSwitch = () =>
     groupMappingSection().contains("label", "Group mapping").click();
 
-  const toggleGroupMapping = (enabled) => {
+  const toggleGroupMapping = (enabled: boolean) => {
     groupMappingSwitch().should(enabled ? "not.be.checked" : "be.checked");
     clickGroupMappingSwitch();
     cy.wait("@updateSetting")
@@ -30,7 +38,7 @@ export const groupMappingCardHelpers = ({ sectionTestId, nameLabel }) => {
       .should("deep.equal", { value: enabled });
   };
 
-  const addMapping = (name, groups) => {
+  const addMapping = (name: string, groups: string[]) => {
     newMappingButton().click();
     cy.findByLabelText(nameLabel).type(name);
     groupsPicker().click();
@@ -42,7 +50,11 @@ export const groupMappingCardHelpers = ({ sectionTestId, nameLabel }) => {
     mappingRow(name).should("contain", groups.join(", "));
   };
 
-  const deleteMapping = (name, consequenceLabel, confirmLabel) => {
+  const deleteMapping = (
+    name: string,
+    consequenceLabel: string | RegExp,
+    confirmLabel: string,
+  ) => {
     mappingRow(name).findByLabelText("Delete mapping").click();
     H.modal().within(() => {
       cy.findByText("Remove this group mapping?").should("be.visible");

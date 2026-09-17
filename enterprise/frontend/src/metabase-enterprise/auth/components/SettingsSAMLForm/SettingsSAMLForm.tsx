@@ -8,8 +8,10 @@ import {
   getDefaultPlaceholder,
   getEnvNoticeProps,
   getExtraFormFieldProps,
+  getStoredFieldValue,
 } from "metabase/admin/settings/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Markdown } from "metabase/common/components/Markdown";
 import {
@@ -115,7 +117,7 @@ export function SettingsSAMLForm() {
         validationSchema={SAML_FORM_SCHEMA}
         enableReinitialize
       >
-        {({ dirty, initialValues, setFieldValue }) => (
+        {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -303,6 +305,7 @@ export function SettingsSAMLForm() {
                 />
               </Flex>
             </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
           </Form>
         )}
       </FormProvider>
@@ -328,13 +331,12 @@ const getFormValues = (
     "saml-attribute-group",
   ]);
 
-  const applicationNameSetting = settingDetails["saml-application-name"];
-
   // mapObject widens every value to one union, so the shape is narrowed back to the form's
   return {
     ..._.mapObject(samlSettings, (val) => val ?? null),
-    "saml-application-name": applicationNameSetting?.is_env_setting
-      ? (settingValues["saml-application-name"] ?? null)
-      : (applicationNameSetting?.value ?? null),
+    "saml-application-name": getStoredFieldValue(
+      settingDetails["saml-application-name"],
+      settingValues["saml-application-name"],
+    ),
   } as SAMLFormSettings;
 };

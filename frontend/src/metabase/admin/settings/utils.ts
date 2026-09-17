@@ -1,7 +1,11 @@
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import type { SettingDefinition } from "metabase-types/api";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  SettingDefinition,
+} from "metabase-types/api";
 
 export const useGetEnvVarDocsUrl = (envName: string | undefined) => {
   return useDocsUrl("configuring-metabase/environment-variables", {
@@ -44,4 +48,15 @@ export const getDefaultPlaceholder = (
     return undefined;
   }
   return setting.default;
+};
+
+/** The value a form field starts with: an unset setting stays empty so its default shows as the placeholder, while an env-locked one shows the env value */
+export const getStoredFieldValue = <Key extends EnterpriseSettingKey>(
+  setting: SettingDefinition<Key> | undefined,
+  envValue: EnterpriseSettingValue<Key> | undefined,
+): NonNullable<EnterpriseSettingValue<Key>> | null => {
+  if (setting?.is_env_setting) {
+    return envValue ?? null;
+  }
+  return setting?.value ?? null;
 };
