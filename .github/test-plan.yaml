@@ -9,7 +9,7 @@
 #    event, branch, or path matches skip/run will execute
 #  - if run and skip both match, run ALWAYS takes precedence and the job/workflow will run
 #  - force-skip ALWAYS takes precedence over run and skips the job or workflow
-#  - for workflow jobs that call another workflow, a run/skip block can be set in the 
+#  - for workflow jobs that call another workflow, a run/skip block can be set in the
 #    calling workflow's job block which determines if that workflow is called at all. This
 #    takes precedence over any of the called workflow's conditionals
 
@@ -19,7 +19,7 @@ overrides:
     run:
       branch:
         - master
-    
+
   - id: protected-branch-releases
     reason: release branches should test everything
     run:
@@ -53,7 +53,7 @@ workflows:
       containerize:
         calls: containerize-jar
         run:
-          # don't push to Dockerhub for merge to release branches 
+          # don't push to Dockerhub for merge to release branches
           ignore-overrides:
             - protected-branch-releases
           labels:

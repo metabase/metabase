@@ -29,9 +29,6 @@ jobs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - uses: ./.github/actions/prepare-frontend
       - uses: ./.github/actions/prepare-backend
 
@@ -61,7 +58,7 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
-      # TODO: see if this can be a single script so we can run in parallel instead of as a composite action   
+      # TODO: see if this can be a single script so we can run in parallel instead of as a composite action
       - name: Create test plan
         id: compute
         uses: ./.github/actions/create-test-plan
@@ -73,13 +70,13 @@ jobs:
           loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
           e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
-      
-      # TODO: this needs to be wired into test plan somehow, also need to avoid ~1 minute of build time it adds.     
+
+      # TODO: this needs to be wired into test plan somehow, also need to avoid ~1 minute of build time it adds.
       - name: Build static-viz frontend
         run: bun run build-static-viz
         env:
           MB_EDITION: ee
-      
+
       # TODO: update static-viz check/build to use file-paths script instead of separate dorny/paths-filter call
       - name: Check for static viz changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
