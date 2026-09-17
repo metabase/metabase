@@ -1,32 +1,89 @@
 (ns metabase.search.core-metrics-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.search.appdb.index :as search.index]
-   [metabase.search.core :as search]
+   [metabase.search.appdb.metrics :as search.metrics]
+   [metabase.search.db :as search.db]
+   [metabase.search.engine :as search.engine]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest reindex-stamps-freshness-gauge-test
-  (let [gauges (atom [])]
-    (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [metric labels value]
-                                                       (swap! gauges conj [metric labels value]))]
-      (search.tu/with-temp-index-table
-        (search/reindex! {:async? false :in-place? true})
-        (let [[metric labels value]
-              (first (filter #(= :metabase-search/last-successful-reindex-timestamp-seconds (first %))
-                             @gauges))]
-          (is (= :metabase-search/last-successful-reindex-timestamp-seconds metric))
-          (is (= {:engine "appdb"} labels))
-          (is (< (- (/ (System/currentTimeMillis) 1000.0) 60) value)
-              "stamped with the current time"))))))
+(defn- with-completion-index [f]
+  (binding [search.spec/*testing-only-index-version-hash* (str (random-uuid))]
+    (let [{:keys [coordinate table] :as rebuild} (search.index/rebuild-context :completion-test)]
+      (mt/with-temp [:model/SearchIndexMetadata _ {:engine     (:engine coordinate)
+                                                   :index_name (name table)
+                                                   :lang_code  (:lang-code coordinate)
+                                                   :status     :active
+                                                   :version    (:version coordinate)}]
+        (f rebuild)))))
+
+(deftest completion-is-shared-and-survives-collector-restart-test
+  (with-completion-index
+    (fn [{:keys [coordinate] :as rebuild}]
+      (is (nil? (search.db/active-index-completion coordinate)))
+      (is (true? (search.index/complete-rebuild! rebuild)))
+      (let [completed (search.db/active-index-completion coordinate)
+            samples   (atom [])]
+        (is (some? completed))
+        (mt/with-dynamic-fn-redefs [analytics/clear! (constantly nil)
+                                    analytics/set-gauge! (fn [& args] (swap! samples conj args))
+                                    search.engine/active-engines (constantly [:search.engine/appdb])]
+          (dotimes [_ 2]
+            (#'search.metrics/collect-freshness!))
+          (is (= 2 (count @samples)))
+          (is (= (first @samples) (second @samples)) "collection never invents a newer success")
+          (is (= [:metabase-search/last-successful-reindex-timestamp-seconds
+                  {:engine "appdb", :locale (:lang-code coordinate), :version (:version coordinate)}
+                  (/ (.toEpochMilli ^java.time.Instant (t/instant completed)) 1000.0)]
+                 (vec (first @samples)))))))))
+
+(deftest unknown-completion-clears-old-labels-test
+  (with-completion-index
+    (fn [_]
+      (let [calls (atom [])]
+        (mt/with-dynamic-fn-redefs [analytics/clear! (fn [metric] (swap! calls conj [:clear metric]))
+                                    analytics/set-gauge! (fn [& args] (swap! calls conj [:set args]))
+                                    search.engine/active-engines (constantly [:search.engine/appdb])]
+          (#'search.metrics/collect-freshness!)
+          (is (= [[:clear :metabase-search/last-successful-reindex-timestamp-seconds]] @calls)))))))
+
+(deftest inactive-engine-does-not-export-completion-test
+  (with-completion-index
+    (fn [rebuild]
+      (search.index/complete-rebuild! rebuild)
+      (let [samples (atom [])]
+        (mt/with-dynamic-fn-redefs [analytics/clear! (constantly nil)
+                                    analytics/set-gauge! (fn [& args] (swap! samples conj args))
+                                    search.engine/active-engines (constantly [:search.engine/semantic])]
+          (#'search.metrics/collect-freshness!)
+          (is (empty? @samples)))))))
+
+(deftest wrong-destination-cannot-complete-test
+  (with-completion-index
+    (fn [{:keys [coordinate] :as rebuild}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no longer active"
+                            (search.index/complete-rebuild! (assoc rebuild :table :another-table))))
+      (is (nil? (search.db/active-index-completion coordinate))))))
+
+(deftest completion-rolls-back-with-transaction-test
+  (with-completion-index
+    (fn [{:keys [coordinate] :as rebuild}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback"
+                            (t2/with-transaction [conn]
+                              (is (= 1 (search.db/complete-rebuild! conn rebuild)))
+                              (throw (ex-info "rollback" {})))))
+      (is (nil? (search.db/active-index-completion coordinate))))))
 
 (deftest empty-rebuild-still-reports-test
-  (testing "a completed rebuild over zero documents returns an empty report, not nil, so freshness still stamps"
-    (search.tu/with-temp-index-table
-      (is (= {} (search.index/index-docs! :search/updating []))))))
+  (search.tu/with-temp-index-table
+    (is (= {} (search.index/index-docs! :search/updating [])))))

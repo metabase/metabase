@@ -527,6 +527,21 @@
               :engine engine :lang_code lang_code :version version :owner owner
               :expires_at [:> [:current-timestamp 6]]))
 
+(mu/defn complete-rebuild! :- :int
+  "Record successful population only if the named table is still active for its captured coordinate."
+  [conn :- (ms/InstanceOfClass java.sql.Connection)
+   {:keys [coordinate table]} :- ::search.schema/rebuild-context]
+  (let [{:keys [engine lang-code version]} coordinate]
+    (t2/update! :conn conn :model/SearchIndexMetadata
+                :engine engine :version version :lang_code lang-code :index_name (name table) :status :active
+                {:completed_at [:current-timestamp]})))
+
+(mu/defn active-index-completion :- [:maybe ms/TemporalInstant]
+  "The stored completion time of the active index, or nil when completion is unknown."
+  [{:keys [engine lang-code version]} :- ::search.schema/index-coordinate]
+  (t2/select-one-fn :completed_at :model/SearchIndexMetadata
+                    :engine engine :version version :lang_code lang-code :status :active))
+
 (mu/defn renew-lease!
   "Extend the unexpired lease at `coordinate` held by `owner` by `duration-millis`, on `conn`.
   Returns the number of rows updated."
