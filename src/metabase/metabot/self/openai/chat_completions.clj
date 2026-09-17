@@ -171,7 +171,7 @@
   Emits the same internal chunk types as claude.clj and openai.clj:
     :start, :text-start, :text-delta, :text-end,
     :tool-input-start, :tool-input-delta, :tool-input-available,
-    :usage
+    :usage, :error
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
@@ -217,7 +217,7 @@
             @current-type (close!)
             true          (rf)))
 
-         ([result {:keys [id model choices usage] :as _chunk}]
+         ([result {:keys [id model choices usage error] :as _chunk}]
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
@@ -324,7 +324,11 @@
                                                                             :model @model-name}
                                                                      @stop-reason
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                                            :raw-finish-reason @stop-reason)))))))))))
+                                                                            :raw-finish-reason @stop-reason)))
+              ;; An error envelope in place of a chunk, which vLLM sends when generation fails partway through
+              (some? error)                                    (-> (cond-> @current-type (close!))
+                                                                   (rf {:type      :error
+                                                                        :errorText (or (:message error) (pr-str error))}))))))))))
 
 ;;; Request body
 
