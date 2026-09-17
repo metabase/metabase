@@ -12,6 +12,8 @@
   `:rows` are narrow pre-image snapshots: plain maps of raw column values, only the columns named by
   [[capture-fields]], selected with the statement's own conditions immediately before it executes.
   No instance decoration runs on them — no `after-select` methods, no type transforms.
+  When [[capture-fields]] is just the primary key and the statement names rows by literal primary key, the rows
+  are built from those keys without a query, so they can include keys that matched nothing.
 
   Deletes are captured because they have no affordable row-level hook: toucan2's `before-delete` realizes a
   full instance per matching row. Inserts and updates are deliberately out of scope here; they keep their
@@ -38,9 +40,11 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
+   [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.pipeline :as t2.pipeline]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.transformed :as t2.transformed]))
 
 (def hook
   "Models deriving from this keyword get statement-level DML capture."
@@ -161,6 +165,45 @@
 
           :else rows)))))
 
+(defn- literal-pks
+  "The integer primary keys a pk condition value names, or nil for any other shape.
+  Accepts what `toucan2` itself accepts for `:toucan/pk`: a lone value, `[value]`, `[:= value]` and
+  `[:in values]`."
+  [v]
+  (let [pks (cond
+              (int? v)                                     [v]
+              (and (vector? v) (= 1 (count v)))            v
+              (and (vector? v) (#{:= :in} (first v))
+                   (= 2 (count v)))                        (let [x (second v)] (if (int? x) [x] x))
+              :else                                        nil)]
+    (when (and (or (sequential? pks) (set? pks)) (every? int? pks))
+      (distinct (seq pks)))))
+
+(defn- pk-only-rows
+  "Snapshot rows built from the statement's own arguments, when `fields` is just the model's primary key and the
+  statement names rows by literal primary key and nothing else.
+  Returns nil when that isn't the case, and `::skip` when the statement names more than [[max-pre-image-rows]] rows."
+  [model fields parsed-args resolved-query]
+  (let [pk-columns (t2/primary-keys model)
+        pk         (first pk-columns)
+        kv-args    (:kv-args parsed-args)]
+    (when (and (= 1 (count pk-columns))
+               (= #{pk} (set fields))
+               (not (and (isa? model ::t2.transformed/transformed.model)
+                         (contains? (t2/transforms model) pk))))
+      (when-let [pks (cond
+                       (and (int? resolved-query) (empty? kv-args))
+                       [resolved-query]
+
+                       (and (= {} resolved-query) (= 1 (count kv-args)))
+                       (let [[k v] (first kv-args)]
+                         (when (#{pk :toucan/pk} k)
+                           (literal-pks v))))]
+        (if (< max-pre-image-rows (count pks))
+          (do (log/errorf "Skipping DML capture for %s: statement names more than %d rows" model max-pre-image-rows)
+              ::skip)
+          (mapv (fn [id] {pk id}) pks))))))
+
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/delete.* #_model ::captured #_resolved-query :default]
   "Capture the pre-image of the rows a DELETE statement matches, then deliver one `:delete` event."
@@ -169,10 +212,16 @@
                  (capture-fields model :delete))]
     (if (empty? fields)
       (next-method rf query-type model parsed-args resolved-query)
-      (let [rows (pre-image-rows :toucan.query-type/select.instances
-                                 model fields parsed-args resolved-query)
-            deps (when (seq rows)
-                   (dependents model rows))]
+      ;; A delete by literal primary key already names its rows, so it needs no snapshot query. Ids that match nothing
+      ;; only cost the consumer an empty re-derivation.
+      (let [pk-rows (pk-only-rows model fields parsed-args resolved-query)
+            rows    (cond
+                      (= ::skip pk-rows) nil
+                      pk-rows            pk-rows
+                      :else              (pre-image-rows :toucan.query-type/select.instances
+                                                         model fields parsed-args resolved-query))
+            deps    (when (seq rows)
+                      (dependents model rows))]
         (u/prog1 (next-method rf query-type model (assoc parsed-args ::captured? true) resolved-query)
           (when (seq rows)
             (deliver-captured! model (cond-> {:op :delete, :model model, :rows rows}
