@@ -342,12 +342,15 @@
   prompt keeps a single live response.
 
   `:assistant-external-id` is the client-minted `external_id` for the fresh
-  placeholder; minted server-side when omitted.
+  placeholder; minted server-side when omitted. `:ai-proxy?` overrides the value
+  otherwise derived from the model the turn resolves to.
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
-  [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids]}]
-  (let [ai-proxy?             (llm.provider/managed-model-ref?
-                               (:model-ref (metabot.settings/metabot-model-selection)))
+  [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids ai-proxy?]}]
+  (let [ai-proxy?             (if (some? ai-proxy?)
+                                ai-proxy?
+                                (llm.provider/managed-model-ref?
+                                 (:model-ref (metabot.settings/metabot-model-selection))))
         assistant-external-id (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})

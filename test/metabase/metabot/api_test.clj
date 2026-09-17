@@ -1454,3 +1454,21 @@
                 (is (str/includes? response "account is not active"))
                 (is (str/includes? response "\"errorCode\":\"provider_error\""))
                 (is (str/includes? response "\"finishReason\":\"error\""))))))))))
+
+(deftest agent-streaming-resolves-the-serving-model-once-test
+  (testing "the usage check, the persisted ai_proxied flag and the agent loop share one resolution of the model serving
+            the turn, so a provider's health changing mid-request cannot split them across providers"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [resolutions (atom 0)
+              original    (mt/original-fn #'metabot.settings/metabot-model-selection)]
+          (mt/with-dynamic-fn-redefs [metabot.settings/metabot-model-selection (fn []
+                                                                                 (swap! resolutions inc)
+                                                                                 (original))
+                                      openrouter/openrouter (fn [_] (mut/mock-llm-response default-mock-parts))
+                                      conversation-title/submit! (constantly nil)]
+            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (agent-request (str (random-uuid)) "hello"))
+              (is (= 1 @resolutions)))))))))
