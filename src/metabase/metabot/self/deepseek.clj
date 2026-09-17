@@ -36,17 +36,18 @@
   a key problem that does not exist. 402 is an exhausted account balance, which DeepSeek reports separately
   from rate limiting."
   (adapter/provider
-   {:slug         "deepseek"
-    :display-name "DeepSeek"
-    :errors       {400 #(tru "DeepSeek rejected the request — check the model and request parameters")
-                   401 #(tru "DeepSeek API key expired or invalid")
-                   402 #(tru "DeepSeek account balance is exhausted")
-                   403 #(tru "DeepSeek denied access — check the API key permissions")
-                   404 #(tru "DeepSeek API endpoint or model was not found — check the base URL and model")
-                   422 #(tru "DeepSeek rejected the request parameters")
-                   429 #(tru "DeepSeek has rate limited us")
-                   500 #(tru "DeepSeek returned an internal server error")
-                   503 #(tru "DeepSeek is overloaded and is asking us to wait")}}))
+   {:slug              "deepseek"
+    :display-name      "DeepSeek"
+    :error-fallback    #(tru "DeepSeek API error (HTTP {0})" %)
+    :errors            {400 #(tru "DeepSeek rejected the request — check the model and request parameters")
+                        401 #(tru "DeepSeek API key expired or invalid")
+                        402 #(tru "DeepSeek account balance is exhausted")
+                        403 #(tru "DeepSeek denied access — check the API key permissions")
+                        404 #(tru "DeepSeek API endpoint or model was not found — check the base URL and model")
+                        422 #(tru "DeepSeek rejected the request parameters")
+                        429 #(tru "DeepSeek has rate limited us")
+                        500 #(tru "DeepSeek returned an internal server error")
+                        503 #(tru "DeepSeek is overloaded and is asking us to wait")}}))
 
 (def supported-models
   "DeepSeek models offered in the Metabot model picker, keyed by model id.

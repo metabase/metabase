@@ -17,12 +17,13 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "zai"
-    :display-name "Z.AI"
-    :errors       {401 #(tru "Z.AI API key expired or invalid")
-                   404 #(tru "Z.AI API endpoint was not found — check the base URL")
-                   429 #(tru "Z.AI has rate limited us")
-                   500 #(tru "Z.AI returned an internal server error")}}))
+   {:slug              "zai"
+    :display-name      "Z.AI"
+    :error-fallback    #(tru "Z.AI API error (HTTP {0})" %)
+    :errors            {401 #(tru "Z.AI API key expired or invalid")
+                        404 #(tru "Z.AI API endpoint was not found — check the base URL")
+                        429 #(tru "Z.AI has rate limited us")
+                        500 #(tru "Z.AI returned an internal server error")}}))
 
 (def supported-models
   "Z.AI models offered in the Metabot model picker, keyed by model id.

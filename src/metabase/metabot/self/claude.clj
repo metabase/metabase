@@ -335,6 +335,7 @@
     :supports-ai-proxy? true
     :auth               anthropic-auth
     :headers            {"anthropic-version" anthropic-version}
+    :error-fallback     #(tru "Anthropic API error (HTTP {0})" %)
     :errors             {401 #(tru "Anthropic API key expired or invalid")
                          403 #(tru "Anthropic API key has insufficient permissions")
                          404 #(tru "Anthropic API endpoint is unavailable or the model was not found")
@@ -370,8 +371,8 @@
   ([] (list-models {}))
   ([opts :- adapter/ListOpts]
    (adapter/model-listing supported-models
-                    (adapter/fetch-catalog provider opts "/v1/models")
-                    :display_name)))
+                          (adapter/fetch-catalog provider opts "/v1/models")
+                          :display_name)))
 
 (defn- strip-vendor-prefix
   "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `anthropic.`).

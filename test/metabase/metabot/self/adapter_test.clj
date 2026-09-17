@@ -57,10 +57,10 @@
 (def ^:private expected-fallback-messages
   "What each adapter renders for an HTTP status it has no specific message for.
 
-  English only, and deliberately so: the fallback is one shared msgid with the provider name as a format
-  argument, so a change to how the provider is named shows up here, but a change to the msgid itself does
-  not — English output is identical either way. The msgid is guarded by review and by the extractor
-  (`clojure -X:build i18n.enumerate/enumerate`), not by this test."
+  English only. Each adapter declares its own `:error-fallback` rather than sharing one parameterised
+  msgid, so these strings keep the translations already shipped for them in `locales/*.po`; the msgids
+  themselves are guarded by review and by the extractor (`clojure -X:build i18n.enumerate/enumerate`),
+  not by this test, which only pins the rendered English."
   {#'azure/provider      "Azure API error (HTTP 418)"
    #'bedrock/provider    "AWS Bedrock API error (HTTP 418)"
    #'claude/provider     "Anthropic API error (HTTP 418)"
@@ -85,6 +85,19 @@
   (testing "a response with no status at all still renders"
     (is (= "Anthropic API error (HTTP 0)"
            ((:error-msg @#'claude/provider) {})))))
+
+(deftest ^:parallel every-descriptor-brings-its-own-translated-messages-test
+  (testing "each adapter declares its own `:error-fallback` rather than inheriting the shared
+            parameterised template, which ships no translations. The rendered English is identical either
+            way, so `error-message-test` cannot tell the two apart — this can"
+    (doseq [provider-var (keys expected-spans)]
+      (is (fn? (:error-fallback @provider-var)) (str provider-var))))
+  (testing "the proxy refusal deliberately does not get the same treatment: it stays one shared msgid,
+            because `:ai-proxy?` is only ever set for the managed connection, whose catalog names only
+            Anthropic models — the one provider the proxy can serve — so the refusal is unreachable"
+    (is (= "AI proxy is not supported for Z.AI"
+           (try (adapter/reject-ai-proxy! @#'zai/provider true)
+                (catch clojure.lang.ExceptionInfo e (ex-message e)))))))
 
 (defn- pinned-slugs
   "The provider slugs a spelled-out table above covers."
@@ -179,14 +192,14 @@
     ;; tool, so counting the composed body reported 1 however many tools the caller passed
     (is (= {:msg-count 1 :tool-count 15}
            (captured-counts! {:input  [{:role :user :content "hi"}]
-                             :tools  (mapv tool (range 15))
-                             :schema {:type "object" :properties {}}}))))
+                              :tools  (mapv tool (range 15))
+                              :schema {:type "object" :properties {}}}))))
   (testing "msg-count is the caller's AISDK parts, not the messages the dialect merged them into"
     ;; `parts->claude-messages` collapses consecutive assistant parts into one wire message
     (is (= {:msg-count 3 :tool-count 0}
            (captured-counts! {:input [{:role :user :content "hi"}
-                                     {:type :text :text "one"}
-                                     {:type :text :text "two"}]})))))
+                                      {:type :text :text "one"}
+                                      {:type :text :text "two"}]})))))
 
 (deftest bearer-auth-under-the-proxy-conforms-to-the-auth-schema-test
   (testing "`bearer-auth` carries a `:- Auth` return schema, and `resolve-auth` adds `:network-policy-floor`
@@ -280,8 +293,8 @@
       (is (= ["Allow-list A"]
              (mapv :display_name
                    (:models (adapter/model-listing allow-list
-                                             [{:id "a-model" :display_name "Catalog A display_name"}]
-                                             :name))))))))
+                                                   [{:id "a-model" :display_name "Catalog A display_name"}]
+                                                   :name))))))))
 
 (deftest catalog-name-key-matches-each-providers-catalog-test
   (testing "each provider reads the field its own catalog documents"

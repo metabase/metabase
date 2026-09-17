@@ -48,14 +48,15 @@
 
 (def ^:private provider
   (adapter/provider
-   {:slug         "vllm"
-    :display-name "vLLM"
-    :auth         vllm-auth
-    :errors       {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
-                   401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
-                   404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
-                   429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
-                   500 #(tru "vLLM returned an internal server error")}}))
+   {:slug              "vllm"
+    :display-name      "vLLM"
+    :auth              vllm-auth
+    :error-fallback    #(tru "vLLM API error (HTTP {0})" %)
+    :errors            {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
+                        401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
+                        404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
+                        429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
+                        500 #(tru "vLLM returned an internal server error")}}))
 
 (defn- missing-model-ex []
   (ex-info (tru "No vLLM model is set")
