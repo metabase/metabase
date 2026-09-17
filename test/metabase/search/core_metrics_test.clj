@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.search.appdb.core :as appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.metrics :as search.metrics]
    [metabase.search.db :as search.db]
@@ -87,3 +88,33 @@
 (deftest empty-rebuild-still-reports-test
   (search.tu/with-temp-index-table
     (is (= {} (search.index/index-docs! :search/updating [])))))
+
+(deftest failed-in-place-population-invalidates-and-retries-on-init-test
+  (with-completion-index
+    (fn [{:keys [coordinate table] :as rebuild}]
+      (search.index/complete-rebuild! rebuild)
+      (let [attempts (atom 0)]
+        (mt/with-dynamic-fn-redefs [search.index/active-table (constantly table)
+                                    search.index/clear-active-table! (constantly nil)
+                                    search.index/delete-obsolete-tables! (constantly nil)
+                                    search.index/ensure-ready! (constantly false)
+                                    search.index/when-index-created (constantly (t/offset-date-time))
+                                    appdb/populate-index! (fn [& _]
+                                                            (when (= 1 (swap! attempts inc))
+                                                              (throw (ex-info "population failed" {})))
+                                                            {})]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"population failed"
+                                (search.engine/reindex! :search.engine/appdb {:in-place? true})))
+          (is (nil? (search.db/active-index-completion coordinate)))
+          (is (= {} (search.engine/init! :search.engine/appdb {})))
+          (is (some? (search.db/active-index-completion coordinate)))
+          (is (nil? (search.engine/init! :search.engine/appdb {})) "completed reuse does not populate again")
+          (is (= 2 @attempts)))))))
+
+(deftest completion-read-failure-removes-stale-metric-test
+  (let [cleared (atom [])]
+    (mt/with-dynamic-fn-redefs [analytics/clear! #(swap! cleared conj %)
+                                search.engine/active-engines (constantly [:search.engine/appdb])
+                                search.db/active-index-completion (fn [_] (throw (ex-info "database unavailable" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"database unavailable" (#'search.metrics/collect-freshness!)))
+      (is (= [:metabase-search/last-successful-reindex-timestamp-seconds] @cleared)))))

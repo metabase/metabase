@@ -549,6 +549,16 @@
   (t2/select-one-fn :completed_at :model/SearchIndexMetadata
                     :engine engine :version version :lang_code lang-code :status :active))
 
+(mu/defn invalidate-active-completion! :- :int
+  "Mark an active destination incomplete before an initial or in-place population mutates it."
+  [conn :- (ms/InstanceOfClass java.sql.Connection)
+   {:keys [coordinate table]} :- ::search.schema/rebuild-context]
+  (let [{:keys [engine lang-code version]} coordinate]
+    ;; The model's unchanged-value optimization would return zero for an already-incomplete active row.
+    (t2/update! :conn conn :search_index_metadata
+                :engine (name engine) :version version :lang_code lang-code :index_name (name table) :status "active"
+                {:completed_at nil, :updated_at db-now-expr})))
+
 (defn- db-expiry-expr
   "Honey SQL expression for the lease expiry `duration-millis` after the app database's current time."
   [duration-millis]

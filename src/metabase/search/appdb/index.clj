@@ -247,6 +247,24 @@
     (catch Exception e
       (log/warnf "Failed to analyze index table %s: %s" table-name (ex-message e)))))
 
+(defn active-index-complete?
+  "Whether the current active index has a recorded successful population."
+  []
+  (or *mocking-tables*
+      (some? (search.db/active-index-completion
+              {:engine :appdb, :lang-code (i18n/site-locale-string), :version (index-version)}))))
+
+(mu/defn invalidate-completion! :- :boolean
+  "Invalidate prior completion before changing an already-active destination."
+  [rebuild :- ::search.schema/rebuild-context]
+  (if *mocking-tables*
+    true
+    (search.lease/do-with-mutation-connection
+     (fn [conn]
+       (when-not (= 1 (search.db/invalidate-active-completion! conn rebuild))
+         (throw (ex-info "Rebuild destination is no longer active" {:rebuild rebuild})))
+       true))))
+
 (mu/defn complete-rebuild! :- :boolean
   "Record successful initial or in-place population while verifying ownership and the active destination."
   [rebuild :- ::search.schema/rebuild-context]

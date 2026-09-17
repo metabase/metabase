@@ -222,9 +222,10 @@
         (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
       (let [created? (search.index/ensure-ready! opts)]
-        (when (or created? re-populate?)
+        (when (or created? re-populate? (not (search.index/active-index-complete?)))
           (log/info "Populating index")
           (let [rebuild (search.index/rebuild-context (search.index/active-table))]
+            (search.index/invalidate-completion! rebuild)
             (u/prog1 (populate-index! :search/reindexing rebuild)
               (search.index/complete-rebuild! rebuild))))))))
 
@@ -241,9 +242,10 @@
                   (search.index/maybe-create-pending!))]
       (when-not table
         (throw (ex-info "No destination for search rebuild" {})))
-      (when in-place?
-        (search.index/clear-active-table! table))
       (let [rebuild (search.index/rebuild-context table)]
+        (when in-place?
+          (search.index/invalidate-completion! rebuild)
+          (search.index/clear-active-table! table))
         (u/prog1 (populate-index! :search/reindexing rebuild)
           (if in-place?
             (search.index/complete-rebuild! rebuild)

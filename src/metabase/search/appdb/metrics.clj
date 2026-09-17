@@ -13,13 +13,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- collect-freshness! []
+  ;; Drop stale labels even if reading the new active identity fails.
+  (analytics.interface/clear! :metabase-search/last-successful-reindex-timestamp-seconds)
   (let [coordinate {:engine    :appdb
                     :lang-code (i18n/site-locale-string)
                     :version   (search.index/index-version)}
         completed  (when (some #{:search.engine/appdb} (search.engine/active-engines))
                      (search.db/active-index-completion coordinate))]
-    ;; Replace old locale/version labels. A missing completion stays absent rather than inventing a success time.
-    (analytics.interface/clear! :metabase-search/last-successful-reindex-timestamp-seconds)
     (when completed
       (analytics.interface/set-gauge! :metabase-search/last-successful-reindex-timestamp-seconds
                                       {:engine "appdb", :locale (:lang-code coordinate), :version (:version coordinate)}
