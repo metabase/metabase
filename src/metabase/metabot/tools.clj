@@ -14,6 +14,7 @@
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.clarification :as tools.clarification]
    [metabase.metabot.tools.construct :as tools.construct]
+   [metabase.metabot.tools.conversations :as tools.conversations]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
@@ -53,6 +54,10 @@
   retrieve-library-entities-tool]
  [tools.construct
   construct-notebook-query-tool]
+ [tools.conversations
+  conversation-search-tool
+  recent-chats-tool
+  read-conversation-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
@@ -145,7 +150,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"
+    "read_resource" "conversation_search" "recent_chats" "read_conversation"
     ;; megabot: the run tools register their query in memory; show_result reads it back and stores
     ;; the chart that save_result saves; navigate resolves query/chart links against it
     "run_warehouse_sql" "run_warehouse_query" "show_result" "save_result" "navigate"})

@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.semantic-search.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedders]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
@@ -26,11 +27,15 @@
 ;; import-vars requires full namespace symbols, so it can't use the alias
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars
+ [metabase-enterprise.semantic-search.db.migration
+  ensure-schema-exists!]
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
   search-index-embedder]
  [metabase-enterprise.semantic-search.embedding
-  get-embeddings-batch])
+  get-embeddings-batch]
+ [metabase-enterprise.semantic-search.env
+  get-index-metadata])
 
 (defn- fallback-engine []
   (search.engine/fallback-engine :search.engine/semantic))

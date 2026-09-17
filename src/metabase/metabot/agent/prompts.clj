@@ -206,6 +206,7 @@
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
+                                  :has_conversation_recall  (contains? tools "conversation_search")
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :custom_instructions      (not-empty
                                                              (case template-name

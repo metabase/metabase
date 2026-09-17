@@ -70,7 +70,9 @@
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.conversation-recall :as recall]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
@@ -804,6 +806,36 @@
              :uri          uri
              :id-segment   id-seg}))))
 
+(defn- fetch-past-artifact [conversation-id message-id kind artifact-id]
+  (api/check-403 (contains? #{:internal :nlq :nlq-fallback} shared/*profile-id*))
+  (recall/owned-conversation! conversation-id)
+  (let [state (recall/state-at (metabot.db/live-messages conversation-id) (parse-long message-id))
+        chart (when (= kind "chart") (get-in state [:charts artifact-id]))
+        query (if chart
+                (or (first (:queries chart)) (get-in state [:queries (:query_id chart)]))
+                (when (= kind "query") (get-in state [:queries artifact-id])))
+        _     (api/check-404 query)
+        _     (api/check-403 (some? (shared.content-store/query-for-export query false)))
+        query-id (str (random-uuid))
+        chart-id (str (random-uuid))]
+    (swap! shared/*memory-atom* memory/set-query query-id query)
+    (when chart
+      (swap! shared/*memory-atom* memory/set-chart chart-id
+             (assoc chart :chart_id chart-id :query_id query-id :queries [query])))
+    (entity-result
+     (cond-> {:type "recalled-artifact"
+              :id (if chart chart-id query-id)
+              :uri (str "metabase://" (if chart "chart/" "query/") (if chart chart-id query-id))
+              :source_url (recall/conversation-url conversation-id)
+              :query_uri (str "metabase://query/" query-id)
+              :query_id query-id
+              :description (str "Loaded into this conversation with fresh IDs."
+                                "\nQuery: metabase://query/" query-id
+                                (when chart (str "\nChart: metabase://chart/" chart-id))
+                                "\nSource: " (recall/conversation-url conversation-id)
+                                "\n" (export-state-query query-id query))}
+       chart (assoc :chart_id chart-id :chart_uri (str "metabase://chart/" chart-id))))))
+
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
    list of supported URI shapes — adding a new URI = adding a clause here + a handler.
@@ -863,6 +895,10 @@
 
            ;; Document
            ["document" id]                                  (fetch-document id)
+
+           ;; Past artifacts are copied into this session, leaving the source untouched.
+           ["conversation" id "message" message-id (kind :guard #{"chart" "query"}) artifact-id]
+           (fetch-past-artifact id message-id kind artifact-id)
 
            ;; Conversation state
            ["chart" id]                                     (fetch-conversation-chart id)
@@ -1046,7 +1082,7 @@
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
   the instance and drill into specific entities. URIs returned by `search` can be fed directly
-  back here. Only numeric IDs accepted, never alphanumeric entity-id's.
+  back here. Saved entities use numeric IDs; conversation artifacts use the exact returned URI.
 
   Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
   When :truncated is true, fetch the next page by requesting the :next-page-uri given in the
@@ -1086,7 +1122,13 @@
   CONVERSATION STATE (charts and queries generated in or pasted into this conversation,
   e.g. referenced in a user message as [name](metabase://chart/{id})):
   - metabase://chart/{chart_id} - the chart's type and its query
-  - metabase://query/{query_id} - the query definition"
+  - metabase://query/{query_id} - the query definition
+
+  PAST CONVERSATION ARTIFACTS (internal and NLQ profiles):
+  - metabase://conversation/{id}/message/{message_id}/chart/{chart_id}
+  - metabase://conversation/{id}/message/{message_id}/query/{query_id}
+  These load an existing artifact into this session and return fresh chart/query IDs for existing tools.
+  Use the exact URI returned by conversation_search or read_conversation; never guess IDs."
   [{:keys [uris]} :- [:map {:closed true}
                       [:uris [:sequential {:error/message "must be an array of URI strings"}
                               [:string {:description "Metabase resource URIs to fetch"}]]]]]

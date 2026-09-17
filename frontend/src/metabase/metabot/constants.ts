@@ -154,6 +154,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
   },
+  conversation_search: {
+    active: () => t`Searching past conversations`,
+    done: () => t`Searched past conversations`,
+  },
   // API discovery is plumbing the user doesn't need to see
   describe_api_endpoint: { active: () => undefined, done: () => undefined },
   describe_app_db: {
@@ -207,6 +211,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Reading web page`,
     done: () => t`Read web page`,
   },
+  read_conversation: {
+    active: () => t`Reading a past conversation`,
+    done: () => t`Read a past conversation`,
+  },
   read_resource: {
     active: (count) =>
       count == null
@@ -224,6 +232,10 @@ export const TOOL_MESSAGES = {
             `Read ${count} resources`,
             count,
           ),
+  },
+  recent_chats: {
+    active: () => t`Looking up recent chats`,
+    done: () => t`Looked up recent chats`,
   },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   // a settled save replaces the done label with a tool_title naming what was saved and where

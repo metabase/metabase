@@ -16,6 +16,12 @@
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
 
+(deftest ^:parallel user-time-preserves-local-date-and-offset-test
+  (doseq [local-time ["2026-09-16T21:19:00-05:00" "2026-09-17T00:30:00+09:00"]]
+    (let [enriched (#'context/set-user-time {:current_time_with_timezone local-time} nil)]
+      (is (= local-time (:current_user_time enriched)))
+      (is (= local-time (user-context/format-current-time enriched))))))
+
 (deftest database-tables-for-context-returns-stubs
   (testing "Used tables become lightweight stubs — id/type/name/schema/description only, never columns"
     (let [used [{:id 1 :name "used1" :schema "public" :description "first"}
