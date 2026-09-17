@@ -89,7 +89,7 @@
 (mu/defn select-timeline-pk->instance :- [:map-of ms/PositiveInt ::timeline.schema/timeline.partial]
   "A map of id to the Timeline matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::timeline-opts]]
-  (apply t2/select-pk->fn identity (->timeline-model columns) (->timeline-args opts)))
+  (apply t2/select-pk->fn identity (u.query/model-with-pk-columns :model/Timeline :id columns) (->timeline-args opts)))
 
 (mu/defn select-one-timeline-event :- [:maybe ::timeline.schema/timeline-event.partial]
   "The first TimelineEvent matching `opts`, or nil."

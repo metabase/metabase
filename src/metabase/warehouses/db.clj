@@ -115,12 +115,12 @@
 
 (mu/defn insert-database! :- ::warehouses.schema/database
   "Insert the Database `row` and return the inserted instance."
-  [row :- ::warehouses.schema/database.update]
+  [row :- ::warehouses.schema/database.create]
   (t2/insert-returning-instance! :model/Database row))
 
 (mu/defn insert-databases! :- [:sequential ::warehouses.schema/database]
   "Insert the Database `rows` and return the inserted instances."
-  [rows :- [:sequential ::warehouses.schema/database.update]]
+  [rows :- [:sequential ::warehouses.schema/database.create]]
   (t2/insert-returning-instances! :model/Database rows))
 
 (mu/defn update-databases! :- :int

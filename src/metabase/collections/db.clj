@@ -90,7 +90,7 @@
 (mu/defn select-collection-pk->instance :- [:map-of ::lib.schema.id/collection ::collections.schema/collection.partial]
   "A map of id to the Collection matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::opts]]
-  (apply t2/select-pk->fn identity (->model columns) (->args opts)))
+  (apply t2/select-pk->fn identity (u.query/model-with-pk-columns :model/Collection :id columns) (->args opts)))
 
 (mu/defn select-collection-pks :- [:set ::lib.schema.id/collection]
   "The ids of the Collections matching `opts`."

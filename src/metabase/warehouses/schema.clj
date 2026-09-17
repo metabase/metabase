@@ -90,6 +90,11 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
+(mr/def ::database.create
+  "What an insert of a Database accepts: every column an update accepts, plus the `:id` an install that pins a fixed
+  id (the audit database) supplies."
+  [:merge ::database.update [:map {:closed true} [:id {:optional true} ::lib.schema.id/database]]])
+
 (mr/def ::database.partial
   "A Database row as selected, where a `:columns` narrowing may have left out any column."
   [:merge ::database [:map {:closed true} [:id {:optional true} ::lib.schema.id/database]]])

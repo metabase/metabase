@@ -106,7 +106,7 @@
 (mu/defn select-card-pk->instance :- [:map-of ::lib.schema.id/card ::queries.schema/card.partial]
   "A map of id to the Card matching `opts`."
   [{:keys [columns] :as opts} :- [:maybe ::card-opts]]
-  (apply t2/select-pk->fn identity (->card-model columns) (->card-args opts)))
+  (apply t2/select-pk->fn identity (->card-model (when (seq columns) (distinct (cons :id columns)))) (->card-args opts)))
 
 (mu/defn count-cards :- :int
   "The number of Cards matching `opts`."
