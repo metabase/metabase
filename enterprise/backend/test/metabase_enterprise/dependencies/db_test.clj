@@ -5,7 +5,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.db :as deps.db]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli :as mu]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -38,8 +39,18 @@
 
 (deftest ids-are-coerced-test
   (testing "an id slot rejects a string rather than reaching SQL"
-    (is (thrown? Exception (deps.db/card "1 OR 1=1")))
-    (is (thrown? Exception (deps.db/transform-ids-of-source-database "1 OR 1=1")))))
+    (testing "even with mu/defn enforcement off, as in a production build, so the (long ...) coercion is what throws"
+      (mu/disable-enforcement
+        (is (thrown-with-msg? ClassCastException #"cannot be cast to class java\.lang\.Number"
+                              (deps.db/card "1 OR 1=1")))
+        (is (thrown-with-msg? ClassCastException #"cannot be cast to class java\.lang\.Number"
+                              (deps.db/transform-ids-of-source-database "1 OR 1=1")))
+        (testing "including a collection of ids, where mapv long throws at the call rather than mid-query"
+          (is (thrown-with-msg? ClassCastException #"cannot be cast to class java\.lang\.Number"
+                                (deps.db/card-database-ids ["1 OR 1=1"]))))
+        (testing "and a positional primary key, which the lint cannot see"
+          (is (thrown-with-msg? ClassCastException #"cannot be cast to class java\.lang\.Number"
+                                (deps.db/set-card-result-metadata! "1 OR 1=1" nil))))))))
 
 (deftest table-id-by-name-nil-schema-test
   (mt/with-temp [:model/Database {db-id :id} {}

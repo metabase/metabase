@@ -185,7 +185,7 @@
   "Matches entities at `entity-type-field`/`entity-id-field` that are of type `entity-type` and whose id is in
   `ids`."
   [entity-type-field entity-id-field {:keys [entity-type ids]}]
-  [:and [:= entity-type-field (name entity-type)] [:in entity-id-field ids]])
+  [:and [:= entity-type-field (name entity-type)] [:in entity-id-field (mapv long ids)]])
 
 (defn- edge-restriction-expr
   "The combined `:where` fragment for `restriction-spec` (nil for no filter), which may include `:visible` (opts for
@@ -592,7 +592,7 @@
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+  (t2/update! :model/Card (long card-id) {:result_metadata result-metadata}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
@@ -729,7 +729,7 @@
    entity-id   :- ms/PositiveInt]
   (mdb/update-or-insert!
    :model/DependencyStatus
-   {:entity_type entity-type :entity_id entity-id}
+   {:entity_type entity-type :entity_id (long entity-id)}
    (fn [existing]
      (if existing
        {:stale true :fail_count 0 :next_retry_at nil :terminal false}
@@ -743,7 +743,7 @@
    current-version :- ms/PositiveInt]
   (mdb/update-or-insert!
    :model/DependencyStatus
-   {:entity_type entity-type :entity_id entity-id}
+   {:entity_type entity-type :entity_id (long entity-id)}
    (fn [_existing]
      {:dependency_analysis_version current-version
       :stale false
@@ -758,7 +758,7 @@
    update-fn   :- fn?]
   (mdb/update-or-insert!
    :model/DependencyStatus
-   {:entity_type entity-type :entity_id entity-id}
+   {:entity_type entity-type :entity_id (long entity-id)}
    update-fn))
 
 (mu/defn pending-retry-exists?
@@ -822,7 +822,7 @@
   "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
   [finding-id :- ms/PositiveInt
    changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update [:analyzed_at :analysis_version :result :stale])]
-  (t2/update! :model/AnalysisFinding finding-id changes))
+  (t2/update! :model/AnalysisFinding (long finding-id) changes))
 
 (mu/defn mark-findings-stale!
   "Mark the AnalysisFindings of the entities `entity-type` `entity-ids` as stale, returning the number updated."
