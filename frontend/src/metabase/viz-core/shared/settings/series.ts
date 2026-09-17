@@ -115,9 +115,9 @@ export const isSeriesTrendLineUnavailable = (
   settings: ComputedVisualizationSettings,
 ) => {
   const rawSeries = getRawSeries(series);
-  const sourceCard =
+  const sourceSeries =
     rawSeries.find((raw) => raw.card.id === single.card.id) ?? rawSeries[0];
-  return hasMultipleDimensions(settings) || !hasInsights(sourceCard);
+  return hasMultipleDimensions(settings) || !hasInsights(sourceSeries);
 };
 
 export const getSeriesDefaultShowSeriesValues = (
