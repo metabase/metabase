@@ -276,11 +276,12 @@
       (let [sid       (str "throw-session-" (mt/random-name))
             tool-name (str "throwing-" (mt/random-name))]
         (try
-          (v2.registry/register-tool! {:name        tool-name
-                                       :scope       "agent:content:read"
-                                       :description "throws on purpose"
-                                       :args        [:map]
-                                       :handler     (fn [_ _] (throw (ex-info "kaboom" {})))})
+          (v2.registry/register-tool! {:name           tool-name
+                                       :scope          "agent:content:read"
+                                       :default-access :allowed
+                                       :description    "throws on purpose"
+                                       :args           [:map]
+                                       :handler        (fn [_ _] (throw (ex-info "kaboom" {})))})
           (let [{:keys [result error]} (v2.registry/call-tool #{"agent:content:read"} sid tool-name {})]
             (is (or error (:isError result)) "the client sees an error result"))
           (let [row (t2/select-one :model/McpToolCallLog :tool_name tool-name)]

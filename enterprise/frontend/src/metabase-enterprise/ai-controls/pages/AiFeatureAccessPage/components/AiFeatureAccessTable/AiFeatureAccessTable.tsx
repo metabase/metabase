@@ -1,39 +1,30 @@
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
-import {
-  isAdminGroup,
-  isDefaultGroup,
-  isDefaultTenantGroup,
-} from "metabase/common/utils/groups";
 import { Box, Card, TreeTable } from "metabase/ui";
 
-import { AdvancedGroupModeButton } from "./AdvancedGroupMode";
-import S from "./AiFeatureAccessTable.module.css";
+import S from "../../../../components/AccessTable.module.css";
+import { AdvancedGroupModeButton } from "../../../../components/AdvancedGroupMode";
+import { getVisibleGroups } from "../../../../utils";
+
 import { useAiFeaturesTreeTableInstance } from "./useAiFeaturesTreeTableInstance";
 import type { AiFeatureAccessTableProps } from "./utils";
 
 export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
-  const { groups, groupPermissions, advanced, activeTab, onPermissionChange } =
-    props;
+  const {
+    groups,
+    groupPermissions,
+    advanced,
+    activeTab,
+    isEnablingAdvanced,
+    onEnableAdvanced,
+    onPermissionChange,
+  } = props;
 
-  const visibleGroups = useMemo(() => {
-    if (advanced) {
-      return groups.filter(
-        (group) => !isDefaultGroup(group) && !isDefaultTenantGroup(group),
-      );
-    }
-
-    if (activeTab === "tenant-groups") {
-      return groups.filter(
-        (group) => isAdminGroup(group) || isDefaultTenantGroup(group),
-      );
-    }
-
-    return groups.filter(
-      (group) => isAdminGroup(group) || isDefaultGroup(group),
-    );
-  }, [groups, advanced, activeTab]);
+  const visibleGroups = useMemo(
+    () => getVisibleGroups(groups, advanced, activeTab),
+    [groups, advanced, activeTab],
+  );
 
   const instance = useAiFeaturesTreeTableInstance(
     visibleGroups,
@@ -73,7 +64,11 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
       />
       {showSwitchButton && (
         <Box className={S.buttonRow}>
-          <AdvancedGroupModeButton />
+          <AdvancedGroupModeButton
+            message={t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`}
+            loading={isEnablingAdvanced}
+            onConfirm={onEnableAdvanced}
+          />
         </Box>
       )}
     </Card>

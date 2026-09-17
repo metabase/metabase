@@ -426,10 +426,11 @@
 
 (registry/deftool get-parameter-values
   "Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target (\"dashboard\" or \"question\" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: \"date\", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in (\"YYYY-MM-DD\", \"YYYY-MM-DD~YYYY-MM-DD\", \"past30days\", \"thisyear\") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`."
-  {:name        "get_parameter_values"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        get-parameter-values-args-schema}
+  {:name           "get_parameter_values"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           get-parameter-values-args-schema}
   [{:keys [target id parameter_id query constraints limit offset]} _context]
   (when (and query (str/blank? query))
     (common/throw-teaching-error

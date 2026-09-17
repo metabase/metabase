@@ -28,11 +28,12 @@
             would honor a set, because `registered-scopes` would otherwise collect the set itself rather than
             its members"
     (is (thrown-with-msg? Exception #"registered without a :scope string"
-                          (registry/register-tool! {:name        "set_scope_probe"
-                                                    :scope       #{"agent:content:read" "agent:query:run"}
-                                                    :description "probe: never registers"
-                                                    :args        [:map]
-                                                    :handler     (fn [_ _] nil)})))))
+                          (registry/register-tool! {:name           "set_scope_probe"
+                                                    :scope          #{"agent:content:read" "agent:query:run"}
+                                                    :default-access :allowed
+                                                    :description    "probe: never registers"
+                                                    :args           [:map]
+                                                    :handler        (fn [_ _] nil)})))))
 
 (deftest ^:parallel call-tool-scope-check-test
   (testing "tools/call re-checks scope even for a tool that exists"
@@ -233,6 +234,7 @@
     (is (thrown-with-msg? Exception #"unknown option"
                           (registry/register-tool! {:name               "typo_key"
                                                     :scope              "agent:content:read"
+                                                    :default-access     :allowed
                                                     :description        "x"
                                                     :args               [:map]
                                                     :handler            (fn [_ _] nil)
@@ -241,6 +243,7 @@
     (is (thrown-with-msg? Exception #"set of keywords"
                           (registry/register-tool! {:name                "bad_extensions"
                                                     :scope               "agent:content:read"
+                                                    :default-access      :allowed
                                                     :description         "x"
                                                     :args                [:map]
                                                     :handler             (fn [_ _] nil)
@@ -249,6 +252,7 @@
     (is (thrown-with-msg? Exception #"unknown client extension"
                           (registry/register-tool! {:name                "unknown_extension"
                                                     :scope               "agent:content:read"
+                                                    :default-access      :allowed
                                                     :description         "x"
                                                     :args                [:map]
                                                     :handler             (fn [_ _] nil)
@@ -268,37 +272,42 @@
 (deftest registration-validates-required-fields-test
   (testing "a blank :name fails loudly"
     (is (thrown-with-msg? Exception #":name"
-                          (registry/register-tool! {:name        ""
-                                                    :scope       "agent:content:read"
-                                                    :description "x"
-                                                    :args        [:map]
-                                                    :handler     (fn [_ _] nil)}))))
+                          (registry/register-tool! {:name           ""
+                                                    :scope          "agent:content:read"
+                                                    :default-access :allowed
+                                                    :description    "x"
+                                                    :args           [:map]
+                                                    :handler        (fn [_ _] nil)}))))
   (testing "a missing :description fails loudly"
     (is (thrown-with-msg? Exception #"without a :description"
-                          (registry/register-tool! {:name        "no_desc"
-                                                    :scope       "agent:content:read"
-                                                    :args        [:map]
-                                                    :handler     (fn [_ _] nil)}))))
+                          (registry/register-tool! {:name           "no_desc"
+                                                    :scope          "agent:content:read"
+                                                    :default-access :allowed
+                                                    :args           [:map]
+                                                    :handler        (fn [_ _] nil)}))))
   (testing "a missing :args schema fails loudly"
     (is (thrown-with-msg? Exception #":args Malli schema"
-                          (registry/register-tool! {:name        "no_args"
-                                                    :scope       "agent:content:read"
-                                                    :description "x"
-                                                    :handler     (fn [_ _] nil)}))))
+                          (registry/register-tool! {:name           "no_args"
+                                                    :scope          "agent:content:read"
+                                                    :default-access :allowed
+                                                    :description    "x"
+                                                    :handler        (fn [_ _] nil)}))))
   (testing "a non-fn :handler fails loudly"
     (is (thrown-with-msg? Exception #":handler fn"
-                          (registry/register-tool! {:name        "bad_handler"
-                                                    :scope       "agent:content:read"
-                                                    :description "x"
-                                                    :args        [:map]
-                                                    :handler     "not-a-fn"}))))
+                          (registry/register-tool! {:name           "bad_handler"
+                                                    :scope          "agent:content:read"
+                                                    :default-access :allowed
+                                                    :description    "x"
+                                                    :args           [:map]
+                                                    :handler        "not-a-fn"}))))
   (testing "an optional non-nullable field fails the strict-tool nullability check"
     (is (thrown-with-msg? Exception #"optional non-nullable field"
-                          (registry/register-tool! {:name        "bad_schema"
-                                                    :scope       "agent:content:read"
-                                                    :description "x"
-                                                    :args        [:map [:x {:optional true} :string]]
-                                                    :handler     (fn [_ _] nil)})))))
+                          (registry/register-tool! {:name           "bad_schema"
+                                                    :scope          "agent:content:read"
+                                                    :default-access :allowed
+                                                    :description    "x"
+                                                    :args           [:map [:x {:optional true} :string]]
+                                                    :handler        (fn [_ _] nil)})))))
 
 ;;; ------------------------------------- Write-tool scope invariants ----------------------------------------
 
@@ -312,18 +321,6 @@
    granting writes, so it keeps its own scope rather than folding into `content:write`."
   #{"agent:content:write" "agent:delivery:write" "agent:sql:run"})
 
-(defn- do-with-temp-tool!
-  "Register a throwaway tool for the body, then restore the registry and flush the manifest cache."
-  [tool thunk]
-  (let [tools-atom @#'registry/tools*
-        snapshot   @tools-atom]
-    (try
-      (registry/register-tool! tool)
-      (thunk)
-      (finally
-        (reset! tools-atom snapshot)
-        (reset! @#'registry/manifest-cache nil)))))
-
 ;; not ^:parallel: registers a tool in the shared registry
 (deftest tools-hash-test
   (testing "tools-hash is a stable 8-char hex string"
@@ -331,12 +328,13 @@
     (is (= (registry/tools-hash) (registry/tools-hash))))
   (testing "it changes when the listed tool set does"
     (let [before (registry/tools-hash)]
-      (do-with-temp-tool!
-       {:name        "hash_probe"
-        :scope       "agent:content:read"
-        :description "test-only tool that only exists to move the hash"
-        :args        [:map]
-        :handler     (fn [_ _] nil)}
+      (v2.tu/do-with-temp-tool!
+       {:name           "hash_probe"
+        :scope          "agent:content:read"
+        :default-access :allowed
+        :description    "test-only tool that only exists to move the hash"
+        :args           [:map]
+        :handler        (fn [_ _] nil)}
        (fn []
          (is (not= before (registry/tools-hash))))))))
 
@@ -360,12 +358,13 @@
             no `:annotations` is published to clients as mutating while its raw registry entry carries no
             `:readOnlyHint` at all — and enumerating from the raw entry would skip exactly the tool these
             invariants exist to catch: one that mutates, says nothing about it, and rides a read scope."
-    (do-with-temp-tool!
-     {:name        "annotation_free_mutator"
-      :scope       "agent:content:read"
-      :description "test-only tool that declares no annotations at all"
-      :args        [:map]
-      :handler     (fn [_ _] nil)}
+    (v2.tu/do-with-temp-tool!
+     {:name           "annotation_free_mutator"
+      :scope          "agent:content:read"
+      :default-access :allowed
+      :description    "test-only tool that declares no annotations at all"
+      :args           [:map]
+      :handler        (fn [_ _] nil)}
      (fn []
        (testing "clients are told it mutates"
          (is (false? (->> (registry/list-tools)
@@ -386,12 +385,13 @@
     (doseq [scope (sort write-scopes)
             :let  [tool-name (str "scope_probe_" (str/replace scope #"\W" "_"))]]
       (testing scope
-        (do-with-temp-tool!
-         {:name        tool-name
-          :scope       scope
-          :description "test-only tool gated on a scope the token lacks"
-          :args        [:map]
-          :handler     (fn [_ _] nil)}
+        (v2.tu/do-with-temp-tool!
+         {:name           tool-name
+          :scope          scope
+          :default-access :allowed
+          :description    "test-only tool gated on a scope the token lacks"
+          :args           [:map]
+          :handler        (fn [_ _] nil)}
          (fn []
            (is (contains? (set (map :name (registry/list-tools))) tool-name))
            (is (str/starts-with? (message/render (-> (registry/call-tool #{"agent:content:read"} nil tool-name {})
@@ -399,9 +399,10 @@
                                  (str "Insufficient scope to call tool: \"" tool-name "\"."))))))))
   (testing "GHY-4543: the extension filter still hides tools"
     (testing "a tool needing a client extension the caller lacks"
-      (do-with-temp-tool!
+      (v2.tu/do-with-temp-tool!
        {:name                "ui_probe"
         :scope               "agent:content:read"
+        :default-access      :allowed
         :description         "test-only tool that needs MCP Apps UI"
         :args                [:map]
         :handler             (fn [_ _] nil)
@@ -510,15 +511,38 @@
 ;; not ^:parallel: registers a throwaway tool
 (deftest description-permission-text-without-registered-scope-description-test
   (testing "GHY-4543: a scope with no consent-screen label is named by its scope string alone"
-    (do-with-temp-tool!
-     {:name        "unlabelled_scope_probe"
-      :scope       "agent:unlabelled:probe"
-      :description "Probe."
-      :args        [:map]
-      :handler     (fn [_ _] nil)}
+    (v2.tu/do-with-temp-tool!
+     {:name           "unlabelled_scope_probe"
+      :scope          "agent:unlabelled:probe"
+      :default-access :allowed
+      :description    "Probe."
+      :args           [:map]
+      :handler        (fn [_ _] nil)}
      (fn []
        (is (= "Requires the agent:unlabelled:probe permission.\n\nProbe."
               (get (published-descriptions) "unlabelled_scope_probe")))))))
+
+;;; ------------------------------------------ Tool catalog ---------------------------------------------------------
+
+(deftest ^:parallel first-sentence-test
+  (let [first-sentence #'registry/first-sentence]
+    (testing "the first sentence of a multi-sentence description"
+      (is (= "Echo the message back." (first-sentence "Echo the message back. Or pong."))))
+    (testing "a one-sentence description keeps its single period"
+      (is (= "Echo the message back." (first-sentence "Echo the message back."))))
+    (testing "a description without a period gets one"
+      (is (= "Echo the message back." (first-sentence "Echo the message back"))))
+    (testing "e.g. and i.e. do not end the sentence, and line breaks collapse"
+      (is (= "Find terms, e.g. revenue, i.e. the definitions." (first-sentence "Find terms, e.g.\nrevenue, i.e. the definitions. Not this."))))))
+
+(deftest ^:parallel tool-catalog-test
+  (let [catalog (registry/tool-catalog)
+        echo    (some #(when (= "test_echo" (:name %)) %) catalog)]
+    (testing "one entry per tool with the author's default as a string and the first sentence as the description"
+      (is (= {:name "test_echo" :scope "agent:content:read" :description "Test-only tool." :default_access "allowed"}
+             echo)))
+    (testing "sorted by scope then name"
+      (is (= (sort-by (juxt :scope :name) catalog) catalog)))))
 
 ;;; ------------------------------------------ Security schemes -----------------------------------------------------
 
