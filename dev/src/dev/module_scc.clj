@@ -287,9 +287,9 @@
 
 (defn module->test-files
   "Map of module → set of its test files, via the same filesystem mapping the selective-CI helpers use.
-  `config` is the module config, as [[dev.deps-graph/kondo-config]] returns it."
+  Takes the module config as [[dev.deps-graph/kondo-config]] returns it."
   [config modules]
-  ;; `dev.deps-graph/module->test-files` is private; this is dev tooling, so we go through the var.
+  ;; The deps-graph helper is private; this is dev tooling, so we go through the var.
   (let [prefix->module (hooks.modules/build-prefix->module config)]
     (into (sorted-map)
           (map (fn [m] [m (#'deps-graph/module->test-files config prefix->module m)]))
@@ -473,7 +473,7 @@
   (take 10 (edge-cut-impacts graph*))
 
   (def m->tests* (module->test-files (deps-graph/kondo-config)
-                                    (sort (into (set (keys graph*)) (mapcat val) graph*))))
+                                     (sort (into (set (keys graph*)) (mapcat val) graph*))))
   ;; sanity check: on the unmodified graph the median should be pegged at ~the full test-file count
   (dissoc (predicted-test-blast-radius graph* m->tests*) :per-module)
   ;; predicted payoff of the best carve candidate
