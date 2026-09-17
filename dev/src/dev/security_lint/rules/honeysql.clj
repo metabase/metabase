@@ -194,7 +194,9 @@
   [{:keys [node] :as ctx}]
   ;; `location-path` and `children-location` build a collection path -- `/1/2/` -- from ids, which carries no
   ;; wildcard however it is used.
-  (let [sanitizers (into coercion-sanitizers [#"^like-" #"-like$" #"^wildcard-"])
+  ;; `location` matches the *head* of a call -- `(children-location parent)`, `(collection/location-path v)`
+  ;; -- where `path-name?` below reads the leaf's own text; a helper's argument is a collection, not a path
+  (let [sanitizers (into coercion-sanitizers [#"^like-" #"-like$" #"^wildcard-" #"location"])
         pattern    (last (ast/children node))
         ;; a collection location or a permission path is ids and slashes: `location-prefix`, `path-form`,
         ;; `children-location` carry no wildcard whatever built them

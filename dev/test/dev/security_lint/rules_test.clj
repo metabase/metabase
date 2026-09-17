@@ -119,7 +119,28 @@
     (is (clean? :metabase-security-lint/sql-injection
                 "(ns t (:require [toucan2.core :as t2]))
                  (defn f [x] (t2/query [\"select * from t where id = ?\" x]))")
-        "parameterized"))
+        "parameterized")
+    (testing "a HoneySQL map binds its values as parameters, and that is what Toucan's query functions mostly take"
+      (is (clean? :metabase-security-lint/sql-injection
+                  "(ns t (:require [toucan2.core :as t2]))
+                   (defn f [x] (t2/query {:select [:*] :from [:t] :where [:= :id x]}))"))
+      (is (clean? :metabase-security-lint/sql-injection
+                  "(ns t (:require [toucan2.core :as t2]))
+                   (defn f [x] (t2/query-one (cond-> {:select [:*] :from [:t]} x (assoc :where [:= :id x]))))")
+          "a call that builds the map")
+      (is (clean? :metabase-security-lint/sql-injection
+                  "(ns t (:require [toucan2.core :as t2]))
+                   (defn f [t] (let [q {:select [:*] :from [:t] :where [:= :name t]}] (t2/query q)))")
+          "a local bound to one")
+      (is (flags? :metabase-security-lint/sql-injection
+                  "(ns t (:require [toucan2.core :as t2]))
+                   (defn f [t params] (t2/query-one (cons (str \"select * from \" t) params)))")
+          "cons builds the [sql & params] form: the first element is the text")
+      (is (flags? :metabase-security-lint/sql-injection
+                  "(ns t (:require [toucan2.core :as t2]))
+                   (defn- table-sql [t] (str \"select * from \" t))
+                   (defn f [t] (t2/query [(table-sql t)]))")
+          "inside the vector the first element is text by position, whatever built it")))
   (testing "the other JDBC executors"
     (is (flags? :metabase-security-lint/sql-injection
                 "(ns t (:require [next.jdbc :as jdbc]))
@@ -688,6 +709,10 @@
     (is (clean? id "(ns t) (defn f [] [:like :name \"admin%\"])"))
     (is (clean? id "(ns t) (defn f [id] [:like :location (str \"/\" (long id) \"/%\")])")
         "a numeric coercion cannot carry a wildcard")
+    (is (clean? id "(ns t (:require [metabase.collections.models.collection :as collection]))
+(defn f [parent] [:like :location (str (collection/children-location parent) \"%\")])")
+        "a collection path built by a location helper is ids and slashes, whatever the helper was handed")
+    (is (clean? id "(ns t) (defn f [v] [:like :collection.location (str \"%\" (location-path v) \"%\")])"))
     (testing "escaping in the caller clears the request taint at the sink one call away"
       (let [src (fn [arg] (str "(ns t (:require [metabase.util.honey-sql-2 :as h2x]))
 (defn- helper [pattern] [:like :name pattern])
