@@ -62,11 +62,7 @@ const ActionComponent = ({
   const { data: card } = useGetCardQuery(
     dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
-  const model = useMemo(
-    () => (card ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const model = useQuestionFromCard(card);
 
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
