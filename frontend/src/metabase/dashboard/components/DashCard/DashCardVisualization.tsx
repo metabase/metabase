@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -501,6 +501,10 @@ export function DashCardVisualization({
     onDeselectTimelineEvents,
     onTimelineEventsShown,
   } = useDashCardTimelineEvents(dashcard);
+  const [isChartTimelineEventsEnabled, setIsChartTimelineEventsEnabled] =
+    useState(true);
+  const withTimelineEvents =
+    isTimelineEventsEnabled && isChartTimelineEventsEnabled;
 
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
@@ -520,7 +524,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
-        withTimelineEvents: isTimelineEventsEnabled,
+        withTimelineEvents,
       });
 
     const errorStatus =
@@ -554,7 +558,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
-            withTimelineEvents={isTimelineEventsEnabled}
+            withTimelineEvents={withTimelineEvents}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -570,7 +574,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
-    isTimelineEventsEnabled,
+    withTimelineEvents,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -664,6 +668,7 @@ export function DashCardVisualization({
           onSelectTimelineEvents={onSelectTimelineEvents}
           onDeselectTimelineEvents={onDeselectTimelineEvents}
           onTimelineEventsShown={onTimelineEventsShown}
+          onTimelineEventsEnabledChange={setIsChartTimelineEventsEnabled}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings

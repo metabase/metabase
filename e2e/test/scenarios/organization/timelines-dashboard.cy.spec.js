@@ -176,6 +176,49 @@ describe("scenarios > organization > timelines > dashboard", () => {
     eventChip(1, "RC1").should("not.exist");
   });
 
+  it("should not offer events on a card too small to show them", () => {
+    createReleaseTimeline().then(({ timeline }) => {
+      H.createQuestion({
+        ...questionDetails,
+        visualization_settings: {
+          "timeline.selected_timeline_ids": [timeline.id],
+        },
+      }).then(({ body: question }) => {
+        H.createDashboardWithTabs({
+          dashcards: [
+            createMockDashboardCard({
+              id: -1,
+              card_id: question.id,
+              size_x: 12,
+              size_y: 6,
+            }),
+            createMockDashboardCard({
+              id: -2,
+              card_id: question.id,
+              row: 6,
+              size_x: 4,
+              size_y: 3,
+            }),
+          ],
+        }).then((dashboard) => H.visitDashboard(dashboard.id));
+      });
+    });
+    H.waitForDashcardsToLoad({ count: 2 });
+
+    eventChip(0, "RC1").should("be.visible");
+    openDashCardMenu(0);
+    H.menu().findByText("Events").should("be.visible");
+    cy.realPress("Escape");
+    H.menu().should("not.exist");
+
+    H.getDashboardCard(1).findByText("Orders by month").should("be.visible");
+    H.getDashboardCard(1)
+      .findByTestId("timeline-event-chip")
+      .should("not.exist");
+    openDashCardMenu(1);
+    H.menu().should("contain", "Download results").and("not.contain", "Events");
+  });
+
   it("should update and archive an event from the dashboard in both the panel and chart", () => {
     cy.intercept("PUT", "/api/timeline-event/*").as("updateEvent");
     H.createTimelineWithEvents({
@@ -686,6 +729,11 @@ function eventChip(cardIndex, eventName) {
     name: eventName,
     exact: true,
   });
+}
+
+function openDashCardMenu(cardIndex) {
+  H.getDashboardCard(cardIndex).realHover({ position: "topLeft" });
+  H.getDashboardCardMenu(cardIndex).click();
 }
 
 function closeEventsSidebar() {
