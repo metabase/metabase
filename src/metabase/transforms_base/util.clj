@@ -35,6 +35,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -505,7 +506,7 @@
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
   (let [db-id (transforms-base.i/target-db-id transform)
-        {driver :engine :as database} (transforms-base.db/database db-id)]
+        {driver :engine :as database} (warehouses.db/select-one-database {:id db-id})]
     (driver/table-exists? driver database target)))
 
 (defn- sync-table!
@@ -558,7 +559,7 @@
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
-        (if-let [{driver :engine :as database} (transforms-base.db/database database-id)]
+        (if-let [{driver :engine :as database} (warehouses.db/select-one-database {:id database-id})]
           (let [drop-target (update target :type keyword)]
             (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -659,7 +660,7 @@
   [transform]
   (when (and (seq (:indexes (:target transform)))
              (full-create-run? transform))
-    (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))]
+    (let [database (warehouses.db/select-one-database {:id (transforms-base.i/target-db-id transform)})]
       (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
 (defn- apply-index-outcomes!
@@ -686,7 +687,7 @@
                     (table-index/select-for-verification (:id transform) (:index-request-ids target))
                     (table-index/select-for-transform (:id transform)))]
       (when-let [managed (seq managed)]
-        (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))
+        (let [database (warehouses.db/select-one-database {:id (transforms-base.i/target-db-id transform)})
               {:keys [schema] table-name :name} (:target transform)]
           (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
             (apply-index-outcomes!
@@ -711,7 +712,7 @@
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database (transforms-base.db/database db-id)]
+        database (warehouses.db/select-one-database {:id db-id})]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when-let [table (sync-target! target database)]
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})

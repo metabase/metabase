@@ -16,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -101,7 +102,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (actions-rest.db/database db-id))))
+       (warehouses.db/select-one-database {:id db-id}))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created

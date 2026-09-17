@@ -14,6 +14,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -71,7 +72,7 @@
         database-id (transforms-base.i/target-db-id transform)
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
-        warehouse   (or (reconcile/fetch-warehouse-indexes (indexes-rest.db/database database-id)
+        warehouse   (or (reconcile/fetch-warehouse-indexes (warehouses.db/select-one-database {:id database-id})
                                                            schema table-name)
                         [])]
     {:data (reconcile/merge-indexes managed warehouse)}))

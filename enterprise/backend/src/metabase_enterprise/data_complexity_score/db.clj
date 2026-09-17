@@ -46,11 +46,6 @@
   []
   (t2/select-fn-set :id :model/Collection :authority_level "official"))
 
-(mu/defn routed-child-database-ids
-  "The IDs of the Databases that are routing destinations."
-  []
-  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
-
 (mu/defn universe-cards
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
   `audit-database-id`."

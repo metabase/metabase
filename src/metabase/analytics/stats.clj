@@ -28,7 +28,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.version.core :as version]))
+   [metabase.version.core :as version]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -129,7 +130,7 @@
    :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
-   :has_sample_data                      (analytics.db/sample-database-exists?)
+   :has_sample_data                      (warehouses.db/database-exists? {:is_sample true})
    :enable_embedding                     (setting/get :enable-embedding)
    ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0. The three field names are kept so
    ;; existing reports keep resolving; they now all report that one flag.
@@ -465,7 +466,7 @@
   "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than or equal
   to `num-queries`"
   [num-queries]
-  (let [sample-db-id (analytics.db/sample-database-id)
+  (let [sample-db-id (warehouses.db/select-one-database-pk {:is_sample true})
         ;; QueryExecution can be large, so let's avoid counting everything
         queries      (analytics.db/query-execution-ids-excluding-database sample-db-id (inc num-queries))]
     (>= (count queries) num-queries)))
@@ -820,7 +821,10 @@
   (boolean
    (let [major-version (config/current-major-version)
          minor-version (config/current-minor-version)
-         engines       (analytics.db/database-engines-among (map name (keys csv-upload-version-availability)))]
+         engines       (->> (warehouses.db/select-databases {:engine  (set (map name (keys csv-upload-version-availability)))
+                                                             :columns [:engine]})
+                            (map :engine)
+                            set)]
      (when (and major-version minor-version)
        (some
         (fn [engine]
@@ -861,7 +865,7 @@
     :enabled   (sso/ldap-enabled)}
    {:name      :sample-data
     :available true
-    :enabled   (analytics.db/sample-database-exists?)}
+    :enabled   (warehouses.db/database-exists? {:is_sample true})}
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
@@ -892,7 +896,7 @@
                     (analytics.db/custom-viz-plugin-exists?))}
    {:name      :csv-upload
     :available (csv-upload-available?)
-    :enabled   (analytics.db/uploads-database-exists?)}
+    :enabled   (warehouses.db/database-exists? {:uploads_enabled true})}
    {:name      :mb-analytics
     :available (premium-features/enable-audit-app?)
     :enabled   (premium-features/enable-audit-app?)}
@@ -957,7 +961,7 @@
     :available (premium-features/enable-tenants?)}
    {:name      :starburst-legacy-impersonation
     :available true
-    :enabled   (->> (analytics.db/starburst-database-details)
+    :enabled   (->> (map :details (warehouses.db/select-databases {:engine "starburst" :columns [:details]}))
                     (map :impersonation)
                     (some identity)
                     boolean)}

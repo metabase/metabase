@@ -164,6 +164,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.filters :as filters]
@@ -412,7 +413,7 @@
   (let [db-id (or ((some-fn :db_id :database_id) source)
                   (throw (ex-info "Source is missing Database ID"
                                   {:source source})))]
-    (xrays.db/database db-id)))
+    (warehouses.db/select-one-database {:id db-id})))
 
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."

@@ -192,11 +192,6 @@
    dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id user-id))
 
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- :int]
-  (t2/exists? :model/Database :id database-id))
-
 (mu/defn admin-or-self-visible-user
   "The User with `id`, with the given `columns`, or nil. When `type` and/or `is-active?` are given (non-nil), also
   requires `:type` and/or `:is_active` to match."

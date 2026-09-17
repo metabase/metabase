@@ -56,9 +56,9 @@
    [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
-   [metabase.upload.db :as upload.db]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.db :as warehouses.db]
    [potemkin :as p]))
 
 ;; driver-api facade must keep re-exporting deprecated vars until all drivers migrate off them
@@ -177,8 +177,12 @@
  setting/defsetting
  sync-util/name-for-logging
  sync-util/reducible-sync-tables
- system/site-uuid
- upload.db/current-database)
+ system/site-uuid)
+
+(defn current-database
+  "The Database being used for uploads, or nil."
+  []
+  (warehouses.db/select-one-database {:uploads_enabled true}))
 
 (defn ^:deprecated current-user
   "Fetch the user making the request."

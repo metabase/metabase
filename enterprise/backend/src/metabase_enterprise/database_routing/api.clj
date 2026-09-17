@@ -10,7 +10,8 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -37,9 +38,9 @@
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/DatabaseDetails]]]]]]
   (api/check-400 (database-routing.db/router-exists? router_database_id))
-  (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
+  (api/check-400 (not (warehouses.db/database-exists? {:router_database_id router_database_id :name (set (map :name destinations))}))
                  "A destination database with that name already exists.")
-  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (database-routing.db/database router_database_id)]
+  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (warehouses.db/select-one-database {:id router_database_id})]
     (if-let [invalid-destinations (->> destinations
                                        (keep (fn [{details :details n :name}]
                                                (try
@@ -53,7 +54,7 @@
                                        seq)]
       {:status 400
        :body (into {} invalid-destinations)}
-      (u/prog1 (database-routing.db/insert-databases!
+      (u/prog1 (warehouses.db/insert-databases!
                 (map (fn [{:keys [name details]}]
                        {:name               name
                         :engine             engine
@@ -74,7 +75,7 @@
 
 (defn- delete-router!
   [db-id]
-  (let [db (database-routing.db/database db-id)]
+  (let [db (warehouses.db/select-one-database {:id db-id})]
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
@@ -83,7 +84,7 @@
 
 (defn- create-or-update-router!
   [db-id user-attribute]
-  (let [db (database-routing.db/database db-id)]
+  (let [db (warehouses.db/select-one-database {:id db-id})]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
     (events/publish-event! :event/database-update {:object db
@@ -108,7 +109,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
-  (let [db (database-routing.db/database id)]
+  (let [db (warehouses.db/select-one-database {:id id})]
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
     (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")

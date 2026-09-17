@@ -42,11 +42,6 @@
                [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
   (t2/update! :model/TransformRun run-id changes))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]

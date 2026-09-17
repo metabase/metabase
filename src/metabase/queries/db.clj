@@ -206,16 +206,6 @@
 
 ;;; ------------------------------------------- Related models --------------------------------------------
 
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
-
-(mu/defn database-name
-  "The name of the Database with `database-id`."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name :model/Database :id database-id))
-
 (mu/defn field-database-info-for-ids
   "The id, name, table name, and Database id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]

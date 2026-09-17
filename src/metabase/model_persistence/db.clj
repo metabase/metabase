@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
@@ -11,7 +10,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn persisted-info-listing
@@ -242,24 +240,3 @@
   "The archived flag and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :archived :type :card_schema] :id card-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
-
-(mu/defn all-databases
-  "Every Database."
-  []
-  (t2/select :model/Database))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- (mut/select-keys ::warehouses.schema/database.update [:settings])]
-  (t2/update! :model/Database database-id changes))

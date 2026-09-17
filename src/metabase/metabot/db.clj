@@ -386,47 +386,6 @@
                           :source_type source-type}
                          update-fn))
 
-;;; ------------------------------------------------ Databases ------------------------------------------------
-
-(mu/defn database-summary
-  "The ID, name, description, and engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :name :description :engine] database-id))
-
-(mu/defn database-with-columns
-  "The `columns` of the Database with `database-id`."
-  [columns :- [:sequential :keyword]
-   database-id :- ::lib.schema.id/database]
-  (t2/select-one columns database-id))
-
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
-
-(mu/defn database-ids-by-name
-  "The IDs of the Databases named `database-name`."
-  [database-name :- :string]
-  (t2/select-pks-vec :model/Database :name database-name))
-
-(mu/defn database-engines-and-names
-  "A map of ID to the engine and name of the Databases with `database-ids`."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-pk->fn identity [:model/Database :id :engine :name] :id [:in database-ids]))
-
-(mu/defn destination-database-ids
-  "The IDs of the routing destination Databases among `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
-
-(mu/defn non-audit-databases
-  "The ID, name, engine, description, and audit flag of every non-audit, non-destination Database, ordered by name."
-  []
-  (t2/select [:model/Database :id :name :engine :description :is_audit]
-             :is_audit false
-             :router_database_id nil
-             {:order-by [[:%lower.name :asc]]}))
-
 ;;; ------------------------------------------------- Tables -------------------------------------------------
 
 (mu/defn table

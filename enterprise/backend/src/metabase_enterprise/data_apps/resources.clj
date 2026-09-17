@@ -5,7 +5,8 @@
    [metabase-enterprise.data-apps.permissions :as data-app.permissions]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.request.core :as request]))
+   [metabase.request.core :as request]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,7 +59,7 @@
 
 (defn- apply-resource-permissions!
   [group collection]
-  (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
+  (data-app.permissions/reconcile-app-group-permissions! (:id group) (warehouses.db/select-database-pks {:router_database_id_set false}))
   (apply-collection-permissions! group collection))
 
 (defn- create-resource-collection! [app]

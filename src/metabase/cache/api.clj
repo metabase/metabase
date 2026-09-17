@@ -15,6 +15,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 ;; Data shape
@@ -106,7 +107,7 @@
 
     :else
     (api/check-404 (case model
-                     "database"  (cache.db/database-with-ids ids)
+                     "database"  (warehouses.db/select-one-database {:id (set ids)})
                      "dashboard" (cache.db/dashboard-with-ids ids)
                      "question"  (cache.db/card-with-ids ids)))))
 

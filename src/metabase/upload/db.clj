@@ -10,37 +10,6 @@
    [metabase.warehouse-schema.humanization :as humanization]
    [toucan2.core :as t2]))
 
-(mu/defn current-database
-  "The Database being used for uploads, or nil."
-  []
-  (t2/select-one :model/Database :uploads_enabled true))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn database-is-attached-dwh?
-  "Whether the Database with `database-id` is an attached data warehouse."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_attached_dwh :model/Database database-id))
-
-(mu/defn disable-uploads-for-all-databases!
-  "Disable uploads on every Database that has them enabled."
-  []
-  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
-                                                     :uploads_schema_name  nil
-                                                     :uploads_table_prefix nil}))
-
-(mu/defn enable-uploads-for-database!
-  "Enable uploads on the Database with `database-id` into `schema-name` with `table-prefix`."
-  [database-id  :- ::lib.schema.id/database
-   schema-name  :- [:maybe :string]
-   table-prefix :- [:maybe :string]]
-  (t2/update! :model/Database database-id {:uploads_enabled      true
-                                           :uploads_schema_name  schema-name
-                                           :uploads_table_prefix table-prefix}))
-
 (mu/defn active-fields-for-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]

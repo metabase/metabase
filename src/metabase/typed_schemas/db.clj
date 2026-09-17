@@ -9,11 +9,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn destination-database-ids
-  "The ids among `database-ids` of Databases that are routing destinations."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
-
 (defn- scope-filter-clause
   "Compiles a resolved scope into a Honey SQL where-clause conjunct: a nil scope means unscoped (no clause), an
   empty scope matches nothing."
@@ -98,16 +93,6 @@
   "The id and definition of the Measures with `measure-ids`."
   [measure-ids :- [:sequential ::lib.schema.id/measure]]
   (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn databases-named
-  "The Databases named `database-name`."
-  [database-name :- :string]
-  (t2/select :model/Database :name database-name))
 
 (mu/defn collections
   "The Collections with `collection-ids`."

@@ -3,12 +3,12 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.bug-reporting.db :as bug-reporting.db]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.system-info :as u.system-info]
+   [metabase.warehouses.db :as warehouses.db]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
@@ -18,7 +18,7 @@
   "Make it easy for the user to tell us what they're using"
   []
   (merge
-   {:databases            (bug-reporting.db/database-engines)
+   {:databases            (set (map :engine (warehouses.db/select-databases {:columns [:engine]})))
     :run-mode             (config/config-kw :mb-run-mode)
     :plan-alias           (or (premium-features/plan-alias) "")
     :version              config/mb-version-info

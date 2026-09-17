@@ -90,11 +90,6 @@
   [channel-name :- :string]
   (t2/select-one :model/Channel :name channel-name))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]

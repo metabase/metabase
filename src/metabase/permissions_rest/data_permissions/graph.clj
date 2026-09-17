@@ -19,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -136,12 +137,19 @@
   "Data Analysts have implicit manage-table-metadata permission for all databases."
   {:data-model {:schemas :all}})
 
+(defn- non-destination-database-ids
+  "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
+  exclusion)."
+  [excluded-database-id]
+  (cond-> (warehouses.db/select-database-pks {:router_database_id_set false})
+    excluded-database-id (disj excluded-database-id)))
+
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms/admin-group))
-        db-ids         (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
+        db-ids         (if db-id [db-id] (non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -159,7 +167,7 @@
   This is not stored in the data-permissions table, so we add it to the graph for the API."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
-        db-ids                (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
+        db-ids                (if db-id [db-id] (non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)

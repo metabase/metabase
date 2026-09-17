@@ -3178,6 +3178,7 @@
    :module-exports #{warehouses.schema
                      warehouses.secrets}
    :api  #{metabase.warehouses.core
+           metabase.warehouses.db
            metabase.warehouses.init
            metabase.warehouses.models.database
            metabase.warehouses.schema}

@@ -6,7 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
-   [metabase.typed-schemas.db :as typed-schemas.db]))
+   [metabase.typed-schemas.db :as typed-schemas.db]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,7 +19,7 @@
   `metabase.metabot.tools.resources/check-resource-database`)."
   [db-ids]
   (when (seq db-ids)
-    (typed-schemas.db/destination-database-ids db-ids)))
+    (warehouses.db/select-database-pks {:id db-ids :router_database_id_set true})))
 
 (defn select-schema-cards
   "Returns readable, non-archived cards for schema generation.

@@ -3,6 +3,7 @@
    [metabase.actions.db :as actions.db]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]))
 
 (setting/defsetting database-enable-actions
@@ -46,7 +47,7 @@
   :enabled-for-db? (fn [db]
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
-                       (when (actions.db/destination-database-exists-for-router? (:id db)) db-routing-reason)
+                       (when (warehouses.db/database-exists? {:router_database_id (:id db)}) db-routing-reason)
                        (cond
                          ;; TODO we also care about re-sync after connection details are changed
                          (= (:initial_sync_status db) "incomplete") busy-sync-reason

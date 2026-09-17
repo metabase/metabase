@@ -254,21 +254,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn database-name
-  "The name of the Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
-
-(mu/defn database-names
-  "The names of every Database."
-  []
-  (t2/select-fn-vec :name :model/Database))
-
-(mu/defn database-id-by-name
-  "The id of the Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-fn :id :model/Database :name database-name))
-
 (mu/defn table-id-by-name
   "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [table-name  :- :string

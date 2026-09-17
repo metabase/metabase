@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,7 +28,7 @@
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
   [transform]
-  (let [database (api/check-400 (transforms.db/database (transforms-base.i/target-db-id transform))
+  (let [database (api/check-400 (warehouses.db/select-one-database {:id (transforms-base.i/target-db-id transform)})
                                 (deferred-tru "The target database cannot be found."))
         features (transforms-base.u/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
@@ -60,7 +61,7 @@
   and leaves the Metabase table with zero fields."
   [transform]
   (let [db-id (transforms-base.i/target-db-id transform)
-        db    (transforms.db/database db-id)]
+        db    (warehouses.db/select-one-database {:id db-id})]
     (when (and db (driver.u/supports? (:engine db) :schemas db))
       (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
                      (deferred-tru "A target schema is required for this database.")))))
@@ -131,7 +132,7 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (transforms.db/database db-id)]
+    (when-let [database (warehouses.db/select-one-database {:id db-id})]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e

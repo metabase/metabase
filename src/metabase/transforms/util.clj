@@ -29,7 +29,8 @@
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.sql SQLException)))
 
@@ -82,7 +83,7 @@
                     (if models-cache
                       (get-in models-cache [model id])
                       (case model
-                        :model/Database (transforms.db/database id)
+                        :model/Database (warehouses.db/select-one-database {:id id})
                         :model/Table    (transforms.db/table id))))
          source   (:source transform)]
      (case (keyword (:type source))
@@ -125,7 +126,7 @@
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (transforms.db/databases db-ids)))
+                       (u/index-by :id (warehouses.db/select-databases {:id db-ids})))
      :model/Table    (when (seq table-ids)
                        (u/index-by :id (transforms.db/tables table-ids)))}))
 

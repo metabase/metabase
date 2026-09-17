@@ -125,14 +125,6 @@
    group-manager? :- :boolean]
   (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
 
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
-  exclusion)."
-  [excluded-database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-pks-vec :model/Database {:where [:and
-                                              (when excluded-database-id [:not= :id excluded-database-id])
-                                              [:= :router_database_id nil]]}))
-
 (mu/defn data-permissions-reducible
   "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
   non-destination Databases, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding

@@ -19,16 +19,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
-(mu/defn database-engine
-  "The engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database database-id))
-
 (mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
   [run-id  :- ms/PositiveInt

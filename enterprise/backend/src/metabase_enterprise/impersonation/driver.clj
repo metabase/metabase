@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field :as field])
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.sql Connection)))
 
@@ -83,7 +84,7 @@
                 role               (get user-attributes role-attribute)
                 database           (if (map? database-or-id)
                                      database-or-id
-                                     (impersonation.db/database (u/the-id database-or-id)))
+                                     (warehouses.db/select-one-database {:id (u/the-id database-or-id)}))
                 default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)

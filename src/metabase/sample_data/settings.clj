@@ -1,12 +1,12 @@
 (ns metabase.sample-data.settings
   (:require
-   [metabase.sample-data.db :as sample-data.db]
-   [metabase.settings.core :refer [defsetting]]))
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defsetting has-sample-database?
   "Whether this instance has a Sample Database database"
   :type       :boolean
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (sample-data.db/sample-database-exists?))
+  :getter     (fn [] (warehouses.db/database-exists? {:is_sample true}))
   :doc        false)

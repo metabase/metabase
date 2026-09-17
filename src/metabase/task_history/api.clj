@@ -13,7 +13,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -129,8 +130,13 @@
    [:entity_id   ms/PositiveInt]
    [:entity_name {:optional true} [:maybe :string]]])
 
+(defn- database-names-by-id
+  "A map of id to name for the Databases with `ids`."
+  [ids]
+  (update-vals (warehouses.db/select-database-pk->instance {:id (set ids) :columns [:id :name]}) :name))
+
 (def ^:private entity-type->names-fn
-  {:database  task-history.db/database-names-by-id
+  {:database  database-names-by-id
    :card      task-history.db/card-names-by-id
    :dashboard task-history.db/dashboard-names-by-id})
 

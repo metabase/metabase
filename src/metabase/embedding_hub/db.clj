@@ -5,18 +5,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(defn user-added-database?
-  "Whether a database other than the sample and audit ones exists."
-  []
-  (t2/exists? :model/Database {:where [:and
-                                       [:= :is_sample false]
-                                       [:= :is_audit false]]}))
-
-(defn sample-database-id
-  "The id of the sample database, or nil."
-  []
-  (t2/select-one-pk :model/Database :is_sample true))
-
 (defn uploaded-table?
   "Whether the database with `database-id` has an active uploaded table."
   [database-id]

@@ -10,11 +10,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn database-with-ids
-  "A Database whose id is in `ids`, or nil."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Database :id [:in ids]))
-
 (mu/defn dashboard-with-ids
   "A Dashboard whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]

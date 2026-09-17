@@ -5,6 +5,7 @@
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
@@ -20,7 +21,9 @@
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (= (:type card) :model)
                (model-persistence.settings/persisted-models-enabled)
-               (get-in (model-persistence.db/database (:database_id card)) [:settings :persist-models-enabled])
+               (get-in (when-let [db-id (:database_id card)]
+                         (warehouses.db/select-one-database {:id db-id}))
+                       [:settings :persist-models-enabled])
                (nil? (model-persistence.db/persisted-info-id-for-card (:id card))))
       (persisted-info/turn-on-model! user-id card))
     (catch Throwable e

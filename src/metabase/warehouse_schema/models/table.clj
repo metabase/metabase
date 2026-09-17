@@ -18,6 +18,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -235,7 +236,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
+                                      (driver/default-field-order (:engine (warehouses.db/select-one-database {:id (:db_id table) :columns [:engine]}))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -563,7 +564,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (warehouse-schema.db/database (:db_id table)))
+  (warehouses.db/select-one-database {:id (:db_id table)}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
@@ -584,7 +585,7 @@
     (merge fields settings segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
+  (let [db-name (:name (warehouses.db/select-one-database {:id (:db_id table) :columns [:name]}))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -599,7 +600,7 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (warehouse-schema.db/database-id-by-name db-name)]
+        db-id       (warehouses.db/select-one-database-pk {:name db-name})]
     (warehouse-schema.db/table-by-name db-id schema-name table-name)))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]

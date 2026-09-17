@@ -9,14 +9,15 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.upload.core :as upload]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- attached-dwh-tables
   "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
   google sheets uploads. Excludes tables with is_upload=true since those are already included in the main query."
   []
   (when (premium-features/has-feature? :attached-dwh)
-    (when-let [dw-db-id (upload-management.db/attached-dwh-database-id)]
+    (when-let [dw-db-id (:id (warehouses.db/select-one-database {:is_attached_dwh true :columns [:id]}))]
       (when-let [dw-tables (upload-management.db/non-upload-tables-for-database dw-db-id)]
         dw-tables))))
 

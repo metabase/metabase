@@ -89,6 +89,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -314,7 +315,10 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
-  (let [all (metabot.db/non-audit-databases)
+  (let [all (warehouses.db/select-databases {:is_audit false
+                                             :router_database_id_set false
+                                             :columns [:id :name :engine :description :is_audit]
+                                             :order-by [:name]})
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)

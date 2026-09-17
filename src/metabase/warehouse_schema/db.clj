@@ -531,33 +531,6 @@
    display-name :- :string]
   (t2/update! :model/Table id {:display_name display-name}))
 
-;;; ------------------------------------------------ ::warehouses.schema/database ------------------------------------------------
-
-(mu/defn database
-  "The ::warehouses.schema/database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn databases-by-id
-  "A map of ID to ::warehouses.schema/database for `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
-
-(mu/defn database-engine
-  "The engine of the ::warehouses.schema/database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
-
-(mu/defn database-name
-  "The name of the ::warehouses.schema/database with `database-id`."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name :model/Database :id database-id))
-
-(mu/defn database-id-by-name
-  "The ID of the ::warehouses.schema/database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-pk :model/Database :name database-name))
-
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 
 (mu/defn collections

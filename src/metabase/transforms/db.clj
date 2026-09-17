@@ -772,25 +772,10 @@
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
-
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
 
 (mu/defn tables
   "The Tables with `table-ids`."

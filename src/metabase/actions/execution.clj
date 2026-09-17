@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (def ^:private RequestParameters
@@ -99,7 +100,7 @@
       (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (actions.db/database action-db-id))))
+         (warehouses.db/select-one-database {:id action-db-id}))))
     (try
       (case action-type
         :query

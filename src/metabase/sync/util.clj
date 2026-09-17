@@ -25,6 +25,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]
    [toucan2.realize :as t2.realize])
   (:import
@@ -450,13 +451,13 @@
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "complete"})))
+    (warehouses.db/update-databases! {:id (u/the-id database)} {:initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "aborted"})))
+    (warehouses.db/update-databases! {:id (u/the-id database)} {:initial_sync_status "aborted"})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |

@@ -8,45 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
-
-(mu/defn audit-database
-  "The audit Database, or nil."
-  []
-  (t2/select-one :model/Database :is_audit true))
-
-(mu/defn non-audit-database-named
-  "The non-audit Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one :model/Database :name database-name :is_audit false))
-
-(mu/defn insert-database!
-  "Insert the Database `row` with the fixed `id`."
-  [id  :- ::lib.schema.id/database
-   row :- ::warehouses.schema/database.update]
-  (t2/insert! :model/Database (assoc row :id id)))
-
-(mu/defn insert-returning-database!
-  "Insert the Database `row` and return the new instance."
-  [row :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database row))
-
-(mu/defn set-database-engine!
-  "Set the engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database
-   engine      :- :string]
-  (t2/update! :model/Database database-id {:engine engine}))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
-
-(mu/defn delete-audit-databases!
-  "Delete every audit Database."
-  []
-  (t2/delete! :model/Database :is_audit true))
 
 (mu/defn delete-permissions-for-database!
   "Delete the Permissions rows on the Database with `database-id`."

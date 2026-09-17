@@ -44,6 +44,7 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -192,7 +193,7 @@
                    id)
                  (catch Throwable e
                    (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
-             (warehouses-rest.db/database-engines))))
+             (warehouses.db/select-databases {:columns [:id :engine]}))))
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -449,8 +450,8 @@
     :- [:map {:closed true}
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
-                    (warehouses-rest.db/database-exists? id)
-                    (warehouses-rest.db/non-destination-database-exists? id)))))
+                    (warehouses.db/database-exists? {:id id})
+                    (warehouses.db/database-exists? {:id id :router_database_id_set false})))))
 
 (defn- present-database
   "Get a single Database with `id`."
@@ -795,7 +796,7 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (warehouses-rest.db/insert-database!
+      (u/prog1 (api/check-500 (warehouses.db/insert-database!
                                (merge
                                 {:name         name
                                  :engine       engine
@@ -857,7 +858,7 @@
   []
   (api/check-superuser)
   (sample-data/extract-and-sync-sample-database!)
-  (warehouses-rest.db/sample-database))
+  (warehouses.db/select-one-database {:is_sample true}))
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
@@ -898,7 +899,7 @@
         article-noun   (str article " " noun)]
     (api/check-400 (not (:router_database_id existing-database))
                    (tru "Cannot configure {0} connection on a destination database" article-noun))
-    (api/check-400 (not (warehouses-rest.db/destination-database-exists-for-router? (:id existing-database)))
+    (api/check-400 (not (warehouses.db/database-exists? {:router_database_id (:id existing-database)}))
                    (tru "Cannot configure {0} connection on a router database" article-noun))
     (when-not (get overlay-details marker-key)
       (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
@@ -962,7 +963,7 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database               (api/write-check (warehouses-rest.db/database id))
+  (let [existing-database               (api/write-check (warehouses.db/select-one-database {:id id}))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
         ;; table editing), so the guard is lifted when test endpoints are enabled
         _                               (when (and (:is_sample existing-database)
@@ -1049,12 +1050,12 @@
               (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
               (catch Exception e
                 (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
-        (warehouses-rest.db/update-database! id updates)
+        (warehouses.db/update-databases! {:id id} updates)
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
-          (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
-        (let [db (warehouses-rest.db/database id)]
+          (warehouses.db/update-databases! {:id id} {:cache_ttl cache_ttl}))
+        (let [db (warehouses.db/select-one-database {:id id})]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
@@ -1081,11 +1082,11 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/let-404 [db (warehouses-rest.db/database id)]
+    (api/let-404 [db (warehouses.db/select-one-database {:id id})]
       (api/check-403 (mi/can-write? db))
-      (warehouses-rest.db/delete-destination-databases! id)
+      (warehouses.db/delete-databases! {:router_database_id id})
       (database-routing/delete-associated-database-router! id)
-      (warehouses-rest.db/delete-database! id)
+      (warehouses.db/delete-databases! {:id id})
       (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
@@ -1384,7 +1385,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map {:closed true} [:connection-type {:optional true} ::driver.conn/connection-type]]]
   (api/check-superuser)
-  (let [{:as database :keys [engine]} (api/check-404 (warehouses-rest.db/database id))
+  (let [{:as database :keys [engine]} (api/check-404 (warehouses.db/select-one-database {:id id}))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))

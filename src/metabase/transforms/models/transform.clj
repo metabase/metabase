@@ -22,6 +22,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -154,7 +155,7 @@
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   (let [target-db-id (transforms-base.i/target-db-id transform)
-        valid-db-id? (and target-db-id (transforms.db/database-exists? target-db-id))]
+        valid-db-id? (and target-db-id (warehouses.db/database-exists? {:id target-db-id}))]
     ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.

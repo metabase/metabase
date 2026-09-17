@@ -3,9 +3,9 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.upload.db :as upload.db]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- not-handling-api-request?
   []
@@ -16,7 +16,7 @@
   [db-id]
   (or (not-handling-api-request?)
       (mi/can-write? :model/Database db-id)
-      (upload.db/database-is-attached-dwh? db-id)
+      (:is_attached_dwh (warehouses.db/select-one-database {:id db-id :columns [:is_attached_dwh]}))
       (api/throw-403)))
 
 (defsetting uploads-settings
@@ -27,16 +27,22 @@
   :type       :json
   :audit      :getter
   :getter     (fn []
-                (let [db (upload.db/current-database)]
+                (let [db (warehouses.db/select-one-database {:uploads_enabled true})]
                   {:db_id        (:id db)
                    :schema_name  (:uploads_schema_name db)
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (if (nil? db_id)
-                  (upload.db/disable-uploads-for-all-databases!)
+                  (warehouses.db/update-databases! {:uploads_enabled true}
+                                                   {:uploads_enabled      false
+                                                    :uploads_schema_name  nil
+                                                    :uploads_table_prefix nil})
                   (do
                     (check-required-perms! db_id)
-                    (upload.db/enable-uploads-for-database! db_id schema_name table_prefix)))))
+                    (warehouses.db/update-databases! {:id db_id}
+                                                     {:uploads_enabled      true
+                                                      :uploads_schema_name  schema_name
+                                                      :uploads_table_prefix table_prefix})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

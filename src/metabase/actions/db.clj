@@ -59,11 +59,6 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
   [dashcard-id  :- ::lib.schema.id/dashcard
@@ -232,11 +227,6 @@
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
-
-(mu/defn destination-database-exists-for-router?
-  "Whether the Database with `database-id` has routing destinations."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
 
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."

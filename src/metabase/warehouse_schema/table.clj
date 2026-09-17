@@ -11,6 +11,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -294,7 +295,7 @@
       include-database?
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
-                                           (warehouse-schema.db/database database_id)))]
+                                           (warehouses.db/select-one-database {:id database_id})))]
                    (when (mi/can-read? database) database)))
 
       include-fields?
@@ -336,7 +337,7 @@
   (when (seq ids)
     (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
           dbs (if (seq cards)
-                (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
+                (warehouses.db/select-database-pk->instance {:id (into #{} (map :database_id) cards)})
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]

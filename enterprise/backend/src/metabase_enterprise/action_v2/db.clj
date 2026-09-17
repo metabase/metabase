@@ -20,11 +20,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]

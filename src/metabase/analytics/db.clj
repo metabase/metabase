@@ -17,16 +17,6 @@
   []
   (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
 
-(mu/defn sample-database-exists?
-  "Whether a sample Database exists."
-  []
-  (t2/exists? :model/Database, :is_sample true))
-
-(mu/defn sample-database-id
-  "The id of the sample Database, or nil."
-  []
-  (t2/select-one-pk :model/Database :is_sample true))
-
 (mu/defn personal-user-stats-columns
   "The active, superuser, last login, and SSO source of every personal User."
   []
@@ -307,11 +297,6 @@
   [since :- ms/TemporalInstant]
   (t2/count :model/User :sso_source :scim :is_active true :date_joined [:>= since]))
 
-(mu/defn database-engines-among
-  "The set of engines of the Databases whose engine is one of `engine-names`."
-  [engine-names :- [:sequential :string]]
-  (t2/select-fn-set :engine :model/Database {:where [:in :engine engine-names]}))
-
 (mu/defn embedded-dashboard-exists?
   "Whether a Dashboard with embedding enabled exists."
   []
@@ -336,11 +321,6 @@
   "Whether a CustomVizPlugin exists."
   []
   (t2/exists? :model/CustomVizPlugin))
-
-(mu/defn uploads-database-exists?
-  "Whether a Database with uploads enabled exists."
-  []
-  (t2/exists? :model/Database :uploads_enabled true))
 
 (mu/defn official-collection-exists?
   "Whether an official Collection exists."
@@ -381,8 +361,3 @@
   "Whether a snippet Collection exists."
   []
   (t2/exists? :model/Collection :namespace "snippets"))
-
-(mu/defn starburst-database-details
-  "The connection details of the Starburst Databases."
-  []
-  (t2/select-fn-set :details :model/Database :engine "starburst"))

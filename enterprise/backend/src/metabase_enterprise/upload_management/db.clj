@@ -7,11 +7,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn attached-dwh-database-id
-  "The ID of the attached data warehouse Database, or nil."
-  []
-  (t2/select-one-fn :id :model/Database :is_attached_dwh true))
-
 (mu/defn non-upload-tables-for-database
   "The active Tables of the Database with `database-id` that were not uploaded."
   [database-id :- ::lib.schema.id/database]

@@ -48,6 +48,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -350,7 +351,8 @@
       (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (queries.db/database-name db-id))))]
+                                    (format "%d %s" db-id (pr-str (when db-id
+                                                                    (:name (warehouses.db/select-one-database {:id db-id :columns [:name]}))))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)

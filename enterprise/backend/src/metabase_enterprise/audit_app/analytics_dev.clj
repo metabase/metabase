@@ -24,7 +24,8 @@
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -52,7 +53,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (audit-app.db/non-audit-database-named canonical-db-name))
+  (warehouses.db/select-one-database {:name canonical-db-name :is_audit false}))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -74,7 +75,7 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (audit-app.db/insert-returning-database!
+      (let [db (warehouses.db/insert-database!
                 {:name canonical-db-name
                  :description "Development database for analytics views and content"
                  :engine (name db-type)
@@ -92,7 +93,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (audit-app.db/delete-database! db-id)
+  (warehouses.db/delete-databases! {:id db-id})
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -294,7 +295,7 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (audit-app.db/delete-audit-databases!)
+  (warehouses.db/delete-databases! {:is_audit true})
   (audit-app.db/delete-analytics-collections!))
 
 (defn- analytics-dev-mode-setup []

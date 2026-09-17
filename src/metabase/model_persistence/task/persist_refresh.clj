@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -131,7 +132,7 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (model-persistence.db/databases (map :database_id deletables)))
+    (let [db-id->db    (m/index-by :id (warehouses.db/select-databases {:id (set (map :database_id deletables))}))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
@@ -183,7 +184,7 @@
   [database-id refresher trigger]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (model-persistence.db/database database-id)
+  (let [database  (warehouses.db/select-one-database {:id database-id})
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -197,8 +198,8 @@
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher trigger]
   (let [persisted-info (model-persistence.db/persisted-info persisted-info-id)
-        database       (when persisted-info
-                         (model-persistence.db/database (:database_id persisted-info)))]
+        database       (when-let [db-id (and persisted-info (:database_id persisted-info))]
+                         (warehouses.db/select-one-database {:id db-id}))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)
@@ -387,7 +388,7 @@
   `:persist-models-enabled` in the settings at
   interval [[model-persistence.settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (model-persistence.db/all-databases))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (warehouses.db/select-databases))
         cron-schedule        (model-persistence.settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]

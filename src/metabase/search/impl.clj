@@ -22,6 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -126,7 +127,7 @@
   [search-ctx]
   (when (and (not (:is-superuser? search-ctx))
              (some #{"table" "indexed-entity"} (:models search-ctx)))
-    (perms/prime-table-perms-cache {:db-ids (search.db/non-destination-database-ids)})))
+    (perms/prime-table-perms-cache {:db-ids (warehouses.db/select-database-pks {:router_database_id_set false})})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."

@@ -10,11 +10,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn table
   "The Table with `table-id`, or nil. `table-id` may be nil (some callers pass a Card's or Metric's possibly-absent
   table id), in which case this returns nil."

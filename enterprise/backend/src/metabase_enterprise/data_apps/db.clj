@@ -178,11 +178,6 @@
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
-(defn non-router-database-ids
-  "The IDs of databases that are not routed through another database."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
-
 (defn permissions-for-paths-excluding-group
   "Permission grants for `paths`, excluding `group-id`."
   [paths group-id]

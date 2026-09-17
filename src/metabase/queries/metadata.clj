@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 ;; This is similar to the function in [[metabase.warehouses-rest.api]], but we want to allow filtering the DBs in case
@@ -45,7 +46,7 @@
     (perms/prime-database-perms-cache {:db-ids (set ids)})
     (into [] (comp (filter mi/can-read?)
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
-          (queries.db/databases ids))))
+          (warehouses.db/select-databases {:id ids}))))
 
 (defn- field-ids->table-ids
   [field-ids]

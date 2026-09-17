@@ -8,6 +8,7 @@
    [metabase.models.serialization.path :as serdes.path]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -48,7 +49,8 @@
   [table-id]
   (when table-id
     (let [{:keys [db_id name schema]} (models.db/table-ref-columns table-id)
-          db-name                     (models.db/database-name db_id)]
+          db-name                     (when db_id
+                                        (:name (warehouses.db/select-one-database {:id db_id :columns [:name]})))]
       [db-name schema name])))
 
 (defn export-field-fk
@@ -112,13 +114,13 @@
   before this file replaced it — since other modules and tests compare against that literal keyword value."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (if-let [db-id (models.db/database-id-by-name db-name)]
+    (if-let [db-id (:id (warehouses.db/select-one-database {:name db-name :columns [:id]}))]
       (or (models.db/table-id-by-name table-name schema db-id)
           (synthesize-table! db-id schema table-name))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
                       {:table-id       table-id
                        :db-name        db-name
-                       :database-names (sort (models.db/database-names))
+                       :database-names (sort (map :name (warehouses.db/select-databases {:columns [:name]})))
                        :error          :metabase.models.serialization.resolve.db/database-not-found})))))
 
 (defn import-field-fk

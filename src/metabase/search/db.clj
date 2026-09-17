@@ -361,11 +361,6 @@
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
 
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, or nil."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
-
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]

@@ -736,16 +736,6 @@
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 
-(mu/defn non-destination-database-ids
-  "The IDs of the Databases that are not routing destinations."
-  []
-  (t2/select-pks-vec :model/Database :router_database_id nil))
-
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
-
 (mu/defn table-location
   "The ID, Database ID, and schema of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]

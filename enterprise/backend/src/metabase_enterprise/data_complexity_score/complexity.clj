@@ -13,7 +13,8 @@
    [metabase.collections.core :as collections]
    [metabase.collections.curation :as curation]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -193,7 +194,7 @@
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (data-complexity-score.db/routed-child-database-ids))
+  (warehouses.db/select-database-pks {:router_database_id_set true}))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves

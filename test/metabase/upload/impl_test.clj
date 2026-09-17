@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
@@ -29,7 +30,6 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
@@ -741,7 +741,7 @@
         (with-mysql-local-infile-on-and-off
           ;; driver/db-default-timezone is a multimethod, so it needs with-redefs
           (with-redefs [driver/db-default-timezone (constantly "Z")]
-            (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly (mt/db))]
+            (mt/with-dynamic-fn-redefs [driver-api/current-database (constantly (mt/db))]
               (let [transpose  (fn [m] (apply mapv vector m))
                     [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                     ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1657,7 +1657,7 @@
             (testing "Append should succeed for all possible CSV column types"
               ;; driver/db-default-timezone is a multimethod, so it needs with-redefs
               (with-redefs [driver/db-default-timezone (constantly "Z")]
-                (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly (mt/db))]
+                (mt/with-dynamic-fn-redefs [driver-api/current-database (constantly (mt/db))]
                   (with-upload-table!
                     [table (create-upload-table!
                             {:col->upload-type (columns-with-auto-pk
@@ -1690,7 +1690,7 @@
             (testing "Append should succeed for offset datetime columns"
               ;; driver/db-default-timezone is a multimethod, so it needs with-redefs
               (with-redefs [driver/db-default-timezone (constantly "Z")]
-                (mt/with-dynamic-fn-redefs [upload.db/current-database (constantly (mt/db))]
+                (mt/with-dynamic-fn-redefs [driver-api/current-database (constantly (mt/db))]
                   (with-upload-table!
                     [table (create-upload-table!
                             {:col->upload-type (columns-with-auto-pk

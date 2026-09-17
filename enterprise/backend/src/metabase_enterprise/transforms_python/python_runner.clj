@@ -21,7 +21,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (clojure.lang PersistentQueue)
    (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
@@ -319,7 +320,7 @@
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
         (let [db-id       (transforms-python.db/table-database-id table_id)
-              driver      (transforms-python.db/database-engine db-id)
+              driver      (:engine (warehouses.db/select-one-database {:id db-id :columns [:engine]}))
               fields-meta (fields-metadata driver table_id)
               manifest    (generate-manifest table_id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]

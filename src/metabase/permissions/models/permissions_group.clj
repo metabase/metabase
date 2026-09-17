@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -119,7 +120,7 @@
 (defn- set-default-permission-values!
   [group]
   (data-perms/with-global-permissions-lock
-    (let [db-ids (permissions.db/non-destination-database-ids)]
+    (let [db-ids (warehouses.db/select-database-pks {:router_database_id_set false})]
       (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
 
 (t2/define-after-insert :model/PermissionsGroup

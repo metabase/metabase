@@ -2,10 +2,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (def DBMSVersion
   "Schema for the expected output of [[sync-dbms-version!]]."
@@ -18,5 +18,5 @@
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
     (when (not= version (:dbms_version database))
-      (sync.db/update-database! (:id database) {:dbms_version version}))
+      (warehouses.db/update-databases! {:id (:id database)} {:dbms_version version}))
     version))

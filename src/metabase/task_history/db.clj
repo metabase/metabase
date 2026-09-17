@@ -8,11 +8,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn database-names-by-id
-  "A map of id to name for the Databases with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Database :id [:in ids]))
-
 (mu/defn card-names-by-id
   "A map of id to name for the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

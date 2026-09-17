@@ -12,12 +12,12 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
-   [metabase.llm.db :as llm.db]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.warehouses.db :as warehouses.db]
    [stencil.core :as stencil]
    [throttle.core :as throttle])
   (:import
@@ -41,7 +41,7 @@
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
-    (llm.db/database-engine database-id)))
+    (:engine (warehouses.db/select-one-database {:id database-id :columns [:engine]}))))
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.

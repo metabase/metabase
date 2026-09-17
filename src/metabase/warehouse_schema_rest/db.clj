@@ -135,16 +135,6 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
-(mu/defn non-destination-database
-  "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
-
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]

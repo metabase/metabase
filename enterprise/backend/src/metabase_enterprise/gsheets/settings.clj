@@ -10,7 +10,8 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (mr/def :gsheets/response
   [:or
@@ -93,7 +94,7 @@
                         :folder-upload-time :created-at})
       (dissoc :status)
       (cond->
-       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (gsheets.db/attached-dwh-database-id)))
+       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (:id (warehouses.db/select-one-database {:is_attached_dwh true :columns [:id]}))))
       (u/prog1 (when-not (= (set (keys <>)) (set (keys value)))
                  (setting/set-value-of-type! :json :gsheets <>)))))
 

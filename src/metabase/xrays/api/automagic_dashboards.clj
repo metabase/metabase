@@ -20,6 +20,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.automagic-dashboards.comparison :as automagic-dashboards.comparison]
    [metabase.xrays.automagic-dashboards.core :as automagic-dashboards.core]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as automagic-dashboards.dashboard-templates]
@@ -95,7 +96,7 @@
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (xrays.db/database id)
+  (-> (warehouses.db/select-one-database {:id id})
       api/read-check
       automagic-dashboards.core/candidate-tables))
 

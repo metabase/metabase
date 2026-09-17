@@ -10,6 +10,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -98,9 +99,10 @@
     (log/info "Loading sample database")
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
-          db (if (sample-data.db/sample-database-exists?)
-               (sample-data.db/database (first (sample-data.db/set-sample-database-details! details)))
-               (sample-data.db/insert-sample-database! sample-database-name details engine))]
+          db (if (warehouses.db/database-exists? {:is_sample true})
+               (warehouses.db/select-one-database
+                {:id (first (warehouses.db/update-databases-returning-pks! {:is_sample true} {:details details}))})
+               (warehouses.db/insert-database! {:name sample-database-name :details details :engine engine :is_sample true}))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
@@ -110,7 +112,7 @@
 (defn sample-database-id
   "ID of the Sample Database if it exists, otherwise nil."
   []
-  (sample-data.db/sample-database-id))
+  (warehouses.db/select-one-database-pk {:is_sample true}))
 
 (defn- table-schema-for-engine
   "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts
@@ -149,7 +151,7 @@
   (let [details  (try-to-extract-sample-database! engine)
         settings (settings-sans-unsupported-features engine old-sample-db)]
     (t2/with-transaction [_conn]
-      (sample-data.db/update-database! (:id old-sample-db)
+      (warehouses.db/update-databases! {:id (:id old-sample-db)}
                                        (cond-> {:engine engine, :details details}
                                          settings (assoc :settings settings)))
       (sample-data.db/set-database-tables-schema! (:id old-sample-db) (table-schema-for-engine engine))
@@ -157,7 +159,7 @@
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.
       (sample-data.db/set-database-table-permissions-schema-name! (:id old-sample-db) (table-schema-for-engine engine)))
-    (sync/sync-database! (sample-data.db/database (:id old-sample-db)))))
+    (sync/sync-database! (warehouses.db/select-one-database {:id (:id old-sample-db)}))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
@@ -165,7 +167,7 @@
   [[migrate-sample-database-engine-in-place!]]); otherwise we just refresh its connection details in case
   the JAR has moved."
   ([]
-   (update-sample-database-if-needed! (sample-data.db/sample-database)))
+   (update-sample-database-if-needed! (warehouses.db/select-one-database {:is_sample true})))
 
   ([sample-db]
    (when sample-db
@@ -174,4 +176,4 @@
          (migrate-sample-database-engine-in-place! engine sample-db)
          (let [intended (try-to-extract-sample-database! engine)]
            (when (not= (:details sample-db) intended)
-             (sample-data.db/update-database! (:id sample-db) {:details intended}))))))))
+             (warehouses.db/update-databases! {:id (:id sample-db)} {:details intended}))))))))
