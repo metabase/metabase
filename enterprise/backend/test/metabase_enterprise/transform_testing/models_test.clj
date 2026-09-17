@@ -1,10 +1,11 @@
 (ns metabase-enterprise.transform-testing.models-test
-  "The `:model/TransformTest` column transforms. Both JSON columns normalize and validate on the way
-  in and normalize on the way out, so every reader gets values the schema has passed — including a
-  serdes import, which goes through Toucan and never touches an API endpoint."
+  "The `:model/TransformTest` column transforms and delete hook. Both JSON columns normalize and
+  validate on the way in and normalize on the way out, so every reader gets values the schema has
+  passed — including a serdes import, which goes through Toucan and never touches an API endpoint."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -183,3 +184,29 @@
       (testing "and the stored value is unchanged"
         (is (= ["no orphan rows"]
                (mapv :name (:expectations (t2/select-one :model/TransformTest :id test-id)))))))))
+
+;;; ------------------------------------------------ Deletion ------------------------------------------------
+
+(deftest deleting-a-transform-deletes-its-tests-through-toucan-test
+  (testing "Deleting a transform takes its tests with it, through their own hook"
+    (let [published (atom [])]
+      (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :name         "No nulls"
+                                                              :inputs       []
+                                                              :expectations []}
+                     :model/TransformTest {other-id :id}     {:transform_id transform-id
+                                                              :name         "No dupes"
+                                                              :inputs       []
+                                                              :expectations []}]
+        (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+          (t2/delete! :model/Transform transform-id))
+        (testing "the rows are gone"
+          (is (false? (t2/exists? :model/TransformTest :id test-id)))
+          (is (false? (t2/exists? :model/TransformTest :id other-id))))
+        (testing "and each test published its own delete event on the way out"
+          (is (= #{test-id other-id}
+                 (into #{}
+                       (comp (filter (comp #{:event/transform-test-delete} first))
+                             (map (comp :id :object second)))
+                       @published))))))))

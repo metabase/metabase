@@ -1,14 +1,23 @@
 (ns metabase-enterprise.transform-testing.schema
+  "The shapes a transform test is written in, and the only gate they pass: each schema explains its own
+  refusals, so a caller reads what to fix from the explanation rather than from a hand-written check."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(defn- unknown-dispatch
+  "An `:error/fn` for a `:multi` dispatching on `dispatch-key`: says what the value named and what the schema
+  knows, where Malli would say only \"invalid dispatch value\"."
+  [dispatch-key]
+  (fn [{:keys [schema value]} _options]
+    (let [known (str/join ", " (sort (map (comp name first) (mc/children schema))))]
+      (if (map? value)
+        (str "unknown " (name dispatch-key) " " (pr-str (get value dispatch-key)) ", must be one of: " known)
+        (str "must be a map whose " (name dispatch-key) " is one of: " known)))))
 
 (mr/def ::table
   "A table read by the transform under test, by schema and name."
@@ -48,7 +57,8 @@
 (mr/def ::input
   "An input table of the transform under test, replaced with test data."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         (comp keyword :format)}
+           :dispatch         (comp keyword :format)
+           :error/fn         (unknown-dispatch :format)}
    [:sql  [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::sql-data]]
    [:rows [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::rows-data]]])
 
@@ -60,7 +70,8 @@
 (mr/def ::expectation.equals
   "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         (comp keyword :format)}
+           :dispatch         (comp keyword :format)
+           :error/fn         (unknown-dispatch :format)}
    [:sql  [:merge
            [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
             [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :equals]]
@@ -82,7 +93,8 @@
 (mr/def ::expectation
   "A check on the output of the transform under test."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-           :dispatch         (comp keyword :type)}
+           :dispatch         (comp keyword :type)
+           :error/fn         (unknown-dispatch :type)}
    [:equals ::expectation.equals]
    [:empty  ::expectation.empty]])
 
@@ -174,29 +186,3 @@
    [:map {:closed true}
     [:client     (ms/InstanceOfClass Object)]
     [:session-id :string]]])
-
-(defn- known-types
-  "The `:type` values `::expectation` has a branch for."
-  []
-  (into #{} (map first) (mc/children (mr/schema ::expectation))))
-
-(defn validate!
-  "Return `m`, an already-normalized expectation, iff it matches its schema; otherwise throw a
-  typed refusal from [[metabase-enterprise.transform-testing.errors]]: `unknown-expectation-type`, naming the
-  types this version knows, or `invalid-expectation`, explaining `raw` — which defaults to `m`."
-  ([m] (validate! m m))
-  ([m raw]
-   (let [type (:type m)]
-     (when (and (map? m) (some? type) (not (contains? (known-types) (keyword type))))
-       (throw (transform-testing.errors/ex
-               ::transform-testing.errors/unknown-expectation-type
-               (tru "Unknown expectation type {0}. Known types: {1}."
-                    (pr-str type) (str/join ", " (sort (map name (known-types)))))
-               {:type type :expectation raw})))
-     (when-not (mr/validate ::expectation m)
-       (throw (transform-testing.errors/ex
-               ::transform-testing.errors/invalid-expectation
-               (tru "Invalid expectation: {0}"
-                    (mu/explain ::expectation (if (map? m) m raw)))
-               {:expectation raw}))))
-   m))

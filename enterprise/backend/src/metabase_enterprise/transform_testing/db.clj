@@ -39,6 +39,11 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/TransformTest :id id))
 
+(mu/defn delete-transform-tests!
+  "Delete the TransformTests of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/delete! :model/TransformTest :transform_id transform-id))
+
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]

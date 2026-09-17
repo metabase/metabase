@@ -29,9 +29,7 @@
 (def ^:private expected-status
   "The status every declared error type must map to. Exhaustive over `all` by assertion below, so a
   new error type with no mapping fails here instead of being absorbed by the 500 fallback."
-  {::errors/unknown-expectation-type   400
-   ::errors/invalid-expectation        400
-   ::errors/unknown-column             400
+  {::errors/unknown-column             400
    ::errors/ambiguous-column           400
    ::errors/missing-inputs             400
    ::errors/unused-inputs              400
@@ -59,9 +57,7 @@
 
 (deftest status-code-classes-test
   (testing "authoring errors — the caller can fix the test — are 400"
-    (is (= #{::errors/unknown-expectation-type
-             ::errors/invalid-expectation
-             ::errors/unknown-column
+    (is (= #{::errors/unknown-column
              ::errors/ambiguous-column
              ::errors/missing-inputs
              ::errors/unused-inputs
@@ -96,9 +92,7 @@
   "The wire spelling every declared error type must publish. Exhaustive over `all` by assertion
   below. Written out rather than derived: a test that recomputed the prefix would agree with any
   rename, and the point of this one is that a client's vocabulary cannot change silently."
-  {::errors/unknown-expectation-type   "transform-test.unknown-expectation-type"
-   ::errors/invalid-expectation        "transform-test.invalid-expectation"
-   ::errors/unknown-column             "transform-test.unknown-column"
+  {::errors/unknown-column             "transform-test.unknown-column"
    ::errors/ambiguous-column           "transform-test.ambiguous-column"
    ::errors/missing-inputs             "transform-test.missing-inputs"
    ::errors/unused-inputs              "transform-test.unused-inputs"

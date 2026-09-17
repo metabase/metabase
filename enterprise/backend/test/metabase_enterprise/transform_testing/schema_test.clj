@@ -3,6 +3,7 @@
   gate: it normalizes the wire form, dispatches on `:type`, and refuses a repeated name. Pure — no
   warehouse, no app DB."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
@@ -11,6 +12,7 @@
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib.core :as lib]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -158,12 +160,38 @@
            (set (keys (methods expectations.protocol/build)))))))
 
 (deftest every-build-validates-before-constructing-test
-  ;; A `build` method that skipped `validate!` would either construct a record from a shape it
-  ;; never checked, or blow up on some other exception first (a `case` with no matching branch, a
-  ;; nil field dereferenced).
-  (testing "every known type's build method refuses a malformed value as `invalid-expectation`, before constructing anything"
+  (testing "every known type's build method puts its value through the schema before constructing anything"
     (doseq [type (keys expected-types)]
       (testing type
         (let [e (try (expectations.protocol/build {:type type}) nil (catch Exception e e))]
           (is (some? e))
-          (is (= ::transform-testing.errors/invalid-expectation (:error-type (ex-data e)))))))))
+          (testing "and the refusal is the schema's own explanation"
+            (is (some? (:error (ex-data e))))))))))
+
+(defn- explained
+  "Every message the explanation of `value` against `schema` carries, wherever in the structure it sits, without
+  the value each one echoes back."
+  [schema value]
+  (into #{}
+        (comp (filter string?)
+              (map #(first (str/split % #", received: "))))
+        (tree-seq coll? seq (mu/explain schema value))))
+
+(deftest the-schema-explains-its-own-refusals-test
+  (testing "an unknown type names the types there are"
+    (is (= #{"unknown type \"nope\", must be one of: empty, equals"}
+           (explained ::transform-testing.schema/expectations (normalized [{"type" "nope" "name" "n"}])))))
+  (testing "an unknown format names the formats there are"
+    (is (= #{"unknown format \"nope\", must be one of: rows, sql"}
+           (explained ::transform-testing.schema/expectations
+                      (normalized [{"type" "equals" "name" "n" "format" "nope"}])))))
+  (testing "something that is not a map at all"
+    (is (= #{"must be a map whose type is one of: empty, equals"}
+           (explained ::transform-testing.schema/expectations (normalized ["SELECT 1"])))))
+  (testing "a repeated name explains itself over the whole sequence"
+    (is (= #{"expectation names must be unique within a test"}
+           (explained ::transform-testing.schema/expectations
+                      (normalized [(empty-sql "dup") (empty-sql "dup")])))))
+  (testing "and an input's format, which is the same kind of dispatch"
+    (is (= #{"unknown format :nope, must be one of: rows, sql"}
+           (explained ::transform-testing.schema/inputs [{:table {:name "PEOPLE"} :format :nope}])))))

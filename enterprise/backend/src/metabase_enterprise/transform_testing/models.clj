@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -24,22 +25,13 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
-(defn- validated-expectations
-  "The wire form `raw`, normalized, once every expectation in it has validated."
-  [raw]
-  (let [normalized (lib/normalize ::transform-testing.schema/expectations raw)]
-    (dorun (map transform-testing.schema/validate! normalized raw))
-    (mu/validate-throw ::transform-testing.schema/expectations normalized)
-    normalized))
-
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
 
 (t2/deftransforms :model/TransformTest
   {:inputs       (json-column ::transform-testing.schema/inputs)
-   :expectations {:in  (comp mi/json-in validated-expectations)
-                  :out (comp #(lib/normalize ::transform-testing.schema/expectations %) mi/json-out-with-keywordization)}})
+   :expectations (json-column ::transform-testing.schema/expectations)})
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -72,6 +64,14 @@
   (when-not mi/*deserializing?*
     (events/publish-event! :event/transform-test-update {:object transform-test}))
   transform-test)
+
+(defenterprise delete-transform-tests!
+  "Enterprise implementation: delete the tests of the transform `transform-id`, each through its own hook. Runs
+  whatever the token says, since the rows outlive the feature. See the OSS declaration in
+  `metabase.transforms.models.transform`."
+  :feature :none
+  [transform-id]
+  (transform-testing.db/delete-transform-tests! transform-id))
 
 (t2/define-before-delete :model/TransformTest [transform-test]
   (when-not mi/*deserializing?*

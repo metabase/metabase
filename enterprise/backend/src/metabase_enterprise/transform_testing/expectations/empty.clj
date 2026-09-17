@@ -8,6 +8,7 @@
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.transform-testing.expectations.report :as expectations.report]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -62,7 +63,7 @@
 
 (defmethod expectations.protocol/build :empty
   [m]
-  (transform-testing.schema/validate! m)
+  (mu/validate-throw ::transform-testing.schema/expectation m)
   ;; The linter forbids this constructor everywhere, so that an expectation is only ever built from a
   ;; value the schema has passed. This is the one place it is the right call.
   #_{:clj-kondo/ignore [:discouraged-var]}

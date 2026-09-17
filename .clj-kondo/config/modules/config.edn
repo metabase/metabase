@@ -4366,6 +4366,7 @@
            lib
            lib.schema
            models
+           premium-features
            sql-tools
            sql-tools.parsing
            transforms.base

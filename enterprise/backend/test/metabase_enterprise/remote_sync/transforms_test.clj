@@ -1079,6 +1079,19 @@ serdes/meta:
           (t2/delete! :model/TransformTest test-id)
           (is (= "delete" (:status (transform-test-rso test-id)))))))))
 
+(deftest transform-delete-marks-its-tests-deleted-test
+  (testing "Deleting a transform marks its tests for deletion, so their files leave the branch with its own"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
+                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
+          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+                      {:status "synced" :status_changed_at (t/offset-date-time)})
+          (t2/delete! :model/Transform transform-id)
+          (is (false? (t2/exists? :model/TransformTest :id test-id)))
+          (is (= "delete" (:status (transform-test-rso test-id)))))))))
+
 (deftest transform-test-events-ignored-when-setting-disabled-test
   (testing "Transform tests aren't tracked when remote-sync-transforms is disabled"
     (mt/with-premium-features #{:transforms-basic}

@@ -6,7 +6,8 @@
   (:require
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,9 +36,7 @@
 
 (defmethod build :default
   [m]
-  ;; [[validate!]] refuses a `:type` the schema does not know, so reaching past it means the schema
-  ;; accepts this one and no branch claims it: storable, and not runnable.
-  (transform-testing.schema/validate! m)
+  (mu/validate-throw ::transform-testing.schema/expectation m)
   (throw (transform-testing.errors/ex
           ::transform-testing.errors/unsupported-format
           (tru "Expectation {0} is of type {1}, which is not implemented yet."
