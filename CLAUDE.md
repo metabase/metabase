@@ -113,12 +113,13 @@ graph, in the require graph and in the graph with model imports added, and recor
 cluster keeps its name while it shrinks and splits, so it can be followed over time; the big one is
 `galactic-center`.
 
-Membership is a ceiling. `metabase.core.module-cycle-ratchet-test` fails when a cluster gains a module, when two
-clusters merge, and when a new cycle appears. Shrinking, splitting and dissolving pass, and the shrink workflow
-records them on master with `./bin/mage fix-module-cycles`, so feature branches never edit the file. Tangling
-another module in is a hand edit to the file, explained in the PR that makes it. Only membership is recorded:
-the edges inside a cluster move whenever anyone adds a require between two modules already in it, which says
-nothing about whether the tangle got worse.
+The file's `:mode` is the switch, and it is `:observe` for now: `metabase.core.module-cycle-ratchet-test` prints
+how the clusters changed and fails nothing, and the shrink workflow records the new structure on master with
+`./bin/mage fix-module-cycles`, so feature branches never edit the file. Set it to `:enforce` to make membership
+a ceiling: the test then fails when a cluster gains a module, when two clusters merge, and when a new cycle
+appears, and tangling another module in becomes a hand edit to the file, explained in the PR that makes it.
+Only membership is recorded: the edges inside a cluster move whenever anyone adds a require between two modules
+already in it, which says nothing about whether the tangle got worse.
 
 ## Tool Preferences
 

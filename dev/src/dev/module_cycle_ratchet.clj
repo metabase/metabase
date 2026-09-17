@@ -5,16 +5,15 @@
   `.clj-kondo/config/modules/cycle-clusters.edn` records which modules are in it. A cluster keeps its name
   while it shrinks and splits, so it can be discussed, and its history read, over years.
 
-  Membership is a ceiling: a cluster that gains a module, two that merge, and a brand new cycle all fail, so
-  adding to the tangle is a deliberate act with a justification in the PR. Shrinking, splitting and dissolving
-  pass silently, and the shrink workflow records them on master afterwards, so no feature branch has to
-  rewrite a file every other branch also holds.
+  The record's `:mode` decides what a change does. Under `:enforce`, membership is a ceiling: a cluster that
+  gains a module, two that merge, and a brand new cycle all fail, so adding to the tangle is a deliberate act
+  with a justification in the PR. Under `:observe`, the same changes are reported and nothing fails. Either
+  way, shrinking, splitting and dissolving pass, and the shrink workflow records changes on master
+  afterwards, so no feature branch has to rewrite a file every other branch also holds.
 
   Only membership is recorded. The edges inside a cluster move whenever anyone adds or removes one require
   between two modules already in it, which says nothing about whether the tangle got worse and would churn
   the record daily. They are measured and printed, not kept.
-
-  `:mode :observe` reports the same changes without failing, for when a subtree is being reorganized.
 
   Babashka loads this namespace to summarize the record's changes in the shrink PR, so keep it
   dependency-free."
@@ -450,10 +449,10 @@
        ";; Every cluster is a strongly connected component, so no cut short of breaking the cycle removes a\n"
        ";; module from one. A cluster keeps its name while it shrinks and splits.\n"
        ";;\n"
-       ";; Membership is a ceiling. Adding a module to a cluster, merging two, or forming a new cycle fails;\n"
-       ";; shrinking, splitting and dissolving pass, and the shrink workflow records them on master.\n"
-       ";; `./bin/mage fix-module-cycles` writes this file and never widens it: that is a hand edit, and the\n"
-       ";; PR making it has to say why. :mode :observe reports the same changes without failing.\n"))
+       ";; The :mode key is the switch. Under :observe, CI prints how the clusters changed and fails nothing,\n"
+       ";; and the shrink workflow records the new structure, growth included, with `./bin/mage fix-module-cycles`.\n"
+       ";; Under :enforce, membership is a ceiling: a module joining a cluster, two clusters merging, or a new\n"
+       ";; cycle fails, and the fixer only records improvements, so growth is a hand edit whose PR says why.\n"))
 
 (defn- render-cluster
   "One named cluster, its name at `indent` and its members below, one per line."

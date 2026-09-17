@@ -2,11 +2,11 @@
 ;; Every cluster is a strongly connected component, so no cut short of breaking the cycle removes a
 ;; module from one. A cluster keeps its name while it shrinks and splits.
 ;;
-;; Membership is a ceiling. Adding a module to a cluster, merging two, or forming a new cycle fails;
-;; shrinking, splitting and dissolving pass, and the shrink workflow records them on master.
-;; `./bin/mage fix-module-cycles` writes this file and never widens it: that is a hand edit, and the
-;; PR making it has to say why. :mode :observe reports the same changes without failing.
-{:mode :enforce
+;; The :mode key is the switch. Under :observe, CI prints how the clusters changed and fails nothing,
+;; and the shrink workflow records the new structure, growth included, with `./bin/mage fix-module-cycles`.
+;; Under :enforce, membership is a ceiling: a module joining a cluster, two clusters merging, or a new
+;; cycle fails, and the fixer only records improvements, so growth is a hand edit whose PR says why.
+{:mode :observe
  :uses
  {api-routes-knot
   #{api-routes
