@@ -73,6 +73,7 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/McpFeedback
+    :model/McpGroupPermission
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { MetabotUpsellPage } from "../MetabotUpsellPage";
 
-export function MetabotFeatureAccessUpsellPage() {
+export function AiFeatureAccessUpsellPage() {
   return (
     <MetabotUpsellPage
       campaign="ai-controls-usage-controls"

@@ -154,6 +154,18 @@
       (transport/jsonrpc-error id -32601 (message/msg ["Method not found: %s"] method))
       nil)))
 
+;;; ---------------------------------------------------- Catalog ---------------------------------------------------
+
+(defn tool-catalog
+  "Every tool on this surface as `{:name :scope :description :default_access}`, sorted by scope then name."
+  []
+  (registry/tool-catalog))
+
+(defn renamed-tool-names
+  "Every former name a tool on this surface declares, as `{former-name current-name}`."
+  []
+  (registry/renamed-tool-names))
+
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (def +mcp-enabled

@@ -442,10 +442,11 @@
   one is done in Metabase. Running a transform is separate from writing it. Requires transforms permission on the
   source database and the transforms feature enabled. Before your first transform_write, read learn(\"transforms\")
   unless already in context — the source shapes, what patching `target` renames, and the refusals above in full."
-  {:name        "transform_write"
-   :scope       metabot.scope/agent-content-write
-   :annotations {:readOnlyHint false :destructiveHint false}
-   :args        transform-write-args-schema}
+  {:name           "transform_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
+   :annotations    {:readOnlyHint false :destructiveHint false}
+   :args           transform-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (v2.write/dispatch-write transform-write-entry args)
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]

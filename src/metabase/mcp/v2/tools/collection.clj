@@ -170,12 +170,13 @@
   not work, because unset properties are stripped before the tool sees them. Personal collections
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
   Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
-  {:name        "collection_write"
-   :scope       metabot.scope/agent-content-write
+  {:name           "collection_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the collection and everything under it, so this is not the
    ;; additive-only update `destructiveHint false` would assert.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        collection-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           collection-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write collection-write-entry args)
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]

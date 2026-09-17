@@ -1,0 +1,87 @@
+## Per-group MCP tool access: one row per permissions group, whether its members may connect to the MCP server
+## and which tools an admin has explicitly allowed or denied them.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-16T00:00:00
+      author: alxnddr
+      comment: Create mcp_group_permission table for per-group MCP tool access
+      changes:
+        - createTable:
+            tableName: mcp_group_permission
+            remarks: MCP access and per-tool overrides per permissions group
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: int
+                  remarks: The ID of the associated permissions group
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mcp_enabled
+                  type: ${boolean.type}
+                  remarks: Whether members of the group may connect to the MCP server
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tool_access
+                  type: ${text.type}
+                  remarks: JSON object from MCP tool name to yes or no; an absent tool takes the author's default
+                  constraints:
+                    nullable: false
+
+  ## The unique constraint doubles as the index behind the FK: MySQL/MariaDB reuse it, and Postgres has no
+  ## auto-indexed FKs (fks-are-indexed-test checks).
+  - changeSet:
+      id: v65.2026-09-16T00:00:01
+      author: alxnddr
+      comment: Add unique constraint on mcp_group_permission.group_id
+      changes:
+        - addUniqueConstraint:
+            tableName: mcp_group_permission
+            columnNames: group_id
+            constraintName: unique_mcp_group_permission_group_id
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:02
+      author: alxnddr
+      comment: Add foreign key on mcp_group_permission.group_id referencing permissions_group
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_group_permission
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_mcp_group_permission_ref_permissions_group
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-16T00:00:03
+      author: alxnddr
+      comment: Enable MCP with no tool overrides for the magic groups
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO mcp_group_permission (group_id, mcp_enabled, tool_access)
+              SELECT pg.id, TRUE, '{}'
+              FROM permissions_group pg
+              WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+                AND NOT EXISTS (
+                  SELECT 1 FROM mcp_group_permission mgp
+                  WHERE mgp.group_id = pg.id
+                )
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM mcp_group_permission
+              WHERE group_id IN (
+                SELECT id FROM permissions_group
+                WHERE magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+              )

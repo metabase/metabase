@@ -4,11 +4,15 @@ import type {
   MetabotGroupPermission,
 } from "metabase-types/api";
 
+import type { GroupTab, SwitchAdvancedMode } from "../../../../types";
+
 export type AiFeatureAccessTableProps = {
   groups: GroupInfo[];
   groupPermissions: MetabotGroupPermission[];
   advanced: boolean;
-  activeTab: "user-groups" | "tenant-groups";
+  activeTab: GroupTab;
+  isEnablingAdvanced: boolean;
+  onEnableAdvanced: SwitchAdvancedMode;
   onPermissionChange: (
     groupId: number,
     toolKey: AIToolKey,

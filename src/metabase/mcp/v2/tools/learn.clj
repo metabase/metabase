@@ -28,14 +28,15 @@
 
 (registry/deftool learn
   "Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference \"operators\" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference \"settings\" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context."
-  {:name        "learn"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        [:map {:closed true}
-                 [:topic {:optional true}
-                  [:maybe [:string {:min 1 :description "A topic from the catalog. Omit to list all topics."}]]]
-                 [:reference {:optional true}
-                  [:maybe [:string {:min 1 :description "A reference file of `topic`, by the name the skill (or the catalog) lists."}]]]]}
+  {:name           "learn"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           [:map {:closed true}
+                    [:topic {:optional true}
+                     [:maybe [:string {:min 1 :description "A topic from the catalog. Omit to list all topics."}]]]
+                    [:reference {:optional true}
+                     [:maybe [:string {:min 1 :description "A reference file of `topic`, by the name the skill (or the catalog) lists."}]]]]}
   [{:keys [topic reference]} _context]
   (common/success-content
    (cond

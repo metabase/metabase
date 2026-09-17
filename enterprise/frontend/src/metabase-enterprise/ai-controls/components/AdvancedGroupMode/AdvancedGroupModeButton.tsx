@@ -3,10 +3,22 @@ import { t } from "ttag";
 
 import { Button } from "metabase/ui";
 
+import type { SwitchAdvancedMode } from "../../types";
+
 import S from "./AdvancedGroupModeButton.module.css";
 import { EnableAdvancedModal } from "./EnableAdvancedModal";
 
-export function AdvancedGroupModeButton() {
+type Props = {
+  message: string;
+  loading: boolean;
+  onConfirm: SwitchAdvancedMode;
+};
+
+export function AdvancedGroupModeButton({
+  message,
+  loading,
+  onConfirm,
+}: Props) {
   const [showEnableModal, { toggle: toggleShowEnableModal }] =
     useDisclosure(false);
 
@@ -16,7 +28,12 @@ export function AdvancedGroupModeButton() {
         {t`Switch to group-level permissions`}
       </Button>
       {showEnableModal && (
-        <EnableAdvancedModal onClose={toggleShowEnableModal} />
+        <EnableAdvancedModal
+          message={message}
+          loading={loading}
+          onConfirm={onConfirm}
+          onClose={toggleShowEnableModal}
+        />
       )}
     </>
   );

@@ -3,9 +3,16 @@ import { t } from "ttag";
 
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 
+import type { SwitchAdvancedMode } from "../../types";
+
 import { DisableAdvancedModal } from "./DisableAdvancedModal";
 
-export function GearIconMenu() {
+type Props = {
+  loading: boolean;
+  onConfirm: SwitchAdvancedMode;
+};
+
+export function GearIconMenu({ loading, onConfirm }: Props) {
   const [showDisableModal, { toggle: toggleShowDisableModal }] =
     useDisclosure(false);
 
@@ -30,7 +37,11 @@ export function GearIconMenu() {
         </Menu.Dropdown>
       </Menu>
       {showDisableModal && (
-        <DisableAdvancedModal onClose={toggleShowDisableModal} />
+        <DisableAdvancedModal
+          loading={loading}
+          onConfirm={onConfirm}
+          onClose={toggleShowDisableModal}
+        />
       )}
     </>
   );

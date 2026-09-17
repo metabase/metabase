@@ -549,12 +549,13 @@
 
 (registry/deftool question-write-tool
   "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
-  {:name         "question_write"
-   :scope        metabot.scope/agent-content-write
+  {:name           "question_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         question-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (v2.write/dispatch-write
                   {:create-required [:name]
