@@ -7,7 +7,7 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useSetting, useUserSetting } from "metabase/settings";
 
 import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
