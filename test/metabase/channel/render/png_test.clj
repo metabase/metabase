@@ -1,13 +1,17 @@
 (ns metabase.channel.render.png-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]
    [metabase.channel.render.png :as png]
-   [metabase.channel.render.style :as style])
+   [metabase.channel.render.style :as style]
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http])
   (:import
-   (java.awt Font GraphicsEnvironment)
+   (java.awt Color Font GraphicsEnvironment)
    (java.awt.image BufferedImage)
-   (java.io ByteArrayInputStream)
+   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (java.util Base64)
    (javax.imageio ImageIO)))
 
 (set! *warn-on-reflection* true)
@@ -129,3 +133,87 @@
         (testing (str "scale " factor)
           (is (= #{255}
                  (edge-alphas (render-with-wrapping content 233 {:channel.render/scale factor})))))))))
+
+(defn- red-png-bytes
+  "A 20x20 solid #FF0000 PNG."
+  ^bytes []
+  (let [img (BufferedImage. 20 20 BufferedImage/TYPE_INT_RGB)]
+    (doto (.createGraphics img)
+      (.setColor Color/RED)
+      (.fillRect 0 0 20 20)
+      .dispose)
+    (with-open [os (ByteArrayOutputStream.)]
+      (ImageIO/write img "png" os)
+      (.toByteArray os))))
+
+(defn- red-pixel?
+  [rgb]
+  (let [r (bit-and (bit-shift-right rgb 16) 0xFF)
+        g (bit-and (bit-shift-right rgb 8) 0xFF)
+        b (bit-and rgb 0xFF)]
+    (and (> r 200) (< g 60) (< b 60))))
+
+(defn- has-red-pixel?
+  "Whether any of `img`'s pixels came from the red test image -- i.e. whether the `<img>` actually loaded."
+  [^BufferedImage img]
+  (boolean (some red-pixel?
+                 (for [x (range (.getWidth img))
+                       y (range (.getHeight img))]
+                   (.getRGB img x y)))))
+
+(defn- render-img
+  "Render a lone `<img>` of `src` at its natural 20x20 size."
+  ^BufferedImage [src]
+  (#'png/render-to-png (str "<html><body style=\"margin: 0; padding: 0;\">"
+                            "<img src=\"" src "\" width=\"20\" height=\"20\">"
+                            "</body></html>")
+                       100))
+
+(defn- red-data-uri []
+  (str "data:image/png;base64," (.encodeToString (Base64/getEncoder) (red-png-bytes))))
+
+(deftest data-uri-image-renders-test
+  (testing "a `data:` image URI -- how our own chart images are embedded -- still renders"
+    (is (true? (has-red-pixel? (render-img (red-data-uri)))))))
+
+(deftest file-scheme-image-not-loaded-test
+  (testing "a `file:` image URL is never read off the server's disk"
+    (mt/with-temp-file [path "sec-872-red.png"]
+      (with-open [os (io/output-stream path)]
+        (.write os (red-png-bytes)))
+      (is (false? (has-red-pixel? (render-img (str "file://" path))))))))
+
+(deftest https-image-goes-through-hardened-fetch-test
+  (testing "an `https:` image URL is fetched only through the SSRF-hardened fetcher"
+    (let [calls (atom [])]
+      (mt/with-dynamic-fn-redefs [u.http/fetch-bytes (fn [url opts]
+                                                       (swap! calls conj [url opts])
+                                                       {:bytes (red-png-bytes) :content-type "image/png"})]
+        (is (true? (has-red-pixel? (render-img "https://example.com/red.png"))))
+        (is (= ["https://example.com/red.png"] (mapv first @calls)))
+        (is (contains? (:allowed-content-types (second (first @calls))) "image/png"))))))
+
+(deftest non-https-schemes-never-fetched-test
+  (testing "no other scheme reaches the network or the filesystem"
+    (mt/with-temp-file [path "sec-872-red-2.png"]
+      (with-open [os (io/output-stream path)]
+        (.write os (red-png-bytes)))
+      (doseq [src ["http://example.com/red.png"
+                   (str "file://" path)
+                   (str "jar:file://" path "!/red.png")
+                   "ftp://example.com/red.png"
+                   "cid:red.png"]]
+        (testing src
+          (let [calls (atom [])]
+            (mt/with-dynamic-fn-redefs [u.http/fetch-bytes (fn [url opts]
+                                                             (swap! calls conj [url opts])
+                                                             {:bytes (red-png-bytes) :content-type "image/png"})]
+              (is (false? (has-red-pixel? (render-img src))))
+              (is (= [] @calls)))))))))
+
+(deftest https-image-refused-renders-without-it-test
+  (testing "when the hardened fetch refuses the URL the render succeeds with no image"
+    (mt/with-dynamic-fn-redefs [u.http/fetch-bytes (constantly nil)]
+      (let [^BufferedImage img (render-img "https://10.0.0.1/red.png")]
+        (is (false? (has-red-pixel? img)))
+        (is (pos? (.getWidth img)))))))
