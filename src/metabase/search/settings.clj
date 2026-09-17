@@ -70,3 +70,10 @@
   :encryption :when-encryption-key-set
   :default    nil
   :type       :string)
+
+(defsetting search-reindex-timeout-minutes
+  (i18n/deferred-tru "Minutes a search rebuild may run before cancellation is requested. A stuck worker may require a process restart. Set to 0 to disable the deadline.")
+  :default    60
+  :export?    false
+  :type       :integer
+  :visibility :internal)

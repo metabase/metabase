@@ -13,16 +13,18 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.search.db :as search.db]
+   [metabase.search.deadline :as deadline]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.options :as jdbc.options])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource)
    (java.sql Connection SQLException)
-   (java.util.concurrent TimeUnit)
+   (java.util.concurrent ExecutionException TimeUnit)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -93,6 +95,12 @@
                   (log/warnf "Failed to destroy the previous search lease connection pool: %s" (ex-message e)))))
             gated))))))
 
+(defn- do-with-lease-statement-timeout [thunk]
+  (let [timeout (:timeout jdbc.options/*options*)]
+    (binding [jdbc.options/*options* (assoc jdbc.options/*options* :timeout
+                                            (if (and timeout (pos? timeout)) (min 60 timeout) 60))]
+      (thunk))))
+
 (defn- do-with-lifecycle-connection
   "Run a short autocommit lease lifecycle operation.
 
@@ -114,7 +122,7 @@
            (when-not (.getAutoCommit conn)
              (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
                              {:type ::non-autocommit-lifecycle-connection})))
-           (f conn)))
+           (do-with-lease-statement-timeout #(f conn))))
        (finally
          (.unlock read-lock))))))
 
@@ -185,9 +193,12 @@
   "Renew `claim` with a short autocommit operation, or on `conn` when given.
   Returns false if it expired or changed owner."
   ([claim]
+   (deadline/check!)
    (do-with-lifecycle-connection (fn [conn] (renew! conn claim))))
   ([conn {:keys [owner] :as claim}]
-   (pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis)))))
+   (deadline/check!)
+   (do-with-lease-statement-timeout
+    #(pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis))))))
 
 (defn release!
   "Release `claim` only if it still belongs to this owner, preserving interruption.
@@ -249,11 +260,12 @@
 (defn expected-abort?
   "Whether `error` represents an expected lease safety abort rather than an index implementation failure."
   [error]
-  (contains? #{::lease-lost ::coordinate-obsolete} (:type (ex-data error))))
+  (contains? #{::lease-lost ::coordinate-obsolete ::deadline/exceeded} (:type (ex-data error))))
 
 (defn throw-if-lost!
   "Abort the current leased operation if its owner has been established as stale."
   []
+  (deadline/check!)
   (when (some-> *lease-context* :lost? deref)
     (throw (lost-ex (:claim *lease-context*)))))
 
@@ -302,7 +314,9 @@
    conn
    (fn [conn]
      (assert-current-in-transaction! conn)
-     (thunk conn))))
+     (let [result (thunk conn)]
+       (deadline/check!)
+       result))))
 
 (defn do-with-ddl-connection
   "Run an index-structure `thunk` -- DDL, or the metadata lifecycle rows that track it -- on its own fenced
@@ -370,7 +384,8 @@
                   false))
               (catch Throwable e
                 (record-event! claim :heartbeat-error)
-                (if (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos))
+                (if (or (deadline/timed-out?)
+                        (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos)))
                   (do
                     ;; Database time remains authoritative. This monotonic deadline only stops local work once we can
                     ;; no longer prove that the last successful database renewal could still be live.
@@ -403,14 +418,29 @@
                 (throw e)))
             (recur true)))))))
 
-(defn do-with-lease
+(defn- await-heartbeat! [heartbeat]
+  ;; A cancelled future can be "done" while its SQL still runs. Stop through the loop's promise and join
+  ;; the uncancelled future, retaining local admission even when the run timer interrupts this wait.
+  (loop [interrupted? false]
+    (if (try
+          @heartbeat
+          true
+          (catch InterruptedException _ false)
+          (catch ExecutionException e
+            (log/warnf "Search lease heartbeat exited with an error: %s" (ex-message e))
+            true))
+      (when interrupted?
+        (.interrupt (Thread/currentThread)))
+      (recur true))))
+
+(defn- do-with-lease-impl
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
   By default a busy caller retries without holding a connection for up to [[*acquire-timeout-ms*]], then
   gives up with `{:acquired? false}`.
   Pass `{:wait? false}` for a single non-blocking attempt."
   ([coordinate thunk]
-   (do-with-lease coordinate thunk {}))
+   (do-with-lease-impl coordinate thunk {}))
   ([coordinate thunk {:keys [wait?] :or {wait? true}}]
    (when (mdb/in-transaction?)
      (record-event! (where-coordinate coordinate) :refused-in-transaction)
@@ -445,8 +475,10 @@
                        (thunk))}
          (finally
            (deliver stopped true)
+           (deadline/clear-timeout-interrupt!)
            (when-let [heartbeat @heartbeat]
-             (future-cancel heartbeat))
+             (await-heartbeat! heartbeat))
+           (deadline/clear-timeout-interrupt!)
            (try
              (release! claim)
              (catch Throwable e
@@ -457,3 +489,12 @@
                           (ex-message e))))
            (observe-held-duration! claim timer))))
      {:acquired? false})))
+
+(defn do-with-lease
+  "Acquire `coordinate`, run `thunk` synchronously with a heartbeat and deadline, and release afterward.
+  A busy caller retries briefly unless `:wait?` is false. Local overlap returns `{:acquired? false}` immediately."
+  ([coordinate thunk]
+   (do-with-lease coordinate thunk {}))
+  ([coordinate thunk options]
+   (deadline/do-with-run {:app-db-id (mdb/unique-identifier), :engine (:engine coordinate)}
+                         #(do-with-lease-impl coordinate thunk options))))

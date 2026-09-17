@@ -231,6 +231,10 @@
      metabase.workspaces.core/set-instance-workspace!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
+     ;; Deadline tests isolate run identities and dynamic contexts; scheduling and metrics are thread-safe.
+     metabase.search.deadline/check!
+     metabase.search.deadline/report!
+     metabase.search.deadline/schedule!
      metabase.util/run-count!
      next.jdbc/execute!
      ;; pure validator: parses a keyword and throws on a bad one, touches no state
