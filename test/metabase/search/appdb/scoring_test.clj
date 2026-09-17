@@ -436,7 +436,7 @@
                     (search-results* "foo table"))
                   (map second)))))))
 
-(deftest metabot-weights-test
+(deftest metabot-recency-weights-test
   (testing "with Metabot weights, recency does not lift a result into a higher tier"
     (let [user-id  (mt/user->id :crowberto)
           now      (Instant/now)
@@ -473,7 +473,9 @@
             (with-index-contents
               [{:model "dataset" :id model-id :name "foo model" :last_viewed_at now}
                {:model "table"   :id table-id :name "foo table" :last_viewed_at long-ago}]
-              (is (= [table-id model-id] (ranked "foo")))))))))
+              (is (= [table-id model-id] (ranked "foo"))))))))))
+
+(deftest ^:parallel metabot-model-weights-test
   (testing "with Metabot weights, a metric outranks a final-layer table"
     (with-index-contents
       [{:model "table"  :id 1 :name "foo table"  :data_layer "final"}
@@ -492,7 +494,9 @@
        {:model "segment" :id 4 :name "foo segment"}]
       (let [ids (map second (search-results* "foo" :context :metabot))]
         (is (= #{3 4} (set (take 2 ids))))
-        (is (= [2 1] (drop 2 ids))))))
+        (is (= [2 1] (drop 2 ids)))))))
+
+(deftest metabot-library-weight-test
   (testing "with Metabot weights, library membership outranks type weights"
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Collection lib {:name "lib" :type "library" :location "/"}]
