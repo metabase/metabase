@@ -1,7 +1,14 @@
+import type { ListenerEffectAPI } from "@reduxjs/toolkit";
 import { renderHook } from "@testing-library/react";
 
+import { createMockState } from "__support__/state/state";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { startSdkListening } from "embedding-sdk-bundle/store/listener-middleware";
+import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "embedding-sdk-bundle/store/types";
+import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import {
   getDashboardComplete,
   getParameterValues,
@@ -11,6 +18,7 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { setParameterValues } from "metabase/redux/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { ParameterValuesMap } from "metabase-types/api";
+import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { useSdkControlledParameters } from "./use-sdk-controlled-parameters";
 
@@ -28,38 +36,50 @@ jest.mock("metabase/dashboard/selectors", () => ({
   getParameters: jest.fn(),
 }));
 
-// Unjustified type cast. FIXME
-const useSdkDispatchMock = useSdkDispatch as unknown as jest.Mock;
-// Unjustified type cast. FIXME
-const useSdkSelectorMock = useSdkSelector as unknown as jest.Mock;
-// Unjustified type cast. FIXME
-const startSdkListeningMock = startSdkListening as unknown as jest.Mock;
-// Unjustified type cast. FIXME
-const getDashboardCompleteMock = getDashboardComplete as unknown as jest.Mock;
-// Unjustified type cast. FIXME
-const getParameterValuesMock = getParameterValues as unknown as jest.Mock;
-// Unjustified type cast. FIXME
-const getParametersMock = getParameters as unknown as jest.Mock;
+const useSdkDispatchMock = jest.mocked(useSdkDispatch);
+const useSdkSelectorMock = jest.mocked(useSdkSelector);
+const startSdkListeningMock = jest.mocked(startSdkListening);
+const getDashboardCompleteMock = jest.mocked(getDashboardComplete);
+const getParameterValuesMock = jest.mocked(getParameterValues);
+const getParametersMock = jest.mocked(getParameters);
 
-// Unjustified type cast. FIXME
-const STATE_PARAM = {
+const STATE_PARAM: UiParameter = {
   id: "p1",
   slug: "state",
   name: "State",
   type: "string/=",
   target: ["variable", ["template-tag", "state"]],
-} as unknown as UiParameter;
+};
 
-// Unjustified type cast. FIXME
-const CATEGORY_PARAM = {
+const CATEGORY_PARAM: UiParameter = {
   id: "p2",
   slug: "category",
   name: "Category",
   type: "string/=",
   target: ["variable", ["template-tag", "category"]],
-} as unknown as UiParameter;
+};
 
 const DEFAULT_DEFINITIONS: UiParameter[] = [STATE_PARAM, CATEGORY_PARAM];
+
+const sdkStoreState = createMockState({ sdk: createMockSdkState() });
+
+const listenerApi: ListenerEffectAPI<SdkStoreState, SdkDispatch> = {
+  getState: () => sdkStoreState,
+  getOriginalState: () => sdkStoreState,
+  dispatch: jest.fn(),
+  subscribe: jest.fn(),
+  unsubscribe: jest.fn(),
+  condition: jest.fn(),
+  take: jest.fn(),
+  cancelActiveListeners: jest.fn(),
+  cancel: jest.fn(),
+  throwIfCancelled: jest.fn(),
+  signal: new AbortController().signal,
+  delay: jest.fn(),
+  fork: jest.fn(),
+  pause: jest.fn(),
+  extra: undefined,
+};
 
 type RenderProps = {
   parameters: ParameterValues | null | undefined;
@@ -103,7 +123,9 @@ const setup = (options: SetupOptions = {}) => {
   getParameterValuesMock.mockImplementation(
     () => selectorState.appliedParameterValues,
   );
-  getDashboardCompleteMock.mockReturnValue({ last_used_param_values: {} });
+  getDashboardCompleteMock.mockReturnValue(
+    createMockDashboard({ last_used_param_values: {} }),
+  );
 
   const unsubInitial = jest.fn();
   const unsubManual = jest.fn();
@@ -253,7 +275,7 @@ describe("useSdkControlledParameters", () => {
       updateSelectors({ appliedParameterValues: pushed });
       rerender({ parameters: hostInput, onParametersChange });
 
-      effect({}, { getState: () => ({}) });
+      effect({ type: "test" }, listenerApi);
 
       expect(onParametersChange).not.toHaveBeenCalled();
     });
@@ -274,7 +296,7 @@ describe("useSdkControlledParameters", () => {
       updateSelectors({ appliedParameterValues: pushed });
       rerender({ parameters: { state: "NY" }, onParametersChange });
 
-      effect({}, { getState: () => ({}) });
+      effect({ type: "test" }, listenerApi);
 
       expect(onParametersChange).toHaveBeenCalledTimes(1);
       const payload = onParametersChange.mock.calls[0][0];
@@ -300,7 +322,7 @@ describe("useSdkControlledParameters", () => {
 
       updateSelectors({ appliedParameterValues: pushed });
       rerender({ parameters: { state: ["NY"] }, onParametersChange });
-      effect({}, { getState: () => ({}) });
+      effect({ type: "test" }, listenerApi);
 
       expect(onParametersChange).toHaveBeenCalledTimes(1);
       const payload = onParametersChange.mock.calls[0][0];
@@ -328,12 +350,12 @@ describe("useSdkControlledParameters", () => {
       // First fire — push applied unchanged, no callback.
       updateSelectors({ appliedParameterValues: pushed });
       rerender({ parameters: hostInput, onParametersChange });
-      effect({}, { getState: () => ({}) });
+      effect({ type: "test" }, listenerApi);
       expect(onParametersChange).not.toHaveBeenCalled();
 
       // Second fire — user widget edit (different value, no pending push).
       updateSelectors({ appliedParameterValues: { p1: ["CA"] } });
-      effect({}, { getState: () => ({}) });
+      effect({ type: "test" }, listenerApi);
       expect(onParametersChange).toHaveBeenCalledTimes(1);
       expect(onParametersChange.mock.calls[0][0].source).toEqual(
         "manual-change",
