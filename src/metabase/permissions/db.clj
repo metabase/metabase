@@ -269,9 +269,11 @@
 (mu/defn group-ids-with-permission-objects
   "The set of group IDs holding a Permissions row for one of `objects`."
   [objects :- [:sequential :string]]
-  ;; Marking `objects` is safe despite rubric rule 5: its only caller passes a two-element literal
-  ;; vector, so the collection is provably non-empty.
-  (t2/select-fn-set :group_id :model/Permissions {:where [:in :object [:auto/param objects]]}))
+  ;; `objects` stays unmarked (rubric rule 5). Its one caller happens to pass a two-element literal
+  ;; vector, but that proof is not local to this call -- the caller could stop guaranteeing it without
+  ;; touching this namespace, and a marked empty collection throws rather than reaching Toucan's
+  ;; `IN () -> false` rewrite. Strings rather than ids, so rule 4 does not preempt.
+  (t2/select-fn-set :group_id :model/Permissions {:where [:in :object objects]}))
 
 (defn- related-permission-objects-where
   [group-id path also-under-paths]
