@@ -33,6 +33,7 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/prepare-frontend
+      - uses: ./.github/actions/prepare-backend
 
       - name: Create test plan
         id: decide
