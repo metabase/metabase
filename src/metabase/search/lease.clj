@@ -460,6 +460,7 @@
              (deliver stopped true)
              (when-let [heartbeat @heartbeat]
                (future-cancel heartbeat))
+             (deadline/clear-timeout-interrupt!)
              (try
                (release! claim)
                (catch Throwable e
