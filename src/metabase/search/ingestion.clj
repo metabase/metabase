@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -279,30 +280,19 @@
   transaction, so past the ceiling the documents are left to the convergence backstop rather than held in heap."
   10000)
 
-(defn- doc-id-select-item
-  "The `:this`-qualified select-item a spec's documents take their id from.
-  Built through the same attr machinery the indexing query uses, so a compound `:id` lands identically here."
-  [search-model]
-  (first (search.spec/qualify-columns
-          :this
-          (attrs->select-items {:id (-> (search.spec/spec search-model) :attrs :id)}))))
-
 (defn- doc-id-expression
   [select-item]
   (if (vector? select-item) (first select-item) select-item))
 
 (defn doc-ids
   "The ids of the documents `search-model` currently produces under `where-clause`, or nil past
-  [[max-enumerated-documents]].
-  Narrows the spec's indexing query to its `:id` attr, so enumerating documents costs an id scan rather than a
-  full document build."
+  [[max-enumerated-documents]]."
   [search-model where-clause]
-  (let [select-item (doc-id-select-item search-model)
-        ids         (into []
-                          (comp (map :id) (take (inc max-enumerated-documents)))
-                          (mdb/streaming-reducible-query
-                           (assoc (spec-index-query-where search-model where-clause)
-                                  :select [select-item])))]
+  ;; Narrows the spec's indexing query to its `:id` attr, so enumerating documents costs an id scan rather than a
+  ;; full document build.
+  (let [ids (into []
+                  (comp (map :id) (take (inc max-enumerated-documents)))
+                  (search.db/spec-index-doc-ids-reducible search-model where-clause))]
     (if (< max-enumerated-documents (count ids))
       (log/errorf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
                   search-model max-enumerated-documents)
@@ -311,7 +301,7 @@
 (defn doc-id-selector
   "A where-clause matching `search-model`'s documents by their own ids, whatever their relationships now are."
   [search-model ids]
-  [:in (doc-id-expression (doc-id-select-item search-model)) (vec ids)])
+  [:in (doc-id-expression (search.ingestion.query/doc-id-select-item search-model)) (vec ids)])
 
 (defn existing-doc-ids
   "Which of `ids` `search-model` still produces a document for.
