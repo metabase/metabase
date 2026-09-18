@@ -53,6 +53,30 @@
     (let [retention-earliest (t/minus now (t/days retention-days))]
       (remove (partial keep? retention-earliest) partitions))))
 
+(defn current-partitions
+  "List the names of the currently-attached query_execution partition tables."
+  [conn]
+  (map :pg_class/relname
+       (next.jdbc/execute! conn ["SELECT c.relname FROM pg_inherits i
+                                    JOIN pg_class p ON i.inhparent = p.oid
+                                    JOIN pg_class c ON i.inhrelid = c.oid
+                                   WHERE p.relname='query_execution'"])))
+
+(defn fully-on-partitions?
+  "Has the database fully switched to managing its truncation with partitions?
+  If the database is using partitions but they're still in the first partition
+  then we need the legacy truncation to continue to operate, because the first
+  partition *is* the old table and contains rows going back much further than
+  a single partition's worth."
+  []
+  (and (= :postgres (mdb/db-type))
+       (with-open [conn (.getConnection (mdb/data-source))]
+         (let [[oldest-partition] (sort (current-partitions conn))
+               [oldest] (next.jdbc/execute! conn [(str "SELECT min(started_at) FROM "
+                                                       oldest-partition)])]
+           (or (nil? oldest)
+               (= oldest-partition (partition-for (:started_at oldest))))))))
+
 ;;; and now for the side-effects...
 
 (defn create-partition
@@ -63,15 +87,6 @@
 
 (defn- drop-partition [conn partition]
   (next.jdbc/execute! conn [(format "DROP TABLE \"%s\"" partition)]))
-
-(defn current-partitions
-  "List the names of the currently-attached query_execution partition tables."
-  [conn]
-  (map :pg_class/relname
-       (next.jdbc/execute! conn ["SELECT c.relname FROM pg_inherits i
-                                    JOIN pg_class p ON i.inhparent = p.oid
-                                    JOIN pg_class c ON i.inhrelid = c.oid
-                                   WHERE p.relname='query_execution'"])))
 
 (defn manage-partitions
   "Create new partitions and drop unnecessary partitions under Postgres."
