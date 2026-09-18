@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.serialization.resolve :as resolve]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -1870,10 +1871,10 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged [{:path "collections/x.yaml" :content "x"}]
-                                                                        :conflicts []
-                                                                        :summary {:added 2 :updated 1 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                            :conflicts []
+                                                            :summary {:added 2 :updated 1 :removed 0}})
                                     impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                                        (reset! reconciled (source.p/version snap))
                                                                        (when finalize! (finalize!)))]
@@ -1893,10 +1894,10 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged [{:path "collections/x.yaml" :content "x"}]
-                                                                        :conflicts []
-                                                                        :summary {:added 1 :updated 0 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                            :conflicts []
+                                                            :summary {:added 1 :updated 0 :removed 0}})
                                     impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                                        (reset! reconciled (source.p/version snap))
                                                                        (when finalize! (finalize!)))]
@@ -1920,12 +1921,12 @@ serdes/meta:
       (let [reconciled? (atom false)]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged []
-                                                                        :conflicts [{:key [["Card" "A"]]
-                                                                                     :ours {:path "collections/a.yaml" :content "x"}
-                                                                                     :theirs {:path "collections/a.yaml" :content "y"}}]
-                                                                        :summary {:added 0 :updated 0 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged []
+                                                            :conflicts [{:key [["Card" "A"]]
+                                                                         :ours {:path "collections/a.yaml" :content "x"}
+                                                                         :theirs {:path "collections/a.yaml" :content "y"}}]
+                                                            :summary {:added 0 :updated 0 :removed 0}})
                                     impl/load-snapshot!              (fn [_ _ _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -1949,10 +1950,10 @@ serdes/meta:
                                 (snapshot-at [_ _] nil))]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
-                                    source/compute-merge             (fn [_ _ _ _]
-                                                                       {:merged [{:path "collections/x.yaml" :content "x"}]
-                                                                        :conflicts []
-                                                                        :summary {:added 1 :updated 0 :removed 0}})
+                                    source/compute-merge (fn [_ _ _ _ & _]
+                                                           {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                            :conflicts []
+                                                            :summary {:added 1 :updated 0 :removed 0}})
                                     impl/load-snapshot!              (fn [_ _ _ & _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -2036,6 +2037,7 @@ serdes/meta:
   (testing "preview reports a clean merge with a summary when changes don't conflict"
     (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                 source/source-from-settings      (constantly (export-test-source))
+                                spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
                                 source/preview-merge             (fn [_ _ _ _]
                                                                    {:clean? true :conflicts []
@@ -2047,6 +2049,7 @@ serdes/meta:
   (testing "preview reports conflicts when the same entity changed on both sides"
     (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                 source/source-from-settings      (constantly (export-test-source))
+                                spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
                                 source/preview-merge             (fn [_ _ _ _]
                                                                    {:clean? false :conflicts ["Card A (collections/a.yaml)"]
@@ -2054,6 +2057,33 @@ serdes/meta:
       (is (= {:diverged? true :clean? false
               :conflicts ["Card A (collections/a.yaml)"]
               :summary {:added 0 :updated 0 :removed 0}}
+             (impl/preview-export-merge "main"))))))
+
+(deftest preview-export-merge-streams-extraction-test
+  (testing "preview hands the extraction stream to the merge unrealized and walks the targets once"
+    (let [walks    (atom 0)
+          stream   (eduction (map identity) [{:dummy true}])
+          received (atom nil)]
+      (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
+                                  source/source-from-settings      (constantly (export-test-source))
+                                  spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1]})
+                                  spec/extract-entities-for-export (fn [_targets] stream)
+                                  source/preview-merge             (fn [s _ _ _]
+                                                                     (reset! received s)
+                                                                     {:clean? true :conflicts []
+                                                                      :summary {:added 0 :updated 0 :removed 0}})]
+        (impl/preview-export-merge "main")
+        (is (identical? stream @received))
+        (is (= 1 @walks))))))
+
+(deftest preview-export-merge-nothing-exportable-test
+  (testing "preview reports no changes but still diverged when nothing is exportable, without extracting"
+    (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
+                                source/source-from-settings      (constantly (export-test-source))
+                                spec/exportable-entities         (constantly {})
+                                spec/extract-entities-for-export (fn [& _] (throw (ex-info "must not extract" {})))]
+      (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+              :force-push-casualties {:deleted [] :overwritten []}}
              (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-history-rewritten-test
@@ -2066,6 +2096,7 @@ serdes/meta:
                            (snapshot-at [_ _] nil))]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version        (constantly "gone-base")
                                   source/source-from-settings          (constantly no-base-source)
+                                  spec/exportable-entities             (constantly {"Card" [1]})
                                   spec/extract-entities-for-export     (constantly [{:dummy true}])
                                   source/force-push-casualties-no-base (fn [_ _] {:deleted ["Audit Logs"] :overwritten []})]
         (let [result (impl/preview-export-merge "main")]
@@ -2086,7 +2117,7 @@ serdes/meta:
                                               :model_name "Local Card" :status_changed_at :%now}
                    :model/RemoteSyncObject _ {:model_type "Card" :model_id 9992 :status "synced"
                                               :model_name "Remote Card" :status_changed_at :%now}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged   [{:path "collections/x.yaml" :content "y"}]
                                                           :conflicts []
                                                           :summary  {:added 1 :updated 0 :removed 0}})
@@ -2114,7 +2145,7 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}
                    :model/RemoteSyncObject _ {:model_type "Card" :model_id 8881 :status "delete"
                                               :model_name "Deleted Card" :status_changed_at :%now}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}})
                                   ;; simulate the load wiping and not re-inserting the deleted entity's row, then the
                                   ;; in-transaction finalize (restore-dirty + set-version)
@@ -2136,7 +2167,7 @@ serdes/meta:
                                               :model_name "Locally Deleted" :status_changed_at :%now}
                    :model/RemoteSyncObject _ {:model_type "Card" :model_id 9992 :status "synced"
                                               :model_name "Remote Card" :status_changed_at :%now}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged   [{:path "collections/remote.yaml" :content "y"}]
                                                           :conflicts []
                                                           :summary  {:added 0 :updated 1 :removed 0}})
@@ -2161,7 +2192,7 @@ serdes/meta:
 (deftest import!-merge-conflict-test
   (testing "a local-only merge with a genuine conflict returns :conflict and does not load"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
-      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _]
+      (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged []
                                                           :conflicts [{:key [["Card" "A"]]
                                                                        :ours {:path "collections/a.yaml" :content "x"}
@@ -2183,6 +2214,68 @@ serdes/meta:
                                  :base-snapshot nil)]
         (is (= :conflict (:status result)))
         (is (str/includes? (:message result) "rewritten"))))))
+
+;;; ------------------------------- merging pull and push extract the library once -------------------------------
+
+(defn- merge-extraction-probe
+  "Stubs for a merging sync that record how the extraction reaches `compute-merge`. Returns
+  `{:targets :stream :walks :received :stubs}`: `walks` counts target walks; `received` captures the targets the
+  extraction was built from, the stream `compute-merge` got, its `:total`, and whether the serdes cache was
+  bound; `stream` is the marker eduction the extraction stub hands back."
+  []
+  (let [walks    (atom 0)
+        received (atom {})
+        targets  {"Card" [1 2 3] "Collection" [4]}
+        stream   (eduction (map identity) [{:dummy true}])]
+    {:targets  targets
+     :stream   stream
+     :walks    walks
+     :received received
+     :stubs    {:exportable-entities (fn [] (swap! walks inc) targets)
+                :extract             (fn [t] (swap! received assoc :targets t) stream)
+                :compute-merge       (fn [s _ _ _ & {:keys [total]}]
+                                       (swap! received assoc
+                                              :stream  s
+                                              :total   total
+                                              :cached? (some? resolve/*export-resolver*))
+                                       {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}})
+                :load-snapshot!      (fn [_ _ _ & {:keys [finalize!]}] (when finalize! (finalize!)))}}))
+
+(defn- assert-extracted-once
+  [{:keys [targets stream walks received]}]
+  (is (= 1 @walks) "the dependency walk runs once")
+  (is (identical? targets (:targets @received)) "the extraction is built from the walked targets")
+  (is (identical? stream (:stream @received)) "the merge receives the extraction stream unrealized")
+  (is (= (spec/exportable-entity-count targets) (:total @received)) ":total is the count of the same targets")
+  (is (true? (:cached? @received)) "the merge extracts under serdes/with-cache"))
+
+(deftest import!-merge-extracts-once-test
+  (testing "a merging pull walks the targets once and hands the merge the unrealized extraction with its total"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
+      (let [{{:keys [exportable-entities extract compute-merge load-snapshot!]} :stubs :as probe} (merge-extraction-probe)]
+        (mt/with-dynamic-fn-redefs [spec/exportable-entities         exportable-entities
+                                    spec/extract-entities-for-export extract
+                                    source/compute-merge             compute-merge
+                                    impl/load-snapshot!              load-snapshot!]
+          (is (= :success (:status (impl/import! (export-test-snapshot "remote-R") task-id
+                                                 :merge? true
+                                                 :base-snapshot (export-test-snapshot "base-B")))))
+          (assert-extracted-once probe))))))
+
+(deftest export!-merge-extracts-once-test
+  (testing "a merging push walks the targets once and hands the merge the unrealized extraction with its total"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [{{:keys [exportable-entities extract compute-merge load-snapshot!]} :stubs :as probe} (merge-extraction-probe)]
+        (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
+                                    spec/exportable-entities         exportable-entities
+                                    spec/extract-entities-for-export extract
+                                    source/compute-merge             compute-merge
+                                    impl/load-snapshot!              load-snapshot!]
+          (is (= :success (:status (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                                 :merge? true
+                                                 :source (export-test-source)
+                                                 :base-snapshot (export-test-snapshot "base-B")))))
+          (assert-extracted-once probe))))))
 
 ;;; --------------------------------- Table/Field user-settings inline round trip ---------------------------------
 

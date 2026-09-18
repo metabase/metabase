@@ -1,4 +1,4 @@
-(ns metabase.sql-parsing.jar-python-fs-repro-test
+(ns metabase.sql-parsing.graal-test
   "Regression for https://github.com/metabase/metabase/issues/73541.
 
   GraalVM's bundled polyglot `FileSystem` wrapper routes `newByteChannel` through
@@ -8,7 +8,10 @@
   `Files/newByteChannel`, which returns an in-memory `ByteArrayChannel` for compressed entries."
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics-interface]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
@@ -16,6 +19,7 @@
    (java.nio.file Files StandardOpenOption)
    (java.nio.file.attribute FileAttribute)
    (java.util EnumSet)
+   (java.util.concurrent TimeoutException)
    (java.util.zip ZipEntry ZipOutputStream)
    (org.graalvm.polyglot.io FileSystem)))
 
@@ -46,3 +50,16 @@
                   "Channel must not be a FileChannel — that implies temp-file extraction beside the jar."))))
         (finally
           (Files/deleteIfExists zip-file))))))
+
+(deftest timeout-surfaces-even-when-metric-inc-fails-test
+  (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
+                "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
+                "the timeout (#77084).")
+    (dynamic-redefs/with-dynamic-fn-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
+                                            graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)
+                                            ;; poison only the timeout metric; leave the acquisition inc! alone
+                                            analytics-interface/inc! (fn [k & _]
+                                                                       (when (= k :metabase-sql-parsing/context-timeouts)
+                                                                         (throw (Exception. "boom"))))]
+      (is (thrown? TimeoutException
+                   (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))

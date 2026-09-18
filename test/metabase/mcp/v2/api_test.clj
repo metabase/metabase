@@ -113,6 +113,16 @@
       (testing "the handshake carries the skills instructions — the one pre-tool-call channel"
         (is (re-find #"learn\(\)" (get-in response [:body :result :instructions])))))))
 
+(deftest initialize-instructions-point-at-the-glossary-test
+  (testing "GHY-4522: the terms that most need an instance's own definition read as ordinary English, so a model
+            never notices them and answers from its own meaning. The instructions must send it to glossary() before
+            it answers, with no qualifier about which words."
+    (let [[_ response] (initialize!)
+          instructions (get-in response [:body :result :instructions])]
+      (is (str/includes? instructions "glossary()"))
+      (testing "the call is unconditional, not gated on spotting an unfamiliar term"
+        (is (not (re-find #"(?i)unfamiliar|(don't|do not) recognize|looks like jargon" instructions)))))))
+
 (deftest initialize-instructions-explain-scope-failures-test
   (testing "GHY-4543: clients replace a scope denial with their own text (Claude Code: \"requires re-authorization
             (token expired)\", Codex: \"Insufficient scope\", mcp-remote: \"Tool execution failed\"), so the model
