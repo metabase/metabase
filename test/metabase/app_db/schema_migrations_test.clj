@@ -3451,4 +3451,10 @@
         (is (= (repeat 4 "MARK_RAN")
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
         (testing "the changes were skipped, not re-applied"
-          (is (empty? (t2/query ["SELECT column_name FROM information_schema.columns WHERE lower(table_name) = 'glossary' AND lower(column_name) = 'entity_id'"]))))))))
+          ;; information_schema spans every database on a shared MySQL server, so scope to this app db's schema
+          (is (empty? (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                      " WHERE lower(table_name) = 'glossary' AND lower(column_name) = 'entity_id'"
+                                      (case (mdb/db-type)
+                                        :mysql    " AND table_schema = database()"
+                                        :postgres " AND table_schema = current_schema()"
+                                        :h2       ""))]))))))))
