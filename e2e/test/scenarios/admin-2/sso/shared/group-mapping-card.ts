@@ -3,15 +3,20 @@ const { H } = cy;
 type GroupMappingCardOptions = {
   sectionTestId: string;
   nameLabel: string;
+  // the settings-backed pages write the switch through its own setting, the provider-backed page through the whole provider
+  switchWrite?: { alias: string; valuePath: string };
+  mappingsAlias?: string;
 };
 
 /**
  * Helpers for the group mapping card the SSO pages share.
- * Callers alias PUT /api/setting/* as @updateSetting and PUT /api/setting as @updateSettings.
+ * Callers alias the writes the card makes: by default PUT /api/setting/* as @updateSetting and PUT /api/setting as @updateSettings.
  */
 export const groupMappingCardHelpers = ({
   sectionTestId,
   nameLabel,
+  switchWrite = { alias: "updateSetting", valuePath: "value" },
+  mappingsAlias = "updateSettings",
 }: GroupMappingCardOptions) => {
   const groupMappingSection = () => cy.findByTestId(sectionTestId);
 
@@ -33,9 +38,9 @@ export const groupMappingCardHelpers = ({
   const toggleGroupMapping = (enabled: boolean) => {
     groupMappingSwitch().should(enabled ? "not.be.checked" : "be.checked");
     clickGroupMappingSwitch();
-    cy.wait("@updateSetting")
-      .its("request.body")
-      .should("deep.equal", { value: enabled });
+    cy.wait(`@${switchWrite.alias}`)
+      .its(`request.body.${switchWrite.valuePath}`)
+      .should("equal", enabled);
   };
 
   const addMapping = (name: string, groups: string[]) => {
@@ -46,7 +51,7 @@ export const groupMappingCardHelpers = ({
       cy.findByRole("option", { name: group }).click();
     });
     cy.button("Add mapping").click();
-    cy.wait("@updateSettings");
+    cy.wait(`@${mappingsAlias}`);
     mappingRow(name).should("contain", groups.join(", "));
   };
 
@@ -61,7 +66,7 @@ export const groupMappingCardHelpers = ({
       cy.findByRole("radio", { name: consequenceLabel }).click();
       cy.button(confirmLabel).click();
     });
-    cy.wait("@updateSettings");
+    cy.wait(`@${mappingsAlias}`);
     mappingRow(name).should("not.exist");
   };
 

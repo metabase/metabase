@@ -103,9 +103,8 @@
                                       (get claims group-attribute)))]
             (when (and user-groups group-mappings (:user result))
               (let [groups-to-sync (if (sequential? user-groups) user-groups [user-groups])]
-                (if (empty? group-mappings)
-                  (sso/sync-group-memberships! (:user result) (sso-utils/group-names->ids groups-to-sync group-mappings))
-                  (sso/sync-group-memberships! (:user result)
-                                               (sso-utils/group-names->ids groups-to-sync group-mappings)
-                                               (sso-utils/all-mapped-group-ids group-mappings))))))))))
+                ;; only mapped groups are touched, so empty mappings leave the user's memberships alone
+                (sso/sync-group-memberships! (:user result)
+                                             (sso-utils/group-names->ids groups-to-sync group-mappings)
+                                             (sso-utils/all-mapped-group-ids group-mappings)))))))))
   result)
