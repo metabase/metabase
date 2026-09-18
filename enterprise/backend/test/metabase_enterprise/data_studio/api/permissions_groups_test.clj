@@ -4,7 +4,14 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id` as users see it. A bare `t2/select :model/Table` shows sync's."
+  [column table-id]
+  (t2/select-one-fn column :model/Table :id table-id
+                    {:from [(warehouse-schema-overlay/table-query)]}))
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group - Data Analysts group is visible with the feature"
@@ -39,7 +46,7 @@
         (is (= no-permissions-message
                (mt/user-http-request analyst-id :post 403 "data-studio/table/selection"
                                      {:table_ids [table-id]})))
-        (is (not= :final (t2/select-one-fn :data_layer :model/Table :id table-id)))))))
+        (is (not= :final (user-table-fn :data_layer table-id)))))))
 
 (deftest superuser-keeps-data-studio-access-without-the-feature-test
   (testing "a superuser reaches Data Studio on a feature-less instance"
@@ -49,7 +56,7 @@
         (is (= {} (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                                         {:table_ids  [table-id]
                                          :data_layer "final"})))
-        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-id)))
+        (is (= :final (user-table-fn :data_layer table-id)))
         (is (map? (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                         {:table_ids [table-id]})))))))
 
@@ -63,7 +70,7 @@
         (is (= {} (mt/user-http-request analyst-id :post 200 "data-studio/table/edit"
                                         {:table_ids  [table-id]
                                          :data_layer "final"})))
-        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-id)))
+        (is (= :final (user-table-fn :data_layer table-id)))
         (is (map? (mt/user-http-request analyst-id :post 200 "data-studio/table/selection"
                                         {:table_ids [table-id]})))))))
 
