@@ -37,17 +37,11 @@
                                 (throw (body-too-large-exception max-bytes)))))
     (.get builder)))
 
-(defn- multipart? [request]
-  (some->> (get-in request [:headers "content-type"])
-           (re-find #"^multipart/form-data")))
-
 (defn- limit-request-body
   "For an unauthenticated `request`, reject it outright when its declared `Content-Length` is over the limit;
-  otherwise bound `:body` so a chunked body can't sneak past it. Authenticated requests pass through untouched.
-  Multipart bodies are exempt: endpoints that accept them opt in explicitly after authentication, streaming parts to
-  disk under their own `:max-file-size`."
+  otherwise bound `:body` so a chunked body can't sneak past it. Authenticated requests pass through untouched."
   [{:keys [body content-length metabase-user-id], :as request}]
-  (if (or (nil? body) metabase-user-id (multipart? request))
+  (if (or (nil? body) metabase-user-id)
     request
     (let [max-bytes (server.settings/max-unauthenticated-request-body-bytes)]
       (when (and content-length (> content-length max-bytes))

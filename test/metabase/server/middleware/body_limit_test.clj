@@ -96,11 +96,21 @@
       (is (= (apply str (repeat 16 "x")) (:body response)))))
   (testing "a request with no body passes through"
     (is (= 200 (:status (call-limited {:body nil} 16)))))
-  (testing "multipart bodies are left to the endpoint's own multipart limits"
+  (testing "an unauthenticated multipart body is bounded like any other: the content type is caller-supplied, and
+           every endpoint that accepts multipart requires authentication anyway"
     (let [counter  (atom 0)
           response (call-limited {:body           (body-of-size 1000 counter)
                                   :content-length 1000
                                   :headers        {"content-type" "multipart/form-data; boundary=xyz"}}
+                                 16)]
+      (is (= 413 (:status response)))
+      (is (= 0 @counter))))
+  (testing "an authenticated multipart body is still left to the endpoint's own multipart limits"
+    (let [counter  (atom 0)
+          response (call-limited {:body             (body-of-size 1000 counter)
+                                  :content-length   1000
+                                  :metabase-user-id 1
+                                  :headers          {"content-type" "multipart/form-data; boundary=xyz"}}
                                  16)]
       (is (= 200 (:status response)))
       (is (= 1000 @counter))))
@@ -134,14 +144,14 @@
       (is (identical? body @captured)))))
 
 (defn- request-through-full-stack
-  "POST `body-bytes` bytes to `/api/card` through the real middleware stack with `headers`, returning
-  `[response bytes-read]`."
-  [headers body-bytes & {:keys [declare-length?]}]
+  "POST `body-bytes` bytes to `uri` (`/api/card` by default) through the real middleware stack with `headers`,
+  returning `[response bytes-read]`."
+  [headers body-bytes & {:keys [declare-length? uri], :or {uri "/api/card"}}]
   (let [counter  (atom 0)
         response (promise)]
     ((server.test-handler/test-handler)
      (cond-> {:request-method :post
-              :uri            "/api/card"
+              :uri            uri
               :headers        headers
               :body           (body-of-size body-bytes counter)}
        declare-length? (assoc :content-length body-bytes))
@@ -164,6 +174,23 @@
       (let [[response bytes-read] (request-through-full-stack {"content-type" "application/x-www-form-urlencoded"} 2048)]
         (is (= 413 (:status response)))
         (is (<= bytes-read 1025))))
+    (testing "a caller-supplied multipart content type does not lift the bound"
+      (let [[response bytes-read] (request-through-full-stack
+                                   {"content-type" "multipart/form-data; boundary=xyz"} 2048
+                                   :declare-length? true)]
+        (is (= 413 (:status response)))
+        (is (= 0 bytes-read))))
+    (testing "Slack signature verification, which slurps the body before it can trust the caller, stays bounded even
+             when the caller claims to be sending multipart"
+      (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret "test-slack-signing-secret-12345"]
+        (let [[response bytes-read] (request-through-full-stack
+                                     {"content-type"              "multipart/form-data; boundary=xyz"
+                                      "x-slack-signature"         "v0=not-a-real-signature"
+                                      "x-slack-request-timestamp" "1700000000"}
+                                     2048
+                                     :uri "/api/metabot/slack/events")]
+          (is (= 413 (:status response)))
+          (is (<= bytes-read 1025)))))
     (testing "the same body with a valid session is not limited (and fails validation instead)"
       (let [[response bytes-read] (request-through-full-stack {"content-type"       "application/json"
                                                                "x-metabase-session" (test.users/username->token :rasta)}

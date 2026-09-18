@@ -125,7 +125,7 @@ x.com")
   :setter     :none
   :export?    false
   :default    (* 4 1024 1024)
-  :doc "Applies to requests without a valid session, API key or token, except `multipart/form-data` uploads, which are bounded per endpoint instead. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.")
+  :doc "Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.")
 
 (defsetting metabot-slack-signing-secret
   (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
