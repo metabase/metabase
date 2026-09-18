@@ -3,8 +3,8 @@ import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { idTag } from "metabase/api/tags";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { getUser } from "metabase/current-user";
 import {
   useIsFullPageMetabot,

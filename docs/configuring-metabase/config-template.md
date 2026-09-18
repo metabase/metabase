@@ -147,7 +147,9 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
-    enable-embedding-modular: false
+    enable-embedding-sdk: false
+    enable-embedding-simple: false
+    enable-embedding-static: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
