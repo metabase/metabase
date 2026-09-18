@@ -32,6 +32,7 @@ import type { MetabotCodeEdit } from "metabase-types/api";
 import {
   CodeEditTablePills,
   GeneratedCardTablePills,
+  GeneratedDashboardTablePills,
   NavigateToTablePills,
 } from "./MetabotAgentDataSourcePills";
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
@@ -120,6 +121,12 @@ export const AgentDataPart = ({
             readonly={readonly}
             conversationId={conversationId}
           />
+          {"dashcards" in part.data && (
+            <GeneratedDashboardTablePills
+              value={part.data}
+              messageId={readonly ? undefined : externalId}
+            />
+          )}
         </Stack>
       ),
     )

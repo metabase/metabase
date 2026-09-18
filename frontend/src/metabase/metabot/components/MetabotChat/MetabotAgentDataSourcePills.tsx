@@ -9,7 +9,10 @@ import {
   useGetFieldTableIdsQuery,
   useGetTableQuery,
 } from "metabase/api";
-import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import type {
+  GeneratedAdhocDashboard,
+  GeneratedCard,
+} from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
@@ -661,6 +664,38 @@ export const GeneratedCardTablePills = ({
     datasetQuery={value.query.query}
   />
 );
+
+export const GeneratedDashboardTablePills = ({
+  messageId,
+  value,
+}: {
+  messageId?: string;
+  value: GeneratedAdhocDashboard;
+}) => {
+  const sources = useMemo(() => {
+    const decoded = value.dashcards.map((dashcard) =>
+      decodeQuery(dashcard.dataset_query),
+    );
+    const mbql = decoded.flatMap((query) =>
+      query.kind === "mbql" ? [query] : [],
+    );
+    return {
+      tableIds: uniqueNumbers(mbql.flatMap((query) => query.tableIds)),
+      cardIds: uniqueNumbers(mbql.flatMap((query) => query.cardIds)),
+      fieldIds: uniqueNumbers(mbql.flatMap((query) => query.fieldIds)),
+    };
+  }, [value.dashcards]);
+
+  const hasContent =
+    sources.tableIds.length > 0 ||
+    sources.cardIds.length > 0 ||
+    sources.fieldIds.length > 0;
+  if (!hasContent) {
+    return null;
+  }
+
+  return <MbqlSourcesRow {...sources} messageId={messageId} />;
+};
 
 export const NavigateToTablePills = ({
   messageId,

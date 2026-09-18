@@ -11,8 +11,10 @@ import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
+  setupDatabaseEndpoints,
   setupDocumentEndpoints,
   setupGetMetabotConversationEndpoint,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -41,7 +43,9 @@ import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
+  createMockDatabase,
   createMockDocument,
+  createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
@@ -311,7 +315,9 @@ describe("AgentMessage", () => {
   });
 
   describe("generated_entity dashboard", () => {
-    it("links a generated dashboard entity to the ad-hoc dashboard page built from its dashcards", () => {
+    it("links a generated dashboard entity to the ad-hoc dashboard page built from its dashcards", async () => {
+      setupTableEndpoints(createMockTable({ id: 1, display_name: "Venues" }));
+      setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
       const dashboard: GeneratedAdhocDashboard = {
         type: "dashboard",
         id: "dash-1",
@@ -347,6 +353,9 @@ describe("AgentMessage", () => {
         /^\/dashboard#/,
       );
       expect(screen.getByText("Ops overview")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "Venues" }),
+      ).toBeInTheDocument();
     });
 
     it("links an x-ray dashboard entity to its navigation url", () => {
