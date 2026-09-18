@@ -1,8 +1,8 @@
 (ns metabase.metabot.self.chat-max-tokens-test
   "The output-token cap every surface sends when the caller names none.
 
-  One namespace across every adapter, because the interesting property is cross-provider: a model served by
-  several providers must be capped identically on all of them, and each provider spells its id differently."
+  One namespace across every adapter, because the property is cross-provider: every surface sends the same default
+  cap, whatever the model and however its provider spells the id, except the few that deliberately send none."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -44,9 +44,8 @@
   ([surface model extra]
    (let [opts (merge {:model model :input stock-input} extra)]
      ;; Every branch calls a pure public builder — no `with-redefs`, so the deftests here stay `^:parallel`.
-     ;; The grouped branches are the surfaces that share a builder: what differs between them is the id
-     ;; spelling, which is exactly what these tests pin. Dispatch from the `*-raw` fns down to these builders
-     ;; stays covered by the existing bedrock, azure and google tests.
+     ;; The grouped branches are the surfaces that share a builder and differ only in id spelling. Dispatch from
+     ;; the `*-raw` fns down to these builders stays covered by the existing bedrock, azure and google tests.
      (case surface
        ;; Anthropic Messages: direct, the managed proxy (resolve-model-ref has already dropped `anthropic/`),
        ;; Bedrock's `anthropic.` prefix, and Azure's bare admin-cased deployment name.
@@ -76,8 +75,8 @@
 (def ^:private expected-chat-caps
   "The cap each surface sends for each model it serves, keyed by surface and then by that surface's own id spelling.
 
-  Written out literally, once per surface, rather than derived: a shared model whose id translates to the wrong
-  row on one provider then fails here instead of drifting quietly. [[omitted]] means no cap is sent at all."
+  Written out literally rather than derived from the default, so a change to the default, or to which surfaces send
+  none, fails here instead of drifting quietly. [[omitted]] means no cap is sent at all."
   {;; Anthropic Messages, direct: the catalog's own dated and undated spellings
    :anthropic         {"claude-fable-5"               32000
                        "claude-opus-5"                32000
@@ -200,15 +199,15 @@
    ;; no default cap (see vllm/vllm-request-body)
    :vllm              {"Qwen/Qwen3-32B"              omitted}})
 
-(deftest ^:parallel chat-cap-matches-the-documented-table-test
-  (testing "each surface sends the model's documented maximum, in that surface's own id spelling"
+(deftest ^:parallel chat-cap-is-the-flat-default-test
+  (testing "each surface sends the same default cap for every model, or deliberately none"
     (doseq [[surface models] expected-chat-caps
             [model expected] models]
       (testing (str surface " " model)
         (is (= expected (cap-for surface model)))))))
 
 (deftest ^:parallel caller-cap-always-wins-test
-  (testing "a task cap the caller names is sent verbatim, never widened to the model's documented maximum"
+  (testing "a task cap the caller names is sent verbatim, never replaced by the default"
     (doseq [[surface models] expected-chat-caps
             model            (keys models)]
       (testing (str surface " " model)
@@ -262,8 +261,8 @@
 
 (deftest ^:parallel every-catalog-model-is-classified-test
   (testing "every model we ship has a deliberate expected cap, so a new catalog entry cannot slip in unclassified"
-    ;; One-directional on purpose: expected-chat-caps also holds unknown-id and translation probes that no
-    ;; catalog names, and those are the point of several of its rows.
+    ;; One-directional on purpose: expected-chat-caps also holds unknown ids and alternate spellings that no
+    ;; catalog names.
     (let [classified (set (for [[surface models] expected-chat-caps
                                 model            (keys models)]
                             [surface model]))]
