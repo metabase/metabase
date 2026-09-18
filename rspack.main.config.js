@@ -28,6 +28,9 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
+  DropStylesEntryScriptPlugin,
+} = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
+const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
@@ -358,6 +361,7 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
