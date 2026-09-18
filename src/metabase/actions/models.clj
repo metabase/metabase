@@ -126,10 +126,14 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
-(defn- query->database-id
-  [query]
-  (when (map? query)
-    (:database query)))
+(defn query->database-id
+  "The `:database` of `dataset-query` when it has one, otherwise `database-id`."
+  ([dataset-query]
+   (query->database-id dataset-query nil))
+  ([dataset-query database-id]
+   (or (when (map? dataset-query)
+         (:database dataset-query))
+       database-id)))
 
 (defn- derive-query-action-database-id
   "For `:query` actions, `:database_id` is wholly derived from the database the query executes against: it is

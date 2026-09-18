@@ -59,6 +59,7 @@
  [metabase.actions.models
   dashcard->action
   insert!
+  query->database-id
   select-action
   select-actions
   select-actions-for-ids
