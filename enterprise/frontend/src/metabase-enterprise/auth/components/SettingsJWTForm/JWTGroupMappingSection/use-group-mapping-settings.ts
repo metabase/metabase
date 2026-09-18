@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type {
-  GroupMappingsSaveResult,
-  MappingsType,
-  SaveOptions,
+import {
+  EMPTY_MAPPINGS,
+  type GroupMappingsSaveResult,
+  type MappingsType,
+  type SaveOptions,
 } from "metabase/admin/settings/auth/components/GroupMappings";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks";
@@ -31,8 +32,6 @@ export type GroupMappingSettingsState = {
     options?: SaveOptions,
   ) => Promise<GroupMappingsSaveResult>;
 };
-
-const EMPTY_MAPPINGS: MappingsType = {};
 
 export function useGroupMappingSettings(): GroupMappingSettingsState {
   const dispatch = useDispatch();

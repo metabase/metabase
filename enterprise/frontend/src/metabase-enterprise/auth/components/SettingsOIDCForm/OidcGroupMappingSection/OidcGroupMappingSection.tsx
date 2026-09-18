@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
+  EMPTY_MAPPINGS,
   GroupMappingsPanel,
   type GroupMappingsSaveResult,
   type GroupMappingsState,
-  type MappingsType,
+  type SaveOptions,
   useGroupLookup,
 } from "metabase/admin/settings/auth/components/GroupMappings";
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -23,15 +24,7 @@ import {
 
 import { DEFAULT_GROUP_ATTRIBUTE } from "../constants";
 
-const EMPTY_MAPPINGS: MappingsType = {};
-
 type GroupSync = NonNullable<CustomOidcConfig["group-sync"]>;
-
-type SaveOptions = {
-  successMessage?: string;
-  // the row editor shows a failure under its field, everything else toasts it
-  showErrorToast?: boolean;
-};
 
 export type GroupSyncWriter = {
   isSaving: boolean;
@@ -177,7 +170,7 @@ export function OidcGroupMappingSection({
       {provider != null && (
         <OidcGroupMappings
           provider={provider}
-          writer={writer}
+          saveGroupSync={saveGroupSync}
           isWriting={isWriting}
           lockedEnvName={lockedEnvName}
         />
@@ -189,7 +182,7 @@ export function OidcGroupMappingSection({
 
 type OidcGroupMappingsProps = {
   provider: CustomOidcConfig;
-  writer: GroupSyncWriter;
+  saveGroupSync: GroupSyncWriter["saveGroupSync"];
   // true while the card's own write or a providers refetch is in flight
   isWriting: boolean;
   lockedEnvName?: string;
@@ -197,15 +190,13 @@ type OidcGroupMappingsProps = {
 
 function OidcGroupMappings({
   provider,
-  writer,
+  saveGroupSync,
   isWriting,
   lockedEnvName,
 }: OidcGroupMappingsProps) {
   const groupLookup = useGroupLookup();
-  const { isSaving, saveGroupSync } = writer;
   const groupMapping: GroupMappingsState = {
     mappings: provider["group-sync"]?.["group-mappings"] ?? EMPTY_MAPPINGS,
-    isSaving,
     saveMappings: (mappings, options) =>
       saveGroupSync(provider, { "group-mappings": mappings }, options),
   };

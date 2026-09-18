@@ -188,10 +188,18 @@ describe("SwitchSettingsSection", () => {
     expect(toggle).toHaveFocus();
   });
 
-  it("takes the switch back once the write finishes", () => {
-    setupSwitch();
+  it("frees the switch once the write finishes and keeps its focus", () => {
+    const { rerender } = renderWithProviders(
+      getSwitchSection({ switchBusy: true }).element,
+    );
+    const toggle = getSwitch();
+    toggle.focus();
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
 
-    expect(getSwitch()).not.toHaveAttribute("aria-disabled");
+    rerender(getSwitchSection({ switchBusy: false }).element);
+
+    expect(toggle).not.toHaveAttribute("aria-disabled");
+    expect(toggle).toHaveFocus();
   });
 
   it("reports the clicked value", async () => {
@@ -219,9 +227,17 @@ describe("SwitchSettingsSection", () => {
   });
 
   it("keeps Enter from submitting the form the card sits in", async () => {
-    const onSubmit = jest.fn();
+    const onSubmit = jest.fn((event: React.FormEvent) =>
+      event.preventDefault(),
+    );
     const { element } = getSwitchSection();
-    renderWithProviders(<form onSubmit={onSubmit}>{element}</form>);
+    // Enter on a checkbox submits through the form's submit button, so the form needs one
+    renderWithProviders(
+      <form onSubmit={onSubmit}>
+        {element}
+        <button type="submit">Save</button>
+      </form>,
+    );
 
     getSwitch().focus();
     await userEvent.keyboard("{Enter}");

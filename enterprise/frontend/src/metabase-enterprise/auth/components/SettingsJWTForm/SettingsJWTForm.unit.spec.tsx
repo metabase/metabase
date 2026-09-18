@@ -26,6 +26,11 @@ const GROUPS = [
   createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
   createMockGroup({ id: 4, name: "bar", magic_group_type: null }),
   createMockGroup({ id: 5, name: "flamingos", magic_group_type: null }),
+  createMockGroup({
+    id: 6,
+    name: "Data Analysts",
+    magic_group_type: "data-analyst",
+  }),
 ];
 
 const setup = async ({
@@ -46,6 +51,7 @@ const setup = async ({
   provisioningSaveStatus,
   provisioningSaveDelayMs,
   cascadeStatus,
+  deleteGroupStatuses,
   cascadeDelayMs,
   propertiesReadDelayMs,
 }: {
@@ -66,6 +72,7 @@ const setup = async ({
   provisioningSaveStatus?: number;
   provisioningSaveDelayMs?: number;
   cascadeStatus?: number;
+  deleteGroupStatuses?: Record<number, number>;
   cascadeDelayMs?: number;
   propertiesReadDelayMs?: number;
 } = {}) => {
@@ -202,9 +209,16 @@ const setup = async ({
     cascadeStatus ?? 204,
     { delay: cascadeDelayMs },
   );
-  fetchMock.delete("express:/api/permissions/group/:id", cascadeStatus ?? 204, {
-    delay: cascadeDelayMs,
-  });
+  fetchMock.delete(
+    "express:/api/permissions/group/:id",
+    ({ url }) => ({
+      status:
+        deleteGroupStatuses?.[Number(url.split("/").pop())] ??
+        cascadeStatus ??
+        204,
+    }),
+    { delay: cascadeDelayMs },
+  );
 
   const { store, unmount } = renderWithProviders(<SettingsJWTForm />, {
     withUndos: true,
@@ -235,6 +249,13 @@ const findMappingRow = (name: string) =>
   screen
     .getAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
+
+// Mantine marks a read-only option on its label, not on its input
+const modeLabel = (name: string) => {
+  const [label] =
+    screen.getByRole<HTMLInputElement>("radio", { name }).labels ?? [];
+  return label;
+};
 
 describe("SettingsJWTForm", () => {
   const ATTRS = {
@@ -515,7 +536,10 @@ describe("SettingsJWTForm", () => {
       expect(submitButton).toBeEnabled();
     });
 
-    it("sends one write for a burst of clicks", async () => {
+    it("ignores clicks while the write is in flight", async () => {
+      // fake timers keep the write in flight for as long as the clicks take
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -523,11 +547,13 @@ describe("SettingsJWTForm", () => {
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
-      await userEvent.click(toggle);
-      await userEvent.click(toggle);
-      await userEvent.click(toggle);
+      await user.click(toggle);
+      await user.click(toggle);
+      await user.click(toggle);
 
       expect(toggle).not.toBeChecked();
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
+      await act(() => jest.advanceTimersByTimeAsync(100));
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
@@ -535,6 +561,8 @@ describe("SettingsJWTForm", () => {
     });
 
     it("keeps the switch focused while the write is in flight", async () => {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -543,13 +571,14 @@ describe("SettingsJWTForm", () => {
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
       toggle.focus();
-      await userEvent.keyboard(" ");
+      await user.keyboard(" ");
 
       expect(toggle).not.toBeChecked();
       // a real disabled attribute would blur it and lose the keyboard user's place
       expect(toggle).toBeEnabled();
       expect(toggle).toHaveAttribute("aria-disabled", "true");
       expect(toggle).toHaveFocus();
+      await act(() => jest.advanceTimersByTimeAsync(100));
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       expect(toggle).toHaveFocus();
     });
@@ -669,14 +698,26 @@ describe("SettingsJWTForm", () => {
         propertiesReadDelayMs: 200,
       });
       const automatic = () => screen.getByRole("radio", { name: "Automatic" });
-      await waitFor(() => expect(automatic()).toBeEnabled());
+      const manual = () => screen.getByRole("radio", { name: "Manual" });
+      await waitFor(() => expect(modeLabel("Manual")).toBeDefined());
+      await waitFor(() =>
+        expect(modeLabel("Manual")).not.toHaveAttribute("data-read-only"),
+      );
 
       await userEvent.click(automatic());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
       expect(automatic()).toBeChecked();
-      expect(automatic()).toBeDisabled();
-      await waitFor(() => expect(automatic()).toBeEnabled());
+      expect(automatic()).toBeEnabled();
+      expect(automatic()).toHaveFocus();
+      expect(modeLabel("Manual")).toHaveAttribute("data-read-only");
+      await userEvent.click(manual());
+      expect(automatic()).toBeChecked();
+      expect(await findRequests("PUT")).toHaveLength(1);
+
+      await waitFor(() =>
+        expect(modeLabel("Manual")).not.toHaveAttribute("data-read-only"),
+      );
       expect(automatic()).toBeChecked();
     });
 
@@ -960,7 +1001,7 @@ describe("SettingsJWTForm", () => {
       expect(screen.getByRole("button", { name: "New mapping" })).toBeEnabled();
     });
 
-    it("keeps the controls disabled until the cascade finishes", async () => {
+    it("holds the controls until the cascade finishes", async () => {
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -988,7 +1029,8 @@ describe("SettingsJWTForm", () => {
           name: "Delete mapping",
         }),
       ).toBeDisabled();
-      expect(screen.getByRole("radio", { name: "Off" })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+      expect(modeLabel("Off")).toHaveAttribute("data-read-only");
 
       expect(
         await screen.findByText("Mapping deleted", {}, { timeout: 3000 }),
@@ -998,10 +1040,10 @@ describe("SettingsJWTForm", () => {
           name: "Delete mapping",
         }),
       ).toBeEnabled();
-      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+      expect(modeLabel("Off")).not.toHaveAttribute("data-read-only");
     });
 
-    it("deletes a mapping's groups and drops them from the other mappings in the same write", async () => {
+    it("deletes a mapping's groups and drops them from the other mappings once they are gone", async () => {
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -1023,10 +1065,83 @@ describe("SettingsJWTForm", () => {
 
       expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       const puts = await findRequests("PUT");
-      const settingsPut = puts.find(({ url }) => /\/api\/setting$/.test(url));
-      expect(settingsPut?.body).toEqual({
-        "jwt-group-mappings": { devs: [3] },
+      const settingsPuts = puts.filter(({ url }) =>
+        /\/api\/setting$/.test(url),
+      );
+      expect(settingsPuts.map(({ body }) => body)).toEqual([
+        { "jwt-group-mappings": { devs: [4, 3] } },
+        { "jwt-group-mappings": { devs: [3] } },
+      ]);
+      const deletes = await findRequests("DELETE");
+      expect(deletes.map(({ url }) => url)).toEqual([
+        "http://localhost/api/permissions/group/4",
+      ]);
+    });
+
+    it("keeps a group in the other mappings when its deletion is refused", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { old: [4, 3], devs: [3] },
+        deleteGroupStatuses: { 3: 400 },
       });
+
+      await userEvent.click(
+        within(findMappingRow("old")!).getByRole("button", {
+          name: "Delete mapping",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("radio", { name: /Also delete the groups/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Remove mapping and delete groups",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "Mapping deleted, but not all of its groups could be updated",
+        ),
+      ).toBeInTheDocument();
+      const puts = await findRequests("PUT");
+      const settingsPuts = puts.filter(({ url }) =>
+        /\/api\/setting$/.test(url),
+      );
+      expect(settingsPuts.map(({ body }) => body)).toEqual([
+        { "jwt-group-mappings": { devs: [3] } },
+      ]);
+      expect(findMappingRow("devs")).toHaveTextContent("foo");
+    });
+
+    it("never asks the backend to delete a built-in group", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { old: [4, 6], devs: [3] },
+      });
+
+      await userEvent.click(
+        within(findMappingRow("old")!).getByRole("button", {
+          name: "Delete mapping",
+        }),
+      );
+      expect(
+        await screen.findByText(/The Data Analysts group is not affected/),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("radio", { name: /Also delete the groups/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Remove mapping and delete groups",
+        }),
+      );
+
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       const deletes = await findRequests("DELETE");
       expect(deletes.map(({ url }) => url)).toEqual([
         "http://localhost/api/permissions/group/4",

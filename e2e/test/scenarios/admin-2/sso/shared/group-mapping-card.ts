@@ -40,8 +40,11 @@ export const groupMappingCardHelpers = ({
   const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
   // Mantine hides the switch input, so the click goes to the title label wired to it
-  const clickGroupMappingSwitch = () =>
+  const clickGroupMappingSwitch = () => {
+    // a click during a write is ignored, so wait for the switch to be free first
+    groupMappingSwitch().should("not.have.attr", "aria-disabled");
     groupMappingSection().contains("label", "Group mapping").click();
+  };
 
   const toggleGroupMapping = (enabled: boolean) => {
     groupMappingSwitch().should(enabled ? "not.be.checked" : "be.checked");

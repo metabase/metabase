@@ -145,8 +145,8 @@ export function SwitchSettingsSection({
               component="label"
               htmlFor={inputId}
               className={cx(
-                S.titleLabel,
-                (isSwitchLocked || switchBusy) && S.disabled,
+                S.TitleLabel,
+                (isSwitchLocked || switchBusy) && S.DisabledTitleLabel,
               )}
               inherit
             >
@@ -167,7 +167,9 @@ export function SwitchSettingsSection({
           checked={checked}
           disabled={isSwitchLocked}
           aria-disabled={switchBusy || undefined}
-          classNames={switchBusy ? { track: S.busyTrack } : undefined}
+          classNames={
+            switchBusy ? { root: S.BusySwitch, track: S.BusyTrack } : undefined
+          }
           onChange={(event) => handleChange(event.currentTarget.checked)}
           onKeyDown={handleKeyDown}
         />

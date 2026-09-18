@@ -301,6 +301,22 @@ describe("SettingsLdapForm", () => {
       expect(body["ldap-port"]).toBe(636);
     });
 
+    it("says why an out-of-range port blocks saving, without waiting for a blur", async () => {
+      await setupConfigured();
+
+      const port = screen.getByLabelText(/LDAP port/);
+      await userEvent.clear(port);
+      await userEvent.type(port, "99999");
+
+      expect(
+        await screen.findByText(
+          "Port must be a whole number between 1 and 65535",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
+      expect(await findRequests("PUT")).toHaveLength(0);
+    });
+
     it("shows the value an env var gives a field, read-only", async () => {
       await setup({
         settingValues: { "ldap-host": "ldap.env.test" },
@@ -566,6 +582,40 @@ describe("SettingsLdapForm", () => {
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
       expect(findMappingRow(DEVS_DN)).toBeDefined();
       expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
+    });
+
+    it("keeps the editor open while a slow save answers, so its failure is not lost", async () => {
+      const reason = `cn=devs is not a valid DN. Example: ${LDAP_GROUP_PLACEHOLDER}`;
+      await setupConfigured({ settingValues: { "ldap-group-sync": true } });
+      fetchMock.removeRoute("update-settings");
+      fetchMock.put(
+        "path:/api/setting",
+        {
+          status: 400,
+          body: reason,
+          headers: { "content-type": "text/plain" },
+        },
+        { name: "update-settings", delay: 200 },
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      const nameInput = screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER);
+      await userEvent.type(nameInput, "cn=devs");
+      await userEvent.click(
+        screen.getByPlaceholderText("Pick Metabase group..."),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
+      // Enter keeps the focus in the field, so the Escape that follows reaches the editor
+      await userEvent.click(nameInput);
+      await userEvent.keyboard("{Enter}");
+
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+      await userEvent.keyboard("{Escape}");
+      expect(nameInput).toBeInTheDocument();
+
+      expect(await screen.findByText(reason)).toBeInTheDocument();
+      expect(nameInput).toHaveValue("cn=devs");
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
 
     it("keeps group mapping on when the last mapping is deleted", async () => {

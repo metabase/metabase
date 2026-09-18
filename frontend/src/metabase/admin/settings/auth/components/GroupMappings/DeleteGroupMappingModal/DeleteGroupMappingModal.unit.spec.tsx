@@ -66,15 +66,52 @@ describe("DeleteGroupMappingModal", () => {
   });
 
   it("notes that the Administrators group is left alone when it is mapped", () => {
-    setup({ groupIds: [1, 2], hasAdminGroup: true });
+    setup({
+      groupIds: [1, 2],
+      keptOnClear: ["Administrators"],
+      keptOnDelete: ["Administrators"],
+    });
 
     expect(
       screen.getAllByText(/The Administrators group is not affected/),
     ).toHaveLength(2);
   });
 
+  it("still offers clearing a built-in group that cannot be deleted", () => {
+    setup({ groupIds: [1], keptOnDelete: ["Data Analysts"] });
+
+    expect(
+      screen.getByLabelText("Also remove all members from this group"),
+    ).toBeEnabled();
+    expect(screen.getByLabelText("Also delete the group")).toBeDisabled();
+    expect(
+      screen.getByText("The Data Analysts group is not affected."),
+    ).toBeInTheDocument();
+  });
+
+  it("lists every built-in group a delete would leave alone", () => {
+    setup({
+      groupIds: [1, 2, 3],
+      keptOnClear: ["Administrators"],
+      keptOnDelete: ["Administrators", "Data Analysts"],
+    });
+
+    expect(
+      screen.getByText(/The Administrators group is not affected\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "These groups are not affected: Administrators, Data Analysts.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("offers no group options when only the Administrators group is mapped", () => {
-    setup({ groupIds: [1], hasAdminGroup: true });
+    setup({
+      groupIds: [1],
+      keptOnClear: ["Administrators"],
+      keptOnDelete: ["Administrators"],
+    });
 
     expect(
       screen.getByText("The Administrators group is not affected."),

@@ -40,7 +40,6 @@ export function JWTGroupMappingSection({
   // saving a mapping always turns sync on, since a mapping is only meaningful while it is
   const editorStore: GroupMappingsState = {
     mappings: groupMapping.mappings,
-    isSaving: isWriting,
     saveMappings: (mappings, options) =>
       groupMapping.saveSettings(
         { "jwt-group-sync": true, "jwt-group-mappings": mappings },
@@ -51,7 +50,6 @@ export function JWTGroupMappingSection({
   // deleting the last mapping turns sync off, otherwise the backend falls back to matching by name
   const deletionStore: GroupMappingsState = {
     mappings: groupMapping.mappings,
-    isSaving: isWriting,
     saveMappings: (mappings, options) =>
       groupMapping.saveSettings(
         Object.keys(mappings).length === 0
@@ -83,7 +81,9 @@ export function JWTGroupMappingSection({
             editor.cancel();
             modeSwitch.select(nextMode);
           }}
-          disabled={isReadOnly || isBusy}
+          disabled={isReadOnly}
+          // read-only keeps the options focusable, so a keyboard user keeps their place during a write
+          readOnly={isBusy}
           data={[
             { label: t`Automatic`, value: "automatic" },
             { label: t`Manual`, value: "manual" },
@@ -129,7 +129,6 @@ export function JWTGroupMappingSection({
             disabled={isBusy}
             nameLabel={t`JWT group name`}
             namePlaceholder={t`Enter JWT group...`}
-            emptyMessage=""
             deleteNote={
               isLastMapping
                 ? t`This is the last mapping, so group mapping will be turned off.`

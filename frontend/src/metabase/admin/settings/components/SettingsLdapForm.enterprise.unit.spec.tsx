@@ -154,6 +154,27 @@ describe("SettingsLdapForm (EE)", () => {
       expect(filterInput).toHaveAttribute("placeholder", "(member={dn})");
     });
 
+    it("says why an unbalanced filter blocks saving, without waiting for a blur", async () => {
+      await setup(
+        { "ldap-configured?": true, "ldap-group-sync": true },
+        {
+          settingDefinitions: [
+            { key: "ldap-group-membership-filter", default: "(member={dn})" },
+          ],
+        },
+      );
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /Group membership filter/ }),
+        "(objectClass=group",
+      );
+
+      expect(
+        await screen.findByText("Check your parentheses"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
+    });
+
     it("is saved with the page form", async () => {
       // the required server fields have to be filled for the browser to let the form submit
       await setup(

@@ -43,22 +43,27 @@ import { useUpdateLdapMutation } from "../api/ldap";
 
 import { LdapGroupMappingSection } from "./LdapGroupMappingSection";
 
-const testParentheses: TestConfig<string | null | undefined> = {
-  name: "test-parentheses",
-  message: "Check your parentheses",
-  test: (value) =>
-    (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
-};
-
 // the membership filter is hidden while group mapping is off, so its check must not block the page then
-const getLdapSchema = (isGroupMappingOn: boolean) =>
-  Yup.object({
-    "ldap-port": Yup.number().integer().nullable(),
-    "ldap-user-filter": Yup.string().nullable().test(testParentheses),
+const getLdapSchema = (isGroupMappingOn: boolean) => {
+  const parenthesesTest: TestConfig<string | null | undefined> = {
+    name: "test-parentheses",
+    message: t`Check your parentheses`,
+    test: (value) =>
+      (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
+  };
+  const portMessage = t`Port must be a whole number between 1 and 65535`;
+  return Yup.object({
+    "ldap-port": Yup.number()
+      .integer(portMessage)
+      .min(1, portMessage)
+      .max(65535, portMessage)
+      .nullable(),
+    "ldap-user-filter": Yup.string().nullable().test(parenthesesTest),
     "ldap-group-membership-filter": isGroupMappingOn
-      ? Yup.string().nullable().test(testParentheses)
+      ? Yup.string().nullable().test(parenthesesTest)
       : Yup.string().nullable(),
   });
+};
 
 // an empty port means the default, so the form allows null where the setting does not
 export type LdapFormValues = Omit<LdapSettingValues, "ldap-port"> & {
@@ -155,6 +160,8 @@ export const SettingsLdapForm = () => {
         initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
         validationSchema={schema}
+        // the save button locks on an invalid value, so the field has to say why before it loses focus
+        validateOnMount
         enableReinitialize
       >
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (

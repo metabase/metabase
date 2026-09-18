@@ -55,7 +55,7 @@ export function MappingEditorRow({
         onSubmit();
       }
     }
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && !isSubmitting) {
       onCancel();
     }
   };
@@ -116,7 +116,11 @@ export function MappingEditorRow({
             searchable
           />
           <Flex align="center" gap="lg">
-            <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+            <Button
+              variant="subtle"
+              disabled={isSubmitting}
+              onClick={onCancel}
+            >{t`Cancel`}</Button>
             <Button
               variant="filled"
               disabled={!canSubmit}

@@ -104,16 +104,17 @@
 }
 
 /* the title is the switch's label, so it borrows the switch's pointer */
-.titleLabel {
+.TitleLabel {
   cursor: pointer;
 }
 
-.titleLabel.disabled {
+.DisabledTitleLabel {
   cursor: default;
 }
 
 /* a switch held during its write stays focusable, so it dims here rather than through :disabled */
-.busyTrack {
+/* the root class scopes the rule above the theme's track class, whatever the stylesheet order */
+.BusySwitch .BusyTrack {
   opacity: 0.6;
   cursor: default;
 }
