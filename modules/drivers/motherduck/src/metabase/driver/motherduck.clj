@@ -65,7 +65,6 @@
                  :describe-is-generated
                  :uploads
                  :persist-models
-                 :database-routing
                  :connection-impersonation
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation

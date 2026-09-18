@@ -16,7 +16,7 @@ driver:
         fields:
           - merge:
               - host
-              - placeholder: <your-account>.us-east-1.aws.motherduck.com
+              - placeholder: pg.<region>.motherduck.com
                 required: true
           - merge:
               - port
