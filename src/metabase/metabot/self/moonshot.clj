@@ -8,7 +8,6 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -164,8 +163,7 @@
   - **`prompt_cache_key`.** Moonshot caching is automatic and hits without it, but a `:prompt-cache-key` — the
     conversation id — is forwarded when present.
 
-  A caller that names no `:max-tokens` gets the model's documented maximum output (see
-  [[output-limits/max-output-tokens]]). Kimi documents none, so today that means no cap."
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
   [{:keys [model prompt-cache-key reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; kimi-k3 always thinks — there is no off switch, so `reasoning_effort` ("low" | "high" | "max", server default
@@ -188,11 +186,7 @@
         thinking?      (and whitelisted? reasoning?
                             (if thinking-only? (not schema) (not forced?)))]
     (-> (chat-completions/request-body
-         ;; Moonshot ids reach the adapter as the vendor's own — `kimi-k3` — so they are already
-         ;; output-limits keys and need no translation.
-         (assoc opts
-                :model      model
-                :max-tokens (or max-tokens (output-limits/max-output-tokens model)))
+         (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens))
          ;; Replay only where the dialect mandates it: k3's Preserved Thinking. k2.6 cannot use
          ;; `thinking.keep "all"` — that mode obliges the caller to send back EVERY historical assistant
          ;; message's reasoning_content, but reasoning parts are never persisted across turns, so we could

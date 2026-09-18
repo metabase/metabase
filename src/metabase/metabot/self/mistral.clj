@@ -8,7 +8,6 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -127,8 +126,7 @@
   - Whitelisted models get a `reasoning_effort` directive and replay their in-turn reasoning as think chunks
     (see [[think-message]]).
 
-  A caller that names no `:max-tokens` gets the model's documented maximum output (see
-  [[output-limits/max-output-tokens]]). Mistral documents none, so today that means no cap."
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
   [{:keys [model prompt-cache-key reasoning? schema max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; mistral-medium-3-5 accepts exactly "high" and "none" — the server 400s the other four
@@ -144,12 +142,7 @@
         ;; from the replayed input, honoring the LLMRequestOpts contract.
         thinking?    (and whitelisted? reasoning? (not schema))]
     (-> (chat-completions/request-body
-         ;; Mistral ids reach the adapter as the vendor's own — `mistral-medium-3-5` — so they are already
-         ;; output-limits keys and need no translation. Catalog aliases stay unresolved, as they do for
-         ;; [[context-window-tokens]], so an alias finds no row and is sent uncapped.
-         (assoc opts
-                :model      model
-                :max-tokens (or max-tokens (output-limits/max-output-tokens model)))
+         (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens))
          (when thinking? {:reasoning-part->message think-message}))
         (dissoc :stream_options)
         (cond-> prompt-cache-key (assoc :prompt_cache_key prompt-cache-key)

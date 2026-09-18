@@ -8,7 +8,6 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -127,10 +126,9 @@
   adding Z.AI's `thinking` directive: enabled only where a whitelisted model's reasoning renders, disabled
   otherwise. A [[thinking-only-model?]] rejects the directive and gets `reasoning_effort` instead — \"max\"
   where reasoning renders, \"low\" otherwise — plus a `max_tokens` floor on forced tool calls (see
-  [[forced-tool-call-token-floor]]). A caller that passes no cap of its own gets the model's documented maximum
-  output, where [[output-limits/max-output-tokens]] knows one. Z.AI documents only `tool_choice \"auto\"`, but
-  `\"required\"` — which the structured-output path relies on — is accepted and honored in practice, with
-  thinking on."
+  [[forced-tool-call-token-floor]]). A caller that passes no cap of its own gets [[core/chat-max-output-tokens]]. Z.AI
+  documents only `tool_choice \"auto\"`, but `\"required\"` — which the structured-output path relies on — is
+  accepted and honored in practice, with thinking on."
   [{:keys [model reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; Thinking is on by default server-side, at reasoning_effort "max"
@@ -147,10 +145,7 @@
   (let [thinking-only? (thinking-only-model? model)
         forced?        (or (some? schema) (= "required" (some-> tool_choice name)))
         thinking?      (and (reasoning-model? model) reasoning? (not schema))
-        ;; Z.AI ids reach the adapter as the vendor's own — `zai/glm-5.3` arrives as `glm-5.3` — so they are
-        ;; already output-limits keys and need no translation. Defaulted here rather than after the body is
-        ;; built, so the floor below sees the cap.
-        max-tokens     (or max-tokens (output-limits/max-output-tokens model))
+        max-tokens     (or max-tokens core/chat-max-output-tokens)
         body           (chat-completions/request-body (assoc opts :model model :max-tokens max-tokens))]
     (cond-> body
       thinking-only?

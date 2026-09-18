@@ -149,55 +149,54 @@
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
                        "claude-haiku-4-5@20251001"    32000}
-   :gemini            {"google/gemini-3.5-flash"      65536
-                       "google/gemini-3.6-flash"      65536
-                       "google/gemini-3.7-flash"      65536
-                       "google/gemini-2.0-flash"     omitted}
+   :gemini            {"google/gemini-3.5-flash"      32000
+                       "google/gemini-3.6-flash"      32000
+                       "google/gemini-3.7-flash"      32000
+                       "google/gemini-2.0-flash"      32000}
    :deepseek          {"deepseek-v4-pro"              32000
                        "deepseek-v4-flash"            32000}
    ;; OpenRouter: dotted Claude versions, dated DeepSeek snapshots
-   :openrouter        {"anthropic/claude-fable-5"        128000
-                       "anthropic/claude-opus-5"         128000
-                       "anthropic/claude-opus-4.8"       128000
-                       "anthropic/claude-opus-4.7"       128000
-                       "anthropic/claude-opus-4.6"       128000
-                       "anthropic/claude-sonnet-5"       128000
-                       "anthropic/claude-sonnet-4.6"     128000
-                       "anthropic/claude-opus-4.5"        64000
-                       "anthropic/claude-sonnet-4.5"      64000
-                       "anthropic/claude-haiku-4.5"       64000
+   :openrouter        {"anthropic/claude-fable-5"         32000
+                       "anthropic/claude-opus-5"          32000
+                       "anthropic/claude-opus-4.8"        32000
+                       "anthropic/claude-opus-4.7"        32000
+                       "anthropic/claude-opus-4.6"        32000
+                       "anthropic/claude-sonnet-5"        32000
+                       "anthropic/claude-sonnet-4.6"      32000
+                       "anthropic/claude-opus-4.5"        32000
+                       "anthropic/claude-sonnet-4.5"      32000
+                       "anthropic/claude-haiku-4.5"       32000
                        "anthropic/claude-opus-4.1"        32000
-                       "deepseek/deepseek-v4-pro"        393216
-                       "deepseek/deepseek-v4-pro-0813"   393216
-                       "deepseek/deepseek-v4-flash-0731" 393216
-                       "z-ai/glm-5.3"                    131072
-                       "z-ai/glm-5.2"                    131072
-                       "qwen/qwen3.8-max"                131072
-                       ;; the id qwen/qwen3.8-max resolves to on OpenRouter today: pins the snapshot strip on a
-                       ;; vendor other than deepseek
-                       "qwen/qwen3.8-max-0902"           131072
-                       "openai/gpt-5.6-sol"              omitted
-                       "openai/gpt-5.6-terra"            omitted
-                       "openai/gpt-5.6-luna"             omitted
-                       "openai/gpt-5.5"                  omitted
-                       "openai/gpt-5.5-pro"              omitted
-                       "openai/gpt-5.4"                  omitted
-                       "openai/gpt-5.4-mini"             omitted
-                       "openai/gpt-5.4-pro"              omitted
-                       "mistralai/mistral-medium-3-5"    omitted
-                       "moonshotai/kimi-k3"              omitted
-                       ;; Fable 5.1 has no row, so it omits like any id we do not know
-                       "anthropic/claude-fable-5.1"      omitted
-                       "openai/gpt-4o"                   omitted}
-   :zai               {"glm-5.3"                     131072
-                       "glm-5.2"                     131072
-                       "glm-4.7"                     omitted}
-   :moonshot          {"kimi-k3"                     omitted
-                       "kimi-k2.6"                   omitted
-                       "kimi-k2.7-code"              omitted}
-   ;; the catalog alias is deliberately unresolved here, as it is for context windows
-   :mistral           {"mistral-medium-3-5"          omitted
-                       "mistral-medium-latest"       omitted}
+                       "deepseek/deepseek-v4-pro"         32000
+                       "deepseek/deepseek-v4-pro-0813"    32000
+                       "deepseek/deepseek-v4-flash-0731"  32000
+                       "z-ai/glm-5.3"                     32000
+                       "z-ai/glm-5.2"                     32000
+                       "qwen/qwen3.8-max"                 32000
+                       ;; the id qwen/qwen3.8-max resolves to on OpenRouter today
+                       "qwen/qwen3.8-max-0902"            32000
+                       ;; unlike on OpenAI direct and Azure, GPT models get the default here
+                       "openai/gpt-5.6-sol"               32000
+                       "openai/gpt-5.6-terra"             32000
+                       "openai/gpt-5.6-luna"              32000
+                       "openai/gpt-5.5"                   32000
+                       "openai/gpt-5.5-pro"               32000
+                       "openai/gpt-5.4"                   32000
+                       "openai/gpt-5.4-mini"              32000
+                       "openai/gpt-5.4-pro"               32000
+                       "mistralai/mistral-medium-3-5"     32000
+                       "moonshotai/kimi-k3"               32000
+                       ;; ids no catalog names get the default too
+                       "anthropic/claude-fable-5.1"       32000
+                       "openai/gpt-4o"                    32000}
+   :zai               {"glm-5.3"                      32000
+                       "glm-5.2"                      32000
+                       "glm-4.7"                      32000}
+   :moonshot          {"kimi-k3"                      32000
+                       "kimi-k2.6"                    32000
+                       "kimi-k2.7-code"               32000}
+   :mistral           {"mistral-medium-3-5"           32000
+                       "mistral-medium-latest"        32000}
    ;; served names are the operator's, so there is no table to consult: one fixed constant
    :vllm              {"Qwen/Qwen3-32B"                4096}})
 
@@ -216,17 +215,16 @@
         (is (= 512 (cap-for surface model {:max-tokens 512})))))))
 
 (deftest ^:parallel forced-tool-call-without-a-caller-cap-gets-the-chat-cap-test
-  (testing "every documented maximum clears the 2048 forced-tool-call floors, so the floor changes nothing"
+  (testing "the default cap clears the 2048 forced-tool-call floors, so the floor changes nothing"
     (are [surface model expected] (= expected (cap-for surface model {:schema {:type "object"}}))
-      :openrouter "qwen/qwen3.8-max"         131072
-      :openrouter "anthropic/claude-fable-5" 128000
-      :openrouter "z-ai/glm-5.3"             131072
-      :zai        "glm-5.3"                  131072
-      :gemini     "google/gemini-3.7-flash"   65536
+      :openrouter "qwen/qwen3.8-max"         32000
+      :openrouter "anthropic/claude-fable-5" 32000
+      :openrouter "z-ai/glm-5.3"             32000
+      :zai        "glm-5.3"                  32000
+      :moonshot   "kimi-k3"                  32000
+      :gemini     "google/gemini-3.7-flash"  32000
       ;; 4096 is already above vLLM's floor too
-      :vllm       "Qwen/Qwen3-32B"             4096))
-  (testing "a model with no documented maximum still gets no cap: a floor raises a cap, it never adds one"
-    (is (= omitted (cap-for :moonshot "kimi-k3" {:schema {:type "object"}})))))
+      :vllm       "Qwen/Qwen3-32B"            4096)))
 
 (defn- registry-models
   "The default and mini model the provider registry names for `type-name`, nils dropped: Azure has no default

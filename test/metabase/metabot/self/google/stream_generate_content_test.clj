@@ -235,14 +235,16 @@
 (deftest ^:parallel request-body-system-instruction-test
   (testing "the system prompt becomes systemInstruction, outside :contents"
     (is (= {:systemInstruction {:parts [{:text "You are a helpful assistant."}]}
-            :contents          [{:role "user" :parts [{:text "hi"}]}]}
+            :contents          [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig  {:maxOutputTokens 32000}}
            (sgc/request-body
             {:system "You are a helpful assistant."
              :input  [{:role :user :content "hi"}]})))))
 
 (deftest ^:parallel request-body-no-system-message-test
   (testing "no systemInstruction is sent when system is not provided"
-    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 32000}}
            (sgc/request-body {:input [{:role :user :content "hi"}]})))))
 
 (deftest ^:parallel request-body-generation-config-test
@@ -254,9 +256,9 @@
                               :temperature 0.2})))))
 
 (deftest ^:parallel request-body-generation-config-only-when-set-test
-  (testing "maxOutputTokens is omitted when the caller doesn't pass max-tokens, letting the model use its own limit"
+  (testing "maxOutputTokens falls back to the default cap when the caller doesn't pass max-tokens"
     (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-            :generationConfig {:temperature 0.2}}
+            :generationConfig {:maxOutputTokens 32000 :temperature 0.2}}
            (sgc/request-body {:input       [{:role :user :content "hi"}]
                               :temperature 0.2}))))
   (testing "temperature is omitted when the caller doesn't pass one, letting the model use its own default"
@@ -264,13 +266,15 @@
             :generationConfig {:maxOutputTokens 256}}
            (sgc/request-body {:input      [{:role :user :content "hi"}]
                               :max-tokens 256}))))
-  (testing "no generationConfig is sent when neither max-tokens nor temperature is provided"
-    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+  (testing "generationConfig carries only the default cap when neither max-tokens nor temperature is provided"
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 32000}}
            (sgc/request-body {:input [{:role :user :content "hi"}]})))))
 
 (deftest ^:parallel request-body-tool-choice-without-tools-test
   (testing "a tool_choice with no tools to choose from sends no toolConfig, which Gemini rejects on its own"
-    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 32000}}
            (sgc/request-body {:input       [{:role :user :content "hi"}]
                               :tool_choice "required"})))))
 
@@ -319,24 +323,26 @@
 (deftest ^:parallel request-body-structured-output-test
   (testing "a :schema forces a structured_output function call via mode ANY + allowedFunctionNames"
     (let [schema {:type "object" :properties {:sql {:type "string"}}}]
-      (is (= {:contents   [{:role "user" :parts [{:text "hi"}]}]
-              :tools      [{:functionDeclarations [{:name                 "structured_output"
-                                                    :description          "Output structured data"
-                                                    :parametersJsonSchema schema}]}]
-              :toolConfig {:functionCallingConfig {:mode                 "ANY"
-                                                   :allowedFunctionNames ["structured_output"]}}}
+      (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+              :generationConfig {:maxOutputTokens 32000}
+              :tools            [{:functionDeclarations [{:name                 "structured_output"
+                                                          :description          "Output structured data"
+                                                          :parametersJsonSchema schema}]}]
+              :toolConfig       {:functionCallingConfig {:mode                 "ANY"
+                                                         :allowedFunctionNames ["structured_output"]}}}
              (sgc/request-body
               {:input  [{:role :user :content "hi"}]
                :schema schema}))))))
 
 (deftest ^:parallel request-body-structured-output-replaces-tools-test
   (testing "a :schema replaces the caller's tools and tool_choice"
-    (is (= {:contents   [{:role "user" :parts [{:text "hi"}]}]
-            :tools      [{:functionDeclarations [{:name                 "structured_output"
-                                                  :description          "Output structured data"
-                                                  :parametersJsonSchema {:type "object"}}]}]
-            :toolConfig {:functionCallingConfig {:mode                 "ANY"
-                                                 :allowedFunctionNames ["structured_output"]}}}
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 32000}
+            :tools            [{:functionDeclarations [{:name                 "structured_output"
+                                                        :description          "Output structured data"
+                                                        :parametersJsonSchema {:type "object"}}]}]
+            :toolConfig       {:functionCallingConfig {:mode                 "ANY"
+                                                       :allowedFunctionNames ["structured_output"]}}}
            (sgc/request-body
             {:input       [{:role :user :content "hi"}]
              :tools       [{:tool-name "get_weather" :doc "Get the weather."
@@ -362,15 +368,17 @@
                                :schema     {:type "object"}}))))
   (testing ":reasoning? false sends no thinkingConfig, leaving the server default"
     (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-            :generationConfig {:maxOutputTokens 65536}}
+            :generationConfig {:maxOutputTokens 32000}}
            (sgc/request-body {:model      "google/gemini-3.6-flash"
                               :input      [{:role :user :content "hi"}]
                               :reasoning? false}))))
   (testing "an off-catalog or absent model gets no thinkingConfig at all"
-    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 32000}}
            (sgc/request-body {:model "google/gemini-2.5-flash"
                               :input [{:role :user :content "hi"}]})))
-    (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+    (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+            :generationConfig {:maxOutputTokens 32000}}
            (sgc/request-body {:input [{:role :user :content "hi"}]})))))
 
 (deftest ^:parallel request-body-forced-tool-call-token-floor-test
@@ -386,16 +394,16 @@
                                :input      [{:role :user :content "hi"}]
                                :schema     {:type "object"}
                                :max-tokens 8000}))))
-  (testing "an uncapped structured call takes the documented model maximum, already above the floor"
-    (is (= 65536 (get-in (sgc/request-body {:model  "google/gemini-3.7-flash"
+  (testing "an uncapped structured call takes the default cap, already above the floor"
+    (is (= 32000 (get-in (sgc/request-body {:model  "google/gemini-3.7-flash"
                                             :input  [{:role :user :content "hi"}]
                                             :schema {:type "object"}})
                          [:generationConfig :maxOutputTokens]))))
-  (testing "the floor still never introduces a cap: an off-catalog model has no row in the table"
-    (is (nil? (get-in (sgc/request-body {:model  "google/gemini-2.5-flash"
-                                         :input  [{:role :user :content "hi"}]
-                                         :schema {:type "object"}})
-                      [:generationConfig :maxOutputTokens]))))
+  (testing "an off-catalog model's uncapped structured call takes the same default cap"
+    (is (= 32000 (get-in (sgc/request-body {:model  "google/gemini-2.5-flash"
+                                            :input  [{:role :user :content "hi"}]
+                                            :schema {:type "object"}})
+                         [:generationConfig :maxOutputTokens]))))
   (testing "an unforced call keeps the caller's cap"
     (is (=? {:generationConfig {:maxOutputTokens 512}}
             (sgc/request-body {:model      "google/gemini-3.7-flash"
@@ -422,21 +430,19 @@
       (is (=? {:generationConfig {:maxOutputTokens 512}}
               (body-for "auto"))))))
 
-(deftest ^:parallel request-body-documented-max-tokens-test
+(deftest ^:parallel request-body-default-max-tokens-test
   (let [input [{:role :user :content "hi"}]]
-    (testing "an uncapped call on a catalog model is capped at its documented maximum output"
-      (are [model] (= 65536 (get-in (sgc/request-body {:model model :input input})
+    (testing "an uncapped call gets the default cap, on and off the catalog"
+      (are [model] (= 32000 (get-in (sgc/request-body {:model model :input input})
                                     [:generationConfig :maxOutputTokens]))
         "google/gemini-3.5-flash"
         "google/gemini-3.6-flash"
-        "google/gemini-3.7-flash"))
-    (testing "an off-catalog model has no row in the table and is sent uncapped"
-      (is (nil? (get-in (sgc/request-body {:model "google/gemini-2.5-flash" :input input})
-                        [:generationConfig :maxOutputTokens]))))
-    (testing "a request naming no model at all is sent uncapped rather than throwing"
-      (is (nil? (get-in (sgc/request-body {:input input})
-                        [:generationConfig :maxOutputTokens]))))
-    (testing "the caller's own task cap wins over the documented maximum"
+        "google/gemini-3.7-flash"
+        "google/gemini-2.5-flash"))
+    (testing "a request naming no model at all gets it too"
+      (is (= 32000 (get-in (sgc/request-body {:input input})
+                           [:generationConfig :maxOutputTokens]))))
+    (testing "the caller's own task cap wins over the default"
       (is (= 512 (get-in (sgc/request-body {:model      "google/gemini-3.7-flash"
                                             :input      input
                                             :max-tokens 512})
