@@ -21,31 +21,17 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- query->database-id
-  "The database a `dataset-query` executes against, when it names one."
-  [dataset-query]
-  (when (map? dataset-query)
-    (:database dataset-query)))
-
-(defn- query-action-database-id
-  "The database a query action executes against.
-  Either the `dataset-query` `:database` or `database-id`"
-  [database-id dataset-query]
-  ;; the query's `:database` wins when present since that is what the action executes and `metabase.actions.models`
-  ;; derives the stored `:database_id` column from it as well.
-  (or (query->database-id dataset-query)
-      database-id))
-
 (defn- updated-query-action-database-id
   "The database `action` moves a query action to, or nil when the update cannot change it.
 
-  Derived exactly as `metabase.actions.models` derives the stored `:database_id` column: the incoming query's
-  `:database` wins, then the existing query's, so a declared `:database_id` only reaches the database when neither
-  query names one."
+  [[metabase.actions.models/query->database-id]] says which database a query names; this says whether a PUT moves the
+  action to a different one. The incoming query's `:database` wins, then the existing query's, so a declared
+  `:database_id` only reaches the database when neither query names one -- and when the existing query does name one,
+  there is nothing new to check."
   [action existing-action]
   (when (= :query (or (:type action) (:type existing-action)))
-    (or (query->database-id (:dataset_query action))
-        (when-not (query->database-id (:dataset_query existing-action))
+    (or (actions/query->database-id (:dataset_query action))
+        (when-not (actions/query->database-id (:dataset_query existing-action))
           (:database_id action)))))
 
 (defn- check-actions-enabled-for-database-id!
@@ -58,7 +44,7 @@
   "Creating or updating a native query action requires ad-hoc native query permission on the target database."
   [database-id dataset-query]
   (when (and (seq dataset-query) (lib/native? dataset-query))
-    (when-let [db-id (query-action-database-id database-id dataset-query)]
+    (when-let [db-id (actions/query->database-id dataset-query database-id)]
       (api/check-403
        (= :query-builder-and-native
           (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries db-id))))))
@@ -132,7 +118,7 @@
   (check-native-query-perms! database_id (:dataset_query action))
   (let [model       (api/write-check :model/Card model_id)
         query-db-id (when (= action-type :query)
-                      (query-action-database-id database_id (:dataset_query action)))]
+                      (actions/query->database-id (:dataset_query action) database_id))]
     (when (and (= action-type :implicit)
                (not (queries/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
