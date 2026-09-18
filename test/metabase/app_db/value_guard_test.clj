@@ -78,7 +78,7 @@
     ;; Without this the lift rewrites the marker wherever it sits, and HoneySQL formats the result
     ;; in an identifier slot as the literal identifier `param` -- dropping the value with no signal.
     (are [query] (= ::value-guard/marker-outside-value-slot
-                    (try (#'value-guard/check-marker-placement! query) nil
+                    (try (#'value-guard/check-marker-placement query) nil
                          (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))
       {:select [[:auto/param "name"]] :from [:t]}
       {:select [:*] :from [[[:auto/param "t"]]]}
@@ -92,11 +92,11 @@
   (testing ":order-by and :group-by bind a param, so a marker there is a no-op rather than a drop"
     ;; `{:order-by [[[:param :k] :asc]]}` compiles to `ORDER BY ? ASC` with the value bound --
     ;; nothing is discarded, so refusing it would turn a harmless mistake into an exception.
-    (are [query] (nil? (#'value-guard/check-marker-placement! query))
+    (are [query] (nil? (#'value-guard/check-marker-placement query))
       {:select [:*] :from [:t] :order-by [[[:auto/param "a"] :asc]]}
       {:select [:*] :from [:t] :group-by [[:auto/param "a"]]}))
   (testing "a marker in a genuine value slot is left alone"
-    (are [query] (nil? (#'value-guard/check-marker-placement! query))
+    (are [query] (nil? (#'value-guard/check-marker-placement query))
       {:select [:*] :from [:t] :where [:= :a [:auto/param 1]]}
       {:where [:auto/param :locale "de"]}
       ;; a join alternates table and ON condition; the condition is a value slot
@@ -104,7 +104,7 @@
   (testing "a marker in an expression inside an identifier clause is a real value slot"
     ;; A computed projection or a CASE sort key puts a genuine comparison in a clause that
     ;; otherwise holds identifiers. Refusing these would break a namespace that grows one later.
-    (are [query] (nil? (#'value-guard/check-marker-placement! query))
+    (are [query] (nil? (#'value-guard/check-marker-placement query))
       {:select [[[:= :engine [:auto/param "h2"]] :is_match]] :from [:t]}
       {:select [:*] :from [:t] :order-by [[[:case [:= :a [:auto/param 1]] 1 :else 2] :asc]]}
       {:select [:*] :from [:t] :group-by [[:coalesce :a [:auto/param 1]]]}))
@@ -112,14 +112,14 @@
     ;; The scan recurses, so a marker one level down in a nested :select is still refused -- it
     ;; would otherwise compile to the identifier `param` inside the subquery and drop the value.
     (is (= ::value-guard/marker-outside-value-slot
-           (try (#'value-guard/check-marker-placement!
+           (try (#'value-guard/check-marker-placement
                  {:select [[[:exists {:select [[:auto/param "name"]] :from [:t]}] :e]]})
                 nil
                 (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))))
   (testing "a subquery has its own clauses, so an outer identifier slot holding one is not scanned"
     ;; `t2/exists?` wraps the whole query in `:select [[[:exists {...}]]]`, and that inner map's
     ;; `:where` is a real value slot. Scanning the outer `:select` wholesale would reject it.
-    (is (nil? (#'value-guard/check-marker-placement!
+    (is (nil? (#'value-guard/check-marker-placement
                {:select [[[:exists {:select [[[:inline 1]]]
                                     :from   [[:content_translation]]
                                     :where  [:auto/param :locale "de"]}] :exists]]})))))

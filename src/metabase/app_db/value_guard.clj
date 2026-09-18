@@ -26,7 +26,6 @@
   Nothing here catches that: HoneySQL gives no signal for a param it did not consume, and which
   positions bind is a decision it makes per operator, so it cannot be inferred from the query."
   (:require
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
@@ -146,7 +145,7 @@
   - a keyword-headed operator form, whose arguments are values. A computed projection --
     `[[:= :engine [:auto/param \"h2\"]] :is_match]` -- puts a real comparison in a clause that
     otherwise holds identifiers.
-  - a nested query map. A subquery has its own clauses, and [[check-marker-placement!]] scans it
+  - a nested query map. A subquery has its own clauses, and [[check-marker-placement]] scans it
     separately, so a marker in its `:where` is judged there rather than here."
   [form]
   (cond
@@ -183,7 +182,7 @@
                   :else [v])]
     (first (filter marker-in-entry? entries))))
 
-(defn- check-marker-placement!
+(defn- check-marker-placement
   "Refuse a marker sitting in a clause that names columns or tables, in `query` or any subquery."
   [query]
   ;; `contains-marker?` first: the overwhelming majority of app-DB queries carry no marker at all,
@@ -267,7 +266,7 @@
   (if-not (map? built-query)
     (do (assert-no-marker-survived! built-query)
         (next-method query-type model built-query))
-    (let [_              (check-marker-placement! built-query)
+    (let [_              (check-marker-placement built-query)
           [query params] (auto-param built-query)]
       (assert-no-marker-survived! query)
       (if-not (seq params)
