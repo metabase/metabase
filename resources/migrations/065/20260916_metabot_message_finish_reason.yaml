@@ -1,0 +1,23 @@
+# Record why a Metabot turn stopped early, so that a truncated, content-filtered or step-limited turn
+# reloads as incomplete instead of as a normal completed turn. `finished` is untouched and keeps its
+# meaning: NULL while in flight, true once completed, false if the client aborted.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-16T00:00:00
+      author: prascuna
+      comment: Add finish_reason to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: finish_reason
+                  remarks: "Why a turn stopped early: length, content-filter or tool-calls. NULL when it ran to a normal stop."
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: finish_reason

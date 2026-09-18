@@ -147,6 +147,18 @@
    "function_call"  "tool-calls"
    "content_filter" "content-filter"})
 
+(defn- finish-reason-error-text
+  "The error text for a raw `finish_reason` that `stop-reasons` translates to \"error\", or nil for every
+  other reason.
+
+  Some dialects report a mid-generation upstream failure as a finish reason instead of an error event —
+  OpenRouter and Mistral spell it `error`, Z.AI `network_error`. Nothing downstream would otherwise say
+  the turn failed, so the reason has to become an :error chunk here. The provider's own error body is
+  deliberately not used: only the reason is a wire detail every such dialect is known to send."
+  [stop-reasons raw]
+  (when (= "error" (core/stop-reason->finish-reason stop-reasons raw))
+    (tru "The model provider stopped the response because of an error ({0})" raw)))
+
 (defn- delta-reasoning
   "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
   emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
@@ -171,7 +183,11 @@
   Emits the same internal chunk types as claude.clj and openai.clj:
     :start, :text-start, :text-delta, :text-end,
     :tool-input-start, :tool-input-delta, :tool-input-available,
-    :usage
+    :usage, :error
+
+  A `finish_reason` closes whatever block is open and rides out on the :usage chunk as :finish-reason and
+  :raw-finish-reason; a reason the dialect's table calls a failure also emits an :error chunk (see
+  [[finish-reason-error-text]]).
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
@@ -221,6 +237,7 @@
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
+                error-text    (finish-reason-error-text stop-reasons finish-reason)
                 tool-call     (first (:tool_calls delta))
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
@@ -317,6 +334,11 @@
                                                                      (vreset! stop-reason finish-reason))
                                                                    (cond->
                                                                     @current-type (close!)))
+              ;; A failure the dialect reported as a finish reason. Emitted after the close
+              ;; above so the open block ends first, and before :usage so the error reaches
+              ;; the client ahead of the turn's accounting — the order Gemini uses.
+              error-text                                       (rf {:type      :error
+                                                                    :errorText error-text})
               ;; Usage (often on a separate final chunk with empty choices)
               (some? usage)                                    (rf (cond-> {:type  :usage
                                                                             :usage (usage->aisdk-usage usage)

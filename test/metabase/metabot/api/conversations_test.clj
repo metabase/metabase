@@ -515,18 +515,70 @@
               (t2/delete! :model/MetabotMessage :conversation_id new-id)
               (t2/delete! :model/MetabotConversation :id new-id))))))))
 
+(deftest conversation-detail-returns-incomplete-status-test
+  (testing "GET /api/metabot/conversations/:id reports a turn that stopped early as incomplete"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "truncated"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
+                                               :external_id (str (random-uuid))
+                                               :data [{:type "text" :text "hi"}]
+                                               :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _a {:conversation_id convo-id :user_id user-id :role "assistant"
+                                               :external_id (str (random-uuid))
+                                               :finished true :finish_reason "length"
+                                               :data [{:type "text" :text "cut o"}]
+                                               :created_at (seconds-ago 50)}]
+        (let [messages (:messages (mt/user-http-request :rasta :get 200
+                                                        (str "metabot/conversations/" convo-id)))
+              status   (:status (second messages))]
+          (is (= {:type "incomplete" :finishReason "length"} status))
+          (is (not (contains? status :contextWindowFull))
+              "the backend does not derive whether the context window was full"))))))
+
+(deftest fork-conversation-from-incomplete-turn-test
+  (testing "POST /api/metabot/conversations/:id/fork forks from a turn that stopped early"
+    (let [user-id (mt/user->id :rasta)
+          a1      (str (random-uuid))]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "truncated"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
+                                               :external_id (str (random-uuid))
+                                               :data [{:type "text" :text "hi"}]
+                                               :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _a {:conversation_id convo-id :user_id user-id :role "assistant"
+                                               :external_id a1 :finished true :finish_reason "length"
+                                               :data [{:type "text" :text "cut o"}]
+                                               :created_at (seconds-ago 50)}]
+        (let [response (mt/user-http-request :rasta :post 200
+                                             (str "metabot/conversations/" convo-id "/fork")
+                                             {:message_id a1})
+              new-id   (:conversation_id response)]
+          (try
+            (testing "the clone keeps the reason"
+              (is (= [nil "length"]
+                     (mapv :finish_reason (metabot.persistence/live-messages new-id)))))
+            (testing "so the forked conversation still reads as incomplete"
+              (is (= {:type "incomplete" :finishReason "length"}
+                     (:status (second (:messages response))))))
+            (finally
+              (t2/delete! :model/MetabotMessage :conversation_id new-id)
+              (t2/delete! :model/MetabotConversation :id new-id))))))))
+
 (deftest fork-conversation-validation-test
   (testing "POST /api/metabot/conversations/:id/fork rejects invalid fork targets"
-    (let [user-id  (mt/user->id :rasta)
-          user-ext (str (random-uuid))
-          err-ext  (str (random-uuid))
-          live-ext (str (random-uuid))]
+    (let [user-id    (mt/user->id :rasta)
+          user-ext   (str (random-uuid))
+          err-ext    (str (random-uuid))
+          live-ext   (str (random-uuid))
+          abort-ext  (str (random-uuid))]
       (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "c"}
                      :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
                                                :external_id user-ext :created_at (seconds-ago 60)}
                      :model/MetabotMessage _errored {:conversation_id convo-id :user_id user-id :role "assistant"
                                                      :external_id err-ext :finished true
                                                      :error "{\"message\":\"boom\"}" :created_at (seconds-ago 50)}
+                     :model/MetabotMessage _aborted {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                     :external_id abort-ext :finished false
+                                                     :finish_reason "length" :created_at (seconds-ago 45)}
                      :model/MetabotMessage _inflight {:conversation_id convo-id :user_id user-id :role "assistant"
                                                       :external_id live-ext :finished nil :created_at (seconds-ago 40)}]
         (let [convo-count #(t2/count :model/MetabotConversation)
@@ -539,6 +591,8 @@
             (fork! user-ext))
           (testing "an errored assistant message cannot be a fork target"
             (fork! err-ext))
+          (testing "an aborted assistant message that stored a reason cannot be a fork target"
+            (fork! abort-ext))
           (testing "an in-flight placeholder cannot be a fork target"
             (fork! live-ext))
           (testing "an unknown message id cannot be a fork target"

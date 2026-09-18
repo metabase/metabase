@@ -1,9 +1,14 @@
 (ns metabase.metabot.self.openai.chat-completions-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.test-util :as metabot.tu]))
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
+   [metabase.metabot.test-util :as metabot.tu]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -393,6 +398,72 @@
              {:choices [{:index 0 :delta {:tool_calls [{:index 0 :function {:arguments "{}"}}]}}]}
              {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
              {:choices [] :usage {:prompt_tokens 127 :completion_tokens 288}}])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Error finish reason tests
+;;;
+;;; OpenRouter, Mistral and Z.AI report a mid-generation upstream failure
+;;; as a `finish_reason` instead of an error event, and their dialect
+;;; tables translate it to the AI SDK reason "error".
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- error-finish-chunks
+  "Chat Completions chunks for a stream whose last choice finishes on `raw-reason`."
+  [raw-reason]
+  [{:id      "chatcmpl-err"
+    :model   "m"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:choices [{:index 0 :delta {} :finish_reason raw-reason}]}
+   {:choices [] :usage {:prompt_tokens 12 :completion_tokens 3}}])
+
+(defn- chunks-of-type
+  [t chunks]
+  (filterv #(= t (:type %)) chunks))
+
+(deftest ^:parallel chunks-xf-error-finish-reason-emits-error-chunk-test
+  (testing "a dialect that maps its raw finish reason to \"error\" emits one :error chunk"
+    ;; Without it the failure reaches the client as a clean stop: nothing else downstream says the
+    ;; turn failed, so the web client marks it done and persistence records no error.
+    (doseq [[dialect xf raw] [["OpenRouter" (openrouter/openrouter->aisdk-chunks-xf) "error"]
+                              ["Mistral"    (mistral/mistral->aisdk-chunks-xf)       "error"]
+                              ["Z.AI"       (zai/zai->aisdk-chunks-xf)               "network_error"]]]
+      (testing dialect
+        (let [chunks (into [] xf (error-finish-chunks raw))]
+          (testing "exactly one, and its text names the provider's own stop reason"
+            (is (=? [{:type :error :errorText #(str/includes? % raw)}]
+                    (chunks-of-type :error chunks))))
+          (testing "and the :usage chunk is unchanged"
+            (is (=? [{:type              :usage
+                      :id                "chatcmpl-err"
+                      :finish-reason     "error"
+                      :raw-finish-reason raw
+                      :usage             {:promptTokens 12 :completionTokens 3}}]
+                    (chunks-of-type :usage chunks)))))))))
+
+(deftest ^:parallel chunks-xf-non-error-finish-reasons-emit-no-error-test
+  (testing "a finish reason that does not translate to \"error\" emits no :error chunk"
+    (doseq [raw ["stop" "length" "tool_calls" "content_filter"]]
+      (testing raw
+        (is (empty? (chunks-of-type :error (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                 (error-finish-chunks raw))))))))
+  (testing "a dialect whose table has no \"error\" entry translates a raw \"error\" to \"other\" and stays quiet"
+    ;; The base table is what vLLM and Moonshot use.
+    (let [chunks (into [] (chat-completions/chat-completions->aisdk-chunks-xf) (error-finish-chunks "error"))]
+      (is (empty? (chunks-of-type :error chunks)))
+      (is (=? [{:type :usage :finish-reason "other" :raw-finish-reason "error"}]
+              (chunks-of-type :usage chunks))))))
+
+(deftest ^:parallel sse-chat-completions-error-finish-is-error-test
+  (testing "the failure reaches the client as an error event and finishReason \"error\", not \"stop\""
+    (let [lines  (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
+                                (self.core/aisdk-xf)
+                                (self.core/parts->aisdk-sse-xf))
+                       (error-finish-chunks "error"))
+          events (->> (butlast lines)
+                      (mapv #(json/decode+kw (subs (str/trimr %) 6))))]
+      (is (= "data: [DONE]\n" (last lines)))
+      (is (= 1 (count (filterv #(= "error" (:type %)) events))))
+      (is (=? {:type "finish" :finishReason "error"} (last events))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; models-catalog tests

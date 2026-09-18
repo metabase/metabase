@@ -561,6 +561,19 @@
                      #(reduce rf* init (make-source))
                      (fn [_e] (not @emitted?))))))))))))
 
+(defn- incomplete-structured-output-error
+  "The error for a structured call whose turn stopped early, before any tool call completed.
+
+  Reports `:error-code \"structured-output-incomplete\"` with `:finish-reason` and `:raw-finish-reason` in
+  ex-data, so callers can tell it from a model that simply did not call the tool. It carries no `:status`
+  and no cause, so [[retryable-error?]] is false — a replay would stop at the same ceiling."
+  [parts reason]
+  (ex-info "LLM stopped before completing its structured response"
+           {:parts             parts
+            :error-code        "structured-output-incomplete"
+            :finish-reason     reason
+            :raw-finish-reason (core/parts->raw-finish-reason parts)}))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -627,12 +640,22 @@
                 error  (some (fn [{:keys [type error]}]
                                (when (= type :error)
                                  error))
-                             parts)]
+                             parts)
+                ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
+                ;; part, which the agent loop emits and this single-shot path never runs.
+                incomplete-reason (core/parts->incomplete-finish-reason parts)
+                malformed?        (and (map? result) (contains? result :_raw_arguments))]
             (cond
+              ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
+              ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
+              ;; ends the turn without truncating the JSON it already sent.
+              (and malformed? (= incomplete-reason "length"))
+              (throw (incomplete-structured-output-error parts incomplete-reason))
+
               ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
               ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
               ;; bogus map back to the caller as if it were a valid structured result.
-              (and (map? result) (contains? result :_raw_arguments))
+              malformed?
               (throw (ex-info "LLM returned malformed JSON in its structured tool call"
                               {:parts         parts
                                :error-code    "structured-output-invalid"
@@ -647,6 +670,11 @@
               error
               (throw (ex-info (or (:message error) "LLM stream returned an error")
                               {:parts parts :error error :error-code "llm-stream-error"}))
+
+              ;; The turn stopped early, so a tool call was never going to arrive. Say why, instead of
+              ;; reporting it as a model that simply chose not to call the tool.
+              incomplete-reason
+              (throw (incomplete-structured-output-error parts incomplete-reason))
 
               :else
               (throw (ex-info "LLM returned no tool call in structured response"
