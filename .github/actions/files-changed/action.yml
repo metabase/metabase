@@ -1,0 +1,31 @@
+name: Files changed
+description: >-
+  Tier-1 gate: which filters in .github/file-paths.yaml the diff matches, as one JSON
+  object. Every caller gets the same shape, so a workflow reads whichever filters it
+  cares about without this action knowing they exist.
+
+inputs:
+  filters:
+    description: Path to the dorny/paths-filter filter file.
+    required: false
+    default: .github/file-paths.yaml
+
+outputs:
+  changes:
+    description: >-
+      JSON object of filter name -> "true"/"false", plus dorny's own `changes` array and
+      the `<filter>_files` CSV lists. Read it with
+      `fromJSON(needs.<job>.outputs.changes).<filter> == 'true'`.
+    value: ${{ toJSON(steps.filter.outputs) }}
+
+runs:
+  using: composite
+  steps:
+    - name: Test which files changed
+      id: filter
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ github.token }}
+        # comma separated list of files
+        list-files: csv
+        filters: ${{ inputs.filters }}

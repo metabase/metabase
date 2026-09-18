@@ -142,6 +142,7 @@ e2e_infra: &e2e_infra
 backend_ci: &backend_ci
   - *shared_ci
   - ".github/actions/test-driver/**"
+  - ".github/workflows/app-db.yml"
   - ".github/workflows/backend.yml"
   - ".github/workflows/drivers.yml"
 

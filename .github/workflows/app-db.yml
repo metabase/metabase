@@ -3,9 +3,6 @@ name: App DB Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
       force-run:
         description: Run the full suite regardless of the diff (master / release branches).
         type: boolean
@@ -55,8 +52,32 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # Tier 1: whether the diff touches anything this suite tests. Tier 0 (the global
+  # force-run / force-skip overrides) stays in run-tests.yml -- a force-skip never
+  # calls this workflow at all, and the two ways of saying "run everything" skip the
+  # diff outright.
+  files-changed:
+    name: Detect changed files
+    if: ${{ !inputs.force-run && github.event_name != 'workflow_dispatch' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      changes: ${{ steps.detect.outputs.changes }}
+    steps:
+      # A local action has to be checked out before it can run, and `.github` is
+      # everything either it or the filters need -- seconds, not a full clone.
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+      - id: detect
+        uses: ./.github/actions/files-changed
+
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    needs: files-changed
+    if: >-
+      ${{ !cancelled() &&
+      (needs.files-changed.result == 'skipped' ||
+      fromJSON(needs.files-changed.outputs.changes).backend_all == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -162,7 +183,7 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'mariadb' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -223,7 +244,7 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'mysql' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -282,7 +303,7 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'postgres' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -324,6 +345,7 @@ jobs:
 
   app-db-tests-result:
     needs:
+      - files-changed
       - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
@@ -331,7 +353,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9

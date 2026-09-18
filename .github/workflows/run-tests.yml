@@ -265,18 +265,14 @@ jobs:
          !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
         }}
 
+  # `force-run` and `defer` both enter the workflow; it decides for itself whether
+  # the diff warrants running, off a sparse checkout of `.github`.
   app-db-tests:
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: should-run
+    if: ${{ needs.should-run.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   driver-tests:
