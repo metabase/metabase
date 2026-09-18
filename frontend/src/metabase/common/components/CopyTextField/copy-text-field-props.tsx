@@ -45,7 +45,6 @@ export function getCopyTextFieldProps<E extends CopyableElement>({
   };
 }
 
-/** The copy button for an input's right section, shared by every copyable field. */
 export function getCopyButtonSectionProps({
   value,
   onCopied,
