@@ -4,6 +4,7 @@ import { useMount } from "react-use";
 import {
   skipToken,
   useGetCardQuery,
+  useGetTableQuery,
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
@@ -21,7 +22,7 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { Card } from "metabase-types/api";
+import { type Card, isConcreteTableId } from "metabase-types/api";
 
 type ModelActionsParams = {
   slug: string;
@@ -62,7 +63,8 @@ function ModelActions({
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
 
-  const mainTable = useMemo(() => {
+  // A card source (`card__123`) has no foreign keys of its own.
+  const mainTableId = useMemo(() => {
     const query = model.query();
     const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -71,8 +73,9 @@ function ModelActions({
     }
 
     const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = model.metadata().table(sourceTableId);
-    return table;
+    return sourceTableId != null && isConcreteTableId(sourceTableId)
+      ? sourceTableId
+      : null;
   }, [model]);
 
   useMount(() => {
@@ -87,8 +90,14 @@ function ModelActions({
     }
   });
 
+  // The table request is also the permission check: a user who cannot read the
+  // table gets no table, and its foreign keys are not asked for.
+  const { data: mainTable } = useGetTableQuery(
+    mainTableId != null ? { id: mainTableId } : skipToken,
+  );
+
   useEffect(() => {
-    if (mainTable && !hasFetchedTableMetadata) {
+    if (mainTable != null && !hasFetchedTableMetadata) {
       setHasFetchedTableMetadata(true);
       fetchTableForeignKeys({ id: mainTable.id });
     }
@@ -118,11 +127,7 @@ function ModelActionsLoader(dispatchProps: DispatchProps) {
     isLoading,
     error,
   } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
-  const buildQuestion = useQuestionFromCard();
-  const model = useMemo(
-    () => (card != null ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const model = useQuestionFromCard(card);
 
   if (!model) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

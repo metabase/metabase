@@ -2,12 +2,12 @@ import { type ComponentType, useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
 } from "metabase/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";

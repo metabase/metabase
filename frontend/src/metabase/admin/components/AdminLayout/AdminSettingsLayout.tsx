@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { useLocation } from "metabase/router";
 import { Box } from "metabase/ui";
