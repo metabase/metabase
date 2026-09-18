@@ -542,7 +542,18 @@
             "the stored `cloud` is dropped, so nothing resolves the key's destination to ollama.com")
         (testing "and the stored list still holds it, so removing the variable brings it back"
           (is (= "cloud"
-                 (get-in (first (llm.provider/stored-connections)) [:config :hosting]))))))))
+                 (get-in (first (llm.provider/stored-connections)) [:config :hosting])))))))
+  (testing (str "a stored value that is just the registry default is not a destination anyone chose: "
+                "dropping it would change nothing and warn the operator to set a variable to the "
+                "value they already have")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting  "self-hosted"
+                                                                   :base-url "http://planted.example.com:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-operator-key"]
+        (is (= "self-hosted" (:hosting (llm.provider/credentials "ollama")))
+            "the default-valued deployment is left alone")
+        (is (nil? (:base-url (llm.provider/credentials "ollama")))
+            "while the address the caller really did choose is still dropped")))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "

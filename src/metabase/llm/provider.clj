@@ -796,11 +796,19 @@
   Warned about once per value rather than on every read: it is the only trace an operator gets of a destination
   their instance is configured with but is not using."
   [{conn-key :key :keys [type source config] :as conn} env-config]
-  (let [captured (when (and (= :db source)
-                            (some #(contains? env-config %) (secret-field-keys type)))
-                   (filterv #(and (u/trimmed-string (get config %))
-                                  (not (contains? env-config %)))
-                            (destination-fields type)))]
+  (let [stored-value (fn [field]
+                       ;; a stored value equal to the registry default is not a destination the API caller
+                       ;; chose: dropping it changes nothing, and the warning would tell an operator to set a
+                       ;; variable to the value they already have
+                       (let [value (u/trimmed-string (get config field))]
+                         (when-not (= value (:default (u/find-first-map (:fields (provider-type type))
+                                                                        [:key] field)))
+                           value)))
+        captured     (when (and (= :db source)
+                                (some #(contains? env-config %) (secret-field-keys type)))
+                       (filterv #(and (stored-value %)
+                                      (not (contains? env-config %)))
+                                (destination-fields type)))]
     (if (empty? captured)
       conn
       (do
