@@ -9,7 +9,7 @@ import { getUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
-import { navigate } from "metabase/router";
+import { navigate, prefetchRegisteredPages } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
@@ -65,5 +65,12 @@ init(mainReducers, getRoutes, (store) => {
     if (NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url))) {
       store.dispatch(setErrorPage({ status: 403 }));
     }
+  });
+
+  // Only the core app, and only for someone who is signed in. The public and
+  // embed entries run inside a customer's page, where background downloads are
+  // not ours to spend.
+  prefetchRegisteredPages({
+    shouldStart: () => getUser(store.getState()) != null,
   });
 });
