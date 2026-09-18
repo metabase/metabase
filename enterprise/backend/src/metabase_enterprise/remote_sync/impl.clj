@@ -742,7 +742,7 @@
     changes.
 
   Returns a `:success` result with a `:merge-summary`."
-  [source snapshot base-snapshot task-id message sync-timestamp models total]
+  [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
         {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
     (if (seq conflicts)
@@ -1215,7 +1215,7 @@
               (let [targets (spec/exportable-entities)]
                 (export-merged! src snapshot base-snapshot task-id message sync-timestamp
                                 (spec/extract-entities-for-export targets)
-                                (spec/exportable-entity-count targets))))
+                                :total (spec/exportable-entity-count targets))))
 
             diverged? ;; and not merge? option
             {:status    :conflict
