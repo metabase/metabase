@@ -44,7 +44,7 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-1. Go to **[Embedding hub](../introduction.md#embedding-hub) > Security**.
+1. Go to **Embedding hub > Security**.
 2. Toggle on **Modular embedding and SDK for React**.
 3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 

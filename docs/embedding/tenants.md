@@ -102,7 +102,7 @@ _Embedding hub > Tenancy_
 
 You can create and manage your tenants exclusively through Metabase UI, or, if that's not your jam, [through SSO](#provisioning-and-assigning-tenants-with-jwt). Regardless of how you manage your tenants, you'll need to enable multi-tenant strategy in Metabase first.
 
-1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Tenancy**.
+1. Go to **Embedding hub > Tenancy**.
 2. Under **Enable multi-tenant user strategy**, click **Enable multi-tenancy**.
 
 Once it's on, the **gear** icon in the upper right of the Tenancy page lets you switch strategies. You can also do this from **Admin settings > People**.

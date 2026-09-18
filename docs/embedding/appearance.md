@@ -42,7 +42,7 @@ A theme is a named set of colors and fonts that the embed wizard can copy into e
 
 ### Manage themes
 
-Go to **[Embedding hub](./introduction.md#embedding-hub) > Appearance**.
+Go to **Embedding hub > Appearance**.
 
 Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well, including removing them like you can any other custom theme).
 

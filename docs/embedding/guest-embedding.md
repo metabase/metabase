@@ -15,7 +15,7 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 ## Turning on guest embedding in Metabase
 
-1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Security**.
+1. Go to **Embedding hub > Security**.
 2. Toggle on **Enable embedding** (called **Modular embedding and SDK for React** on Pro and Enterprise). One switch covers guest embeds, modular embedding, and the SDK.
 
 ## Creating a guest embed

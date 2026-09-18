@@ -17,7 +17,7 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Enable modular embedding
 
-1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Security**.
+1. Go to **Embedding hub > Security**.
 2. Toggle on **Modular embedding and SDK for React** (on OSS and Starter plans, it's just **Enable embedding**).
 
 The first time you turn this on in Pro or Enterprise, Metabase asks you to accept the usage terms.

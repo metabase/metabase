@@ -55,7 +55,7 @@ The dictionary must be a CSV with these columns:
 
 To add a translation dictionary:
 
-1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Localization**.
+1. Go to **Embedding hub > Localization**.
 2. Under **Translate embedded dashboards and questions**, click **Upload edited translation dictionary**.
 
 For a starting point, click **Get translation dictionary template**. You'll get a CSV with the right columns, filled with your current dictionary if you've uploaded one, or a few sample rows if you haven't.

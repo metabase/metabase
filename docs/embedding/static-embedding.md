@@ -36,7 +36,7 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Turning on the embedding feature in Metabase
 
-1. Go to **[Embedding hub](./introduction.md#embedding-hub) > Security**.
+1. Go to **Embedding hub > Security**.
 2. Toggle on **Enable embedding** (called **Modular embedding and SDK for React** on Pro and Enterprise). One switch covers static and guest embeds, modular embedding, and the SDK.
 
 ## Making a question or dashboard embeddable
