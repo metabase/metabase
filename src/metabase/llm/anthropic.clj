@@ -92,7 +92,8 @@
    - :model      - Model to use; defaults to the `llm-anthropic-model` setting
    - :system     - System prompt
    - :messages   - Vector of {:role :content} maps for conversation history
-   - :max-tokens - Output-token cap for the response"
+   - :max-tokens - Output-token cap for the response. Required, with no default: the Messages API requires
+                   `max_tokens` (https://platform.claude.com/docs/en/api/messages)"
   [{:keys [model system messages max-tokens]}]
   (let [model      (or model (llm.settings/llm-anthropic-model))
         request    {:model      model
