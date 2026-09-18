@@ -845,10 +845,14 @@
 
 (defn- check-new-dashcards-timeline-permissions!
   "Cards newly placed on a publicly shared or embedded dashboard expose their selected timeline events, so the current
-  user needs read access to those timelines. Cards the dashboard already shows are grandfathered."
+  user needs read access to those timelines. Cards the dashboard already shows are grandfathered, and visualizer
+  dashcards are skipped because the public payload never emits their card's events."
   [existing-dashboard new-dashcards]
   (let [existing-card-ids (into #{} (keep :card_id) (:dashcards existing-dashboard))
-        new-card-ids      (into #{} (comp (keep :card_id) (remove existing-card-ids)) new-dashcards)]
+        new-card-ids      (into #{} (comp (remove queries/visualizer-dashcard?)
+                                          (keep :card_id)
+                                          (remove existing-card-ids))
+                                new-dashcards)]
     (queries/check-shared-dashboard-timeline-permissions-for-card-ids! existing-dashboard new-card-ids)))
 
 (defn- do-update-dashcards!

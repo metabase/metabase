@@ -51,7 +51,10 @@
   the current user needs read access to those timelines. Cards the dashboard already shows are grandfathered."
   [dashboard-id current-cards reverted-cards]
   (let [current-card-ids (into #{} (keep :card_id) current-cards)
-        new-card-ids     (into #{} (comp (keep :card_id) (remove current-card-ids)) reverted-cards)]
+        new-card-ids     (into #{} (comp (remove queries/visualizer-dashcard?)
+                                         (keep :card_id)
+                                         (remove current-card-ids))
+                               reverted-cards)]
     (when (seq new-card-ids)
       (queries/check-shared-dashboard-timeline-permissions-for-card-ids!
        (revisions.db/entity :model/Dashboard dashboard-id)
