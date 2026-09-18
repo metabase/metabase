@@ -1607,7 +1607,7 @@ Backed by the ollama connection in the admin AI settings provider list: reads an
 - Default: `null`
 - [Configuration file name](./config-file.md): `llm-ollama-api-key`
 
-The API key for your Ollama server. Only needed when it sits behind a proxy that requires one — Ollama itself is unauthenticated.
+The API key for Ollama. Required for Ollama Cloud. For a self-hosted server, only when it sits behind a proxy that requires one — Ollama itself is unauthenticated.
 
 Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 

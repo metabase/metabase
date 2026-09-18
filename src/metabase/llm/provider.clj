@@ -384,7 +384,7 @@
                     {:key   :api-key
                      :label (deferred-tru "API key")
                      :type  :password
-                     :help  (deferred-tru "Leave blank if your server doesn''t require a key.")}]}
+                     :help  (deferred-tru "Required for Ollama Cloud. Leave blank if your self-hosted server doesn''t require one.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true

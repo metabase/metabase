@@ -280,7 +280,7 @@ Credentials:
 
 - **Where Ollama runs** (required). One of: `self-hosted`, `cloud`. Defaults to `self-hosted`. You can also set it with the environment variable `MB_LLM_OLLAMA_HOSTING`.
 - **API base URL**. Only when **Where Ollama runs** is **Self-hosted**. Your Ollama server's address, ending in /v1. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
-- **API key**. Leave blank if your server doesn't require a key. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
+- **API key**. Required for Ollama Cloud. Leave blank if your self-hosted server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
 
 Ollama needs either **API base URL**, or **API key**.
 

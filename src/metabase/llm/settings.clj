@@ -628,7 +628,7 @@
   :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-ollama-api-key
-  (deferred-tru "The API key for your Ollama server. Only needed when it sits behind a proxy that requires one — Ollama itself is unauthenticated.")
+  (deferred-tru "The API key for Ollama. Required for Ollama Cloud. For a self-hosted server, only when it sits behind a proxy that requires one — Ollama itself is unauthenticated.")
   :sensitive? true
   :visibility :settings-manager
   :export?    false
