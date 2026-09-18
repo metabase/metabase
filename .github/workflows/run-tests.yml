@@ -421,6 +421,13 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.embedder_plugin != 'true' }}
 
+  cross-version-tests:
+    name: Cross-version migration tests
+    needs: [should-run, uberjar]
+    if: needs.should-run.outputs.verdict == 'force-run'
+    uses: ./.github/workflows/cross-version.yml
+    secrets: inherit
+
   bundle-size:
     needs: [uberjar, files-changed]
     if: |
