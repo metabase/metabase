@@ -110,6 +110,24 @@
               [{:type :reasoning :id "r1" :text "alone"}]
               {:reasoning-part->message top-level-hook}))))))
 
+(deftest ^:parallel whitespace-only-argument-fragments-survive-test
+  (testing (str "fragments are joined verbatim, so a whitespace-only one cannot be dropped: inside a "
+                "JSON string those characters are content — indentation in streamed SQL, and syntax "
+                "in streamed Python")
+    (let [fragments ["{\"code\": \"def f():" "\\n" "    " "return 1\"}"]
+          chunk     (fn [delta] {:id "c" :model "m" :choices [{:index 0 :delta delta}]})
+          parts     (into [] (chat-completions/chat-completions->aisdk-chunks-xf
+                              chat-completions/stop-reasons {})
+                          (concat [(chunk {:role "assistant" :content ""})
+                                   (chunk {:tool_calls [{:index 0 :id "call-1" :type "function"
+                                                         :function {:name      "run_python"
+                                                                    :arguments (first fragments)}}]})]
+                                  (for [f (rest fragments)]
+                                    (chunk {:tool_calls [{:index 0 :function {:arguments f}}]}))))]
+      (is (= (apply str fragments)
+             (apply str (keep :inputTextDelta parts)))
+          "the indented line is not silently deleted from the arguments"))))
+
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
     (is (=? [{:role       "assistant"

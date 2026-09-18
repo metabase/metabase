@@ -233,7 +233,11 @@
                                                      (vreset! payload {:toolCallId id
                                                                        :toolName   tool-name}))
                                                    (rf (merge {:type :tool-input-start} @payload)))
-               (not (str/blank? arguments))    (rf {:type           :tool-input-delta
+               ;; `not-empty`, not `str/blank?`: the fragments are joined verbatim, so dropping a
+               ;; whitespace-only one deletes those characters from the JSON string. Inside a string
+               ;; they are content, not formatting — indentation in streamed SQL, and syntax in
+               ;; streamed Python.
+               (not-empty arguments)           (rf {:type           :tool-input-delta
                                                     :toolCallId     (:toolCallId @payload)
                                                     :inputTextDelta arguments})))]
        (fn
