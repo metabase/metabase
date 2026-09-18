@@ -3850,6 +3850,58 @@
             (is (=? {:values seq}
                     (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "red"))))))))))
 
+(deftest parameters-with-source-is-card-result-metadata-data-perms-test
+  (testing "view-data perms are enforced on tables that appear only in the source Card's result_metadata (SEC-1158)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/view-data :blocked)
+          (mt/with-temp
+            [:model/Collection source-coll            {:name "Source card collection"}
+             :model/Card       {source-card-id :id}   {:collection_id   (:id source-coll)
+                                                       :database_id     (mt/id)
+                                                       :table_id        (mt/id :venues)
+                                                       :dataset_query   (mt/mbql-query venues {:limit 5})
+                                                       ;; hand-edited metadata claiming a column from a table the user
+                                                       ;; cannot view. The query footprint never mentions USERS, so
+                                                       ;; result_metadata is the only place the table shows up
+                                                       :result_metadata [{:name         "NAME"
+                                                                          :display_name "Name"
+                                                                          :base_type    :type/Text
+                                                                          :id           (mt/id :venues :name)
+                                                                          :table_id     (mt/id :venues)}
+                                                                         {:name         "USER_NAME"
+                                                                          :display_name "User Name"
+                                                                          :base_type    :type/Text
+                                                                          :id           (mt/id :users :name)
+                                                                          :table_id     (mt/id :users)}]}
+             :model/Collection own-coll               {:name "Card collection"}
+             :model/Card       {card-id :id}          {:collection_id (:id own-coll)
+                                                       :database_id   (mt/id)
+                                                       :table_id      (mt/id :venues)
+                                                       :dataset_query (mt/mbql-query venues)
+                                                       :parameters    [{:id                   "abc"
+                                                                        :type                 "category"
+                                                                        :name                 "CATEGORY"
+                                                                        :values_source_type   "card"
+                                                                        :values_source_config {:card_id     source-card-id
+                                                                                               :value_field (mt/$ids $venues.name)}}]}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) own-coll)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) source-coll)
+            (testing "read permission on the source card is not enough when its result_metadata names a blocked table"
+              (is (= (format "You do not have permission to view data of table %d in result_metadata." (mt/id :users))
+                     (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc"))))
+              (is (= (format "You do not have permission to view data of table %d in result_metadata." (mt/id :users))
+                     (mt/user-http-request :rasta :get 403 (param-values-url card-id "abc" "red")))))
+            (testing "success once the user can view the table the result_metadata references"
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/view-data :unrestricted)
+              (is (=? {:values seq}
+                      (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
+              (is (=? {:values seq}
+                      (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "red")))))))))))
+
 (deftest parameters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
