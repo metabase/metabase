@@ -6,6 +6,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -499,6 +500,36 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
         (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
                (llm.provider/credentials "anthropic")))))))
+
+(deftest moving-a-connection-to-cloud-drops-the-address-it-leaves-behind-test
+  (testing (str "the connection form clears a field it hides before saving; every other writer has to "
+                "as well, or a deployment can be turned over without touching the address it no "
+                "longer uses — which then reads as a destination the caller chose")
+    (mt/with-temporary-setting-values
+      [llm-providers [(connection "ollama" "ollama" {:hosting  "self-hosted"
+                                                     :base-url "http://internal.example.com:11434/v1"})]]
+      (binding [request.current/*request* {}]
+        (llm.provider/set-single-provider-setting! :llm-ollama-hosting "cloud")
+        (is (= {:hosting "cloud"}
+               (:config (first (llm.provider/stored-connections))))
+            "the base URL Cloud never reads does not linger in storage")
+        (testing "so the key Cloud does need can still be entered one field at a time"
+          (llm.provider/set-single-provider-setting! :llm-ollama-api-key "sk-cloud")
+          (is (= {:hosting "cloud" :api-key "sk-cloud"}
+                 (:config (first (llm.provider/stored-connections)))))))))
+  (testing "only an explicit switch counts — a default is no grounds to throw a credential away"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (llm.provider/set-connections! [(connection "google" "google" {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})])
+      (is (= {:oauth-access-token "ya29.token" :project-id "my-project"}
+             (:config (first (llm.provider/stored-connections))))
+          "Google's auth method defaults to the service account key, but a token stored without one stays")
+      (llm.provider/set-connections! [(connection "google" "google" {:auth-method        "service-account-key"
+                                                                     :oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})])
+      (is (= {:auth-method "service-account-key" :project-id "my-project"}
+             (:config (first (llm.provider/stored-connections))))
+          "naming the other method is a choice, and the credential it replaces goes"))))
 
 (deftest connections-drop-a-stored-base-url-an-env-credential-would-reach-test
   (testing (str "A base URL saved through the API is not where an environment-supplied credential gets sent: the "

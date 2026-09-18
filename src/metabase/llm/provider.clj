@@ -502,24 +502,43 @@
   (when-let [problem (and validate (some-> (u/trimmed-string (get config key)) validate))]
     (throw (ex-info (str problem) {:status-code 400 :field key}))))
 
+(defn- field-descriptor
+  "`type-name`'s registry entry for `field-key`."
+  [type-name field-key]
+  (u/find-first-map (:fields (provider-type type-name)) [:key] field-key))
+
+(defn- field-active?
+  "Whether `field` applies to a connection configured like `config`: a `:show-when` field does so only
+  while the field it names holds that value. Ollama's base URL is inert once the deployment is Cloud,
+  so neither validation nor [[assert-credential-write-authorized!]] should judge a connection on it.
+
+  The controlling field is read through its `:default`, so a config that never set it is judged
+  against the value it will run as."
+  [type-name {:keys [show-when]} config]
+  (or (nil? show-when)
+      (let [{:keys [field value]} show-when]
+        (= value (or (u/trimmed-string (get config field))
+                     (:default (field-descriptor type-name field)))))))
+
 (defn- validate-field!
   [type-name {:keys [key label required? prefix default options] :as field} config]
-  (let [value (u/trimmed-string (get config key))]
-    (when (and required? (not value) (not default))
-      (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
-    (when (and value prefix (not (str/starts-with? value prefix)))
-      (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
-                      {:status-code 400 :field key})))
-    (when (and value (seq options) (not-any? #(= value (:value %)) options))
-      (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
-    (validate-field-value! field config)))
+  (when (field-active? type-name field config)
+    (let [value (u/trimmed-string (get config key))]
+      (when (and required? (not value) (not default))
+        (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
+                        {:status-code 400 :field key})))
+      (when (and value prefix (not (str/starts-with? value prefix)))
+        (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
+                        {:status-code 400 :field key})))
+      (when (and value (seq options) (not-any? #(= value (:value %)) options))
+        (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
+                        {:status-code 400 :field key})))
+      (validate-field-value! field config))))
 
 (defn- validate-config-field!
   "Run [[validate-field!]]'s checks for the single field `field-key` of `type-name` against `config`."
   [type-name field-key config]
-  (when-let [field (u/find-first-map (:fields (provider-type type-name)) [:key] field-key)]
+  (when-let [field (field-descriptor type-name field-key)]
     (validate-field! type-name field config)))
 
 (defn- config-problem
@@ -801,8 +820,7 @@
                        ;; chose: dropping it changes nothing, and the warning would tell an operator to set a
                        ;; variable to the value they already have
                        (let [value (u/trimmed-string (get config field))]
-                         (when-not (= value (:default (u/find-first-map (:fields (provider-type type))
-                                                                        [:key] field)))
+                         (when-not (= value (:default (field-descriptor type field)))
                            value)))
         captured     (when (and (= :db source)
                                 (some #(contains? env-config %) (secret-field-keys type)))
@@ -909,10 +927,41 @@
             :when (not= (get config field-key) (get previous field-key))]
       (validate-field-value! field config))))
 
+(defn- switched-off?
+  "Whether `config` *explicitly* switches `field` off: it sets the `:show-when` controller to
+  something else.
+
+  Stricter than [[field-active?]], which infers from the controller's `:default` — fine for judging a
+  config, not for deleting from one. Google's `:auth-method` defaults to the service account key, so
+  inferring would drop the OAuth token from any connection carrying one without naming the method."
+  [{:keys [show-when]} config]
+  (boolean (when-let [{:keys [field value]} show-when]
+             (when-let [chosen (u/trimmed-string (get config field))]
+               (not= chosen value)))))
+
+(defn- drop-switched-off-fields
+  "Strip `conn`'s config of fields it explicitly switches off — see [[switched-off?]].
+
+  The connection form clears them before saving; doing it here covers every other writer, including
+  the per-provider settings, which write one field at a time and so can turn a deployment over
+  without touching the address it leaves behind."
+  [{:keys [type config] :as conn}]
+  (cond-> conn
+    (provider-type type)
+    (assoc :config (into {}
+                         (remove (fn [[field-key _]]
+                                   (when-let [field (field-descriptor type field-key)]
+                                     (switched-off? field config))))
+                         config))))
+
 (defn set-connections!
-  "Persist `conns` as the stored connection list, dropping the derived annotation keys."
+  "Persist `conns` as the stored connection list, dropping the derived annotation keys and any field
+  the connection explicitly switches off."
   [conns]
-  (llm.settings/set-llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
+  (llm.settings/set-llm-providers! (mapv #(-> %
+                                              (dissoc :source :env-vars :env-fields)
+                                              drop-switched-off-fields)
+                                         conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -1087,7 +1136,9 @@
   A base URL the environment supplies needs no such treatment: the operator chose it."
   [type-name field {:keys [config env-fields]}]
   (when (contains? (secret-field-keys type-name) field)
-    (let [base-url (:base-url (with-field-defaults type-name config))]
+    (let [filled   (with-field-defaults type-name config)
+          base-url (when (field-active? type-name (field-descriptor type-name :base-url) filled)
+                     (:base-url filled))]
       (when (and base-url
                  (not= base-url (:base-url (with-field-defaults type-name {})))
                  (not (contains? (set env-fields) :base-url)))

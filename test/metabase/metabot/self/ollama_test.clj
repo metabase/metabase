@@ -432,8 +432,7 @@
                        [:learned-config :probed-model])))))))
 
 (deftest preflight-says-so-when-no-model-can-chat-test
-  (testing (str "a server that rules every model out gets told that, rather than being handed one "
-                "to probe and failing on whatever that model happens to do")
+  (testing "a server that rules every model out is told so, rather than handed one to probe"
     (with-clean-capabilities!
       (fn []
         (is (thrown-with-msg?
@@ -925,6 +924,24 @@
   (testing "a trailing slash still cannot double up when a path is joined onto it"
     (is (= "http://host:11434/v1"
            (:base-url (llm.provider/with-field-defaults "ollama" {:base-url "http://host:11434/v1///"}))))))
+
+(deftest ollama-does-not-keep-a-base-url-cloud-would-never-use-test
+  (testing (str "Cloud never reads `:base-url`, so a connection submitted with the address it used "
+                "while self-hosted is neither refused over it nor left carrying it")
+    (mt/with-temporary-setting-values [llm-providers []]
+      (let [submitted {:hosting "cloud" :api-key "sk-cloud" :base-url "http://192.168.1.20:11434/v1"}]
+        (is (nil? (llm.provider/validate-config! "ollama" submitted))
+            "not rejected on the private-network policy, which applies to an address Cloud never calls")
+        (llm.provider/set-connections! [{:key "ollama" :type "ollama" :name "o" :config submitted}])
+        (is (= {:hosting "cloud" :api-key "sk-cloud"}
+               (:config (first (llm.provider/stored-connections))))
+            "and the address is gone, so nothing later reads it as a destination the caller chose"))))
+  (testing "a self-hosted connection is still judged on the address it does use"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"not allowed to connect to"
+         (llm.provider/validate-config! "ollama" {:hosting  "self-hosted"
+                                                  :base-url "http://192.168.1.20:11434/v1"})))))
 
 (deftest ollama-resolves-the-address-from-the-deployment-test
   ;; Credentials go through `with-field-defaults` on every real path — `resolve-model-ref` for
