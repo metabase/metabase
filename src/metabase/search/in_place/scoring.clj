@@ -109,7 +109,20 @@
   Get the score for a result with `score-and-result`, and efficiently get the most relevant results with
   `top-results`.
 
-  Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
+  Some of the scorers can be tweaked with configuration in [[metabase.search.config]].
+
+  ## Divergence from the appdb engine
+
+  This engine ranks every search the same way, so it ignores the per-context weights in
+  [[metabase.search.config/static-context-weights]].
+  In particular, the `:metabot` and `:data-picker` contexts get none of their ranking behavior here:
+  - Entity types are ordered by [[metabase.search.config/models-search-order]], not by `:model/*` weights,
+    so dashboards outrank metrics and models outrank tables.
+  - Library membership is not scored.
+  - A table's `data_layer` is not scored.
+  - Official-collection and verified scores use their default weights, not the context's boosts.
+  Results also omit `curated`.
+  It is undecided whether to close these gaps or to deprecate this engine."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]

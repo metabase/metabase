@@ -75,8 +75,16 @@
 (def curated-search-models
   "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
   keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
-  curated content stays visible where the older verified-only filter dropped it (BOT-1536)."
-  #{"card" "dataset" "metric" "dashboard" "table"})
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536).
+  Measures and segments inherit curation from their published parent table (`root_collection_type` on the index
+  row; the in-place engine approximates it as the parent table being published)."
+  #{"card"
+    "dashboard"
+    "dataset"
+    "measure"
+    "metric"
+    "segment"
+    "table"})
 
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
@@ -106,8 +114,8 @@
    ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
    :official-collection 1
    :verified            1
-   ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
-   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   ;; :library is a curation signal used when choosing data sources, so it is disabled by default.
+   ;; :data-picker and :metabot enable it at a level that an exact match can override.
    :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
@@ -156,11 +164,31 @@
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot
-   {:data-layer          33
+   ;; Metabot searches for data sources, so it uses the data picker's library boost.
+   ;; This preserves the preference when library-only retrieval falls back to general search.
+   {:library             80
+    ;; Recency only breaks ties within a tier, so :recency plus :user-recency stays below the narrowest tier gap (1).
+    :recency             0.4
+    :user-recency        0.4
+    :data-layer          33
     :data-layer/final    1     ; ≈ 33
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    }})
+    ;; Favor semantic-layer content over saved questions, and saved questions over models.
+    ;; :data-layer does most of the ranking for tables; the small type boost only keeps a table above a model.
+    ;; The semantic layer edges out a final-layer table (33 + 1), so a metric beats every table on an equal match.
+    ;; List every model Metabot searches; otherwise [[models-search-order]] supplies its fallback boost.
+    :model               10
+    :model/metric        3.5   ; ≈ 35
+    :model/measure       3.5   ; ≈ 35
+    :model/segment       3.5   ; ≈ 35
+    :model/dashboard     0.3   ; ≈ 3
+    :model/card          0.3   ; ≈ 3
+    :model/table         0.1   ; ≈ 1
+    :model/dataset       0
+    :model/document      0
+    :model/transform     0
+    :model/database      0}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every
