@@ -93,7 +93,7 @@
                               :transforms/accurate-rows-affected      false
                               :transforms/python                      true
                               :transforms/table                       true
-                              :transforms/testing                     true}]
+                              :transforms/testing                     false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))

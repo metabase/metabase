@@ -1136,7 +1136,7 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
-                              :transforms/testing               true}]
+                              :transforms/testing               false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
