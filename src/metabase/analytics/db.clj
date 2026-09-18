@@ -149,9 +149,9 @@
   (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
 
 (mu/defn card-collection-ids
-  "The Collection id and schema of the non-internal Cards."
+  "The Collection id of the non-internal Cards."
   []
-  (t2/select [:model/Card :collection_id :card_schema] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
+  (t2/select [:model/Card :collection_id] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
 
 (mu/defn database-stats-columns
   "The sync, engine, and DBMS version of the non-internal Databases."
