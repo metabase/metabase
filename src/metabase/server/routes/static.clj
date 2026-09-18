@@ -10,7 +10,8 @@
    [compojure.core :as compojure]
    [ring.middleware.not-modified :as not-modified]
    [ring.util.mime-type :as mime]
-   [ring.util.response :as response]))
+   [ring.util.response :as response]
+   [ring.util.time :as ring.time]))
 
 (def ^:private encoding->extension
   {:gzip     ".gz"
@@ -92,18 +93,43 @@
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
 
+(defn- serves-the-clients-copy?
+  "True when the client's validator is exactly the one this build serves.
+
+   Every resource in a build carries that build's timestamp, so an exact match
+   means the client holds this build's copy. The ordered comparison HTTP defines
+   would also answer 304 when the client holds a copy *newer* than the file on
+   disk, which is what an instance serves after a downgrade: the client would
+   keep the newer build's resource and never be sent the one it should have."
+  [request response]
+  (let [served (some-> (response/get-header response "Last-Modified") ring.time/parse-date)
+        held   (some-> (response/get-header request "if-modified-since") ring.time/parse-date)]
+    (boolean (and served held (= served held)))))
+
+(defn- wrap-not-modified-for-this-build
+  "Answers a 304 only for a client that holds this build's copy of the resource."
+  [handler]
+  (letfn [(answer [response request]
+            (cond-> response
+              (serves-the-clients-copy? request response)
+              (not-modified/not-modified-response request)))]
+    (fn
+      ([request]
+       (-> (handler request) (answer request)))
+      ([request respond raise]
+       (handler request (fn [response] (respond (answer response request))) raise)))))
+
 (defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
    pre-compressed (.br, .gz) variants when the client supports them.
    Drop-in replacement for `compojure.route/resources`.
 
-   Wrapped in `wrap-not-modified` so a resource the client already holds is
-   answered with a 304 rather than its whole body. Everything under `/app` that
-   carries no content hash is served `no-cache, must-revalidate`, which obliges
-   the client to ask every time; without this it has to be sent the file every
-   time as well."
+   A resource the client already holds is answered with a 304 rather than its
+   whole body. Everything under `/app` that carries no content hash is served
+   `no-cache, must-revalidate`, which obliges the client to ask every time;
+   without this it has to be sent the file every time as well."
   [path {root :root}]
-  (not-modified/wrap-not-modified
+  (wrap-not-modified-for-this-build
    (compojure/GET (add-wildcard path) request
      (let [{{request-path :*} :route-params} request
            resource-path (str root "/" request-path)]

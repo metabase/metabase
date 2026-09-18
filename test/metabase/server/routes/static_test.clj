@@ -147,3 +147,9 @@
     (let [response (get-static "/index_template.html" "Tue, 03 Jul 2001 06:00:00 GMT")]
       (is (= 200 (:status response)))
       (is (some? (:body response))))))
+
+(deftest ^:parallel static-resource-ignores-a-newer-validator-test
+  (testing "a client holding a copy newer than this build's is sent the resource, so a downgrade replaces it"
+    (let [response (get-static "/index_template.html" "Fri, 01 Jan 2100 00:00:00 GMT")]
+      (is (= 200 (:status response)))
+      (is (some? (:body response))))))
