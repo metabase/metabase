@@ -4,7 +4,7 @@ import {
   getHeadMajorVersion,
   getMajorVersion,
   getRollingTagMajorVersion,
-  HEAD_DOCKER_IMAGE,
+  getHeadDockerImage,
   isHead,
   isRollingTag,
   isRollingTagEnterprise,
@@ -81,10 +81,42 @@ describe("cross-version-helpers", () => {
       });
     });
 
-    describe("HEAD_DOCKER_IMAGE", () => {
-      it("is the enterprise head image", () => {
-        expect(HEAD_DOCKER_IMAGE).toBe(
+    describe("getHeadDockerImage", () => {
+      const originalDigest = process.env.HEAD_DIGEST;
+
+      afterEach(() => {
+        if (originalDigest === undefined) {
+          delete process.env.HEAD_DIGEST;
+        } else {
+          process.env.HEAD_DIGEST = originalDigest;
+        }
+      });
+
+      it("uses the latest tag when HEAD_DIGEST is not set", () => {
+        delete process.env.HEAD_DIGEST;
+        expect(getHeadDockerImage()).toBe(
           "metabase/metabase-enterprise-head:latest",
+        );
+      });
+
+      it("uses the latest tag when HEAD_DIGEST is empty", () => {
+        process.env.HEAD_DIGEST = "  ";
+        expect(getHeadDockerImage()).toBe(
+          "metabase/metabase-enterprise-head:latest",
+        );
+      });
+
+      it("pins to the digest when HEAD_DIGEST is set", () => {
+        process.env.HEAD_DIGEST = "sha256:abc123";
+        expect(getHeadDockerImage()).toBe(
+          "metabase/metabase-enterprise-head@sha256:abc123",
+        );
+      });
+
+      it("adds the sha256 prefix when the digest is bare", () => {
+        process.env.HEAD_DIGEST = "abc123";
+        expect(getHeadDockerImage()).toBe(
+          "metabase/metabase-enterprise-head@sha256:abc123",
         );
       });
     });
@@ -209,7 +241,7 @@ describe("cross-version-helpers", () => {
       });
 
       it("returns enterprise HEAD image for HEAD", () => {
-        expect(getDockerImage("HEAD")).toBe(HEAD_DOCKER_IMAGE);
+        expect(getDockerImage("HEAD")).toBe(getHeadDockerImage());
       });
     });
   });

@@ -29,6 +29,14 @@ on:
         description: Platforms the image is built for.
         type: string
         default: linux/amd64,linux/arm64
+    outputs:
+      digest-ee:
+        description: Image digest, useful for pulling the built image from Docker Hub. Only set if this is the 'ee' edition.
+        value: ${{ jobs.containerize.outputs.digest-ee }}
+      digest-oss:
+        description:  Image digest, useful for pulling the built image from Docker Hub. Only set if this is the 'oss' edition.
+        value: ${{ jobs.containerize.outputs.digest-oss }}
+
   workflow_dispatch:
     inputs:
       edition:
@@ -70,6 +78,9 @@ jobs:
     timeout-minutes: 15
     outputs:
       full_image: ${{ steps.image.outputs.full_image }}
+      digest: ${{ steps.build.outputs.digest }}
+      digest-ee: ${{ inputs.edition == 'ee' && steps.build.outputs.digest || '' }}
+      digest-oss: ${{ inputs.edition == 'oss' && steps.build.outputs.digest || '' }}
     env:
       AWS_REGION: us-east-1
     steps:
@@ -130,6 +141,7 @@ jobs:
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
     - name: Build and Push Images
+      id: build
       uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         context: bin/docker/.
