@@ -191,7 +191,7 @@
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
 (def ^:private input-box-by-default-types
-  "Parameter types whose widget is an Input box unless `values_query_type` says otherwise. 
+  "Parameter types whose widget is an Input box unless `values_query_type` says otherwise.
   Mirrors `getDefaultQueryType` in `parameter-source.ts`."
   #{:string/contains :string/does-not-contain :string/starts-with :string/ends-with
     :number/<= :number/>= :number/between})
