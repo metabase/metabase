@@ -5860,6 +5860,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                      :model/Dashboard {id :id}
                      {:parameters [{:name "Number" :slug "number" :id "_NUM_" :type :number/<=
+                                    :values_query_type "list"
                                     :values_source_type "card"
                                     :values_source_config
                                     {:card_id     source-id
@@ -5988,10 +5989,13 @@
             "backend does not clean up dashcard parameter_mappings that reference a removed parameter_id")))))
 
 (deftest values-endpoint-does-not-gate-by-operator-type-test
-  (testing "GET /api/dashboard/:id/params/:param-key/values has no operator-type gating"
+  (testing "GET /api/dashboard/:id/params/:param-key/values has no operator-type gating once the widget is a dropdown"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                            {:parameters (mapv (fn [p] (cond-> p (= (:id p) (:category-name param-keys)) (assoc :type :string/starts-with)))
+                            {:parameters (mapv (fn [p]
+                                                 (cond-> p
+                                                   (= (:id p) (:category-name param-keys))
+                                                   (assoc :type :string/starts-with, :values_query_type "list")))
                                                (:parameters dashboard))})
       (is (seq (:values (mt/user-http-request :rasta :get 200
                                               (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))
