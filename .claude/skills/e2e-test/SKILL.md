@@ -14,14 +14,12 @@ Only use `MB_EDITION=ee` when the user explicitly asks to write or run an enterp
 
 **For `MB_EDITION=ee`:**
 These tokens must be exported in the shell before starting Claude Code:
-
 - `CYPRESS_MB_ALL_FEATURES_TOKEN` — all features (most EE tests need this)
 - `CYPRESS_MB_PRO_SELF_HOSTED_TOKEN` — pro self-hosted (permissions, SSO, sandboxing)
 - `CYPRESS_MB_STARTER_CLOUD_TOKEN` — starter plan (rarely needed)
 - `CYPRESS_MB_PRO_CLOUD_TOKEN` — pro cloud (rarely needed)
 
 **NEVER echo, print, or log token values. Only check if they are set:**
-
 ```bash
 echo "ALL_FEATURES: ${CYPRESS_MB_ALL_FEATURES_TOKEN:+set}" && echo "PRO_SELF_HOSTED: ${CYPRESS_MB_PRO_SELF_HOSTED_TOKEN:+set}" && echo "STARTER: ${CYPRESS_MB_STARTER_CLOUD_TOKEN:+set}" && echo "PRO_CLOUD: ${CYPRESS_MB_PRO_CLOUD_TOKEN:+set}"
 ```
@@ -32,19 +30,9 @@ If tokens are missing, tell the user: "EE tokens are not set. Either export them
 
 If the user asks "how long does this test take" / "what's the timing" — **do not run it**. Read `e2e/support/timings.json`, which holds the latest CI duration (in ms) per spec. Match on the spec path (entries are stored as `../test/scenarios/...`). Per-`it()` granularity is not recorded there; for that you'd need the Cypress JSON reporter, which requires running the spec.
 
-## Diagnosing flakiness
-
-Before changing a flaky test:
-
-1. Gather the available longitudinal CI history, failure messages, screenshots, and retries. Classify distinct failures by the UI or network boundary where they occur instead of treating every occurrence as one race.
-2. State which user interactions the test is intended to cover. Preserve interactions that are part of the regression path or relevant failure evidence; do not move them to API setup merely to make the test pass.
-3. Fix the narrowest boundary supported by evidence. Keep backend errors, failed requests, and application crashes visible unless the task explicitly targets their recovery behavior.
-4. Treat a local stress run as evidence about a candidate change, not proof that historical flakiness never existed. A small passing sample does not outweigh repeated CI failures.
-
 ## Running
 
 First check if snapshots exist:
-
 ```bash
 ls e2e/snapshots/default.sql 2>/dev/null && echo "snapshots exist" || echo "snapshots missing"
 ```
@@ -52,13 +40,11 @@ ls e2e/snapshots/default.sql 2>/dev/null && echo "snapshots exist" || echo "snap
 Always pass the spec path via `--spec`. The runner feeds its arguments to Cypress's CLI parser (`cypress.cli.parseRunArguments`), which silently drops bare positional paths and then runs the entire suite. A leading `run` argument is harmless, but the path itself must follow `--spec`. Sanity-check that the first `Running:` line says `(1 of 1)`.
 
 If snapshots exist, skip regeneration for speed:
-
 ```bash
 MB_EDITION=oss CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false GENERATE_SNAPSHOTS=false bun test-cypress --spec path/to/spec.cy.spec.js
 ```
 
 If snapshots are missing (first run), let the runner generate them:
-
 ```bash
 MB_EDITION=oss CYPRESS_VIDEO=false CYPRESS_RETRIES=0 CYPRESS_GUI=false bun test-cypress --spec path/to/spec.cy.spec.js
 ```
@@ -68,15 +54,12 @@ When running enterprise tests, replace `MB_EDITION=oss` with `MB_EDITION=ee` in 
 If `$ARGUMENTS` is empty, ask the user which spec to run.
 
 If the user provides a test name or fuzzy name instead of a spec path, find the spec file:
-
 ```bash
 find e2e/test/scenarios -name "*FUZZY_NAME*.cy.spec.*" -type f
 ```
-
 Then run with `--spec "path/to/matched.cy.spec.js"`.
 
 To filter by test name, use the `GREP` env var (not `--env grep=`, which breaks on commas):
-
 ```bash
 GREP="test name here" MB_EDITION=oss bun test-cypress --spec path/to/spec.js
 ```

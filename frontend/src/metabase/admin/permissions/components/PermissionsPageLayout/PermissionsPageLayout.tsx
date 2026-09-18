@@ -13,10 +13,8 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
@@ -37,7 +35,6 @@ import { LegacyPermissionsModal } from "../LegacyPermissionsModal/LegacyPermissi
 import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
-import S from "./PermissionsPageLayout.module.css";
 import { PermissionsTabs } from "./PermissionsTabs";
 
 export type PermissionsPageTab =
@@ -99,7 +96,7 @@ export function PermissionsPageLayout({
   const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    navigate(`${getPermissionsBasePath()}/${tab}`);
+    navigate(`/admin/permissions/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
@@ -141,11 +138,7 @@ export function PermissionsPageLayout({
 
         <TabsContainer>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
-          <ToolbarButtonsContainer
-            className={
-              isEmbeddingHubPermissions() ? S.hubToolbarButtons : undefined
-            }
-          >
+          <ToolbarButtonsContainer>
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}
