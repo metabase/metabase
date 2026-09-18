@@ -28,7 +28,7 @@
    (let [run (transform-testing.db/insert-transform-test-run! transform-test-id initiated-by)]
      (events/publish-event! :event/transform-test-run-start
                             (-> {:object run}
-                              (m/assoc-some :user-id initiated-by))
+                                (m/assoc-some :user-id initiated-by)))
      (swap! active-runs conj (:id run))
      run)))
 
@@ -68,7 +68,7 @@
       (try
         (events/publish-event! :event/transform-test-run-timeout
                                (-> {:object (assoc run :status :timeout)}
-                                   (m/assoc-some :user-id (:initiated_by run)))
+                                   (m/assoc-some :user-id (:initiated_by run))))
         (catch Throwable t
           (log/warnf "Failed to publish transform-test-run-timeout event for run %s: %s"
                      (:id run)
