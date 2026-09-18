@@ -18,7 +18,19 @@ describe("apiKeyUsageEventColumnKeys", () => {
   });
 
   it("includes ip_address only when PII retention is on", () => {
-    const withPii = apiKeyUsageEventColumnKeys(true);
-    expect(withPii).toContain("ip_address");
+    expect(apiKeyUsageEventColumnKeys(true)).toEqual([
+      "log_id",
+      "occurred_at",
+      "route_template",
+      "http_method",
+      "status",
+      "duration_ms",
+      "api_key_name",
+      "user_display_name",
+      "client_display_name",
+      "embedding_client",
+      "embedding_hostname",
+      "ip_address",
+    ]);
   });
 });
