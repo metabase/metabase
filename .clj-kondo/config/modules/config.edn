@@ -2323,7 +2323,10 @@
 
   revisions
   {:team "UX West"
-   :api  #{metabase.revisions.api metabase.revisions.core metabase.revisions.init}
+   :api  #{metabase.revisions.api
+           metabase.revisions.core
+           metabase.revisions.init
+           metabase.revisions.models.revision}
    :uses #{api
            collections
            dashboards
