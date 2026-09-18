@@ -13,7 +13,7 @@ import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { SwitchSettingsSection } from "metabase/settings-components";
-import type { BoxProps } from "metabase/ui";
+import { type BoxProps, Text } from "metabase/ui";
 import {
   type CustomOidcConfig,
   customOidcApi,
@@ -21,10 +21,9 @@ import {
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
 
-const EMPTY_MAPPINGS: MappingsType = {};
+import { DEFAULT_GROUP_ATTRIBUTE } from "../constants";
 
-// the card owns the group sync map, so the claim it reads lives here
-export const DEFAULT_GROUP_ATTRIBUTE = "groups";
+const EMPTY_MAPPINGS: MappingsType = {};
 
 type GroupSync = NonNullable<CustomOidcConfig["group-sync"]>;
 
@@ -34,7 +33,7 @@ type SaveOptions = {
   showErrorToast?: boolean;
 };
 
-type GroupSyncWriter = {
+export type GroupSyncWriter = {
   isSaving: boolean;
   saveGroupSync: (
     provider: CustomOidcConfig,
@@ -44,7 +43,7 @@ type GroupSyncWriter = {
 };
 
 /** Writes the provider's group sync config with some fields replaced, since the API swaps the whole map */
-function useGroupSyncWriter(): GroupSyncWriter {
+export function useGroupSyncWriter(): GroupSyncWriter {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [updateProvider, { isLoading: isSaving }] =
@@ -104,26 +103,34 @@ function useGroupSyncWriter(): GroupSyncWriter {
 type OidcGroupMappingSectionProps = {
   // null until the provider is saved, and the card stays disabled until then
   provider: CustomOidcConfig | null;
+  // the page's writer, since the switch, the mappings and the page form all write the one provider
+  writer: GroupSyncWriter;
   // the group fields of the page form, shown only while group mapping is on
   children: React.ReactNode;
+  // the env var that owns the providers, which makes the card read-only
+  lockedEnvName?: string;
+  // true while the page form saves the provider, which a card write would race
+  isPageSaving?: boolean;
   onToggle?: (enabled: boolean) => void;
 } & BoxProps;
 
 /** The group mapping card of an OIDC provider, with a switch that saves on its own and the mappings under it */
 export function OidcGroupMappingSection({
   provider,
+  writer,
   children,
+  lockedEnvName,
+  isPageSaving = false,
   onToggle,
   ...boxProps
 }: OidcGroupMappingSectionProps) {
   const applicationName = useSelector(getApplicationName);
   const { isFetching: isProvidersFetching } = useGetCustomOidcProvidersQuery();
-  // one writer for the whole card, since the switch and the mappings share the one group sync map
-  const writer = useGroupSyncWriter();
   const { isSaving, saveGroupSync } = writer;
   const [clickedValue, setClickedValue] = useState<boolean | null>(null);
   // a refetch still in flight could answer with the value from before the write
-  const isWriting = isSaving || isProvidersFetching;
+  // the page form's save carries the group sync too, so the card waits for it as well
+  const isWriting = isSaving || isProvidersFetching || isPageSaving;
   const storedValue = provider?.["group-sync"]?.enabled ?? false;
   // the click shows right away, and the stored value takes over once a refetch brings it back
   const isChecked = clickedValue ?? storedValue;
@@ -155,8 +162,14 @@ export function OidcGroupMappingSection({
     <SwitchSettingsSection
       title={t`Group mapping`}
       description={t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
+      note={
+        lockedEnvName != null && (
+          <Text c="text-secondary" mt="sm">{t`Using ${lockedEnvName}`}</Text>
+        )
+      }
       checked={isChecked}
       disabled={provider == null}
+      switchDisabled={lockedEnvName != null}
       switchBusy={isWriting}
       onChange={handleChange}
       {...boxProps}
@@ -166,6 +179,7 @@ export function OidcGroupMappingSection({
           provider={provider}
           writer={writer}
           isWriting={isWriting}
+          lockedEnvName={lockedEnvName}
         />
       )}
       {children}
@@ -178,12 +192,14 @@ type OidcGroupMappingsProps = {
   writer: GroupSyncWriter;
   // true while the card's own write or a providers refetch is in flight
   isWriting: boolean;
+  lockedEnvName?: string;
 };
 
 function OidcGroupMappings({
   provider,
   writer,
   isWriting,
+  lockedEnvName,
 }: OidcGroupMappingsProps) {
   const groupLookup = useGroupLookup();
   const { isSaving, saveGroupSync } = writer;
@@ -200,6 +216,12 @@ function OidcGroupMappings({
       groupLookup={groupLookup}
       // a providers refetch can still answer with the value from before the write
       isBusy={isWriting}
+      readOnly={lockedEnvName != null}
+      note={
+        lockedEnvName != null && (
+          <Text c="text-secondary">{t`Using ${lockedEnvName}`}</Text>
+        )
+      }
       nameLabel={t`OIDC group name`}
       namePlaceholder={t`Enter OIDC group...`}
     />

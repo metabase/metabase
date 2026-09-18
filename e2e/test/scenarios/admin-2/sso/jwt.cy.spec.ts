@@ -2,12 +2,27 @@ const { H } = cy;
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import type { GroupListQuery } from "metabase-types/api";
 
+import { groupMappingCardHelpers } from "./shared/group-mapping-card";
+
+const {
+  groupMappingSection,
+  mappingRow,
+  newMappingButton,
+  groupsPicker,
+  addMapping,
+  deleteMapping,
+} = groupMappingCardHelpers({
+  sectionTestId: "jwt-group-schema",
+  nameLabel: "JWT group name",
+  newMappingLabel: "New mapping",
+});
+
 describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
 
@@ -222,44 +237,7 @@ const getJwtCard = () => {
     .parent();
 };
 
-const groupMappingSection = () => cy.findByTestId("jwt-group-schema");
-
-const mappingRow = (name: string) =>
-  cy.contains('[data-testid="group-mapping-row"]', name);
-
-const newMappingButton = () => cy.button("New mapping");
-
-const groupsPicker = () => cy.findByLabelText("Metabase groups");
-
 // the segmented control keeps its radio inputs hidden, so the visible label takes the click
 const selectGroupMappingMode = (mode: string) => {
   groupMappingSection().findByText(mode).click();
-};
-
-// adding a mapping saves it right away, so wait for that write before moving on
-const addMapping = (name: string, groups: string[]) => {
-  newMappingButton().click();
-  cy.findByLabelText("JWT group name").type(name);
-  groupsPicker().click();
-  groups.forEach((group) => {
-    cy.findByRole("option", { name: group }).click();
-  });
-  cy.button("Add mapping").click();
-  cy.wait("@updateSettings");
-  mappingRow(name).should("contain", groups.join(", "));
-};
-
-const deleteMapping = (
-  name: string,
-  consequenceLabel: RegExp,
-  confirmLabel: string,
-) => {
-  mappingRow(name).findByLabelText("Delete mapping").click();
-  H.modal().within(() => {
-    cy.findByText("Remove this group mapping?").should("be.visible");
-    cy.findByText(consequenceLabel).click();
-    cy.button(confirmLabel).click();
-  });
-  cy.wait("@updateSettings");
-  mappingRow(name).should("not.exist");
 };

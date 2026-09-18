@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { useLatest } from "react-use";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -7,6 +6,7 @@ import { SETTINGS_FIELD_DESCRIPTION_PROPS } from "metabase/admin/settings/utils"
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
@@ -17,7 +17,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useSetting } from "metabase/settings";
+import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import {
   CollapsibleSettingsSection,
   SETTINGS_CARD_STACK_PROPS,
@@ -37,14 +37,16 @@ import {
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 
 import {
-  DEFAULT_GROUP_ATTRIBUTE,
   OidcGroupMappingSection,
+  useGroupSyncWriter,
 } from "./OidcGroupMappingSection";
-
-const DEFAULT_SCOPES = ["openid", "email", "profile"];
-const DEFAULT_EMAIL_ATTRIBUTE = "email";
-const DEFAULT_FIRST_NAME_ATTRIBUTE = "given_name";
-const DEFAULT_LAST_NAME_ATTRIBUTE = "family_name";
+import {
+  DEFAULT_EMAIL_ATTRIBUTE,
+  DEFAULT_FIRST_NAME_ATTRIBUTE,
+  DEFAULT_GROUP_ATTRIBUTE,
+  DEFAULT_LAST_NAME_ATTRIBUTE,
+  DEFAULT_SCOPES,
+} from "./constants";
 
 type OidcGroupSync = NonNullable<CustomOidcConfig["group-sync"]>;
 
@@ -184,19 +186,28 @@ function formValuesToProvider(
 export function SettingsOIDCForm() {
   const applicationName = useSelector(getApplicationName);
   const siteUrl = useSetting("site-url");
-  const { data: providers, isLoading } = useGetCustomOidcProvidersQuery();
+  const { data: settingDetails, isLoading: isLoadingDetails } =
+    useGetAdminSettingsDetailsQuery();
+  const { data: providers, isLoading: isLoadingProviders } =
+    useGetCustomOidcProvidersQuery();
   const [createProvider] = useCreateCustomOidcMutation();
   const [updateProvider] = useUpdateCustomOidcMutation();
   const [checkConnection, { isLoading: isChecking }] =
     useCheckOidcConnectionMutation();
   const [sendToast] = useToast();
+  // the card writes the same provider as the form, so the page owns the writer and can see when it is busy
+  const groupSyncWriter = useGroupSyncWriter();
 
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
   // the cards below the server settings stay read-only until it is saved
   const isConfigured = existingProvider != null;
-  // the submit awaits the connection check, so it reads the group sync the card may have written by then
-  const groupSyncRef = useLatest(existingProvider?.["group-sync"]);
+  const providersSetting = settingDetails?.["oidc-providers"];
+  // the env var holds every provider, so it locks the whole page rather than one field
+  const lockedEnvName = providersSetting?.is_env_setting
+    ? providersSetting.env_name
+    : undefined;
+  const isLocked = lockedEnvName != null;
   const isEnabled = existingProvider?.enabled ?? false;
 
   const initialValues = useMemo(
@@ -256,7 +267,11 @@ export function SettingsOIDCForm() {
       // the connection check runs before saving and throws on failure
       await runCheck(values);
 
-      const providerData = formValuesToProvider(values, groupSyncRef.current);
+      // the card and the save button hold each other, so no card write can be in flight here
+      const providerData = formValuesToProvider(
+        values,
+        existingProvider?.["group-sync"],
+      );
 
       if (existingProvider) {
         const { key: _key, ...updateData } = providerData;
@@ -269,11 +284,17 @@ export function SettingsOIDCForm() {
         await createProvider(providerData as CustomOidcConfig).unwrap();
       }
     },
-    [existingProvider, groupSyncRef, createProvider, updateProvider, runCheck],
+    [existingProvider, createProvider, updateProvider, runCheck],
   );
 
-  if (isLoading) {
+  if (isLoadingDetails || isLoadingProviders) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (settingDetails == null || providers == null) {
+    return (
+      <LoadingAndErrorWrapper error={t`Error loading OIDC configuration`} />
+    );
   }
 
   return (
@@ -287,6 +308,7 @@ export function SettingsOIDCForm() {
         {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
+              {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -301,6 +323,7 @@ export function SettingsOIDCForm() {
                     placeholder="okta"
                     required
                     disabled={existingProvider != null}
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="login-prompt"
@@ -309,6 +332,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder={t`Sign in with Okta`}
                     required
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="issuer-uri"
@@ -317,6 +341,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="https://your-idp.example.com"
                     required
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="client-id"
@@ -325,6 +350,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="metabase-client-id"
                     required
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="client-secret"
@@ -337,6 +363,7 @@ export function SettingsOIDCForm() {
                         ? t`Leave blank to keep current value`
                         : "your-client-secret"
                     }
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="scopes"
@@ -345,6 +372,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder={DEFAULT_SCOPES.join(", ")}
                     nullable
+                    readOnly={isLocked}
                   />
                 </Stack>
               </SettingsSection>
@@ -368,24 +396,30 @@ export function SettingsOIDCForm() {
                     label={t`Email attribute key`}
                     placeholder={DEFAULT_EMAIL_ATTRIBUTE}
                     nullable
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="attribute-firstname"
                     label={t`First name attribute key`}
                     placeholder={DEFAULT_FIRST_NAME_ATTRIBUTE}
                     nullable
+                    readOnly={isLocked}
                   />
                   <FormTextInput
                     name="attribute-lastname"
                     label={t`Last name attribute key`}
                     placeholder={DEFAULT_LAST_NAME_ATTRIBUTE}
                     nullable
+                    readOnly={isLocked}
                   />
                 </Stack>
               </CollapsibleSettingsSection>
 
               <OidcGroupMappingSection
                 provider={existingProvider}
+                writer={groupSyncWriter}
+                lockedEnvName={lockedEnvName}
+                isPageSaving={isSubmitting}
                 data-testid="oidc-group-mapping-section"
                 onToggle={(enabled) => {
                   // the attribute field hides with the switch, so an unsaved edit must not ride along on the next save
@@ -404,6 +438,7 @@ export function SettingsOIDCForm() {
                   descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                   placeholder={DEFAULT_GROUP_ATTRIBUTE}
                   nullable
+                  readOnly={isLocked}
                 />
               </OidcGroupMappingSection>
 
@@ -417,15 +452,18 @@ export function SettingsOIDCForm() {
                 >
                   {t`Check connection`}
                 </Button>
-                <FormSubmitButton
-                  disabled={!dirty}
-                  label={
-                    existingProvider && isEnabled
-                      ? t`Save changes`
-                      : t`Save and enable`
-                  }
-                  variant="filled"
-                />
+                {!isLocked && (
+                  <FormSubmitButton
+                    // a card write still in flight would be overwritten by this save
+                    disabled={!dirty || groupSyncWriter.isSaving}
+                    label={
+                      existingProvider && isEnabled
+                        ? t`Save changes`
+                        : t`Save and enable`
+                    }
+                    variant="filled"
+                  />
+                )}
               </Flex>
             </Stack>
             <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
