@@ -1,0 +1,34 @@
+.root:hover {
+  background-color: var(--mb-color-background_surface-secondary);
+}
+
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--mantine-radius-lg);
+}
+
+.root .link:active {
+  color: var(--mb-color-text-primary);
+  text-decoration: none;
+}
+
+.root .link:focus-visible {
+  outline: none;
+
+  &::after {
+    outline: 2px solid var(--mb-color-input-focus);
+    outline-offset: 2px;
+  }
+}
+
+.saveAction {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.root .saveAction[data-variant="subtle"]:hover {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
