@@ -103,7 +103,7 @@
      :card card
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params (:embedding_params card)
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :qp qp
      :constraints constraints
      :options options)))
@@ -193,7 +193,7 @@
         dashboard-id   (api.embed.common/unsigned-token->dashboard-id unsigned-token)
         dashboard      (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard       (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card           (api/check-404 (embedding-rest.db/card card-id))]
+        card           (api/check-404 (embedding-rest.db/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-query-for-dashcard
      :export-format export-format
@@ -202,7 +202,7 @@
      :card card
      :embedding-params (:embedding_params dashboard)
      :token-params (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :query-params (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
+     :query-params query-params
      :constraints constraints
      :qp qp
      :middleware middleware)))
@@ -444,7 +444,7 @@
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
         dashboard (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card (api/check-404 (embedding-rest.db/card card-id))]
+        card (api/check-404 (embedding-rest.db/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-tiles-query-for-dashcard
      dashboard dashcard card

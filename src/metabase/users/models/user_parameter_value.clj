@@ -70,7 +70,7 @@
   "Asynchronously delete params with a nil `value` and upsert the rest."
   [user-id         :- pos-int?
    dashboard-id    :- pos-int?
-   parameters      :- [:sequential :metabase.parameters.schema/parameter-with-value]]
+   parameters      :- [:sequential :metabase.parameters.schema/parameter-with-stored-value]]
   (when (setting/get :dashboards-save-last-used-parameters)
     (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                   :dashboard-id dashboard-id

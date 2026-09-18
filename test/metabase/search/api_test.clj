@@ -2072,16 +2072,17 @@
                 "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (when (search/supports-index?)
-    ;; This test is failing with "no index" for some reason, forcing the reindex
-    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
-    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                          :data count)
-          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                           :data count)]
-      (is (>= total-count result-count))
-      (is (= 1 result-count)))))
+    ;; The mock client sends repeated `:limit` keys as `limit=1&limit=3`, the same shape a real request would.
+    (let [q (str "multiplelimits" (u/lower-case-en (mt/random-name)))]
+      (mt/with-temp [:model/Card _ {:name (str q " one")}
+                     :model/Card _ {:name (str q " two")}]
+        (let [total-count  (-> (mt/user-http-request :crowberto :get 200 "search" :q q)
+                               :data count)
+              result-count (-> (mt/user-http-request :crowberto :get 200 "search" :q q :limit 1 :limit 3)
+                               :data count)]
+          (is (= 2 total-count))
+          (is (= 1 result-count)))))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
   (testing "When deleting a database, cards referring to that database should be hidden from search"
@@ -2295,3 +2296,12 @@
                                                         :q table-name :models "table" :search_engine "appdb"))]
                   (is (seq rows))
                   (is (every? (comp nil? :is_published) rows)))))))))))
+
+(deftest exploration-description-searchable-in-place-test
+  (testing "explorations match on :description in the in-place engine (parity with the appdb spec)"
+    (let [description (mt/random-name)]
+      (mt/with-temp [:model/Exploration _ {:name        "desc-probe-exploration"
+                                           :description description
+                                           :creator_id  (mt/user->id :crowberto)}]
+        (is (=? [{:model "exploration" :name "desc-probe-exploration"}]
+                (search-request-data :crowberto :q description :search_engine "in-place")))))))

@@ -91,77 +91,10 @@
   value, which JSON cannot represent.)"
   [:fn {:error/message "must be absent"} (fn [_] false)])
 
-(mr/def ::tool-payload
-  "A metabot tool's `:structured-output`/`:structured_output`, `:resources`, or `:data-parts` data: a
-  closed bag of the field names metabot tools actually set."
-  [:map {:closed true}
-   [:result-type    {:optional true} [:maybe [:or :string :keyword]]]
-   [:type           {:optional true} [:maybe [:or :string :keyword]]]
-   [:list-type      {:optional true} [:maybe [:or :string :keyword]]]
-   [:message        {:optional true} [:maybe :string]]
-   [:path           {:optional true} [:maybe :string]]
-   [:question       {:optional true} [:maybe :string]]
-   [:options        {:optional true} [:maybe [:sequential :string]]]
-   [:data           {:optional true} [:maybe [:or [:ref ::tool-payload] [:sequential [:ref ::tool-payload]]]]]
-   [:total_count    {:optional true} [:maybe :int]]
-   [:weak_match     {:optional true} [:maybe :boolean]]
-   [:tables         {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:models         {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:metrics        {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:errors         {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:results        {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:id             {:optional true} [:maybe [:or :int :string]]]
-   [:name           {:optional true} [:maybe :string]]
-   [:description    {:optional true} [:maybe :string]]
-   [:content        {:optional true} [:maybe :string]]
-   [:document       {:optional true} [:maybe :string]]
-   [:items          {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:total          {:optional true} [:maybe :int]]
-   [:page           {:optional true} [:maybe :int]]
-   [:pages          {:optional true} [:maybe :int]]
-   [:card-id        {:optional true} [:maybe :int]]
-   [:card_id        {:optional true} [:maybe :int]]
-   [:collection-id  {:optional true} [:maybe :int]]
-   [:collection_id  {:optional true} [:maybe :int]]
-   [:destination    {:optional true} [:maybe [:or :string [:ref ::tool-payload]]]]
-   [:todos          {:optional true} [:maybe [:sequential :metabase.metabot.schema/todo]]]
-   [:todo_count     {:optional true} [:maybe :int]]
-   [:events         {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:timestamp      {:optional true} [:maybe :string]]
-   [:time_matters   {:optional true} [:maybe :boolean]]
-   [:timezone       {:optional true} [:maybe :string]]
-   [:status         {:optional true} [:maybe :string]]
-   [:priority       {:optional true} [:maybe :string]]
-   [:verified       {:optional true} [:maybe :boolean]]
-   [:next-page-uri  {:optional true} [:maybe :string]]
-   [:tabs           {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:approved       {:optional true} [:maybe :boolean]]
-   [:success        {:optional true} [:maybe :boolean]]
-   [:bad_transforms {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:bad_questions  {:optional true} [:maybe [:sequential [:ref ::tool-payload]]]]
-   [:query          {:optional true} [:maybe :metabase.metabot.schema/query]]
-   [:query-id       {:optional true} [:maybe :string]]
-   [:query_id       {:optional true} [:maybe :string]]
-   [:query-content  {:optional true} [:maybe :string]]
-   [:query-json     {:optional true} [:maybe :string]]
-   [:result-columns {:optional true} [:maybe [:sequential :string]]]
-   [:database       {:optional true} [:maybe :int]]
-   [:database_id    {:optional true} [:maybe :int]]
-   [:sql_engine     {:optional true} [:maybe :string]]
-   [:chart-type     {:optional true} [:maybe [:or :string :keyword]]]
-   [:chart_type     {:optional true} [:maybe [:or :string :keyword]]]
-   [:chart-id       {:optional true} [:maybe :string]]
-   [:display        {:optional true} [:maybe [:or :string :keyword]]]
-   [:tool           {:optional true} [:maybe :string]]
-   [:dataset_query  {:optional true} [:maybe :metabase.metabot.schema/query]]
-   [:transform      {:optional true} [:maybe :metabase.metabot.schema/transform]]
-   [:target         {:optional true} [:maybe [:ref ::tool-payload]]]
-   [:source         {:optional true} [:maybe [:ref ::tool-payload]]]
-   [:schema         {:optional true} [:maybe :string]]
-   [:url            {:optional true} [:maybe :string]]
-   [:title          {:optional true} [:maybe :string]]
-   [:entity_id      {:optional true} [:maybe :int]]
-   [:link           {:optional true} [:maybe :string]]])
+(mr/def ::tool-io
+  "A tool call's `:input`/`:rawInput`/`:output`: an arbitrary JSON value whose shape the calling tool (or the LLM
+  provider) owns, not us."
+  [:schema {::mr/deliberately-open true, :description "arbitrary tool call arguments or result"} :any])
 
 (mr/def ::structured-output
   "The `persisted-structured-output-keys` subset of a tool's `:structured-output`/
@@ -174,10 +107,18 @@
    [:database      {:optional true} [:maybe :int]]
    [:chart-type    {:optional true} [:maybe [:or :string :keyword]]]])
 
+(mr/def ::migrated-v1-tool-output
+  "A v1 row's raw tool result, which `metabase.metabot.schema.migrate-v1-to-v2/migrate-v1-native->v2` carries verbatim
+  into a v2 tool part's `:output`, keyed by whatever the tool that returned it set."
+  [:map {::mr/deliberately-open true, :description "a v1 row's raw tool result"}
+   [:output            {:optional true} ::tool-io]
+   [:structured-output {:optional true} ::tool-io]
+   [:structured_output {:optional true} ::tool-io]])
+
 (mr/def ::stored-tool-output
   "A v2 tool part's `:output`: the trimmed value
   `metabase.metabot.persistence/tool-result->storable-output` stores, either a tool's bare
-  scalar result or the `:output`/`:structured_output` map trimmed from it."
+  scalar result or the `:output`/`:structured_output` map trimmed from it, or a migrated v1 row's untrimmed result."
   [:or
    :string
    :keyword
@@ -186,7 +127,8 @@
    :nil
    [:map {:closed true}
     [:output            {:optional true} [:maybe :string]]
-    [:structured_output {:optional true} [:maybe ::structured-output]]]])
+    [:structured_output {:optional true} [:maybe ::structured-output]]]
+   ::migrated-v1-tool-output])
 
 (mr/def ::ui-message-chunk
   [:multi {:dispatch (fn [chunk]
@@ -313,11 +255,6 @@
    ["message-metadata"      [:map {:closed true}
                              [:type [:= "message-metadata"]]
                              [:messageMetadata {:optional true} :any]]]])
-
-(mr/def ::tool-io
-  "A tool call's `:input`/`:rawInput`/`:output`: an arbitrary JSON value whose shape the calling tool (or the LLM
-  provider) owns, not us."
-  [:schema {::mr/deliberately-open true, :description "arbitrary tool call arguments or result"} :any])
 
 (mr/def ::tool-ui-part
   [:multi {:dispatch :state}

@@ -1,8 +1,8 @@
 name: Bundle Load Stats
 
 # Reuses the uberjar built on every master merge: boots it, signs in, loads the
-# app in a throttled headless Chrome across four network and CPU conditions, and
-# appends the times to eng-stats-importer.
+# app in a throttled headless Chrome across four network and CPU conditions and
+# two site locales, and appends the times to eng-stats-importer.
 #
 # The instance is blank on purpose. `index.html` is built from settings and the
 # signed-in user alone, so seeding content would not change a single byte of the
@@ -59,7 +59,7 @@ jobs:
     needs: [uberjar-built]
     if: ${{ needs.uberjar-built.outputs.found == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       HEAD_SHA: ${{ inputs.commit || github.event.workflow_run.head_sha }}
       MB_JETTY_PORT: "4000"
@@ -67,6 +67,9 @@ jobs:
       # Loads per condition. The first is the cold reading and the rest give the
       # median, so this trades run time for a steadier number.
       RUNS: "8"
+      # Measured in this order, so the translated reading comes from the same
+      # state the instance is set up in.
+      LOCALES: "de en"
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -114,19 +117,36 @@ jobs:
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
-          bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
-            | tee artifacts/load-times.json
+          # The site locale decides which translation catalogue the document
+          # carries, and a user with no locale of their own falls back to it.
+          # Measure both, so every commit has a translated reading and an
+          # English one, and the difference is what translation costs.
+          for locale in $LOCALES; do
+            curl -sS -X PUT -o /dev/null \
+              -H "X-Metabase-Session: ${SESSION_COOKIE}" \
+              -H "content-type: application/json" \
+              -d "{\"value\":\"${locale}\"}" \
+              "$SITE/api/setting/site-locale"
+            # One request to absorb the settings cache miss the switch causes.
+            curl -sS -o /dev/null "$SITE/"
+            bun frontend/test/bench/matrix.ts "$SITE/" "$RUNS" \
+              | tee "artifacts/load-times-${locale}.json"
+          done
       - name: Show the Metabase log if something went wrong
         if: failure()
         run: tail -100 artifacts/metabase.log || true
       - name: Import load times into Stats
         if: ${{ inputs.commit == '' }}
         env:
-          ROWS: artifacts/load-times.json
           # Passed via env (not interpolated into the shell) so the commit
           # message can't inject commands; the script keeps only the subject.
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
           COMMIT_TIMESTAMP: ${{ github.event.workflow_run.head_commit.timestamp }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
-        run: bun .github/scripts/upload-bundle-load-stats.ts
+        run: |
+          # Each file carries its own `Locale`, read from the served document.
+          for locale in $LOCALES; do
+            ROWS="artifacts/load-times-${locale}.json" \
+              bun .github/scripts/upload-bundle-load-stats.ts
+          done

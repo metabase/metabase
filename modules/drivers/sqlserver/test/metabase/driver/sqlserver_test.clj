@@ -1271,3 +1271,47 @@
         (is (= 4 (count (rows :venues 4))))
         (testing "and a later query reading every row still succeeds"
           (is (= 1000 (count (rows :checkins nil)))))))))
+
+(defn- temp-table-rows [conn table]
+  (driver/query-on-connection :sqlserver conn [(str "SELECT * FROM " table) []] {:max-rows 10}))
+
+(defn- create-temp-table! [conn table sql params]
+  (driver/execute-on-connection! :sqlserver conn
+                                 (driver/compile-create-temp-table :sqlserver {:table table
+                                                                               :query {:query sql :params params}})))
+
+(deftest transform-testing-temp-tables-are-session-local-test
+  (mt/test-driver :sqlserver
+    (testing "a transform test's temp table is visible to its own session only"
+      (let [table (driver/temp-table-name :sqlserver)]
+        (driver/do-with-test-connection
+         :sqlserver (mt/db)
+         (fn [conn]
+           (create-temp-table! conn table "SELECT 1 AS id" [])
+           (is (= [[1]] (:rows (temp-table-rows conn table))))
+           (driver/do-with-test-connection
+            :sqlserver (mt/db)
+            (fn [other-conn]
+              (is (thrown-with-msg? Exception #"Invalid object name"
+                                    (temp-table-rows other-conn table)))))))))))
+
+(deftest transform-testing-temp-table-from-parameterized-query-test
+  (mt/test-driver :sqlserver
+    (testing "a temp table created by a query with bound parameters outlives the statement that created it"
+      (let [table (driver/temp-table-name :sqlserver)]
+        (driver/do-with-test-connection
+         :sqlserver (mt/db)
+         (fn [conn]
+           (create-temp-table! conn table "SELECT CAST(? AS nvarchar(50)) AS name, CAST(? AS decimal(10,2)) AS price"
+                               ["abc" 1.5M])
+           (is (=? {:rows [["abc" 1.50M]]} (temp-table-rows conn table)))))))
+    (testing "the test connection runs temp table statements as batches, and gets its prepare method back afterwards"
+      (let [physical (atom nil)]
+        (driver/do-with-test-connection
+         :sqlserver (mt/db)
+         (fn [^java.sql.Connection conn]
+           (let [sqlserver-conn (.unwrap conn com.microsoft.sqlserver.jdbc.ISQLServerConnection)]
+             (reset! physical sqlserver-conn)
+             (is (= "scopeTempTablesToConnection"
+                    (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
+        (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))

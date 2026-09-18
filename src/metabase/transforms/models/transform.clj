@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
@@ -283,7 +284,7 @@
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
       (for [{transform-id :id :as transform} transforms]
         (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
-              transform (assoc transform :last_run last-run)]
+              transform (assoc transform :last_run (dissoc last-run :last_heartbeat))]
           (if (and (= status :succeeded) checkpoint_hi_value)
             ;; ensure consistency of last_checkpoint_value with last_run
             (if (:last_checkpoint_value transform)
@@ -345,9 +346,20 @@
     (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
+(defenterprise delete-transform-tests!
+  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
+  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
+  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
+  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
+  exists. OSS is a no-op (no transform-testing module)."
+  metabase-enterprise.transform-testing.models
+  [_transform-id]
+  nil)
+
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
+  (delete-transform-tests! (:id transform))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
@@ -484,7 +496,7 @@
                                         ;; the importer skips ref resolution.
                                         (-> source
                                             (assoc :serdes/unresolved true)
-                                            (m/update-existing :query assoc :database nil)
+                                            (m/update-existing :query #(-> % (dissoc :lib/metadata) (assoc :database nil)))
                                             (m/update-existing :source-database (constantly nil))
                                             (m/update-existing :source-tables
                                                                #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %))
@@ -492,7 +504,9 @@
                                     :import
                                     (fn [source]
                                       (if (:serdes/unresolved source)
-                                        (dissoc source :serdes/unresolved)
+                                        (-> source
+                                            (dissoc :serdes/unresolved)
+                                            (m/update-existing :query dissoc :lib/metadata))
                                         (-> source
                                             (m/update-existing :query serdes/import-mbql)
                                             (m/update-existing :source-database import-maybe-int-database-fk)

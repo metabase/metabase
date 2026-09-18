@@ -9,7 +9,6 @@
    [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.schema :as request.schema]
@@ -85,19 +84,13 @@
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
    [:scope {:optional true} [:maybe :string]]])
 
-(def ^:private RawStructuredOutput
-  "A tool's own `:structured-output`/`:structured_output` map before
-  `metabase.metabot.persistence/tool-result->storable-output` trims it down to
-  `metabase.metabot.schema.v2/structured-output` for persistence."
-  [:or ::metabot.schema/transform ::schema.v2/tool-payload [:sequential ::schema.v2/tool-payload]])
-
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
   constructors."
   [:map {:closed true}
    [:type      [:= :data]]
    [:data-type :string]
-   [:data      {:optional true} [:maybe ::schema.v2/tool-payload]]])
+   [:data      {:optional true} [:maybe ::schema.v2/tool-io]]])
 
 (def ^:private ToolResult
   "The raw return value of a tool's `:fn`, before it is trimmed for persistence or forwarded to
@@ -110,11 +103,11 @@
    :nil
    [:map {:closed true}
     [:output            {:optional true} [:maybe :string]]
-    [:structured-output {:optional true} [:maybe RawStructuredOutput]]
-    [:structured_output {:optional true} [:maybe RawStructuredOutput]]
+    [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
+    [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:terminal-error?   {:optional true} :boolean]
     [:data-parts        {:optional true} [:sequential DataPart]]
-    [:resources         {:optional true} [:sequential ::schema.v2/tool-payload]]
+    [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
     [:instructions      {:optional true} [:maybe :string]]
     [:status-code       {:optional true} [:maybe :int]]
     [:error             {:optional true} [:maybe [:map {:closed true}
@@ -138,8 +131,10 @@
    [:text              {:optional true} [:maybe :string]]
    [:content           {:optional true} [:maybe :string]]
    [:function          {:optional true} [:maybe :string]]
+   [:title             {:optional true} [:maybe :string]]
    [:arguments         {:optional true} [:maybe ToolCallArguments]]
    [:result            {:optional true} [:maybe ToolResult]]
+   [:duration-ms       {:optional true} [:maybe number?]]
    [:error             {:optional true} [:maybe [:map {:closed true}
                                                  [:message {:optional true} [:maybe :string]]
                                                  [:type    {:optional true} [:maybe :string]]]]]
@@ -151,6 +146,14 @@
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
    [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]])
+
+(def ^:private AzureCredentials
+  "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
+  [:map {:closed true}
+   [:api-key         {:optional true} [:maybe :string]]
+   [:base-url        {:optional true} [:maybe :string]]
+   [:model-family    {:optional true} [:maybe :string]]
+   [:deployment-name {:optional true} [:maybe :string]]])
 
 (def ^:private BedrockCredentials
   [:map {:closed true}
@@ -165,10 +168,11 @@
    [:oauth-access-token  {:optional true} [:maybe :string]]
    [:project-id          {:optional true} [:maybe :string]]
    [:location            {:optional true} [:maybe :string]]
+   [:auth-method         {:optional true} [:maybe :string]]
    [:base-url            {:optional true} [:maybe :string]]])
 
 (def ^:private LLMCredentials
-  [:or ApiKeyCredentials BedrockCredentials GoogleCredentials])
+  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
 
 (def ^:private ReasoningConfig
   "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."

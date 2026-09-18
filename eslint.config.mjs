@@ -404,9 +404,6 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
-      "frontend/src/metabase/embedding-hub/**/*",
-      "frontend/src/metabase/embedding/settings/**/*",
-      "frontend/src/metabase/embedding/themes/**/*",
       "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
@@ -1196,6 +1193,7 @@ const configs = [
       ".github/scripts/**/*.js",
       ".github/scripts/**/*.mjs",
       ".github/scripts/**/*.ts",
+      ".storybook/*.cjs",
     ],
     languageOptions: {
       globals: {

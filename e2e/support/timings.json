@@ -757,7 +757,7 @@
       "duration": 114881
     },
     {
-      "spec": "../test/scenarios/embedding/embedding-hub/embedding-hub.cy.spec.ts",
+      "spec": "../test/scenarios/embedding/setup-guide/setup-guide.cy.spec.ts",
       "duration": 85655
     },
     {
@@ -1011,10 +1011,6 @@
     {
       "spec": "../test/scenarios/metabot/native-sql-generation.cy.spec.ts",
       "duration": 24167
-    },
-    {
-      "spec": "../test/scenarios/metabot/transforms-codegen.cy.spec.ts",
-      "duration": 35428
     },
     {
       "spec": "../test/scenarios/metrics/browse.cy.spec.ts",

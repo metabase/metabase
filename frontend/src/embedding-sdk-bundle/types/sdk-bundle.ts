@@ -6,6 +6,8 @@ import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/C
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
+import type { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
+import type { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import type { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/SdkDebugInfo/SdkDebugInfo";
@@ -15,13 +17,13 @@ import type { InteractiveDashboard } from "embedding-sdk-bundle/components/publi
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
 import type { ResolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-query";
 import type {
-  DataAppLink,
-  DataAppRouter,
-} from "embedding-sdk-bundle/lib/data-app/router";
-import type {
   ExecuteActionParams,
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
+import type {
+  formatDate,
+  formatDateRange,
+} from "embedding-sdk-bundle/lib/format-date-range";
 import type {
   QueryDatasetParams,
   QueryDatasetResult,
@@ -60,14 +62,14 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   InternalHooksExports &
   SchemaValidationUtils &
   InternalComponentExports &
-  DataAppRoutingExports;
+  DateFormattingExports;
 
 type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
-  DataAppLink: typeof DataAppLink;
-  DataAppRouter: typeof DataAppRouter;
+  DateRangeCalendar: typeof DateRangeCalendar;
+  DateRangePopover: typeof DateRangePopover;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;
@@ -76,14 +78,6 @@ type PublicExports = {
   SdkDebugInfo: InternalComponent<typeof SdkDebugInfo>;
   StaticDashboard: InternalComponent<typeof StaticDashboard>;
   StaticQuestion: InternalComponent<typeof StaticQuestion>;
-};
-
-type DataAppRoutingExports = {
-  dataAppRouting: {
-    getBasename: () => string;
-    navigate: (to: string) => void;
-    subscribe: (callback: () => void) => () => void;
-  };
 };
 
 type ReduxStoreExports = {
@@ -124,6 +118,11 @@ type SchemaValidationUtils = {
   validateFunctionSchema: (
     schema: any,
   ) => FunctionSchemaValidationResult<unknown[], unknown>;
+};
+
+type DateFormattingExports = {
+  formatDate: typeof formatDate;
+  formatDateRange: typeof formatDateRange;
 };
 
 type InternalComponentExports = {
