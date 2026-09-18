@@ -3430,3 +3430,40 @@
           (testing "entity_id is unique"
             (is (thrown? Exception
                          (t2/insert! :glossary (assoc (row "NRR") :entity_id arr-eid))))))))))
+(deftest metabot-message-finish-reason-column-test
+  (testing "v65.2026-09-16T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
+    (impl/test-migrations ["v65.2026-09-11T12:00:03"] [migrate!]
+      (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Finish"
+                                                                 :last_name     "Reason"
+                                                                 :email         "finish-reason@test.com"
+                                                                 :date_joined   :%now
+                                                                 :password      "password"
+                                                                 :password_salt "salt"
+                                                                 ;; NOT NULL since v64.2026-07-23T12:00:05
+                                                                 :entity_id     (u/generate-nano-id)})
+            conversation-id (str (random-uuid))
+            _               (t2/insert! :metabot_conversation {:id conversation-id :user_id user-id})
+            new-message!    (fn [finished]
+                              (t2/insert-returning-pk! :metabot_message {:conversation_id conversation-id
+                                                                         :created_at      :%now
+                                                                         :profile_id      "internal"
+                                                                         :role            "assistant"
+                                                                         :data            "[]"
+                                                                         :total_tokens    0
+                                                                         :data_version    2
+                                                                         :finished        finished}))
+            completed       (new-message! true)
+            aborted         (new-message! false)
+            in-flight       (new-message! nil)
+            ;; Read whole rows: naming finish_reason in the query would make the pre-migration run a SQL
+            ;; error, which says nothing about whether the migration added the column.
+            message         (fn [id] (t2/select-one :metabot_message :id id))]
+        (migrate!)
+        (testing "the column exists and every pre-migration row reads NULL"
+          (is (contains? (message completed) :finish_reason))
+          (is (nil? (:finish_reason (message completed))))
+          (is (nil? (:finish_reason (message in-flight)))))
+        (testing "finished keeps its value: true completed, false client-aborted, NULL in flight"
+          (is (true? (:finished (message completed))))
+          (is (false? (:finished (message aborted))))
+          (is (nil? (:finished (message in-flight)))))))))

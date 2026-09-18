@@ -583,18 +583,47 @@
         context-window-tokens (assoc :contextWindowTokens context-window-tokens)
         promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
 
-(defn- completion-finish-reason
-  "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
-  `stop`: a turn that ends on a terminal tool call is a normal completion, not an incomplete
-  one. A loop stopped at max iterations surfaces as `tool-calls` instead, so the client can
-  offer to continue."
-  [finish-reason error? loop-finish-reason]
+(defn- last-part-value
+  "The last non-nil `k` among the `part-type` parts of `parts`."
+  [parts part-type k]
+  (last (keep #(when (= part-type (:type %)) (k %)) parts)))
+
+(defn incomplete-finish-reason
+  "Why a turn stopped early — `\"length\"`, `\"content-filter\"` or `\"tool-calls\"` — or nil when it ran
+  to a normal stop.
+
+  A provider `length` or `content-filter` outranks a loop that stopped at `:max-iterations`, which is
+  what surfaces as `\"tool-calls\"`. A provider `tool-calls` is not incomplete on its own: a turn ending
+  on a terminal tool call is a normal completion."
+  [finish-reason loop-finish-reason]
   (cond
     (= finish-reason "length")             "length"
-    error?                                 "error"
     (= finish-reason "content-filter")     "content-filter"
-    (= loop-finish-reason :max-iterations) "tool-calls"
-    :else                                  "stop"))
+    (= loop-finish-reason :max-iterations) "tool-calls"))
+
+(defn parts->incomplete-finish-reason
+  "[[incomplete-finish-reason]] for a finished turn's `parts`.
+
+  Takes the provider reason from the last `:usage` part carrying one and the loop reason from the last
+  `:finish` part carrying one, so a turn read back from storage reports what the live SSE stream did."
+  [parts]
+  (incomplete-finish-reason (last-part-value parts :usage :finish-reason)
+                            (last-part-value parts :finish :finish-reason)))
+
+(defn parts->raw-finish-reason
+  "The provider's own stop reason for a finished turn, before translation to a [[finish-reasons]]
+  value, or nil. Taken from the last `:usage` part carrying one."
+  [parts]
+  (last-part-value parts :usage :raw-finish-reason))
+
+(defn- completion-finish-reason
+  "The wire `finishReason` for a completed turn: an [[incomplete-finish-reason]], `\"error\"` or `\"stop\"`.
+  A `length` truncation outranks an in-turn error; every other error outranks an incomplete reason."
+  [finish-reason error? loop-finish-reason]
+  (cond
+    (= finish-reason "length") "length"
+    error?                     "error"
+    :else                      (or (incomplete-finish-reason finish-reason loop-finish-reason) "stop")))
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output

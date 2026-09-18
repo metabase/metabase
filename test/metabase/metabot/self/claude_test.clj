@@ -208,10 +208,12 @@
     (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
       (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
                                    (usage-chunk raw))
-        "max_tokens" "length"
-        "end_turn"   "stop"
-        "pause_turn" "stop"
-        "compaction" "other"))))
+        "max_tokens"                    "length"
+        "model_context_window_exceeded" "length"
+        "refusal"                       "content-filter"
+        "end_turn"                      "stop"
+        "pause_turn"                    "stop"
+        "compaction"                    "other"))))
 
 (deftest ^:parallel claude-thinking-blocks-translated-test
   (testing "thinking content blocks become reasoning chunks; signature rides the end"

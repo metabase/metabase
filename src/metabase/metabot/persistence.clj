@@ -11,6 +11,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
@@ -380,7 +381,9 @@
   (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
   the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
   accumulated separately into the `usage` column; the error part body, if any,
-  is captured into the `error` column via the `:error` kwarg.
+  is captured into the `error` column via the `:error` kwarg; why the turn
+  stopped early, if it did, is derived from those same parts into the
+  `finish_reason` column.
 
   Keyword args:
   - `:profile-id` — same value passed to [[start-turn!]]; tags the
@@ -417,6 +420,12 @@
                                                               (reduce + 0))
                                          :context_tokens (extract-context-tokens parts)
                                          :finished       (boolean finished?)
+                                         ;; Recorded whatever else the turn did: a turn the client
+                                         ;; abandoned, or one that also errored, was still truncated
+                                         ;; or filtered, and support and EE analytics read that back.
+                                         ;; `row->status` ranks aborted and errored ahead of it, so
+                                         ;; the status the client sees is unchanged.
+                                         :finish_reason  (self.core/parts->incomplete-finish-reason parts)
                                          :error          (safe-encode-error error)}
                                   turn-state   (assoc :state turn-state)
                                   slack-msg-id (assoc :slack_msg_id slack-msg-id)
@@ -664,23 +673,42 @@
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
             placeholder-grace-period-ms))))
 
+(def ^:private known-finish-reason
+  "The stopped-early reasons this build can render, as a lookup. Any other stored value — one written
+  by a newer build — reads as a plain completed turn rather than reaching the client as a status
+  variant it cannot model."
+  #{"length" "content-filter" "tool-calls"})
+
 (defn- row->status
-  "The message's status, from its own `finished` / `error` columns. Absent
+  "The message's status, from its own `finished` / `error` / `finish_reason` columns. Absent
   `:finished` means success; explicit `nil` past the grace window is a crashed
   placeholder and reads as aborted."
   [row]
-  (cond
-    (placeholder-still-active? row)
-    {:type "in_progress"}
+  ;; Branch order is the precedence: a row can carry a reason and still be aborted or errored, and
+  ;; what the client saw happen to the turn outranks why the model stopped.
+  (let [stored-reason (:finish_reason row)
+        finish-reason (known-finish-reason stored-reason)]
+    (when (and (some? stored-reason) (nil? finish-reason))
+      ;; This build has no copy to show for a reason it doesn't know, so the turn reads as a
+      ;; normal completed one and the reason is thrown away. Warn so it leaves a trace: the
+      ;; row came either from a newer build or from a bad write.
+      (log/warnf "Unknown metabot_message.finish_reason %s on message %s; reading it as a completed turn"
+                 (pr-str stored-reason) (:id row)))
+    (cond
+      (placeholder-still-active? row)
+      {:type "in_progress"}
 
-    (some? (:error row))
-    {:type "errored" :error (decode-error (:error row))}
+      (some? (:error row))
+      {:type "errored" :error (decode-error (:error row))}
 
-    (and (contains? row :finished) (not (true? (:finished row))))
-    {:type "aborted"}
+      (and (contains? row :finished) (not (true? (:finished row))))
+      {:type "aborted"}
 
-    :else
-    {:type "done"}))
+      finish-reason
+      {:type "incomplete" :finishReason finish-reason}
+
+      :else
+      {:type "done"})))
 
 (defn- message->client-message
   "Convert one `MetabotMessage` row into its client shape: the row's parts, plus
@@ -768,7 +796,7 @@
   the source row so the copied prefix can be told apart from messages added after
   the fork."
   [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state
-                                       context_tokens]}]
+                                       context_tokens finish_reason]}]
   (cond-> {:conversation_id        new-conversation-id
            :data                   data
            :data_version           data_version
@@ -781,9 +809,10 @@
            :ai_proxied             (boolean ai_proxied)
            :user_id                user-id
            :forked_from_message_id id}
-    (some? finished) (assoc :finished finished)
-    (some? error)    (assoc :error error)
-    (some? state)    (assoc :state state)))
+    (some? finished)      (assoc :finished finished)
+    (some? error)         (assoc :error error)
+    (some? state)         (assoc :state state)
+    (some? finish_reason) (assoc :finish_reason finish_reason)))
 
 (mu/defn fork-conversation!
   "Fork `conversation-id` at the assistant message identified by `fork-external-id`,
