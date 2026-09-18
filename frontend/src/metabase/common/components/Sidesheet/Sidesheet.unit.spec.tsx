@@ -47,6 +47,39 @@ describe("Sidesheet", () => {
     expect(screen.getByText("more content")).toBeInTheDocument();
   });
 
+  it("should use the Figma width by default", () => {
+    render(
+      <Sidesheet isOpen onClose={jest.fn()}>
+        hello world
+      </Sidesheet>,
+    );
+
+    expect(screen.getByTestId("sidesheet")).toHaveStyle({ width: "29rem" });
+  });
+
+  it("should preserve the explicit sm width", () => {
+    render(
+      <Sidesheet isOpen size="sm" onClose={jest.fn()}>
+        hello world
+      </Sidesheet>,
+    );
+
+    expect(screen.getByTestId("sidesheet")).toHaveStyle({ width: "30rem" });
+  });
+
+  it("should apply the offset variant when requested", () => {
+    render(
+      <Sidesheet isOpen offset={16} onClose={jest.fn()}>
+        hello world
+      </Sidesheet>,
+    );
+
+    expect(screen.getByTestId("sidesheet")).toHaveAttribute(
+      "data-offset",
+      "16",
+    );
+  });
+
   it("should fire onClose when close button is clicked", async () => {
     const closeSpy = jest.fn();
     render(

@@ -3,11 +3,46 @@
     position: fixed;
     height: 100dvh;
     max-height: 100dvh;
+    inset-block: 0;
     inset-inline-end: 0;
+    border: 0;
     border-radius: 0;
     display: flex;
     flex: 1;
     flex-direction: column;
+
+    &[data-offset="16"] {
+      height: calc(
+        100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
+      );
+      max-height: calc(
+        100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
+      );
+      inset-block: var(--mantine-spacing-lg);
+      inset-inline-end: var(--mantine-spacing-lg);
+      border-radius: var(--mantine-radius-lg);
+    }
+  }
+}
+
+.SidesheetTitle {
+  font-size: var(--mantine-h4-font-size);
+  line-height: var(--mantine-h4-line-height);
+}
+
+.SidesheetCloseButton {
+  width: rem(32px);
+  height: rem(32px);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-primary) !important;
+
+  &:hover {
+    color: var(--mb-color-text-primary) !important;
+  }
+
+  svg {
+    width: rem(16px) !important;
+    height: rem(16px) !important;
   }
 }
 
