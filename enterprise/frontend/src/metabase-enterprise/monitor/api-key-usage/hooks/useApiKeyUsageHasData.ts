@@ -38,6 +38,7 @@ export function useApiKeyUsageHasData({
   table,
   groupMembersTable,
   dateFilter,
+  apiKeyId,
   userId,
   groupId,
 }: DataSources & ApiKeyUsageFilters): Result {
@@ -49,11 +50,12 @@ export function useApiKeyUsageHasData({
             table,
             groupMembersTable,
             dateFilter,
+            apiKeyId,
             userId,
             groupId,
           })
         : null,
-    [provider, table, groupMembersTable, dateFilter, userId, groupId],
+    [provider, table, groupMembersTable, dateFilter, apiKeyId, userId, groupId],
   );
 
   const { data, isFetching, error } = useAdhocBreakoutQuery(query);

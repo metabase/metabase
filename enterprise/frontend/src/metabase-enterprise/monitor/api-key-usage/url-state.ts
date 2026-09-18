@@ -1,5 +1,7 @@
 import {
+  type QueryParam,
   type UrlStateConfig,
+  getFirstParamValue,
   parsePage,
   parseSortColumn,
   parseSortDirection,
@@ -17,6 +19,9 @@ import {
 } from "./query-utils";
 
 type ApiKeyUsageEventsUrlState = {
+  /** The API key an admin is scoping the page to — not part of the shared filter bar, so it's
+   * tracked here rather than in `FilterUrlState`. */
+  api_key: string | null;
   /** Current page of the row-level events table, 0-indexed. */
   page: number;
   sort_column: ApiKeyUsageEventSortColumn;
@@ -28,9 +33,15 @@ export type ApiKeyUsageUrlState = FilterUrlState & ApiKeyUsageEventsUrlState;
 const DEFAULT_SORT_COLUMN: ApiKeyUsageEventSortColumn = "occurred_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
+function parseApiKey(param: QueryParam): string | null {
+  const value = getFirstParamValue(param);
+  return value && value.trim().length > 0 ? value.trim() : null;
+}
+
 const apiKeyUsageEventsUrlStateConfig: UrlStateConfig<ApiKeyUsageEventsUrlState> =
   {
     parse: (query) => ({
+      api_key: parseApiKey(query.api_key),
       page: parsePage(query.page),
       sort_column: parseSortColumn(
         query.sort_column,
@@ -42,7 +53,8 @@ const apiKeyUsageEventsUrlStateConfig: UrlStateConfig<ApiKeyUsageEventsUrlState>
         DEFAULT_SORT_DIRECTION,
       ),
     }),
-    serialize: ({ page, sort_column, sort_direction }) => ({
+    serialize: ({ api_key, page, sort_column, sort_direction }) => ({
+      api_key: api_key ?? undefined,
       page: page === 0 ? undefined : String(page),
       sort_column:
         sort_column === DEFAULT_SORT_COLUMN ? undefined : sort_column,
