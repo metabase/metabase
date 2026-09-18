@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.h1c4r5
+      author: havenchyk
+      comment: Add a portable entity ID to timeline events
+      changes:
+        - addColumn:
+            tableName: timeline_event
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID used to identify the event across instances
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.zvhbd7
+      author: havenchyk
+      comment: Backfill entity IDs for existing timeline events
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: UPDATE timeline_event SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: UPDATE timeline_event SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: h2
+            sql: UPDATE timeline_event SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+      rollback: []
+
+  - changeSet:
+      id: v65.0npr54
+      author: havenchyk
+      comment: Require an entity ID on timeline events
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline_event
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v65.lpm4z3
+      author: havenchyk
+      comment: entity_id is unique on timeline events
+      changes:
+        - addUniqueConstraint:
+            tableName: timeline_event
+            columnNames: entity_id
+            constraintName: uq_timeline_event_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: timeline_event
+            constraintName: uq_timeline_event_entity_id

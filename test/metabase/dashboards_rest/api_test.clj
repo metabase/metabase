@@ -1269,6 +1269,107 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")))))))
 
+(deftest copy-dashboard-keeps-inaccessible-timeline-selection-test
+  (testing "POST /api/dashboard/:id/copy deep copies a card whose selected timeline the user cannot read"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Timeline timeline {:collection_id (:id collection)}
+                     :model/Card card {:dataset_query          (mt/mbql-query venues)
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {}
+                     :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+        (let [response       (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard))
+                                                   {:is_deep_copy true})
+              copied-card-id (t2/select-one-fn :card_id :model/DashboardCard :dashboard_id (:id response))]
+          (is (not= (:id card) copied-card-id))
+          (is (= [(:id timeline)]
+                 (get-in (t2/select-one :model/Card copied-card-id)
+                         [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
+(deftest add-card-with-restricted-timeline-to-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id adding a card whose selected timeline the user cannot read"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Dashboard {embedded-id :id} {:enable_embedding true}
+                     :model/Dashboard {private-id :id} {}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id embedded-id private-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
+            (let [dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]]
+              (testing "is rejected on a public dashboard"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :put 403 (format "dashboard/%d" public-id)
+                                             {:dashcards dashcards :tabs []})))
+                (is (empty? (t2/select :model/DashboardCard :dashboard_id public-id))))
+              (testing "is rejected on an embedded dashboard"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :put 403 (format "dashboard/%d" embedded-id)
+                                             {:dashcards dashcards :tabs []}))))
+              (testing "is allowed on a dashboard that is not shared"
+                (is (= [card-id]
+                       (map :card_id (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" private-id)
+                                                                       {:dashcards dashcards :tabs []}))))))
+              (testing "is allowed for a user who can read the timeline"
+                (is (= [card-id]
+                       (map :card_id (:dashcards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" public-id)
+                                                                       {:dashcards dashcards :tabs []}))))))
+              (testing "a card already on the dashboard can still be saved"
+                (let [[dashcard] (t2/select :model/DashboardCard :dashboard_id public-id)]
+                  (is (= [card-id]
+                         (map :card_id (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" public-id)
+                                                                         {:dashcards [(assoc dashcard :row 1)] :tabs []}))))))))))))))
+
+(deftest point-dashcard-at-archived-restricted-timeline-card-test
+  (testing "PUT /api/dashboard/:id cannot point a dashcard at an archived card whose selected timeline the user cannot read"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {archived-id :id} {:display                :line
+                                                    :archived               true
+                                                    :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Card {placed-id :id} {}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id public-id :card_id placed-id
+                                                             :row 0 :col 0 :size_x 4 :size_y 4}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id]
+          (api.card-test/with-cards-in-writeable-collection! [archived-id placed-id]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (format "dashboard/%d" public-id)
+                                         {:dashcards [{:id dashcard-id :card_id archived-id
+                                                       :row 0 :col 0 :size_x 4 :size_y 4}]
+                                          :tabs []})))
+            (testing "so unarchiving the card cannot put its events on the shared dashboard"
+              (mt/user-http-request :rasta :put 200 (str "card/" archived-id) {:archived false})
+              (is (= [placed-id]
+                     (map :card_id (t2/select :model/DashboardCard :dashboard_id public-id)))))))))))
+
+(deftest add-visualizer-dashcard-with-restricted-timeline-to-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id allows a visualizer dashcard whose card selects an unreadable timeline, since a shared dashboard never shows its events"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
+            (let [visualizer {:visualization {:display "line" :columnValuesMapping {} :settings {}}}]
+              (is (= [card-id]
+                     (map :card_id (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" public-id)
+                                                                     {:dashcards [{:id -1 :card_id card-id
+                                                                                   :row 0 :col 0 :size_x 4 :size_y 4
+                                                                                   :visualization_settings visualizer}]
+                                                                      :tabs []})))))
+              (is (= [visualizer]
+                     (map :visualization_settings (t2/select :model/DashboardCard :dashboard_id public-id)))))))))))
+
 (deftest copy-dashboard-with-dashboard-questions
   (testing "`is_deep_copy=true` works for dashboards regardless of whether they have dashboard questions"
     (mt/with-temp [:model/Collection {coll-id :id} {}

@@ -1,9 +1,10 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
 // brand (#509EE3) in getComputedStyle's normalized color format
 const HIGHLIGHTED_DOT_FILL = "rgb(80, 158, 227)";
@@ -338,12 +339,12 @@ describe("scenarios > organization > timelines > question", () => {
         // should hide individual events from chart if hidden in sidebar
         cy.icon("calendar").click();
         cy.findByTestId("sidebar-content").findByText("Releases").click();
-        toggleEventVisibility("RC1");
+        H.toggleTimelineEventVisibility("RC1");
 
         H.timelineEventChip("RC1").should("not.exist");
 
         // should show individual events in chart again
-        toggleEventVisibility("RC1");
+        H.toggleTimelineEventVisibility("RC1");
 
         H.timelineEventChip("RC1").should("be.visible");
 
@@ -352,34 +353,29 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByLabelText("Event name").type("RC2");
         cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.button("Create").click();
-        waitForTimelinesAfterCreatingAnEvent("RC2");
+        H.waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
         H.timelineEventChip("RC2").should("be.visible");
 
         // should then hide the newly created event
-        timelineEventVisibility("RC2").should("be.checked");
-        toggleEventVisibility("RC2");
-        timelineEventVisibility("RC2").should("not.be.checked");
+        H.timelineEventVisibility("RC2").should("be.checked");
+        H.toggleTimelineEventVisibility("RC2");
+        H.timelineEventVisibility("RC2").should("not.be.checked");
 
         H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
         // should display its checkbox in an indeterminate state
-        cy.findByTestId("sidebar-content")
-          .findByText("Releases")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => {
-            cy.findByRole("checkbox").should(
-              "have.prop",
-              "indeterminate",
-              true,
-            );
+        H.timelineVisibility("Releases").should(
+          "have.prop",
+          "indeterminate",
+          true,
+        );
 
-            // Hide the timeline then show it again
-            cy.findByRole("checkbox").click();
-            cy.findByRole("checkbox").click();
-          });
+        // Hide the timeline then show it again
+        H.timelineVisibility("Releases").click();
+        H.timelineVisibility("Releases").click();
 
         // once timeline is visible, all its events should be visible
         H.timelineEventChip("RC2").should("be.visible");
@@ -400,16 +396,13 @@ describe("scenarios > organization > timelines > question", () => {
 
         // making a hidden timeline visible
         // should make its events automatically visible
-        cy.findByTestId("sidebar-content")
-          .findByText("Timeline for collection")
-          .closest("[aria-label='Timeline card header']")
-          .within(() => cy.findByRole("checkbox").click());
+        H.timelineVisibility("Timeline for collection").click();
 
         H.timelineEventChip("TC1").should("be.visible");
 
         // events whose timeline was invisible on page load
         // should be hideable once their timelines are visible
-        toggleEventVisibility("TC1");
+        H.toggleTimelineEventVisibility("TC1");
 
         H.timelineEventChip("TC1").should("not.exist");
 
@@ -431,13 +424,13 @@ describe("scenarios > organization > timelines > question", () => {
 
           cy.button("Create").click();
         });
-        waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
+        H.waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
 
         H.modal().should("not.exist"); // wait for modal to close
 
         cy.log("remove all other events except the new one");
-        toggleEventVisibility("RC1").should("not.be.checked");
-        toggleEventVisibility("RC2").should("not.be.checked");
+        H.toggleTimelineEventVisibility("RC1").should("not.be.checked");
+        H.toggleTimelineEventVisibility("RC2").should("not.be.checked");
 
         cy.log("the new event should be visible in the chart");
         H.timelineEventChip("Event at the end of range").should("be.visible");
@@ -586,7 +579,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.timelineEventChip("Summer party").should("be.visible");
     });
 
-    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {
+    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all' or the chip", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
@@ -642,8 +635,8 @@ describe("scenarios > organization > timelines > question", () => {
         "true",
       );
       cy.findByTestId("sidebar-content").within(() => {
-        timelineEventCard("Alpha").should("be.visible");
-        timelineEventCard("Delta").should("be.visible");
+        H.timelineEventCard("Alpha").should("be.visible");
+        H.timelineEventCard("Delta").should("be.visible");
       });
 
       cy.log("the unrelated timeline is filtered out of the focused list");
@@ -656,46 +649,25 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByTestId("sidebar-content")
         .findByText("Other")
         .should("be.visible");
-    });
 
-    it("should focus the sidebar on the group when a grouped chip is clicked directly", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: "Releases" },
-        events: [
-          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
-          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
-        ],
-      });
-      H.createTimelineWithEvents({
-        timeline: { name: "Other" },
-        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
-      });
-
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "line",
-      });
-
-      cy.log("clicking a grouped chip focuses the sidebar on its events");
-      H.timelineEventChip("2 events").should("be.visible").click();
-
-      cy.findByTestId("sidebar-content").within(() => {
-        timelineEventCard("Alpha").should("be.visible");
-        timelineEventCard("Beta").should("be.visible");
-      });
+      cy.log("clicking the still-selected chip clears the selection");
+      H.timelineEventChip("4 events").click();
+      H.timelineEventChip("4 events").should(
+        "have.attr",
+        "data-selected",
+        "false",
+      );
       cy.findByTestId("sidebar-content")
         .findByText("Other")
-        .should("not.exist");
+        .should("be.visible");
+
+      cy.log("clicking it again focuses the sidebar on the group");
+      H.timelineEventChip("4 events").click();
+      cy.findByTestId("timeline-sidebar-show-all").should("be.visible");
+      cy.findByTestId("sidebar-content").within(() => {
+        H.timelineEventCard("Alpha").should("be.visible");
+        cy.findByText("Other").should("not.exist");
+      });
     });
 
     it("should select a single event and open the full sidebar when its chip is clicked", () => {
@@ -795,6 +767,92 @@ describe("scenarios > organization > timelines > question", () => {
     });
   });
 
+  describe("saved selections", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+    });
+
+    it("should keep changing the display after a selected timeline is deleted", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      }).then(({ timeline }) => {
+        H.createQuestion(
+          {
+            name: "Orders by month",
+            display: "table",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+            },
+            visualization_settings: {
+              "timeline.selected_timeline_ids": [timeline.id],
+            },
+          },
+          { wrapId: true },
+        );
+        cy.request("DELETE", `/api/timeline/${timeline.id}`);
+      });
+
+      H.visitQuestion("@questionId");
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar().findByTestId("Line-button").click();
+      H.echartsContainer().findByText("Created At: Month").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@updateQuestion").its("response.statusCode").should("eq", 200);
+      cy.findByTestId("qb-header").button("Save").should("not.exist");
+    });
+
+    it("should duplicate a question whose selected timeline the user cannot access", () => {
+      cy.intercept("POST", "/api/card").as("cardCreate");
+      H.createCollection({ name: "Events" }).then(({ body: { id } }) => {
+        H.createTimelineWithEvents({
+          timeline: { name: "Releases", collection_id: id },
+          events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+        }).then(({ timeline }) => {
+          H.createQuestion(
+            {
+              name: "Orders by month",
+              display: "line",
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [
+                  ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+                ],
+              },
+              visualization_settings: {
+                "timeline.selected_timeline_ids": [timeline.id],
+              },
+            },
+            { wrapId: true },
+          );
+        });
+        cy.updateCollectionGraph({
+          [ALL_USERS_GROUP]: { [id]: "none" },
+          [COLLECTION_GROUP]: { [id]: "none" },
+          [DATA_GROUP]: { [id]: "none" },
+        });
+      });
+
+      cy.signInAsNormalUser();
+      H.visitQuestion("@questionId");
+      H.openQuestionActions();
+      H.popover().findByText("Duplicate").click();
+      H.modal().button("Duplicate").click();
+
+      cy.wait("@cardCreate").its("response.statusCode").should("eq", 200);
+      cy.findByTestId("qb-header-left-side")
+        .findByDisplayValue("Orders by month - Duplicate")
+        .should("be.visible");
+    });
+  });
+
   describe("as readonly user", () => {
     it("should not allow creating default timelines", () => {
       cy.signIn("readonly");
@@ -829,22 +887,41 @@ describe("scenarios > organization > timelines > question", () => {
       H.rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
+
+  describe("analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track opening the events panel and saving a question with a recorded selection", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
+      });
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.timelineEventChip("RC1").should("be.visible");
+
+      cy.icon("calendar").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "question_events_panel_opened",
+        triggered_from: "footer",
+      });
+
+      H.toggleTimelineEventVisibility("RC1");
+      H.timelineEventChip("RC1").should("not.exist");
+      H.saveSavedQuestion();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "question_timeline_events_saved",
+        target_id: ORDERS_BY_YEAR_QUESTION_ID,
+      });
+    });
+  });
 });
-
-function timelineEventCard(eventName) {
-  return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
-}
-
-function toggleEventVisibility(eventName) {
-  return timelineEventVisibility(eventName).click();
-}
-
-function timelineEventVisibility(eventName) {
-  return timelineEventCard(eventName).findByRole("checkbox");
-}
-
-function waitForTimelinesAfterCreatingAnEvent(eventName) {
-  return timelineEventCard(eventName)
-    .findByText(/^Bobby Tables added this on/)
-    .should("be.visible");
-}
