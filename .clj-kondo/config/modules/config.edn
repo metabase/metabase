@@ -4113,6 +4113,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTest
                     :model/User}}
 
   enterprise/search
@@ -4346,6 +4347,27 @@
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
+
+  enterprise/transform-testing
+  {:team "Graphy"
+   :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
+   :uses #{api
+           driver
+           events
+           lib
+           lib.schema
+           models
+           premium-features
+           sql-tools
+           sql-tools.parsing
+           transforms.base
+           util
+           warehouses}
+   :model-exports #{:model/TransformTest}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Transform
+                    :model/User}}
 
   enterprise/transforms
   {:team "Graphy"
