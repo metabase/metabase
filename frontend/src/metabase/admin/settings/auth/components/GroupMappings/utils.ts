@@ -1,10 +1,11 @@
-import type { MappingsType } from "metabase/admin/types";
 import {
   isAdminGroup,
   isDefaultGroup,
   isDefaultTenantGroup,
 } from "metabase/common/utils/groups";
 import type { GroupId, GroupListQuery } from "metabase-types/api";
+
+import type { MappingsType } from "./types";
 
 /** Rebuilds in place so a renamed mapping keeps its position in the list */
 export function withMappingEntry(

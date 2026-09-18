@@ -447,9 +447,11 @@ describe("SettingsOIDCForm", () => {
 
       await addMapping("devs", "Engineering");
 
-      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
     });
 
     it("holds the mapping editor while the switch write is in flight", async () => {
@@ -458,7 +460,9 @@ describe("SettingsOIDCForm", () => {
       await userEvent.click(groupMappingSwitch());
 
       expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
     });
 
@@ -468,9 +472,11 @@ describe("SettingsOIDCForm", () => {
       await userEvent.click(groupMappingSwitch());
 
       expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).toBeChecked();
       expect(await getOidcPuts()).toHaveLength(1);
     });
@@ -483,8 +489,10 @@ describe("SettingsOIDCForm", () => {
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
       expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).toBeChecked();
     });
 

@@ -84,11 +84,11 @@ export function useGroupMappingMode(
   };
 
   const confirmClear = async () => {
-    const saved = await groupMapping.saveSettings(
+    const result = await groupMapping.saveSettings(
       { "jwt-group-sync": true, "jwt-group-mappings": {} },
       { successMessage: t`Changes saved` },
     );
-    if (saved) {
+    if (result.ok) {
       setIsClearConfirmOpen(false);
     }
   };

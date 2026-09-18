@@ -407,9 +407,11 @@ describe("SettingsSAMLForm", () => {
       await userEvent.click(groupMappingSwitch());
 
       expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).toBeChecked();
       expect(await findRequests("PUT")).toHaveLength(1);
     });
@@ -422,8 +424,10 @@ describe("SettingsSAMLForm", () => {
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
       expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).toBeChecked();
     });
 

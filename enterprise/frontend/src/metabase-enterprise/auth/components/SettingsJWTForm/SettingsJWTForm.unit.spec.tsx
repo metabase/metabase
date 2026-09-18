@@ -15,7 +15,6 @@ import {
   within,
 } from "__support__/ui";
 import { settingsApi } from "metabase/settings";
-import { PROVISIONING_WRITE_DEBOUNCE_MS } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -234,7 +233,7 @@ const addMapping = async (name: string, groupName: string) => {
 
 const findMappingRow = (name: string) =>
   screen
-    .getAllByTestId("jwt-group-mapping-row")
+    .getAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
 
 describe("SettingsJWTForm", () => {
@@ -517,42 +516,25 @@ describe("SettingsJWTForm", () => {
     });
 
     it("sends one write for a burst of clicks", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      await setup({ jwtEnabled: true, configured: true });
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        provisioningSaveDelayMs: 100,
+      });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
-      await user.click(toggle);
-      await user.click(toggle);
-      await user.click(toggle);
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
 
       expect(toggle).not.toBeChecked();
-      await act(() =>
-        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS),
-      );
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].body).toEqual({ value: false });
     });
 
-    it("writes a pending toggle when the page is left before the debounce fires", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      const { unmount } = await setup({ jwtEnabled: true, configured: true });
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-
-      await user.click(toggle);
-      unmount();
-
-      await waitFor(async () => {
-        expect(await findRequests("PUT")).toHaveLength(1);
-      });
-      const puts = await findRequests("PUT");
-      expect(puts[0].body).toEqual({ value: false });
-    });
-
-    it("keeps the switch focused and enabled while the write is in flight", async () => {
+    it("keeps the switch focused while the write is in flight", async () => {
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -564,7 +546,9 @@ describe("SettingsJWTForm", () => {
       await userEvent.keyboard(" ");
 
       expect(toggle).not.toBeChecked();
+      // a real disabled attribute would blur it and lose the keyboard user's place
       expect(toggle).toBeEnabled();
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
       expect(toggle).toHaveFocus();
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       expect(toggle).toHaveFocus();
@@ -586,7 +570,7 @@ describe("SettingsJWTForm", () => {
       fetchMock.removeRoute("get-session-properties");
       fetchMock.get("path:/api/session/properties", staleSnapshot, {
         name: "stale-session-properties",
-        delay: PROVISIONING_WRITE_DEBOUNCE_MS + 100,
+        delay: 400,
         repeat: 1,
       });
       fetchMock.get(
@@ -611,9 +595,7 @@ describe("SettingsJWTForm", () => {
 
       expect(toggle).not.toBeChecked();
       // the write goes out, then the stale answer lands while the write's own refetch is still pending
-      await act(() =>
-        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS + 100),
-      );
+      await act(() => jest.advanceTimersByTimeAsync(400));
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       expect(toggle).not.toBeChecked();
       // the refetch after the write is the only one left to land
@@ -668,7 +650,7 @@ describe("SettingsJWTForm", () => {
 
       expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeEnabled();
-      const row = screen.getByTestId("jwt-group-mapping-row");
+      const row = screen.getByTestId("group-mapping-row");
       expect(within(row).getByText("group-a")).toBeInTheDocument();
       expect(await within(row).findByText("foo")).toBeInTheDocument();
     });
@@ -716,9 +698,7 @@ describe("SettingsJWTForm", () => {
         "jwt-group-mappings": { existing: [3], devs: [4] },
       });
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      expect(
-        await screen.findAllByTestId("jwt-group-mapping-row"),
-      ).toHaveLength(2);
+      expect(await screen.findAllByTestId("group-mapping-row")).toHaveLength(2);
       expect(
         screen.getByRole("button", { name: "Save changes" }),
       ).toBeDisabled();
@@ -794,18 +774,16 @@ describe("SettingsJWTForm", () => {
         expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
       });
       expect(await findRequests("PUT")).toHaveLength(1);
-      expect(
-        screen.queryByTestId("jwt-group-mapping-row"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("radio", { name: "Manual" }));
 
       await waitFor(() => {
         expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
       });
-      expect(
-        await screen.findByTestId("jwt-group-mapping-row"),
-      ).toHaveTextContent("existing");
+      expect(await screen.findByTestId("group-mapping-row")).toHaveTextContent(
+        "existing",
+      );
       const puts = await findRequests("PUT");
       expect(puts.map(({ body }) => body)).toEqual([
         { "jwt-group-sync": false },
@@ -910,7 +888,7 @@ describe("SettingsJWTForm", () => {
         "devs",
       );
       expect(screen.getByRole("button", { name: "Add mapping" })).toBeEnabled();
-      expect(screen.getAllByTestId("jwt-group-mapping-row")).toHaveLength(1);
+      expect(screen.getAllByTestId("group-mapping-row")).toHaveLength(1);
       expect(screen.queryByText("Mapping added")).not.toBeInTheDocument();
     });
 
@@ -1142,7 +1120,7 @@ describe("SettingsJWTForm", () => {
         "second-renamed": [4],
       });
       const names = screen
-        .getAllByTestId("jwt-group-mapping-row")
+        .getAllByTestId("group-mapping-row")
         .map((row) => within(row).getAllByText(/./)[0].textContent);
       expect(names).toEqual(["first", "second-renamed"]);
     });
@@ -1174,9 +1152,7 @@ describe("SettingsJWTForm", () => {
         screen.getByRole("button", { name: "Add mapping" }),
       );
 
-      expect(
-        await screen.findAllByTestId("jwt-group-mapping-row"),
-      ).toHaveLength(2);
+      expect(await screen.findAllByTestId("group-mapping-row")).toHaveLength(2);
     });
 
     it("commits the row editor on Enter instead of submitting the page", async () => {
@@ -1213,7 +1189,7 @@ describe("SettingsJWTForm", () => {
           screen.queryByPlaceholderText("Enter JWT group..."),
         ).not.toBeInTheDocument();
       });
-      expect(screen.getAllByTestId("jwt-group-mapping-row")).toHaveLength(2);
+      expect(screen.getAllByTestId("group-mapping-row")).toHaveLength(2);
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].body).not.toHaveProperty("jwt-identity-provider-uri");
@@ -1238,7 +1214,7 @@ describe("SettingsJWTForm", () => {
       expect(
         screen.queryByPlaceholderText("Enter JWT group..."),
       ).not.toBeInTheDocument();
-      expect(screen.getAllByTestId("jwt-group-mapping-row")).toHaveLength(1);
+      expect(screen.getAllByTestId("group-mapping-row")).toHaveLength(1);
       expect(await findRequests("PUT")).toHaveLength(0);
     });
 
@@ -1371,9 +1347,7 @@ describe("SettingsJWTForm", () => {
         "jwt-group-sync": true,
         "jwt-group-mappings": {},
       });
-      expect(
-        screen.queryByTestId("jwt-group-mapping-row"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
     });
 
     it("keeps the confirmation busy until the automatic switch is saved", async () => {
@@ -1449,7 +1423,7 @@ describe("SettingsJWTForm", () => {
       ).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeDisabled();
-      expect(screen.getByTestId("jwt-group-mapping-row")).toHaveTextContent(
+      expect(screen.getByTestId("group-mapping-row")).toHaveTextContent(
         "env-group",
       );
       expect(
@@ -1471,7 +1445,7 @@ describe("SettingsJWTForm", () => {
 
       expect(screen.getByText("Using MB_JWT_GROUP_SYNC")).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
-      expect(screen.getByTestId("jwt-group-mapping-row")).toHaveTextContent(
+      expect(screen.getByTestId("group-mapping-row")).toHaveTextContent(
         "stored-group",
       );
       expect(

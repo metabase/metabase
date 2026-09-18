@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type {
-  DeleteMappingModalValueType,
-  GroupIds,
-} from "metabase/admin/types";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+
+import type { DeleteMappingModalValueType, GroupIds } from "../types";
 
 export type DeleteGroupMappingModalProps = {
   name: string;

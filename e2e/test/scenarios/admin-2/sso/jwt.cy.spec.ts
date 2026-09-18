@@ -225,7 +225,7 @@ const getJwtCard = () => {
 const groupMappingSection = () => cy.findByTestId("jwt-group-schema");
 
 const mappingRow = (name: string) =>
-  cy.contains('[data-testid="jwt-group-mapping-row"]', name);
+  cy.contains('[data-testid="group-mapping-row"]', name);
 
 const newMappingButton = () => cy.button("New mapping");
 

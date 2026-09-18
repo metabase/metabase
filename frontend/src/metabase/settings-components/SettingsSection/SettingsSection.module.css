@@ -102,3 +102,18 @@
 .CollapsibleAccordion .CollapsibleControl:disabled::after {
   cursor: default;
 }
+
+/* the title is the switch's label, so it borrows the switch's pointer */
+.titleLabel {
+  cursor: pointer;
+}
+
+.titleLabel.disabled {
+  cursor: default;
+}
+
+/* a switch held during its write stays focusable, so it dims here rather than through :disabled */
+.busyTrack {
+  opacity: 0.6;
+  cursor: default;
+}

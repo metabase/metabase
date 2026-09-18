@@ -17,6 +17,20 @@ import {
 import S from "./GroupMappings.module.css";
 import type { MappingDraft } from "./use-mapping-editor";
 
+type MappingEditorRowProps = {
+  draft: MappingDraft;
+  groupOptions: { value: string; label: string }[];
+  nameLabel: string;
+  namePlaceholder: string;
+  submitLabel: string;
+  canSubmit: boolean;
+  nameError: string | null;
+  isSubmitting: boolean;
+  onChange: (draft: MappingDraft) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+};
+
 export function MappingEditorRow({
   draft,
   groupOptions,
@@ -29,19 +43,7 @@ export function MappingEditorRow({
   onChange,
   onCancel,
   onSubmit,
-}: {
-  draft: MappingDraft;
-  groupOptions: { value: string; label: string }[];
-  nameLabel: string;
-  namePlaceholder: string;
-  submitLabel: string;
-  canSubmit: boolean;
-  nameError: string | null;
-  isSubmitting: boolean;
-  onChange: (draft: MappingDraft) => void;
-  onCancel: () => void;
-  onSubmit: () => void;
-}) {
+}: MappingEditorRowProps) {
   const applicationName = useSelector(getApplicationName);
   const errorId = useId();
 
@@ -73,66 +75,64 @@ export function MappingEditorRow({
       bdrs="sm"
       p="sm"
     >
-      {/* the fields and their reason form one column, so the buttons follow the reason when they wrap */}
-      <Flex align="flex-start" gap="lg" wrap="wrap">
-        <Stack flex={1} gap="xs">
-          <Flex align="center" gap="lg" wrap="wrap">
-            <TextInput
-              flex={1}
-              miw="10rem"
-              aria-label={nameLabel}
-              // Mantine owns aria-describedby on its inputs, so the reason is linked as the error message instead
-              aria-errormessage={nameError == null ? undefined : errorId}
-              placeholder={namePlaceholder}
-              value={draft.name}
-              error={nameError != null}
-              onChange={(event) =>
-                onChange({ ...draft, name: event.target.value })
-              }
-              onKeyDown={handleNameKeyDown}
-              autoFocus
-            />
-            <FixedSizeIcon
-              aria-hidden
-              name="arrow_right"
-              c="text-secondary"
-              className={S.editorArrow}
-            />
-            <MultiSelect
-              flex={1}
-              miw="14rem"
-              classNames={{ inputField: S.groupsSearchField }}
-              aria-label={t`${applicationName} groups`}
-              placeholder={
-                draft.groupValues.length === 0
-                  ? t`Pick ${applicationName} group...`
-                  : undefined
-              }
-              data={groupOptions}
-              value={draft.groupValues}
-              onChange={(groupValues) => onChange({ ...draft, groupValues })}
-              onKeyDown={handleGroupsKeyDown}
-              searchable
-            />
+      <Stack gap="xs">
+        {/* one wrapping row, buttons last, so a narrowing row sheds the buttons before the picker */}
+        <Flex align="center" gap="lg" wrap="wrap">
+          <TextInput
+            flex="1 1 10rem"
+            miw={0}
+            aria-label={nameLabel}
+            // Mantine owns aria-describedby on its inputs, so the reason is linked as the error message instead
+            aria-errormessage={nameError == null ? undefined : errorId}
+            placeholder={namePlaceholder}
+            value={draft.name}
+            error={nameError != null}
+            onChange={(event) =>
+              onChange({ ...draft, name: event.target.value })
+            }
+            onKeyDown={handleNameKeyDown}
+            autoFocus
+          />
+          <FixedSizeIcon
+            aria-hidden
+            name="arrow_right"
+            c="text-secondary"
+            className={S.editorArrow}
+          />
+          <MultiSelect
+            flex="1 1 14rem"
+            miw={0}
+            classNames={{ inputField: S.groupsSearchField }}
+            aria-label={t`${applicationName} groups`}
+            placeholder={
+              draft.groupValues.length === 0
+                ? t`Pick ${applicationName} group...`
+                : undefined
+            }
+            data={groupOptions}
+            value={draft.groupValues}
+            onChange={(groupValues) => onChange({ ...draft, groupValues })}
+            onKeyDown={handleGroupsKeyDown}
+            searchable
+          />
+          <Flex align="center" gap="lg">
+            <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+            <Button
+              variant="filled"
+              disabled={!canSubmit}
+              loading={isSubmitting}
+              onClick={onSubmit}
+            >
+              {submitLabel}
+            </Button>
           </Flex>
-          {nameError != null && (
-            <Text id={errorId} role="alert" c="error" fz="sm">
-              {nameError}
-            </Text>
-          )}
-        </Stack>
-        <Flex align="center" gap="lg">
-          <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            disabled={!canSubmit}
-            loading={isSubmitting}
-            onClick={onSubmit}
-          >
-            {submitLabel}
-          </Button>
         </Flex>
-      </Flex>
+        {nameError != null && (
+          <Text id={errorId} role="alert" c="error" fz="sm">
+            {nameError}
+          </Text>
+        )}
+      </Stack>
     </Box>
   );
 }

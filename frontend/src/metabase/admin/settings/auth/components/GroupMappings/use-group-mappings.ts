@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type { MappingsType } from "metabase/admin/types";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
@@ -10,8 +9,9 @@ import {
   useUpdateSettingsMutation,
 } from "metabase/settings";
 
+import type { MappingsType } from "./types";
+
 export type GroupMappingsSettingKey =
-  | "jwt-group-mappings"
   | "ldap-group-mappings"
   | "saml-group-mappings";
 
@@ -19,7 +19,7 @@ export type GroupMappingsSaveResult =
   | { ok: true }
   | { ok: false; error: string };
 
-type SaveOptions = {
+export type SaveOptions = {
   successMessage?: string;
   showErrorToast?: boolean;
 };

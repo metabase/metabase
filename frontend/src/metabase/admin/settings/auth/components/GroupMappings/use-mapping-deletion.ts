@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type {
-  DeleteMappingModalValueType,
-  GroupIds,
-} from "metabase/admin/types";
 import {
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 
+import type { DeleteMappingModalValueType, GroupIds } from "./types";
 import type { GroupMappingsState } from "./use-group-mappings";
 import { type GroupLookup, withoutMapping } from "./utils";
 
@@ -35,9 +32,12 @@ export type MappingDeletionState = {
 export function useMappingDeletion({
   groupMapping,
   groupLookup,
+  lastMappingDeletedMessage,
 }: {
   groupMapping: GroupMappingsState;
   groupLookup: GroupLookup;
+  // replaces the success toast when the deletion empties the mappings, for providers that stop syncing then
+  lastMappingDeletedMessage?: string;
 }): MappingDeletionState {
   const [sendToast] = useToast();
   const [clearGroupMembership] = useClearGroupMembershipMutation();
@@ -89,7 +89,14 @@ export function useMappingDeletion({
       });
       return;
     }
-    sendToast({ message: t`Mapping deleted`, icon: "check_filled" });
+    const isLastMapping = Object.keys(nextMappings).length === 0;
+    sendToast({
+      message:
+        isLastMapping && lastMappingDeletedMessage != null
+          ? lastMappingDeletedMessage
+          : t`Mapping deleted`,
+      icon: "check_filled",
+    });
   };
 
   const confirmDelete = async (

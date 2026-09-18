@@ -1,45 +1,25 @@
-import cx from "classnames";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
-  GroupMappingList,
+  GroupMappingsPanel,
   type GroupMappingsSaveResult,
   type GroupMappingsState,
+  type MappingsType,
   useGroupLookup,
-  useMappingDeletion,
-  useMappingEditor,
 } from "metabase/admin/settings/auth/components/GroupMappings";
-import type { MappingsType } from "metabase/admin/types";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import {
-  SETTINGS_CARD_DESCRIPTION_PROPS,
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsSection,
-} from "metabase/settings-components";
-import {
-  Box,
-  type BoxProps,
-  Button,
-  Flex,
-  Icon,
-  Stack,
-  Switch,
-  Text,
-  Title,
-} from "metabase/ui";
+import { SwitchSettingsSection } from "metabase/settings-components";
+import type { BoxProps } from "metabase/ui";
 import {
   type CustomOidcConfig,
   customOidcApi,
   useGetCustomOidcProvidersQuery,
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
-
-import S from "./OidcGroupMappingSection.module.css";
 
 const EMPTY_MAPPINGS: MappingsType = {};
 
@@ -136,8 +116,6 @@ export function OidcGroupMappingSection({
   onToggle,
   ...boxProps
 }: OidcGroupMappingSectionProps) {
-  const inputId = useId();
-  const descriptionId = useId();
   const applicationName = useSelector(getApplicationName);
   const { isFetching: isProvidersFetching } = useGetCustomOidcProvidersQuery();
   // one writer for the whole card, since the switch and the mappings share the one group sync map
@@ -146,7 +124,6 @@ export function OidcGroupMappingSection({
   const [clickedValue, setClickedValue] = useState<boolean | null>(null);
   // a refetch still in flight could answer with the value from before the write
   const isWriting = isSaving || isProvidersFetching;
-  const isDisabled = provider == null || isWriting;
   const storedValue = provider?.["group-sync"]?.enabled ?? false;
   // the click shows right away, and the stored value takes over once a refetch brings it back
   const isChecked = clickedValue ?? storedValue;
@@ -174,58 +151,25 @@ export function OidcGroupMappingSection({
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-    }
-  };
-
   return (
-    <SettingsSection
-      stackProps={SETTINGS_CARD_STACK_PROPS}
+    <SwitchSettingsSection
+      title={t`Group mapping`}
+      description={t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
+      checked={isChecked}
       disabled={provider == null}
+      switchBusy={isWriting}
+      onChange={handleChange}
       {...boxProps}
     >
-      <Flex justify="space-between" align="flex-start" gap="lg">
-        <Box>
-          <Title {...SETTINGS_CARD_TITLE_PROPS}>
-            <Text
-              component="label"
-              htmlFor={inputId}
-              className={cx(S.titleLabel, isDisabled && S.disabled)}
-              inherit
-            >
-              {t`Group mapping`}
-            </Text>
-          </Title>
-          <Text
-            id={descriptionId}
-            c="text-secondary"
-            {...SETTINGS_CARD_DESCRIPTION_PROPS}
-          >
-            {t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
-          </Text>
-        </Box>
-        <Switch
-          id={inputId}
-          aria-describedby={descriptionId}
-          checked={isChecked}
-          disabled={isDisabled}
-          onChange={(event) => handleChange(event.currentTarget.checked)}
-          onKeyDown={handleKeyDown}
+      {provider != null && (
+        <OidcGroupMappings
+          provider={provider}
+          writer={writer}
+          isWriting={isWriting}
         />
-      </Flex>
-      {isChecked && provider != null && (
-        <Stack gap="lg">
-          <OidcGroupMappings
-            provider={provider}
-            writer={writer}
-            isWriting={isWriting}
-          />
-          {children}
-        </Stack>
       )}
-    </SettingsSection>
+      {children}
+    </SwitchSettingsSection>
   );
 }
 
@@ -249,34 +193,15 @@ function OidcGroupMappings({
     saveMappings: (mappings, options) =>
       saveGroupSync(provider, { "group-mappings": mappings }, options),
   };
-  const deletion = useMappingDeletion({ groupMapping, groupLookup });
-  const editor = useMappingEditor({ groupMapping, groupLookup });
-  const isBusy = isWriting || deletion.isDeleting;
 
   return (
-    <Stack gap="sm">
-      <Flex justify="space-between" align="center" gap="lg">
-        <Text fw="bold">{t`Manual group mappings`}</Text>
-        {editor.draft == null && (
-          <Button
-            variant="subtle"
-            leftSection={<Icon name="add" aria-hidden />}
-            disabled={isBusy}
-            onClick={editor.startNew}
-          >{t`New`}</Button>
-        )}
-      </Flex>
-      <GroupMappingList
-        groupMapping={groupMapping}
-        groupLookup={groupLookup}
-        editor={editor}
-        deletion={deletion}
-        readOnly={false}
-        disabled={isBusy}
-        nameLabel={t`OIDC group name`}
-        namePlaceholder={t`Enter OIDC group...`}
-        emptyMessage={t`No mappings yet`}
-      />
-    </Stack>
+    <GroupMappingsPanel
+      groupMapping={groupMapping}
+      groupLookup={groupLookup}
+      // a providers refetch can still answer with the value from before the write
+      isBusy={isWriting}
+      nameLabel={t`OIDC group name`}
+      namePlaceholder={t`Enter OIDC group...`}
+    />
   );
 }

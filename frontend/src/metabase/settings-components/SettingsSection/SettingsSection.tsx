@@ -1,14 +1,16 @@
 import cx from "classnames";
 import type React from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import {
   Accordion,
   Box,
   type BoxProps,
+  Flex,
   Icon,
   Stack,
   type StackProps,
+  Switch,
   Text,
   type TextProps,
   Title,
@@ -79,6 +81,99 @@ export function SettingsSection({
         </Stack>
       )}
     </Box>
+  );
+}
+
+type SwitchSettingsSectionProps = {
+  title: string;
+  description: React.ReactNode;
+  // says why the switch cannot be toggled, already styled by the caller and rendered as given
+  note?: React.ReactNode;
+  checked: boolean;
+  // greys the whole card, locks the switch and keeps the children hidden
+  disabled?: boolean;
+  // locks the switch alone, for instance while an env var owns the value
+  switchDisabled?: boolean;
+  // holds the switch while its write is in flight, staying focusable so a keyboard user keeps their place
+  switchBusy?: boolean;
+  onChange: (checked: boolean) => void;
+  children?: React.ReactNode;
+} & BoxProps;
+
+/** A settings card whose title doubles as the label of a switch, revealing its children while on */
+export function SwitchSettingsSection({
+  title,
+  description,
+  note,
+  checked,
+  disabled = false,
+  switchDisabled = false,
+  switchBusy = false,
+  onChange,
+  children,
+  ...boxProps
+}: SwitchSettingsSectionProps) {
+  const inputId = useId();
+  const descriptionId = useId();
+  const isSwitchLocked = disabled || switchDisabled;
+
+  const handleChange = (nextChecked: boolean) => {
+    // aria-disabled keeps the switch focusable, so it cannot block the event on its own
+    if (switchBusy) {
+      return;
+    }
+    onChange(nextChecked);
+  };
+
+  // the card sits inside a page form, so Enter must not reach its submit button
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+    }
+  };
+
+  return (
+    <SettingsSection
+      stackProps={SETTINGS_CARD_STACK_PROPS}
+      disabled={disabled}
+      {...boxProps}
+    >
+      <Flex justify="space-between" align="flex-start" gap="lg">
+        <Box>
+          <Title {...SETTINGS_CARD_TITLE_PROPS}>
+            <Text
+              component="label"
+              htmlFor={inputId}
+              className={cx(
+                S.titleLabel,
+                (isSwitchLocked || switchBusy) && S.disabled,
+              )}
+              inherit
+            >
+              {title}
+            </Text>
+          </Title>
+          {/* the note lives inside the described region so assistive tech hears why the switch is locked */}
+          <Box id={descriptionId}>
+            <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
+              {description}
+            </Text>
+            {note}
+          </Box>
+        </Box>
+        <Switch
+          id={inputId}
+          aria-describedby={descriptionId}
+          checked={checked}
+          disabled={isSwitchLocked}
+          aria-disabled={switchBusy || undefined}
+          classNames={switchBusy ? { track: S.busyTrack } : undefined}
+          onChange={(event) => handleChange(event.currentTarget.checked)}
+          onKeyDown={handleKeyDown}
+        />
+      </Flex>
+      {checked && !disabled && children && <Stack gap="lg">{children}</Stack>}
+    </SettingsSection>
   );
 }
 
