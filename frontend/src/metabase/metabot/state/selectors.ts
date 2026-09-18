@@ -46,7 +46,9 @@ export const getDebugMode = createSelector(
 export const getSavedEntityId = createSelector(
   [getMetabotState, (_state: State, entityId: string) => entityId],
   (metabotState, entityId): number | undefined =>
-    metabotState.savedEntityIds[entityId],
+    Object.values(metabotState.savedEntityIds).find(
+      (savedIds) => entityId in savedIds,
+    )?.[entityId],
 );
 
 export const getMetabotReactionsState = createSelector(

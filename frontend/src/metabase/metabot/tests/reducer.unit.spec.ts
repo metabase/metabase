@@ -586,7 +586,41 @@ describe("metabot reducer", () => {
         }),
       );
 
-      expect(state.savedEntityIds).toEqual({ "chart-1": 99, "dash-1": 7 });
+      expect(state.savedEntityIds).toEqual({
+        "convo-1": { "chart-1": 99, "dash-1": 7 },
+      });
+    });
+
+    it("drops a conversation's entities that its latest snapshot no longer lists", () => {
+      const saved = metabotReducer(
+        getMetabotInitialState(),
+        metabotActions.markEntitySaved({
+          conversationId: "convo-1",
+          entityId: "dash-1",
+          savedId: 7,
+        }),
+      );
+      const otherSaved = metabotReducer(
+        saved,
+        metabotActions.markEntitySaved({
+          conversationId: "convo-2",
+          entityId: "chart-2",
+          savedId: 8,
+        }),
+      );
+      const state = metabotReducer(
+        otherSaved,
+        metabotActions.setConversationSnapshot({
+          conversationId: "convo-1",
+          messages: [],
+          savedEntities: [],
+        }),
+      );
+
+      expect(state.savedEntityIds).toEqual({
+        "convo-1": {},
+        "convo-2": { "chart-2": 8 },
+      });
     });
   });
 });

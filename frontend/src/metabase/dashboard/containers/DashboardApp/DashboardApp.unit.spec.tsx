@@ -426,7 +426,13 @@ describe("DashboardApp ad-hoc dashboards", () => {
     });
     expect(await screen.findByText("Ops overview")).toBeInTheDocument();
 
-    store.dispatch(markEntitySaved({ entityId: "dash-1", savedId: 9 }));
+    store.dispatch(
+      markEntitySaved({
+        conversationId: "convo-1",
+        entityId: "dash-1",
+        savedId: 9,
+      }),
+    );
 
     expect(await screen.findByText("saved dashboard")).toBeInTheDocument();
   });

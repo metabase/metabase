@@ -35,6 +35,10 @@
       (agent-error!
        (tru "Question `{0}` belongs to dashboard {1} and cannot be placed on another dashboard. Use a question saved in a collection, or rebuild it as a chart in this conversation."
             card-id (:dashboard_id card))))
+    (when (:document_id card)
+      (agent-error!
+       (tru "Question `{0}` belongs to a document and cannot be placed on a dashboard. Use a question saved in a collection, or rebuild it as a chart in this conversation."
+            card-id)))
     card))
 
 (defn- validate-tile! [{chart-id :chart_id query-id :query_id card-id :card_id :as tile}]

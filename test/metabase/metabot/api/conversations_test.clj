@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.api :as metabot.api]
@@ -727,6 +728,38 @@
                               (str "metabot/conversations/" convo-id "/saved-dashboard")
                               {:dashboard_id (apply str (repeat 37 "d"))
                                :dashboard    {:name "Too long" :dashcards []}})))))
+
+(deftest record-saved-dashboard-reuse-is-read-checked-test
+  (testing "a participant who cannot read the dashboard already saved from the conversation does not get it back"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id (mt/user->id :rasta) :role "user"}]
+          (let [body    {:generated_dashboard_id "d-private"
+                         :dashboard              {:name          "Private"
+                                                  :collection_id (:id (collection/user->personal-collection user-id))
+                                                  :dashcards     []}}
+                path    (str "metabot/conversations/" convo-id "/saved-dashboard")]
+            (mt/user-http-request :crowberto :post 200 path body)
+            (mt/user-http-request :rasta :post 403 path (assoc-in body [:dashboard :collection_id] nil))
+            (is (= 1 (t2/count :model/Dashboard :metabot_conversation_id convo-id)))))))))
+
+(deftest record-saved-dashboard-rejects-document-questions-test
+  (testing "a question that belongs to a document cannot be placed on the saved dashboard"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/Document {document-id :id} {}
+                       :model/Card {card-id :id} {:document_id document-id :dataset_query (venues-query)}]
+          (mt/user-http-request :crowberto :post 400
+                                (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                {:generated_dashboard_id "d-doc"
+                                 :dashboard              {:name      "From a document"
+                                                          :dashcards [{:title "t" :display "table" :dataset_query (venues-query)
+                                                                       :row 0 :col 0 :size_x 12 :size_y 6 :card_id card-id}]}})
+          (is (zero? (t2/count :model/Dashboard :name "From a document"))))))))
 
 (deftest record-saved-blank-dashboard-test
   (testing "a blank dashboard saves with no cards"

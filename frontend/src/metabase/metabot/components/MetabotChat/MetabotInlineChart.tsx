@@ -219,7 +219,13 @@ function SaveChartAction({
       },
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markEntitySaved({ entityId: chartId, savedId: created.id }));
+    dispatch(
+      markEntitySaved({
+        conversationId,
+        entityId: chartId,
+        savedId: created.id,
+      }),
+    );
     dispatch(
       addUndo({
         icon: "check_filled",

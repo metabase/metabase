@@ -130,9 +130,15 @@ export const metabot = createSlice({
     },
     markEntitySaved: (
       state,
-      action: PayloadAction<{ entityId: string; savedId: number }>,
+      action: PayloadAction<{
+        conversationId: string;
+        entityId: string;
+        savedId: number;
+      }>,
     ) => {
-      state.savedEntityIds[action.payload.entityId] = action.payload.savedId;
+      const { conversationId, entityId, savedId } = action.payload;
+      state.savedEntityIds[conversationId] ??= {};
+      state.savedEntityIds[conversationId][entityId] = savedId;
     },
     // CONVERSATION REDUCERS
     setConversationTitle: convoReducer(
@@ -399,21 +405,23 @@ export const metabot = createSlice({
         contextWindowTokens,
       } = action.payload;
 
+      const savedIds: Record<string, number> = {};
       savedEntities.forEach((entity) => {
         match(entity)
           .with({ type: "card" }, ({ chart_id, card_id }) => {
             if (chart_id != null) {
-              state.savedEntityIds[chart_id] = card_id;
+              savedIds[chart_id] = card_id;
             }
           })
           .with(
             { type: "dashboard" },
             ({ generated_dashboard_id, dashboard_id }) => {
-              state.savedEntityIds[generated_dashboard_id] = dashboard_id;
+              savedIds[generated_dashboard_id] = dashboard_id;
             },
           )
           .exhaustive();
       });
+      state.savedEntityIds[conversationId] = savedIds;
 
       const convo =
         state.conversations[conversationId] ??

@@ -568,18 +568,19 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(
                   markEntitySaved(
                     match(part.data)
-                      .with({ type: "card" }, ({ chart_id, card_id }) => ({
-                        entityId: chart_id,
-                        savedId: card_id,
-                      }))
                       .with(
                         { type: "dashboard" },
                         ({ generated_dashboard_id, dashboard_id }) => ({
+                          conversationId,
                           entityId: generated_dashboard_id,
                           savedId: dashboard_id,
                         }),
                       )
-                      .exhaustive(),
+                      .otherwise(({ chart_id, card_id }) => ({
+                        conversationId,
+                        entityId: chart_id,
+                        savedId: card_id,
+                      })),
                   ),
                 );
                 const { tool_call_id, title } = part.data;
