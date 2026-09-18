@@ -78,7 +78,7 @@ export const EditUserStrategyModal = ({
     dispatch(
       permissionApi.util.invalidateTags([
         "permissions-group",
-        "embedding-hub-checklist",
+        "setup-guide-checklist",
       ]),
     );
 

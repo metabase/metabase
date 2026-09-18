@@ -22,12 +22,12 @@
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline."
-  [query]
+  [query :- ::lib.schema/query]
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
 
 (mu/defn drop-stage :- ::lib.schema/query
   "Drops the final stage in the pipeline, will no-op if it is the only stage"
-  [query]
+  [query :- ::lib.schema/query]
   (if (= 1 (count (:stages query)))
     query
     (update query :stages pop)))

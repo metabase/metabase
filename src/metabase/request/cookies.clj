@@ -3,13 +3,15 @@
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.request.schema :as request.schema]
    [metabase.request.settings :as request.settings]
    [metabase.request.util :as request.util]
+   [metabase.session.schema]
    [metabase.session.settings :as session.settings]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
 (def metabase-session-cookie
@@ -136,16 +138,14 @@
 
 (mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
-  [request
-   response
+  [request  :- ::request.schema/request
+   response :- ::request.schema/response
    {session-key :key
     session-type :type
     anti-csrf-token :anti_csrf_token
     session-expires-at :expires_at
-    :as _session-instance} :- [:map [:key [:or
-                                           uuid?
-                                           [:re u/uuid-regex]]]]
-   request-time]
+    :as _session-instance} :- :metabase.session.schema/session
+   request-time :- (ms/InstanceOfClass java.time.temporal.Temporal)]
   (let [;; Calculate max-age based on session expiration if present
         max-age-seconds (when session-expires-at
                           (let [expires-time (if (instance? java.time.OffsetDateTime session-expires-at)

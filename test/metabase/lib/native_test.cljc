@@ -58,8 +58,7 @@
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
-    (let [snippet           {:type :snippet
-                             :name "foo"
+    (let [snippet           {:name "foo"
                              :id   1}
           metadata-provider (lib.tu/mock-metadata-provider
                              {:native-query-snippets [snippet]})]
@@ -134,12 +133,10 @@
                         :type    :card
                         :card-id 321})
           metadata-provider (lib.tu/mock-metadata-provider
-                             {:native-query-snippets [{:name         "first snippet"
-                                                       :id           123
-                                                       :snippet-name "first snippet"}
-                                                      {:name         "another snippet"
-                                                       :id           124
-                                                       :snippet-name "another snippet"}]})]
+                             {:native-query-snippets [{:name "first snippet"
+                                                       :id   123}
+                                                      {:name "another snippet"
+                                                       :id   124}]})]
       (is (=? [c1 v1 s1]
               (lib.native/extract-template-tags
                metadata-provider
@@ -314,7 +311,6 @@
                  meta/metadata-provider
                  {:native-query-snippets [{:id            1
                                            :name          "snippet1"
-                                           :type          :snippet
                                            :content       "{{var}}"
                                            :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
                                                                   :name         "var"
@@ -355,11 +351,9 @@
               meta/metadata-provider
               {:native-query-snippets [{:id            1
                                         :name          "snippet1"
-                                        :type          :snippet
                                         :content       "SELECT"}
                                        {:id            2
                                         :name          "snippet2"
-                                        :type          :snippet
                                         :content       "{{var}}"
                                         :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
                                                                :name         "var"

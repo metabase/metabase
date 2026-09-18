@@ -14,7 +14,10 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -24,6 +27,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -183,12 +187,21 @@
   "Run the query for pre-loaded Card `card` with `parameters` and other query options (e.g. `:constraints`).
   Callers are responsible for resolving `card` themselves with a fresh `public-sharing-rest.db/active-card` call (each endpoint should
   select the Card exactly once and thread the loaded entity here). Returns a `StreamingResponse`."
-  [card
-   export-format
-   parameters
+  [card          :- ::queries.schema/card
+   export-format :- [:maybe :keyword]
+   parameters    :- [:maybe ::parameters.schema/api.parameter-values]
    & {:keys [qp]
       :or   {qp qp.card/process-query-for-card-default-qp}
-      :as   options}]
+      :as   options} :- [:maybe
+                         [:map {:closed true}
+                          [:qp             {:optional true} [:maybe ifn?]]
+                          [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+                          [:context        {:optional true} [:maybe ::lib.schema.info/context]]
+                          [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]
+                          [:dashcard       {:optional true} [:maybe ::dashboards.schema/dashboard-card]]
+                          [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+                          [:ignore-cache   {:optional true} [:maybe :boolean]]
+                          [:card-transform {:optional true} [:maybe ifn?]]]]]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
@@ -284,7 +297,8 @@
   "Return the public Dashboard with the given `dashboard-id`, removing all columns that should not be visible to
   the general public. Throws a 404 if the Dashboard doesn't exist. With `:enable-embedding? true`, additionally
   requires embedding to be enabled."
-  [dashboard-id & {:as options}]
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]
+   & {:as options} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id options))
@@ -490,7 +504,10 @@
           (request/as-admin
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)
-                                       {:allow-http-actions? false})))))))
+                                       ;; `as-admin` grants perms but leaves the user nil, so the audit row has no
+                                       ;; executor; the context is what says the run came from a public link
+                                       {:allow-http-actions? false
+                                        :context             :public-action-execute})))))))
 
 (defn- iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
@@ -734,7 +751,9 @@
                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
             (actions/execute-action! action (update-keys parameters name)
-                                     {:allow-http-actions? false})))))))
+                                     ;; see the note on the public dashcard endpoint above
+                                     {:allow-http-actions? false
+                                      :context             :public-action-execute})))))))
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 

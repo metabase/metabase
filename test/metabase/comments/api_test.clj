@@ -8,6 +8,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
 
 (defn- relaxed-re [& s]
@@ -23,7 +24,7 @@
                     (name (first node)))
           block?  #{"paragraph"}
           attrs   (when (map? (second node)) (second node))
-          content (if attrs (drop 2 node) (drop 1 node))]
+          content (dropv (if attrs 2 1) node)]
       (u/remove-nils
        {:type    tag
         :attrs   (cond-> attrs

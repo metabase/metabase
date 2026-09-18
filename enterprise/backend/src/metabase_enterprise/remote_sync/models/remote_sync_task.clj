@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -45,8 +46,8 @@
 
   Throws ExceptionInfo if a running task already exists."
   [sync-task-type :- ::remote-sync-task-type
-   user-id :- [:maybe pos-int?] &
-   [additional-fields :- [:map]]]
+   user-id :- [:maybe pos-int?]
+   & [additional-fields] :- [:* ::remote-sync.schema/remote-sync-task.update]]
   (remote-sync.db/insert-task! (merge {:sync_task_type sync-task-type
                                        :initiated_by user-id
                                        :progress 0}
@@ -254,13 +255,13 @@
 (defn conflict-sync-task!
   "Marks a sync task as having conflicts.
 
-  Takes the ID of the sync task and a collection of conflicts (vector of strings).
-  Conflicts are automatically serialized to JSON via the model transform.
+  Takes the ID of the sync task and a collection of conflict category names (`import!` reports them as a
+  set). Conflicts are automatically serialized to JSON via the model transform.
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts]
   (remote-sync.db/end-task! task-id
-                            {:conflicts conflicts}))
+                            {:conflicts (vec conflicts)}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 

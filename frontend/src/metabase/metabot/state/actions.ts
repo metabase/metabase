@@ -2,7 +2,6 @@ import {
   type ThunkDispatch,
   type UnknownAction,
   isRejected,
-  nanoid,
 } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
@@ -16,7 +15,6 @@ import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-st
 import { listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -33,7 +31,6 @@ import type {
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 import { metabotApi } from "../api";
@@ -42,6 +39,7 @@ import {
   type MetabotProfileId,
   isHistoryEnabledProfile,
 } from "../constants";
+import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
 
 import { metabot } from "./reducer";
 import {
@@ -87,10 +85,6 @@ export const {
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
-  addSuggestedTransform,
-  activateSuggestedTransform,
-  deactivateSuggestedTransform,
-  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   attachAgentToConversation,
@@ -285,7 +279,7 @@ export const executeSlashCommand = createAsyncThunk<
         );
       })
       .otherwise(() => {
-        const handled = PLUGIN_AUDIT.handleMetabotSlashCommand({
+        const handled = PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand({
           command,
           conversationId,
           dispatch,
@@ -328,7 +322,6 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     retryMessageId?: string;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -340,7 +333,6 @@ export const submitInput = createAsyncThunk<
       message: rawPrompt,
       profile,
       retryMessageId,
-      isTransformsPage,
       isFullPageMetabot,
       ...data
     } = payload;
@@ -388,7 +380,6 @@ export const submitInput = createAsyncThunk<
         getState(),
         conversationId,
         retryMessageId,
-        isTransformsPage ?? false,
       );
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
@@ -552,27 +543,6 @@ export const sendAgentRequest = createAsyncThunk<
                   },
                 });
               })
-              .with({ type: "data-transform_suggestion" }, (part) => {
-                const suggestionId = nanoid();
-                const suggestedTransform = {
-                  ...part.data,
-                  id: part.data.id || undefined,
-                  active: true,
-                  suggestionId,
-                };
-                dispatch(addSuggestedTransform(suggestedTransform));
-
-                const editorTransform = request.context.user_is_viewing
-                  .filter(
-                    (t): t is MetabotTransformInfo => t.type === "transform",
-                  )
-                  .find((t) => t.id === suggestedTransform.id);
-                pushDataPart({
-                  type: "data_part",
-                  part,
-                  metadata: { editorTransform, suggestionId },
-                });
-              })
               .with({ type: "data-generated_entity" }, (part) => {
                 // TODO: always push, but let the surface render and/or navigate on its own
                 if (isFullPageMetabot) {
@@ -622,6 +592,7 @@ export const sendAgentRequest = createAsyncThunk<
                 );
               })
               .with(
+                { type: "data-transform_suggestion" },
                 { type: "data-navigate_to" },
                 { type: "data-adhoc_viz" },
                 { type: "data-static_viz" },
@@ -851,7 +822,6 @@ export const retryPrompt = createAsyncThunk<
     metabot_id?: string;
     conversationId: string;
     profile?: MetabotProfileId;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -863,7 +833,6 @@ export const retryPrompt = createAsyncThunk<
       metabot_id,
       conversationId,
       profile,
-      isTransformsPage,
       isFullPageMetabot,
     },
     { getState, dispatch },
@@ -901,7 +870,6 @@ export const retryPrompt = createAsyncThunk<
         metabot_id,
         profile,
         retryMessageId,
-        isTransformsPage,
         isFullPageMetabot,
       }),
     ).unwrap();

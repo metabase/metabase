@@ -1193,6 +1193,7 @@ const configs = [
       ".github/scripts/**/*.js",
       ".github/scripts/**/*.mjs",
       ".github/scripts/**/*.ts",
+      ".storybook/*.cjs",
     ],
     languageOptions: {
       globals: {

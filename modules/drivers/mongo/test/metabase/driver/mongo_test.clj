@@ -1050,7 +1050,7 @@
     (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
                                           (mongo.execute/aggregate-database db session stages timeout-ms))
               mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
-      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one-fn :name :model/Table :id (mt/id :venues))))
             ftree (delay (@#'mongo/dbfields->ftree @dbfields))
             nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
         (thunk dbfields ftree nested-fields)))))

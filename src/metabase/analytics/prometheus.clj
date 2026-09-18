@@ -15,6 +15,8 @@
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics-interface.core :as analytics.interface]
+   ;; We should not be using specific driver implementations
+   [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -135,20 +137,18 @@
     arr))
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  ;; We should not be using specific driver implementations
-  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)]
-    ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
-    ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
-    ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
-    ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
-    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-cache-key->connection-pool` is)
-    ;; to prevent the deadlock. Hopefully.
-    ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
-    (locking @pool-var
-      (let [bean-id   (.getCanonicalName jmx-bean)
-            props     [:numConnections :numIdleConnections :numBusyConnections
-                       :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-        (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))))
+  ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
+  ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
+  ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
+  ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
+  ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-lock/monitor` is)
+  ;; to prevent the deadlock. Hopefully.
+  ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
+  (locking pool-lock/monitor
+    (let [bean-id   (.getCanonicalName jmx-bean)
+          props     [:numConnections :numIdleConnections :numBusyConnections
+                     :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
@@ -732,7 +732,7 @@
    (prometheus/counter :metabase-slackbot/responses-deleted
                        {:description "Number of Slack bot responses deleted by users."})
    (prometheus/counter :metabase-slackbot/file-uploads
-                       {:description "Number of file uploads via the Slack bot."
+                       {:description "Number of files attached to Slack bot messages, by what became of each."
                         :labels [:result]})
    (prometheus/counter :metabase-slackbot/responses-truncated
                        {:description (str "Number of Slack bot responses truncated because they exceeded "
@@ -744,35 +744,38 @@
                        {:description (str "Number of Slack bot responses that reached the user as nothing at all, "
                                           "because the plain-text fallback failed too.")})
    ;; metabot / LLM agent metrics
+   ;; The `:provider` label is one of the provider types in `metabase.llm.provider`, or `unknown` if a caller omits it.
+   ;; Resolution rejects anything else, so the set only grows when a type joins the registry.
+   ;; It is a projection of `:model`, which already carries the connection key, so it adds no series.
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-retries
                        {:description "LLM provider retry attempts"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-errors
                        {:description "LLM provider API errors (excluding retries)"
-                        :labels [:model :source :error-type]})
+                        :labels [:model :source :provider :error-type]})
    (prometheus/histogram :metabase-metabot/llm-duration-ms
                          {:description "LLM request duration (ms)"
-                          :labels [:model :source]
+                          :labels [:model :source :provider]
                           ;; 100 ms -> 2 minutes
                           :buckets [100 500 1000 2000 5000 10000 20000 30000 60000 120000]})
    (prometheus/counter :metabase-metabot/llm-input-tokens
                        {:description "LLM input tokens"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
                        {:description "LLM cache creation input tokens (Anthropic prompt caching)"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-cache-read-tokens
                        {:description "LLM cache read input tokens (Anthropic prompt caching)"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"
-                          :labels [:model :source]
+                          :labels [:model :source :provider]
                           :buckets [1000 2500 5000 10000 20000 50000 100000 200000]})
    (prometheus/counter :metabase-metabot/agent-requests
                        {:description "Agent loop invocations"

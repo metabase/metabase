@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -3362,3 +3362,71 @@
         (testing "the mirror column is nullable"
           (t2/update! :metabase_field_user_settings :field_id field-id {:data_sensitivity nil})
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))
+
+(deftest backfill-field-user-settings-set-flags-test
+  (testing "v64.2026-09-09T00:00:03: description_set, semantic_type_set and fk_target_field_id_set are backfilled
+           from whether the corresponding column is already non-NULL"
+    (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:03"] [migrate!]
+      (let [db-id        (t2/insert-returning-pk! :metabase_database {:name       "FUS Flags Test DB"
+                                                                      :engine     "h2"
+                                                                      :created_at :%now
+                                                                      :updated_at :%now
+                                                                      :details    "{}"})
+            table-id     (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                   :db_id      db-id
+                                                                   :name       "a table"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+            insert-field! (fn [name]
+                            (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                      :name          name
+                                                                      :active        true
+                                                                      :base_type     "type/Text"
+                                                                      :database_type "TEXT"
+                                                                      :created_at    :%now
+                                                                      :updated_at    :%now}))
+            target-id    (insert-field! "target")
+            all-set-id   (insert-field! "all_set")
+            none-set-id  (insert-field! "none_set")
+            mixed-id     (insert-field! "mixed")]
+        (t2/insert! :metabase_field_user_settings {:field_id           all-set-id
+                                                   :description        "a description"
+                                                   :semantic_type      "type/Category"
+                                                   :fk_target_field_id target-id})
+        (t2/insert! :metabase_field_user_settings {:field_id none-set-id})
+        (t2/insert! :metabase_field_user_settings {:field_id     mixed-id
+                                                   :description  "only description is set"})
+        (migrate!)
+        (testing "every column set is flagged true"
+          (is (=? {:description_set true, :semantic_type_set true, :fk_target_field_id_set true}
+                  (t2/select-one :metabase_field_user_settings :field_id all-set-id))))
+        (testing "every column NULL is flagged false"
+          (is (=? {:description_set false, :semantic_type_set false, :fk_target_field_id_set false}
+                  (t2/select-one :metabase_field_user_settings :field_id none-set-id))))
+        (testing "only the columns that are non-NULL are flagged true"
+          (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
+                  (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
+
+(deftest glossary-entity-id-backfill-test
+  (testing "v65.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
+    (impl/test-migrations ["v65.2026-09-11T12:00:00" "v65.2026-09-11T12:00:03"] [migrate!]
+      (let [row      (fn [term] {:term       term
+                                 :definition (str term " definition")
+                                 :creator_id 13371338
+                                 :created_at :%now
+                                 :updated_at :%now})
+            arr-id   (t2/insert-returning-pk! :glossary (row "ARR"))
+            churn-id (t2/insert-returning-pk! :glossary (row "Churn"))]
+        (migrate!)
+        (let [arr-eid   (t2/select-one-fn :entity_id :glossary :id arr-id)
+              churn-eid (t2/select-one-fn :entity_id :glossary :id churn-id)]
+          (testing "existing rows receive distinct 21-character entity_ids"
+            (is (= 21 (count arr-eid)))
+            (is (= 21 (count churn-eid)))
+            (is (not= arr-eid churn-eid)))
+          (testing "entity_id is NOT NULL"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "MRR") :entity_id nil)))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "NRR") :entity_id arr-eid))))))))))

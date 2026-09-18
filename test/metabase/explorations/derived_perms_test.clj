@@ -5,6 +5,8 @@
   the batching that must not merge snapshots requiring different permissions."
   (:require
    [clojure.test :refer :all]
+   [metabase.comments.db :as comments.db]
+   [metabase.comments.models.comment :as comment]
    [metabase.documents.core :as documents]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
@@ -378,12 +380,14 @@
                      :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
                      :where  [:= :b.exploration_thread_id thread-id]}))
 
-(defn- comment-contexts [exploration-id user-kw]
-  (->> (mt/user-http-request user-kw :get 200 "comment/"
-                             :target_type "exploration"
-                             :target_id exploration-id)
-       :comments
-       (mapv :context)))
+(defn- comment-contexts
+  "The contexts of the comments on `exploration-id` as `user-kw` sees them. The comments API rejects exploration
+  targets while explorations are disabled, so this runs the registered gate over the rows the way its GET does."
+  [exploration-id user-kw]
+  (request/with-current-user (mt/user->id user-kw)
+    (->> (comments.db/comments-for-target "exploration" exploration-id)
+         (comment/apply-context-gate "exploration" exploration-id)
+         (mapv :context))))
 
 (deftest exploration-comment-context-is-gated-test
   (testing "a comment anchored to a chart point of an exploration the viewer is gated out of"
@@ -395,24 +399,24 @@
         ;; by the data-access gate rather than by collection permissions.
         (t2/update! :model/Exploration expl-id {:collection_id coll-id})
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
-        (mt/user-http-request :lucky :post 200 "comment/"
-                              {:target_type     "exploration"
-                               :target_id       expl-id
-                               :child_target_id (str page-id)
-                               :content         {:type "doc" :content []}
-                               :context         {:highlighted     {:columnName "CATEGORY"
-                                                                   :dimensions [{:columnName "CATEGORY"
-                                                                                 :value "ACME Corp"}]}
-                                                 :highlight_label "ACME Corp"}})
-        (testing "keeps its context for a superuser, who is exempt from the gate"
-          (is (=? [{:highlighted     {:columnName "CATEGORY"}
-                    :highlight_label "ACME Corp"}]
-                  (comment-contexts expl-id :crowberto))))
-        (testing "is stripped of its context for a viewer whose data-access lens is incompatible —
-                  the comment itself remains readable, only the warehouse values it carries are withheld"
-          (let [contexts (comment-contexts expl-id :rasta)]
-            (is (= 1 (count contexts)) "the comment is still listed")
-            (is (= [nil] contexts) "but carries no context")))))))
+        (mt/with-temp [:model/Comment _ {:target_type     "exploration"
+                                         :target_id       expl-id
+                                         :child_target_id (str page-id)
+                                         :creator_id      (mt/user->id :lucky)
+                                         :content         {:type "doc" :content []}
+                                         :context         {:highlighted     {:columnName "CATEGORY"
+                                                                             :dimensions [{:columnName "CATEGORY"
+                                                                                           :value "ACME Corp"}]}
+                                                           :highlight_label "ACME Corp"}}]
+          (testing "keeps its context for a superuser, who is exempt from the gate"
+            (is (=? [{:highlighted     {:columnName "CATEGORY"}
+                      :highlight_label "ACME Corp"}]
+                    (comment-contexts expl-id :crowberto))))
+          (testing "is stripped of its context for a viewer whose data-access lens is incompatible —
+                    the comment itself remains readable, only the warehouse values it carries are withheld"
+            (let [contexts (comment-contexts expl-id :rasta)]
+              (is (= 1 (count contexts)) "the comment is still listed")
+              (is (= [nil] contexts) "but carries no context"))))))))
 
 (deftest content-gate-verdict-is-memoized-within-a-scope-test
   (testing "every Card in a Summary document shares one document, and therefore one verdict. Without

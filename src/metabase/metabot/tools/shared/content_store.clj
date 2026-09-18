@@ -29,45 +29,74 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-read-check
-  "Apply `api/read-check` when `*current-user-id*` is bound; otherwise return the row
-  unchanged. Returning `nil` propagates through (no row → nothing to check; the
-  per-model resolver functions translate `nil` into a clean `:unknown-…` agent error)."
-  [row]
+(def ^:dynamic *last-lookup-refused?*
+  "Set to `true` by [[read-checked]] when a lookup was refused on permissions rather than simply
+  missing.
+
+  The two are deliberately indistinguishable to the *agent* — same status, same error key, so a
+  guessable id cannot be used to probe for hidden content. Some internal callers still need to
+  tell them apart: `llm-shape/export-query-for-llm` renders nothing at all for a refusal but
+  falls back to pretty-printed EDN for a genuine export failure, and without this it would print
+  the raw query for a card the caller may not read. Bind it per lookup and read it after; it says
+  nothing about *which* row was refused, so it cannot itself become an oracle."
+  (atom false))
+
+(defn- permission-checked
+  "Permission-check `row`, or return it unchanged when `api/*current-user-id*` is unbound. `nil`
+  propagates (no row → nothing to check; the per-model resolvers turn `nil` into a clean
+  `:unknown-…` agent error).
+
+  Two independent axes, because two fixes to this function wanted different things and both were
+  right:
+
+  `audited?` picks the check. `api/read-check` writes an audit entry for the refusal;
+  `api/check-403` does not. Refusals on `-by-entity-id` are always audited, and `-by-id` refusals
+  are audited when the caller asked for it (BOT-1956).
+
+  `collapse-denial?` picks what the *caller* sees, and the two surfaces want opposite things:
+
+  - **By numeric id** (`collapse-denial?` true): return `nil`, so \"exists but you may not read
+    it\" and \"does not exist\" reach the caller as the same `:unknown-…` error. Numeric ids are
+    sequential and trivially guessable, so a distinguishable denial is an existence oracle.
+  - **By entity_id** (`collapse-denial?` false): let the 403 through. A 21-character NanoID is
+    not guessable, so there is nothing to enumerate, and callers rely on the accurate status —
+    `POST /api/agent/v2/construct-query` returns 403 for a metric whose card the caller cannot
+    read, and `llm-shape/export-query-for-llm` suppresses its EDN fallback on one.
+
+  The axes do not trade off against each other: a collapsed denial is still audited, so the
+  refusal stays silent to the agent and visible to the audit log.
+
+  Either way the refusal is recorded in [[*last-lookup-refused?*]] for callers that need to know
+  a denial happened without depending on the status."
+  [{:keys [audited? collapse-denial?]} row]
   (cond
     (nil? row)              nil
-    api/*current-user-id*   (api/read-check row)
+    api/*current-user-id*   (try
+                              (if (and audited? resolve.mp/*audit-refusals?*)
+                                (api/read-check row)
+                                (do (api/check-403 (mi/can-read? row)) row))
+                              (catch clojure.lang.ExceptionInfo e
+                                (if (= 403 (:status-code (ex-data e)))
+                                  (do (reset! *last-lookup-refused?* true)
+                                      (when-not collapse-denial? (throw e)))
+                                  (throw e))))
     :else                   row))
-
-(defn- maybe-check-403
-  "Like [[maybe-read-check]], but throws a bare 403 rather than an audited one."
-  [row]
-  (cond
-    (nil? row)              nil
-    api/*current-user-id*   (do (api/check-403 (mi/can-read? row)) row)
-    :else                   row))
-
-(defn- checked
-  "Permission-check `row`, auditing a refusal only when `audited?` and
-  [[resolve.mp/*audit-refusals?*]] both hold."
-  [audited? row]
-  (if (and audited? resolve.mp/*audit-refusals?*)
-    (maybe-read-check row)
-    (maybe-check-403 row)))
 
 (defn read-checked
-  "Wrap `store` so every lookup permission-checks its row when `api/*current-user-id*` is bound,
-  throwing a 403 when the current user cannot read it. Refusals on the `-by-entity-id` methods are
-  audited; `audited-by-id?` audits the `-by-id` methods too."
+  "Wrap `store` so every lookup permission-checks its row when `api/*current-user-id*` is bound.
+  Symmetric across all six `ContentStore` methods; see [[permission-checked]] for what a refusal
+  costs on each. `audited-by-id?` audits the `-by-id` refusals too."
   ([store] (read-checked store false))
   ([store audited-by-id?]
-   (reify resolve.mp/ContentStore
-     (card-by-entity-id    [_ eid] (checked true            (resolve.mp/card-by-entity-id    store eid)))
-     (measure-by-entity-id [_ eid] (checked true            (resolve.mp/measure-by-entity-id store eid)))
-     (segment-by-entity-id [_ eid] (checked true            (resolve.mp/segment-by-entity-id store eid)))
-     (card-by-id           [_ id]  (checked audited-by-id?  (resolve.mp/card-by-id           store id)))
-     (measure-by-id        [_ id]  (checked audited-by-id?  (resolve.mp/measure-by-id        store id)))
-     (segment-by-id        [_ id]  (checked audited-by-id?  (resolve.mp/segment-by-id        store id))))))
+   (let [by-eid {:audited? true            :collapse-denial? false}
+         by-id  {:audited? audited-by-id?  :collapse-denial? true}]
+     (reify resolve.mp/ContentStore
+       (card-by-entity-id    [_ eid] (permission-checked by-eid (resolve.mp/card-by-entity-id    store eid)))
+       (measure-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/measure-by-entity-id store eid)))
+       (segment-by-entity-id [_ eid] (permission-checked by-eid (resolve.mp/segment-by-entity-id store eid)))
+       (card-by-id           [_ id]  (permission-checked by-id  (resolve.mp/card-by-id           store id)))
+       (measure-by-id        [_ id]  (permission-checked by-id  (resolve.mp/measure-by-id        store id)))
+       (segment-by-id        [_ id]  (permission-checked by-id  (resolve.mp/segment-by-id        store id)))))))
 
 (def default-store
   "[[resolve.mp/unchecked-app-db-content-store]] under [[read-checked]]. The store for any agent
@@ -156,16 +185,21 @@
   refuses them without a trail. Measure / segment refs are not checked here; the stores gate
   those with the caller's audit polarity.
 
-  Nil when they may not. Normalizing is the first thing the check does, so the result comes back
-  rather than leaving the export to repeat it."
+  Nil when they may not, and `::unchecked` when the check could not be made at all - a query that
+  will not normalize, permissions that will not calculate. That is not a denial, so the caller
+  still renders the query, just without resolving anything in it. Normalizing is the first thing
+  the check does, so the result comes back rather than leaving the export to repeat it."
   [audited? resolved]
   (try
-    (let [normalized                 (lib-be/normalize-query resolved)
+    ;; strict, or a query that will not parse degrades to {} and reads as a denial instead of
+    ;; reaching the catch below (it also logs at ERROR on the way past)
+    (let [normalized                 (lib-be/normalize-query nil resolved {:strict? true})
           database-id                (:database normalized)
           {:keys [table card field]} (exported-entity-ids normalized)]
       (when (and (pos-int? database-id)
                  (every? #(readable? audited? :model/Card %) card)
-                 ;; throw on a calculation failure so only a denial reads as false
+                 ;; throw on a calculation failure, so it lands in the catch below as a check we
+                 ;; could not make rather than reading as a denial
                  (query-perms/can-run-query? normalized false true))
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
@@ -173,8 +207,9 @@
                      (sandbox-visible-fields? field-table))
             normalized))))
     (catch Exception e
-      (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
-      nil)))
+      (log/debugf "Rendering a query unresolved, since it could not be permission-checked: %s"
+                  (ex-message e))
+      ::unchecked)))
 
 (defn- cached-pass
   "Memoize an allowed gate result on the agent's memory for the rest of the turn: the check
@@ -191,22 +226,37 @@
     (f)))
 
 (defn query-for-export
-  "`[query mp]` for [[metabase.metabot.tools.shared.llm-shape/export-query-for-llm]] when the
-  current user may run `query`, else nil. The query comes back normalized with a provider over
-  its database; one carrying no `:database` passes through untouched and without a provider,
-  since it only ever pprints. With `audited?` the saved-question refusals are audited; for
-  client-supplied queries, where the ids are the caller's own. Run permission is the whole rule:
-  reading the database is not enough, and a saved question the user can read authorizes a query
-  over a database they cannot. A database that no longer exists passes, since there is no
-  metadata behind it to leak; one we can't resolve does not."
+  "How the caller should render `query`, or nil when the current user may not see it at all.
+  Run permission is the whole rule: reading the database is not enough, and a saved question the
+  user can read authorizes a query over a database they cannot. With `audited?` the saved-question
+  refusals are audited, for client-supplied queries where the ids are the caller's own.
+
+  Three shapes come back, because a check that was never needed and a check that could not be made
+  are not the same thing:
+
+    `{:query q :mp mp}`       cleared. `q` is normalized and exports through `mp`, resolving its
+                              ids to names.
+    `{:query q}`              there was nothing to check. The query carries no `:database`, or its
+                              database is gone and the metadata with it, so rendering it in full
+                              reveals nothing. This is what master did.
+    `{:query q :unchecked? true}`
+                              the check could not be made at all: a database id that will not
+                              resolve, a query that will not parse, permissions that will not
+                              calculate. Not a refusal, so the caller may still render the query,
+                              but nothing in it may be resolved to a name."
   [query audited?]
   (if-not (and (map? query) (:database query))
-    [query nil]
+    {:query query}
     (cached-pass
      [query audited?]
      (fn []
-       (when-let [resolved (resolve-effective-database query)]
+       (if-let [resolved (resolve-effective-database query)]
          (if (metabot.db/database-exists? (:database resolved))
-           (when-let [normalized (runnable-normalized-query audited? resolved)]
-             [normalized (lib-be/application-database-metadata-provider (:database normalized))])
-           [resolved nil]))))))
+           (let [normalized (runnable-normalized-query audited? resolved)]
+             (cond
+               (= ::unchecked normalized) {:query resolved :unchecked? true}
+               (some? normalized)         {:query normalized
+                                           :mp    (lib-be/application-database-metadata-provider
+                                                   (:database normalized))}))
+           {:query resolved})
+         {:query query :unchecked? true})))))

@@ -374,9 +374,9 @@
         (with-redefs [qp.context/build-row-context (constantly {::stub true})
                       qp.variants/dataset-query    (fn [_variant _ctx]
                                                      (reset! seen api/*current-user-id*)
-                                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
-                                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                              (lib/aggregate (lib/count))))))
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count)))))
                       qp.variants/query-name       (constantly "stub name")]
           (runner/run-query! (:id row)))
         (is (= (:id u) @seen)

@@ -200,7 +200,9 @@ export function main() {
     // The last plotted point, as slim rows: [{ bundle, kind, rawBytes, gzipBytes, brotliBytes }].
     previous: readJson<CacheRow[]>(env.LAST) || [],
     threshold: Number(env.MIN_DELTA_PERCENT ?? 1),
-    date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+    // The commit's own time rather than the day it was measured, so the merges
+    // of one day keep their order on the chart.
+    date: new Date(env.COMMIT_TIMESTAMP || Date.now()).toISOString(),
     commit: (env.HEAD_SHA || "").slice(0, 12),
     commitMessage: (env.COMMIT_MESSAGE || "").split("\n")[0], // subject line only
     version: readVersion(env.VERSION_PROPS),

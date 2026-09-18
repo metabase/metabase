@@ -22,6 +22,7 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
+import { requestAsAdmin } from "./helpers/e2e-admin-request-tasks";
 import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
@@ -298,6 +299,7 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      requestAsAdmin,
       startMockLlmServer,
       stopMockLlmServer,
       startCustomVizDevServer,
