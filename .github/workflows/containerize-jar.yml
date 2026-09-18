@@ -30,9 +30,12 @@ on:
         type: string
         default: linux/amd64,linux/arm64
     outputs:
-      digest:
-        description: Image digest, useful for pulling the built image from Docker Hub.
-        value: ${{ jobs.containerize.outputs.digest }}
+      digest-ee:
+        description: Image digest, useful for pulling the built image from Docker Hub. Only set if this is the 'ee' edition.
+        value: ${{ jobs.containerize.outputs.digest-ee }}
+      digest-oss:
+        description:  Image digest, useful for pulling the built image from Docker Hub. Only set if this is the 'oss' edition.
+        value: ${{ jobs.containerize.outputs.digest-oss }}
 
   workflow_dispatch:
     inputs:
@@ -76,6 +79,8 @@ jobs:
     outputs:
       full_image: ${{ steps.image.outputs.full_image }}
       digest: ${{ steps.build.outputs.digest }}
+      digest-ee: ${{ inputs.edition == 'ee' && steps.build.outputs.digest || '' }}
+      digest-oss: ${{ inputs.edition == 'oss' && steps.build.outputs.digest || '' }}
     env:
       AWS_REGION: us-east-1
     steps:
