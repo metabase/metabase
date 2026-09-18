@@ -162,6 +162,7 @@
      explorations
      formatter
      geojson
+     glossary
      indexed-entities
      core.initialization-status
      interestingness
