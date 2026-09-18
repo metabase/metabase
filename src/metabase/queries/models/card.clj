@@ -677,18 +677,28 @@
 ;; Curated metric dimensions. New metrics seed their own-table columns only, with joined/FK
 ;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
 ;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
-;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full
-;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
-;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
-;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
+;; be mapped to those joined columns. The default dimension was also expressed as a breakout on the metric's
+;; query, rather than the `:default` flag in the `:dimensions`.
+;; This upgrade modernizes a metric card to have properly constructed `:dimensions`, preserving the legacy
+;; behaviour of including all breakoutable columns, and setting the `:default` accordingly.
 (defmethod upgrade-card-schema-to 24
-  [card _schema-version]
-  (if (and (= :metric (keyword (:type card)))
-           (nil? (:dimensions card))
-           (seq (:dataset_query card)))
-    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
+  [{:keys [dataset_query dimensions] :as card} _schema-version]
+  (cond
+    (not= :metric (keyword (:type card))) card
+    (empty? dataset_query)                card
+
+    ;; Metric with `:dimensions` not populated at all, so generate them.
+    ;; We generate the legacy, "full" dimensions, selecting all breakoutable columns as a dimension.
+    ;; (In contrast, a newly created metric starts with only its *own* table's columns as dimensions.)
+    (nil? dimensions)
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set dataset_query)]
       (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
-    card))
+
+    ;; Metric with legacy `:dimensions` already set.
+    ;; Populate the `:default` flag based on the breakout in the query.
+    :else
+    (update card :dimensions metrics/recover-pre-curation-default-dimension
+            (:dimension_mappings card) dataset_query)))
 
 (defn- schema-governed-select?
   "Whether `card` is a Card row SELECTed with any [[card-schema/schema-governed-columns]], and therefore holds a
