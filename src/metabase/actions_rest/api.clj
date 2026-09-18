@@ -173,7 +173,10 @@
                        :status-code 400})))
     (when-let [model-id (:model_id action)]
       (when (not= model-id (:model_id existing-action))
-        (api/write-check :model/Card model-id)))
+        ;; moving the action onto another model means the model's database has to allow actions too
+        (let [model (api/write-check :model/Card model-id)]
+          (actions/check-actions-enabled-for-database!
+           (actions-rest.db/database (:database_id model))))))
     (when-let [dataset-query (not-empty (:dataset_query action))]
       (check-native-query-perms! (:database_id action) dataset-query))
     (when-let [new-db-id (updated-query-action-database-id action existing-action)]

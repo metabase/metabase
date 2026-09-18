@@ -412,6 +412,23 @@
              (is (=? {:database_id model-db-id}
                      (mt/user-http-request :crowberto :get 200 url))))))))))
 
+(deftest action-update-checks-actions-enabled-on-new-model-database-test
+  (testing "PUT /api/action/:id checks actions-enabled on the database of the model it is moved to"
+    (do-with-actions-enabled-on-model-db-only!
+     (fn [model-db-id other-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (mt/with-temp [:model/Card {model-id :id}       (model-card-def :crowberto)
+                        :model/Card {other-model-id :id} {:type          :model
+                                                          :dataset_query {:database other-db-id
+                                                                          :type     :native
+                                                                          :native   {:query "select 1"}}}]
+           (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                               (cross-db-native-action model-id model-db-id model-db-id))]
+             (is (=? {:message "Actions are not enabled."
+                      :data    {:database-id other-db-id}}
+                     (mt/user-http-request :crowberto :put 400 (str "action/" (:id created))
+                                           {:model_id other-model-id}))))))))))
+
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
     (mt/with-actions-enabled
