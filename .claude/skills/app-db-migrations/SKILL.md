@@ -21,8 +21,9 @@ resources/migrations/2026/20260917_short_snake_case_name.yaml
   digits and underscores only). One file per change or per closely related group of changes; several changesets in
   one file are fine.
 - The changeset **id carries no version**: lower-case letters, digits and underscores, with at least one letter, e.g.
-  `glossary_entity_id`, `metabot_message_data_version_1`. Not a timestamp, not `v66.…`, not all digits, no `v<digit>`
-  prefix. Ids must be unique across the repository, so make them specific.
+  `glossary_entity_id`, `metabot_message_data_version_1`. Not an ISO date or timestamp like the old ids carried
+  (`2026-09-18T12:00:00`), not `v66.…`, not all digits, no `v<digit>` prefix. Ids must be unique across the
+  repository, so make them specific.
 - The Metabase version a changeset ships in is decided by the branch it is merged into, not by anything in the file.
   A backport is the same file with the same id and author on the release branch; Liquibase then recognises it as
   already run when the customer upgrades.
@@ -107,8 +108,8 @@ MB_DB_TYPE=h2 ./bin/test-agent :only '[metabase.app-db.schema-migrations-test/gl
 
 ## Running and rolling back in development
 
-Every `migrate up` run is recorded as its own Liquibase deployment. Use the dev tooling (REPL `dev.migrate/…`, or the
-CLI below — it needs the `:dev` alias):
+Every `migrate up` run is recorded as its own Liquibase deployment. Use the dev tooling (in the REPL,
+`(dev.migrate/migrate!)` and `(dev.migrate/rollback-last-deployment!)`; or the CLI below — it needs the `:dev` alias):
 
 ```sh
 clojure -M:dev:migrate up                        # apply unrun changesets

@@ -39,7 +39,8 @@
    (liquibase Scope)
    (liquibase.changelog ChangeSet)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener)
-   (liquibase.database Database)))
+   (liquibase.database Database)
+   (liquibase.util LiquibaseUtil)))
 
 (set! *warn-on-reflection* true)
 
@@ -307,6 +308,12 @@
 (def ^:private legacy-version-tracking-comment
   "Not a real migration, tracking version for instances prior to the databasechangelog_version tracking.")
 
+(defn- legacy-version-tracking-description
+  "The `description` of the marker row: what a `SELECT * FROM databasechangelog` reader sees next to the changeset
+  descriptions Liquibase writes (`addColumn tableName=...`)."
+  [major]
+  (format "Metabase v%d version marker (not a changeset)" major))
+
 (defn legacy-version-tracking-marker?
   "Whether a `databasechangelog` row (`{:filename ..}`) is a `vNN.legacy-version-tracking` marker rather than a changeset."
   [{:keys [filename]}]
@@ -315,15 +322,23 @@
 (defn- legacy-marker-id [major]
   (format "v%d.%s" major legacy-version-tracking-suffix))
 
+(defn- liquibase-build-version
+  "What Liquibase writes to the `liquibase` column of the rows it records: its build version, `SNAPSHOT` shortened as
+  Liquibase's own `MarkChangeSetRanGenerator` does."
+  ^String []
+  (str/replace (LiquibaseUtil/getBuildVersion) "SNAPSHOT" "SNP"))
+
 (defn- legacy-marker-statement
   "`[sql & params]` inserting the `vNN.legacy-version-tracking` row for `major` as a row of deployment `deployment-id`,
-  at the next execution position -- Liquibase's own `MAX(orderexecuted) + 1`."
+  at the next execution position -- Liquibase's own `MAX(orderexecuted) + 1` -- and stamped with the Liquibase
+  version like the rows Liquibase records itself."
   [changelog major deployment-id]
-  [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id, comments) "
-                "SELECT ?, ?, ?, CURRENT_TIMESTAMP, COALESCE(MAX(orderexecuted), 0) + 1, 'EXECUTED', ?, ? FROM %s")
+  [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id, "
+                "description, comments, liquibase) "
+                "SELECT ?, ?, ?, CURRENT_TIMESTAMP, COALESCE(MAX(orderexecuted), 0) + 1, 'EXECUTED', ?, ?, ?, ? FROM %s")
            changelog changelog)
    (legacy-marker-id major) legacy-version-tracking-author legacy-version-tracking-suffix
-   deployment-id legacy-version-tracking-comment])
+   deployment-id (legacy-version-tracking-description major) legacy-version-tracking-comment (liquibase-build-version)])
 
 (defn record-legacy-version-tracking!
   "Record a synthetic `vNN.legacy-version-tracking` changeset row for `major` (by default the running binary's), as an

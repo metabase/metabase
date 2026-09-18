@@ -160,9 +160,9 @@
                                             change-listener)
     @error-ids))
 
-(defn- warn-about-unreversible-rows!
+(defn- log-unreversible-rows!
   "Log the rows in `changesets-to-drop` that have no changeset in this changelog to reverse them. Their bookkeeping
-  is cleared with their deployment regardless, so any schema change they made stays behind -- worth shouting about.
+  is cleared with their deployment regardless, so any schema change they made stays behind -- worth calling out.
   The legacy-version-tracking marker is bookkeeping only and is expected here."
   [^Liquibase liquibase changesets-to-drop]
   (let [known      (changelog-keys liquibase)
@@ -241,7 +241,7 @@
             (log/infof "Not reversing %d re-run (runOnChange/force) changeset(s) that predate the rollback target: %s"
                        (count changesets-to-retain) (str/join ", " (sort (map peek changesets-to-retain))))
             (reassign-changeset-rows! conn changelog-table changesets-to-retain boundary-deployment))
-          (warn-about-unreversible-rows! liquibase changesets-to-drop)
+          (log-unreversible-rows! liquibase changesets-to-drop)
           (delete-deployment-rows! conn changelog-table deployments-to-drop))))))
 
 ;;; ------------------------------------------------------ guards --------------------------------------------------

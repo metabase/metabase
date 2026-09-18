@@ -3,8 +3,8 @@ and enforce additional constraints (e.g. make sure you're not using duplicate mi
 one change in a single `changeSet`), plus the file-layout rules:
 
 - `resources/migrations/<year>/<yyyymmdd>_<name>.yaml` -- the current layout: version-less ids (lower-case letters,
-  digits and underscores, at least one letter, no `v<digit>` prefix, no timestamps). The version a changeset ships in
-  is decided by the branch it is merged into.
+  digits and underscores, at least one letter, no `v<digit>` prefix, no ISO date/timestamp like the old
+  `vNN.2024-03-18T16:00:00` ids). The version a changeset ships in is decided by the branch it is merged into.
 - `resources/migrations/0NN/…` and `0NN_update_migrations.yaml` -- the older versioned layouts, whose ids carry the
   major (`vNN.…`). Versioned ids are refused from v66 on (`first-versionless-major`); v65 mixes both layouts.
 

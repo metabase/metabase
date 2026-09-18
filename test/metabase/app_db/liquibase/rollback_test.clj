@@ -340,7 +340,7 @@
           (is (not (re-find #"left unchanged" (msg db-type))) db-type)
           (is (re-find #"may (already )?have been committed" (msg db-type)) db-type))))))
 
-(deftest rollback-warns-about-rows-it-cannot-reverse-test
+(deftest rollback-logs-rows-it-cannot-reverse-test
   (testing "rows cleared by a rollback without a matching changeset to reverse are called out, not silently dropped"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -352,7 +352,7 @@
                                               [{:deployment "d64" :ran "x.64.0.0" :changesets ["base"]}
                                                {:deployment "d65" :ran "x.65.0.0" :changesets ["unknown_to_this_changelog"]}])
             (with-redefs [config/mb-version-info (tag "v0.65.0")]
-              (mt/with-log-messages-for-level [messages :warn]
+              (mt/with-log-messages-for-level [messages [metabase.app-db.liquibase.rollback :info]]
                 (rollback/rollback-major-version! conn liquibase false "64")
                 (is (some #(re-find #"could not be reversed.*unknown_to_this_changelog" (:message %)) (messages))
                     "names the row whose DDL (if any) is now orphaned")))
@@ -434,7 +434,7 @@
               (versions/record-deployment-version! conn "dev2" versions/dev-version true)
               ;; what an old binary's consolidation leaves behind
               (jdbc/execute! {:connection conn} [(format "UPDATE %s SET filename = 'migrations/000_legacy_migrations.yaml' WHERE id = 'dev_run_a'" ct)])
-              (mt/with-log-messages-for-level [messages :warn]
+              (mt/with-log-messages-for-level [messages [metabase.app-db.liquibase :info]]
                 (rollback/rollback-to-deployment! conn liquibase "dev1")
                 (is (some #(re-find #"Restoring the changelog filename of version-less changeset dev_run_a" (:message %)) (messages)))
                 (is (not-any? #(re-find #"could not be reversed" (:message %)) (messages))))

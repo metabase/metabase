@@ -21,7 +21,9 @@
                                     (jdbc/query {:datasource (mdb/data-source)}
                                                 [(format "SELECT metabase_version FROM %s ORDER BY id" versions/databasechangelog-versions-table)])))
               markers  (fn [] (mapv :id (jdbc/query {:datasource (mdb/data-source)}
-                                                    [(format "SELECT id FROM %s WHERE id LIKE '%%legacy-version-tracking'" ct)])))]
+                                                    [(format "SELECT id FROM %s WHERE id LIKE '%%legacy-version-tracking'" ct)])))
+              deployment-of (fn [id] (:deployment_id (first (jdbc/query {:datasource (mdb/data-source)}
+                                                                        [(format "SELECT deployment_id FROM %s WHERE id = ?" ct) id]))))]
           (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
             (dev.migrate/migrate!))
           (mdb.test-util/age-changelog-rows! {:datasource (mdb/data-source)} ct 5)
@@ -30,7 +32,8 @@
             (is (true? (applied? "dev_run_b")))
             (is (= [versions/dev-version versions/dev-version] (versions)) "two dev deployments")
             (is (= ["v9999.legacy-version-tracking"] (markers)))
-            (dev.migrate/rollback! :last-deployment)
+            (is (= (deployment-of "dev_run_a") (dev.migrate/rollback-last-deployment!))
+                "returns the deployment it rolled back to")
             (is (false? (applied? "dev_run_b")) "the newest deployment's changeset is reversed")
             (is (true? (applied? "dev_run_a")) "the earlier deployment survives")
             (is (= [versions/dev-version] (versions)) "the rolled-back deployment's version row is gone too")
@@ -42,14 +45,18 @@
                                     (dev.migrate/migrate! :down-force)))
               (is (true? (applied? "dev_run_a")) "and nothing was touched"))
             (testing "with a single deployment left there is nothing earlier: clean no-op"
-              (dev.migrate/rollback! :last-deployment)
+              (is (nil? (dev.migrate/rollback-last-deployment!)))
               (is (true? (applied? "dev_run_a"))))
+            (testing "rollback! :last-deployment is the same thing"
+              (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"]
+                (dev.migrate/migrate!))
+              (is (= (deployment-of "dev_run_a") (dev.migrate/rollback! :last-deployment)))
+              (is (false? (applied? "dev_run_b"))))
             (testing "rollback! :deployment <id> rolls back everything after that deployment"
               (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"]
                 (dev.migrate/migrate!))
               (is (true? (applied? "dev_run_b")))
-              (let [base-dep (:deployment_id (first (jdbc/query {:datasource (mdb/data-source)}
-                                                                [(format "SELECT deployment_id FROM %s WHERE id = 'dev_run_a'" ct)])))]
+              (let [base-dep (deployment-of "dev_run_a")]
                 (dev.migrate/rollback! :deployment base-dep)
                 (is (false? (applied? "dev_run_b")))
                 (is (true? (applied? "dev_run_a")))))))))))

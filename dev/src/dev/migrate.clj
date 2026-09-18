@@ -118,11 +118,24 @@
       (println (format "Rolled back to deployment %s. Latest migration: %s" boundary-deployment-id (latest-migration)))))
   boundary-deployment-id)
 
+(defn rollback-last-deployment!
+  "Roll back the last `migrate!` run: everything that ran after the second-newest deployment, keeping
+  `databasechangelog_version` and the legacy-version-tracking marker in step. Returns the `deployment_id` rolled back
+  to, or nil when there was no earlier deployment (nothing is touched then). Same as `(rollback! :last-deployment)`."
+  []
+  (rollback-to-deployment!
+   (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+     (liquibase/with-liquibase [liquibase conn]
+       (let [database (.getDatabase liquibase)]
+         (versions/ensure-version-tracking! conn database)
+         (versions/previous-deployment-id conn database))))))
+
 (mu/defn rollback!
   "Rollback helper. Deployment-based rollbacks are the ones to reach for in development -- every `migrate!` run is
   its own Liquibase `deployment_id`, whatever Metabase version (real or [[versions/dev-version]]) it recorded:
 
-    ;; Roll back the last migration run (everything after the second-newest deployment):
+    ;; Roll back the last migration run (everything after the second-newest deployment); same as
+    ;; [[rollback-last-deployment!]]:
     (rollback! :last-deployment)
 
     ;; Roll back everything that ran after a given deployment_id (see `SELECT * FROM databasechangelog_version`):
@@ -136,12 +149,7 @@
     (rollback! :count 2)
     (rollback! :id \"v50.2024-03-18T16:00:00\")   ; inclusive"
   ([_k :- [:enum :last-deployment "last-deployment"]]
-   (rollback-to-deployment!
-    (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
-      (liquibase/with-liquibase [liquibase conn]
-        (let [database (.getDatabase liquibase)]
-          (versions/ensure-version-tracking! conn database)
-          (versions/previous-deployment-id conn database))))))
+   (rollback-last-deployment!))
 
   ([k      :- [:enum :id :count :deployment "id" "count" "deployment"]
     target :- [:or :int :string]]

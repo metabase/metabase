@@ -11,7 +11,8 @@
    [metabase.test :as mt])
   (:import
    (liquibase Liquibase)
-   (liquibase.changelog ChangeSet)))
+   (liquibase.changelog ChangeSet)
+   (liquibase.util LiquibaseUtil)))
 
 (set! *warn-on-reflection* true)
 
@@ -321,7 +322,7 @@
                 markers (fn [] (mapv :id (jdbc/query {:connection conn}
                                                      [(format "SELECT id FROM %s WHERE id LIKE 'v%%.legacy-version-tracking' ORDER BY id" ct)])))
                 row-of  (fn [id] (first (jdbc/query {:connection conn}
-                                                    [(format "SELECT deployment_id, orderexecuted FROM %s WHERE id = ?" ct) id])))]
+                                                    [(format "SELECT deployment_id, orderexecuted, liquibase, description FROM %s WHERE id = ?" ct) id])))]
             (versions/ensure-version-tracking! conn db)
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d64" :changesets ["c64"]}])
             (testing "records the row against the deployment that ran, and latest-applied-major-version reads it"
@@ -331,6 +332,13 @@
                   "shares the deployment_id, so the normal rollback path removes it with its deployment")
               (is (= (inc (:orderexecuted (row-of "c64"))) (:orderexecuted (row-of "v64.legacy-version-tracking")))
                   "at the next execution position, like a changeset Liquibase ran")
+              (is (= (LiquibaseUtil/getBuildVersion) (:liquibase (row-of "v64.legacy-version-tracking")))
+                  "stamped with the Liquibase version, like a changeset Liquibase ran")
+              (is (= "Metabase v64 version marker (not a changeset)" (:description (row-of "v64.legacy-version-tracking")))
+                  "with a description saying what the row is")
+              (is (re-find (re-pattern (str "legacy-version-tracking[^;]*'" (LiquibaseUtil/getBuildVersion) "'"))
+                           (versions/version-tracking-sql conn db))
+                  "and so is the marker in the manual-upgrade SQL")
               (is (= 64 (versions/latest-applied-major-version conn db))))
             (testing "idempotent for a major that already has a row (a pre-existing row never fails an upgrade)"
               (versions/record-legacy-version-tracking! db 64 "d64")

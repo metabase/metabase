@@ -213,12 +213,22 @@
     ;; filename signal were ever lost. A `v<digit>` prefix would pollute the `id LIKE 'v%'` version scans that older
     ;; binaries use for downgrade detection.
     (year-dir-migration-file? file)
-    (let [ids       (change-set-ids change-log)
-          valid-id? (fn [id]
-                      (and (re-matches #"[a-z0-9_]+" id)
-                           (re-find #"[a-z]" id)
-                           (not (re-find #"^v\d" id))))
-          bad-ids   (remove valid-id? ids)]
+    (let [ids          (change-set-ids change-log)
+          ;; the ISO date/timestamp the versioned ids were built from (`v50.2024-03-18T16:00:00`): checked first so
+          ;; the habit gets its own message rather than a generic character-set complaint
+          iso-date-id? (fn [id] (re-find #"\d{4}-\d{2}-\d{2}" id))
+          valid-id?    (fn [id]
+                         (and (re-matches #"[a-z0-9_]+" id)
+                              (re-find #"[a-z]" id)
+                              (not (re-find #"^v\d" id))))
+          dated-ids    (filter iso-date-id? ids)
+          bad-ids      (remove valid-id? ids)]
+      (when (seq dated-ids)
+        (throw (validation-error
+                (format (str "Migration file contains changeset IDs that look like dates or timestamps; a version-less "
+                             "ID names the change instead (the file name already carries the date): %s")
+                        (str/join ", " dated-ids))
+                {:date-like-ids (vec dated-ids)})))
       (when (seq bad-ids)
         (throw (validation-error
                 (format (str "Migration file contains invalid changeset IDs (use a version-less ID: lowercase "
