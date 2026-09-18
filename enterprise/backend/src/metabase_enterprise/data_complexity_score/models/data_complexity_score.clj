@@ -1,9 +1,11 @@
 (ns metabase-enterprise.data-complexity-score.models.data-complexity-score
   "Persistence for cached Data Complexity Score snapshots."
   (:require
-   [metabase.app-db.core :as mdb]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
+   [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
+   [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.models.interface :as mi]
-   [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,8 +14,16 @@
 (doto :model/DataComplexityScore
   (derive :metabase/model))
 
+(defn- score-data-out
+  "Re-keywordize the `:keyword`-typed leaves (e.g. `:meta.text-variant`) that JSON storage round-trips back as
+  strings."
+  [score-data]
+  (when-let [decoded ((:out mi/transform-json) score-data)]
+    (mc/decode ::data-complexity-score.schema/data-complexity-score.score-data decoded
+               (mtx/transformer mtx/json-transformer))))
+
 (t2/deftransforms :model/DataComplexityScore
-  {:score_data mi/transform-json})
+  {:score_data {:in (:in mi/transform-json), :out score-data-out}})
 
 (defn- score-with-calculated-at
   [{:keys [score_data created_at]}]
@@ -24,8 +34,7 @@
   "Return the most recently persisted Data Complexity Score row for `fingerprint`, or nil if none exist."
   ([fingerprint] (latest-entry fingerprint "appdb"))
   ([fingerprint source]
-   (t2/select-one :model/DataComplexityScore
-                  :fingerprint fingerprint :source source {:order-by [[:id :desc]]})))
+   (data-complexity-score.db/latest-score-entry fingerprint source)))
 
 (defn latest-score
   "Return the latest persisted Data Complexity Score payload for `fingerprint`, or nil if none exist."
@@ -40,19 +49,14 @@
   we never compare it against the app server's clock.
   Lets the scoring task skip a run that would only re-publish a still-fresh score."
   [fingerprint source cooldown-hours]
-  (t2/exists? :model/DataComplexityScore
-              {:where [:and
-                       [:= :fingerprint fingerprint]
-                       [:= :source source]
-                       [:>= :created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- cooldown-hours) :hour)]]}))
+  (data-complexity-score.db/scored-within-hours? fingerprint source cooldown-hours))
 
 (defn record-score!
   "Persist one append-only Data Complexity Score snapshot."
   [fingerprint source score]
-  (let [id (t2/insert-returning-pk! :model/DataComplexityScore
-                                    {:fingerprint fingerprint
-                                     :source      source
-                                     :score_data  score})]
+  (let [id (data-complexity-score.db/insert-score! {:fingerprint fingerprint
+                                                    :source      source
+                                                    :score_data  score})]
     (if id
-      (score-with-calculated-at (t2/select-one :model/DataComplexityScore :id id))
+      (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))

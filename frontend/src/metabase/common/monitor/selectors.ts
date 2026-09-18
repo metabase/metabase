@@ -1,9 +1,9 @@
-import type { State } from "metabase/redux/store";
 import {
   getUser,
   getUserIsAdmin,
   getUserIsAnalyst,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import type { State } from "metabase/redux/store";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 export function canAccessMonitorDiagnostics(state: State) {

@@ -302,49 +302,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
-  // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
-  it("should handle cross-filter on a table", { tags: "@skip" }, () => {
-    createDashboardWithQuestion({}, (dashboardId) =>
-      H.visitDashboard(dashboardId),
-    );
-    cy.icon("pencil").click();
-    H.showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
-
-    // configure clicks on "MY_NUMBER to update the param
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On-click behavior for each column")
-      .parent()
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Update a dashboard filter").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick one or more filters to update")
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("My Param").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.selectDropdown().within(() => cy.findByText("MY_STRING").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    // click on table value
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("111").click();
-
-    // check that param was set to "foo"
-    cy.location("search").should("eq", "?my_param=foo");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("My Param")
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("foo"));
-  });
-
   describe("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
     const questionDetails = {
       name: "13062Q",

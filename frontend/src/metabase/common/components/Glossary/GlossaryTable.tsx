@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/actions/containers/ActionPicker/ActionPicker.styled";
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
@@ -19,6 +18,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { SortDirection } from "metabase-types/api";
+
+import { EmptyState } from "../EmptyState";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -87,7 +88,7 @@ export function GlossaryTable({
 
   return (
     <>
-      <Group justify="space-between" mb="xs">
+      <Group justify="space-between" mb="xxs">
         <Text>
           {t`Define terms to help your team and ${metabotName} understand your data.`}
         </Text>
@@ -125,10 +126,12 @@ export function GlossaryTable({
         }
         emptyBody={
           <Center>
-            <EmptyState
-              message={t`No terms yet`}
-              illustrationElement={<NoObjectError mb="-1.5rem" />}
-            />
+            <Box mb="lg">
+              <EmptyState
+                message={t`No terms yet`}
+                illustrationElement={<NoObjectError mb="-1.5rem" />}
+              />
+            </Box>
           </Center>
         }
         sortColumnName={sortColumnName}
@@ -189,7 +192,7 @@ export function GlossaryTable({
                     valign="top"
                     onClick={() => startEditing(item.id, "term")}
                   >
-                    <Text lh="1.2" fw="bold" pt="xs">
+                    <Text lh="1.2" fw="bold" pt="xxs">
                       {item.term}
                     </Text>
                   </Box>
@@ -199,7 +202,7 @@ export function GlossaryTable({
                     style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
                     onClick={() => startEditing(item.id, "definition")}
                   >
-                    <Text lh="1.2" pt="xs">
+                    <Text lh="1.2" pt="xxs">
                       {item.definition}
                     </Text>
                   </Box>

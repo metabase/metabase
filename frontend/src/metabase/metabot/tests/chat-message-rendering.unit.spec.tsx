@@ -1,31 +1,38 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
+import type { ComponentProps } from "react";
 
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
+  createMockMetabotToolCallPart,
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDocumentEndpoints,
   setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
-  MetabotAgentChatMessage,
-  MetabotChatMessage,
+  MetabotIncompleteFinishReason,
+  MetabotMessage,
+  MetabotMessageStatus,
 } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
   assertConversation,
+  continueResponseButton,
+  conversationIdForAgent,
   enterChatMessage,
   input,
+  queryContinueResponseButton,
   setup as renderMetabotChat,
   thumbsDown,
   thumbsUp,
 } from "metabase/metabot/tests/utils";
-import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
-import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -42,22 +49,26 @@ import {
 
 registerVisualizations();
 
-const textMessage = (
-  role: "user" | "agent",
-  message: string,
-): FetchedChatMessage => ({ id: message, role, type: "text", message });
-
-const setup = (message: MetabotAgentChatMessage) =>
+const setup = (
+  message: Partial<MetabotMessage>,
+  props?: Partial<ComponentProps<typeof AgentMessage>>,
+) =>
   renderWithProviders(
     <AgentMessage
       debug={false}
       readonly={false}
       conversationId="convo-1"
-      hideActions
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
-      getCopyText={() => ""}
-      message={message}
+      message={{
+        id: "m1",
+        externalId: "msg-1",
+        role: "agent",
+        parts: [],
+        status: { type: "done" },
+        ...message,
+      }}
+      {...props}
     />,
     {
       storeInitialState: {
@@ -71,8 +82,8 @@ describe("AgentMessage", () => {
     renderWithProviders(
       <Messages
         messages={[
-          { id: "u1", role: "user", type: "text", message: "hi" },
-          { id: "a1", role: "agent", type: "text", message: "hello" },
+          createMockMetabotTextMessage("user", "hi"),
+          createMockMetabotTextMessage("agent", "hello"),
         ]}
         isDoingScience
         debug={false}
@@ -86,16 +97,64 @@ describe("AgentMessage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("hides the copy action when the agent response has no text", () => {
+    renderWithProviders(
+      <Messages
+        messages={[
+          createMockMetabotTextMessage("user", "hi"),
+          createMockMetabotMessage({
+            parts: [
+              {
+                id: "a1",
+                role: "agent",
+                type: "data_part",
+                part: { type: "data-todo_list", data: [] },
+              },
+            ],
+          }),
+        ]}
+        isDoingScience={false}
+        debug={false}
+        conversationId="convo-1"
+      />,
+    );
+
+    const [, agentMessage] = screen.getAllByTestId("metabot-chat-message");
+    expect(
+      within(agentMessage).queryByTestId("metabot-chat-message-copy"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders nothing for a done reply with no visible parts", () => {
+    setup({ parts: [createMockMetabotToolCallPart()] }, { onFork: jest.fn() });
+
+    expect(
+      screen.queryByTestId("metabot-chat-message"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders extra actions on a tool-only reply in debug mode", () => {
+    setup(
+      { parts: [createMockMetabotToolCallPart()] },
+      { debug: true, extraActions: <span data-testid="picker" /> },
+    );
+
+    expect(screen.getByTestId("picker")).toBeInTheDocument();
+  });
+
+  it("does not render extra actions on a tool-only reply outside debug mode", () => {
+    setup(
+      { parts: [createMockMetabotToolCallPart()] },
+      { debug: false, extraActions: <span data-testid="picker" /> },
+    );
+
+    expect(screen.queryByTestId("picker")).not.toBeInTheDocument();
+  });
+
   describe("feedback controls", () => {
-    const conversation: MetabotChatMessage[] = [
-      { id: "u1", role: "user", type: "text", message: "hi" },
-      {
-        id: "a1",
-        role: "agent",
-        type: "text",
-        message: "hello",
-        externalId: "a1-ext",
-      },
+    const conversation = [
+      createMockMetabotTextMessage("user", "hi"),
+      createMockMetabotTextMessage("agent", "hello", { externalId: "a1-ext" }),
     ];
 
     it("shows feedback ratings in an interactive conversation", async () => {
@@ -142,17 +201,21 @@ describe("AgentMessage", () => {
       });
       setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
       setup({
-        id: "s1",
-        role: "agent",
-        type: "data_part",
-        part: {
-          type: "data-entity_saved",
-          data: {
-            chart_id: "chart-1",
-            card_id: 99,
-            destination: { type: "collection", id: 5 },
+        parts: [
+          {
+            id: "s1",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-entity_saved",
+              data: {
+                chart_id: "chart-1",
+                card_id: 99,
+                destination: { type: "collection", id: 5 },
+              },
+            },
           },
-        },
+        ],
       });
 
       expect(
@@ -165,17 +228,21 @@ describe("AgentMessage", () => {
       fetchMock.get("path:/api/collection/5", { status: 404 });
       setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
       setup({
-        id: "s1",
-        role: "agent",
-        type: "data_part",
-        part: {
-          type: "data-entity_saved",
-          data: {
-            chart_id: "chart-1",
-            card_id: 99,
-            destination: { type: "collection", id: 5 },
+        parts: [
+          {
+            id: "s1",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-entity_saved",
+              data: {
+                chart_id: "chart-1",
+                card_id: 99,
+                destination: { type: "collection", id: 5 },
+              },
+            },
           },
-        },
+        ],
       });
 
       expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
@@ -187,17 +254,21 @@ describe("AgentMessage", () => {
       setupDocumentEndpoints(createMockDocument({ id: 7, name: "Q3 report" }));
       setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
       setup({
-        id: "s1",
-        role: "agent",
-        type: "data_part",
-        part: {
-          type: "data-entity_saved",
-          data: {
-            chart_id: "chart-1",
-            card_id: 99,
-            destination: { type: "document", id: 7 },
+        parts: [
+          {
+            id: "s1",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-entity_saved",
+              data: {
+                chart_id: "chart-1",
+                card_id: 99,
+                destination: { type: "document", id: 7 },
+              },
+            },
           },
-        },
+        ],
       });
 
       expect(await screen.findByText("Q3 report")).toBeInTheDocument();
@@ -205,16 +276,16 @@ describe("AgentMessage", () => {
     });
   });
 
-  describe("turn_errored", () => {
+  describe("errored status", () => {
     it("shows locked message for metabase_ai_managed_locked errors", () => {
       setup({
-        id: "msg",
-        role: "agent",
-        type: "turn_errored",
-        error: { type: "metabase_ai_managed_locked" },
-        display: {
-          type: "locked",
-          message: "You've used all of your included AI service tokens.",
+        status: {
+          type: "errored",
+          error: { type: "metabase_ai_managed_locked" },
+          display: {
+            type: "locked",
+            message: "You've used all of your included AI service tokens.",
+          },
         },
       });
 
@@ -233,13 +304,13 @@ describe("AgentMessage", () => {
 
     it("shows the custom display message when provided", () => {
       setup({
-        id: "msg",
-        role: "agent",
-        type: "turn_errored",
-        error: { type: "stream_error" },
-        display: {
-          type: "alert",
-          message: "The model is overloaded, please try again.",
+        status: {
+          type: "errored",
+          error: { type: "stream_error" },
+          display: {
+            type: "alert",
+            message: "The model is overloaded, please try again.",
+          },
         },
       });
 
@@ -249,12 +320,7 @@ describe("AgentMessage", () => {
     });
 
     it("shows generic alert message when display message is missing", () => {
-      setup({
-        id: "msg",
-        role: "agent",
-        type: "turn_errored",
-        error: { type: "stream_error" },
-      });
+      setup({ status: { type: "errored", error: { type: "stream_error" } } });
 
       expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
     });
@@ -271,11 +337,7 @@ describe("AgentMessage", () => {
       ]);
       expect(await input()).toHaveTextContent("How many orders?");
 
-      const conversationId =
-        store.getState().metabot.conversations.omnibot?.conversationId;
-      if (!conversationId) {
-        throw new Error("expected an active omnibot conversation");
-      }
+      const conversationId = conversationIdForAgent(store);
       const reloaded: ["user" | "agent", string][] = [
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
@@ -286,7 +348,7 @@ describe("AgentMessage", () => {
         createMockMetabotConversationDetail({
           conversation_id: conversationId,
           messages: reloaded.map(([role, message]) =>
-            textMessage(role, message),
+            createMockMetabotTextMessage(role, message),
           ),
         }),
       );
@@ -300,22 +362,14 @@ describe("AgentMessage", () => {
     });
 
     it("renders the raw error payload as a debug card when debug is true", () => {
-      renderWithProviders(
-        <AgentMessage
-          debug
-          readonly={false}
-          conversationId="convo-1"
-          hideActions
-          setFeedbackMessage={() => {}}
-          submittedFeedback={undefined}
-          getCopyText={() => ""}
-          message={{
-            id: "msg",
-            role: "agent",
-            type: "turn_errored",
+      setup(
+        {
+          status: {
+            type: "errored",
             error: { type: "stream_error", message: "boom" },
-          }}
-        />,
+          },
+        },
+        { debug: true },
       );
 
       const debugCard = screen.getByTestId(
@@ -323,6 +377,78 @@ describe("AgentMessage", () => {
       );
       expect(debugCard).toHaveTextContent(/stream_error/);
       expect(debugCard).toHaveTextContent(/boom/);
+    });
+  });
+
+  describe("incomplete status", () => {
+    const incompleteStatus = (
+      finishReason: MetabotIncompleteFinishReason,
+    ): MetabotMessageStatus => ({ type: "incomplete", finishReason });
+
+    it("offers to continue a length-limited response", async () => {
+      const onContinue = jest.fn();
+      setup({ status: incompleteStatus("length") }, { onContinue });
+
+      expect(
+        screen.getByText(/was cut off because it hit the maximum length/),
+      ).toBeInTheDocument();
+      await userEvent.click(await continueResponseButton());
+      expect(onContinue).toHaveBeenCalledWith(
+        expect.stringMatching(/Pick up exactly where you left off/),
+      );
+    });
+
+    it("offers to continue a step-limited response", async () => {
+      const onContinue = jest.fn();
+      setup({ status: incompleteStatus("tool-calls") }, { onContinue });
+
+      expect(
+        screen.getByText(/paused after reaching its step limit/),
+      ).toBeInTheDocument();
+      await userEvent.click(await continueResponseButton());
+      expect(onContinue).toHaveBeenCalledWith(
+        expect.stringMatching(/Continue working on my last request/),
+      );
+    });
+
+    it("shows a terminal notice when the context window is full", () => {
+      setup(
+        {
+          status: {
+            type: "incomplete",
+            finishReason: "length",
+            contextWindowFull: true,
+          },
+        },
+        { onContinue: jest.fn() },
+      );
+
+      expect(
+        screen.getByText(/reached its maximum length and can't continue/),
+      ).toBeInTheDocument();
+      expect(queryContinueResponseButton()).not.toBeInTheDocument();
+    });
+
+    it("explains a content-filtered response without offering to continue", () => {
+      setup(
+        { status: incompleteStatus("content-filter") },
+        {
+          onContinue: jest.fn(),
+        },
+      );
+
+      expect(
+        screen.getByText(/was stopped by a content filter/),
+      ).toBeInTheDocument();
+      expect(queryContinueResponseButton()).not.toBeInTheDocument();
+    });
+
+    it("falls back to a generic notice for other reasons", () => {
+      setup({ status: incompleteStatus("other") });
+
+      expect(
+        screen.getByText(/stopped before it finished/),
+      ).toBeInTheDocument();
     });
   });
 });
@@ -346,13 +472,10 @@ describe("UserMessage chart mentions", () => {
     renderWithProviders(
       <Messages
         messages={[
-          {
-            id: "u1",
-            role: "user",
-            type: "text",
-            message:
-              "[Revenue by Product Category](metabase://chart/chart-1) test",
-          },
+          createMockMetabotTextMessage(
+            "user",
+            "[Revenue by Product Category](metabase://chart/chart-1) test",
+          ),
         ]}
         isDoingScience={false}
         debug={false}

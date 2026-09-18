@@ -30,6 +30,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
@@ -51,7 +52,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (java.util.concurrent CountDownLatch)
+   (java.util.concurrent CountDownLatch Executors)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -74,7 +75,7 @@
 
 (defmethod driver/dbms-version ::test-driver
   [_ _]
-  "1.0")
+  {:version "1.0"})
 
 (defmethod driver/describe-database* ::test-driver
   [_ _]
@@ -373,7 +374,7 @@
 
 (defn- sync-and-analyze-trigger-name
   [db]
-  (.getName ^TriggerKey (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
+  (.getName ^TriggerKey (#'sync-databases-trigger/trigger-key db sync-databases-trigger/sync-analyze-task-info)))
 
 (defmacro with-test-driver-available!
   [& body]
@@ -578,14 +579,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [:model/Database :id :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))))
+                     (dissoc (into {} curr-db) :id)))))))))))
 
 (deftest update-database-test-2
   (testing "PUT /api/database/:id"
@@ -626,23 +627,24 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
-(deftest ignore-is-stub-in-create-test
-  (testing "POST /api/database ignores :is_stub in the request body (advanced-config only path)"
+(deftest reject-is-stub-in-create-test
+  (testing "POST /api/database returns a 400 when :is_stub=true is in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "database"
-                                                 {:name    (mt/random-name)
-                                                  :engine  (u/qualified-name ::test-driver)
-                                                  :details {:db "my_db"}
-                                                  :is_stub true})]
-          (is (false? (t2/select-one-fn :is_stub :model/Database :id id))))))))
+        (is (= "is_stub may not be set via the API"
+               (mt/user-http-request :crowberto :post 400 "database"
+                                     {:name    (mt/random-name)
+                                      :engine  (u/qualified-name ::test-driver)
+                                      :details {:db "my_db"}
+                                      :is_stub true})))))))
 
-(deftest ignore-is-stub-in-update-test
-  (testing "PUT /api/database/:id ignores :is_stub=true in the request body"
+(deftest reject-is-stub-in-update-test
+  (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-      (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
-                            {:is_stub true})
+      (is (= "is_stub may not be set via the API"
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                   {:is_stub true})))
       (testing "the row is unchanged"
         (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
   (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
@@ -928,6 +930,21 @@
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-metadata-primes-table-perms-cache-test
+  (testing "GET /api/database/:id/metadata primes the table-perms cache before its per-table read checks"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t1"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t2"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t4"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t5"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t6"}]
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+      (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
+        (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
+            "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
+
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
     (testing "GET /api/database/:id/fields"
@@ -989,6 +1006,52 @@
                          first)]
           (is (not (contains? table :fields))))))))
 
+(deftest oss-include-editable-data-model-fails-closed-test
+  (testing "without the advanced-permissions feature, include_editable_data_model must not bypass the read check"
+    ;; `include_editable_data_model=true` tells the API to skip the query-access check and run the
+    ;; data-model-perms check instead. Only EE with an advanced-permissions token grants non-admins any
+    ;; data-model perms; every other build (OSS, or EE without the token) runs the OSS `defenterprise`
+    ;; implementation, which has to fail closed -- admins only.
+    (mt/with-premium-features #{}
+      (mt/with-no-data-perms-for-all-users!
+        (testing "non-admin"
+          (testing "GET /api/database"
+            (is (empty? (filter #(= (mt/id) (:id %))
+                                (:data (mt/user-http-request :rasta :get 200
+                                                             "database?include_editable_data_model=true"))))))
+          (testing "GET /api/database/:id"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d?include_editable_data_model=true" (mt/id))))
+          (testing "GET /api/database/:id/metadata"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d/metadata?include_editable_data_model=true&include_hidden=true"
+                                          (mt/id))))
+          (testing "GET /api/database/:id/schemas"
+            (is (= [] (mt/user-http-request :rasta :get 200
+                                            (format "database/%d/schemas?include_editable_data_model=true" (mt/id))))))
+          (testing "GET /api/database/:id/schema/:schema"
+            (mt/user-http-request :rasta :get 404
+                                  (format "database/%d/schema/PUBLIC?include_editable_data_model=true" (mt/id))))
+          (testing "GET /api/database/:id/idfields"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))
+        (testing "admins are unaffected"
+          (is (some #(= (mt/id) (:id %))
+                    (:data (mt/user-http-request :crowberto :get 200
+                                                 "database?include_editable_data_model=true"))))
+          (is (seq (:tables (mt/user-http-request :crowberto :get 200
+                                                  (format "database/%d/metadata?include_editable_data_model=true"
+                                                          (mt/id))))))
+          (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200
+                                                  (format "database/%d/schemas?include_editable_data_model=true"
+                                                          (mt/id)))))
+          (is (seq (mt/user-http-request :crowberto :get 200
+                                         (format "database/%d/schema/PUBLIC?include_editable_data_model=true"
+                                                 (mt/id)))))
+          (is (seq (mt/user-http-request :crowberto :get 200
+                                         (format "database/%d/idfields?include_editable_data_model=true"
+                                                 (mt/id))))))))))
+
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
                     (mt/user-http-request :rasta :get 200
@@ -1011,6 +1074,23 @@
                                         ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix)))))))
+
+(deftest autocomplete-suggestions-honors-user-set-semantic-type-and-visibility-test
+  (testing "GET /api/database/:id/autocomplete_suggestions honors the user's semantic_type/visibility_type"
+    (let [field-id  (mt/id :venues :price)
+          base-type (t2/select-one-fn :base_type :model/Field field-id)
+          venues-row (fn [] (first (filter (fn [[_ desc]] (str/starts-with? desc "VENUES "))
+                                           (mt/user-http-request :rasta :get 200
+                                                                 (format "database/%d/autocomplete_suggestions" (mt/id))
+                                                                 :prefix "price"))))]
+      (testing "a user-set semantic_type replaces the sync value"
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
+                                                   :semantic_type     :type/Currency
+                                                   :semantic_type_set true}]
+          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
+      (testing "a user-set sensitive visibility_type hides the Field"
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
+          (is (nil? (venues-row))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
@@ -1685,9 +1765,9 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
           ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor.
           ;; The Sync-now endpoint dispatches to the *explicit* sync fns (which bypass disable-auto-sync).
-          (with-redefs [quick-task/submit-task!                   future-call
-                        sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
-                        analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task!                   future-call
+                                      sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                                      analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
@@ -1722,9 +1802,9 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
                                                     :details             details
                                                     :initial_sync_status "incomplete"}]
-          (with-redefs [quick-task/submit-task! (fn [f]
-                                                  (binding [driver.settings/*allow-testing-h2-connections* true]
-                                                    (f)))]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                  (f)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
           (testing "the explicit sync actually ran, not merely dispatched"
             (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))
@@ -1732,12 +1812,40 @@
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
 
+(deftest sync-schema-labels-data-sensitivity-test
+  (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
+    ;; Same shape as the test above: create the Database under disable-auto-sync so only the explicit request syncs
+    ;; it, and run the quick task synchronously so the labels can be asserted after the request returns.
+    (let [details (:details (mt/db))]
+      (mt/with-temporary-setting-values [disable-auto-sync             true
+                                         data-sensitivity-scan-enabled true]
+        (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
+                                                    :details             details
+                                                    :initial_sync_status "incomplete"}]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                  (f)))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (let [label (fn [table-name field-name]
+                        (t2/select-one-fn :data_sensitivity :model/Field
+                                          :table_id (t2/select-one-pk :model/Table :db_id db-id :name table-name)
+                                          :name field-name))]
+            (is (= :PII (label "PEOPLE" "EMAIL")))
+            (is (= :SEC_KEY (label "PEOPLE" "PASSWORD")))
+            (is (= :PUBLIC (label "ORDERS" "TOTAL")))))))))
+
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)
-          blocker-latch (CountDownLatch. 1)]
+          blocker-latch (CountDownLatch. 1)
+          ;; Run on a pool of our own: the shared one is process-wide and holds fire-and-forget tasks left
+          ;; behind by earlier tests, each with the default two-hour timeout. One of those still running
+          ;; ahead of the blocker delays everything below it past the deref timeout, which is what happens
+          ;; on driver CI, where those leftover tasks are real syncs over the network.
+          pool          (Executors/newSingleThreadExecutor)]
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
-        (with-redefs [sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+        (with-redefs [quick-task/executor                      (delay pool)
+                      sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
                       analyze/analyze-db-explicit!             (constantly nil)]
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
@@ -1751,7 +1859,8 @@
             (testing "sync executes after stuck task is evicted"
               (is (true? (deref sync-called? 10000 :sync-never-called))))
             (finally
-              (.countDown blocker-latch))))))))
+              (.countDown blocker-latch)
+              (.shutdownNow pool))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -1778,22 +1887,28 @@
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
     (mt/with-premium-features #{:audit-app}
-      (let [update-field-values-called? (promise)]
-        (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                               (when (= (u/the-id synced-db) (u/the-id db))
-                                                                                 (deliver update-field-values-called? :sync-called)))]
-            (snowplow-test/with-fake-snowplow-collector
-              (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-              (is (= :sync-called
-                     (deref update-field-values-called? long-timeout :sync-never-called)))
-              (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-              (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                  :details :id)))
-              (testing "triggers snowplow event"
-                (is (=?
-                     {"event" "database_manual_scan", "target_id" (u/the-id db)}
-                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+      (let [update-field-values-called? (promise)
+            ;; Isolated pool, for the same reasons as in `sync-schema-executes-when-executor-busy-test`.
+            pool                        (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
+            (with-redefs [quick-task/executor (delay pool)]
+              (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                                   (when (= (u/the-id synced-db) (u/the-id db))
+                                                                                     (deliver update-field-values-called? :sync-called)))]
+                (snowplow-test/with-fake-snowplow-collector
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+                  (is (= :sync-called
+                         (deref update-field-values-called? long-timeout :sync-never-called)))
+                  (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+                  (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                      :details :id)))
+                  (testing "triggers snowplow event"
+                    (is (=?
+                         {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                         (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
@@ -2521,6 +2636,33 @@
                                                     :tunnel-private-key-passphrase secret/protected-password
                                                     :access-token                  secret/protected-password
                                                     :refresh-token                 secret/protected-password})))))
+
+(deftest update-database-engine-changed-details-not-merged-test
+  (let [existing-details {:host "localhost",
+                          :port 5432,
+                          :dbname "postgres",
+                          :user "postgres"
+                          :password "password",
+                          :schema-filters-type "all"
+                          :ssl false,
+                          :tunnel-enabled false,
+                          :advanced-options false}
+        new-details      {:service-account-json "{\"type\": \"service_account\", \"project_id\": \"bigquery-project\"}",
+                          :dataset-filters-type "inclusion",
+                          :dataset-filters-patterns "dev",
+                          :project-id nil
+                          :advanced-options false}]
+    (with-redefs [driver/can-connect? (constantly true)]
+      (testing "when the engine changes, the existing details are not merged into the new ones (#77480)"
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details existing-details}]
+          (api-update-database! 200 db-id {:engine :bigquery-cloud-sdk, :details new-details})
+          (is (= new-details
+                 (t2/select-one-fn :details :model/Database :id db-id))))
+        (testing "without an engine change, existing details are still merged into partial updates"
+          (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres :details existing-details}]
+            (api-update-database! 200 db-id {:details {:port 5433}})
+            (is (= (assoc existing-details :port 5433)
+                   (t2/select-one-fn :details :model/Database :id db-id)))))))))
 
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver

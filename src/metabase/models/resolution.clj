@@ -60,6 +60,7 @@
     :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
+    :model/TableUserSettings                 metabase.warehouse-schema.models.table-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
@@ -174,7 +175,8 @@
     ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
     ;; before side effects like `deftransforms` and `define-before-insert` have run
     (when-let [nspace (get model->namespace x)]
-      ;; [[classloader/require]] for thread safety
+      ;; The registry selects the namespace dynamically; use [[classloader/require]] for thread safety.
+      #_{:clj-kondo/ignore [:metabase/modules]}
       (classloader/require nspace)))
   x)
 

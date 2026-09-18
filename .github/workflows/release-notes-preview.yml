@@ -16,6 +16,9 @@ on:
 
 jobs:
   preview-release-notes:
+    # Only generate release notes preview in https://github.com/metabase/metabase since this is the only place milestones are used which is
+    # what we use to determine what issues/prs should be included in the release.
+    if: github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:

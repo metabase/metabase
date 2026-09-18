@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DataReferenceButton } from "metabase/querying/components/NativeQueryEditor/DataReferenceButton";
@@ -12,7 +13,7 @@ import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./NativeQueryEditorActionButtons.module.css";
 
-const ICON_SIZE = 18;
+export const NATIVE_EDITOR_ICON_SIZE = 18;
 
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
@@ -22,6 +23,7 @@ interface NativeQueryEditorActionButtonsProps {
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
+  promptButton?: ReactNode;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
@@ -42,6 +44,7 @@ export const NativeQueryEditorActionButtons = (
     snippetCollections,
     snippets,
     features,
+    promptButton,
     toggleDataReference,
     toggleTemplateTagsEditor,
     onFormatQuery,
@@ -62,26 +65,27 @@ export const NativeQueryEditorActionButtons = (
     <Flex
       component="aside"
       data-testid="native-query-editor-action-buttons"
-      gap="lg"
+      gap="xl"
       align="center"
     >
+      {promptButton}
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
       {features.dataReference && (
         <DataReferenceButton
           {...props}
-          size={ICON_SIZE}
+          size={NATIVE_EDITOR_ICON_SIZE}
           onClick={toggleDataReference}
         />
       )}
       {features.snippets && showSnippetSidebarButton && (
-        <SnippetSidebarButton {...props} size={ICON_SIZE} />
+        <SnippetSidebarButton {...props} size={NATIVE_EDITOR_ICON_SIZE} />
       )}
       {features.variables && (
         <NativeVariablesButton
           {...props}
-          size={ICON_SIZE}
+          size={NATIVE_EDITOR_ICON_SIZE}
           onClick={toggleTemplateTagsEditor}
         />
       )}
@@ -92,7 +96,9 @@ export const NativeQueryEditorActionButtons = (
             className={S.button}
             aria-label={t`Auto-format`}
             p={0}
-            leftSection={<Icon name="format_code" size={ICON_SIZE} />}
+            leftSection={
+              <Icon name="format_code" size={NATIVE_EDITOR_ICON_SIZE} />
+            }
             onClick={onFormatQuery}
           />
         </Tooltip>

@@ -27,7 +27,7 @@ export type EmbedResourceParameter = {
 
 export type EmbeddingParametersValues = Record<
   string,
-  number | string | string[] | null | undefined
+  ParameterValueOrArray | null | undefined
 >;
 
 /**

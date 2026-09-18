@@ -13,6 +13,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved Moonshot connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-moonshot-key-byok" :base-url "https://api.moonshot.ai/v1"})
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; moonshot-request-body tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -47,16 +51,31 @@
 
 (deftest ^:parallel request-body-max-tokens-test
   (testing "max-tokens passes through"
+    ;; a capped k2.6 chat call would share this budget with thinking (reasoning_content counts
+    ;; toward max_tokens); unreachable today — the only :max-tokens producer also sets :schema,
+    ;; which disables k2.6's thinking
     (is (= 128 (:max_tokens (moonshot/moonshot-request-body {:model      "kimi-k2.6"
                                                              :input      [{:role :user :content "hi"}]
                                                              :max-tokens 128}))))))
 
-(deftest ^:parallel request-body-disables-thinking-test
-  (testing "thinking is disabled on models that can disable it"
-    ;; `tool_choice "required"` is rejected while thinking is on, and reasoning tokens are billed and then
-    ;; discarded — we drop `reasoning_content`.
+(deftest ^:parallel request-body-thinking-switch-test
+  (testing "kimi-k2.6's thinking switch follows the path"
+    ;; enabled only where reasoning renders; disabled on the structured path, under a forced tool
+    ;; choice (k2.6 rejects `tool_choice "required"` while thinking is on — probe-derived,
+    ;; BOT-1929), and with :reasoning? false. thinking.keep stays at its default null — see the
+    ;; hook note in moonshot-request-body.
+    (are [expected opts] (= expected (:thinking (moonshot/moonshot-request-body
+                                                 (assoc opts
+                                                        :model "kimi-k2.6"
+                                                        :input [{:role :user :content "hi"}]))))
+      {:type "enabled"}  {}
+      {:type "enabled"}  {:tools [(metabot.tu/get-time-tool)]}
+      {:type "disabled"} {:tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+      {:type "disabled"} {:schema {:type "object" :properties {:title {:type "string"}}}}
+      {:type "disabled"} {:reasoning? false}))
+  (testing "an off-whitelist model keeps the safe disable"
     (is (= {:type "disabled"}
-           (:thinking (moonshot/moonshot-request-body {:model "kimi-k2.6"
+           (:thinking (moonshot/moonshot-request-body {:model "kimi-k9"
                                                        :input [{:role :user :content "hi"}]})))))
   (testing "no thinking parameter is sent for a thinking-only model"
     ;; kimi-k3 reports `supports_thinking_type: "only"` and would reject `{:type "disabled"}`. It accepts
@@ -67,6 +86,84 @@
     (testing "including when it is reached as the default model"
       (is (not (contains? (moonshot/moonshot-request-body {:input [{:role :user :content "hi"}]})
                           :thinking))))))
+
+(deftest ^:parallel request-body-reasoning-effort-test
+  (testing "reasoning_effort is sent exactly for whitelisted reasoning models, per path"
+    ;; kimi-k3 always thinks — "max" pins the documented server default on the chat path; "low" is the
+    ;; best-effort floor everywhere reasoning is never rendered. k2.6 gets `thinking` instead; the two
+    ;; keys must never ride together (k3 rejects `thinking`; reasoning_effort is explicitly not
+    ;; supported on k2.6). A forced tool_choice keeps k3 at "max" — k3 accepts required+thinking, and
+    ;; the guard row pins that the k2.6 forced-tool-choice disable stayed k2.6-scoped.
+    (are [expected opts] (let [body (moonshot/moonshot-request-body opts)]
+                           (and (= expected (:reasoning_effort body))
+                                (not (and (contains? body :reasoning_effort)
+                                          (contains? body :thinking)))))
+      "max" {:model "kimi-k3" :input [{:role :user :content "hi"}]}
+      "max" {:model "kimi-k3" :input [{:role :user :content "hi"}]
+             :tools [(metabot.tu/get-time-tool)]}
+      "max" {:model "kimi-k3" :input [{:role :user :content "hi"}]
+             :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+      "low" {:model "kimi-k3" :input [{:role :user :content "hi"}] :reasoning? false}
+      "low" {:model "kimi-k3" :input [{:role :user :content "hi"}]
+             :schema {:type "object" :properties {:title {:type "string"}}}}
+      nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]}
+      nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]
+             :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+      nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]
+             :schema {:type "object" :properties {:title {:type "string"}}}})))
+
+(deftest ^:parallel request-body-forced-tool-call-floors-max-tokens-test
+  (testing "a forced tool call on a thinking-only model gets its max_tokens cap floored"
+    ;; k3 bills thinking and the forced tool call against one budget — a small cap risks a `length`
+    ;; finish before the tool call is emitted (the conversation-title path sends 512). Both forcing
+    ;; shapes count: a schema and a plain tool_choice "required".
+    (let [schema {:type "object" :properties {:title {:type "string"}}}]
+      (are [expected opts] (= expected (:max_tokens (moonshot/moonshot-request-body opts)))
+        2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
+        2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512
+              :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+        4096 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 4096}
+        nil  {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
+        512  {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512}
+        512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
+        512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :max-tokens 512
+              :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}))))
+
+(deftest ^:parallel request-body-replays-reasoning-test
+  (let [reasoning-round [{:role :user :content "q"}
+                         {:type :reasoning :id "r1" :text "think "}
+                         {:type :reasoning :id "r1" :text "hard"}
+                         {:type :tool-input :id "c1" :function "f" :arguments {:x 1}}
+                         {:type :tool-output :id "c1" :result {:output "ok"}}
+                         {:type :reasoning :id "r2" :text "more"}
+                         {:type :text :text "answer"}]]
+    (testing "in-turn reasoning replays as reasoning_content on each round's assistant message"
+      ;; Moonshot requires the complete assistant message back as-is, including reasoning_content —
+      ;; https://platform.kimi.ai/docs/guide/use-thinking-models
+      (is (=? [{:role "user" :content "q"}
+               {:role              "assistant"
+                :content           ""
+                :tool_calls        [{:id "c1"}]
+                :reasoning_content "think hard"}
+               {:role "tool" :tool_call_id "c1" :content "ok"}
+               {:role "assistant" :content "answer" :reasoning_content "more"}]
+              (:messages (moonshot/moonshot-request-body {:model "kimi-k3" :input reasoning-round})))))
+    (testing "the replay strips with the gate: structured path and :reasoning? false"
+      (are [opts] (not-any? :reasoning_content
+                            (:messages (moonshot/moonshot-request-body
+                                        (assoc opts :model "kimi-k3" :input reasoning-round))))
+        {:schema {:type "object" :properties {:title {:type "string"}}}}
+        {:reasoning? false}))
+    (testing "k2.6 never replays, even though it is whitelisted"
+      ;; its thinking.keep stays at the default null, under which the server ignores replayed
+      ;; reasoning_content — see the hook note in moonshot-request-body
+      (is (not-any? :reasoning_content
+                    (:messages (moonshot/moonshot-request-body {:model "kimi-k2.6"
+                                                                :input reasoning-round})))))
+    (testing "an off-whitelist model never replays"
+      (is (not-any? :reasoning_content
+                    (:messages (moonshot/moonshot-request-body {:model "kimi-k9"
+                                                                :input reasoning-round})))))))
 
 (deftest ^:parallel request-body-prompt-cache-key-test
   (testing "a :prompt-cache-key is forwarded as prompt_cache_key, absent otherwise"
@@ -131,6 +228,39 @@
                              (self.core/aisdk-xf))
                     chunks))))))
 
+(deftest ^:parallel moonshot-reasoning-conv-test
+  (testing "reasoning_content deltas stream as a reasoning block ahead of the text"
+    ;; Condensed from a live kimi-k3 stream captured 2026-09-04 (32 events, reasoning_effort
+    ;; "low"): an empty-content opener, one empty reasoning_content delta — neither may open a
+    ;; block — then flat reasoning deltas, one content delta, and a finish whose usage rides both
+    ;; the finishing choice and a final top-level chunk (one :usage part must come out).
+    (let [usage  {:prompt_tokens             103
+                  :completion_tokens         44
+                  :total_tokens              147
+                  :completion_tokens_details {:reasoning_tokens 28}}
+          chunks [{:id      "chatcmpl-6a9ab5d84cc66eeecb5c4827"
+                   :model   "kimi-k3"
+                   :choices [{:index 0 :delta {:role "assistant" :content ""} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content ""} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content "17*23 = 391."} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content " 391 < 400."} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content " So 400 is bigger."} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:content "400"} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "stop" :usage usage}]}
+                  {:choices [] :usage usage}]]
+      (testing "chunk stream: :start first, then one reasoning block, then text"
+        (is (= [:start :reasoning-start :reasoning-delta :reasoning-delta :reasoning-delta
+                :reasoning-end :text-start :text-delta :text-end :usage]
+               (into [] (comp (moonshot/moonshot->aisdk-chunks-xf) (map :type)) chunks))))
+      (testing "through the full pipeline: one reasoning part ahead of the text"
+        (is (=? [{:type :start}
+                 {:type :reasoning :text "17*23 = 391. 391 < 400. So 400 is bigger."}
+                 {:type :text :text "400"}
+                 {:type  :usage
+                  :usage {:promptTokens 103 :completionTokens 44}
+                  :finish-reason "stop"}]
+                (into [] (comp (moonshot/moonshot->aisdk-chunks-xf) (self.core/aisdk-xf)) chunks)))))))
+
 (deftest ^:parallel moonshot-tool-call-conv-test
   (testing "a streamed tool call preceded by reasoning deltas produces one tool-input and no text block"
     ;; Moonshot opens every stream with an empty-string `content` delta and then streams `reasoning_content`
@@ -194,9 +324,8 @@
 (deftest moonshot-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-byok"
-                                         llm.settings/llm-proxy-base-url   "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
@@ -204,16 +333,22 @@
                      :url     "https://api.moonshot.ai/v1/chat/completions"
                      :headers {"Authorization" "Bearer sk-moonshot-key-byok"}
                      :body    string?}
-                    (moonshot/moonshot-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil]
+                    (moonshot/moonshot-raw {:input       [{:role :user :content "hi"}]
+                                            :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Moonshot API key is set"
+               (moonshot/moonshot-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Moonshot API key is set"
-                 (moonshot/moonshot-raw {:input [{:role :user :content "hi"}]})))))
+                 (moonshot/moonshot-raw {:input       [{:role :user :content "hi"}]
+                                         :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil
-                                             llm.settings/llm-proxy-base-url   nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Moonshot API key is set"
@@ -221,23 +356,37 @@
 
 (deftest moonshot-raw-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Moonshot"
+           (moonshot/moonshot-raw {:model     "kimi-k2.6"
+                                   :input     [{:role :user :content "hi"}]
+                                   :ai-proxy? true}))))))
+
+(deftest moonshot-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key      "sk-moonshot-key-setting"
+                                       llm.settings/llm-moonshot-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/chat/completions"
+                                                          :headers {"Authorization" "Bearer sk-moonshot-key-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for Moonshot"
-             (moonshot/moonshot-raw {:model     "kimi-k2.6"
-                                     :input     [{:role :user :content "hi"}]
-                                     :ai-proxy? true})))))))
+             #"stop"
+             (moonshot/moonshot-raw {:input       [{:role :user :content "hi"}]
+                                     :credentials {:api-key  "sk-moonshot-key-explicit"
+                                                   :base-url "https://explicit.example"}})))))))
 
 (deftest list-models-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for Moonshot"
-             (moonshot/list-models {:ai-proxy? true})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Moonshot"
+           (moonshot/list-models {:ai-proxy? true}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models tests
@@ -247,31 +396,29 @@
   (testing "list-models keeps only whitelisted models, naming them from the whitelist"
     ;; Moonshot catalog entries carry no `:name`, so the display name has nowhere else to come from. The coding
     ;; models in the live catalog are excluded.
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:method  :get
-                                                          :url     "https://api.moonshot.ai/v1/models"
-                                                          :headers {"Authorization" "Bearer sk-moonshot-key-test"}}
-                                                         req))
-                                                 {:status 200
-                                                  :body   {:object "list"
-                                                           :data   [{:id "kimi-k2.7-code" :object "model"}
-                                                                    {:id "kimi-k2.7-code-highspeed" :object "model"}
-                                                                    {:id "kimi-k3" :object "model"}
-                                                                    {:id "kimi-k2.6" :object "model"}]}})]
-        (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}
-                         {:id "kimi-k3" :display_name "Kimi K3"}]}
-               (moonshot/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (=? {:method  :get
+                                                        :url     "https://api.moonshot.ai/v1/models"
+                                                        :headers {"Authorization" "Bearer sk-moonshot-key-byok"}}
+                                                       req))
+                                               {:status 200
+                                                :body   {:object "list"
+                                                         :data   [{:id "kimi-k2.7-code" :object "model"}
+                                                                  {:id "kimi-k2.7-code-highspeed" :object "model"}
+                                                                  {:id "kimi-k3" :object "model"}
+                                                                  {:id "kimi-k2.6" :object "model"}]}})]
+      (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}
+                       {:id "kimi-k3" :display_name "Kimi K3"}]}
+             (moonshot/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-omits-models-the-key-cannot-reach-test
   (testing "a model missing from the per-key catalog is not offered"
     ;; k3's catalog permission group is `staff` where the other models report `moonshot`, so not every account
-    ;; sees it. This is why the static default is k2.6.
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 {:status 200 :body {:data [{:id "kimi-k2.6"}]}})]
-        (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}]}
-               (moonshot/list-models)))))))
+    ;; sees it.
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               {:status 200 :body {:data [{:id "kimi-k2.6"}]}})]
+      (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}]}
+             (moonshot/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -283,15 +430,13 @@
         (is (= {:models []}
                (moonshot/list-models {:credentials {:api-key "sk-moonshot-key-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer sk-moonshot-key-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (moonshot/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Moonshot API key is set"
+           (moonshot/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -303,28 +448,27 @@
 
 (deftest list-models-malformed-catalog-throws-test
   (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Moonshot returned an unexpected model list response"
-             (moonshot/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Moonshot returned an unexpected model list response"
+           (moonshot/list-models {:credentials byok-credentials}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error mapping tests
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest error-status-messages-test
-  (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-    (doseq [[status body pattern]
-            [[400 "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"invalid temperature\"}}"
-              #"Moonshot rejected the request"]
-             [401 "{\"error\":{\"type\":\"invalid_authentication_error\",\"message\":\"Invalid Authentication\"}}"
-              #"Moonshot API key expired or invalid"]
-             [404 "{\"error\":{\"type\":\"resource_not_found_error\",\"message\":\"Not found the model\"}}"
-              #"Moonshot API endpoint or model was not found"]]]
-      (testing (str "HTTP " status)
-        (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                   (throw (ex-info (str "clj-http: status " status)
-                                                                   {:status status :body body})))]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo pattern (moonshot/list-models))))))))
+  (doseq [[status body pattern]
+          [[400 "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"invalid temperature\"}}"
+            #"Moonshot rejected the request"]
+           [401 "{\"error\":{\"type\":\"invalid_authentication_error\",\"message\":\"Invalid Authentication\"}}"
+            #"Moonshot API key expired or invalid"]
+           [404 "{\"error\":{\"type\":\"resource_not_found_error\",\"message\":\"Not found the model\"}}"
+            #"Moonshot API endpoint or model was not found"]]]
+    (testing (str "HTTP " status)
+      (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                                 (throw (ex-info (str "clj-http: status " status)
+                                                                 {:status status :body body})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo pattern
+                              (moonshot/list-models {:credentials byok-credentials})))))))

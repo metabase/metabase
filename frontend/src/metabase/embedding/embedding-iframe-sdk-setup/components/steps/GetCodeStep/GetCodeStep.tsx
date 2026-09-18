@@ -33,7 +33,7 @@ export const GetCodeStep = () => {
   const handleFrontendSnippetCopied = () => {
     trackSnippetCopied("frontend");
 
-    // Embedding Hub: track step completion
+    // Setup guide: track step completion. The settings keep their embedding-hub names.
     // Test embed = guest or existing user session (for quick testing)
     // Production embed = full SSO setup
     const isTestEmbed = settings.isGuest || settings.useExistingUserSession;
@@ -50,7 +50,7 @@ export const GetCodeStep = () => {
   const showCode = !isGuestEmbed || resource?.enable_embedding;
 
   return (
-    <Stack gap="md" flex={1}>
+    <Stack gap="lg" flex={1}>
       {!isGuestEmbed && <MetabaseAccountCard />}
 
       {showCode ? (

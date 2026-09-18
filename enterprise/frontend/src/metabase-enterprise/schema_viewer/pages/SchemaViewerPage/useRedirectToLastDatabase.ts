@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";

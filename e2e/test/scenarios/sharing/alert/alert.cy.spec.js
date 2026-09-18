@@ -80,6 +80,7 @@ describe("scenarios > alert", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       H.notificationList().findByText("Your alert is all set up.");
@@ -138,6 +139,7 @@ describe("scenarios > alert", () => {
 
     cy.findByLabelText("Move, duplicate, and more…").click();
     H.popover().findByText("Create an alert").click();
+    H.selectScheduleTime();
     H.modal().button("Done").click();
 
     cy.findByLabelText("Move, duplicate, and more…").click();
@@ -187,6 +189,7 @@ describe("scenarios > alert", () => {
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
 
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
@@ -218,6 +221,7 @@ describe("scenarios > alert", () => {
 
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 

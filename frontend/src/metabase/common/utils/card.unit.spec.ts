@@ -4,11 +4,11 @@ import {
 } from "metabase/common/utils/card";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
+  createMockDashCardDataSeries,
   createMockDataset,
-  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
@@ -34,7 +34,7 @@ describe("deserializeCardFromQuery", () => {
 
 describe("getMetricSeriesWithDefaultDisplay", () => {
   function createMetricSeries(query: Lib.Query) {
-    return createMockSingleSeries(
+    return createMockDashCardDataSeries(
       createMockCard({ type: "metric", display: "line" }),
       createMockDataset({ json_query: Lib.toJsQuery(query) }),
     );
@@ -60,7 +60,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
     const result = getMetricSeriesWithDefaultDisplay(
       [createMetricSeries(query)],
-      SAMPLE_METADATA,
+      SAMPLE_PROVIDER,
     );
 
     expect(result[0].card.display).toBe("bar");
@@ -81,7 +81,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
     const result = getMetricSeriesWithDefaultDisplay(
       [createMetricSeries(query)],
-      SAMPLE_METADATA,
+      SAMPLE_PROVIDER,
     );
 
     expect(result[0].card.display).toBe("line");
@@ -89,13 +89,13 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
 
   it("preserves the display of regular questions", () => {
     const series = [
-      createMockSingleSeries(
+      createMockDashCardDataSeries(
         createMockCard({ type: "question", display: "line" }),
         createMockDataset(),
       ),
     ];
 
-    expect(getMetricSeriesWithDefaultDisplay(series, SAMPLE_METADATA)).toBe(
+    expect(getMetricSeriesWithDefaultDisplay(series, SAMPLE_PROVIDER)).toBe(
       series,
     );
   });

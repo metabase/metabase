@@ -83,7 +83,7 @@
       (do
         (log/infof "Starting migration from version %d to %d."
                    db-version semantic.db.migration.impl/schema-version)
-        (semantic.db.migration.impl/migrate-schema! tx opts)
+        (semantic.db.migration.impl/migrate-schema! tx (assoc opts :from-version db-version))
         (write-successful-migration! index-metadata tx))
 
       :else

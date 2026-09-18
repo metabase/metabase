@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
+   [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -28,7 +29,7 @@
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {:keys [icon], collection-id :collection_id, :as body} :- [:map
+   {:keys [icon], collection-id :collection_id, :as body} :- [:map {:closed true}
                                                               [:name          ms/NonBlankString]
                                                               [:default       {:optional true} [:maybe :boolean]]
                                                               [:description   {:optional true} [:maybe :string]]
@@ -41,7 +42,7 @@
             {:creator_id api/*current-user-id*}
             (when-not icon
               {:icon timeline-event/default-icon}))]
-    (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
+    (u/prog1 (timeline.db/insert-timeline! tl)
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
@@ -49,21 +50,17 @@
   ([]
    (list-timelines false))
   ([archived :- ms/BooleanValue]
-   (t2/select :model/Timeline
-              {:where    [:and
-                          [:= :archived archived]
-                          (collection/visible-collection-filter-clause)]
-               :order-by [[:%lower.name :asc]]})))
+   (timeline.db/timelines-in-visible-collections archived)))
 
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
   [id :- ms/PositiveInt]
-  (api/read-check (t2/select-one :model/Timeline :id id)))
+  (api/read-check (timeline.db/timeline id)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
   [_route-params
-   {:keys [include], archived? :archived} :- [:map
+   {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]
                                               [:archived {:default false} ms/BooleanValue]]]
   (let [timelines (->> (list-timelines archived?)
@@ -75,9 +72,9 @@
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
-  [{:keys [id]}                         :- [:map
+  [{:keys [id]}                         :- [:map {:closed true}
                                             [:id ms/PositiveInt]]
-   {:keys [include archived start end]} :- [:map
+   {:keys [include archived start end]} :- [:map {:closed true}
                                             [:include  {:optional true}  ::include]
                                             [:archived {:default :false} ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
@@ -102,10 +99,10 @@
 (api.macros/defendpoint :put "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [archived] :as timeline-updates} :- [:map
+   {:keys [archived] :as timeline-updates} :- [:map {:closed true}
                                                [:name          {:optional true} [:maybe ms/NonBlankString]]
                                                [:default       {:optional true} [:maybe :boolean]]
                                                [:description   {:optional true} [:maybe :string]]
@@ -113,15 +110,15 @@
                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (t2/select-one :model/Timeline :id id))]
+        current-archived (:archived (timeline.db/timeline id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (t2/update! :model/Timeline id
-                (u/select-keys-when timeline-updates
-                                    :present #{:description :icon :collection_id :default :archived}
-                                    :non-nil #{:name}))
+    (timeline.db/update-timeline! id
+                                  (u/select-keys-when timeline-updates
+                                                      :present #{:description :icon :collection_id :default :archived}
+                                                      :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
-    (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)
+      (timeline.db/set-timeline-events-archived! id archived))
+    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -130,10 +127,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
-    (t2/delete! :model/Timeline :id id)
+    (timeline.db/delete-timeline! id)
     (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
@@ -144,7 +141,7 @@
 (api.macros/defendpoint :get "/collection/root"
   "Fetch the root Collection's timelines."
   [_route-params
-   {:keys [include archived]} :- [:map
+   {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check collection/root-collection)
@@ -157,11 +154,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/collection/:id"
   "Fetch a specific Collection's timelines."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include archived]} :- [:map
+   {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check (t2/select-one :model/Collection :id id))
+  (api/read-check (timeline.db/collection id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))

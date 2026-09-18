@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockCard,

@@ -4,15 +4,12 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEmbedState, createMockState } from "__support__/state";
 import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
   SettingDefinition,

@@ -8,6 +8,7 @@
    [metabase.analyze.query-results :as qr]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -37,7 +38,7 @@
   "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."
   [{:keys [rows], :as result}]
   {:pre [(map? result) (:cols result)]}
-  (add-insights rows result))
+  (add-insights rows (select-keys result [:cols])))
 
 (defn- query->result-metadata
   [query-map]
@@ -130,8 +131,8 @@
 
 (deftest error-resilience-test
   (testing "Data should come back even if there is an error during fingerprinting"
-    (is (= 36 (with-redefs [fingerprinters/earliest test.sync/crash-fn]
+    (is (= 36 (mt/with-dynamic-fn-redefs [fingerprinters/earliest test.sync/crash-fn]
                 (-> (timeseries-dataset) :rows count)))))
   (testing "Data should come back even if there is an error when calculating insights"
-    (is (= 36 (with-redefs [insights/change test.sync/crash-fn]
+    (is (= 36 (mt/with-dynamic-fn-redefs [insights/change test.sync/crash-fn]
                 (-> (timeseries-dataset) :rows count))))))

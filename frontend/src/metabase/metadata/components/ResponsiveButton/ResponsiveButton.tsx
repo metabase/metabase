@@ -37,8 +37,8 @@ export const ResponsiveButton = ({
           leftSection={
             showLabel && showIconWithLabel ? <Icon name={icon} /> : undefined
           }
-          px={showLabel ? (showIconWithLabel ? "sm" : "md") : "xs"}
-          py="xs"
+          px={showLabel ? (showIconWithLabel ? "sm" : "lg") : "xxs"}
+          py="xxs"
           size="xs"
           w={showLabel ? undefined : 32}
           {...props}
@@ -64,8 +64,8 @@ export const ResponsiveButton = ({
           h={32}
           hidden
           leftSection={showIconWithLabel ? <Icon name={icon} /> : undefined}
-          px={showIconWithLabel ? "sm" : "md"}
-          py="xs"
+          px={showIconWithLabel ? "sm" : "lg"}
+          py="xxs"
           ref={measureRef}
           size="xs"
           {...props}

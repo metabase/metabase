@@ -1,53 +1,38 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import DatabaseDetail from "metabase/reference/databases/DatabaseDetail";
 import * as actions from "metabase/reference/reference";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  getDatabase,
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
 
 import DatabaseSidebar from "./DatabaseSidebar";
+import { useReferenceDatabase } from "./use-reference-database";
 
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface DatabaseDetailContainerProps extends FetchProps, ClearStateProps {
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
-}
+type DatabaseDetailContainerProps = ClearStateProps;
 
 function DatabaseDetailContainer(props: DatabaseDetailContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
   const params = useParams<ReferenceRouteParams>();
 
-  const database = useSelector((state) => getDatabase(state, { params }));
   const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const isEditing = useSelector(getIsEditing);
-
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchDatabaseMetadata(props, databaseId);
-  }
+  const { database, isLoading, error } = useReferenceDatabase(databaseId);
 
   useEffect(() => {
     const pathnameChanged =
@@ -61,9 +46,18 @@ function DatabaseDetailContainer(props: DatabaseDetailContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<DatabaseSidebar database={database} />}
+      sidebar={
+        <DatabaseSidebar
+          databaseId={databaseId}
+          databaseName={database?.name}
+        />
+      }
     >
-      <DatabaseDetail params={params} />
+      <DatabaseDetail
+        database={database}
+        loading={isLoading}
+        loadingError={error}
+      />
     </SidebarLayout>
   );
 }

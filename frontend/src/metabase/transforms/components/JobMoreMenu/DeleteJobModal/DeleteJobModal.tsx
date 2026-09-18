@@ -25,7 +25,7 @@ export function DeleteJobModal({
     <Modal
       title={t`Delete this job?`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
       onClick={(event) => event.stopPropagation()}
     >
@@ -52,7 +52,7 @@ function DeleteJobForm({ job, onDelete, onClose }: DeleteJobFormProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <Text>{t`Deleting this job won’t delete any transforms.`}</Text>
           <Group>
             <Box flex={1}>

@@ -3,9 +3,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
-   [next.jdbc :as jdbc]))
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (deftest legacy-meta-table-without-ownership-test
   (testing "a grant-only role neither attempts ALTER nor repeatedly warns"
@@ -57,32 +60,74 @@
     (is (= ["CREATE SCHEMA IF NOT EXISTS \"library_retrieval\""] @statements)
         "nothing else creates it: semantic search provisions its own, and we run without semantic search")))
 
-(deftest legacy-tables-are-moved-not-rebuilt-test
+(deftest incompatible-legacy-tables-are-dropped-test
   (let [statements (atom [])
-        exists     (atom #{"library_entity_index" "library_entity_index_meta"})]
-    (with-redefs-fn {#'index-table/table-exists? (fn [_ table] (contains? @exists table))
-                     #'jdbc/execute!             (fn [_ sql] (swap! statements conj (first sql)) nil)}
+        located    (atom {"library_entity_index"      {:schema-name "legacy.with.dot"
+                                                       :table-name  "library_entity_index"}
+                          "library_entity_index_meta" {:schema-name "legacy.with.dot"
+                                                       :table-name  "library_entity_index_meta"}})]
+    (with-redefs-fn {#'index-table/legacy-table-in-search-path (fn [_ table] (get @located table))
+                     #'jdbc/execute!                           (fn [_ sql] (swap! statements conj (first sql)) nil)
+                     #'semantic.db.datasource/db-url           "jdbc:postgresql://stub"}
       (fn []
-        (testing "an index built before the schema existed is moved, keeping its rows"
-          (#'index-table/adopt-legacy-tables! ::tx)
-          (is (= ["ALTER TABLE \"library_entity_index\" SET SCHEMA \"library_retrieval\""
-                  "ALTER TABLE \"library_entity_index_meta\" SET SCHEMA \"library_retrieval\""]
+        (testing "an index built before immutable space identity is discarded"
+          (#'index-table/drop-legacy-tables! ::tx)
+          (is (= ["DROP TABLE \"legacy.with.dot\".\"library_entity_index\""
+                  "DROP TABLE \"legacy.with.dot\".\"library_entity_index_meta\""]
                  @statements)))
-        (testing "and left alone once moved"
+        (testing "there is nothing to do after the legacy tables are gone"
           (reset! statements [])
-          (reset! exists #{"library_retrieval.library_entity_index"
-                           "library_retrieval.library_entity_index_meta"})
-          (#'index-table/adopt-legacy-tables! ::tx)
+          (reset! located {})
+          (#'index-table/drop-legacy-tables! ::tx)
           (is (empty? @statements)))
-        (testing "a qualified table standing beside a leftover legacy one keeps its rows"
+        (testing "same-named app db tables are never dropped"
           (reset! statements [])
-          (reset! exists #{"library_entity_index"
-                           "library_entity_index_meta"
-                           "library_retrieval.library_entity_index"
-                           "library_retrieval.library_entity_index_meta"})
-          (#'index-table/adopt-legacy-tables! ::tx)
+          (reset! located {"library_entity_index"      {:schema-name "public"
+                                                        :table-name  "library_entity_index"}
+                           "library_entity_index_meta" {:schema-name "public"
+                                                        :table-name  "library_entity_index_meta"}})
+          (with-redefs [semantic.db.datasource/db-url nil]
+            (#'index-table/drop-legacy-tables! ::tx))
           (is (empty? @statements)
-              "SET SCHEMA onto an occupied name errors, aborting the whole ensure-tables! transaction"))))))
+              "application tables with the legacy names do not belong to the library index"))))))
+
+(deftest ^:synchronized incompatible-legacy-tables-are-replaced-in-a-dedicated-store-test
+  (testing "old vectors without immutable space identity are replaced with current empty tables"
+    (when (semantic.db.datasource/dedicated-url-configured?)
+      ;; its own database: cleanup only runs under the real table names, which a shared store may hold
+      (semantic.tu/with-test-db! {:dbname "library_retrieval_adoption_test" :mode :blank :cleanup :both}
+        (let [pgvector (semantic.db.datasource/ensure-initialized-data-source!)]
+          (jdbc/execute! pgvector ["CREATE EXTENSION IF NOT EXISTS vector"])
+          (jdbc/with-transaction [tx pgvector]
+            (jdbc/execute! tx ["CREATE SCHEMA \"legacy.retrieval\""])
+            (jdbc/execute! tx ["SET LOCAL search_path TO \"legacy.retrieval\", public"])
+            ;; both bare names and the metadata shape the index carried before immutable space identity
+            (jdbc/execute! tx ["CREATE TABLE library_entity_index
+                                (doc_id text primary key, entity_type text, entity_local_id bigint,
+                                 doc_type text, doc_text text, doc_embedding vector(4))"])
+            (jdbc/execute! tx ["INSERT INTO library_entity_index
+                                VALUES ('legacy-doc', 'table', 1, 'name', 'legacy', '[0,0,0,0]')"])
+            (jdbc/execute! tx ["CREATE TABLE library_entity_index_meta
+                                (id smallint primary key, provider text, model_name text,
+                                 vector_dimensions int, schema_version int,
+                                 updated_at timestamptz, reconciled_at timestamptz)"])
+            (jdbc/execute! tx ["INSERT INTO library_entity_index_meta
+                                VALUES (1, ?, ?, ?, ?, now(), now())"
+                               (:provider semantic.tu/mock-embedding-model)
+                               (:model-name semantic.tu/mock-embedding-model)
+                               (:vector-dimensions semantic.tu/mock-embedding-model)
+                               index-table/schema-version])
+            (#'index-table/drop-legacy-tables! tx))
+          (is (= :created (index-table/ensure-tables! pgvector semantic.tu/mock-embedding-model)))
+          (is (empty? (jdbc/execute! pgvector
+                                     [(format "SELECT doc_id FROM %s" (index-table/vectors-table-sql))]
+                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+              "unknown legacy vectors are not relabeled as the current embedding space")
+          (is (empty? (jdbc/execute! pgvector
+                                     [(str "SELECT schemaname, tablename FROM pg_tables"
+                                           " WHERE schemaname <> 'library_retrieval'"
+                                           " AND tablename LIKE 'library_entity_index%'")]))
+              "the incompatible tables do not remain in their custom search-path schema"))))))
 
 (deftest reconcile-watermark-precedes-appdb-read-test
   (let [events (atom [])]

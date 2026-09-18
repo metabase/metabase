@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { Button } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
+
 import {
   ActionCreatorBodyContainer,
   EditorContainer,
@@ -8,21 +12,17 @@ import {
   ModalLeft,
   ModalRight,
   ModalRoot,
-} from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
-import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
-import {
-  DataReferenceInline,
-  DataReferenceTriggerButton,
-} from "metabase/actions/containers/ActionCreator/InlineDataReference";
-import { Button } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
-
+} from "./ActionCreator.styled";
+import ActionCreatorHeader from "./ActionCreatorHeader";
+import { FormCreator } from "./FormCreator";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
 } from "./InlineActionSettings";
-import type { ActionCreatorUIProps, SideView } from "./types";
+import type {
+  ActionCreatorUIProps,
+  DataReferenceSlot,
+  SideView,
+} from "./types";
 
 interface ActionCreatorProps extends ActionCreatorUIProps {
   action: Partial<WritebackAction>;
@@ -31,6 +31,7 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
   canSave: boolean;
   isNew: boolean;
   isEditable: boolean;
+  dataReference: DataReferenceSlot;
 
   children: React.ReactNode;
 
@@ -51,6 +52,7 @@ export default function ActionCreatorView({
   isEditable,
   canRename,
   canChangeFieldSettings,
+  dataReference,
   children,
   onChangeAction,
   onChangeFormSettings,
@@ -94,7 +96,7 @@ export default function ActionCreatorView({
             isEditable={isEditable}
             onChangeName={(name) => onChangeAction({ name })}
             actionButtons={[
-              <DataReferenceTriggerButton
+              <dataReference.TriggerButton
                 key="dataReference"
                 onClick={toggleDataRef}
               />,
@@ -131,7 +133,7 @@ export default function ActionCreatorView({
               onClose={onCloseModal}
             />
           ) : activeSideView === "dataReference" ? (
-            <DataReferenceInline
+            <dataReference.Panel
               onClose={onCloseModal}
               onBack={closeSideView}
             />

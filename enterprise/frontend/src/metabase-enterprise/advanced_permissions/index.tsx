@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
+import { hasFeature } from "metabase/databases";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
@@ -27,16 +28,18 @@ import { getImpersonations } from "./selectors";
 import { getEditImpersonationUrl } from "./utils";
 
 const IMPERSONATED_PERMISSION_OPTION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Impersonated`,
+  get label() {
+    return t`Impersonated`;
+  },
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
   iconColor: "warning",
 } satisfies PermissionOption;
 
 const BLOCK_PERMISSION_OPTION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Blocked`,
+  get label() {
+    return t`Blocked`;
+  },
   value: DataPermissionValue.BLOCKED,
   icon: "close",
   iconColor: "danger",
@@ -70,7 +73,7 @@ export function initializePlugin() {
       database,
     ) => [
       ...options,
-      ...(database.hasFeature("connection-impersonation")
+      ...(hasFeature(database, "connection-impersonation")
         ? [IMPERSONATED_PERMISSION_OPTION]
         : []),
       BLOCK_PERMISSION_OPTION,
@@ -135,7 +138,9 @@ export function initializePlugin() {
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
       DataPermissionValue.IMPERSONATED
     ].push({
-      label: t`Edit Impersonated`,
+      get label() {
+        return t`Edit Impersonated`;
+      },
       iconColor: "warning",
       icon: "database",
       onSelect: (entityId, groupId, view) => {

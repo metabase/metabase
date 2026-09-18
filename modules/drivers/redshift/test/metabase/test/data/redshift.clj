@@ -13,6 +13,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [com.climate.claypoole :as cp]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -63,7 +64,7 @@
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
 (defn unique-session-schema []
-  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
+  (sql.tu.unique-prefix/unique-prefix "schema"))
 
 ;;; `MB_REDSHIFT_TEST_HOSTS`
 ;;;
@@ -150,10 +151,6 @@
               init
               (reducible-result-set (.. conn getMetaData getSchemas))))))
 
-(def ^Long ^:private hours-before-expired-threshold
-  "Number of hours that elapse before a persisted schema is considered expired."
-  1)
-
 (defn- classify-cache-schemas
   "Classifies the persistence cache schemas. Returns a map with where each value is a (possibly empty) sequence of
   schemas:
@@ -163,8 +160,8 @@
    :expired            `cache_info` table and created [[hours-before-expired-threshold]] ago
    :lacking-created-at should never happen, but if they lack an entry for `created-at`
    :unknown-error      if an error was thrown while classifying the schema}"
-  [^java.sql.Connection conn schemas]
-  (let [threshold (t/minus (t/instant) (t/hours hours-before-expired-threshold))]
+  [^java.sql.Connection conn schemas hours]
+  (let [threshold (t/minus (t/instant) (t/hours hours))]
     (with-open [stmt (.createStatement conn)]
       (let [classify (fn [schema-name]
                        (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
@@ -205,11 +202,14 @@
      :old-style-cache     -- cache schemas without a `cache_info` table at all
 
    Pure: makes 1-2 catalog queries but does NOT drop anything. Use the
-   `drop-orphan-*!` fns to act on the result."
-  [^java.sql.Connection conn]
+   `drop-orphan-*!` fns to act on the result.
+
+   `hours-threshold` is how old a test data schema must be to count as `:old`; nil for the usual default. Cache
+   schemas are classified by their own TTL and are unaffected by it."
+  [^java.sql.Connection conn hours-threshold]
   (let [{old-convention   :old
          caches-with-info :cache} (reduce (fn [acc s]
-                                            (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                            (cond (sql.tu.unique-prefix/old-temp-dataset? hours-threshold s)
                                                   (update acc :old conj s)
                                                   (str/starts-with? s "metabase_cache_")
                                                   (update acc :cache conj s)
@@ -218,7 +218,8 @@
                                           (fetch-schemas conn))
         {expired-cache      :expired
          old-style-cache    :old-style-cache
-         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)]
+         lacking-created-at :lacking-created-at} (classify-cache-schemas
+                                                  conn caches-with-info hours-threshold)]
     {:old                (vec old-convention)
      :expired-cache      (vec expired-cache)
      :old-style-cache    (vec old-style-cache)
@@ -227,23 +228,27 @@
 ;;; --------------------------------- Destruction ----------------------------------
 
 (defn- drop-orphan-schemas!
-  "Drop every schema classified by [[orphan-schemas]] as expired/old. Per-entry
-  try/catch: never let one orphan block the rest.
+  "Drop every schema classified by [[orphan-schemas]] as expired/old, reporting per schema whether it went. See
+  [[tx/gc-orphans!]] for the shape; the caller adds `:server`, since a Statement does not know which cluster it is
+  on. Never let one orphan block the rest.
 
   Takes the orphan-map directly so callers can preview-then-drop without
   re-querying. Caller owns the Statement."
-  [^java.sql.Statement stmt orphans]
-  (let [drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
-    (doseq [[k fmt-str] [[:old                "Dropping old data schema: %s"]
-                         [:expired-cache      "Dropping expired cache schema: %s"]
-                         [:lacking-created-at "Dropping cache without created-at info: %s"]
-                         [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
-            schema (get orphans k)]
-      (log/infof fmt-str schema)
-      (try
-        (.execute stmt (drop-sql schema))
-        (catch Throwable e
-          (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e)))))))
+  [^java.sql.Statement stmt dry-run? orphans]
+  (mapv (fn [[fmt-str schema]]
+          (tx/print-progress! :redshift fmt-str schema)
+          (try
+            (when-not dry-run?
+              (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)))
+            {:name schema, :status :deleted}
+            (catch Exception e
+              {:name schema, :status :failed, :error (ex-message e)})))
+        (for [[k fmt-str] [[:old                "Dropping old data schema: %s"]
+                           [:expired-cache      "Dropping expired cache schema: %s"]
+                           [:lacking-created-at "Dropping cache without created-at info: %s"]
+                           [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
+              schema       (get orphans k)]
+          [fmt-str schema])))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after
@@ -253,9 +258,91 @@
   Glue: thin wrapper that calls the enumerator + dropper in order. To preview
   from a REPL, call [[orphan-schemas]] directly."
   [^java.sql.Connection conn]
-  (let [orphans (orphan-schemas conn)]
+  (let [orphans (orphan-schemas conn 12)]
     (with-open [stmt (.createStatement conn)]
-      (drop-orphan-schemas! stmt orphans))))
+      (drop-orphan-schemas! stmt false orphans))))
+
+(defn- gc-hosts
+  "Every cluster tests run against, not just the one a run would pick. `MB_REDSHIFT_TEST_HOSTS` is the fleet
+  `drivers.yml` uses; `MB_REDSHIFT_TEST_HOST` is the cluster the stress-test workflows use, and nothing sets both.
+  Taking either alone -- as [[random-host]] does, correctly, for a single run -- leaves the other to grow into the
+  max-tables limit this sweep exists to prevent."
+  []
+  (or (not-empty (distinct (concat @hosts (some-> (tx/db-test-env-var :redshift :host) vector))))
+      (throw (ex-info "no Redshift hosts configured: set MB_REDSHIFT_TEST_HOSTS or MB_REDSHIFT_TEST_HOST" {}))))
+
+(defn- gc-connection-details
+  "Every cluster and database a leaked schema could be in. Built from env vars rather than
+  [[db-connection-details]], which pins one random host for the process (fine for tests, but `MB_REDSHIFT_TEST_HOSTS`
+  is several clusters) and computes schema filters we don't need via [[unique-session-schema]]."
+  []
+  (for [host (gc-hosts)
+        db   [(tx/db-test-env-var :redshift :db "testdb")
+              (tx/db-test-env-var :redshift :db-routing "dev")]]
+    {:host     host
+     :port     (parse-long (tx/db-test-env-var :redshift :port "5439"))
+     :db       db
+     :user     (tx/db-test-env-var :redshift :user "metabase_ci")
+     :password (tx/db-test-env-var-or-throw :redshift :password)}))
+
+(defn- server-label
+  "`host/db`, the `:server` key identifying one cluster+database pair in the nightly report."
+  [{:keys [host db]}]
+  (str host "/" db))
+
+(defn- with-gc-connection
+  "Call `f` with a write-capable Connection to one cluster+database, or return `fallback` built from the exception: a
+  cluster that is down, or a database that does not exist on it, must not cost us the others."
+  [driver details f fallback]
+  (try
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (sql-jdbc.conn/connection-details->spec driver details)
+     {:write? true}
+     f)
+    (catch Exception e
+      (fallback e))))
+
+(defn- with-gc-pool!
+  "Map `f` over every cluster+database at once. They are separate servers -- waiting on them one at a time made the
+  sweep cost the sum of their latencies rather than the worst of them."
+  [f]
+  (let [servers (gc-connection-details)]
+    (cp/with-shutdown! [pool (cp/threadpool (count servers))]
+      (doall (cp/pmap pool f servers)))))
+
+(defmethod tx/gc-orphans! :redshift
+  [driver {:keys [hours dry-run?]}]
+  ;; Redshift schema names carry their own creation time, so we scan for age via the name
+  (into []
+        cat
+        (with-gc-pool!
+          (fn [details]
+            (let [server (server-label details)]
+              (with-gc-connection
+                driver details
+                (fn [^java.sql.Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (mapv #(assoc % :server server)
+                          (drop-orphan-schemas! stmt dry-run? (orphan-schemas conn hours)))))
+                (fn [e]
+                  [{:server server, :name nil, :status :failed, :error (ex-message e)}])))))))
+
+(defmethod tx/count-datasets :redshift
+  [driver]
+  (into {}
+        (with-gc-pool!
+          (fn [details]
+            (let [server (server-label details)]
+              [server (with-gc-connection
+                        driver details
+                        ;; every schema on the cluster, catalog schemas included: the number worth watching is
+                        ;; total pressure toward the max-tables limit, not our share of it
+                        (fn [^java.sql.Connection conn]
+                          (reduce (fn [n _] (inc n)) 0 (fetch-schemas conn)))
+                        (fn [e]
+                          (log/errorf "[redshift] could not count schemas on %s: %s" server (ex-message e))
+                          nil))])))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

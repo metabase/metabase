@@ -34,6 +34,7 @@ export function MetabotIconField() {
   const [iconError, setIconError] = useState("");
 
   const isDefaultIcon = !metabotIcon || metabotIcon === "metabot";
+  const isIllustrationsSectionVisible = !isDefaultIcon || !showIllustrations;
   const iconPreviewSrc =
     !isDefaultIcon && typeof metabotIcon === "string" ? metabotIcon : null;
 
@@ -81,24 +82,24 @@ export function MetabotIconField() {
 
   return (
     <Stack gap={0}>
-      <Text lh="lg" fz="md" mb="xs" fw="bold">
+      <Text lh="lg" fz="md" mb="xxs" fw="bold">
         {t`AI agent's icon`}
       </Text>
       <Text fz="md" c="text-secondary" lh="lg">
         {t`Upload a custom icon for the AI agent. For best results, use an SVG or PNG with a transparent background.`}
       </Text>
       {iconError && (
-        <Text fz="sm" c="feedback-negative" mt="xs">
+        <Text fz="sm" c="feedback-negative" mt="xxs">
           {iconError}
         </Text>
       )}
       <Flex
         align="center"
         className={cx(CS.bordered, CS.rounded, CS.alignSelfStart)}
-        gap="md"
+        gap="lg"
         my="sm"
         py="sm"
-        px="md"
+        px="lg"
         maw="100%"
         wrap="wrap"
       >
@@ -139,7 +140,7 @@ export function MetabotIconField() {
           {t`Upload a custom icon`}
         </Button>
         {(iconFileName || !isDefaultIcon) && (
-          <Flex align="center" gap="md" flex="1 1 0" miw="2rem">
+          <Flex align="center" gap="lg" flex="1 1 0" miw="2rem">
             {iconFileName && (
               <Text
                 fz="sm"
@@ -165,12 +166,12 @@ export function MetabotIconField() {
           </Flex>
         )}
       </Flex>
-      {!isDefaultIcon && (
-        <Stack mt="lg" gap="sm">
+      {isIllustrationsSectionVisible && (
+        <Stack mt="xl" gap="sm">
           <Text fz="md" fw="bold">
             {t`Metabot illustrations`}
           </Text>
-          <Group gap="lg" align="center" wrap="nowrap">
+          <Group gap="xl" align="center" wrap="nowrap">
             <Flex align="center" gap="sm" flex="1" miw={0}>
               <Box
                 component="img"
@@ -195,7 +196,6 @@ export function MetabotIconField() {
                 })
               }
               disabled={isLoadingIllustrations}
-              size="sm"
             />
           </Group>
         </Stack>

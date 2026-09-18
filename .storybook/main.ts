@@ -1,27 +1,27 @@
 import path from "path";
 
 import type { StorybookConfig } from "@storybook/react-webpack5";
-const appConfig = require("../rspack.main.config.js");
-const webpack = require("webpack");
+import remarkGfm from "remark-gfm";
+
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const webpack = require("webpack");
 
 const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("../frontend/build/shared/rspack/side-effect-free-modules");
+const appConfig = require("../rspack.main.config.js");
 
-const mainAppStories = [
-  "../frontend/**/*.mdx",
-  "../frontend/*/!(embedding-sdk-bundle|embedding-sdk-shared)/**/*.stories.@(js|jsx|ts|tsx)",
-  "../enterprise/frontend/*/!(embedding-sdk-ee|embedding-sdk-package)/**/*.stories.@(js|jsx|ts|tsx)",
-];
-
-// Allow filtering to specific story files via env var (used by stress tests)
-// STORYBOOK_STORIES_FILTER: comma-separated file paths relative to repo root
-// e.g. "frontend/src/.../Button.stories.tsx,frontend/src/.../Alert.stories.tsx"
-const stories = process.env.STORYBOOK_STORIES_FILTER
-  ? process.env.STORYBOOK_STORIES_FILTER.split(",").map((f) => `../${f}`)
-  : mainAppStories;
+const { getStories } = require("./story-files.cjs");
 
 const config: StorybookConfig = {
-  stories,
+  stories: getStories({
+    pathsFile: process.env.STORYBOOK_STORY_PATHS_FILE,
+    // Allow filtering to specific story files via env var (used by stress tests)
+    // STORYBOOK_STORIES_FILTER: comma-separated file paths relative to repo root
+    // e.g. "frontend/src/.../Button.stories.tsx,frontend/src/.../Alert.stories.tsx"
+    filter: process.env.STORYBOOK_STORIES_FILTER,
+  }),
   staticDirs: [
     "../resources/frontend_client",
     "./msw-public",
@@ -32,7 +32,22 @@ const config: StorybookConfig = {
   ],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
-    "@storybook/addon-essentials",
+    {
+      name: "@storybook/addon-essentials",
+      options: {
+        docs: false,
+      },
+    },
+    {
+      name: "@storybook/addon-docs",
+      options: {
+        mdxPluginOptions: {
+          mdxCompileOptions: {
+            remarkPlugins: [remarkGfm],
+          },
+        },
+      },
+    },
     "@storybook/addon-interactions",
     "@storybook/addon-links",
     "@storybook/addon-a11y",
@@ -80,6 +95,7 @@ const config: StorybookConfig = {
       module: {
         ...config.module,
         rules: [
+          SIDE_EFFECT_FREE_RULE,
           ...(config.module?.rules ?? []).filter(
             (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),

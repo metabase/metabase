@@ -22,7 +22,6 @@ export const hasHour = (unit: DatetimeUnit | undefined) =>
 
 export function getTimeFormatFromStyle(
   style: string,
-  unit: DatetimeUnit,
   timeEnabled?: "minutes" | "milliseconds" | "seconds" | null,
 ) {
   const format = style;

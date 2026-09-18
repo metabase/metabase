@@ -17,7 +17,7 @@ export const ConflictingChangesList = ({
     <Text mb="sm">
       {t`These items were changed both here and on the remote branch, so they can't be merged automatically:`}
     </Text>
-    <List spacing="xs" size="sm" withPadding>
+    <List spacing="xxs" size="sm" withPadding>
       {conflicts.map((conflict) => (
         <List.Item key={conflict}>{conflict}</List.Item>
       ))}

@@ -1,7 +1,5 @@
 const { H } = cy;
 
-import dayjs from "dayjs";
-
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -10,6 +8,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -415,67 +414,6 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ergonomic Silk Coat");
   });
-
-  it(
-    "should work for aggregated questions (metabase#12985-2)",
-    { tags: "@skip" },
-    () => {
-      const questionDetails = {
-        name: "12985-v2",
-        query: {
-          "source-query": {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", PRODUCTS.CATEGORY, null]],
-          },
-          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
-        },
-      };
-
-      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: { id, card_id, dashboard_id } }) => {
-          cy.log("Connect dashboard filter to the aggregated card");
-
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 11,
-                size_y: 6,
-                series: [],
-                visualization_settings: {},
-                // Connect filter to the card
-                parameter_mappings: [
-                  {
-                    parameter_id: categoryFilter.id,
-                    card_id,
-                    target: [
-                      "dimension",
-                      ["field", "CATEGORY", { "base-type": "type/Text" }],
-                    ],
-                  },
-                ],
-              },
-            ],
-          });
-
-          H.visitDashboard(dashboard_id);
-        },
-      );
-
-      H.filterWidget().contains("Category").click();
-      // It will fail at this point until the issue is fixed because popover never appears
-      H.popover().contains("Gadget").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filter").click();
-      cy.url().should("contain", "?category=Gadget");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Ergonomic Silk Coat");
-    },
-  );
 });
 
 describe("issues 15119 and 16112", () => {

@@ -9,18 +9,17 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Markdown } from "metabase/common/components/Markdown";
 import type { HelpText } from "metabase/querying/expressions";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { HighlightExpressionSource } from "../HighlightExpression";
 
 import S from "./FunctionBrowser.module.css";
-import { getDatabase, getFilteredClauses, getSearchPlaceholder } from "./utils";
+import { getFilteredClauses, getSearchPlaceholder } from "./utils";
 
 const components = {
   code(props: { children: ReactNode }) {
@@ -46,8 +45,10 @@ export function FunctionBrowser({
   reportTimezone?: string;
   onClauseClick?: (name: string) => void;
 }) {
-  const metadata = useSelector(getMetadata);
-  const database = getDatabase(query, metadata);
+  const databaseId = Lib.databaseID(query);
+  const { data: database, isLoading } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
 
   const [filter, setFilter] = useState("");
   const handleFilterChange = useCallback(
@@ -61,7 +62,9 @@ export function FunctionBrowser({
     [filter, expressionMode, database, reportTimezone],
   );
 
-  const isEmpty = filteredClauses.length === 0;
+  // Until the database answers, the clause list is empty because no feature is
+  // known yet. Saying "no results" then would be false, so hold the message.
+  const isEmpty = !isLoading && filteredClauses.length === 0;
 
   return (
     <Flex
@@ -73,7 +76,7 @@ export function FunctionBrowser({
       <Input
         size="sm"
         mb="sm"
-        mx="md"
+        mx="lg"
         placeholder={getSearchPlaceholder(expressionMode)}
         value={filter}
         onChange={handleFilterChange}
@@ -83,7 +86,7 @@ export function FunctionBrowser({
         component="dl"
         my={0}
         pt={0}
-        pb="md"
+        pb="lg"
         direction="column"
         justify={isEmpty ? "center" : "flex-start"}
         className={S.results}
@@ -93,7 +96,7 @@ export function FunctionBrowser({
         )}
         {filteredClauses.map((group) => (
           <>
-            <Text size="sm" p="md" pb="sm" c="text-secondary" fw="bold">
+            <Text size="sm" p="lg" pb="sm" c="text-secondary" fw="bold">
               {group.displayName}
             </Text>
             {group.clauses.map((clause) => (
@@ -131,12 +134,12 @@ function FunctionBrowserItem({
       role="button"
       key={clause.name}
       className={S.clause}
-      px="md"
+      px="lg"
       py="sm"
       onMouseDown={handleMouseDown}
     >
       <dt>
-        <Text size="md" pb="xs" fw="bold" className={S.name}>
+        <Text size="md" pb="xxs" fw="bold" className={S.name}>
           {clause.displayName}
         </Text>
       </dt>

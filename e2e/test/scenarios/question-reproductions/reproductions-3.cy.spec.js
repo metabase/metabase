@@ -681,57 +681,6 @@ describe("issue 40064", () => {
   });
 });
 
-describe("issue 10493", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.signInAsAdmin();
-  });
-
-  it("should not reset chart axes after adding a new query stage (metabase#10493)", () => {
-    H.visitQuestionAdhoc({
-      display: "bar",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.QUANTITY,
-              { "base-type": "type/Integer", binning: { strategy: "default" } },
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-    });
-
-    H.filter();
-    H.modal().within(() => {
-      cy.findByText("Summaries").click();
-      cy.findByTestId("filter-column-Count").within(() => {
-        cy.findByPlaceholderText("Min").type("0");
-        cy.findByPlaceholderText("Max").type("30000");
-      });
-      cy.button("Apply filters").click();
-    });
-    cy.wait("@dataset");
-
-    H.echartsContainer().within(() => {
-      // y axis
-      cy.findByText("Count").should("exist");
-      cy.findByText("21,000").should("exist");
-      cy.findByText("3,000").should("exist");
-
-      // x axis
-      cy.findByText("Quantity").should("exist");
-      cy.findByText("25").should("exist");
-      cy.findByText("75").should("exist");
-    });
-  });
-});
 describe("issue 44071", () => {
   const questionDetails = {
     name: "Test",

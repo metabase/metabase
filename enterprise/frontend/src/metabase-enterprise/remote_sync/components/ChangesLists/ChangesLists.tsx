@@ -28,7 +28,7 @@ export const ChangesLists = ({ title }: ChangesListsProps) => {
 
   if (allEntities.length === 0) {
     return (
-      <Box ta="center" py="xl">
+      <Box ta="center" py="xxl">
         <Text c="text-disabled" size="sm">
           {t`No changes to push`}
         </Text>

@@ -1,8 +1,6 @@
-import cx from "classnames";
 import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Box, Button, Flex, Switch, Text, Title } from "metabase/ui";
@@ -48,7 +46,7 @@ export const CompletedStep = (): JSX.Element | null => {
       <Title order={2}>{t`You're all set up!`}</Title>
       {shouldOfferAiConfig && (
         <StepBody>
-          <Flex align="center" justify="space-between" gap="lg">
+          <Flex align="center" justify="space-between" gap="xl">
             <Box>
               <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
               <Text c="text-secondary">
@@ -70,17 +68,15 @@ export const CompletedStep = (): JSX.Element | null => {
         />
       </StepBody>
       <StepFooter>
-        <a
-          onClick={handleGoToMetabase}
-          className={cx(
-            ButtonsS.Button,
-            ButtonsS.ButtonPrimary,
-            ButtonsS.ButtonLarge,
-          )}
+        <Button
+          component="a"
           href={baseUrl}
+          variant="filled"
+          size="lg"
+          onClick={handleGoToMetabase}
         >
           {t`Take me to Metabase`}
-        </a>
+        </Button>
       </StepFooter>
     </StepRoot>
   );

@@ -2,18 +2,12 @@
   "Data operations for run-tracking heartbeats and orphan reaping."
   (:require
    [metabase.analytics-interface.core :as analytics]
-   [metabase.app-db.core :as mdb]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.run-tracking.db :as run-tracking.db]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
-
-(defn cutoff
-  "Honeysql form for `(now - age unit)` in the app-db dialect."
-  [age unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit))
 
 (defn unit->ms
   "Convert `age` of `unit` (`:second`, `:minute`, or `:hour`) to milliseconds."
@@ -31,38 +25,36 @@
 
 (defn heartbeat-ids!
   "Stamp `heartbeat-column = now` on the `active` rows of `model` in `ids`; no-op on empty `ids`.
-  `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
+  `active` is an `[column value]` pair, e.g. `[:is_active true]`."
   [model active heartbeat-column ids]
   (when (seq ids)
-    (t2/query {:update (t2/table-name model)
-               :set    {heartbeat-column :%now}
-               :where  [:and active [:in :id ids]]})))
+    (run-tracking.db/heartbeat! model active heartbeat-column ids)))
 
 (defn heartbeat-and-reconcile!
   "Per-node tick for the runs this process owns: call `(heartbeat! ids)`, then `(on-gone id)` for
-  each id whose row no longer matches `active` (a HoneySQL predicate, e.g. `[:= :is_active true]`).
+  each id whose row no longer matches `active` (an `[column value]` pair, e.g. `[:is_active true]`).
 
   `on-gone` runs on the shared heartbeat thread and must not block: a slow callback delays
   heartbeats for every run on this node, leaving them to be reaped as stale."
   [{:keys [model active ids heartbeat! on-gone]}]
   (when-let [ids (seq ids)]
     (heartbeat! ids)
-    (let [active-ids (t2/select-fn-set :id model {:where [:and [:in :id ids] active]})]
+    (let [active-ids (run-tracking.db/active-ids model active ids)]
       (doseq [id ids
               :when (not (contains? active-ids id))]
         (on-gone id)))))
 
 (defn reap-rows!
-  "Atomically move the `active` rows of `model` matching the `stale` honeysql predicate into
-  `terminal`, returning the pre-update rows. `SELECT … FOR UPDATE` + `UPDATE` in one transaction,
-  so the returned rows are exactly those transitioned.
-  `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
+  "Atomically move the `active` rows of `model` matching any of the `stale` cutoffs into `terminal`,
+  returning the pre-update rows. `SELECT … FOR UPDATE` + `UPDATE` in one transaction, so the returned rows
+  are exactly those transitioned.
+  `active` is an `[column value]` pair, e.g. `[:is_active true]`. `stale` is a (non-empty) sequence of
+  `{:column :age :unit}` staleness cutoffs, ORed together, e.g. `[{:column :last_heartbeat :age 5 :unit
+  :minute}]`."
   [{:keys [model active stale terminal]}]
   (t2/with-transaction [_conn]
-    (when-let [rows (not-empty (t2/select model {:where [:and active stale] :for :update}))]
-      (t2/query {:update (t2/table-name model)
-                 :set    terminal
-                 :where  [:and active [:in :id (mapv :id rows)]]})
+    (when-let [rows (not-empty (run-tracking.db/lock-active-stale-rows model active stale))]
+      (run-tracking.db/set-terminal! model active (mapv :id rows) terminal)
       rows)))
 
 (defn reap-orphaned!

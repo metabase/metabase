@@ -1,5 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import * as Lib from "metabase-lib";
 
@@ -7,6 +14,7 @@ import {
   ExpressionWidget,
   ExpressionWidgetHeader,
 } from "../../../components/expressions";
+import { prefetchExpressionWidget } from "../../../components/expressions/ExpressionWidget";
 
 import {
   FilterColumnPicker,
@@ -91,9 +99,18 @@ export function FilterPicker({
     handleChange(item.segment);
   };
 
+  // The widget is a separate chunk. Fetching it while the user reads the column
+  // list, and switching in a transition, keeps this list on screen until the whole
+  // widget is ready, so it appears complete rather than as a shell that fills in.
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
+
   const handleExpressionSelect = (clause?: Lib.DefinedClauseName) => {
     setInitialExpressionClause(clause ?? null);
-    openExpressionEditor();
+    startTransition(() => {
+      openExpressionEditor();
+    });
   };
 
   const checkItemIsSelected = useCallback(

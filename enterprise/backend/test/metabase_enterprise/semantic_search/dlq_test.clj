@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
@@ -42,7 +43,12 @@
     (is (= :permanent (semantic.dlq/categorize-error (NullPointerException. "NPE")))))
   (testing "Default to transient"
     (is (= :transient (semantic.dlq/categorize-error (RuntimeException. "Unknown error"))))
-    (is (= :transient (semantic.dlq/categorize-error (Exception. "Generic exception"))))))
+    (is (= :transient (semantic.dlq/categorize-error (Exception. "Generic exception")))))
+  (testing "an embedding endpoint the network policy refuses is a configuration problem, not a passing one"
+    (is (= :permanent (semantic.dlq/categorize-error
+                       (try (llm.settings/rethrow-if-llm-network-policy-error! (ex-info "blocked" {:ssrf true})
+                                                                               "https://embed.example/v1")
+                            (catch Exception e e)))))))
 
 (deftest dlq-table-creation-test
   (testing "DLQ table creation and existence checks"

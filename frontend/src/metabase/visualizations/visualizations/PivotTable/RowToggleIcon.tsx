@@ -5,6 +5,7 @@ import { Icon } from "metabase/ui";
 import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
+  RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -15,7 +16,7 @@ interface RowToggleIconProps {
   settings: VisualizationSettings;
   updateSettings: (settings: VisualizationSettings) => void;
   hideUnlessCollapsed?: boolean;
-  rowIndex?: string[];
+  rowIndex?: RowValue[][];
   "data-testid"?: string;
 }
 

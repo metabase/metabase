@@ -16,19 +16,20 @@ import type { Tenant } from "metabase-types/api";
 
 const MAX_SLUG_LENGTH = 255;
 
-const localTenantSchema = Yup.object({
-  name: Yup.string().default("").required().max(254, Errors.maxLength),
-  slug: Yup.string()
-    .default("")
-    .required()
-    .matches(/^[-_a-z0-9]+$/, {
-      excludeEmptyString: true,
-      get message() {
-        return t`Only lowercase letters, numbers, hyphens (-), and underscores (_) are allowed`;
-      },
-    })
-    .max(MAX_SLUG_LENGTH, Errors.maxLength),
-});
+const getLocalTenantSchema = () =>
+  Yup.object({
+    name: Yup.string().default("").required().max(254, Errors.maxLength),
+    slug: Yup.string()
+      .default("")
+      .required()
+      .matches(/^[-_a-z0-9]+$/, {
+        excludeEmptyString: true,
+        get message() {
+          return t`Only lowercase letters, numbers, hyphens (-), and underscores (_) are allowed`;
+        },
+      })
+      .max(MAX_SLUG_LENGTH, Errors.maxLength),
+  });
 
 interface TenantFormProps {
   initialValues?: Partial<Tenant>;
@@ -55,7 +56,7 @@ export const TenantForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={localTenantSchema}
+      validationSchema={getLocalTenantSchema()}
       enableReinitialize
       onSubmit={onSubmit}
     >
@@ -66,7 +67,7 @@ export const TenantForm = ({
             title={t`Give this tenant a name`}
             label={t`Give this tenant a name`}
             description={t`This will be visible to users assigned to this tenant.`}
-            mb="md"
+            mb="lg"
             placeholder="A wonderful tenant"
             onChange={(e) => {
               const value = e.target.value;
@@ -87,7 +88,7 @@ export const TenantForm = ({
             description={t`This can’t be changed later, so choose wisely.`}
             placeholder="permanent-tenant-identifier"
             disabled={!!initialValues.slug}
-            mb="xl"
+            mb="xxl"
           />
           <LoginAttributesWidget
             name="attributes"

@@ -14,8 +14,10 @@ interface Props {
   className?: string;
   color?: ColorName;
   icon?: IconName;
+  iconClassName?: string;
   iconColor?: ColorName;
   iconSize?: number;
+  showTooltip?: boolean;
   to?: string;
   onClick?: () => void;
 }
@@ -25,8 +27,10 @@ export const Breadcrumb = ({
   className,
   color,
   icon,
+  iconClassName,
   iconColor,
   iconSize,
+  showTooltip = false,
   to,
   onClick,
 }: Props) => {
@@ -38,7 +42,7 @@ export const Breadcrumb = ({
       className={cx(S.content, {
         [S.clickable]: isLink || onClick,
       })}
-      gap="xs"
+      gap="xxs"
       style={{
         "--color": color ? getColor(color) : undefined,
         "--active-color": iconColor ? getColor(iconColor) : undefined,
@@ -48,7 +52,7 @@ export const Breadcrumb = ({
       {icon && (
         <Icon
           c={iconColor}
-          className={S.icon}
+          className={cx(S.icon, iconClassName)}
           flex="0 0 auto"
           name={icon}
           size={iconSize}
@@ -60,7 +64,7 @@ export const Breadcrumb = ({
         className={S.text}
         fw="bold"
         lh="normal"
-        showTooltip={false}
+        showTooltip={showTooltip}
       >
         {children}
       </Ellipsified>

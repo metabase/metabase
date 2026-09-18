@@ -179,7 +179,6 @@
       (testing "return value from the update call should be nil"
         (is (nil? (dashboard-card/update-dashboard-card!
                    {:id                     dashcard-id
-                    :actor_id               (mt/user->id :rasta)
                     :dashboard_id           nil
                     :card_id                nil
                     :size_x                 5
@@ -231,21 +230,21 @@
         (testing "Should have more calls if there are changes to the dashcards"
           (t2/with-call-count [call-count]
             (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
                                                      :size_y 4
                                                      :series [{:id series-id-1}]}
                                                     {:id     (:id dashcard-2)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
                                                      :size_y 4
                                                      :series [{:id series-id-2}]}
                                                     {:id     (:id dashcard-3)
-                                                     :cardId card-id
+                                                     :card_id card-id
                                                      :row    1
                                                      :col    2
                                                      :size_x 3
@@ -352,3 +351,70 @@
         (let [loaded (t2/select-one :model/DashboardCard :id (:id dc))]
           (is (= [{:sourceId (str "card:" (:id src))}]
                  (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1]))))))))
+
+(deftest link-card-entity-id-validated-on-write-test
+  (testing "a link-card entity id must be an integer before it is stored, and a legitimate id round-trips"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+      (testing "a map id is rejected on insert"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be an integer"
+             (t2/insert! :model/DashboardCard
+                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                          :visualization_settings
+                          {:virtual_card {:display "link"}
+                           :link {:entity {:id {:raw "x"} :model "card"}}}}))))
+      (testing "the dashboard is still readable afterwards"
+        (is (=? {:id dash-id} (mt/user-http-request :crowberto :get 200 (str "dashboard/" dash-id)))))
+      (testing "a map id is rejected on update too, not just insert"
+        (let [dc (t2/insert-returning-instance! :model/DashboardCard
+                                                {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                                                 :visualization_settings {}})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"must be an integer"
+               (t2/update! :model/DashboardCard (:id dc)
+                           {:visualization_settings
+                            {:link {:entity {:id {:raw "x"} :model "card"}}}})))))
+      (testing "a legitimate integer id still works"
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (some? (t2/insert! :model/DashboardCard
+                                 {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                                  :visualization_settings
+                                  {:link {:entity {:id card-id :model "card"}}}}))))))))
+
+(deftest click-behavior-target-id-validated-on-write-test
+  (testing "a click-behavior target id must be an integer before it is stored, and a legitimate id round-trips"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+      (testing "a map target id is rejected on insert"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be an integer"
+             (t2/insert! :model/DashboardCard
+                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                          :visualization_settings
+                          {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}}))))
+      (testing "a map target id in column settings is rejected on insert"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be an integer"
+             (t2/insert! :model/DashboardCard
+                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                          :visualization_settings
+                          {:column_settings
+                           {"[\"name\",\"abc\"]"
+                            {:click_behavior {:type "link" :linkType "dashboard" :targetId {:raw "x"}}}}}}))))
+      (testing "a map target id is rejected on update too, not just insert"
+        (let [dc (t2/insert-returning-instance! :model/DashboardCard
+                                                {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                                                 :visualization_settings {}})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"must be an integer"
+               (t2/update! :model/DashboardCard (:id dc)
+                           {:visualization_settings
+                            {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}})))))
+      (testing "a legitimate integer target id still works"
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (some? (t2/insert! :model/DashboardCard
+                                 {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                                  :visualization_settings
+                                  {:click_behavior {:type "link" :linkType "question" :targetId card-id}
+                                   :column_settings
+                                   {"[\"name\",\"abc\"]"
+                                    {:click_behavior {:type "link" :linkType "question" :targetId card-id}}}}}))))))))

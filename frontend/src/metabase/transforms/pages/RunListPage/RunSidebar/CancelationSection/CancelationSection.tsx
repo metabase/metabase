@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useCancelCurrentTransformRunMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 

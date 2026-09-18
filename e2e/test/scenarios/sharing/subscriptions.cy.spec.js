@@ -129,6 +129,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly");
       });
 
+      it("should still send a one-off email after the frequency change clears the time", () => {
+        assignRecipient();
+
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("weekly").click();
+
+        H.sidebar().button("Done").should("be.disabled");
+        H.sidebar().button("Send email now").should("be.enabled");
+
+        H.clickSend();
+        H.getInbox(1).its("body").should("have.length", 1);
+      });
+
       it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
         openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
 
@@ -154,20 +167,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.popover().isRenderedWithinViewport();
       });
-
-      it(
-        "should not send attachments by default if not explicitly selected (metabase#28673)",
-        { tags: "@skip" },
-        () => {
-          openDashboardSubscriptions();
-          assignRecipient();
-
-          cy.findByLabelText("Attach results").should("not.be.checked");
-          H.sendEmailAndAssert(
-            ({ attachments }) => expect(attachments).to.be.empty,
-          );
-        },
-      );
     });
 
     describe("with existing subscriptions", () => {
@@ -409,6 +408,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByTestId("select-frame").click();
       H.popover().findByText("first").click();
 
+      H.selectScheduleTime();
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")
       H.sidebar().findByText(/^Emailed monthly on the first (?!null)/);

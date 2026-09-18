@@ -11,65 +11,75 @@
 
 const SHARED_UTILS_LEVELS = [
   // U0 — foundation: leaf plumbing.
-  [
-    "shared/schema",
-    "shared/urls",
-    "shared/styled-components",
-    "shared/cljs-dev-tools",
-  ],
+  ["shared/urls", "shared/cljs-dev-tools", "shared/types"],
   // U1 — the api client.
   ["shared/api"],
-  // U2 — routing facade.
-  ["shared/router"],
-  // U3 — the store slices and hooks.
+  // U2 — the store slices and hooks.
   ["shared/redux"],
-  // U4 — the plugin registry, and instance settings over the api and store.
+  // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U5 — app services over the store and registry.
+  // U4 — the current user, composed over the plugin registry for application permissions,
+  // the global styles, composed over settings and the store,
+  // and the settings-page rendering primitives, composed over settings.
   [
+    "shared/current-user",
+    "shared/styled-components",
+    "shared/settings-components",
+  ],
+  // U5 — app services over the store, registry and current user.
+  [
+    "shared/metadata-store",
     "shared/selectors",
     "shared/content-translation",
-    "shared/error-boundary",
     "shared/forms",
     "shared/archive",
     "shared/hooks",
   ],
   // U6 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
-  ["shared/hoc", "shared/upsells", "shared/route-guards", "shared/redux-store"],
+  [
+    "shared/upsells",
+    "shared/route-guards",
+    "shared/redux-store",
+    "shared/search-ui",
+    "shared/rich_text_editing",
+  ],
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: chart rendering and database metadata/forms.
+  // P0 — independent peers: the data grid, writeback actions and comments.
+  ["shared/data-grid", "shared/actions", "shared/comments"],
+  // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P1 — query editing composes visualizations.
-  ["shared/querying"],
-  // P2 — building blocks over querying; mutually independent.
+  // P2 — independent peers with no edges between them.
+  // Querying and detail-view compose visualizations. Metadata consumes detail-view from P3.
+  // detail-view keeps its enforceSharedTiers flag for one upward edge,
+  // DetailViewPage.tsx importing the nav layout constants (#79119 moves them).
+  ["shared/querying", "shared/pulse", "shared/detail-view"],
+  // P3 — building blocks over querying, mutually independent.
   [
     "shared/metadata",
     "shared/parameters",
     "shared/questions",
-    "shared/search-ui",
+    "shared/timelines",
   ],
+  // P4 — the metabot agent, which transforms and nav compose.
+  // metabot keeps its enforceSharedTiers flag for one upward edge,
+  // Metabot.tsx importing Sidebar from the main navbar.
+  ["shared/metabot"],
 ];
 
 const SHARED_DOMAIN = [
-  "shared/actions",
-  "shared/comments",
   "shared/custom-viz",
-  "shared/data-grid",
-  "shared/detail-view",
-  "shared/metabot",
+  "shared/documents",
+  "shared/embedding-ee",
   "shared/metrics-ui",
   "shared/nav",
   "shared/notifications",
   "shared/palette",
-  "shared/pulse",
-  "shared/rich_text_editing",
-  "shared/routes-stable-id-aware",
+  "shared/segments",
   "shared/static-viz",
   "shared/status",
-  "shared/timelines",
   "shared/transforms",
   "shared/visualizer",
 ];
@@ -91,7 +101,7 @@ const levelAllows = (levels, base = []) =>
 
 const sharedRules = [
   // Later rules win, so these must come after the baseline shared/* allow they narrow.
-  // Edges to untiered modules (common, monitor, embedding, types) fall through to that allow.
+  // Edges to untiered shared modules fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,
@@ -121,26 +131,9 @@ const sharedRules = [
   // Transitional clusters: these domain modules still import each other, so both ways are allowed.
   // Delete each entry once the imports are one-directional.
   {
-    from: ["shared/visualizations"],
-    allow: [
-      "shared/custom-viz",
-      "shared/data-grid",
-      "shared/static-viz",
-      "shared/visualizer",
-    ],
-  },
-  {
-    from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-    allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-  },
-  {
     from: ["shared/nav", "shared/palette"],
     allow: ["shared/nav", "shared/palette"],
   },
-  {
-    from: ["shared/notifications", "shared/pulse"],
-    allow: ["shared/notifications", "shared/pulse"],
-  },
 ];
 
-export { sharedRules };
+export { TIERED_SHARED, sharedRules };

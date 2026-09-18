@@ -197,8 +197,8 @@ export function SearchResult({
         item={result}
         type={model}
       />
-      <ResultNameSection justify="center" gap="xs">
-        <Group gap="xs" align="center" wrap="nowrap">
+      <ResultNameSection justify="center" gap="xxs">
+        <Group gap="xxs" align="center" wrap="nowrap">
           <ResultTitle
             role="heading"
             data-testid="search-result-item-name"
@@ -224,7 +224,7 @@ export function SearchResult({
                 size="md"
                 color="input-focus"
                 orientation="vertical"
-                bdrs="xs"
+                bdrs="xxs"
               />
               <Markdown
                 dark
@@ -240,7 +240,7 @@ export function SearchResult({
         )}
       </ResultNameSection>
       {isLoading && (
-        <LoadingSection px="xs">
+        <LoadingSection px="xxs">
           <Loader data-testid="search-result-sync-loading-indicator" />
         </LoadingSection>
       )}

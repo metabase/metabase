@@ -55,7 +55,7 @@ export function SidebarHeader({ node, onClose, mode }: SidebarHeaderProps) {
       >
         {getNodeLabel(node)}
       </Anchor>
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         {link != null && (
           <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
             <ActionIcon

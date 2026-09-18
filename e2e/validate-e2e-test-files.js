@@ -26,7 +26,8 @@ function validateE2EFileNames(files) {
  * @param {Array<string>} [files] Potential payload if used with `lint-staged`
  */
 function validateStagedFiles(files) {
-  validateE2EFileNames(files || getStagedFiles());
+  const stagedFiles = files || getStagedFiles();
+  validateE2EFileNames(stagedFiles && stagedFiles.filter(isE2ETestFile));
 }
 
 function validateAllFiles() {
@@ -35,10 +36,7 @@ function validateAllFiles() {
 }
 
 function getAllE2EFiles() {
-  // Will match all files in the scenarios dir, except the ones in helpers and shared directories
-  const PATTERN = `${E2E_HOME}*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}`;
-
-  return glob.sync(PATTERN);
+  return glob.sync(`${E2E_HOME}**/*.{js,ts}`).filter(isE2ETestFile);
 }
 
 function getStagedFiles() {
@@ -48,15 +46,14 @@ function getStagedFiles() {
   const hasRelevantFiles = stagedFiles.includes(E2E_HOME);
 
   if (hasRelevantFiles) {
-    return stagedFiles.split("\n").filter(isE2ETestFile);
+    return stagedFiles.split("\n");
   }
 }
 
 function isE2ETestFile(fullPath) {
-  const dirName = path.dirname(fullPath);
-  const excludedPaths =
-    dirName.endsWith("/helpers") || dirName.endsWith("/shared");
-  return dirName.startsWith(E2E_HOME) && !excludedPaths;
+  const isExcluded =
+    fullPath.includes("/helpers/") || fullPath.includes("/shared/");
+  return fullPath.includes(E2E_HOME) && !isExcluded;
 }
 
 function printHints() {

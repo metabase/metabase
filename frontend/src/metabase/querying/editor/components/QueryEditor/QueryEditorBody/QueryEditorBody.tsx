@@ -34,13 +34,12 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   snippets: true,
   formatQuery: true,
   variables: true,
-  promptInput: false,
 };
 
 type QueryEditorBodyProps = {
   extraButton?: ReactNode;
+  parametersList: ReactNode;
   question: Question;
-  proposedQuestion: Question | undefined;
   modalSnippet?:
     | NativeQuerySnippet
     | Partial<Omit<NativeQuerySnippet, "id">>
@@ -73,8 +72,6 @@ type QueryEditorBodyProps = {
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
   onOpenModal: (type: QueryModalType) => void;
-  onAcceptProposed?: () => void;
-  onRejectProposed?: () => void;
   editorHeight?: number;
   hideRunButton?: boolean;
   topBarInnerContent?: ReactNode;
@@ -83,8 +80,8 @@ type QueryEditorBodyProps = {
 
 export function QueryEditorBody({
   extraButton,
+  parametersList,
   question,
-  proposedQuestion,
   modalSnippet,
   nativeEditorSelectedText,
   readOnly,
@@ -112,8 +109,6 @@ export function QueryEditorBody({
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   onOpenModal,
-  onAcceptProposed,
-  onRejectProposed,
   editorHeight: editorHeightOverride,
   hideRunButton,
   topBarInnerContent,
@@ -176,7 +171,6 @@ export function QueryEditorBody({
         })}
         availableHeight={availableHeight}
         question={question}
-        proposedQuestion={proposedQuestion}
         query={query}
         placeholder="SELECT * FROM TABLE_NAME"
         isInitiallyOpen
@@ -205,11 +199,8 @@ export function QueryEditorBody({
         nativeEditorSelectedText={nativeEditorSelectedText}
         onBlur={onBlur}
         onOpenModal={onOpenModal}
-        onAcceptProposed={onAcceptProposed}
-        onRejectProposed={onRejectProposed}
       >
-        <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
+        <NativeQueryEditor.TopBar leftContent={parametersList}>
           {topBarInnerContent}
           <NativeQueryEditor.Sidebar
             features={NATIVE_EDITOR_SIDEBAR_FEATURES}

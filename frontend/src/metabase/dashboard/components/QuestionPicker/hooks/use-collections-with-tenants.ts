@@ -2,36 +2,44 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
+import {
+  getIsTenantUser,
+  getUserPersonalCollectionId,
+} from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { ExpandedCollection } from "metabase/redux/store";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import type { CollectionId } from "metabase-types/api";
 
-export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =
-  "shared-tenant-collections-root";
-
-export const COLLECTIONS_TOP_LEVEL_ID: CollectionId = "collections-top-level";
+import { flattenCollectionTree } from "../utils/tenant-collection-tree";
+import {
+  mergeTenantCollections,
+  mergeTenantUserCollections,
+} from "../utils/tenant-collections";
 
 /**
- * When tenants are enabled, fetches shared tenant collections and merges them
- * into the collectionsById map so they appear as a top-level browsable entry.
+ * When tenants are enabled, fetches tenant collections and adds their
+ * namespaces as top-level browsable entries.
  *
  * The tree structure becomes:
  *   Collections (top level)
  *   ├── Our analytics (root collection)
- *   └── Shared collections (synthetic root for shared collections)
+ *   ├── Shared collections (synthetic collection)
  *       ├── Shared collection A
  *       └── Shared collection B
+ *   └── Tenant collections (synthetic collection)
+ *       ├── Tenant collection A
+ *       └── Tenant collection B
  */
 export function useCollectionsWithTenants(
   collectionsById: Record<CollectionId, ExpandedCollection>,
+  canReadRootCollection: boolean,
 ): Record<CollectionId, ExpandedCollection> {
   const useTenants = useSetting("use-tenants");
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const isTenantUser = useSelector(getIsTenantUser);
   const isTenantsActive = useTenants && PLUGIN_TENANTS.isEnabled;
 
   const { data: sharedTenantCollections } = useListCollectionsTreeQuery(
@@ -43,154 +51,82 @@ export function useCollectionsWithTenants(
       : skipToken,
   );
 
+  const { data: tenantSpecificCollections } = useListCollectionsTreeQuery(
+    isTenantsActive
+      ? {
+          namespace: PLUGIN_TENANTS.TENANT_SPECIFIC_NAMESPACE,
+          "exclude-archived": true,
+        }
+      : skipToken,
+  );
+
+  const { data: tenants } = PLUGIN_TENANTS.useListActiveTenants({
+    skip: !isTenantsActive || isTenantUser,
+  });
+
+  const tenantCollectionNamesById = useMemo(
+    () =>
+      new Map(
+        tenants?.flatMap(({ tenant_collection_id, name }) =>
+          tenant_collection_id == null ? [] : [[tenant_collection_id, name]],
+        ),
+      ),
+    [tenants],
+  );
+
   return useMemo(() => {
-    if (!isTenantsActive || !sharedTenantCollections?.length) {
+    if (!isTenantsActive) {
       return collectionsById;
     }
 
-    // Unjustified type cast. FIXME
-    const sharedCollectionsById = getExpandedCollectionsById(
-      sharedTenantCollections,
-      userPersonalCollectionId,
-    );
+    const sharedCollectionsById = sharedTenantCollections?.length
+      ? getExpandedCollectionsById(
+          flattenCollectionTree(sharedTenantCollections),
+          userPersonalCollectionId,
+        )
+      : {};
+
+    const tenantSpecificCollectionsById = tenantSpecificCollections?.length
+      ? getExpandedCollectionsById(
+          flattenCollectionTree(tenantSpecificCollections),
+          userPersonalCollectionId,
+        )
+      : {};
+
+    if (
+      Object.keys(sharedCollectionsById).length === 0 &&
+      Object.keys(tenantSpecificCollectionsById).length === 0
+    ) {
+      return collectionsById;
+    }
 
     const displayName =
       PLUGIN_TENANTS.getNamespaceDisplayName(
         PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
-      ) ?? "";
+      ) ?? t`Shared collections`;
 
-    return mergeSharedCollections(
-      collectionsById,
-      sharedCollectionsById,
-      displayName,
-    );
+    return isTenantUser
+      ? mergeTenantUserCollections({
+          baseCollectionsById: collectionsById,
+          sharedCollectionsById,
+          tenantSpecificCollectionsById,
+          canReadRootCollection,
+        })
+      : mergeTenantCollections({
+          baseCollectionsById: collectionsById,
+          sharedCollectionsById,
+          tenantSpecificCollectionsById,
+          sharedCollectionsName: displayName,
+          tenantCollectionNamesById,
+        });
   }, [
     isTenantsActive,
     sharedTenantCollections,
+    tenantSpecificCollections,
+    tenantCollectionNamesById,
     collectionsById,
+    canReadRootCollection,
+    isTenantUser,
     userPersonalCollectionId,
   ]);
-}
-
-/**
- * Merge shared tenant collections into the base collections map,
- * creating a top-level "Collections" node that contains both
- * "Our analytics" and "Shared collections" as siblings.
- */
-export function mergeSharedCollections(
-  baseCollectionsById: Record<CollectionId, ExpandedCollection>,
-  sharedCollectionsById: Record<CollectionId, ExpandedCollection>,
-  displayName: string,
-): Record<CollectionId, ExpandedCollection> {
-  const sharedRoot = sharedCollectionsById[ROOT_COLLECTION.id];
-  const rootCollection = baseCollectionsById[ROOT_COLLECTION.id];
-
-  // Create the top-level "Collections" node that parents both namespaces
-  const syntheticTopLevel: ExpandedCollection = {
-    id: COLLECTIONS_TOP_LEVEL_ID,
-    name: t`Collections`,
-    description: null,
-    can_write: false,
-    can_restore: false,
-    can_delete: false,
-    namespace: null,
-    location: null,
-    path: [],
-    parent: null,
-    children: [],
-  };
-
-  // Create the shared collections synthetic root as a sibling of Our analytics
-  const sharedSyntheticRoot: ExpandedCollection = {
-    id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
-    name: displayName,
-    description: null,
-    can_write: false,
-    can_restore: false,
-    can_delete: false,
-    namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
-    location: null,
-    path: [COLLECTIONS_TOP_LEVEL_ID],
-    parent: syntheticTopLevel,
-    children: (sharedRoot?.children ?? []).map((child) => ({
-      ...child,
-      parent: null,
-    })),
-  };
-
-  // Fix circular parent reference now that sharedSyntheticRoot exists
-  sharedSyntheticRoot.children = sharedSyntheticRoot.children.map((child) => ({
-    ...child,
-    parent: sharedSyntheticRoot,
-  }));
-
-  // Wire up the top-level children
-  syntheticTopLevel.children = [rootCollection, sharedSyntheticRoot];
-
-  const mergedCollectionsById = { ...baseCollectionsById };
-
-  // Rewrite root collection to point to top-level parent
-  mergedCollectionsById[ROOT_COLLECTION.id] = {
-    ...rootCollection,
-    path: [COLLECTIONS_TOP_LEVEL_ID],
-    parent: syntheticTopLevel,
-  };
-
-  // Merge shared collections with rewritten paths
-  for (const [id, collection] of Object.entries(sharedCollectionsById)) {
-    if (id === String(ROOT_COLLECTION.id)) {
-      continue;
-    }
-
-    mergedCollectionsById[id] = {
-      ...collection,
-
-      // Rewrite path: Collections > Shared collections > ...
-      path: collection.path
-        ? [
-            COLLECTIONS_TOP_LEVEL_ID,
-            SHARED_TENANT_COLLECTIONS_ROOT_ID,
-            ...collection.path.filter(
-              (pathId) => pathId !== ROOT_COLLECTION.id,
-            ),
-          ]
-        : null,
-
-      // This loop only processes sharedCollectionsById (tenant collections),
-      // never baseCollectionsById (Our Analytics collections), so there is no risk
-      // of re-parenting "Our Analytics" sub-collections here.
-      parent:
-        collection.parent?.id === ROOT_COLLECTION.id
-          ? sharedSyntheticRoot
-          : collection.parent,
-    };
-  }
-
-  // Rewrite paths for all base collections (children of Our Analytics / root)
-  // so that "Collections" appears at the top of the breadcrumb when navigating
-  // into sub-collections under Our Analytics.
-  for (const [id, collection] of Object.entries(baseCollectionsById)) {
-    if (id === String(ROOT_COLLECTION.id)) {
-      continue; // already rewritten above
-    }
-
-    const collectionNode = collection;
-
-    if (!collectionNode.path) {
-      continue;
-    }
-
-    mergedCollectionsById[id] = {
-      ...collectionNode,
-      // Rewrite path: Collections > Our Analytics > ...
-      path: [COLLECTIONS_TOP_LEVEL_ID, ...collectionNode.path],
-    };
-  }
-
-  mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =
-    sharedSyntheticRoot;
-
-  mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = syntheticTopLevel;
-
-  return mergedCollectionsById;
 }

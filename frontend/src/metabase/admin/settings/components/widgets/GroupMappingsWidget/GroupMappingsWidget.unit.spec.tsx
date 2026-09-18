@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { FormProvider } from "metabase/forms";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
@@ -62,20 +62,7 @@ const setup = ({
 
 describe("GroupMappingsWidgetView", () => {
   describe("tooltip text", () => {
-    it("shows JWT-specific tooltip text when mappingSetting is jwt-group-mappings", async () => {
-      setup({ mappingSetting: "jwt-group-mappings" });
-
-      const aboutMappingsElement = await screen.findByText("About mappings");
-      await userEvent.hover(aboutMappingsElement);
-
-      expect(
-        await screen.findByText(
-          /If no mappings are defined, groups will automatically be assigned based on exactly matching names/,
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("shows default tooltip text when mappingSetting is not jwt-group-mappings", async () => {
+    it("shows the tooltip text", async () => {
       setup({ mappingSetting: "ldap-group-mappings" });
 
       const aboutMappingsElement = await screen.findByText("About mappings");
@@ -90,25 +77,10 @@ describe("GroupMappingsWidgetView", () => {
   });
 
   describe("no mappings message", () => {
-    it("shows JWT-specific message when mappingSetting is jwt-group-mappings and sync is enabled", async () => {
+    it("shows the sync-off message when group sync is disabled", async () => {
       setup({
-        mappingSetting: "jwt-group-mappings",
         mappings: {},
-        setting: { key: "jwt-group-sync", value: true },
-      });
-
-      expect(
-        await screen.findByText(
-          "No mappings yet, groups will be automatically assigned by exactly matching names",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("shows default message when mappingSetting is jwt-group-mappings but sync is disabled", async () => {
-      setup({
-        mappingSetting: "jwt-group-mappings",
-        mappings: {},
-        setting: { key: "jwt-group-sync", value: false },
+        setting: { key: "ldap-group-sync", value: false },
       });
 
       expect(
@@ -116,11 +88,8 @@ describe("GroupMappingsWidgetView", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows default message when mappingSetting is not jwt-group-mappings", async () => {
-      setup({
-        mappingSetting: "ldap-group-mappings",
-        mappings: {},
-      });
+    it("shows the no mappings message", async () => {
+      setup({ mappings: {} });
 
       expect(await screen.findByText("No mappings yet")).toBeInTheDocument();
     });
@@ -246,9 +215,7 @@ describe("GroupMappingsWidgetView", () => {
       // Click on button to delete mapping
       await userEvent.click(await screen.findByLabelText("close icon"));
 
-      await userEvent.click(
-        screen.getByLabelText(/Also remove all group members/i),
-      );
+      await userEvent.click(screen.getByLabelText(/Also remove all members/i));
       await userEvent.click(
         await screen.findByRole("button", {
           name: "Remove mapping and members",
@@ -282,6 +249,28 @@ describe("GroupMappingsWidgetView", () => {
         // One call for each group deleted
         expect(deleteGroupSpy).toHaveBeenCalledTimes(2);
       });
+    });
+  });
+
+  it("keeps a row's group options out of the DOM until its dropdown opens (metabase#81838)", async () => {
+    const groups = [
+      ...defaultGroups,
+      createMockGroup({ id: 2, name: "group-2", magic_group_type: null }),
+      createMockGroup({ id: 3, name: "group-3", magic_group_type: null }),
+    ];
+    setup({ groups, mappings: { "cn=a": [1], "cn=b": [2], "cn=c": [3] } });
+
+    // role queries skip hidden nodes by default, and a mounted hidden option still costs DOM and memory
+    expect(screen.queryAllByRole("option", { hidden: true })).toHaveLength(0);
+
+    const [firstMappingRow] = screen.getAllByRole("row").slice(1);
+    const [groupSelectToggle] = within(firstMappingRow).getAllByRole("button");
+    await userEvent.click(groupSelectToggle);
+    expect(await screen.findAllByRole("option")).toHaveLength(3);
+
+    await userEvent.click(groupSelectToggle);
+    await waitFor(() => {
+      expect(screen.queryAllByRole("option", { hidden: true })).toHaveLength(0);
     });
   });
 });

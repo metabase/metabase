@@ -9,9 +9,10 @@
   ;; massive Hadoop/Hive transitive dependency tree.
   org.apache.hive/hive-jdbc                          {:mvn/version "4.2.0"}
 
-  org.apache.hive/hive-common                        {:mvn/version "4.2.0"
+  org.apache.hive/hive-common                        {:mvn/version "4.2.1"
                                                       :exclusions [com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
+                                                                   com.google.guava/guava
                                                                    com.tdunning/json
                                                                    commons-cli/commons-cli
                                                                    io.dropwizard.metrics/metrics-core
@@ -47,7 +48,7 @@
                                                                    org.jline/jline
                                                                    org.mockito/mockito-core]}
 
-  org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.0"
+  org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.1"
                                                       :exclusions [com.google.guava/guava
                                                                    com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.ben-manes.caffeine/caffeine
@@ -107,12 +108,13 @@
                                                                    org.apache.hadoop/hadoop-mapreduce-client-core]}
 
   org.apache.hive/hive-hplsql                        {:mvn/version "4.2.0"
-                                                      :exclusions [commons-cli/commons-cli
+                                                      :exclusions [com.google.guava/guava
+                                                                   commons-cli/commons-cli
                                                                    commons-io/commons-io
                                                                    org.antlr/antlr4-runtime
                                                                    org.apache.hive/hive-exec]}
 
-  org.apache.hive/hive-llap-client                   {:mvn/version "4.2.0"
+  org.apache.hive/hive-llap-client                   {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.commons/commons-lang3
                                                                    org.apache.curator/apache-curator
                                                                    org.apache.curator/curator-framework
@@ -120,7 +122,7 @@
                                                                    org.apache.hive/hive-llap-common
                                                                    org.apache.hive/hive-serde]}
 
-  org.apache.hive/hive-serde                         {:mvn/version "4.2.0"
+  org.apache.hive/hive-serde                         {:mvn/version "4.2.1"
                                                       :exclusions [com.carrotsearch/hppc
                                                                    com.esri.geometry/esri-geometry-api
                                                                    com.google.code.findbugs/jsr305
@@ -135,22 +137,23 @@
                                                                    org.apache.parquet/parquet-hadoop-bundle
                                                                    org.apache.thrift/libthrift]}
 
-  org.apache.hive/hive-storage-api                   {:mvn/version "4.2.0"
+  org.apache.hive/hive-storage-api                   {:mvn/version "4.2.1"
                                                       :exclusions [org.slf4j/slf4j-api]}
 
-  org.apache.hive/hive-shims                         {:mvn/version "4.2.0"
+  org.apache.hive/hive-shims                         {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.hive.shims/hive-shims-0.23
                                                                    org.apache.hive.shims/hive-shims-common]}
 
-  org.apache.hive.shims/hive-shims-common            {:mvn/version "4.2.0"
-                                                      :exclusions [org.apache.curator/curator-framework
+  org.apache.hive.shims/hive-shims-common            {:mvn/version "4.2.1"
+                                                      :exclusions [com.google.guava/guava
+                                                                   org.apache.curator/curator-framework
                                                                    org.apache.thrift/libthrift]}
 
-  org.apache.hive.shims/hive-shims-0.23              {:mvn/version "4.2.0"
+  org.apache.hive.shims/hive-shims-0.23              {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.hadoop/hadoop-yarn-server-resourcemanager
                                                                    org.apache.hive.shims/hive-shims-common]}
 
-  org.apache.hive/hive-service-rpc                   {:mvn/version "4.2.0"
+  org.apache.hive/hive-service-rpc                   {:mvn/version "4.2.1"
                                                       :exclusions [commons-cli/commons-cli
                                                                    commons-codec/commons-codec
                                                                    org.apache.hive/hive-classification
@@ -230,33 +233,25 @@
                                                                    org.apache.commons/commons-lang3
                                                                    org.apache.httpcomponents.client5/httpclient5
                                                                    org.apache.httpcomponents.core5/httpcore5]}
-  org.apache.httpcomponents/httpclient               {:mvn/version "4.5.14"
-                                                      :exclusions [org.apache.commons/commons-lang3]}
-  org.apache.httpcomponents/httpcore                  {:mvn/version "4.4.16"}
   org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.6"
                                                       :exclusions [ch.qos.logback/logback-classic
                                                                    ch.qos.logback/logback-core
-                                                                   org.slf4j/slf4j-log4j12]}
+                                                                   org.slf4j/slf4j-log4j12
+                                                                   ;; pinned in and resolved from /deps.edn
+                                                                   commons-io/commons-io]}
   org.apache.curator/curator-framework               {:mvn/version "5.9.0"
-                                                      :exclusions [org.apache.zookeeper/zookeeper]}
-
-  ;; Commons — pinned to override old transitive versions from httpclient/zookeeper.
-  ;; commons-io 2.11.0 has CVE-2024-47554 (ReDoS).
-  commons-io/commons-io                              {:mvn/version "2.18.0"}
-  commons-codec/commons-codec                        {:mvn/version "1.17.1"}
-  commons-logging/commons-logging                    {:mvn/version "1.3.5"}
-
-  ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
-  com.google.guava/guava                             {:mvn/version "33.5.0-jre"}
+                                                      :exclusions [org.apache.zookeeper/zookeeper
+                                                                   ;; pinned in and resolved from /deps.edn
+                                                                   com.google.guava/guava]}
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
   ;; Driver JARs are scanned individually so these must be declared directly.
-  io.netty/netty-common                              {:mvn/version "4.2.16.Final"}
-  io.netty/netty-handler                             {:mvn/version "4.2.16.Final"}
-  io.netty/netty-transport                           {:mvn/version "4.2.16.Final"}
-  io.netty/netty-buffer                              {:mvn/version "4.2.16.Final"}
-  io.netty/netty-codec                               {:mvn/version "4.2.16.Final"}
-  io.netty/netty-codec-compression                   {:mvn/version "4.2.16.Final"}
-  io.netty/netty-resolver                            {:mvn/version "4.2.16.Final"}
-  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.16.Final"}
-  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.16.Final"}}}
+  io.netty/netty-common                              {:mvn/version "4.2.17.Final"}
+  io.netty/netty-handler                             {:mvn/version "4.2.17.Final"}
+  io.netty/netty-transport                           {:mvn/version "4.2.17.Final"}
+  io.netty/netty-buffer                              {:mvn/version "4.2.17.Final"}
+  io.netty/netty-codec                               {:mvn/version "4.2.17.Final"}
+  io.netty/netty-codec-compression                   {:mvn/version "4.2.17.Final"}
+  io.netty/netty-resolver                            {:mvn/version "4.2.17.Final"}
+  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.17.Final"}
+  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.17.Final"}}}

@@ -8,7 +8,7 @@
 }
 
 .roundedSm {
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
 }
 
 .circular {

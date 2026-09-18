@@ -2,7 +2,7 @@
   background-color: var(--mb-color-background_page-secondary);
   padding: var(
     --notification-schedule-padding,
-    var(--mantine-spacing-lg) var(--mantine-spacing-xl)
+    var(--mantine-spacing-xl) var(--mantine-spacing-xxl)
   );
 
   &:has([data-error="true"]) {

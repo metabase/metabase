@@ -81,6 +81,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
+   [metabase.api.db :as api.db]
    [metabase.api.open-api :as open-api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -89,11 +90,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (declare check-403 check-404)
 
+;; p/import-vars needs the literal ns symbol; the open-api alias won't resolve inside the macro
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars [metabase.api.open-api root-open-api-object])
 
@@ -185,7 +186,7 @@
   ([entity id]
    (check-exists? entity :id id))
   ([entity k v & more]
-   (check-404 (apply t2/exists? entity k v more))))
+   (check-404 (apply api.db/entity-exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
@@ -259,6 +260,15 @@
    (check-400 arg (deferred-tru "Invalid Request.")))
   ([arg msg]
    (check arg [400 msg])))
+
+(defn check-no-dropped-entries
+  "Throw a 400 when request decoding dropped entries from a map whose keys are not declared. `raw` is the map as the
+  client sent it, taken from the request body; `decoded` is the map the endpoint received. The request decoder removes
+  an entry of such a map whose key or value does not fit the schema instead of rejecting the request, so an endpoint
+  that must not silently ignore a bad entry compares the two."
+  [raw decoded]
+  (check-400 (or (not (map? raw)) (= (count raw) (count decoded)))
+             (tru "The request contains keys or values this endpoint does not accept.")))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
@@ -347,10 +357,10 @@
    obj)
 
   ([entity id]
-   (read-check (t2/select-one entity :id id)))
+   (read-check (api.db/entity-by-id entity id)))
 
   ([entity id & other-conditions]
-   (read-check (apply t2/select-one entity :id id other-conditions))))
+   (read-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn write-check
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -366,9 +376,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (write-check (t2/select-one entity :id id)))
+   (write-check (api.db/entity-by-id entity id)))
   ([entity id & other-conditions]
-   (write-check (apply t2/select-one entity :id id other-conditions))))
+   (write-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn query-check
   "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -385,9 +395,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (query-check (t2/select-one entity :id id)))
+   (query-check (api.db/entity-by-id entity id)))
   ([entity id & other-conditions]
-   (query-check (apply t2/select-one entity :id id other-conditions))))
+   (query-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
@@ -435,21 +445,28 @@
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
+(def ^:private ColumnValue
+  "One value of a column compared by `column-will-change?`."
+  [:maybe [:or :string :int :boolean :keyword
+           :metabase.queries.schema/card.dataset-query
+           :metabase.queries.schema/card.result-metadata
+           ms/EmbeddingParams]])
+
 (mu/defn column-will-change? :- :boolean
-  "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
-  endpoint) is applied.
+  "Helper for PATCH-style operations to see if a column is set to change when `after` (the column's value in the
+  input to the endpoint, or `::not-provided` when the column is absent from that input) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? false true) ; -> true, because value will change
 
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? false false) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- :keyword object-before-updates :- :map object-updates :- :map]
+    (api/column-will-change? false ::not-provided) ; -> false; value not specified in updates (request body)"
+  [before :- ColumnValue
+   after  :- [:or ColumnValue [:= ::not-provided]]]
   (boolean
-   (and (contains? object-updates k)
-        (not= (get object-before-updates k)
-              (get object-updates k)))))
+   (and (not= after ::not-provided)
+        (not= before after))))
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
@@ -459,36 +476,39 @@
   [collection-id :- [:maybe ms/PositiveInt]
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
-  (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model '[Card Dashboard Pulse Document]]
-                       (t2/update! model {:collection_id       collection-id
-                                          :collection_position position-update-clause}
-                                   {:collection_position [plus-or-minus :collection_position 1]})))]
-    (when (not= new-position old-position)
-      (cond
-        (and (nil? new-position)
-             old-position)
-        (update-fn! :-  [:> old-position])
+  (when (not= new-position old-position)
+    (cond
+      (and (nil? new-position)
+           old-position)
+      (doseq [shift-after! [api.db/shift-card-positions-after! api.db/shift-dashboard-positions-after!
+                            api.db/shift-pulse-positions-after! api.db/shift-document-positions-after!]]
+        (shift-after! collection-id old-position :-))
 
-        (and new-position (nil? old-position))
-        (update-fn! :+ [:>= new-position])
+      (and new-position (nil? old-position))
+      (doseq [shift-from! [api.db/shift-card-positions-from! api.db/shift-dashboard-positions-from!
+                           api.db/shift-pulse-positions-from! api.db/shift-document-positions-from!]]
+        (shift-from! collection-id new-position :+))
 
-        (> new-position old-position)
-        (update-fn! :- [:between old-position new-position])
+      (> new-position old-position)
+      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
+                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
+        (shift-between! collection-id old-position new-position :-))
 
-        (< new-position old-position)
-        (update-fn! :+ [:between new-position old-position])))))
+      (< new-position old-position)
+      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
+                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
+        (shift-between! collection-id new-position old-position :+)))))
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  [:map
+  [:map {:closed true}
    [:collection_id       [:maybe ms/PositiveInt]]
    [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  [:map
+  [:map {:closed true}
    [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -497,7 +517,7 @@
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
-  ([new-model-data :- ModelWithPosition]
+  ([new-model-data :- ModelWithOptionalPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
   ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
@@ -565,7 +585,7 @@
   "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
   [current-obj obj-updates]
   (cond-> obj-updates
-    (column-will-change? :archived current-obj obj-updates)
+    (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
     (assoc :archived_directly (boolean (:archived obj-updates)))
 
     ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
@@ -574,7 +594,7 @@
     ;;
     ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
     ;; along with it.
-    (and (column-will-change? :archived current-obj obj-updates)
+    (and (column-will-change? (:archived current-obj) (get obj-updates :archived ::not-provided))
          (:archived obj-updates))
     (dissoc :collection_id)))
 
@@ -590,9 +610,10 @@
   and an `:id`. The `f` function is called like `(f model all-items-with-that-model)` and should return a collection
   of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
   for reordering items the way they were."
-  [f items :- [:sequential [:map
-                            [:id ms/PositiveInt]
-                            [:model :keyword]]]]
+  [f :- ifn?
+   items :- [:sequential [:map {:closed true}
+                          [:id ms/PositiveInt]
+                          [:model :keyword]]]]
   (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
     (->> items
          (group-by :model)

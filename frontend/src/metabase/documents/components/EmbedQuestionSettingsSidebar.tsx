@@ -8,6 +8,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Ellipsified,
   Group,
   Icon,
   Loader,
@@ -23,12 +24,12 @@ import type {
 
 import {
   closeSidebar,
+  replaceVizSettings,
   updateVisualizationType,
-  updateVizSettings,
 } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
 import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
-import { getSelectedEmbedIndex } from "../selectors";
+import { getSelectedCardEmbed, getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
 import S from "./EmbedQuestionSettingsSidebar.module.css";
@@ -44,6 +45,7 @@ export const EmbedQuestionSettingsSidebar = ({
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const selectedCardEmbed = useSelector(getSelectedCardEmbed);
 
   const {
     card,
@@ -53,7 +55,11 @@ export const EmbedQuestionSettingsSidebar = ({
     question,
     draftCard,
     regularDataset,
-  } = useCardData({ id: cardId });
+  } = useCardData({
+    id: cardId,
+    storedResultId: selectedCardEmbed?.stored_result_id ?? undefined,
+    storedResultSort: selectedCardEmbed?.sort ?? undefined,
+  });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
     useVisualizationOptions(dataset, card?.display);
@@ -70,18 +76,9 @@ export const EmbedQuestionSettingsSidebar = ({
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (selectedEmbedIndex !== null) {
       if (!draftCard) {
-        const baseCard = card;
-        const newSettings = {
-          ...baseCard?.visualization_settings,
-          ...settings,
-        };
-        const actualCardId = ensureDraftCard(
-          { visualization_settings: newSettings },
-          true,
-        );
-        dispatch(updateVizSettings({ cardId: actualCardId, settings }));
+        ensureDraftCard({ visualization_settings: settings }, true);
       } else {
-        dispatch(updateVizSettings({ cardId, settings }));
+        dispatch(replaceVizSettings({ cardId, settings }));
       }
     }
   };
@@ -103,7 +100,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
   if (isLoading || !series) {
     return (
-      <Stack gap="lg" p="lg" className={S.loadingContainer}>
+      <Stack gap="xl" p="xl" className={S.loadingContainer}>
         <Box className={S.loadingContent}>
           <Loader size="lg" />
           <Text>{t`Loading question settings...`}</Text>
@@ -114,7 +111,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
   if (!card || !series) {
     return (
-      <Stack gap="lg" p="lg" className={S.errorContainer}>
+      <Stack gap="xl" p="xl" className={S.errorContainer}>
         <Box className={S.errorContent}>
           <Text c="feedback-negative">{t`Failed to load question`}</Text>
         </Box>
@@ -125,15 +122,20 @@ export const EmbedQuestionSettingsSidebar = ({
   return (
     <Box className={S.container}>
       <Box className={S.header}>
-        <Group w="100%" justify="space-between" align="flex-start">
-          <Group align="center" p="md">
-            <Text size="md" fw="bold">{t`Visualize as`}</Text>
+        <Group
+          w="100%"
+          wrap="nowrap"
+          justify="space-between"
+          align="flex-start"
+        >
+          <Group wrap="nowrap" miw={0} flex={1} align="center" p="lg">
+            <Text size="md" fw="bold" flex="none">{t`Visualize as`}</Text>
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
                   variant="default"
                   disabled={!selectedElem}
-                  rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
+                  rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
                   leftSection={
                     selectedElem?.iconName || selectedElem?.iconUrl ? (
                       <EntityIcon
@@ -143,8 +145,9 @@ export const EmbedQuestionSettingsSidebar = ({
                     ) : null
                   }
                   justify="space-between"
+                  miw={0}
                 >
-                  {selectedElem?.label}
+                  <Ellipsified>{selectedElem?.label}</Ellipsified>
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>

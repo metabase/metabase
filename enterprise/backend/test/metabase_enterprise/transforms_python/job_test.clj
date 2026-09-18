@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.job-test
   (:require
    [clojure.test :refer :all]
+   ;; tests redef log/log* to capture log lines; util.log macros bottom out in tools.logging
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]

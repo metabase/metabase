@@ -1,6 +1,6 @@
 .root {
   &[data-disabled] {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-icon-disabled);
     pointer-events: all;
   }
 

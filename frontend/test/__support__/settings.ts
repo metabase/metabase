@@ -1,4 +1,4 @@
-import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { createMockSettingsState } from "__support__/state";
 import MetabaseSettings from "metabase/utils/settings";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";

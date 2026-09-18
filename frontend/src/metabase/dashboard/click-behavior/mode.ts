@@ -1,30 +1,22 @@
-import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { ArchivedMode } from "metabase/visualizations/click-actions/modes/ArchivedMode";
-import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
-import { ListMode } from "metabase/visualizations/click-actions/modes/ListMode";
-import type {
-  ClickActionModeGetter,
-  QueryClickActionsMode,
-} from "metabase/visualizations/types";
+import { Mode } from "metabase/querying/click-actions/Mode";
+import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
+import { DefaultMode } from "metabase/querying/click-actions/modes/DefaultMode";
+import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
+import type { ClickActionsMode } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 
 const DashboardDefaultMode: QueryClickActionsMode = {
   ...DefaultMode,
-  clickActions: [...(DefaultMode.clickActions ?? []), DashboardClickAction],
+  clickActions: [...DefaultMode.clickActions, DashboardClickAction],
 };
 
-// Mirrors getMode from metabase/visualizations/click-actions/lib/modes, with
-// the dashboard-owned click-behavior action added for regular dashcards.
-export const getDashboardClickActionMode: ClickActionModeGetter = ({
-  question,
-}) => {
-  if (question.isArchived()) {
-    return new Mode(question, ArchivedMode);
-  }
+function getDashboardQueryMode(question: Question): QueryClickActionsMode {
+  const mode = getQueryMode(question);
+  return mode === DefaultMode ? DashboardDefaultMode : mode;
+}
 
-  const queryMode =
-    question.display() === "list" ? ListMode : DashboardDefaultMode;
-
-  return new Mode(question, queryMode);
-};
+export const dashboardClickActionMode: ClickActionsMode = new Mode(
+  getDashboardQueryMode,
+);

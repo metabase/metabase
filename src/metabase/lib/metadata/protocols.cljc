@@ -67,7 +67,7 @@
   metadata providers other than [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]], which
   implements equivalent filter logic in SQL.
 
-  This should match [[metabase.lib-be.metadata.jvm/metadata-spec->honey-sql]] as closely as
+  This should match [[metabase.lib-be.db/metadata-where]] as closely as
   possible."
   [{metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::metadata-spec]
   (let [active-only? (not (or id-set name-set))
@@ -179,9 +179,15 @@
    #'metadata-providerable?])
 
 (mr/def ::metadata
-  [:map
-   [:lib/type ::metadata-type-excluding-database]
-   [:id       pos-int?]])
+  [:multi {:dispatch :lib/type}
+   [:metadata/table                [:ref ::lib.schema.metadata/table]]
+   [:metadata/column               [:ref ::lib.schema.metadata/column]]
+   [:metadata/card                 [:ref ::lib.schema.metadata/card]]
+   [:metadata/measure              [:ref ::lib.schema.metadata/measure]]
+   [:metadata/metric               [:ref ::lib.schema.metadata/metric]]
+   [:metadata/segment              [:ref ::lib.schema.metadata/segment]]
+   [:metadata/native-query-snippet [:ref ::lib.schema.metadata/native-query-snippet]]
+   [:metadata/transform            [:ref ::lib.schema.metadata/transform]]])
 
 (mu/defn- metadata-by-id :- [:maybe ::metadata]
   [metadata-provider :- ::metadata-provider
@@ -302,7 +308,7 @@
    (fields metadata-provider table-id nil))
   ([metadata-provider :- ::metadata-provider
     table-id          :- ::lib.schema.id/table
-    opts              :- [:maybe [:map [:include-sensitive? {:optional true} :boolean]]]]
+    opts              :- [:maybe [:map {:closed true} [:include-sensitive? {:optional true} :boolean]]]]
    ;; only include `:include-sensitive?` when truthy, so that this shares cached-provider cache entries with other
    ;; ways of fetching the fields for a table, e.g. [[metadatas-for-tables]]
    (metadatas metadata-provider (cond-> {:lib/type :metadata/column, :table-ids #{table-id}}

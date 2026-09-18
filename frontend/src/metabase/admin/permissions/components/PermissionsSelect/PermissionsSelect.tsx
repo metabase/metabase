@@ -150,7 +150,6 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
               <Switch
-                size="sm"
                 checked={toggleState || false}
                 onChange={(e) => onToggleChange(e.currentTarget.checked)}
                 disabled={toggleDisabled ?? false}

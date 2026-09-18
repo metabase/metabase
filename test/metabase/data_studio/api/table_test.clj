@@ -3,16 +3,25 @@
   (:require
    [clojure.test :refer :all]
    [metabase.data-studio.api.table :as api.table]
+   [metabase.data-studio.db :as data-studio.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2])
-  (:import (java.util.concurrent CountDownLatch TimeUnit)))
+  (:import (java.util.concurrent CountDownLatch Executors TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id` as users see it. A bare `t2/select :model/Table` shows sync's."
+  [column table-id]
+  (t2/select-one-fn column :model/Table :id table-id
+                    {:from [(warehouse-schema-overlay/table-query)]}))
 
 (deftest bulk-edit-visibility-sync-test
   (testing "POST /api/data-studio/table/edit visibility field synchronization"
@@ -24,25 +33,25 @@
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id table-2-id]
                                :data_layer "internal"})
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
+        (is (= :internal (user-table-fn :data_layer table-1-id)))
+        (is (= nil (user-table-fn :visibility_type table-1-id)))
+        (is (= :internal (user-table-fn :data_layer table-2-id)))
+        (is (= nil (user-table-fn :visibility_type table-2-id))))
       (testing "updating data_layer to hidden syncs to hidden visibility_type"
         ;; Update one table back to hidden, which should sync to :hidden
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id]
                                :data_layer "hidden"})
-        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
+        (is (= :hidden (user-table-fn :data_layer table-1-id)))
+        (is (= :hidden (user-table-fn :visibility_type table-1-id))))
       (testing "visibility_type is not part of this endpoint, so it is dropped and data_layer alone applies"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids       [table-1-id]
                                :visibility_type "hidden"
                                :data_layer      "final"})
         ;; had visibility_type been honoured, the model would have refused to update both at once
-        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))))))
+        (is (= :final (user-table-fn :data_layer table-1-id)))
+        (is (= nil (user-table-fn :visibility_type table-1-id)))))))
 
 (deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
   (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"
@@ -51,7 +60,7 @@
       (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
                             {:table_ids   [table-id]
                              :data_source "ingested"})
-      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+      (is (= :metabase-transform (user-table-fn :data_source table-id))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
@@ -97,24 +106,34 @@
   ;; lot more to test here but will wait for firmer ground
   (testing "Can we trigger a metadata sync for a filtered set of tables"
     (let [tables       (atom [])
-          latch        (CountDownLatch. 4)]
-      (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
-                     :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
-                     :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
-                     :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                     :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
-                     :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
-                     :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [table]
-                                                       (swap! tables conj table)
-                                                       (.countDown latch)
-                                                       nil)]
-          (mt/user-http-request :crowberto :post 204 "data-studio/table/sync-schema" {:database_ids [d1],
-                                                                                      :schema_ids   [(format "%d:FOO" d2)]
-                                                                                      :table_ids    [t4]})
-          (testing "sync called?"
-            (is (true? (.await latch 4 TimeUnit/SECONDS)))
-            (is (= [t1 t2 t4 t5] (map :id @tables)))))))))
+          latch        (CountDownLatch. 4)
+          ;; Run on a pool of our own: the shared one is process-wide and holds fire-and-forget tasks left
+          ;; behind by earlier tests, each with the default two-hour timeout. One of those still running
+          ;; ahead of these syncs delays them past the await below, which is what happens on driver CI,
+          ;; where those leftover tasks are real syncs over the network. Keep it single-threaded: the
+          ;; endpoint submits one task per table, and the assertion below reads their order.
+          pool         (Executors/newSingleThreadExecutor)]
+      (try
+        (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                       :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                       :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                       :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                       :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+          (with-redefs [quick-task/executor (delay pool)]
+            (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [table]
+                                                           (swap! tables conj table)
+                                                           (.countDown latch)
+                                                           nil)]
+              (mt/user-http-request :crowberto :post 204 "data-studio/table/sync-schema" {:database_ids [d1],
+                                                                                          :schema_ids   [(format "%d:FOO" d2)]
+                                                                                          :table_ids    [t4]})
+              (testing "sync called?"
+                (is (true? (.await latch 4 TimeUnit/SECONDS)))
+                (is (= [t1 t2 t4 t5] (map :id @tables)))))))
+        (finally
+          (.shutdownNow pool))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-rescan-values-test
   (testing "Non-admins should not be allowed to trigger rescan values"
@@ -125,24 +144,31 @@
   ;; lot more to test here but will wait for firmer ground
   (testing "Can we trigger a field values sync for a filtered set of tables"
     (let [tables       (atom [])
-          latch        (CountDownLatch. 4)]
-      (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
-                     :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
-                     :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
-                     :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                     :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
-                     :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
-                     :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
-                                                                          (swap! tables conj table)
-                                                                          (.countDown latch)
-                                                                          nil)]
-          (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
-                                                                                        :schema_ids   [(format "%d:FOO" d2)]
-                                                                                        :table_ids    [t4]})
-          (testing "rescanned?"
-            (is (true? (.await latch 4 TimeUnit/SECONDS)))
-            (is (= [t1 t2 t4 t5] (map :id @tables)))))))))
+          latch        (CountDownLatch. 4)
+          ;; Isolated single-thread pool, for the same reasons as in
+          ;; `trigger-bulk-metadata-sync-for-table-test`.
+          pool         (Executors/newSingleThreadExecutor)]
+      (try
+        (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                       :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                       :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                       :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                       :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+          (with-redefs [quick-task/executor (delay pool)]
+            (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
+                                                                              (swap! tables conj table)
+                                                                              (.countDown latch)
+                                                                              nil)]
+              (mt/user-http-request :crowberto :post 204 "data-studio/table/rescan-values" {:database_ids [d1],
+                                                                                            :schema_ids   [(format "%d:FOO" d2)]
+                                                                                            :table_ids    [t4]})
+              (testing "rescanned?"
+                (is (true? (.await latch 4 TimeUnit/SECONDS)))
+                (is (= [t1 t2 t4 t5] (map :id @tables)))))))
+        (finally
+          (.shutdownNow pool))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
   (testing "Non-admins should not be allowed to trigger discard values"
@@ -193,11 +219,10 @@
             (testing "Selected FieldValues should be gone"
               (is (= [v3] (get-field-values))))))))))
 
-(deftest ^:parallel table-selectors->filter-test
-  (testing "table-selectors->filter function generates correct WHERE clauses"
+(deftest ^:parallel tables-matching-selectors-test
+  (testing "data-studio.db/tables-matching-selectors picks out the correct Tables"
     (let [selectors->table-ids (fn [selectors]
-                                 (let [where (#'api.table/table-selectors->filter selectors)]
-                                   (t2/select-pks-set :model/Table {:where where})))]
+                                 (not-empty (set (map :id (data-studio.db/tables-matching-selectors selectors)))))]
       (mt/with-temp [:model/Database {db-1 :id}      {}
                      :model/Database {db-2 :id}      {}
                      :model/Table    {table-1 :id}   {:db_id db-1}
@@ -286,9 +311,9 @@
                                :data_layer     "hidden"
                                :data_authority "authoritative"
                                :data_source    "ingested"})
-        (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
-        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
-        (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
+        (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]})))
+        (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]})))
+        (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]}))))
       (testing "updating with all selectors"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids  [clojure]
@@ -301,9 +326,9 @@
                 classes    :internal
                 gc         :internal
                 jit        :internal}
-               (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
+               (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]}))))
       (testing "can update owner_email"
-        (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{nil} (t2/select-fn-set :owner_email :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]})))
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:database_ids [clojure]
                                :owner_email  "clojure-owner@example.com"})
@@ -313,9 +338,9 @@
                 classes    nil
                 gc         nil
                 jit        nil}
-               (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]]))))
+               (t2/select-pk->fn :owner_email :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]}))))
       (testing "can update owner_user_id"
-        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]])))
+        (is (= #{nil} (t2/select-fn-set :owner_user_id :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]})))
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids      [beans classes]
                                :owner_user_id  (mt/user->id :rasta)})
@@ -325,7 +350,7 @@
                 classes    (mt/user->id :rasta)
                 gc         nil
                 jit        nil}
-               (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]])))))))
+               (t2/select-pk->fn :owner_user_id :model/Table :db_id [:in [clojure jvm]] {:from [(warehouse-schema-overlay/table-query)]})))))))
 
 ;;; ------------------------------------------------- Selection Tests -------------------------------------------------
 

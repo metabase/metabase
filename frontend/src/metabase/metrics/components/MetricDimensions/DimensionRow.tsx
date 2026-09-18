@@ -62,7 +62,6 @@ export function DimensionRow({
           <Checkbox
             aria-label={dimension.display_name}
             checked={checked}
-            size="xs"
             onChange={(event) => onToggle(event.currentTarget.checked)}
           />
           <UnstyledButton className={S.rowButton} onClick={onEdit}>

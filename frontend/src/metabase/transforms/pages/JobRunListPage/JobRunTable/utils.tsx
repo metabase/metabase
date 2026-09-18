@@ -12,7 +12,7 @@ import {
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Box, Ellipsified, Group, SortableHeaderPill } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatDurationLong } from "metabase/utils/formatting/time";
+import { formatDurationLong } from "metabase/utils/formatting";
 import {
   TRANSFORM_JOB_RUN_SORT_COLUMNS,
   type TransformJobRun,
@@ -54,7 +54,7 @@ function getStartedAtColumn(
   return {
     id: "start_time" satisfies TransformJobRunSortColumn,
     header: ({ header }) => (
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <SortableHeaderPill
           name={t`Started at`}
           sort={header.column.getIsSorted() || undefined}
@@ -76,7 +76,7 @@ function getEndedAtColumn(
   return {
     id: "end_time" satisfies TransformJobRunSortColumn,
     header: ({ header }) => (
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <SortableHeaderPill
           name={t`Ended at`}
           sort={header.column.getIsSorted() || undefined}

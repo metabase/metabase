@@ -11,6 +11,7 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -108,7 +109,7 @@
       (is (= 2 (:field-count events))
           "events Table should have exactly 2 fields — the side-car must not be counted"))))
 
-(deftest ^:sequential run-cli-writes-readable-json-test
+(deftest ^:synchronized run-cli-writes-readable-json-test
   ;; Not ^:parallel: calls `cli/write-result!`, which kondo flags as a destructive function in
   ;; parallel tests. The temp file we hand it is unique-per-call so the write is safe in
   ;; principle, but the lint flag is the right default — drop it instead of whitelisting.
@@ -274,7 +275,7 @@
         (is (true? (:cli-validation (ex-data ex))))
         (is (re-find #"must be a directory" (ex-message ex)))))))
 
-(deftest ^:sequential main-translates-validation-errors-to-fail-test
+(deftest ^:synchronized main-translates-validation-errors-to-fail-test
   (testing "-main converts ex-info {:cli-validation true} from run-cli into fail! + exit 1"
     (let [fail-calls (atom [])]
       (mt/with-dynamic-fn-redefs [cli/fail! (fn [& msgs]
@@ -285,7 +286,7 @@
       (is (= 1 (count @fail-calls)) "fail! should be invoked exactly once")
       (is (re-find #"does not exist" (ffirst @fail-calls))))))
 
-(deftest ^:sequential main-converts-missing-embeddings-to-fail-test
+(deftest ^:synchronized main-converts-missing-embeddings-to-fail-test
   (testing "-main translates a missing --embeddings override into a one-line fail! + exit 1"
     (let [fail-calls (atom [])]
       (mt/with-dynamic-fn-redefs [cli/fail! (fn [& msgs]
@@ -323,7 +324,7 @@
       (is (true? (:cli-validation (ex-data ex))))
       (is (re-find #"--source appdb does not accept" (ex-message ex))))))
 
-(deftest ^:sequential run-cli-representation-mode-default-does-not-write-test
+(deftest ^:synchronized run-cli-representation-mode-default-does-not-write-test
   (testing "representation mode with no --write-to-appdb flag never calls record-score! or bootstrap"
     (let [persisted?     (atom false)
           bootstrapped?  (atom false)]
@@ -333,7 +334,7 @@
         (is (false? @persisted?)   "representation+no-write must not persist anything")
         (is (false? @bootstrapped?) "representation+no-write must not boot the appdb at all")))))
 
-(deftest ^:sequential run-cli-representation-mode-with-write-stamps-representation-source-test
+(deftest ^:synchronized run-cli-representation-mode-with-write-stamps-representation-source-test
   (testing "representation + --write-to-appdb true persists a row stamped 'representation:<digest>' and does not advance the cron fingerprint"
     (let [calls          (atom [])
           advance-calls  (atom 0)]
@@ -353,7 +354,7 @@
         (is (zero? @advance-calls)
             "representation-derived rows must never advance the cron's last-fingerprint setting")))))
 
-(deftest ^:sequential run-cli-appdb-mode-defaults-to-writing-test
+(deftest ^:synchronized run-cli-appdb-mode-defaults-to-writing-test
   (testing "appdb mode with no --write-to-appdb flag defaults to writing (true) but doesn't advance the cron fingerprint"
     ;; CLI runs disable Snowplow, so they can't legitimately advance
     ;; `data-complexity-scoring-last-fingerprint` — that setting is the cron's
@@ -376,7 +377,7 @@
         (is (zero? @advance-calls)
             "CLI must not advance the cron's last-fingerprint setting")))))
 
-(deftest ^:sequential run-cli-appdb-mode-respects-explicit-no-write-test
+(deftest ^:synchronized run-cli-appdb-mode-respects-explicit-no-write-test
   (testing "appdb + --write-to-appdb false scores but never persists"
     (let [persisted? (atom false)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
@@ -386,6 +387,22 @@
                                   data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))]
         (#'cli/run-cli {:source "appdb" :write-to-appdb false})
         (is (false? @persisted?))))))
+
+(deftest ^:synchronized run-cli-appdb-mode-registers-in-process-provider-test
+  (testing "appdb mode registers the in-process embedding provider before it scores"
+    ;; The standalone CLI skips `metabase.core.core/init!`, where the server registers the provider. Without
+    ;; this a synonym axis configured for `in-process` fails with `:provider-not-registered`.
+    (let [order (atom [])]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!               (fn [])
+                                  embeddings.startup/ensure-in-process-provider! (fn [] (swap! order conj :register))
+                                  complexity/complexity-scores                   (fn [& _]
+                                                                                   (swap! order conj :score)
+                                                                                   {:meta {}})
+                                  synonym-source/complexity-scores-opts          (constantly {})
+                                  metabot-scope/internal-metabot-scope           (constantly {})
+                                  data-complexity-score/record-score!            (fn [& _])]
+        (#'cli/run-cli {:source "appdb" :write-to-appdb false})
+        (is (= [:register :score] @order))))))
 
 (deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
   (testing "dir-digest produces the same value for the same content"

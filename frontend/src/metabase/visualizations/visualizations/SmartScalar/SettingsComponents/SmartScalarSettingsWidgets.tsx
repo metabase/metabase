@@ -15,14 +15,9 @@ import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import { Stack } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type {
-  DatasetColumn,
-  RawSeries,
-  SmartScalarComparison,
-} from "metabase-types/api";
+import type { SmartScalarComparisonWidgetProps } from "metabase/viz-core";
+import type { SmartScalarComparison } from "metabase-types/api";
 
-import type { ComparisonMenuOption } from "../types";
 import { getDefaultComparison } from "../utils";
 
 import { ComparisonPicker } from "./ComparisonPicker";
@@ -30,16 +25,6 @@ import {
   AddComparisonButton,
   ComparisonList,
 } from "./SmartScalarSettingsWidgets.styled";
-
-export type SmartScalarComparisonWidgetProps = {
-  onChange: (setting: SmartScalarComparison[]) => void;
-  options: ComparisonMenuOption[];
-  comparableColumns: DatasetColumn[];
-  value: SmartScalarComparison[];
-  maxComparisons: number;
-  series: RawSeries;
-  settings: ComputedVisualizationSettings;
-};
 
 export function SmartScalarComparisonWidget({
   value,

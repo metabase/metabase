@@ -1,7 +1,6 @@
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
 import { t } from "ttag";
 
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
@@ -63,8 +62,13 @@ const NUMERIC_UNIT_FORMATS: Record<string, (value: number) => Dayjs> = {
   year: (value: number) => dayjs().year(value).startOf("year"),
 };
 
-// only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
-// moment normally interprets the DD in YYYY-MM-DD as an offset :-/
+// either Z or ±hh:mm or ±hhmm
+const EXPLICIT_TIMEZONE_PATTERN = /(Z|[+-]\d\d:?\d\d)$/;
+
+export function hasExplicitTimezone(value: string): boolean {
+  return EXPLICIT_TIMEZONE_PATTERN.test(value);
+}
+
 export function parseTimestamp(
   value: any,
   unit: DatetimeUnit | null = null,
@@ -92,7 +96,7 @@ export function parseTimestamp(
     } else {
       result = dayjs.utc(value);
     }
-  } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
+  } else if (typeof value === "string" && hasExplicitTimezone(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     // Unjustified type cast. FIXME

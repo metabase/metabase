@@ -7,11 +7,6 @@ name: Bundle Size
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        description: Whether to skip the check (e.g. no front-end sources changed, or the uberjar failed to build).
-        required: true
-        type: boolean
 
 concurrency:
   group: bundle-size-${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -20,7 +15,6 @@ concurrency:
 jobs:
   bundle-size-check:
     name: "Bundle size check"
-    if: ${{ !inputs.skip }}
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
@@ -32,7 +26,6 @@ jobs:
         id: compare
         with:
           edition: ee
-          base-ref-commit: ${{ github.event.pull_request.base.sha }}
           threshold-percent: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
 
       - name: Comment on PR if app bundle size has increased

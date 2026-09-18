@@ -3,8 +3,10 @@ import { t } from "ttag";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
   Collection,
+  CollectionType,
   IconName,
   RemoteSyncEntityStatus,
+  RemoteSyncRequiredSync,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -164,6 +166,144 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
     hasBranchMismatch: false,
     currentBranch: null,
   };
+};
+
+export const ROOT_COLLECTION_ROW_ID = "root";
+
+export type RequiredSyncRow = {
+  key: string;
+  name: string;
+  type: CollectionType;
+  personal: boolean;
+  syncableId: number | null;
+  collectionId: number | typeof ROOT_COLLECTION_ROW_ID | null;
+};
+
+export const getRequiredSyncRow = ({
+  remedy,
+  syncable,
+}: RemoteSyncRequiredSync): RequiredSyncRow => {
+  if (remedy.type === "collection") {
+    const { id, name, type, personal } = remedy.collection;
+
+    return {
+      key: `collection:${id}`,
+      name,
+      type,
+      personal,
+      syncableId: syncable ? id : null,
+      collectionId: id,
+    };
+  }
+
+  const unsyncable = { type: null, personal: false, syncableId: null };
+
+  if (remedy.type === "library") {
+    return {
+      ...unsyncable,
+      key: "library",
+      name: t`Library`,
+      collectionId: null,
+    };
+  }
+  if (remedy.collection === null) {
+    return {
+      ...unsyncable,
+      key: ROOT_COLLECTION_ROW_ID,
+      name: t`Our analytics`,
+      collectionId: ROOT_COLLECTION_ROW_ID,
+    };
+  }
+  if (remedy.collection === undefined) {
+    return {
+      ...unsyncable,
+      key: "unresolved",
+      name: t`Unknown collection`,
+      collectionId: null,
+    };
+  }
+  return {
+    ...unsyncable,
+    key: `none:${remedy.collection.id}`,
+    name: remedy.collection.name,
+    collectionId: remedy.collection.id,
+  };
+};
+
+export const getListedRequiredSyncs = (
+  required: RemoteSyncRequiredSync[],
+): RemoteSyncRequiredSync[] => {
+  const blocking = required.filter(({ syncable }) => !syncable);
+  const listed = blocking.length > 0 ? blocking : required;
+
+  // Remedy type library means that no library is created to sync, so it blocks
+  return listed.filter(({ remedy }) => remedy.type !== "library");
+};
+
+export type BlockedReason =
+  | "personal-content"
+  | "analytics-content"
+  | "unsyncable-content"
+  | "library-missing"
+  | "linked-collections";
+
+// Ordered so content that can't be synced at all outranks content that can.
+export const getBlockedReason = (
+  required: RemoteSyncRequiredSync[],
+): BlockedReason => {
+  if (isBlockedByPersonalContent(required)) {
+    return "personal-content";
+  }
+  if (isBlockedByAnalyticsContent(required)) {
+    return "analytics-content";
+  }
+  if (requiresContentMove(required)) {
+    return "unsyncable-content";
+  }
+  if (isBlockedByMissingLibrary(required)) {
+    return "library-missing";
+  }
+  return "linked-collections";
+};
+
+const isBlockedByPersonalContent = (
+  required: RemoteSyncRequiredSync[],
+): boolean =>
+  required.some(
+    ({ remedy }) => remedy.type === "collection" && remedy.collection.personal,
+  );
+
+const isBlockedByAnalyticsContent = (
+  required: RemoteSyncRequiredSync[],
+): boolean =>
+  required.some(
+    ({ remedy }) =>
+      remedy.type === "collection" &&
+      remedy.collection.type === "instance-analytics",
+  );
+
+const isBlockedByMissingLibrary = (
+  required: RemoteSyncRequiredSync[],
+): boolean => required.some(({ remedy }) => remedy.type === "library");
+
+const requiresContentMove = (required: RemoteSyncRequiredSync[]): boolean =>
+  required.some(({ remedy }) => remedy.type === "none");
+
+export const getBlockedMessage = (
+  required: RemoteSyncRequiredSync[],
+): string => {
+  switch (getBlockedReason(required)) {
+    case "personal-content":
+      return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
+    case "analytics-content":
+      return t`Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue.`;
+    case "unsyncable-content":
+      return t`Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue.`;
+    case "library-missing":
+      return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue.`;
+    case "linked-collections":
+      return t`Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well.`;
+  }
 };
 
 export const buildCollectionMap = (

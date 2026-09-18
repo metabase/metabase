@@ -1,4 +1,10 @@
-import { Q4_SQL_NAME, SQL_QUERY } from "../constants";
+import {
+  Q4_SQL_NAME,
+  SNIPPET_CONTENT,
+  SNIPPET_NAME,
+  SQL_QUERY,
+  XV_DATABASE_NAME,
+} from "../constants";
 
 import * as X from "./helpers";
 
@@ -9,16 +15,28 @@ describe("Cross-version questions - sql", () => {
     "setup: creates a sql question with a snippet and a field filter variable",
     { tags: ["@source"] },
     () => {
-      H.restoreCrossVersionDev("03-complete");
       cy.signIn("admin", { setupCache: true });
 
       cy.request("POST", "/api/native-query-snippet", {
-        content: "REVIEWS.BODY IS NOT NULL",
-        name: "Body Not Null",
+        content: SNIPPET_CONTENT,
+        name: SNIPPET_NAME,
       });
 
       cy.visit("/");
       H.newButton("SQL query").click();
+
+      cy.log("-- Pick the database to query --");
+      // With more than one database and none previously used, the picker
+      // opens on its own, so there is no trigger to click here
+      cy.findByTestId("native-query-top-bar").should(
+        "contain",
+        "Select a database",
+      );
+      X.selectFromPopover(XV_DATABASE_NAME);
+      cy.findByTestId("selected-database").should(
+        "have.text",
+        XV_DATABASE_NAME,
+      );
 
       cy.log("-- Create a SQL question --");
       H.NativeEditor.type(SQL_QUERY, {
@@ -30,7 +48,7 @@ describe("Cross-version questions - sql", () => {
       cy.findByTestId("variable-type-select").click();
       X.selectFromPopover("Field Filter");
       H.popover().within(() => {
-        cy.findByRole("heading", { name: "Sample Database" }).should(
+        cy.findByRole("heading", { name: XV_DATABASE_NAME }).should(
           "be.visible",
         );
         cy.findByText("Reviews").click();
@@ -41,18 +59,19 @@ describe("Cross-version questions - sql", () => {
       X.assertRowCount("1,112");
 
       cy.log("-- Hide the PK column --");
+      // Native results keep the raw column names, and the QA sample data's are lower-case
       cy.findByTestId("visualization-root")
         .findByTestId("table-header")
-        .contains("PRODUCT_ID")
+        .contains("product_id")
         .click();
       H.popover().icon("eye_crossed_out").click();
 
       cy.log("-- Assert on the preview values in a table --");
       cy.findByTestId("visualization-root").within(() => {
         cy.findByTestId("table-header")
-          .should("contain", "REVIEWER")
-          .and("contain", "RATING")
-          .and("not.contain", "PRODUCT_ID");
+          .should("contain", "reviewer")
+          .and("contain", "rating")
+          .and("not.contain", "product_id");
 
         cy.findByTestId("table-body")
           .should("contain", "xavier")
@@ -81,9 +100,9 @@ describe("Cross-version questions - sql", () => {
     X.assertRowCount("1,112");
     cy.findByTestId("visualization-root").within(() => {
       cy.findByTestId("table-header")
-        .should("contain", "REVIEWER")
-        .and("contain", "RATING")
-        .and("not.contain", "PRODUCT_ID");
+        .should("contain", "reviewer")
+        .and("contain", "rating")
+        .and("not.contain", "product_id");
 
       cy.findByTestId("table-body")
         .should("contain", "xavier")

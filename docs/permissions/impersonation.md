@@ -55,7 +55,7 @@ Impersonation uses database roles to run queries on your database, but there sti
 
 You can then create roles in the database that have more restrictive access to the database (like row-level or table-level security). When the role is passed to the database using impersonation, the engine will return a subset of the data, or restrict the query altogether.
 
-> For **Redshift** databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
+> For **Redshift** databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION.html) command, which can only be run by a database superuser.
 
 ### In your database, set up roles
 
@@ -168,6 +168,16 @@ You can use impersonation to give people access to the SQL editor, while restric
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query.
 
 Connection impersonation doesn't apply to people in the Metabase Admins group, as their more permissive privileges take precedence.
+
+## Impersonated queries must be a single SELECT statement
+
+When people with impersonated access use the native SQL editor, they will only be able to write queries with a single select statement. Metabase will check each native query before running it and reject anything that isn't a single `SELECT` statement. Common table expressions (`WITH`) and set operations (`UNION`, `INTERSECT`, `EXCEPT`) count as a single `SELECT` statement, so those queries will run.
+
+Examples of queries Metabase will reject:
+
+- Multiple statements separated by semicolons, like `SET ROLE analyst; SELECT * FROM people;`
+- Statements that create or change tables, including temporary tables (`CREATE`, `ALTER`, `DROP`)
+- Role-switching statements like `SET ROLE` or `USE ROLE`
 
 ## Metabase gives people the most permissive access to data across all of their groups
 

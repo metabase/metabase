@@ -1,4 +1,4 @@
-import { createMockState } from "metabase/redux/store/mocks";
+import { createMockState } from "__support__/state";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { canAccessDataStudio } from "./selectors";

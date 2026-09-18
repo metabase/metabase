@@ -1,10 +1,12 @@
 import cx from "classnames";
-import type { WidgetMount } from "custom-viz";
 import type { CSSProperties, ComponentType } from "react";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
+import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";
 
@@ -15,12 +17,18 @@ type Props = {
   description?: string;
   hint?: string;
   hidden?: boolean;
-  widget?: string | ComponentType<{ id: string }> | WidgetMount;
+  widget?:
+    | string
+    | ComponentType<{ id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   inline?: boolean;
   props?: Record<string, unknown>;
   variant?: ChartSettingsWidgetVariant;
   dataTestId?: string;
   id: string;
+  value?: unknown;
+  onChange?: (value?: unknown) => void;
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
   style?: CSSProperties;
 };
 
@@ -44,22 +52,21 @@ const ChartSettingsWidget = ({
   return (
     <Box
       hidden={hidden}
-      className={cx({
+      className={cx(S.root, {
         [FormS.FormField]: isFormField,
         [S.inline]: inline && !hidden,
       })}
-      mx="lg"
-      mb="lg"
+      mb="xl"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
       style={style}
     >
       {title && (
-        <Group align="center" gap="xs" mb={inline && !hidden ? 0 : "sm"}>
+        <Group align="center" gap="xxs" mb={inline && !hidden ? 0 : "sm"}>
           <Text
             component="label"
             fw="bold"
-            fz={isFormField ? "0.88em" : undefined}
+            fz={isFormField ? "0.75rem" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
             htmlFor={extraWidgetProps.id}
           >
@@ -81,7 +88,13 @@ const ChartSettingsWidget = ({
         (PLUGIN_CUSTOM_VIZ.isWidgetMount(Widget) ? (
           <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
-            widgetProps={{ ...extraWidgetProps, ...props }}
+            widgetProps={{
+              ...props, // spread first so a plugin's getProps can't override the base props
+              id: extraWidgetProps.id,
+              value: extraWidgetProps.value,
+              onChange: checkNotNull(extraWidgetProps.onChange),
+              onChangeSettings: checkNotNull(extraWidgetProps.onChangeSettings),
+            }}
           />
         ) : (
           <Widget {...extraWidgetProps} {...props} />

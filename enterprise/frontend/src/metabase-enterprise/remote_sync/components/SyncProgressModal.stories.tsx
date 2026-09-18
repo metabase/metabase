@@ -1,5 +1,5 @@
+import { createMockState } from "__support__/state";
 import { ReduxProvider } from "__support__/storybook";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";

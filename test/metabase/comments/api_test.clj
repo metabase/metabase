@@ -5,8 +5,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.notification.seed :as notification.seed]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
 
 (defn- relaxed-re [& s]
@@ -22,7 +24,7 @@
                     (name (first node)))
           block?  #{"paragraph"}
           attrs   (when (map? (second node)) (second node))
-          content (if attrs (drop 2 node) (drop 1 node))]
+          content (dropv (if attrs 2 1) node)]
       (u/remove-nils
        {:type    tag
         :attrs   (cond-> attrs
@@ -135,7 +137,7 @@
                                                     (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
                             (first (swap-vals! mt/inbox empty))))))))
             (testing "creates a comment for part of an entity"
-              (let [part-id (-> doc :content first :attrs :_id)
+              (let [part-id (get-in doc [:content 0 :attrs "_id"])
                     created (mt/user-http-request :rasta :post 200 "comment/"
                                                   {:target_type     "document"
                                                    :target_id       doc-id
@@ -221,7 +223,7 @@
       (testing "updates comment content"
         (is (=? {:content {:text "Updated content"}}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
-                                      {:content {"text" "Updated content"}}))))
+                                      {:content {"type" "text" "text" "Updated content"}}))))
       (testing "updates comment resolution status"
         (is (=? {:is_resolved true}
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
@@ -232,7 +234,7 @@
     (mt/with-temp [:model/Document {doc-id :id} {}
                    :model/Comment  {c-id :id}   {:target_id doc-id :creator_id (mt/user->id :rasta)}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :lucky :put 403 (str "comment/" c-id) {:content {:text "hi"}})))
+             (mt/user-http-request :lucky :put 403 (str "comment/" c-id) {:content {:type "text" :text "hi"}})))
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :lucky :delete 403 (str "comment/" c-id)))))))
 
@@ -410,7 +412,7 @@
           (testing "PUT /api/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :put 403 (str "comment/" restricted-comment-id)
-                                         {:content {:text "Updated by lucky"}}))))
+                                         {:content {:type "text" :text "Updated by lucky"}}))))
           (testing "DELETE /api/comment/:id - users without document access cannot delete comments"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :lucky :delete 403 (str "comment/" restricted-comment-id)))))
@@ -443,6 +445,69 @@
                        (:email (mt/fetch-user :crowberto)) expected}
                       (first (swap-vals! mt/inbox empty)))))))))))
 
+(deftest mention-notifications-follow-document-access-test
+  (testing "@mention notifications are only delivered to users who can read the target document"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {col-id :id} {}
+                       :model/Document   {doc-id :id} {:name          "Limited Audience"
+                                                       :collection_id col-id
+                                                       :creator_id    (mt/user->id :crowberto)}]
+          (mt/with-model-cleanup [:model/Comment :model/Notification]
+            (mt/with-fake-inbox
+              (notification.seed/seed-notification!)
+              (let [mention! (fn [entity-id & [parent-id]]
+                               (mt/user-http-request :crowberto :post 200 "comment/"
+                                                     (cond-> {:target_type "document"
+                                                              :target_id   doc-id
+                                                              :content     (tiptap [:smartLink {:model    "user"
+                                                                                                :entityId entity-id}])}
+                                                       parent-id (assoc :parent_comment_id parent-id))))]
+                (testing "no email for a mentioned user who cannot read the document"
+                  (let [root (mention! (mt/user->id :rasta))]
+                    (is (not (contains? @mt/inbox (:email (mt/fetch-user :rasta)))))
+                    (testing "the reply path applies the same check"
+                      (mention! (mt/user->id :rasta) (:id root))
+                      (is (not (contains? @mt/inbox (:email (mt/fetch-user :rasta))))))))
+                (testing "mentioning an id that matches no user is a no-op"
+                  (mention! Integer/MAX_VALUE)
+                  (is (empty? @mt/inbox)))
+                (testing "the email is delivered once the mentioned user can read the document"
+                  (perms/grant-collection-read-permissions! (perms/all-users-group) col-id)
+                  (mention! (mt/user->id :rasta))
+                  (is (contains? @mt/inbox (:email (mt/fetch-user :rasta)))))))))))))
+
+(deftest mention-entities-visibility-test
+  (testing "GET /api/comment/mentions applies the same visibility rules as GET /api/user/recipients"
+    (mt/with-premium-features #{:email-restrict-recipients}
+      (testing "user-visibility :none returns only the caller"
+        (mt/with-temporary-setting-values [user-visibility :none]
+          (is (= [(mt/user->id :rasta)]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                      (map :id))))
+          (testing "admins are unaffected"
+            (is (= ["crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
+                   (->> (:data (mt/user-http-request :crowberto :get 200 "comment/mentions"))
+                        (filter mt/test-user?)
+                        (map :email)))))))
+      (testing "user-visibility :group returns only users sharing a group with the caller"
+        (mt/with-temporary-setting-values [user-visibility :group]
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                         :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
+                                                                           :group_id group-id}
+                         :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :lucky)
+                                                                           :group_id group-id}]
+            (is (= ["lucky@metabase.com" "rasta@metabase.com"]
+                   (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                        (filter mt/test-user?)
+                        (map :email)))))))
+      (testing "user-visibility :all returns everyone"
+        (mt/with-temporary-setting-values [user-visibility :all]
+          (is (= ["crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                      (filter mt/test-user?)
+                      (map :email)))))))))
+
 (deftest mention-entities-test
   (testing "We can get users to mention"
     (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
@@ -473,3 +538,63 @@
         (is (= "Not found."
                (mt/user-http-request :rasta :get 404 "comment/mentions"
                                      {:request-options {:headers {"x-metabase-client" "embedding-iframe"}}})))))))
+
+(deftest comment-context-is-a-closed-set-of-identity-keys-test
+  (testing "POST /api/comment/ context"
+    (mt/with-temp [:model/Document {doc-id :id} {}]
+      (let [content (tiptap [:p "hi"])
+            post!   (fn [status context]
+                      (mt/user-http-request :rasta :post status "comment/"
+                                            {:target_type "document"
+                                             :target_id   doc-id
+                                             :content     content
+                                             :context     context}))]
+        (testing "accepts the keys the product actually stores"
+          (is (=? {:context {:timeline_id 1}} (post! 200 {:timeline_id 1})))
+          (is (=? {:context {:exploration_query_ids [7]}}
+                  (post! 200 {:exploration_query_ids [7]})))
+          (is (=? {:context {:highlighted {:columnName "CATEGORY"}}}
+                  (post! 200 {:highlighted {:columnName "CATEGORY"
+                                            :dimensions [{:columnName "CATEGORY" :value "Gadget"}]}}))))
+        ;; The closed schema makes `defendpoint` strip undeclared keys during decoding rather than
+        ;; 400 — which is the safer of the two: the value cannot reach the row, and a client that
+        ;; still sends one is not broken by the change.
+        (testing "drops unknown keys, so the blob cannot quietly accrete new values"
+          (let [created (post! 200 {:some_future_key "anything"})]
+            (is (= {} (t2/select-one-fn :context :model/Comment :id (:id created))))))))))
+
+(deftest comment-highlight-label-is-stored-as-the-client-formatted-it-test
+  (testing "the label for a commented-on data point"
+    (mt/with-temp [:model/Document {doc-id :id} {}]
+      (let [highlighted {:columnName "TOTAL"
+                         :dimensions [{:columnName "TOTAL" :value 0}
+                                      {:columnName "REGION" :value "EU"}]}
+            post!       (fn [context]
+                          (mt/user-http-request :rasta :post 200 "comment/"
+                                                {:target_type "document"
+                                                 :target_id   doc-id
+                                                 :content     (tiptap [:p "hi"])
+                                                 :context     context}))
+            fetch       (fn [comment-id]
+                          (->> (mt/user-http-request :rasta :get 200 "comment/"
+                                                     :target_type "document"
+                                                     :target_id doc-id)
+                               :comments
+                               (filter #(= comment-id (:id %)))
+                               first))]
+        (testing "is stored as sent and round-trips verbatim — only the client knows the column
+                  formatting (binning, currency, date granularity) the point was rendered with, so a
+                  label rebuilt from the raw dimension values on read would not match the chart"
+          (let [created (post! {:highlighted     highlighted
+                                :highlight_label "$0 – $10, EU"})]
+            (is (= "$0 – $10, EU" (get-in created [:context :highlight_label])))
+            (is (= "$0 – $10, EU" (get-in (fetch (:id created)) [:context :highlight_label])))
+            (is (= {:highlighted highlighted :highlight_label "$0 – $10, EU"}
+                   (t2/select-one-fn :context :model/Comment :id (:id created))))))
+        (testing "is absent when the comment is not anchored to a data point"
+          (let [plain (post! {:timeline_id 1})]
+            (is (nil? (get-in plain [:context :highlight_label])))
+            (is (nil? (get-in (fetch (:id plain)) [:context :highlight_label])))))
+        (testing "is not derived on read for a comment that carries none"
+          (let [created (post! {:highlighted highlighted})]
+            (is (nil? (get-in (fetch (:id created)) [:context :highlight_label])))))))))

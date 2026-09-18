@@ -70,6 +70,8 @@ cp -R "<skill-dir>/template/." "$APP_DIR/"
 
 A data app is a *subdirectory* of the remote-sync repo, not its own repository — so this is a plain copy, never a nested `git clone` / `git init`. Everything below runs **inside `$APP_DIR`**.
 
+The copy includes two root-level directories, `queries/` and `actions/`, each holding only a `README.md`. Keep both, even while empty: every query the app runs is a `defineQuery(...)` export in `queries/`, every action a `defineAction(...)` export in `actions/`, and the hooks refuse anything else at compile time. Read both READMEs before writing the first `useMetabaseQuery` / `useMetabaseQueryObject` / `useAction` call.
+
 ## Step 4 — Customize
 
 Once the template is in `<repo>/data_apps/<slug>/` (run everything below from that directory):
@@ -131,6 +133,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 
    ```yaml
    name: Sales App        # display name shown in the admin UI
+   description: Pipeline health and quota attainment by region  # optional — see below
    path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
    # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
    #   - https://api.example.com
@@ -138,6 +141,14 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    ```
 
    Commit it alongside the built bundle (the file `path` points at).
+
+   **`description`** — optional: a single short sentence saying what the app
+   does, shown under its name in the admin UI so admins can tell apps apart at a
+   glance. Sync folds any whitespace into single spaces and rejects anything over
+   255 characters; the admin list wraps what is left rather than cutting it off,
+   so a sentence reads well there and a paragraph crowds out the rows around it.
+   Replace the template's placeholder with a real sentence about *this* app, or
+   delete the line entirely if it adds nothing beyond the name.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an
@@ -200,7 +211,7 @@ There is intentionally **no escape hatch** for extra Vite plugins, aliases, or `
 
 **After every meaningful round of edits, run `npm run typecheck`.** It runs `tsc --noEmit` over `src/` and `vite.config.ts` — catches wrong prop shapes against the SDK types, broken refactors, missing imports, etc. The Vite dev server does NOT typecheck (it only transpiles), so errors that would fail a production CI run can sit invisibly in a passing `npm run dev` session. Run it before declaring a task complete.
 
-**Before handoff, re-check package hygiene.** `@metabase/embedding-sdk-react` should use the expected data-app SDK source/tag for the target environment, and `@types/react-datepicker` should not be installed unless the chosen `react-datepicker` version actually needs it.
+**Before handoff, re-check package hygiene.** `@metabase/embedding-sdk-react` should use the expected data-app SDK source/tag for the target environment. No date picker dependency should be installed when the app only needs date ranges — not `react-datepicker`, `react-day-picker`, `flatpickr`, or a UI suite's picker (`@mui/x-date-pickers`, `antd`, `rsuite`, …); that is `DateRangePopover` from `@metabase/embedding-sdk-react/data-app`. `@types/react-datepicker` should not be installed unless the chosen `react-datepicker` version actually needs it.
 
 ## Reading the diagnostics feed
 
@@ -286,16 +297,21 @@ export default function CustomerCard({ customer }: { customer: Customer }) {
 Default project layout once the starter app is extended:
 
 ```
+queries/               (root level, beside package.json — NOT under src/)
+│   └── orders.query.ts   (defineQuery exports; one file per topic)
+actions/               (root level, beside package.json — NOT under src/)
+│   └── orders.action.ts  (defineAction exports; one file per topic)
 src/
 ├── index.tsx          (template — the factory; don't edit)
 ├── App.tsx            (routing + composition only)
 ├── theme.ts
+├── metabase.data.ts   (generated schema — see the semantic-layer skill)
 ├── pages/             (one file per screen)
 │   ├── Overview.tsx
 │   └── CustomerDetail.tsx
 ├── components/        (shared UI)
 │   └── Card.tsx
-├── hooks/             (data-fetching wrappers, custom hooks)
+├── hooks/             (custom hooks that wrap a query export, never the query itself)
 │   └── useCustomers.ts
 ├── lib/               (pure helpers / derivations)
 │   └── format.ts
@@ -303,7 +319,7 @@ src/
     └── customer.ts
 ```
 
-Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the folder layout is purely for your own readability.
+Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the `src/` layout is purely for your own readability. `queries/` and `actions/` are not: `npm run build` synchronizes exactly those two root-level directories to Metabase, and the query and action hooks accept only the `defineQuery` / `defineAction` exports declared there. A query object written at a hook call, under `src/`, or spread from a definition does not compile (`Property 'definedWithDefineQuery' is missing`); the fix is to move it into `queries/` and import it, never a cast.
 
 **If the app has multiple tabs (or any top-level screen switcher), the default — leftmost / first — tab MUST be selected on initial load.** The app should never boot to a blank page, an empty shell, or a "nothing selected" state that waits for the user to click. Agents repeatedly forget this. For local-state tabs, initialize the active tab to the first one so the very first render shows it:
 
@@ -419,13 +435,14 @@ The bundle imports React hooks/JSX, SDK components from `@metabase/embedding-sdk
 |---|---|
 | `React` (from `"react"`) | Hooks (`useState`, `useEffect`, etc.), JSX runtime. Externalized to the host's React via `react: "React"`. |
 | `StaticQuestion` | Non-drillable question. Props include `questionId`, `card`, `withChartTypeSelector`, `height`, `width`. |
-| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. Add `visualization` when the request calls for a specific chart type, and add `visualizationSettings` only for explicit setting-level presentation changes; use skill discovery for schema-backed query and card type guardrails. |
+| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. See *Rendering a chart: Metabase first* for choosing between the two and for `visualization` / `visualizationSettings`. |
 | `MetabaseCard` | Type-only import from `@metabase/embedding-sdk-react` for ad hoc SDK-rendered cards with `visualization` or `visualizationSettings`; use skill discovery for the full generated-query card contract before authoring data-layer code. |
 | `CreateQuestion`, `MetabotQuestion` | More question variants. |
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
 | `@metabase/embedding-sdk-react/data-app` exports | Data-app-only helpers for routing, schema-backed data reads, actions, clipboard, and sandbox-safe integration. Treat schema-backed queries, generated schema files, filters, metrics, actions, and other data-layer behavior as existing-data-app editing work; use skill discovery before authoring that code. |
+| `DateRangePopover`, `DateRangeCalendar`, `useDateFormatter` (from `@metabase/embedding-sdk-react/data-app`) | Date range selection for filter bars. `DateRangePopover` wraps the app's own trigger element and opens a Metabase-styled range calendar under it; `DateRangeCalendar` is that calendar inline. `value`/`onChange` are `[start, end]` pairs of `YYYY-MM-DD` strings, `null` on either end while half-picked. `useDateFormatter().formatDateRange(value)` makes the trigger's label in the instance's locale, without the UTC-parsing bug of `new Date("YYYY-MM-DD")`. Use these instead of `<input type="date">` or a third-party picker — no dependency, no CSS import. |
 
 ### Blocked APIs
 
@@ -441,20 +458,26 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 | **Other `navigator.*` device APIs** — `geolocation`, etc. | Not available.                                                                                                                                                                                                                                                                  |
 | **Global `document`/`window` listeners** for typing/clipboard events — `keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage` | Attach the listener to your own element, or use the React handler (`onKeyDown`, `onPaste`, …) on the specific input/container. The same listener on a script-owned element still works.                                                                                         |
 
-**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + React DOM + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
+**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + React DOM + SDK components + data hooks + `useAction` + DataAppRouter + `DateRangePopover` + `copy`) covers every routine need; anything outside it is intentionally unreachable.
 
-### When to use SDK charts vs `useMetabaseQuery`
+### Rendering a chart: Metabase first
 
-This is a per-rendering decision, not a project-wide one:
+This is a per-element decision, not one taken once for a row, a section, or the app. One tile that needs custom code makes a row with one custom tile in it, not a row of them — the rest stay SDK components and keep their formatting, theming and drill-through. Consistent heights and card chrome come from the container each tile sits in, so "the others should match it" is not a reason to hand-build the others.
 
-- **`useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`** — default for ordinary dashboard charts: bar, line, area, row, pie, scalar/smartscalar, gauge, progress, pivot, map, sortable table, and other displays Metabase already renders well. Build the semantic query from generated schema objects, destructure the returned `query`, then pass only that value to the SDK component with a card object, for example `<StaticQuestion card={{ query }} ... />`. Never pass the whole `{ query, error, isLoading }` hook result as `card.query`.
-- **`useMetabaseQuery`** — use when React genuinely needs row values: extracting KPI numbers, powering custom controls, composing bespoke summary cards, combining multiple queries into one UI element, or rendering a visualization Metabase cannot express.
+A built-in visualization carries the instance's theming, accessibility, tooltips, formatting and drill-through. A chart built in React carries none of that, and drifts from every other chart in the app as soon as either changes. So the question is never "which looks closer to my design" — it is **can Metabase display this at all?**
 
-Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal bar/line/table charts in React just to match app chrome. If you choose `useMetabaseQuery`, keep the row handling typed.
+- **Yes → `useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`.** Bar, line, area, combo, row, trend, **pie/donut**, scalar/smartscalar, gauge, progress, funnel, scatter, waterfall, boxplot, sankey, pivot, map, object/list views, sortable table, and anything else in the chart-type list. Also whenever visualization settings can carry the presentation — axes, labels, stacking, goals, trendlines, split panels, series, formatting, table/pie/pivot/list settings — or the user benefits from sorting, column inspection, drill-through, or downloading. Build the semantic query from generated schema objects, destructure the returned `query`, and pass only that value in a card object — `<StaticQuestion card={{ query }} visualization="pie" ... />`. Never pass the whole `{ query, error, isLoading }` hook result as `card.query`.
+- **No → `useMetabaseQuery` and your own component.** Only when the user asked for a custom visualization, or nothing Metabase renders can express the request: bespoke scorecards, alert panels, narrative layouts or mixed-content cards, custom interactions its chart/table chrome cannot express, unusual forms such as calendar grids, timelines, heat strips, radial views, custom maps or domain-specific diagrams, and elements combining several queries into one visual unit. Keep the row handling typed. Use a charting dependency the app already has; otherwise SVG is fine.
+
+**`StaticQuestion` is the default of the two.** It renders the visualization and nothing else — no query bar, no editor, no save — and takes `withChartTypeSelector`, `withDownloads`, `title` and the sizing props. Use `InteractiveQuestion` when the element is meant to be explored: drill-through, filtering, switching the chart type, or the notebook editor. It shows a Save button unless you turn it off — `isSaveEnabled` defaults to `true` — which offers viewers a save-to-collection flow that belongs in Metabase, not in an app, so pass `isSaveEnabled={false}` unless the app is deliberately an editing surface. That applies to the default layout; giving `InteractiveQuestion` its own children replaces the layout, so a composed `<InteractiveQuestion.QuestionVisualization />` renders no toolbar and no Save button.
+
+**Pass `title={false}` when the question sits in a card or section that already carries a heading.** `InteractiveQuestion`'s default layout shows the question's own title, so you get two; `StaticQuestion` hides it already.
+
+"It has to match our styling" is not a reason to hand-build one: pass `visualization` for the chart type, `visualizationSettings` for setting-level changes, and theme the SDK for the rest. A pie chart in a data app is a Metabase pie chart — unless the user asked for a custom one, which is their call to make, not one to infer from a design reference, brand colours, or a screenshot of something bespoke.
+
+**A single-value KPI is a scalar** — or smartscalar, gauge, progress. If the tile wants a number plus something Metabase does not draw, such as a star row, a caption, or a total from a second query, render the scalar for the number and put the extra beside it. Hand-build it only when the number itself cannot come from one.
 
 **Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted / derived queries (pass `isLoading` down) and for `useAction`'s `isExecuting` (spinner in the button + `disabled={isExecuting}`).
-
-**Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
 For the hook contract itself — generics, table sources, segments, measures, breakouts, sorting, and debugging — use skill discovery before authoring schema-backed data-layer code.
 
@@ -466,10 +489,16 @@ So the app's outermost element carries `minHeight: "100vh"` (plus `boxSizing: "b
 
 ## SDK component sizing
 
-SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
+SDK components do NOT auto-fit their parent — without `height`/`width` they render at their intrinsic size and overflow. Setting only the outer container or card height is not enough either; the height goes on the SDK component that owns the visualization:
+
+- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
+- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
+- Static question: pass `height` to `StaticQuestion`.
+
+Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"`.
 
 ```tsx
-<div style={{ height: 360, overflow: "hidden" }}>
+<div style={{ height: 360 }}>
   <StaticQuestion
     questionId={1}
     height="100%"
@@ -479,7 +508,7 @@ SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
 </div>
 ```
 
-Without `height`/`width`, the SDK component renders at its intrinsic size and overflows.
+Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
 
 ## Sync to Metabase
 
@@ -494,7 +523,10 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
    ```
 3. The app appears in Metabase on the next remote-sync import — a manual **Pull changes** (Admin → Data apps / Remote sync), the auto-import poll, or a restart — reachable at `/apps/<slug>`.
 
-**To update:** commit a new build and pull again. **To remove:** a sync never deletes, so removing the app's directory from the repo does *not* remove the app — an admin removes it in Metabase (Admin → Data apps).
+> **Don't offer to "deploy" the app or ask how the bundle reaches a staging environment** — there is no separate deploy step, and the question only confuses users: Metabase imports the committed bundle straight from the connected repo on its next sync. Once the change is on the branch Metabase syncs from — however the user gets it there (a merged PR, or a push straight to that branch) — just tell them to pull it in and open the app in Metabase at `/apps/<slug>`.
+
+- **To update:** commit a new build and pull again.
+- **To remove:** delete the app's directory from the repo and push — the next sync removes it. You can't delete a repo-managed app from the UI; the *Remove* action on the Data apps admin page appears only after the repo is disconnected, to clear out apps left behind.
 
 ## Common pitfalls
 
@@ -502,12 +534,14 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 |---|---|
 | "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$DATA_APP_MB_URL" ] && [ "$DATA_APP_MB_URL" != "mb_replace_me" ] && [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ] && curl -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/user/current" || echo "set real DATA_APP_MB_URL / DATA_APP_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
+| A chart looks unlike the rest of the instance, ignores the theme, or has no tooltips, formatting or drill-through. | It was built in React. Render it with `StaticQuestion`/`InteractiveQuestion` and a `visualization` instead (see *Rendering a chart: Metabase first*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
 | App background stops partway down, bare white below short content. | Give the root `minHeight: 100vh` (see *App layout*). |
 | "Invalid hook call" at runtime. | Two React copies. `dataAppConfig()` externalizes `react` — ensure `react`/`react-dom` are installed and you haven't added a second React or a mismatched version. |
 | Bundle is multi-MB. | React/the SDK should be externalized by the contract plugin — confirm `vite.config.ts` still uses `dataAppConfig()` and the pinned data-apps SDK tag is installed. (A large but not multi-MB bundle can also be inlined assets — see the single-file note above.) |
 | `dist/index.js` doesn't assign to `__dataAppFactory__`. | `src/index.tsx` must `export default` the `DataAppFactory` — the preset wires that into the IIFE global. |
 | `Cannot find module '@metabase/embedding-sdk-react'`. | Run `npm install` (or the equivalent for your package manager). Types come from the package directly. |
+| `Property 'definedWithDefineQuery' is missing` / `Property 'definedWithDefineAction' is missing` on a hook call. | The hook got an inline object, a `satisfies`-typed object, or a spread copy instead of a definition. Export it with `defineQuery` from root-level `queries/` (or `defineAction` from `actions/`) and pass the import. Do not cast, and do not wrap the object in `defineQuery(...)` at the call site: that compiles but is never synchronized. |
 | Drill popups don't open / SDK components show empty / "MetabaseProvider not found" at runtime in dev. | `App.tsx` is rendering its own `<MetabaseProvider>` — remove it. The dev entry (SDK) and the production host provide the provider; wrapping it inside the bundle routes the SDK's state paths through the sandbox and breaks them. |
 | Dev preview blank / `Bundle did not assign a function to __dataAppFactory__` / sandbox errors in dev. | `src/index.tsx` isn't default-exporting the factory, or your app code throws while the sandbox evaluates the bundle. Read the real error from the diagnostics feed (`curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"`), or the dev toolbar's **Diagnostics** panel. |
 | A network call works in `npm run dev` but is blocked after syncing to Metabase. | It was never allowed — you edited `allowed_hosts` without restarting the dev server, so the running sandbox and CSP still use the boot-time list. Restart `npm run dev`; the feed's `manifest` section flags this as `restartRequired`. |

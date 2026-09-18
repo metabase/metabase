@@ -25,7 +25,7 @@ export const ChartSettingsVisualization = ({
   const [warnings, setWarnings] = useState<string[]>();
 
   return (
-    <Stack pt="md" {...stackProps}>
+    <Stack pt="lg" {...stackProps}>
       <SectionWarnings warnings={warnings} size={20} />
       <ChartSettingsVisualizationContainer>
         <Visualization

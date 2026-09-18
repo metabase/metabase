@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components";
 import {
   NumberInput,
   SegmentedControl,
@@ -48,7 +48,7 @@ export function GeneralLimitsSettingsSection() {
 
   return (
     <SettingsSection title={t`Settings and general limits`}>
-      <Stack gap="xl" align="flex-start">
+      <Stack gap="xxl" align="flex-start">
         <Stack gap="sm" align="flex-start">
           <Text fw="bold">{t`How do you want to limit AI usage?`}</Text>
           <SegmentedControl

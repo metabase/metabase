@@ -74,6 +74,10 @@
   }
 }
 
+.longChatNotice {
+  margin-top: 0.5rem;
+}
+
 /* Prompt suggestions */
 .promptSuggestionsContainer {
   flex-shrink: 0;

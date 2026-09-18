@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 /**

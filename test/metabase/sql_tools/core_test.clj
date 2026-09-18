@@ -68,8 +68,10 @@
     (sql-tools.tu/test-parser-backends
      (mt/test-driver :h2
        (let [catalog-fetches (atom 0)
-             all-tables      lib.metadata/tables]
-         (with-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
+             ;; capture via `original-fn`: once the var is proxied, a bare symbol ref resolves to the
+             ;; proxy and delegating to it would recurse forever.
+             all-tables      (mt/original-fn #'lib.metadata/tables)]
+         (mt/with-dynamic-fn-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
            (testing "the referenced table still resolves"
              ;; H2 stores table names upper-cased while the query spells them lower-case, so this also covers the
              ;; case-folding that makes an exact name match unusable (the same mismatch Snowflake has).
@@ -117,34 +119,16 @@
 ;; transpile-sql is only implemented for the :sqlglot backend, so these tests bind it directly
 ;; rather than using test-parser-backends.
 
-(deftest ^:parallel transpile-sql-snowflake-quotes-identifiers-test
+(deftest ^:parallel transpile-sql-no-added-quoting-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
-    (testing "Snowflake should quote identifiers (case-sensitive dialect)"
-      (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM PUBLIC.users"
-                                                                     "snowflake" "snowflake")]
-        (is (= :success status))
-        (is (some? transpiled-sql))
-        (is (str/includes? transpiled-sql "\"PUBLIC\""))
-        (is (str/includes? transpiled-sql "\"users\""))))))
-
-(deftest ^:parallel transpile-sql-postgres-quotes-identifiers-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
-    (testing "PostgreSQL should quote identifiers (case-sensitive dialect)"
-      (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM public.users"
-                                                                     "postgres" "postgres")]
-        (is (= :success status))
-        (is (some? transpiled-sql))
-        (is (str/includes? transpiled-sql "\"public\""))
-        (is (str/includes? transpiled-sql "\"users\""))))))
-
-(deftest ^:parallel transpile-sql-mysql-no-quoting-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
-    (testing "MySQL should not add double-quote identifier quoting (not case-sensitive)"
-      (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM users"
-                                                                     "mysql" "mysql")]
-        (is (= :success status))
-        (is (some? transpiled-sql))
-        (is (not (str/includes? transpiled-sql "\"")))))))
+    (testing "unquoted identifiers stay unquoted, so folding dialects resolve them as written"
+      (doseq [dialect ["snowflake" "postgres" "mysql"]]
+        (testing dialect
+          (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM public.users"
+                                                                         dialect dialect)]
+            (is (= :success status))
+            (is (some? transpiled-sql))
+            (is (not (re-find #"[\"`]" transpiled-sql)))))))))
 
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
@@ -249,6 +233,33 @@
         "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))
+
+(defn- placeholder-count
+  [sql]
+  (count (re-seq #"\?" sql)))
+
+(deftest ^:parallel is-single-stmt-of-type-placeholder-cast-test
+  (testing "queries with `?::` are parsed correctly"
+    (doseq [sql ["SELECT ?::date"
+                 "SELECT (?::date - x::date)"
+                 "SELECT ?::text, ?::integer, ?::boolean FROM t WHERE x = ?"
+                 "SELECT (?::date - CURRENT_DATE) AS diff"]]
+      (let [{out-sql :sql :as result} (sql-tools/is-single-stmt-of-type? :postgres sql "read")]
+        (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?} result))
+        (is (= (placeholder-count sql) (placeholder-count out-sql))))))
+  (testing "a query with `?::` inside string literals are left untouched"
+    (is (= {:is-single-stmt? true :allowed-stmt-type? true :sql "SELECT '?::date'"}
+           (sql-tools/is-single-stmt-of-type? :postgres "select '?::date'" "read"))))
+  (testing "multi-statement queries with placeholder casts are still rejected"
+    (are [sql] (=? {:is-single-stmt? false :allowed-stmt-type? false}
+                   (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+      "SELECT ?::date; DROP TABLE t"
+      "SET ROLE NONE; SELECT ?::date")))
+
+(deftest ^:parallel is-single-stmt-of-type-qdcolon-dialects-test
+  (testing "databricks' native `expr?::type` try-cast operator is not split apart"
+    (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
+            (sql-tools/is-single-stmt-of-type? :databricks "SELECT x?::date FROM t" "read")))))
 
 (deftest ^:parallel is-single-stmt-of-type-not-stripped-test
   (testing "we don't remove value clauses when validating impersonated queries (#74284)"

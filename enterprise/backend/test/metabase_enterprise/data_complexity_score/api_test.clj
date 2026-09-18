@@ -138,7 +138,7 @@
         (is (= ["api-test-fp" "appdb" sample-score] @persisted?)
             "API recompute path must stamp source=\"appdb\"")))))
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-advances-last-fingerprint-on-snowplow-publish-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-advances-last-fingerprint-on-snowplow-publish-test
   (testing "force recalculation mirrors the scheduled path's fingerprint gate — advance only when Snowplow accepted the event"
     (mt/with-temporary-setting-values [data-complexity-scoring-last-fingerprint "stale"]
       (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope      (constantly {})
@@ -152,7 +152,7 @@
         (is (= "refresh-fp" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
             "successful Snowplow publish must advance the last-fingerprint so the next boot doesn't redundantly re-score")))))
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-keeps-fingerprint-stale-when-snowplow-publish-fails-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-keeps-fingerprint-stale-when-snowplow-publish-fails-test
   (testing "force recalculation leaves the fingerprint stale when Snowplow didn't accept the event, so the next scheduled run retries"
     (mt/with-temporary-setting-values [data-complexity-scoring-last-fingerprint "stale"]
       (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope      (constantly {})
@@ -176,7 +176,7 @@
         (is (= (expected-response sample-score)
                (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)))))))
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-superuser-gets-consistent-totals-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-superuser-gets-consistent-totals-test
   (testing "check invariants not covered by schema"
     ;; Stub the synonym-source's opts to a deterministic hash-seeded random vector lookup. Returning
     ;; {} would zero out the synonym axis and trivialize the invariants below; calling the real
@@ -230,7 +230,7 @@
               (is (<= syn-pairs max-pairs)
                   (format "%s :synonym_pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities)))))))))
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-metabot-catalog-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-metabot-catalog-test
   (testing ":metabot mirrors :universe when use_verified_content is off"
     ;; Pin the setting explicitly instead of relying on test-env defaults — the unfiltered path
     ;; is only exercised when the scope is empty, and we want this assertion to keep passing even
@@ -264,7 +264,7 @@
                      (get-in resp [:universe :components :size :components :entity_count :measurement]))
                   ":metabot entity-count must be strictly < :universe when curated-only filters out the injected uncurated Card/Table"))))))))
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-metabot-collection-scope-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-metabot-collection-scope-test
   (testing ":metabot is scoped to the internal Metabot's collection_id subtree (root + descendants)"
     ;; Fixture shape — exercises both halves of `metabot-collection-scope-ids`:
     ;;   parent     ← Metabot's collection_id; holds a Card directly (catches root-omitted regressions)
@@ -350,7 +350,7 @@
   {:library empty-catalog :universe empty-catalog :metabot empty-catalog
    :meta {:formula-version 1 :format-version 1 :synonym-threshold 0.0}})
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-allows-active-scheduled-claim-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-allows-active-scheduled-claim-test
   (testing "manual API recalculation does not share the cron/boot scoring claim"
     (let [active-claim (pr-str {:fingerprint "older-fingerprint"
                                 :claimed-at  (System/currentTimeMillis)
@@ -370,7 +370,7 @@
               "force recalculation should compute independently of scheduled claims")
           (is (= active-claim (data-complexity-score.settings/data-complexity-scoring-claim))))))))
 
-(deftest ^:sequential complexity-endpoint-force-recalculation-rejects-concurrent-requests-test
+(deftest ^:synchronized complexity-endpoint-force-recalculation-rejects-concurrent-requests-test
   (testing "a second concurrent request fast-fails with 409 instead of running a duplicate scoring pass"
     ;; Block the stubbed scoring call on a latch so the second request is guaranteed to land
     ;; while the guard is held. Plain `with-redefs` (not `with-dynamic-fn-redefs`) because

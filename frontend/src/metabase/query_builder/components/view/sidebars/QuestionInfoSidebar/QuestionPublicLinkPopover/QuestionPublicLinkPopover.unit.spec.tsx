@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import { setupCardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
@@ -65,7 +65,7 @@ const setup = async ({
     }),
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const question = checkNotNull(metadata.question(TEST_CARD_ID));
 
   const onClose = jest.fn();

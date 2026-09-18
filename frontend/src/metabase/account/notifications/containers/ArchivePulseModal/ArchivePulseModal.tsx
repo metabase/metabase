@@ -5,9 +5,9 @@ import {
   useUpdateSubscriptionMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 
 import { ArchiveNotificationModal } from "../../components/ArchiveModal";
 import { getPulseId } from "../../selectors";

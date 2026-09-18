@@ -43,7 +43,7 @@
                                         :analyzed_entity_type :card
                                         :analyzed_entity_id card-id))))))))
 
-(deftest ^:sequential instances-for-analysis-serves-oldest-analyzed-first-test
+(deftest ^:synchronized instances-for-analysis-serves-oldest-analyzed-first-test
   (testing "Among stale entities, instances-for-analysis returns the oldest-analyzed first."
     ;; Fairness tiebreak: the primary sort only ranks stale-before-outdated, so among equally-stale
     ;; rows the order was DB-arbitrary. A batch smaller than the stale backlog could then keep

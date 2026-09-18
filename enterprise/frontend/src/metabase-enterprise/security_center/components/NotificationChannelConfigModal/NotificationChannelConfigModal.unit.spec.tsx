@@ -8,8 +8,8 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { findRequests } from "__support__/server-mocks/util";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockEmailChannelSpec,

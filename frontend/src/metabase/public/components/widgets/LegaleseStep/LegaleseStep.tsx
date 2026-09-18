@@ -25,7 +25,7 @@ export const LegaleseStep = ({
       <Stack align="center" gap="3rem">
         <Title order={3} fz="1.25rem">{t`First, some legalese`}</Title>
 
-        <LegaleseStepDetailsContainer p="lg" w="40rem">
+        <LegaleseStepDetailsContainer p="xl" w="40rem">
           <Text fw={700}>
             {jt`By clicking "Agree and continue" you're agreeing to ${(
               <ExternalLink

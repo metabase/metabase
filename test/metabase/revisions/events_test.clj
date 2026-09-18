@@ -27,8 +27,6 @@
    :type                   :question
    :description            nil
    :display                :table
-   :enable_embedding       false
-   :embedding_params       nil
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
@@ -49,9 +47,6 @@
    :cards               []
    :archived            false
    :collection_position nil
-   :enable_embedding    false
-   :embedding_params    nil
-   :embedding_type      nil
    :parameters          []
    :archived_directly   (:archived_directly dashboard)})
 

@@ -1,9 +1,8 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import type { IconData } from "metabase/common/utils/icon";
+import { Box, Ellipsified } from "metabase/ui";
 
 import { HomeCard } from "../HomeCard";
-
-import { CardTitle } from "./HomeModelCard.styled";
 
 interface HomeModelCardProps {
   title: string;
@@ -18,12 +17,12 @@ export const HomeModelCard = ({
 }: HomeModelCardProps): JSX.Element => {
   return (
     <HomeCard url={url}>
-      <EntityIcon
-        {...icon}
-        color="core-brand"
-        style={{ display: "block", flex: "0 0 auto" }}
-      />
-      <CardTitle>{title}</CardTitle>
+      <Box display="flex" flex="0 0 auto">
+        <EntityIcon {...icon} color="core-brand" />
+      </Box>
+      <Ellipsified c="text-primary" fz="md" fw="bold" ml="lg" maw="100%">
+        {title}
+      </Ellipsified>
     </HomeCard>
   );
 };

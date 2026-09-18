@@ -24,7 +24,7 @@ jobs:
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Remove test results comment
@@ -138,7 +138,7 @@ jobs:
   e2e-tests-result:
     needs:
       - e2e-tests
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()

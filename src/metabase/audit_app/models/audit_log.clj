@@ -5,7 +5,9 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -62,7 +64,7 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [:model/Card :name :description :card_schema], :id card_id)
+                               (-> (audit-app.db/card-name-and-description card_id)
                                    (assoc :id id)
                                    (assoc :card_id card_id))))))
 
@@ -115,7 +117,7 @@
   [metric _event-type]
   (let [table-id (:table_id metric)
         db-id    (when table-id
-                   (t2/select-one-fn :db_id :model/Table, :id table-id))]
+                   (audit-app.db/table-database-id table-id))]
     (assoc
      (select-keys metric [:name :description :revision_message])
      :table_id    table-id
@@ -174,14 +176,23 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(defn- stringify-keys
+  "Recursively turns the keyword keys of maps nested inside `x` into strings, keeping their namespaces."
+  [x]
+  (walk/postwalk #(cond-> % (map? %) (update-keys (fn [k] (cond-> k (keyword? k) u/qualified-name)))) x))
+
+(def ^:private AuditedInstance
+  "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."
+  [:map {:closed false, ::mr/deliberately-open true, :description "an audited entity"}])
+
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
-                        [:object           {:optional true} [:maybe :map]]
-                        [:previous-object  {:optional true} [:maybe :map]]
+                        [:object           {:optional true} [:maybe AuditedInstance]]
+                        [:previous-object  {:optional true} [:maybe AuditedInstance]]
                         [:user-id          {:optional true} [:maybe pos-int?]]
                         [:model            {:optional true} [:maybe [:or :keyword :string]]]
                         [:model-id         {:optional true} [:maybe pos-int?]]
-                        [:details          {:optional true} [:maybe :map]]
+                        [:details          {:optional true} [:maybe ms/AuditLogDetails]]
                         [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mu/defn construct-event
@@ -204,11 +215,12 @@
       :user-id           (or (:user-id params) current-user-id)
       :model-name        (model-name (or (:model params) object))
       :model-id          (or (:model-id params) (u/id object))
-      :details           (merge {}
-                                (:details params)
-                                (if (not-empty previous-object)
-                                  (prepare-update-event-data object-details previous-details)
-                                  object-details))})))
+      :details           (stringify-keys
+                          (merge {}
+                                 (:details params)
+                                 (if (not-empty previous-object)
+                                   (prepare-update-event-data object-details previous-details)
+                                   object-details)))})))
 
 (mu/defn record-event!
   "Records an event in the Audit Log.
@@ -242,12 +254,7 @@
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
       (let [{:keys [user-id model-name model-id details unqualified-topic]}
             (construct-event topic params api/*current-user-id*)]
-        (t2/insert! :model/AuditLog
-                    :topic    unqualified-topic
-                    :details  details
-                    :model    model-name
-                    :model_id model-id
-                    :user_id  user-id)))))
+        (audit-app.db/insert-audit-log! unqualified-topic details model-name model-id user-id)))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

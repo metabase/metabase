@@ -12,13 +12,35 @@ function setup({
   filter?: string;
   expressionMode?: Lib.ExpressionMode;
 } = {}) {
-  const sampleDatabase = createSampleDatabase();
+  // Every feature a clause can require, so this exercises name filtering
+  // rather than feature gating.
+  const sampleDatabase = createSampleDatabase({
+    features: [
+      "advanced-math-expressions",
+      "collate",
+      "convert-timezone",
+      "datetime-diff",
+      "distinct-where",
+      "expressions",
+      "expressions/date",
+      "expressions/datetime",
+      "expressions/float",
+      "expressions/integer",
+      "expressions/text",
+      "expressions/today",
+      "percentile-aggregations",
+      "regex",
+      "regex/lookaheads-and-lookbehinds",
+      "split-part",
+      "standard-deviation-aggregations",
+      "window-functions/offset",
+    ],
+  });
   const metadata = createMockMetadata({ databases: [sampleDatabase] });
   const database = metadata.database(sampleDatabase.id);
   if (!database) {
     throw new Error("Error in test: sample database not found");
   }
-  database.hasFeature = jest.fn().mockReturnValue(true);
 
   const results = getFilteredClauses({
     filter,

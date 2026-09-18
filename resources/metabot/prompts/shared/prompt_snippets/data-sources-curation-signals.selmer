@@ -1,0 +1,6 @@
+Prefer a candidate the organization has endorsed — but check the signal that actually applies to the candidate's entity type, and compare only within a type:
+
+- **Models, questions, metrics, dashboards** carry `is_verified="true"`, `is_official="true"`, and `is_curated="true"`. Documents carry `is_official` and `is_curated`, collections only `is_official`; neither carries `is_verified`.
+- **Tables** carry `data_authority="authoritative"`, plus `data_layer` and `is_curated` where configured. A table never carries `is_verified` or a meaningful `is_official`.
+
+An attribute a given type never carries tells you nothing — don't rule a table out for lacking `is_verified`. Within a type, prefer the candidate whose applicable signal is set over one where it's `false` or absent: that's the organization's own endorsement of the source.

@@ -2,49 +2,87 @@
 title: Line charts, bar charts, and area charts
 redirect_from:
   - /docs/latest/questions/visualizations/line-bar-and-area-charts
+  - /docs/latest/questions/sharing/visualizations/combo-chart
+  - /docs/latest/questions/visualizations/combo-chart
 ---
 
 # Line charts, bar charts, and area charts
 
-They're pretty useful.
+Line, bar, and area charts plot values across an x-axis. Pick the type that matches what you want to show:
+
+- **Line chart**: Show how a number changes over time. Use a line chart when you have many x-axis values, since lines stay readable where bars become crowded.
+- **Bar chart**: Compare values across categories, or a smaller number of values over time. Bar charts make individual values easier to read and compare than line charts.
+- **Area chart**: Show how much each series contributes to a total over time. Stack the areas to see the total across series as well as the individual series.
+
+You can set the display type separately for each series on a chart. A single chart that mixes types is a [combo chart](#combo-charts).
 
 ## Line charts
 
-**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts) and [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series) tutorials.
+**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values.
 
-![Trend lines](../images/goal-line.png)
+Line charts also work for non-time sequences, like steps in a workflow. Set the x-axis scale to Ordinal in the [axes settings](#axes-settings).
+
+On a dashboard, pair a line chart with a [trend chart](./trend.md) to make the latest value easy to read.
+
+### Filter out incomplete time periods
+
+If your data includes the current period, a time series can end in a misleading drop, because the most recent day, week, or month only has partial data. To avoid this, add a filter on your date column and turn off the option to include the current period.
 
 ## Bar charts
 
 ![Bar chart](../images/bar.png)
 
+{% include youtube.html id='dp2oeGbBRuA' %}
+
 If you're trying to group a number by a column that has a lot of possible values, like a Vendor or Product Title field, try visualizing it as a **row chart**. Metabase will show you the bars in descending order of size, with a final bar at the bottom for items that didn't fit.
 
 ![Row chart](../images/row.png)
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+### Histograms
 
-## Combo line and bar charts
+A bar chart grouped by a number is a histogram. Where a regular bar chart compares categories, a histogram shows the distribution of values across a continuous range. Each bar covers a range of values, called a bin, and its height represents the count of records in that bin.
 
-See [Combo charts](./combo-chart.md).
+To change the number of bins, see [summarizing and grouping](../query-builder/summarizing-and-grouping.md).
 
-## Histograms
+Metabase sets the x-axis scale to **Histogram** automatically, so the bars sit flush against each other to show a continuous range.
 
 ![Histogram](../images/histogram.png)
 
-By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
-
-![Binning options](../images/histogram-bins.png)
-
 ## Area charts
 
-**Area charts** are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
+**Area charts** are line charts with the area under each line filled in. [Stack them](#stacking) to compare how much each series contributes to a total.
 
-![Stacked area chart](../images/area.png)
+![Four series stacked in an area chart](../images/area.png)
+
+## Combo charts
+
+Combo charts let you combine bars and lines (or areas) on the same chart. Use a combo chart to plot two metrics with very different ranges, like order count against total revenue.
+
+By default, Metabase displays one series as a line and another as a bar. To set the display type for each series, or set the colors for each series, see [Change the display type for a series](#change-the-display-type-for-a-series).
+
+![A combo chart with a bar series and a line series](../images/combo-chart.png)
+
+To use a combo chart, your question must have either:
+
+- Two or more metrics in the **Summarize** section, with one or two groupings.
+
+  ![Two metrics with one grouping](../images/combo-chart-data-1.png)
+
+- One metric with two groupings.
+
+  ![One metric with two groupings](../images/combo-chart-data-2.png)
+
+## Change the display type for a series
+
+You can set the display type for each series independently of the chart type. For example, on a bar chart you can display one series as a line.
+
+In the **Data** tab, click the three-dot menu (**...**) next to a series, then select a **Display type**.
+
+![Setting the display type for a series](../images/series-display-type.png)
 
 ## Settings for line, bar, and area charts
 
-These three charting types have similar options, which are broken up into the following tabs. You can access these chart settings by clicking the **gear** icon in the lower left of the chart.
+To open the chart settings, click the **gear** icon in the lower left of the chart. Settings are split across three tabs:
 
 - [Data settings](#data-settings)
 - [Display settings](#display-settings)
@@ -52,43 +90,73 @@ These three charting types have similar options, which are broken up into the fo
 
 ## Data settings
 
-Here you can configure settings for how the data is displayed.
+In the **Data** tab, you can:
 
-For each series on the chart, you can:
+- Show or hide a series.
+- Reorder the series in the chart's legend.
+- Set options for individual series.
 
-- Whether to show or hide the series.
-- Determine how to display the series: as a line, bar, or area chart.
-- Determine the order Metabase displays the series in the chart's legend.
+### Series options
 
-### Line chart and Area chart options
+To set options for a series, click the three-dot menu (**...**) next to the series in the **Data** tab.
 
 ![Line chart options](../images/line-options.png)
 
-- Line color
+For each series, you can set:
+
+- Color
+- [Display type](#change-the-display-type-for-a-series)
+- Y-axis position: Auto, Left, or Right
+- Whether to show a trend line for the series
+- Whether to show values for the series
+
+For line and area series, you can also set:
+
 - Line shape
 - Line style
 - Line size: Small, Medium, or Large
 - Whether to show dots on the lines (the dots represent the actual data points plotted on the chart)
-- Whether to show values for the series. This option is only available if you've toggled on [Show value on data points](#values-on-data-points).
 - How to replace missing values: Zero, Nothing (just a break in the line), or Linear interpolated
-
-You can also rearrange series (which determines their order in the chart's legend).
-
-### Bar chart options
-
-For bar charts, you can configure:
-
-- Bar color
-- Y-axis position (which side of the chart to display the y-axis labels)
 
 ## Display settings
 
-Here you set things like:
+Use the **Display** tab to set:
 
-- [Goal line](#goal-lines)
-- [Stack a bar chart](#stacked-bar-chart)
+- [Stacking](#stacking)
 - [Stack series](#stack-series)
-- [Whether to show values on data points](#values-on-data-points)
+- [Goal lines](#goal-lines)
+- [Trend lines](#trend-lines)
+- [Values on data points](#values-on-data-points)
+- [Autoformatting](#autoformatting)
+
+### Stacking
+
+On bar and area charts, you can stack series on top of each other within a single chart. In the **Display** tab, set **Stacking** to:
+
+- **Don't stack**: Display each series separately.
+- **Stack**: Show the total across series.
+- **Stack - 100%**: Show each series' share of the total.
+
+![A stacked bar chart](../images/stacked-bar-chart.png)
+
+![A bar chart stacked to 100%](../images/stacked-100.png)
+
+### Stack series
+
+In the **Display** tab, turn on **Stack series** to plot each series in its own panel. The panels stack vertically, and each gets its own y-axis.
+
+To use Stack series, your question must have either:
+
+- **Multiple breakouts**: at least two entries in the grouping block in the query builder or `GROUP BY` clause in SQL.
+- **Multiple metrics**: at least two entries in the summarize block, or two aggregation functions in the `SELECT` statement.
+
+![Each series in its own panel](../images/stacked-series.png)
+
+You can mix bar, line, and area types across panels. See [Change the display type for a series](#change-the-display-type-for-a-series).
+
+![Panels with mixed display types](../images/stacked-series-mix.png)
+
+When you enable **Stack series**, the **Stacking** options are hidden.
 
 ### Goal lines
 
@@ -98,41 +166,21 @@ Goal lines can be used in conjunction with [alerts](../alerts.md) to send an ema
 
 ### Trend lines
 
-**Trend lines** are another useful option for line, area, bar, and scatter charts. If you have a question where you're grouping by a time field, open up the visualization settings and turn the **Show trend line** toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. Trend lines will even work if you have multiple metrics selected in your summary. But trend lines won't work if you have any groupings beyond the one time field.
+A trend line shows the general direction of a series over time. Metabase picks the line that best fits your data.
+
+To add a trend line, group your question by a time field and enable the **Trend line** toggle in the **Display** tab.
+
+You can also turn the trend line on or off for individual series. In the **Data** tab, click the three-dot menu (**...**) next to a series and use the **Show trend line for this series** toggle.
+
+Trend lines work with multiple metrics, but they don't work if your question has more than one grouping.
 
 ![Trend lines](../images/trend-lines.png)
 
-### Stacked bar chart
-
-If you have multiple series, you can stack them on a bar chart.
-
-![Stacked bar chart](../images/stacked-bar-chart.png)
-
-As well as stack them as a percentage:
-
-![Stacked bar chart 100%](../images/stacked-100.png)
-
-### Stack series
-
-To stack series, one chart on top of the other, your query must include **either**:
-
-**Multiple breakouts**: at least two entries in the grouping block in the query builder or `GROUP BY` clause in SQL.
-
-OR
-
-**Multiple metrics**: at least two entries in the summarize block, or two aggregation functions in the `SELECT` statement.
-
-![Stacked series](../images/stacked-series.png)
-
-You can mix and match bar, line, and areas in stacked series - select the right visualization type for each series in the **Data** tab:
-
-![Stacked series mixed types](../images/stacked-series-mix.png)
-
 ### Values on data points
 
-You can show some values (Metabase will pick some values to make the chart more legible), all values, or no values.
+To label points on your chart, enable the **Show values on data points** toggle in the **Display** tab. In **Values to show**, choose either **All** or **Some**. When you choose **Some**, Metabase picks which values to display to keep the chart legible.
 
-If you toggle on values on data points, you can toggle values for individual series on the [Data](#data-settings) tab of the chart's settings. For example, if you have four series, and only want to display values for one of the series.
+When values are on, you can turn them off for individual series. In the **Data** tab, click the three-dot menu (**...**) next to a series and disable the **Show values for this series** toggle.
 
 ### Autoformatting
 
@@ -145,20 +193,19 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 ### X-axis
 
 - Show label (the label for the axis).
-- Rename the axis
-- Show line and marks
-- Scale: Timeseries or Ordinal.
+- Rename the axis.
+- Show lines and tick marks: **Hide**, **Show**, **Compact**, **Rotate 45°**, or **Rotate 90°**.
+- Scale: **Timeseries**, **Linear**, **Histogram**, or **Ordinal**, depending on what you group by. Ordinal lists every value in the series along the x-axis. Use ordinal when you're plotting steps in a sequence.
 
 ### Y-axis
 
 - Show label (the label for the axis).
-- Rename the axis
-- Split y-axis when necessary
-- Auto y-axis range. When not toggled on, you can set the y-axis range (its min and max values).
-- Scale: Linear, power, or log.
-- Show lines and marks
-- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-  ![y-axis unpinned from zero](../images/unpinned-from-zero-y-axis.png)
+- Rename the axis.
+- Split y-axis when necessary.
+- Auto y-axis range. When not toggled on, you can set the y-axis range (its **Min** and **Max** values).
+- Scale: **Linear**, **Power**, or **Log**. Use a log scale to show the rate of change over time, like when your data grows or shrinks exponentially.
+- Show lines and tick marks: **Hide** or **Show**.
+- Number of tick marks.
 
 ## Chart legend
 
@@ -172,15 +219,15 @@ You can use the legend to:
 
 - Highlight a series, by hovering over the name of the series in the legend.
 - Hide the series, by clicking on the color circle for the series.
+- Drill down to individual records for aggregated series, by clicking on the series name.
 
 To permanently hide the series from the chart, use the [data settings](#data-settings).
 
-- Drill down to individual records for aggregated series, by clicking on the series name.
+You can also select a range on the chart to filter results to a specific time period, then drill through to the individual records.
 
-Currently, you can't hide the legend or change its position on the chart.
+You can't hide the legend or change its position on the chart.
 
 ## Further reading
 
-- [Guide to line charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/line-charts)
-- [Master the bar chart](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/bar-charts)
-- [Visualize your data as a histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)
+- [Summarizing and grouping](../query-builder/summarizing-and-grouping.md)
+- [Trend charts](./trend.md)

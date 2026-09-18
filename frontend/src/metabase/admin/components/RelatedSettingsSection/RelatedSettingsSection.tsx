@@ -13,12 +13,12 @@ export function RelatedSettingsSection({
   items?: RelatedSettingItem[];
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text size="lg" fw="bold" lh="xs">
         {t`Related settings`}
       </Text>
 
-      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="md">
+      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="lg">
         {items?.map((item) => (
           <RelatedSettingCard
             key={item.to}
@@ -45,8 +45,8 @@ export const RelatedSettingCard = ({
     <Card
       component={Link}
       to={to}
-      px="md"
-      py="xs"
+      px="lg"
+      py="xxs"
       withBorder
       data-testid="related-setting-card"
       shadow="none"

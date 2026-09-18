@@ -42,7 +42,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
 
   return (
     <>
-      <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
+      <Group className={S.root} p="xl" gap="0.75rem" wrap="nowrap">
         <Center
           w="2.75rem"
           h="2.75rem"
@@ -51,13 +51,13 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         >
           <FixedSizeIcon name={getNodeIcon(node)} c="core-brand" size={20} />
         </Center>
-        <Stack gap="xs" flex={1}>
+        <Stack gap="xxs" flex={1}>
           <Title className={CS.textWrap} order={3} lh="1.5rem">
             {getNodeLabel(node)}
           </Title>
           {location != null && <GraphBreadcrumbs links={location.links} />}
         </Stack>
-        <Group m="-sm" gap="xs" wrap="nowrap">
+        <Group m="-sm" gap="xxs" wrap="nowrap">
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}

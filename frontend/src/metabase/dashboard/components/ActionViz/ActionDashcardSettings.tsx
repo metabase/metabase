@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
@@ -25,6 +24,7 @@ import {
   ActionParameterMappingForm,
   getTargetKey,
 } from "./ActionParameterMapping";
+import { ConnectedActionPicker } from "./ActionPicker";
 import { ExplainerText } from "./ExplainerText";
 import {
   getParameterDefaultValue,

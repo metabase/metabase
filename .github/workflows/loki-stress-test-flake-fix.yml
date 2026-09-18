@@ -21,7 +21,7 @@ on:
 jobs:
   detect-changed-stories:
     name: Detect changed stories
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       story_files: ${{ steps.detect.outputs.story_files }}
@@ -156,6 +156,9 @@ jobs:
 
       - name: Stress-test Loki
         run: |
+          # Loki's output is piped through tee below, and a pipeline normally reports the exit status of its last command.
+          # Without this a failed loki run would look like a pass, because tee itself succeeded.
+          set -o pipefail
           BURN_IN=${{ inputs.burn_in || '10' }}
           STORY_FILES='${{ needs.detect-changed-stories.outputs.story_files }}'
 
@@ -171,8 +174,11 @@ jobs:
 
             if bun run test-visual:loki \
               --reactUri file:./storybook-static \
-              --verboseRenderer; then
+              --verboseRenderer 2>&1 | tee .loki-run.log; then
               echo "✅ Run $i passed"
+            elif grep -q 'No stories were found' .loki-run.log; then
+              echo "::notice::Every story in the changed files is loki-skipped, nothing to stress test"
+              exit 0
             else
               echo "❌ Run $i FAILED"
               FAILED=$((FAILED + 1))

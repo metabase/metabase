@@ -18,7 +18,7 @@ export function MonitorPageContent({
       {...boxProps}
       className={cx(S.MonitorPageWrapper, boxProps?.className)}
     >
-      <Stack gap="lg" className={S.MonitorPageContent}>
+      <Stack gap="xl" className={S.MonitorPageContent}>
         {children}
       </Stack>
     </Box>

@@ -42,7 +42,7 @@ export function CreateMetricModal({
   onClose,
 }: CreateMetricModalProps) {
   return (
-    <Modal title={t`Save your metric`} opened padding="xl" onClose={onClose}>
+    <Modal title={t`Save your metric`} opened padding="xxl" onClose={onClose}>
       <CreateMetricForm
         query={query}
         defaultValues={defaultValues}
@@ -87,7 +87,7 @@ function CreateMetricForm({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <FormTextInput
             name="name"
             label={t`Name`}
@@ -141,7 +141,6 @@ function getCreateRequest(
     name,
     description,
     collection_id,
-    collection_position: 1,
     result_metadata,
     type: "metric",
     dataset_query: Lib.toJsQuery(query),

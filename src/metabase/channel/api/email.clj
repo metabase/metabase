@@ -25,7 +25,7 @@
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [_route-params
    _query-params
-   settings :- [:map
+   settings :- [:map {:closed true}
                 [:email-smtp-host {:optional true} [:or string? nil?]]
                 [:email-smtp-password {:optional true} [:or string? nil?]]
                 [:email-smtp-port {:optional true} [:or int? nil?]]

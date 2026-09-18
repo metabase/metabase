@@ -24,7 +24,6 @@
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
-                                 :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
                                  :source-table (meta/id :venues)
                                  :fields       [(lib.tu/field-clause :venues :price)]}]
                  :database     (meta/id)
@@ -738,16 +737,18 @@
             base-type               [nil :type/Date]
             effective-type          [nil :type/Date]
             inherited-temporal-unit [nil :default]
-            ;; make sure random keys don't affect this either
-            nonsense-key            [nil 1337]
-            lib-key                 [nil "PRODUCTS"]
+            ;; make sure options that have nothing to do with bucketing don't affect this either. They have to be
+            ;; options the schema actually declares -- a made-up key is dropped before the ref is ever resolved, so it
+            ;; could not tell us anything.
+            irrelevant-option       [nil :type/Category]
+            irrelevant-lib-option   [nil "PRODUCTS"]
             :let                    [opts (cond-> {:join-alias "People"}
                                             temporal-unit           (assoc :temporal-unit temporal-unit)
                                             base-type               (assoc :base-type base-type)
                                             effective-type          (assoc :effective-type effective-type)
                                             inherited-temporal-unit (assoc :inherited-temporal-unit inherited-temporal-unit)
-                                            nonsense-key            (assoc :nonsense-key nonsense-key)
-                                            lib-key                 (assoc :lib/nonsense-key lib-key))
+                                            irrelevant-option       (assoc :semantic-type irrelevant-option)
+                                            irrelevant-lib-option   (assoc :lib/source-name irrelevant-lib-option))
                                      clause [:field (meta/id :people :birth-date) opts]]]
       (testing (pr-str (lib/->mbql5 clause))
         (testing `lib/returned-columns

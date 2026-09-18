@@ -157,14 +157,13 @@ export function JobRunListPage() {
       wrap="nowrap"
       data-testid="job-run-list"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
         {job !== undefined && (
           <JobHeader
             job={job}
             menu={!readOnly && <JobMoreMenu job={job} />}
             tabs={<JobTabs jobId={job.id} />}
             readOnly={readOnly}
-            showMetabotButton
             onNameChange={onNameChange}
           />
         )}
@@ -173,7 +172,7 @@ export function JobRunListPage() {
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
+          <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">
             <Group>
               <Select
                 data={getStatusOptions()}

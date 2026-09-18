@@ -90,6 +90,7 @@
   ensure survives."
   {:deprecated "0.57.0"}
   [new-metadata old-metadata]
+  ;; deprecated fn using its own deprecated helper; both leave together
   #_{:clj-kondo/ignore [:deprecated-var]}
   (let [old-cols-by-desired-col-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias old-metadata))
         old-cols-by-name (m/index-by :name old-metadata)]
@@ -116,5 +117,5 @@
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- :map]
+  [{query-type :type} :- ::qp.schema/any-query]
   (= :internal (keyword query-type)))

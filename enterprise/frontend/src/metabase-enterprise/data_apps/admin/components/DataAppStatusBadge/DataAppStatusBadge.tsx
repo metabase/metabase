@@ -17,7 +17,7 @@ export const DataAppStatusBadge = ({ app }: Props) => {
       size="md"
       c="text-secondary"
       bg="background-secondary"
-      bdrs="sm"
+      bdrs="xs"
       tt="none"
     >
       {t`Disabled`}

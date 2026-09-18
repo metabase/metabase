@@ -2,8 +2,15 @@
   max-width: 100%;
 
   &.headVariant {
-    .HeaderBreadcrumb {
+    .HeaderBreadcrumb,
+    .HeaderBreadcrumbs {
       font-size: 1.25rem;
+    }
+
+    .HeaderBreadcrumbIcon {
+      width: 1.125rem;
+      height: 1.125rem;
+      transform: translateY(1px);
     }
   }
 }

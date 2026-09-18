@@ -1,6 +1,6 @@
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 
 import AccountLayout from "../../components/AccountLayout";
 

@@ -3,8 +3,8 @@ import type { ComponentPropsWithoutRef, ElementType } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { isPlainKey } from "metabase/common/utils/keyboard";
 import { Button, type ButtonProps, Icon, Text, Tooltip } from "metabase/ui";
+import { isPlainKey } from "metabase/utils/keyboard";
 
 type Props<C extends ElementType = "button"> = ButtonProps & {
   url: string;

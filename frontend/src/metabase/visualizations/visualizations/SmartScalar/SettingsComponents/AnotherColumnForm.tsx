@@ -69,11 +69,11 @@ export function AnotherColumnForm({
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
-      <Flex direction="column" align="flex-start" gap="lg">
+      <Flex direction="column" align="flex-start" gap="xl">
         <PopoverBackButton
           onClick={onBack}
         >{t`Value from another column`}</PopoverBackButton>
-        <Stack pos="relative" w="100%" gap="md">
+        <Stack pos="relative" w="100%" gap="lg">
           <Select
             autoFocus={!column}
             value={column}

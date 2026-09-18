@@ -64,7 +64,7 @@
 
 (def zone-offset-part-regex
   "Regex for a zone-offset string."
-  (re-pattern offset-part))
+  (re-pattern (str \^ offset-part \$)))
 
 (def ^:const local-date-regex
   "Regex for a local-date string."

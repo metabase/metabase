@@ -32,7 +32,11 @@ describe("detail view", () => {
       H.appBar().within(() => {
         cy.findByRole("link", { name: /Sample Database/ })
           .should("be.visible")
-          .and("have.attr", "href", `/browse/databases/${SAMPLE_DB_ID}`);
+          .and(
+            "have.attr",
+            "href",
+            `/browse/databases/${SAMPLE_DB_ID}-sample-database`,
+          );
         cy.findByRole("link", { name: "Products" })
           .should("be.visible")
           .and("have.attr", "href", `/table/${PRODUCTS_ID}-products`);

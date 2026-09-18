@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useSendTestNotificationMutation } from "metabase/api/security-center";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSetting } from "metabase/settings";
 import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
 
+import { useSendTestNotificationMutation } from "../../api";
 import {
   serializeNotificationConfig,
   useNotificationConfig,
@@ -88,10 +88,10 @@ export function NotificationChannelConfigModal({
       size="lg"
       fullScreen={isSmallScreen}
     >
-      <Stack gap="md" mt="md">
+      <Stack gap="lg" mt="lg">
         <EmailChannelCard isConfigured={isEmailConfigured} />
         <SlackChannelCard isConfigured={isSlackConfigured} />
-        <Flex justify="space-between" gap="md" mt="md">
+        <Flex justify="space-between" gap="lg" mt="lg">
           <Button
             variant="subtle"
             leftSection={<Icon name="mail" />}
@@ -100,7 +100,7 @@ export function NotificationChannelConfigModal({
           >
             {t`Send test notification`}
           </Button>
-          <Group gap="md">
+          <Group gap="lg">
             <Button
               variant="subtle"
               onClick={() => {

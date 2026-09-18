@@ -41,7 +41,8 @@ export const resolveCollectionReference = <
   }
 
   if (collectionId === "personal") {
-    return currentUser.personal_collection_id;
+    // An API-key user has no personal collection
+    return currentUser.personal_collection_id ?? collectionId;
   }
 
   if (collectionId === "tenant") {

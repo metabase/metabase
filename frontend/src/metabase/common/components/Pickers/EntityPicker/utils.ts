@@ -1,14 +1,9 @@
 import { useCallback } from "react";
-import _ from "underscore";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
-import type {
-  CollectionItemModel,
-  CollectionNamespace,
-  CollectionType,
-} from "metabase-types/api";
+import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
@@ -208,44 +203,6 @@ export function getItemFunctions({
     isSelectableItem: isSelectable,
   };
 }
-
-export const validCollectionModels = new Set<CollectionItemModel>([
-  "collection",
-  "dashboard",
-  "document",
-  "card",
-  "dataset",
-  "metric",
-  "table",
-  "snippet",
-  "transform",
-  "measure",
-]);
-
-export const allCollectionModels = Array.from(validCollectionModels);
-
-const isValidModel = (
-  model: OmniPickerItem["model"],
-): model is CollectionItemModel =>
-  // Unjustified type cast. FIXME
-  validCollectionModels.has(model as CollectionItemModel);
-
-export const getValidCollectionItemModels = (
-  models: OmniPickerItem["model"][],
-): CollectionItemModel[] =>
-  _.uniq(models.filter(isValidModel).concat(["collection"]));
-
-// this ensures that we get cache hits by sending the same options for collection item requests
-export const getCollectionItemsOptions = ({
-  models,
-}: {
-  models: OmniPickerItem["model"][];
-}) => {
-  return {
-    models: getValidCollectionItemModels(models),
-    include_can_run_adhoc_query: models.includes("table"),
-  };
-};
 
 export const isCollection = (
   item: OmniPickerItem,

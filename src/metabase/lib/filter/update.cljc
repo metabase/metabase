@@ -70,7 +70,10 @@
 (mu/defn update-numeric-filter :- ::lib.schema/query
   "Add or update a filter against `numeric-column`. Adapted from
   https://github.com/metabase/metabase/blob/98bcd7fc3102bd7c07e8b68878c3738f3cb8727b/frontend/src/metabase-lib/queries/utils/actions.js#L151-L154"
-  ([query numeric-column start end]
+  ([query          :- ::lib.schema/query
+    numeric-column :- ::lib.schema.metadata/column
+    start          :- number?
+    end            :- number?]
    (update-numeric-filter query -1 numeric-column start end))
 
   ([query          :- ::lib.schema/query
@@ -174,7 +177,10 @@
 
   This is adapted from old MLv1 code here
   https://github.com/metabase/metabase/blob/98bcd7fc3102bd7c07e8b68878c3738f3cb8727b/frontend/src/metabase-lib/queries/utils/actions.js#L75-L132"
-  ([query temporal-column start end]
+  ([query           :- ::lib.schema/query
+    temporal-column :- ::lib.schema.metadata/column
+    start           :- ::temporal-literal
+    end             :- ::temporal-literal]
    (update-temporal-filter query -1 temporal-column start end))
 
   ([query           :- ::lib.schema/query
@@ -202,7 +208,10 @@
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
              ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
-             start         (u.time/truncate (u.time/add start unit 1) unit)
+             start         (let [truncated-start (u.time/truncate start unit)]
+                             (if (zero? (u.time/unit-diff :millisecond truncated-start start))
+                               truncated-start
+                               (u.time/truncate (u.time/add start unit 1) unit)))
              end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
              breakout-unit (temporal-filter-find-best-breakout-unit unit start end (:effective-type temporal-column))
@@ -217,7 +226,7 @@
            (lib.filter/filter query stage-number (lib.filter/between temporal-column start end))))))))
 
 (mr/def ::lat-lon.bounds
-  [:map
+  [:map {:closed true}
    [:north number?]
    [:east  number?]
    [:south number?]
@@ -226,13 +235,16 @@
 (mu/defn update-lat-lon-filter :- ::lib.schema/query
   "For use powering the brush zoom-in behavior in map visualizations. Adapted from
   https://github.com/metabase/metabase/blob/98bcd7fc3102bd7c07e8b68878c3738f3cb8727b/frontend/src/metabase-lib/queries/utils/actions.js#L134-L149"
-  ([query latitude-column longitude-column bounds]
+  ([query             :- ::lib.schema/query
+    latitude-column   :- ::lib.schema.metadata/column
+    longitude-column  :- ::lib.schema.metadata/column
+    bounds            :- [:ref ::lat-lon.bounds]]
    (update-lat-lon-filter query -1 latitude-column longitude-column bounds))
 
   ([query                                        :- ::lib.schema/query
     stage-number                                 :- :int
     latitude-column                              :- ::lib.schema.metadata/column
-    longitude-column                             :- :some
+    longitude-column                             :- ::lib.schema.metadata/column
     {:keys [north east south west], :as _bounds} :- [:ref ::lat-lon.bounds]]
    (-> query
        (remove-existing-filters-against-column-checking-subclauses stage-number latitude-column)

@@ -71,7 +71,9 @@ const CreateDashboardModalInner = ({
 
   const { isLoading: isCollectionQueryLoading } = useGetCollectionQuery(
     // To avoid `/api/collection/undefined` and 404.
-    collectionIdSlug === undefined ? skipToken : { id: collectionIdSlug },
+    collectionIdSlug === null || collectionIdSlug === undefined
+      ? skipToken
+      : { id: collectionIdSlug },
   );
 
   useTrackSdkComponentMount("CreateDashboardModal", null, {});

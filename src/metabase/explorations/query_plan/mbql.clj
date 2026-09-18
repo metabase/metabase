@@ -4,7 +4,6 @@
   (:require
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metrics.core :as metrics]
    [metabase.util.malli.registry :as mr]))
 
@@ -73,15 +72,36 @@
   [query ref-clause]
   (boolean (seq (lib/available-binning-strategies query -1 ref-clause))))
 
+(defn- pinned-default-binning
+  "Explicit `:bin-width` binning equivalent to what the QP's `:default` strategy
+  would resolve for `ref-clause` against `query` as given — i.e. before any
+  per-segment filter is added. Exploration charts fan one query out into
+  several segment-filtered variants that share an x-axis; left as
+  `{:strategy :default}`, the QP re-derives the bin width per variant from that
+  variant's own filters, so a segment that range-filters the binned column gets
+  a different bin size than its siblings. Pinning the width keeps every variant
+  on the same bin grid, while the card's own filters (shared by all variants)
+  still narrow the domain. Falls back to `{:strategy :default}` when no width
+  can be resolved."
+  [query ref-clause]
+  (let [col (lib/find-matching-column query -1 ref-clause
+                                      (lib/breakoutable-columns query))]
+    (if-let [width (when col (lib/default-bin-width query -1 col))]
+      {:strategy :bin-width, :bin-width width}
+      {:strategy :default})))
+
 (defn apply-default-bucket
   "Return `ref-clause` with this dim's default temporal bucket or binning applied. Unchanged
-  when the dim has no default, or when the column can't be binned. See [[binnable-ref?]]"
+  when the dim has no default, or when the column can't be binned. See [[binnable-ref?]].
+  Numeric binning is pinned to an explicit bin width (see [[pinned-default-binning]])
+  so all segment variants of a chart share the same bins."
   [query ref-clause dim]
   (let [[kind v] (default-bucket-for-dim dim)]
     (case kind
       :temporal (lib/with-temporal-bucket ref-clause v)
       :binning  (cond-> ref-clause
-                  (binnable-ref? query ref-clause) (lib/with-binning v))
+                  (binnable-ref? query ref-clause)
+                  (lib/with-binning (pinned-default-binning query ref-clause)))
       nil       ref-clause)))
 
 (defn normalize-target-ref
@@ -101,31 +121,28 @@
     (when (mr/validate :mbql.clause/field ref-clause)
       (lib/field-ref-id ref-clause))))
 
-(defn default-temporal-breakout-col
-  "If `base-query` carries a temporal breakout (the metric's default temporal
-  dimension, e.g. `created_at` bucketed by `:month`), resolve the breakout against
-  the query's visible columns and return `[col raw-unit display-name]`. Returns
-  `nil` if no temporal breakout exists, the column can't be resolved, or column
-  resolution throws. The raw unit may be `nil` if the metric breakout was unbucketed.
+(defn default-time-dimension-col
+  "Resolve the metric `card`'s curated default dimension to `[col unit display-name]`,
+  where `col` is the dimension's target resolved against `base-query`'s visible
+  columns, `unit` is the dimension's `:default-temporal-unit` (`:month` when unset),
+  and `display-name` is the dimension's curated display name.
 
-  Prefer this over [[extract-default-temporal-breakout-col]] when the caller already
-  holds the Lib query — building one is expensive."
-  [base-query]
+  The default dimension is used only when it is active (not orphaned) and its type
+  carries a date component (`:type/HasDate` — covers `:type/Date` and `:type/DateTime`;
+  bare `:type/Time` dims don't qualify). Curation is authoritative: when the
+  default dimension is missing or doesn't qualify, returns `nil` rather than
+  falling back to the card's `dataset_query` breakouts."
+  [base-query card]
   (try
-    (let [cols (lib/visible-columns base-query)]
-      (some (fn [bo]
-              (when-let [col (lib/find-matching-column bo cols)]
-                (when (lib.types.isa/temporal? col)
-                  [col (lib/raw-temporal-bucket bo) (lib/display-name base-query col)])))
-            (lib/breakouts base-query)))
-    (catch Exception _ nil)))
-
-(defn extract-default-temporal-breakout-col
-  "[[default-temporal-breakout-col]] for callers holding a metric Card's `dataset_query`
-  rather than a built Lib query. Returns `nil` when the query can't be normalized."
-  [mp card-dataset-query]
-  (try
-    (default-temporal-breakout-col (lib/query mp card-dataset-query))
+    (when-let [dim (some #(when (:default %) %) (:dimensions card))]
+      (when (and (not= :status/orphaned (:status dim))
+                 (dim-type-isa? dim :type/HasDate))
+        (when-let [target (find-dimension-target (:id dim) (:dimension_mappings card))]
+          (when-let [col (lib/find-matching-column (normalize-target-ref target)
+                                                   (lib/visible-columns base-query))]
+            [col
+             (or (:default-temporal-unit dim) :month)
+             (or (:display-name dim) (lib/display-name base-query col))]))))
     (catch Exception _ nil)))
 
 (defn dim-fingerprint-distinct-count

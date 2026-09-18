@@ -12,7 +12,7 @@ If you're looking to download and run the latest official open source version of
 
 The only thing you’ll need to get started is Docker itself.
 
-- [Install Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Install Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 OR
 

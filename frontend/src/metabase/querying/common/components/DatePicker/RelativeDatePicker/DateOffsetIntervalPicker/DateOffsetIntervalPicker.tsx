@@ -96,7 +96,7 @@ export function DateOffsetIntervalPicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Box className={S.PickerGrid} p="md">
+      <Box className={S.PickerGrid} p="lg">
         <Text>{directionText}</Text>
         <NumberInputWithFallbackValue
           value={interval}
@@ -147,7 +147,7 @@ export function DateOffsetIntervalPicker({
         />
       </Box>
       <Divider />
-      <Group px="md" py="sm" gap="sm" justify="space-between">
+      <Group px="lg" py="sm" gap="sm" justify="space-between">
         <Group c="text-secondary" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>

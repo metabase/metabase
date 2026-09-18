@@ -19,7 +19,7 @@ export function TagSection({ job, readOnly, onTagsChange }: TagSectionProps) {
       label={t`Tags to run`}
       description={t`This job will run all transforms tagged with any of the tags you pick here.`}
     >
-      <Box p="xl">
+      <Box p="xxl">
         <TagMultiSelect
           tagIds={job.tag_ids ?? []}
           readOnly={readOnly}

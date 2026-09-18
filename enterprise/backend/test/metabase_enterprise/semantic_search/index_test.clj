@@ -179,6 +179,8 @@
       ;; force-reset suffix, as pgvector-api/fresh-index builds it
       (str (semantic.index/model-table-name semantic.tu/mock-embedding-model) "_" (semantic.index/model-table-suffix))
       "index_ollama_mxbai_lg_1024_1234567"
+      "index_ollama_mxbai_lg_1024_e0123456789ab"
+      "index_ollama_mxbai_lg_1024_e0123456789ab_1234567"
       ;; hashed shape for names exceeding the pg identifier limit
       (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
       (str "index_" (apply str (repeat 40 "a")))
@@ -202,6 +204,32 @@
       ;; wrong-length hex
       (str "index_" (apply str (repeat 39 "a")))
       (str "index_" (apply str (repeat 41 "a"))))))
+
+(deftest ^:parallel model-table-name-embedding-space-test
+  (let [model semantic.tu/mock-embedding-model]
+    (is (not= (semantic.index/model-table-name model)
+              (semantic.index/model-table-name (assoc model :embedding-space-id "another-space"))))
+    (is (= (str "index_" (semantic.embedding/abbrev-provider-name "mock") "_model_4")
+           (semantic.index/model-table-name (dissoc model :embedding-space-id))))
+    (testing "plugin provider identifiers occupy a disjoint, collision-resistant namespace"
+      (let [unsafe-name     "vendor/foo"
+            encoded-name    (semantic.embedding/abbrev-provider-name unsafe-name)
+            provider-names  [unsafe-name "vendor-foo" "vendor foo" encoded-name]
+            table-names     (mapv #(semantic.index/model-table-name (assoc model :provider %)) provider-names)]
+        (is (= (count provider-names) (count (distinct table-names))))
+        (is (not= encoded-name (semantic.embedding/abbrev-provider-name encoded-name))
+            "an encoded unsafe name must not collide when registered verbatim as another provider")
+        (doseq [[built-in alias] [["ai-service" "ais"]
+                                  ["in-process" "inproc"]
+                                  ["ollama" "plugin_ollama"]
+                                  ["openai" "plugin_openai"]]]
+          (is (not= (semantic.index/model-table-name (assoc model :provider built-in))
+                    (semantic.index/model-table-name (assoc model :provider alias)))
+              (str "built-in alias must not collide with plugin provider " (pr-str alias))))
+        (doseq [table-name table-names]
+          (let [table-keyword (keyword table-name)]
+            (is (nil? (namespace table-keyword)))
+            (is (semantic.index/index-table-name? table-name))))))))
 
 (defn- expected-index-defs
   "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.
@@ -740,16 +768,34 @@
                 (let [result (#'semantic.index/filter-read-permitted docs)]
                   (is (= 1 (count result)))
                   (is (= "1:123" (:id (first result)))))))))
-        (testing "card/metric/dataset/dashboard docs use the same fast path"
-          (doseq [model ["card" "metric" "dataset" "dashboard"]]
+        (testing "dashboard docs use the same fast path"
+          ;; Fast-path docs are adjudicated from the index row's denormalized `:collection_id` alone, so
+          ;; these fabricated ids never have to correspond to real rows. That is the whole point of the
+          ;; path — and the reason card/metric/dataset, which now take the slow path, need real rows below.
+          (let [docs [{:id 1 :model "dashboard" :collection_id readable-coll-id}
+                      {:id 2 :model "dashboard" :collection_id unreadable-coll-id}
+                      {:id 3 :model "dashboard" :collection_id nil}]]
+            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+              (let [result (#'semantic.index/filter-read-permitted docs)]
+                (is (= [1] (map :id result))
+                    "only the doc whose denormalized collection_id is readable survives")))))
+        (testing "card/metric/dataset docs take the slow path"
+          ;; `:model/Card` left the collection-id-only registry once a Card could be scoped to a Document
+          ;; and gated by it rather than by its collection. The slow path loads the real row and runs
+          ;; `mi/can-read?` on it, so the verdict must still track the *collection* for an ordinary Card —
+          ;; and it must ignore a `:collection_id` on the index row that disagrees with the database.
+          (doseq [[model card-type] [["card" :question] ["metric" :metric] ["dataset" :model]]]
             (testing (str "model=" model)
-              (let [docs [{:id 1 :model model :collection_id readable-coll-id}
-                          {:id 2 :model model :collection_id unreadable-coll-id}
-                          {:id 3 :model model :collection_id nil}]]
+              (mt/with-temp [:model/Card {readable-id :id}   {:type card-type :collection_id readable-coll-id}
+                             :model/Card {unreadable-id :id} {:type card-type :collection_id unreadable-coll-id}]
                 (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-                  (let [result (#'semantic.index/filter-read-permitted docs)]
-                    (is (= [1] (map :id result))
-                        "only the doc whose denormalized collection_id is readable survives")))))))
+                  (let [result (#'semantic.index/filter-read-permitted
+                                [{:id readable-id   :model model :collection_id readable-coll-id}
+                                 {:id unreadable-id :model model :collection_id unreadable-coll-id}
+                                 ;; a stale index row claiming a readable collection must not win:
+                                 ;; the slow path reads the live row, not the denormalized copy
+                                 {:id unreadable-id :model model :collection_id readable-coll-id}])]
+                    (is (= [readable-id] (map :id result)))))))))
         (testing "memoizes permission check per collection_id across docs"
           (let [calls       (atom 0)
                 real-helper perms/can-read-via-parent-collection?]
@@ -766,7 +812,13 @@
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"
     ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
-    (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
+    ;;
+    ;; "card"/"dataset"/"metric" are deliberately absent: a Card scoped to a Document is gated by that
+    ;; Document rather than by its collection (see `metabase.queries.models.card/parent-document-permits?`),
+    ;; so `:model/Card` no longer meets the macro's collection-id-only contract and dropped its
+    ;; registration. Cards take `filter-read-permitted`'s slow path — one batched `t2/select` per result
+    ;; page — which is the price of adjudicating them correctly.
+    (is (= #{"dashboard" "indexed-entity"}
            @@#'semantic.index/collection-id-only-search-models))))
 
 (deftest collection-based-visibility-search-model-claims-verified-test
@@ -819,7 +871,7 @@
     ;; The derivation must call `search/specifications` before reading either registry — `t2/resolve-model`
     ;; inside `specifications` loads the model namespaces that populate them.
     ;; If the order flips, cold start caches an empty set for the JVM lifetime. Both the t2-model registry
-    ;; (card/metric/dataset/dashboard) and the search-model registry (indexed-entity) must be covered.
+    ;; (dashboard) and the search-model registry (indexed-entity) must be covered.
     (let [real-specs          (var-get #'search/specifications)
           real-t2-registry    perms/collection-id-only-read-models
           real-search-registry perms/collection-based-visibility-search-models
@@ -836,9 +888,8 @@
                                                                         (real-search-registry)
                                                                         {}))]
         (let [result (#'semantic.index/compute-collection-id-only-search-models)]
-          (is (contains? result "card"))
-          (is (contains? result "dashboard"))
-          (is (contains? result "indexed-entity")))))))
+          (is (contains? result "dashboard") "keyword-form registry populated")
+          (is (contains? result "indexed-entity") "search-model registry populated"))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"

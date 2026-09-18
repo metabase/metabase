@@ -20,3 +20,25 @@ export function getDefaultExplorationName() {
 
 // keep in sync with backend other-bucket-label
 export const OTHER_BUCKET_LABEL = "(Other)";
+
+/** Discriminator column names written by `composite.clj` / `getHeatMapSeries`
+ *  / multi-series cartesian combine. Keep in sync with the BE. */
+export const HEAT_MAP_SEGMENT_COL_NAME = "Segment";
+export const CARTESIAN_SERIES_COL_NAME = "Series";
+
+const DISCRIMINATOR_COL_NAMES = new Set([
+  HEAT_MAP_SEGMENT_COL_NAME,
+  CARTESIAN_SERIES_COL_NAME,
+]);
+
+export function heatMapSegmentDisplayName(): string {
+  return t`Segment`;
+}
+
+export function isDiscriminatorColumnName(columnName: string): boolean {
+  return DISCRIMINATOR_COL_NAMES.has(columnName);
+}
+
+export function fallbackSegmentName(): string {
+  return t`(All)`;
+}

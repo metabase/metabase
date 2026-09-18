@@ -5,19 +5,34 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.populate :as populate]
+   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :refer [*transform-specs*]]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (def ^:private ^:const ^Long width 12)
 (def ^:private ^:const ^Long total-width 18)
 (def ^:private ^:const ^Long height 4)
 
+(def ^:private SourceTableCard
+  "The shape [[card-for-source-table]] builds for a source-table pseudo-card."
+  [:map {:closed true}
+   [:creator_id             [:maybe ::lib.schema.id/user]]
+   [:dataset_query          [:map {:closed true}
+                             [:type     [:= :query]]
+                             [:query    [:map {:closed true} [:source-table ::lib.schema.id/table]]]
+                             [:database ::lib.schema.id/database]]]
+   [:name                   [:maybe :string]]
+   [:collection_id          :nil]
+   [:visualization_settings ms/VisualizationSettings]
+   [:display                :keyword]])
+
 (mu/defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
-  [group :- :string cards]
+  [group :- :string
+   cards :- [:maybe [:sequential [:or :metabase.queries.schema/card SourceTableCard]]]]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group
@@ -36,8 +51,7 @@
           cards))
 
 (mu/defn- card-for-source-table
-  [table :- [:map
-             [:db_id ::lib.schema.id/database]]]
+  [table :- :metabase.warehouse-schema.schema/table]
   {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query
@@ -53,7 +67,7 @@
                             (map (comp :source-table :query :dataset_query))
                             (filter number?)
                             not-empty)]
-    (let [table-id->table (t2/select-pk->fn t2.realize/realize :model/Table :id [:in (set table-ids)])]
+    (let [table-id->table (into {} (map (juxt :id t2.realize/realize)) (xrays.db/tables (set table-ids)))]
       (mapv (fn [table-id]
               (let [table (get table-id->table table-id)]
                 (card-for-source-table table)))
@@ -67,7 +81,7 @@
                                                         {:status-code 404})))
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
-                                         (t2/select :model/Card :collection_id)
+                                         xrays.db/cards-in-collection
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

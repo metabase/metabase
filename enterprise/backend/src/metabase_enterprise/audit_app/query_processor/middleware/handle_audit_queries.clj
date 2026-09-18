@@ -39,7 +39,9 @@
      :xform    ...}"
   (:require
    [clojure.data :as data]
+   [malli.core :as mc]
    [metabase-enterprise.audit-app.interface :as audit.i]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -47,13 +49,15 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
   [results metadata]
   (let [results-keys  (set (keys (first results)))
-        metadata-keys (set (map (comp keyword first) metadata))]
+        metadata-keys (set (map (comp name first) metadata))]
     (when (and (seq results-keys)
                (not= results-keys metadata-keys))
       (let [[only-in-results only-in-metadata] (data/diff results-keys metadata-keys)]
@@ -67,31 +71,59 @@
 
 (defn- metadata->cols [metadata]
   (for [[k v] metadata]
-    (assoc v :name (name k))))
+    (cond-> (assoc v :name (name k))
+      (:remapped_to v)   (update :remapped_to name)
+      (:remapped_from v) (update :remapped_from name))))
 
-(mu/defn- format-results [{:keys [results metadata]} :- [:map
-                                                         [:results  [:sequential :map]]
+(mu/defn- format-results [{:keys [results metadata]} :- [:map {:closed true}
+                                                         [:results  [:sequential [:map-of :string ms/FieldValue]]]
                                                          [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)
    :rows (for [row results]
            (for [[k] metadata]
-             (get row (keyword k))))})
+             (get row (name k))))})
 
 (def InternalQuery
   "Schema for a valid `internal` type query."
-  [:map
-   [:type [:enum :internal "internal"]]
-   [:fn   [:and
-           :string
-           [:fn
-            {:error/message "namespace-qualified symbol serialized as a string"}
-            (fn [s]
-              (try
-                (when-let [symb (some-> s symbol)]
-                  (qualified-symbol? symb))
-                (catch Throwable _)))]]]
-   [:args {:optional true} [:sequential :any]]])
+  (into [:multi {:dispatch :fn}]
+        (cond-> [["metabase-enterprise.audit-app.pages.queries/bad-table"
+                  [:map {:closed true}
+                   [:fn     [:= "metabase-enterprise.audit-app.pages.queries/bad-table"]]
+                   [:type   [:enum :internal "internal"]]
+                   [:args   {:optional true}
+                    [:maybe [:or
+                             [:= []]
+                             [:tuple
+                              [:maybe :string]
+                              [:maybe [:enum "card_id" "card_name" "error_substr" "collection_id" "collection_name"
+                                       "database_id" "database_name" "schema_name" "table_id" "table_name"
+                                       "last_run_at" "total_runs" "num_dashboards" "user_id" "user_name"
+                                       "updated_at"]]
+                              [:maybe [:enum "asc" "desc"]]]]]]
+                   [:limit      {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                   [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                   [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
+                   [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
+                   [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]]]]
+          config/is-test?
+          (conj [::mc/default
+                 [:map {:closed true}
+                  [:fn         :string]
+                  [:type       [:enum :internal "internal"]]
+                  [:args       {:optional true} [:maybe [:sequential [:maybe [:or :string number? :boolean]]]]]
+                  [:limit      {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                  [:offset     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+                  [:info       {:optional true} [:maybe :metabase.lib.schema.info/info]]
+                  [:middleware {:optional true} [:maybe :metabase.lib.schema.middleware-options/middleware-options]]
+                  [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]]]))))
+
+(defn- validate-internal-query
+  [query]
+  (when-not (mr/validate InternalQuery query)
+    (throw (ex-info (tru "Invalid internal query.")
+                    {:type        qp.error-type/invalid-query
+                     :status-code 400}))))
 
 (def ^:dynamic *additional-query-params*
   "Additional `internal` query params beyond `type`, `fn`, and `args`. These are bound to this dynamic var which is a
@@ -109,7 +141,8 @@
     (qp.pipeline/*reduce* rff* {:cols cols} reducible-rows)))
 
 (defn- reduce-legacy-results [rff results]
-  (let [{:keys [cols rows]} (format-results results)]
+  (let [results (update results :results (partial map #(update-keys % name)))
+        {:keys [cols rows]} (format-results results)]
     (assert (some? cols))
     (assert (some? rows))
     (qp.pipeline/*reduce* rff {:cols cols} rows)))
@@ -121,7 +154,8 @@
 
 (mu/defn- process-internal-query
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
-   rff                                           :- ::qp.schema/rff]
+   rff :- ::qp.schema/rff]
+  (validate-internal-query query)
   ;; Make sure current user is a superuser or has monitoring permissions
   (perms/check-has-application-permission :monitoring)
   ;; Make sure audit app is enabled (currently the only use case for internal queries). We can figure out a way to

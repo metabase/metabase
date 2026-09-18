@@ -120,6 +120,26 @@
                :error-message "Not found."}
               (ex-data exception))))))
 
+(deftest select-tables-excludes-destination-database-tables-test
+  (testing "select-tables excludes tables backed by a destination (routed) database, even for a superuser"
+    (mt/with-temp [:model/Database {router-id :id}      {}
+                   :model/Database {destination-id :id} {:router_database_id router-id}
+                   :model/Table    {open-table-id :id}   {:db_id (mt/id)}]
+      ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
+      ;; `with-temp :model/Table` trips a different guard. Insert it directly, like the analogous
+      ;; metabot resource-guard tests do (metabase.metabot.agent.user-context-test,
+      ;; metabase.metabot.tools.metadata-test).
+      (let [destination-table-id (t2/insert-returning-pk!
+                                  (t2/table-name :model/Table)
+                                  {:db_id      destination-id
+                                   :name       "destination-table"
+                                   :active     true
+                                   :created_at :%now
+                                   :updated_at :%now})]
+        (mt/with-test-user :crowberto
+          (let [tables (schema.table/select-tables nil [open-table-id destination-table-id])]
+            (is (= [open-table-id] (map :id tables)))))))))
+
 ;; Batch measure definitions to avoid N+1 queries.
 (deftest table-schema-bulk-loads-measure-definitions-test
   (let [measure-select-count     (atom 0)
@@ -138,3 +158,20 @@
       (schema.table/table-schema (assoc orders-table :measures measures))
       (is (= 1 @measure-select-count))
       (is (= 1 @metadata-provider-count)))))
+
+(deftest table-schemas-with-stored-fingerprint-statistics-test
+  (mt/with-temp [:model/Table table {:db_id (mt/id) :name "customers"}
+                 :model/Field _ {:table_id (:id table)
+                                 :name "customer_id"
+                                 :base_type :type/Text
+                                 :fingerprint {:type {:type/Text {:min-length 8.0 :max-length 9.0}}}}
+                 :model/Field _ {:table_id (:id table)
+                                 :name "last_ordered_at"
+                                 :base_type :type/DateTime
+                                 :fingerprint {:type {:type/DateTime
+                                                      {:skewness -1.2937
+                                                       :weekday-distribution [0.1 0.1 0.1 0.1 0.2 0.2 0.2]
+                                                       :hour-distribution (vec (repeat 24 (/ 1.0 24)))}}}}]
+    (mt/with-test-user :crowberto
+      (let [schema (first (schema.table/table-schemas [table]))]
+        (is (= #{"customerId" "lastOrderedAt"} (set (keys (:fields schema)))))))))

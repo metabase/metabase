@@ -5,26 +5,6 @@ export function snapshot(name) {
 }
 
 /**
- * Take a snapshot during cross-version test development.
- *
- * This is a no-op in CI / production runs. It only takes effect when
- * the `CROSS_VERSION_DEV_MODE` env var is exposed through Cypress,
- * allowing developers to incrementally snapshot state while iterating
- * on cross-version test scenarios locally.
- *
- * @param {string} name - snapshot identifier
- */
-export function snapshotCrossVersionDev(name) {
-  if (!Cypress.expose?.("CROSS_VERSION_DEV_MODE")) {
-    cy.log(
-      `skipping cross-version snapshot "${name}" — not running in dev mode (production runs against Postgres)`,
-    );
-    return;
-  }
-  cy.request("POST", `/api/testing/snapshot/${name}`);
-}
-
-/**
  *
  * @param { |
  * "blank" |
@@ -53,27 +33,6 @@ export function restore(name = "default") {
     url: "/api/testing/reset-throttlers",
     failOnStatusCode: false,
   });
-
-  return cy.request("POST", `/api/testing/restore/${name}`);
-}
-
-/**
- * Restore a snapshot during cross-version test development.
- *
- * This is a no-op in CI / production runs. It only takes effect when
- * the `CROSS_VERSION_DEV_MODE` env var is exposed through Cypress,
- * allowing developers to restore a previously-saved snapshot while
- * iterating on cross-version test scenarios locally.
- *
- * @param {string} [name="blank"] - snapshot identifier to restore
- */
-export function restoreCrossVersionDev(name = "blank") {
-  if (!Cypress.expose?.("CROSS_VERSION_DEV_MODE")) {
-    cy.log(
-      `skipping cross-version restore "${name}" — not running in dev mode (production runs against Postgres)`,
-    );
-    return;
-  }
 
   return cy.request("POST", `/api/testing/restore/${name}`);
 }

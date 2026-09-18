@@ -23,6 +23,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; qp.test-util wraps the store's helpers for the many tests still on the legacy pipeline
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
@@ -31,6 +32,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; test helpers build expected metadata from real app-db Field rows
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -89,6 +91,7 @@
         (if (qp.store/initialized?)
           (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
               (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
+              ;; QP results :cols are legacy-shaped; convert Lib metadata to legacy for comparison
               #_{:clj-kondo/ignore [:deprecated-var]}
               qp.store/->legacy-metadata
               (dissoc :lib/type))
@@ -415,6 +418,7 @@
                    (assoc outer-query :query {:source-query (:query outer-query)}))]
       (recur nested (dec n-levels)))))
 
+;; tests the deprecated nest-query helper itself
 #_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel nest-query-test
   (testing "MBQL"
@@ -500,13 +504,13 @@
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an Lib metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
-  ([queries]
+  ([queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (metadata-provider-with-cards-for-queries
     (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries                  :- [:sequential {:min 1} :map]]
+    queries                  :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
 (mu/defn metadata-provider-with-cards-with-transformed-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
@@ -515,16 +519,16 @@
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
   subsequent Cards.
    `transforms` can be a map of `card-id` to a function that accepts `metadata-provider` and `result-metadata`"
-  ([queries :- [:sequential {:min 1} :map]
-    transforms]
+  ([queries    :- [:sequential {:min 1} ::lib.schema.metadata/card.query]
+    transforms :- [:maybe [:map-of pos-int? fn?]]]
    (metadata-provider-with-cards-with-transformed-metadata-for-queries
     (lib-be/application-database-metadata-provider (data/id))
     queries
     transforms))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries :- [:sequential {:min 1} :map]
-    transforms :- [:maybe :map]]
+    queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]
+    transforms :- [:maybe [:map-of pos-int? fn?]]]
    (transduce
     (map-indexed (fn [i {database-id :database, :as query}]
                    {:id            (inc i)
@@ -552,13 +556,13 @@
   of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
   provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
   subsequent Cards."
-  ([queries]
+  ([queries :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (metadata-provider-with-cards-with-metadata-for-queries
     (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
-    queries                  :- [:sequential {:min 1} :map]]
+    queries                  :- [:sequential {:min 1} ::lib.schema.metadata/card.query]]
    (metadata-provider-with-cards-with-transformed-metadata-for-queries parent-metadata-provider queries nil)))
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test

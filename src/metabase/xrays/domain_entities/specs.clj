@@ -6,12 +6,14 @@
    [medley.core :as m]
    ;; legacy usages, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; domain-entity specs are written against legacy MBQL clauses; no MBQL 5 port yet
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]))
 
 (mr/def ::xrays-dimension
   "X-rays has its own special `:dimension` psuedo-MBQL clause in templates; it's different from the `:dimension` clause
@@ -73,17 +75,17 @@
    :keyword
    [:fn
     {:error/message "Valid DomainEntity"}
-    #(isa? % :DomainEntity/*)]])
+    #(domain-entities.hierarchy/isa? % :DomainEntity/*)]])
 
 (def ^:private Identifier :string)
 
 (def ^:private Description :string)
 
 (mr/def ::attribute
-  [:map
+  [:map {:closed true}
    [:field         {:optional true} BrokenFieldNameTypeKeyword]
    [:domain_entity {:optional true} DomainEntityReference]
-   [:has_many      {:optional true} [:map
+   [:has_many      {:optional true} [:map {:closed true}
                                      [:domain_entity DomainEntityReference]]]])
 
 (mr/def ::attributes
@@ -109,7 +111,7 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map
+   [:map {:closed true}
     [:aggregation MBQL]
     [:name        Identifier]
     [:breakout    {:optional true} BreakoutDimensions]
@@ -120,14 +122,14 @@
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
-   [:map
+   [:map {:closed true}
     [:filter MBQL]
     [:name   Identifier]
     [:description {:optional true} Description]]])
 
 (def DomainEntitySpec
   "Domain entity spec"
-  [:map
+  [:map {:closed true}
    [:name                DomainEntityReference]
    [:type                DomainEntityType]
    [:required_attributes ::attributes]
@@ -141,7 +143,7 @@
   [{:keys [name refines] :as spec}]
   (let [spec-type (keyword "DomainEntity" name)
         refines   (some->> refines (keyword "DomainEntity"))]
-    (derive spec-type (or refines :DomainEntity/*))
+    (domain-entities.hierarchy/derive! spec-type (or refines :DomainEntity/*))
     (-> spec
         (dissoc :refines)
         (assoc :type spec-type))))

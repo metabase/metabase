@@ -78,7 +78,7 @@ function SortOptionsPopover({
   };
 
   return (
-    <Stack w="15rem" p="md" gap="lg">
+    <Stack w="15rem" p="lg" gap="xl">
       <Radio.Group
         value={sortOptions.column}
         label={t`Sort by`}

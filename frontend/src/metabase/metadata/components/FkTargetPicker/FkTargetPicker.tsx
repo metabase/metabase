@@ -130,7 +130,7 @@ export const FkTargetPicker = ({
           <SelectItem selected={selected}>
             <Icon name={selected ? "check" : "empty"} />
 
-            <Flex direction="column" flex="1" gap="xs">
+            <Flex direction="column" flex="1" gap="xxs">
               <Text c="inherit" component="span" lh="1rem">
                 {item.option.label}
               </Text>

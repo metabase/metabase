@@ -7,17 +7,12 @@ import CS from "metabase/css/core/index.css";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
-
-export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
-  canRemoveAll?: boolean;
-};
 
 export const ChartSettingSegmentsEditor = ({
   value: segments,
@@ -135,13 +130,12 @@ export const ChartSettingSegmentsEditor = ({
   );
 };
 
-function getColorPalette() {
+export function getColorPalette() {
   return [
     ...getAccentColors(),
     Color(color("feedback-negative")).hex(),
     Color(color("feedback-warning")).hex(),
     Color(color("feedback-positive")).hex(),
-    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

@@ -1,5 +1,9 @@
 (ns metabase-enterprise.remote-sync.schema
-  "Malli schemas for remote sync API request and response bodies.")
+  "Malli schemas for remote sync API request and response bodies."
+  (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ------------------------------------------- Task Schemas -------------------------------------------
 
@@ -164,3 +168,68 @@
   "Schema for POST /test-connection response."
   [:map
    [:status [:= :success]]])
+
+(mr/def ::remote-sync-object
+  "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
+  [:merge
+   ::remote-sync-object.update
+   [:map {:closed true}
+    [:id                  ms/PositiveInt]]])
+
+(mr/def ::remote-sync-object.update
+  "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
+  [:map {:closed true}
+   [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_id            {:optional true} [:maybe :int]]
+   [:status              {:optional true} [:maybe [:or :keyword :string]]]
+   [:status_changed_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:model_name          {:optional true} [:maybe :string]]
+   [:model_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:model_display       {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
+   [:model_table_name    {:optional true} [:maybe :string]]
+   [:file_path           {:optional true} [:maybe :string]]
+   [:content_hash        {:optional true} [:maybe :string]]])
+
+(mr/def ::remote-sync-task.outcome
+  "The `:outcome` column of a RemoteSyncTask, decoded."
+  [:multi {:dispatch :kind}
+   ["pulled"       [:map {:closed true}
+                    [:kind   [:= "pulled"]]
+                    [:count  :int]
+                    [:branch [:maybe :string]]]]
+   ["pull-skipped" [:map {:closed true}
+                    [:kind [:= "pull-skipped"]]]]
+   ["pushed"       [:map {:closed true}
+                    [:kind   [:= "pushed"]]
+                    [:count  :int]
+                    [:branch [:maybe :string]]]]
+   ["push-skipped" [:map {:closed true}
+                    [:kind [:= "push-skipped"]]]]
+   ["merged"       [:map {:closed true}
+                    [:kind   [:= "merged"]]
+                    [:pulled :int]
+                    [:pushed :int]
+                    [:branch [:maybe :string]]]]])
+
+(mr/def ::remote-sync-task
+  "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."
+  [:merge
+   ::remote-sync-task.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]]])
+
+(mr/def ::remote-sync-task.update
+  "What an update (or insert) of a RemoteSyncTask accepts: every column of `:remote_sync_task` except `id`, all optional."
+  [:map {:closed true}
+   [:sync_task_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:progress                {:optional true} [:maybe number?]]
+   [:cancelled               {:optional true} [:maybe :boolean]]
+   [:started_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:ended_at                {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_progress_report_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:initiated_by            {:optional true} [:maybe ::lib.schema.id/user]]
+   [:error_message           {:optional true} [:maybe :string]]
+   [:version                 {:optional true} [:maybe :string]]
+   [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
+   [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])

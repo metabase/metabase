@@ -2,9 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Box,
   Button,
@@ -61,13 +61,13 @@ export function DatabasePage() {
   return (
     <Flex direction="row" h="100%" bg="background_page-secondary">
       <Box h="100%" w="100%" component={ScrollArea}>
-        <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Box w="100%" maw="54rem" mx="auto" p={{ base: "lg", sm: "xxl" }}>
           <Flex
-            mb="lg"
+            mb="xl"
             align="center"
             justify="space-between"
             wrap="wrap"
-            columnGap="lg"
+            columnGap="xl"
           >
             <Title order={1} fz="h2">
               {title}
@@ -83,7 +83,7 @@ export function DatabasePage() {
                   variant="subtle"
                 >
                   {t`Help is here`}
-                  <Icon name="chevronright" size={12} ml="xs" />
+                  <Icon name="chevronright" size={12} ml="xxs" />
                 </Button>
               </Text>
             )}

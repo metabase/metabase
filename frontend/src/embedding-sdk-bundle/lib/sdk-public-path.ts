@@ -6,8 +6,7 @@
  *
  * Without this, an on-demand chunk would be requested relative to the host
  * page's base URL (where the SDK chunks don't exist) and fail with a
- * `ChunkLoadError`. This is why those dependencies used to be force-imported
- * eagerly in `./sdk-specific-imports`.
+ * `ChunkLoadError`.
  *
  * Both the chunked bootstrap and the legacy monolithic bundle are served from
  * `app/embedding-sdk.js`, with their split/on-demand chunks living one level

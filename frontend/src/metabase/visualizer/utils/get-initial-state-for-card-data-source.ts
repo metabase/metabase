@@ -1,13 +1,14 @@
 import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
-import { isCartesianChart } from "metabase/visualizations";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
+  type ComputedVisualizationSettings,
+  getComputedSettingsForSeries,
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
-} from "metabase/visualizations/shared/settings/cartesian-chart";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  getSeriesWithDisplay,
+  isCartesianChart,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
@@ -17,6 +18,7 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { DEFAULT_VISUALIZER_DISPLAY } from "../constants";
 import {
   createDimensionColumn,
   createMetricColumn,
@@ -29,10 +31,7 @@ import {
   extractReferencedColumns,
   rewriteRemappedReferences,
 } from "./column";
-import {
-  DEFAULT_VISUALIZER_DISPLAY,
-  isVisualizerSupportedVisualization,
-} from "./dashboard-card-supports-visualizer";
+import { isVisualizerSupportedVisualization } from "./dashboard-card-supports-visualizer";
 import { createDataSource, createDataSourceNameRef } from "./data-source";
 import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
 import { getColumnVizSettings } from "./viz-settings";
@@ -158,15 +157,15 @@ export function getInitialStateForCardDataSource(
   }
 
   const computedSettings: ComputedVisualizationSettings =
-    getComputedSettingsForSeries([
-      {
-        ...dataset,
-        // Using state.display to get viz settings
-        // relevant to a new visualization vs. original card
-        // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display ?? card.display },
-      },
-    ]);
+    getComputedSettingsForSeries(
+      // Using state.display to get viz settings
+      // relevant to a new visualization vs. original card
+      // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
+      getSeriesWithDisplay(
+        [{ ...dataset, card }],
+        state.display ?? card.display,
+      ),
+    );
 
   const columnsToRefs: Record<string, string> = {};
   const columns = pickColumns(card.display, originalColumns, computedSettings);

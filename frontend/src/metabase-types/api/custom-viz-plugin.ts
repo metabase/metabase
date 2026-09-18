@@ -51,7 +51,30 @@ export type CustomVizPluginWarning =
       type: "metabase-version-mismatch";
       metabase_version: string;
       current_version: string;
+    }
+  | {
+      type: "invalid-identifier";
+      identifier: string;
     };
+
+/**
+ * Handle returned by a custom widget's mount call.
+ * Mirrors `WidgetMountHandle` in the custom-viz plugin sdk, and the two copies must stay structurally identical.
+ */
+export type WidgetMountHandle<TProps> = {
+  update(props: TProps): void;
+  unmount(): void;
+};
+
+/**
+ * Mount adapter for a custom-component setting widget: the host gives the plugin a container element,
+ * and the plugin renders into it with its own React instance.
+ * Mirrors `WidgetMount` in the custom-viz plugin sdk, and the two copies must stay structurally identical.
+ */
+export type WidgetMount<TProps = Record<string, unknown>> = (
+  container: Element,
+  initialProps: TProps,
+) => WidgetMountHandle<TProps>;
 
 export interface CreateCustomVizPluginRequest {
   file: File;

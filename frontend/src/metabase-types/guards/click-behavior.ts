@@ -1,5 +1,6 @@
 import type {
   BaseActionClickBehavior,
+  ClickBehavior,
   DeleteActionClickBehavior,
   ImplicitActionClickBehavior,
   InsertActionClickBehavior,
@@ -67,3 +68,37 @@ export const isImplicitActionClickBehavior = (
     isDeleteActionClickBehavior(value)
   );
 };
+
+// Whether a click behavior is fully configured (a null behavior opens the
+// default drill-through menu, so it counts as valid).
+export function clickBehaviorIsValid(
+  clickBehavior: ClickBehavior | undefined | null,
+): boolean {
+  // opens drill-through menu
+  if (clickBehavior == null) {
+    return true;
+  }
+
+  if (clickBehavior.type === "crossfilter") {
+    return Object.keys(clickBehavior.parameterMapping || {}).length > 0;
+  }
+
+  if (clickBehavior.type === "action") {
+    return isImplicitActionClickBehavior(clickBehavior);
+  }
+
+  if (clickBehavior.type === "link") {
+    const { linkType } = clickBehavior;
+
+    if (linkType === "url") {
+      return (clickBehavior.linkTemplate || "").length > 0;
+    }
+
+    if (linkType === "dashboard" || linkType === "question") {
+      return clickBehavior.targetId != null;
+    }
+  }
+
+  // we've picked "link" without picking a link type
+  return false;
+}

@@ -9,7 +9,6 @@ import {
   cardApi,
   dashboardApi,
   embedApi,
-  makePivotAwareQueryRunner,
   publicApi,
 } from "metabase/api";
 import { isAbortError } from "metabase/api/client";
@@ -23,6 +22,7 @@ import {
   getDashCardById,
   getDashboardById,
   getDashboardComplete,
+  getLinkTargetEntities,
   getLoadingDashCards,
   getParameterValues,
   getSelectedTabId,
@@ -33,21 +33,27 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import {
+  paramFieldsFetched,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
-import { updateMetadata } from "metabase/redux/metadata";
-import type { Dispatch, GetState } from "metabase/redux/store";
+import type {
+  DashboardLinkTargets,
+  Dispatch,
+  GetState,
+} from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
-import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   getDashboardType,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
+import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import { uuid } from "metabase/utils/uuid";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -56,8 +62,10 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardId,
+  DashboardQueryMetadata,
   Dataset,
   JsonQuery,
+  ParameterId,
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
@@ -146,6 +154,8 @@ export const setShowLoadingCompleteFavicon = createAction<boolean>(
 const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
+    // Every card has its data, so the dashboard is as rendered as it gets.
+    markOnce(PERFORMANCE_MARKS.pageReady);
     dispatch(setShowLoadingCompleteFavicon(true));
 
     if (!document.hidden) {
@@ -329,13 +339,14 @@ export const fetchCardDataAction = createAsyncThunk<
       getDatasetQueryParams(datasetQuery),
     );
 
-    const metadata = getMetadata(getState());
+    const buildQuestion = selectQuestionFromCardBuilder(getState());
+    const question = buildQuestion(card);
     const runQuery = makePivotAwareQueryRunner(dispatch, controller.signal);
 
     if (dashboardType === "public") {
       // Unjustified type cast. FIXME
       result = (await fetchDataOrError(
-        runQuery(publicApi.endpoints.getPublicDashcardQuery, card, metadata, {
+        runQuery(publicApi.endpoints.getPublicDashcardQuery, question, {
           // In public dashboards `dashboard_id` holds the public UUID string.
           uuid: dashcard.dashboard_id as string,
           dashcardId: dashcard.id,
@@ -349,7 +360,7 @@ export const fetchCardDataAction = createAsyncThunk<
     } else if (dashboardType === "embed") {
       // Unjustified type cast. FIXME
       result = (await fetchDataOrError(
-        runQuery(embedApi.endpoints.getEmbedDashcardQuery, card, metadata, {
+        runQuery(embedApi.endpoints.getEmbedDashcardQuery, question, {
           // In embedded dashboards `dashboard_id` holds the embed token string.
           token: dashcard.dashboard_id as string,
           dashcardId: dashcard.id,
@@ -365,8 +376,7 @@ export const fetchCardDataAction = createAsyncThunk<
       result = (await fetchDataOrError(
         runAdhocDatasetQuery(
           dispatch,
-          card,
-          metadata,
+          question,
           { ...datasetQuery, ignore_cache: ignoreCache },
           controller.signal,
         ),
@@ -391,7 +401,7 @@ export const fetchCardDataAction = createAsyncThunk<
       if (shouldUseCardQueryEndpoint) {
         // Unjustified type cast. FIXME
         result = (await fetchDataOrError(
-          runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
+          runQuery(cardApi.endpoints.getCardQuery, question, {
             cardId: card.id,
             dashboardId: dashcard.dashboard_id,
             ignore_cache: ignoreCache,
@@ -400,20 +410,15 @@ export const fetchCardDataAction = createAsyncThunk<
       } else {
         // Unjustified type cast. FIXME
         result = (await fetchDataOrError(
-          runQuery(
-            dashboardApi.endpoints.getDashboardCardQuery,
-            card,
-            metadata,
-            {
-              dashboardId: dashcard.dashboard_id,
-              dashcardId: dashcard.id,
-              cardId: card.id,
-              parameters: datasetQuery.parameters,
-              ignore_cache: ignoreCache,
-              dashboard_id: dashcard.dashboard_id,
-              dashboard_load_id: dashboardLoadId,
-            },
-          ),
+          runQuery(dashboardApi.endpoints.getDashboardCardQuery, question, {
+            dashboardId: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            parameters: datasetQuery.parameters,
+            ignore_cache: ignoreCache,
+            dashboard_id: dashcard.dashboard_id,
+            dashboard_load_id: dashboardLoadId,
+          }),
         )) as Dataset | { error: unknown };
       }
     }
@@ -663,7 +668,7 @@ function getDatasetQueryParams(datasetQuery?: JsonQuery) {
     .sort(sortById);
 }
 
-function sortById(a: UiParameter, b: UiParameter) {
+function sortById(a: { id: ParameterId }, b: { id: ParameterId }) {
   return a.id.localeCompare(b.id);
 }
 
@@ -674,6 +679,39 @@ const dashboardSchema = new schema.Entity("dashboard", {
 });
 
 let fetchDashboardCancellation: AbortController | null;
+
+const EMPTY_LINK_TARGETS: DashboardLinkTargets = {
+  questions: {},
+  dashboards: {},
+};
+
+/**
+ * `cards` and `dashboards` on a query-metadata response are not the dashboard's
+ * own cards. They are the questions and dashboards its dashcards' click
+ * behaviors link to, which the backend collects by walking every dashcard's
+ * `click_behavior` (`batch-fetch-dashboard-links` in queries/metadata.clj).
+ *
+ * Rendering such a link needs its target: a dashboard's `parameters` to build
+ * the URL, a question's `Card` to build the query.
+ */
+function toLinkTargets(
+  queryMetadata: DashboardQueryMetadata | undefined,
+): DashboardLinkTargets {
+  if (queryMetadata == null) {
+    return EMPTY_LINK_TARGETS;
+  }
+  return {
+    questions: Object.fromEntries(
+      (queryMetadata.cards ?? []).map((card) => [card.id, card]),
+    ),
+    dashboards: Object.fromEntries(
+      (queryMetadata.dashboards ?? []).map((dashboard) => [
+        dashboard.id,
+        dashboard,
+      ]),
+    ),
+  };
+}
 
 export const fetchDashboard = createAsyncThunk(
   "metabase/dashboard/FETCH_DASHBOARD",
@@ -707,6 +745,7 @@ export const fetchDashboard = createAsyncThunk(
 
     try {
       let entities;
+      let linkTargets: DashboardLinkTargets = EMPTY_LINK_TARGETS;
       let result;
       const dashboardLoadId = uuid();
 
@@ -724,6 +763,9 @@ export const fetchDashboard = createAsyncThunk(
           ),
         };
         result = denormalize(dashId, dashboardSchema, entities);
+        // Reusing the loaded dashboard skips the metadata fetch, and its link
+        // targets have not changed, so carry them rather than clearing them.
+        linkTargets = getLinkTargetEntities(getState());
       } else if (dashboardType === "public") {
         result = await runRtkEndpoint(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
@@ -757,7 +799,7 @@ export const fetchDashboard = createAsyncThunk(
       } else if (dashboardType === "transient") {
         const subPath = String(dashId).split("/").slice(3).join("/");
         const [entity, entityId] = subPath.split(/[/?]/);
-        const [response] = await Promise.all([
+        const [response, queryMetadata] = await Promise.all([
           runRtkEndpoint(
             { subPath, dashboard_load_id: dashboardLoadId },
             dispatch,
@@ -775,6 +817,7 @@ export const fetchDashboard = createAsyncThunk(
             { signal: fetchDashboardCancellation.signal },
           ),
         ]);
+        linkTargets = toLinkTargets(queryMetadata);
         result = {
           ...response,
           id: dashId,
@@ -796,15 +839,17 @@ export const fetchDashboard = createAsyncThunk(
         // The dashboard was just handed to us (e.g. a save response), so skip
         // the GET. We still warm the query metadata cache exactly as the normal
         // path does (served from cache via forceRefetch: false).
-        await runRtkEndpoint(
-          { id: dashId, dashboard_load_id: dashboardLoadId },
-          dispatch,
-          dashboardApi.endpoints.getDashboardQueryMetadata,
-          { forceRefetch: false },
+        linkTargets = toLinkTargets(
+          await runRtkEndpoint(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
+          ),
         );
         result = prefetchedDashboard;
       } else {
-        const [response] = await Promise.all([
+        const [response, queryMetadata] = await Promise.all([
           runRtkEndpoint(
             { id: dashId, dashboard_load_id: dashboardLoadId },
             dispatch,
@@ -818,6 +863,7 @@ export const fetchDashboard = createAsyncThunk(
             { forceRefetch: false },
           ),
         ]);
+        linkTargets = toLinkTargets(queryMetadata);
         result = response;
       }
 
@@ -846,21 +892,15 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(
-          updateMetadata(Object.values(result.param_fields).flat(), [
-            FieldSchema,
-          ]),
-        );
+        await dispatch(paramFieldsFetched(result.param_fields));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
-      const metadata = getMetadata(getState());
       const parameters = getSavedDashboardUiParameters(
         result.dashcards,
         result.parameters,
         result.param_fields,
-        metadata,
       );
 
       const parameterValuesById = preserveParameters
@@ -875,6 +915,7 @@ export const fetchDashboard = createAsyncThunk(
 
       return {
         entities,
+        linkTargets,
         dashboard: result,
         dashboardId: result.id,
         parameterValues: parameterValuesById,

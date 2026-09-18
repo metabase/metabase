@@ -54,7 +54,7 @@
   (testing "non-admins have no access"
     (mt/user-http-request :lucky :post 403 "logger/adjustment" {:duration 1, :duration_unit :days, :log_levels {"l" "debug"}})))
 
-(deftest ^:sequential adjust-test
+(deftest ^:synchronized adjust-test
   (let [trace-ns (str (random-uuid))
         fatal-ns (str (random-uuid))
         other-ns (str (random-uuid))
@@ -107,7 +107,7 @@
         (logger/remove-ns-logger! fatal-ns)
         (logger/remove-ns-logger! other-ns)))))
 
-(deftest ^:sequential delete-test
+(deftest ^:synchronized delete-test
   (let [trace-ns (str (random-uuid))
         fatal-ns (str (random-uuid))
         log-levels {trace-ns :trace, fatal-ns :fatal}
@@ -135,7 +135,7 @@
         (logger/remove-ns-logger! trace-ns)
         (logger/remove-ns-logger! fatal-ns)))))
 
-(deftest ^:sequential invalid-adjustment-test
+(deftest ^:synchronized invalid-adjustment-test
   (testing "invalid level"
     (is (= {:specific-errors
             {:log_levels
@@ -153,15 +153,14 @@
                                  {:duration 1, :duration_unit :hours, :log_levels {"my.namespace" :ok
                                                                                    "my.other.namespace" :catastophic}}))))
   (testing "invalid log_levels type"
-    (are [value json-type] (= {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
-                               :errors {:_error (format "Log levels should be an object, %s received" json-type)}}
-                              (mt/user-http-request :crowberto :post 400 "logger/adjustment"
-                                                    {:duration 1, :duration_unit :hours, :log_levels value}))
-      []    "array"
-      4.2   "number"
-      false "boolean"
-      "ll"  "string"
-      nil   "null")))
+    (are [value] (= "Value must be a map."
+                    (:log_levels (:errors (mt/user-http-request :crowberto :post 400 "logger/adjustment"
+                                                                {:duration 1, :duration_unit :hours, :log_levels value}))))
+      []
+      4.2
+      false
+      "ll"
+      nil)))
 
 (deftest ^:synchronized analytic-events-test
   (snowplow-test/with-fake-snowplow-collector

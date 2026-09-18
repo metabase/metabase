@@ -3,8 +3,19 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
-import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import type { MetabotConversationDetail } from "metabase/metabot/api";
 import type {
+  MetabotAgentChainOfThoughtMessage,
+  MetabotAgentDataPartMessage,
+  MetabotAgentTextChatMessage,
+  MetabotDebugToolCallMessage,
+  MetabotMessage,
+} from "metabase/metabot/state/types";
+import type { ParentedMessage } from "metabase/metabot/utils/message-tree";
+import type {
+  LlmConnectionModels,
+  LlmProviderConnection,
+  LlmProviderType,
   MetabotConversation,
   MetabotConversationTitleResponse,
   MetabotGroupLimit,
@@ -12,15 +23,15 @@ import type {
   MetabotId,
   MetabotInfo,
   MetabotInstanceLimit,
-  MetabotSettingsResponse,
   MetabotTenantLimit,
   PurchaseCloudAddOnRequest,
   RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
-  UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import { createMockLlmProviderConnection } from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
@@ -70,6 +81,114 @@ export function setupGetMetabotConversationTitleEndpoint(
     response,
     { name: "metabot-conversation-title" },
   );
+}
+
+let messageCount = 0;
+
+export function createMockMetabotMessage(
+  opts?: Partial<MetabotMessage>,
+): MetabotMessage {
+  return {
+    id: `message-${++messageCount}`,
+    role: "agent",
+    parts: [],
+    status: { type: "done" },
+    ...opts,
+  };
+}
+
+export function createMockMetabotTextMessage(
+  role: "user" | "agent",
+  text: string,
+  opts?: Partial<MetabotMessage>,
+): MetabotMessage {
+  const message = createMockMetabotMessage({ role, ...opts });
+  return {
+    ...message,
+    parts: [{ id: `${message.id}-text`, role, type: "text", message: text }],
+  };
+}
+
+let partCount = 0;
+
+export function createMockParentedMessage(
+  id: string,
+  parentMessageId: string | null,
+  opts?: Partial<Omit<MetabotMessage, "id">>,
+): ParentedMessage {
+  return {
+    ...createMockMetabotMessage({ ...opts, id }),
+    parent_message_id: parentMessageId,
+  };
+}
+
+export function createMockMetabotTextPart(
+  opts?: Partial<MetabotAgentTextChatMessage>,
+): MetabotAgentTextChatMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "text",
+    message: "answer",
+    ...opts,
+  };
+}
+
+export function createMockMetabotToolCallPart(
+  opts?: Partial<MetabotDebugToolCallMessage>,
+): MetabotDebugToolCallMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "tool_call",
+    name: "search",
+    status: "ended",
+    ...opts,
+  };
+}
+
+export function createMockMetabotChainOfThoughtPart(
+  opts?: Partial<MetabotAgentChainOfThoughtMessage>,
+): MetabotAgentChainOfThoughtMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "chain_of_thought",
+    steps: [],
+    finished: true,
+    ...opts,
+  };
+}
+
+export function createMockMetabotGeneratedCardPart({
+  databaseId = 1,
+  tableId = 2,
+  ...opts
+}: Partial<MetabotAgentDataPartMessage> & {
+  databaseId?: number;
+  tableId?: number;
+} = {}): MetabotAgentDataPartMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "data_part",
+    part: {
+      type: "data-generated_entity",
+      data: {
+        type: "card",
+        id: "card-1",
+        title: "Orders",
+        query: {
+          id: "query-1",
+          query: createMockStructuredDatasetQuery({
+            database: databaseId,
+            query: { "source-table": tableId },
+          }),
+        },
+      },
+    },
+    ...opts,
+  };
 }
 
 export function createMockMetabotConversationDetail(
@@ -217,27 +336,82 @@ export function setupMetabotSlackSettingsEndpointWithError(
   );
 }
 
-export function setupMetabotSettingsEndpoint({
-  provider,
-  response,
-}: {
-  provider: UpdateMetabotSettingsRequest["provider"];
-  response: MetabotSettingsResponse;
-}) {
-  fetchMock.get(`path:/api/metabot/settings?provider=${provider}`, response);
-}
+const LLM_PROVIDER_TYPES_ROUTE_NAME = "llm-provider-types";
 
-export function setupUpdateMetabotSettingsEndpoint(
-  response: MetabotSettingsResponse,
+export function setupLlmProviderTypesEndpoint(
+  providerTypes: LlmProviderType[] = [],
 ) {
-  fetchMock.put("path:/api/metabot/settings", response);
+  fetchMock.removeRoute(LLM_PROVIDER_TYPES_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/provider-types", providerTypes, {
+    name: LLM_PROVIDER_TYPES_ROUTE_NAME,
+  });
 }
 
-export function setupUpdateMetabotSettingsEndpointWithError(
+const LLM_PROVIDERS_ROUTE_NAME = "llm-providers";
+
+export function setupLlmProvidersEndpoint(
+  connections: LlmProviderConnection[] = [],
+) {
+  fetchMock.removeRoute(LLM_PROVIDERS_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/providers", connections, {
+    name: LLM_PROVIDERS_ROUTE_NAME,
+  });
+}
+
+const LLM_MODELS_ROUTE_NAME = "llm-models";
+
+export function setupLlmModelsEndpoint(
+  connections: LlmConnectionModels[] = [],
+) {
+  fetchMock.removeRoute(LLM_MODELS_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/models", connections, {
+    name: LLM_MODELS_ROUTE_NAME,
+  });
+}
+
+const CREATE_LLM_PROVIDER_ROUTE_NAME = "create-llm-provider";
+
+export function setupCreateLlmProviderEndpoint(
+  connection: LlmProviderConnection = createMockLlmProviderConnection(),
+) {
+  fetchMock.removeRoute(CREATE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.post("path:/api/llm/providers", connection, {
+    name: CREATE_LLM_PROVIDER_ROUTE_NAME,
+  });
+}
+
+export function setupCreateLlmProviderEndpointWithError(
   status: number,
   body: string,
 ) {
-  fetchMock.put("path:/api/metabot/settings", { status, body });
+  fetchMock.removeRoute(CREATE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.post(
+    "path:/api/llm/providers",
+    { status, body },
+    { name: CREATE_LLM_PROVIDER_ROUTE_NAME },
+  );
+}
+
+const UPDATE_LLM_PROVIDER_ROUTE_NAME = "update-llm-provider";
+
+export function setupUpdateLlmProviderEndpoint(
+  connection: LlmProviderConnection = createMockLlmProviderConnection(),
+) {
+  fetchMock.removeRoute(UPDATE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.put("express:/api/llm/providers/:key", connection, {
+    name: UPDATE_LLM_PROVIDER_ROUTE_NAME,
+  });
+}
+
+const DELETE_LLM_PROVIDER_ROUTE_NAME = "delete-llm-provider";
+
+export function setupDeleteLlmProviderEndpoint() {
+  fetchMock.removeRoute(DELETE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.delete(
+    "express:/api/llm/providers/:key",
+    { status: 204 },
+    { name: DELETE_LLM_PROVIDER_ROUTE_NAME },
+  );
 }
 
 type SetupMetabaseManagedAiEndpointsOptions = {

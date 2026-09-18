@@ -10,9 +10,9 @@ import {
 } from "__support__/server-mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   createMockCard,
@@ -21,6 +21,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks/search";
+
+import { input } from "../../../tests/utils";
 
 import { MetabotChatEditor } from "./MetabotChatEditor";
 
@@ -78,9 +80,6 @@ const setup = (
   );
 };
 
-const getEditor = () =>
-  // eslint-disable-next-line testing-library/no-node-access
-  document.querySelector('[contenteditable="true"]') as HTMLElement;
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {
@@ -95,7 +94,7 @@ describe("MetabotChatEditor", () => {
     const onChange = jest.fn();
     setup({ onChange });
 
-    await userEvent.type(getEditor(), "Hello world");
+    await userEvent.type(await input(), "Hello world");
 
     expect(onChange).toHaveBeenCalledWith("Hello world");
   });
@@ -104,7 +103,7 @@ describe("MetabotChatEditor", () => {
     const onSubmit = jest.fn();
     setup({ onSubmit });
 
-    await userEvent.type(getEditor(), "Hello world{Enter}");
+    await userEvent.type(await input(), "Hello world{Enter}");
 
     expect(onSubmit).toHaveBeenCalled();
   });
@@ -112,7 +111,7 @@ describe("MetabotChatEditor", () => {
   it("should support @mentions", async () => {
     setup();
 
-    await userEvent.type(getEditor(), "@");
+    await userEvent.type(await input(), "@");
 
     expect(await getPopup()).toBeInTheDocument();
   });
@@ -120,7 +119,7 @@ describe("MetabotChatEditor", () => {
   it("should show browse all when @ is typed", async () => {
     setup();
 
-    await userEvent.type(getEditor(), "@");
+    await userEvent.type(await input(), "@");
 
     const popup = await getPopup();
     expect(popup).toBeInTheDocument();
@@ -141,7 +140,7 @@ describe("MetabotChatEditor", () => {
       },
     );
 
-    await userEvent.type(getEditor(), "@sample");
+    await userEvent.type(await input(), "@sample");
 
     await waitFor(() => {
       expect(
@@ -172,7 +171,7 @@ describe("MetabotChatEditor", () => {
       },
     );
 
-    await userEvent.type(getEditor(), "@test");
+    await userEvent.type(await input(), "@test");
 
     await waitFor(() =>
       expect(
@@ -207,7 +206,7 @@ describe("MetabotChatEditor", () => {
       },
     );
 
-    await userEvent.type(getEditor(), "@test");
+    await userEvent.type(await input(), "@test");
 
     await waitFor(() => {
       expect(
@@ -229,7 +228,7 @@ describe("MetabotChatEditor", () => {
   it("should handle paste events with metabase protocol links", async () => {
     const onChange = jest.fn();
     setup({ onChange });
-    getEditor().focus();
+    (await input()).focus();
 
     await userEvent.paste("[Test Model](metabase://model/123)");
 
@@ -244,7 +243,7 @@ describe("MetabotChatEditor", () => {
     const onSubmit = jest.fn();
     setup({ value: "", onChange, onSubmit });
 
-    await userEvent.type(getEditor(), "Hello world{Enter}");
+    await userEvent.type(await input(), "Hello world{Enter}");
 
     expect(onSubmit).toHaveBeenCalled();
     expect(onChange).toHaveBeenCalledWith("Hello world");

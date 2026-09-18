@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref every? some select-keys empty? get-in])
   (:require
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.actions :as actions]
@@ -61,11 +60,48 @@
      [:parameters
       :lib/stage-metadata])))
 
+(mr/def ::external-remapping
+  "One external (Dimension) column remapping, as recorded on a query or stage
+  by [[metabase.query-processor.middleware.add-remaps]]. Mirrors `:metabase.query-processor.middleware.add-remaps/external-remapping`;
+  it is duplicated here because Lib may not depend on the query processor."
+  [:map
+   {:closed true}
+   [:id                        [:ref ::id/dimension]]
+   [:name                      ::common/non-blank-string]
+   [:field-id                  [:ref ::id/field]]
+   [:field-name                ::common/non-blank-string]
+   [:human-readable-field-id   [:ref ::id/field]]
+   [:human-readable-field-name ::common/non-blank-string]])
+
+(mr/def ::external-remappings
+  [:sequential [:ref ::external-remapping]])
+
 (mr/def ::stage.common
   [:map
-   {:decode/normalize normalize-stage-common}
+   {:closed           true
+    :decode/normalize normalize-stage-common
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
-   [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
+   [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]
+   [:qp/stage-is-from-source-card {:optional true} [:ref ::id/card]]
+   [:qp/stage-had-source-card     {:optional true} [:ref ::id/card]]
+   [:qp/added-implicit-fields? {:optional true} :boolean]
+   [:qp/skip-persisted-cache {:optional true} :boolean]
+   [:persisted-info/native {:optional true} ::common/non-blank-string]
+   [:source-query/model?        {:optional true} :boolean]
+   [:source-query/native-model? {:optional true} [:maybe :boolean]]
+   [:query-permissions/sandboxed-table {:optional true} [:ref ::id/table]]
+   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox? {:optional true} :boolean]
+   [:metabase.query-processor.middleware.add-remaps/remaps {:optional true} [:ref ::external-remappings]]
+   [:metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes {:optional true} [:set [:int {:min 0}]]]
+   [:metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases {:optional true} [:set [:ref ::join/alias]]]
+   [:metabase.query-processor.util.add-alias-info/desired-alias->escaped
+    {:optional true}
+    [:map-of [:ref ::lib.schema.metadata/desired-column-alias] [:ref ::lib.schema.metadata/desired-column-alias]]]
+   [:metabase.query-processor.util.add-alias-info/join-alias->escaped
+    {:optional true}
+    [:map-of [:ref ::join/alias] :string]]])
 
 (mr/def ::stage.native
   [:and
@@ -87,7 +123,11 @@
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
-     [:native {:optional true} some?]
+     [:native {:optional true} [:or
+                                :string
+                                [:schema {::mr/deliberately-open true
+                                          :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline or a query with its parameters; its shape is the driver's"}
+                                 :some]]]
      ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
      ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
      ;; nil.
@@ -95,10 +135,14 @@
      ;; This schema is `[:or ::literal/literal :any]` so Malli encoding [[metabase.lib.serialize]] will use it if
      ;; applicable... e.g. a Java time type will get serialized to a
      ;; string (see [[metabase.lib.serialize-test/encode-java-time-types-in-native-query-args-test]])
-     [:params {:optional true} [:maybe [:sequential [:or [:ref ::literal/literal] :any]]]]
+     [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]
      ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
      ;; is required.
      [:collection {:optional true} ::common/non-blank-string]
+     [:projections {:optional true} [:maybe [:sequential :string]]]
+     [:mbql? {:optional true} [:maybe :boolean]]
+     ;; the table the query was compiled from; BigQuery's compiled native form carries it
+     [:qp/table-name {:optional true} [:maybe :string]]
      ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
      ;; `:native` key), but their definition lives under this key.
      ;;
@@ -142,7 +186,7 @@
         source-field->names       (update-vals source-field->refs
                                                (fn [field-refs]
                                                  (into #{}
-                                                       (keep #(:source-field-name (lib.options/options %)))
+                                                       (keep (fn [[_tag opts]] (:source-field-name opts)))
                                                        field-refs)))
         ignore-source-field-name? (fn [[_tag {:keys [source-field source-field-name], :as _opts} _id-or-name :as _ref]]
                                     (when source-field-name
@@ -258,7 +302,9 @@
     {:page 1, :items 10} = items 1-10
     {:page 2, :items 10} = items 11-20"
   [:map
-   {:decode/normalize common/normalize-map}
+   {:decode/normalize common/normalize-map
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys :closed true}
    [:page  pos-int?]
    [:items pos-int?]])
 
@@ -266,7 +312,7 @@
   "Pivot intent. `:rows` and `:columns` are sequences of UUIDs that reference `:lib/uuid` values on breakouts of the
   stage that carries this clause. `:show-row-totals` and `:show-column-totals` default to `true` when absent."
   [:map
-   {:decode/normalize common/normalize-map}
+   {:decode/normalize common/normalize-map :closed true}
    [:rows               [:sequential ::common/uuid]]
    [:columns            [:sequential ::common/uuid]]
    [:show-row-totals    {:optional true} :boolean]
@@ -381,12 +427,13 @@
     {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
      :source-query    ":source-query is not allowed in MBQL 5 queries."
      :type            ":type is not allowed in a query stage in any version of MBQL"
-     :database        ":database is not allowed in a query stage, only at the top level of a query."})])
+     :database        ":database is not allowed in a query stage, only at the top level of a query."
+     :lib/options     "A stage should not have :lib/options"})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
-   [:mbql.stage/native :map]
+   [:mbql.stage/native [:fn {:error/message "Initial native stage"} map?]]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
                         (some-fn :source-table :source-card)]]])
@@ -499,13 +546,13 @@
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
+  ;;
+  ;; [[common/internal-key?]] also drops all internal namespaced keys the query processor adds, keeping `:lib` keys like
+  ;; `:lib/type`.
   (let [keys-to-remove #{:lib/metadata :info :parameters :viz-settings}]
     (m/filter-keys (fn [k]
                      (and (not (contains? keys-to-remove k))
-                          (or (simple-keyword? k)
-                              ;; remove all random namespaced keys like
-                              ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
-                              (= (namespace k) "lib"))))
+                          (not (common/internal-key? k))))
                    query)))
 
 (defn- encode-query-for-hashing [query]
@@ -522,46 +569,187 @@
                (common/unfussy-sorted-map)
                query)))
 
+(mr/def ::sandboxing.original-metadata
+  "The legacy columns a query was expected to return before sandboxes replaced its source tables, stashed on the query by the enterprise sandboxing middleware and merged into the sandboxed results."
+  [:sequential [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]])
+
+(mr/def ::query.snapshot
+  "A whole copy of a query stashed on the query itself under one of the internal keys below: the same shape as
+  [[::query]] minus the `:and`-level constraints, so validating the stashed copy does not re-run uniqueness checks
+  against the query it was copied from."
+  [:ref ::query.map])
+
+(mr/def ::cache-strategy.nocache
+  [:map {:closed true, :decode/normalize common/normalize-map-no-kebab-case}
+   [:type [:= {:decode/normalize common/normalize-keyword} :nocache]]
+   [:name {:optional true} [:maybe :string]]])
+
+(mr/def ::cache-strategy.ttl
+  "Cache for a multiple of the query's average execution time. Typed as plain numbers here: a strategy reaches a query
+  from several places (the Card, a Dashboard, the Database), and `metabase.cache.api` is the one that asks for integers."
+  [:map {:closed true, :decode/normalize common/normalize-map-no-kebab-case}
+   [:type            [:= {:decode/normalize common/normalize-keyword} :ttl]]
+   [:multiplier      number?]
+   [:min_duration_ms number?]])
+
+(mr/def ::cache-strategy.duration
+  "Cache for a fixed duration (EE)."
+  [:map {:closed true, :decode/normalize common/normalize-map-no-kebab-case}
+   [:type                  [:= {:decode/normalize common/normalize-keyword} :duration]]
+   [:duration              number?]
+   [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-strategy.schedule
+  "Cache until the next run of a cron schedule (EE)."
+  [:map {:closed true, :decode/normalize common/normalize-map-no-kebab-case}
+   [:type                  [:= {:decode/normalize common/normalize-keyword} :schedule]]
+   [:schedule              :string]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-strategy.on-query
+  "What is added to a strategy once it is attached to a query."
+  [:map {:closed true}
+   [:invalidated-at   {:optional true} [:maybe [:or :string #?@(:clj [(common/instance-of-class java.time.temporal.Temporal)])]]]
+   [:avg-execution-ms {:optional true} [:int {:min 0}]]])
+
+(mr/def ::cache-strategy
+  "The caching strategy the results-cache middleware should apply to this query, attached
+  by [[metabase.query-processor.card]]. Any of the strategy types: which ones an instance may configure is
+  `metabase.cache.api`'s business, not the query's."
+  [:multi {:dispatch         (fn [strategy] (some-> (:type strategy) keyword))
+           :decode/normalize common/normalize-map-no-kebab-case}
+   [:nocache  [:merge ::cache-strategy.nocache  ::cache-strategy.on-query]]
+   [:ttl      [:merge ::cache-strategy.ttl      ::cache-strategy.on-query]]
+   [:duration [:merge ::cache-strategy.duration ::cache-strategy.on-query]]
+   [:schedule [:merge ::cache-strategy.schedule ::cache-strategy.on-query]]])
+
+(mr/def ::native-query-document-value
+  "A value inside a driver's compiled native query document: a scalar, or a nested document/array of them. Covers
+  every native query shape drivers in this codebase actually produce -- SQL text (a bare `:string`) as well as
+  document-pipeline languages like Mongo's (a `:map-of`/`:sequential` tree)."
+  [:schema
+   {:registry
+    {::value [:or
+              :nil
+              :boolean
+              :string
+              :keyword
+              number?
+              [:sequential [:ref ::value]]
+              [:map-of :string [:ref ::value]]]}}
+   ::value])
+
+(mr/def ::driver-native-query
+  "A driver's native query: a native query document, or a form in the driver's own shape such as a keyword-keyed map decoded from a JSON request."
+  [:or
+   ::native-query-document-value
+   [:schema {::mr/deliberately-open true
+             :description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
+    :some]])
+
+(mr/def ::compiled-native-query
+  "A native query compiled from this query by [[metabase.query-processor.compile]], ready to hand to the driver.
+  `:query` is whatever native form the driver uses -- a string for SQL drivers, a map for Mongo -- so it is only
+  constrained to be non-`nil`.
+
+  Deliberately NOT closed: drivers add their own keys, e.g. Mongo adds `:collection`, `:projections` and `:mbql?`
+  (see `:metabase.driver.mongo.query-processor/compiled-pipeline`), and for a query that was already native the
+  compiled form is the native stage itself, carrying every key a `::stage.native` has."
+  [:map {::mr/deliberately-open true
+         :description "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage"}
+   [:query  ::driver-native-query]
+   [:params {:optional true} [:maybe [:sequential [:ref ::literal/param-value]]]]])
+
+(def ^:private query-map
+  [:map
+   {:description        "Valid MBQL 5 query."
+    :decode/normalize   #'normalize-query
+    :decode/api         #'common/remove-internal-keys
+    :encode/serialize   #'serialize-query
+    :encode/for-hashing #'encode-query-for-hashing
+    :closed             true}
+   [:lib/type [:=
+               {:decode/normalize common/normalize-keyword, :default :mbql/query}
+               :mbql/query]]
+   ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
+   ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
+   ;; whatever breaks.
+   [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
+   [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
+                                [true  ::id/saved-questions-virtual-database]
+                                [false ::id/database]]]
+   [:stages   [:ref ::stages]]
+   [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
+   ;;
+   ;; OPTIONS
+   ;;
+   ;; These keys are used to tweak behavior of the Query Processor.
+   ;;
+   [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
+   [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
+   [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
+   [:async?      {:optional true} :boolean]
+   [:cache-strategy {:optional true} [:maybe [:ref ::cache-strategy]]]
+   [:was-pivot
+    {:optional true
+     :description
+     "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by
+  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query
+  results."}
+    [:maybe :boolean]]
+   [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:show-row-totals    {:optional true} [:maybe :boolean]]
+   [:show-column-totals {:optional true} [:maybe :boolean]]
+   [:pivot_rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:pivot_cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:pivot_measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:show_row_totals    {:optional true} [:maybe :boolean]]
+   [:show_column_totals {:optional true} [:maybe :boolean]]
+   [:viz-settings {:optional true} [:maybe [:ref ::common/visualization-settings]]]
+   [:user-parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
+   [:lib.convert/converted? {:optional true} :boolean]
+   [:qp/compiled        {:optional true} [:ref ::compiled-native-query]]
+   [:qp/compiled-inline {:optional true} [:ref ::compiled-native-query]]
+   [:qp/source-card-id {:optional true} [:ref ::id/card]]
+   [:qp/skip-result-metadata-persistence {:optional true} :boolean]
+   [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
+   [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+   [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]
+   [:qp.pivot/num-unremapped-breakouts        {:optional true} [:int {:min 0}]]
+   [:qp.pivot/num-remapped-breakouts          {:optional true} [:int {:min 0}]]
+   [:qp.pivot/remapped-indexes                {:optional true} [:map-of [:int {:min 0}] [:int {:min 0}]]]
+   [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set [:ref ::id/card]]]]
+   [:destination-database/id {:optional true} [:ref ::id/database]]
+   [:impersonation/role         {:optional true} ::common/non-blank-string]
+   [:impersonation/admin?       {:optional true} :boolean]
+   [:impersonation/allow-write? {:optional true} :boolean]
+   [:metabase.query-processor.util.add-alias-info/original {:optional true} [:ref ::query.snapshot]]
+   [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} [:ref ::external-remappings]]
+   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
+    {:optional true}
+    [:ref ::sandboxing.original-metadata]]
+   ;;
+   ;; INFO
+   ;;
+   ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
+   ;; User who ran it
+   [:info {:optional true} [:ref ::info/info]]
+   ;;
+   ;; ACTIONS
+   ;;
+   ;; This stuff is only used for Actions.
+   [:create-row {:optional true} [:ref ::actions/row]]
+   [:update-row {:optional true} [:ref ::actions/row]]])
+
+(mr/def ::query.map
+  query-map)
+
 (mr/def ::query
   [:and
-   [:map
-    {:description        "Valid MBQL 5 query."
-     :decode/normalize   #'normalize-query
-     :encode/serialize   #'serialize-query
-     :encode/for-hashing #'encode-query-for-hashing}
-    [:lib/type [:=
-                {:decode/normalize common/normalize-keyword, :default :mbql/query}
-                :mbql/query]]
-    ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
-    ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
-    ;; whatever breaks.
-    [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
-    [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
-                                 [true  ::id/saved-questions-virtual-database]
-                                 [false ::id/database]]]
-    [:stages   [:ref ::stages]]
-    [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
-    ;;
-    ;; OPTIONS
-    ;;
-    ;; These keys are used to tweak behavior of the Query Processor.
-    ;;
-    [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
-    [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
-    [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
-    ;; TODO -- `:viz-settings` ?
-    ;;
-    ;; INFO
-    ;;
-    ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
-    ;; User who ran it
-    [:info {:optional true} [:ref ::info/info]]
-    ;;
-    ;; ACTIONS
-    ;;
-    ;; This stuff is only used for Actions.
-    [:create-row {:optional true} [:ref ::actions/row]]
-    [:update-row {:optional true} [:ref ::actions/row]]]
+   query-map
    ;;
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]
@@ -595,9 +783,11 @@
                        :mbql.clause/field (assoc-in (mr/schema :mbql.clause/field)
                                                     [3 2 0] :dispatch-type/sequential)
                        ;; similarly we need to get rid of the :lib/uuid key of
-                       ;; a map that's nested in position 2 of an :and schema:
                        ::common/options (update (mr/schema ::common/options) 2
-                                                mut/dissoc :lib/uuid)}}
+                                                (fn [map-form]
+                                                  (into []
+                                                        (remove #(and (vector? %) (= :lib/uuid (first %))))
+                                                        map-form)))}}
    [:ref ::query]])
 
 (defn native-only-query?

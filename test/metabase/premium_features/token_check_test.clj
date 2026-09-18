@@ -23,12 +23,21 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- fresh-checker
+  "A token checker with production TTLs and no circuit breaker.
+  The global checker's breaker is shared across the JVM, and one tripped by an earlier test would fail every check here."
+  []
+  (binding [token-check/*customize-checker* true]
+    (token-check/make-checker {:local-ttl (t/seconds 5)
+                               :soft-ttl  (t/hours 12)
+                               :hard-ttl  (t/hours 36)})))
+
 (deftest log-tests
   (let [token (tu/random-token)
         print-token (apply str (concat (take 4 token) "..." (take-last 4 token)))]
     (testing "Do not log the token (#18249)"
       (mt/with-log-messages-for-level [messages :info]
-        (token-check/check-token token)
+        (token-check/check-token (fresh-checker) token)
         (let [logs (mapv :message (messages))]
           (is (every? (complement #(re-find (re-pattern token) %)) logs))
           (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))
@@ -40,8 +49,8 @@
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
-        (token-check/-clear-cache! token-check/token-checker)
-        (dotimes [_ 10] (token-check/check-token token))
+        (let [checker (fresh-checker)]
+          (dotimes [_ 10] (token-check/check-token checker token)))
         (is (= 1 @call-count))))))
 
 (deftest fetch-token-does-not-cache-exceptions
@@ -71,16 +80,17 @@
 (deftest not-found-test
   (mt/with-log-level :fatal
     (is (=? {:valid false, :status "Token does not exist."}
-            (token-check/check-token (tu/random-token))))))
+            (token-check/check-token (fresh-checker) (tu/random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is in local cache"
     (let [token (tu/random-token)
-          _ (token-check/check-token token)
+          checker (fresh-checker)
+          _ (token-check/check-token checker token)
           ;; The local cache has a 5s TTL, so repeated checks within that window should not hit the DB.
           call-counts (repeatedly 3 (fn []
                                       (t2/with-call-count [call-count]
-                                        (token-check/check-token token)
+                                        (token-check/check-token checker token)
                                         (call-count))))]
       ;; At least some of these should be zero (served from local in-memory cache)
       (is (some zero? call-counts)))))
@@ -219,6 +229,29 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
+(deftest license-server-fields-we-do-not-read-test
+  (testing "a token status response carrying fields we don't read still validates the token"
+    (let [token   (tu/random-token)
+          body    {:valid       true
+                   :status      "ok"
+                   :features    ["sso-jwt"]
+                   :plan-alias  "pro-self-hosted"
+                   :new-field   "added by the license server"
+                   :store-users [{:email "owner@example.com" :id 42 :first-name "Owner" :last-name "Person"}]
+                   :quotas      [{:hosting-feature "metabase-ai-tokens"
+                                  :soft-limit      100
+                                  :usage           5
+                                  :locked          false
+                                  :updated-at      "2026-09-01T00:00:00Z"
+                                  :quota-type      "monthly"}]}
+          checker (fresh-checker)]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 200 :body (json/encode body)})]
+          (is (= (assoc body :canonical? true)
+                 (token-check/check-token checker token))))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
 (deftest ^:parallel extract-locks-test
   (testing "empty :meters map yields empty result"
     (is (= {} (#'token-check/extract-locks {}))))
@@ -303,7 +336,7 @@
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."
     (is (= {:valid false, :status "Token does not exist.", :canonical? true}
-           (token-check/check-token (tu/random-token)))))
+           (token-check/check-token (fresh-checker) (tu/random-token)))))
   (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (is (nil? (premium-features/token-status))))))
@@ -722,10 +755,10 @@
                          {:soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
           token         (tu/random-token)
           bomb          (fn [& _] (throw (ex-info "DB should not be touched" {})))]
-      (with-redefs [mdb/db-is-set-up? (constantly false)
-                    token-check/read-cache-from-db bomb
-                    token-check/write-cache-to-db! bomb
-                    token-check/clear-db-cache! bomb]
+      (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly false)
+                                  token-check/read-cache-from-db bomb
+                                  token-check/write-cache-to-db! bomb
+                                  token-check/clear-db-cache! bomb]
         (is (= good-response (token-check/-check-token checker token)))
         (is (= 1 @call-count) "inner checker was called exactly once")
         ;; clear-cache! should also skip DB without error

@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
+   [clojure.core.cache :as cache]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -9,8 +10,10 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -53,6 +56,21 @@
   (testing "test that we can get the name of a user's personal collection as :user"
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
+
+(deftest with-temp-user-evicts-personal-collection-id-cache-test
+  (testing "a temporary User cannot leave its deleted Personal Collection id in the production cache"
+    (let [user-id       (atom nil)
+          collection-id (atom nil)]
+      (mt/with-temp [:model/User {id :id}]
+        (reset! user-id id)
+        (reset! collection-id (@#'collection/user->personal-collection-id id))
+        (is (t2/exists? :model/Collection :id @collection-id)))
+      (is (not (t2/exists? :model/Collection :id @collection-id))
+          "with-temp removed the Personal Collection")
+      (is (not (cache/has? @(-> @#'collection/user->personal-collection-id
+                                meta :clojure.core.memoize/cache)
+                           [(mdb/unique-identifier) @user-id]))
+          "with-temp evicted the stale cache entry"))))
 
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
@@ -1281,37 +1299,37 @@
 
 (deftest hydrate-is-personal-test
   (binding [collection/*allow-deleting-personal-collections* true]
-    (mt/with-temp
-      [:model/User       {user-id :id}               {}
-       :model/Collection {personal-coll :id}         {:personal_owner_id user-id}
-       :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
-                                                      :personal_owner_id nil}
-       :model/Collection {top-level-coll :id}        {:location "/"}
-       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}
-       ;; a grandchild of a Personal Collection: only the *first* ID in the location is the personal one
-       :model/Collection {deep-personal-coll :id}    {:location (format "/%d/%d/" personal-coll nested-personal-coll)}
-       ;; Personal Collections only ever live in the Root Collection, so a personal ID appearing deeper in a
-       ;; location does not make that Collection personal
-       :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
-      (let [check-is-personal (fn [id-or-ids]
-                                (if (int? id-or-ids)
-                                  (-> (t2/select-one :model/Collection id-or-ids)
-                                      (t2/hydrate :is_personal)
-                                      :is_personal)
-                                  (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
-                                    (t2/hydrate collections :is_personal)
-                                    (map :is_personal collections))))]
-        (testing "simple hydration and batched hydration should return correctly"
-          (is (= [true true false false]
-                 (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
-                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))
-          (testing "only the first ID of the location decides"
-            (is (= [true false]
-                   (map check-is-personal [deep-personal-coll sneaky-coll])
-                   (check-is-personal [deep-personal-coll sneaky-coll])))))
-        (testing "root collection shouldn't be hydrated"
-          (is (= nil (t2/hydrate nil :is_personal)))
-          (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [personal-coll (u/the-id (collection/user->personal-collection user-id))]
+        (mt/with-temp
+          [:model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
+                                                          :personal_owner_id nil}
+           :model/Collection {top-level-coll :id}        {:location "/"}
+           :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}
+           ;; a grandchild of a Personal Collection: only the *first* ID in the location is the personal one
+           :model/Collection {deep-personal-coll :id}    {:location (format "/%d/%d/" personal-coll nested-personal-coll)}
+           ;; Personal Collections only ever live in the Root Collection, so a personal ID appearing deeper in a
+           ;; location does not make that Collection personal
+           :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
+          (let [check-is-personal (fn [id-or-ids]
+                                    (if (int? id-or-ids)
+                                      (-> (t2/select-one :model/Collection id-or-ids)
+                                          (t2/hydrate :is_personal)
+                                          :is_personal)
+                                      (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
+                                        (t2/hydrate collections :is_personal)
+                                        (map :is_personal collections))))]
+            (testing "simple hydration and batched hydration should return correctly"
+              (is (= [true true false false]
+                     (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
+                     (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))
+              (testing "only the first ID of the location decides"
+                (is (= [true false]
+                       (map check-is-personal [deep-personal-coll sneaky-coll])
+                       (check-is-personal [deep-personal-coll sneaky-coll])))))
+            (testing "root collection shouldn't be hydrated"
+              (is (= nil (t2/hydrate nil :is_personal)))
+              (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
@@ -3017,6 +3035,49 @@
           (is (contains? descendants-without-skip ["Collection" (:id archived-child)]))
           (is (contains? descendants-without-skip ["Card" (:id archived-card)]))
           (is (contains? descendants-without-skip ["Dashboard" (:id archived-dash)])))))))
+
+(deftest serdes-descendants-excludes-exploration-documents-test
+  (testing "Documents tied to an exploration are not included in Collection descendants (UXW-4091)"
+    (mt/with-temp [:model/Collection  coll      {:name "Coll"}
+                   :model/User        user      {:email "explo@example.com"}
+                   :model/Exploration explo     {:name "Explo" :creator_id (:id user)}
+                   :model/Document    plain-doc {:name          "Plain Doc"
+                                                 :creator_id    (:id user)
+                                                 :collection_id (:id coll)}
+                   :model/Document    explo-doc {:name           "Exploration Doc"
+                                                 :creator_id     (:id user)
+                                                 :collection_id  (:id coll)
+                                                 :exploration_id (:id explo)}]
+      (when config/ee-available?
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Document" (:id plain-doc)])
+              "plain documents should be included")
+          (is (not (contains? descendants ["Document" (:id explo-doc)]))
+              "exploration documents should be excluded"))))))
+
+(deftest serdes-descendants-excludes-exploration-summary-cards-test
+  (testing "Cards belonging to an exploration Summary document are not Collection descendants"
+    (mt/with-temp [:model/Collection  coll       {:name "Coll"}
+                   :model/User        user       {:email "explo-card@example.com"}
+                   :model/Exploration explo      {:name "Explo" :creator_id (:id user)}
+                   :model/Document    plain-doc  {:name "Plain Doc" :creator_id (:id user)
+                                                  :collection_id (:id coll)}
+                   :model/Document    explo-doc  {:name           "Exploration Doc"
+                                                  :creator_id     (:id user)
+                                                  :collection_id  (:id coll)
+                                                  :exploration_id (:id explo)}
+                   :model/Card        plain-card {:collection_id (:id coll)}
+                   :model/Card        doc-card   {:collection_id (:id coll) :document_id (:id plain-doc)}
+                   :model/Card        explo-card {:collection_id (:id coll) :document_id (:id explo-doc)}]
+      (when config/ee-available?
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Card" (:id plain-card)])
+              "ordinary cards are included")
+          (is (contains? descendants ["Card" (:id doc-card)])
+              "a card in an ordinary document is included, since that document is exported too")
+          (is (not (contains? descendants ["Card" (:id explo-card)]))
+              "a card in an exploration Summary is excluded — otherwise it is exported while the
+               Document it depends on is not, leaving a dangling reference"))))))
 
 (deftest serdes-extract-query-skip-archived-test
   (testing "Collection extract-query with skip-archived: true filters archived collections"

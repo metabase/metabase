@@ -14,16 +14,16 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   ;; qp.setup is the code that initializes the ambient store for the legacy pipeline
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)
    (org.apache.logging.log4j ThreadContext)))
@@ -54,14 +54,13 @@
 (defn- bootstrap-metadatas [{metadata-type :lib/type, id-set :id, :as _metadata-spec}]
   (when (and (seq id-set)
              (= metadata-type :metadata/card))
-    (t2/select-fn-vec
-     (fn [card]
-       {:lib/type    :metadata/card
-        :id          (:id card)
-        :name        (format "Card #%d" (:id card))
-        :database-id (:database_id card)})
-     [:model/Card :id :database_id :card_schema]
-     :id [:in (set id-set)])))
+    (into []
+          (map (fn [card]
+                 {:lib/type    :metadata/card
+                  :id          (:id card)
+                  :name        (format "Card #%d" (:id card))
+                  :database-id (:database_id card)}))
+          (query-processor.db/card-database-ids (set id-set)))))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider
@@ -122,7 +121,7 @@
                         {:query query, :type qp.error-type/invalid-query}))))))
 
 (mu/defn- do-with-resolved-database :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (mu/fn
     [query :- ::qp.schema/any-query]
     (let [query       (set/rename-keys query {"database" :database})
@@ -137,7 +136,7 @@
     (= (:lib/type query) :mbql/query) (assoc :lib/metadata (qp.store/metadata-provider))))
 
 (mu/defn- do-with-metadata-provider :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (cond
       (qp.store/initialized?)
@@ -161,7 +160,7 @@
           (f (maybe-attach-metadata-provider-to-query query)))))))
 
 (mu/defn- do-with-driver :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (cond
       driver/*driver*
@@ -186,7 +185,7 @@
           (f query))))))
 
 (mu/defn- do-with-database-local-settings :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (cond
       (setting/database-local-values)
@@ -246,7 +245,7 @@
                TimeUnit/MILLISECONDS)))
 
 (mu/defn- do-with-canceled-chan :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (binding [qp.pipeline/*canceled-chan* (or qp.pipeline/*canceled-chan* (a/promise-chan))]
       (let [timeout-task (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)]
@@ -283,7 +282,7 @@
 (mu/defn do-with-qp-setup
   "Impl for [[with-qp-setup]]."
   [query :- ::qp.schema/any-query
-   f     :- [:=> [:cat ::qp.schema/any-query] :any]]
+   f     :- fn?]
   ;; TODO -- think about whether we should pre-compile this middleware
   (when (a.impl.dispatch/in-dispatch-thread?)
     (throw (ex-info "QP calls are not allowed inside core.async dispatch pool threads."

@@ -103,7 +103,7 @@ function StatusFilterForm({
   return (
     <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Checkbox.Group value={statuses} onChange={handleChange}>
-        <Stack p="md">
+        <Stack p="lg">
           {STATUSES.map((status) => (
             <Checkbox
               key={status}
@@ -114,7 +114,7 @@ function StatusFilterForm({
         </Stack>
       </Checkbox.Group>
       <Divider />
-      <Group p="md" justify="end">
+      <Group p="lg" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>
           {initialStatuses.length > 0 ? `Update filter` : `Add filter`}
         </Button>

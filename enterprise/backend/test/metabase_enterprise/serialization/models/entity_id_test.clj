@@ -7,6 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.classloader.core :as classloader]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]))
 
@@ -23,13 +24,12 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
     ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
     ;; serdes path nests under that entity, so it has no generated entity_id.
     :model/OsiAiContext
     ;; Settings have human-selected unique names.
-    :model/Setting
-    ;; Glossary items have unique `term` key
-    :model/Glossary})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -163,7 +163,7 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "FieldUserSettings"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))
@@ -171,4 +171,6 @@
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
+        ;; the property is registered by the model's own namespace, which nothing else here loads
+        (classloader/require (models.resolution/model->namespace model))
         (is (serdes/has-entity-id? model))))))

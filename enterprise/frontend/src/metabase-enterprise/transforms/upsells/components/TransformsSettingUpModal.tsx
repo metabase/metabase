@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useTokenRefreshUntil } from "metabase/settings";
 import {
   Box,
   Button,
@@ -42,7 +42,7 @@ export const TransformsSettingUpModal = ({
       padding="2.5rem"
       mah="80%"
     >
-      <Stack align="center" gap="lg" my="4.5rem">
+      <Stack align="center" gap="xl" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
           <Flex
             align="center"

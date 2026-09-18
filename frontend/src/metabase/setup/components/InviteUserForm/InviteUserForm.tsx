@@ -14,19 +14,22 @@ import * as Errors from "metabase/utils/errors";
 
 import S from "./InviteUserForm.module.css";
 
-const INVITE_USER_SCHEMA = Yup.object({
-  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
-  email: Yup.string()
-    .default("")
-    .required(Errors.required)
-    .email(Errors.email)
-    .notOneOf(
-      [Yup.ref("$email")],
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      t`must be different from the email address you used in setup`,
-    ),
-});
+const getInviteUserSchema = () =>
+  Yup.object({
+    first_name: Yup.string()
+      .nullable()
+      .default(null)
+      .max(100, Errors.maxLength),
+    last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+    email: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .email(Errors.email)
+      .notOneOf(
+        [Yup.ref("$email")],
+        t`must be different from the email address you used in setup`,
+      ),
+  });
 
 interface InviteUserFormProps {
   user?: UserInfo;
@@ -40,17 +43,17 @@ export const InviteUserForm = ({
   onSubmit,
 }: InviteUserFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return invite ?? INVITE_USER_SCHEMA.getDefault();
+    return invite ?? getInviteUserSchema().getDefault();
   }, [invite]);
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={INVITE_USER_SCHEMA}
+      validationSchema={getInviteUserSchema()}
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form as={Stack} gap="md" data-testid="invite-user-form">
+      <Form as={Stack} gap="lg" data-testid="invite-user-form">
         <div className={S.UserFieldGroup}>
           <FormTextInput
             name="first_name"

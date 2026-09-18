@@ -13,20 +13,24 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -38,10 +42,13 @@
     "anthropic"  claude/claude
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
+    "deepseek"   deepseek/deepseek
+    "google"     google/google
     "mistral"    mistral/mistral
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
@@ -52,25 +59,106 @@
     "anthropic"  claude/list-models
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
+    "deepseek"   deepseek/list-models
+    "google"     google/list-models
     "mistral"    mistral/list-models
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
-(defn- parse-provider-model [s]
-  (let [provider (provider-util/provider-and-model->provider s)]
-    {:provider   provider
-     :stream-fn  (resolve-adapter provider)
-     :model      (provider-util/provider-and-model->model s)
-     :ai-proxy?  (provider-util/metabase-provider? s)}))
+(defn- normalize-known-model
+  "Coerce one adapter's `supported-models` value into `{:display-name ... :context-window ...}`. Most adapters store a
+  map already; DeepSeek stores the display name on its own. Anything else throws, so an adapter that invents a third
+  shape fails loudly instead of quietly documenting a model with no name."
+  [provider model-id value]
+  (cond
+    (map? value)    value
+    (string? value) {:display-name value}
+    :else           (throw (ex-info (str "Unrecognized supported-models entry for " provider)
+                                    {:provider provider :model model-id :value value}))))
+
+(defn known-models
+  "The models `provider`'s adapter is willing to offer, as `{model-id {:display-name ... :context-window ...}}`.
+
+  This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
+  available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
+  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  [provider]
+  ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
+  ;; a provider that simply has no models
+  (when-let [models (case provider
+                      "anthropic"  claude/supported-models
+                      "bedrock"    bedrock/supported-models
+                      "deepseek"   deepseek/supported-models
+                      "mistral"    mistral/supported-models
+                      "moonshot"   moonshot/supported-models
+                      "openai"     openai/supported-models
+                      "openrouter" openrouter/supported-models
+                      "zai"        zai/supported-models
+                      ("azure" "google" "metabase" "vllm") nil
+                      (throw (ex-info (str "Unknown LLM provider: " provider)
+                                      {:provider provider})))]
+    (into {}
+          (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
+          models)))
+
+(defn- parse-provider-model
+  "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
+  Throws a 400 when the string names a connection that is not configured, so a stale
+  `llm-metabot-provider` surfaces as a clear error rather than an unauthenticated request."
+  [s]
+  (let [{:keys [type model credentials ai-proxy?]}
+        (or (llm.provider/resolve-model-ref s)
+            (throw (ex-info (tru "No LLM provider connection named {0} is configured."
+                                 (pr-str (llm.provider/model-ref->connection-key s)))
+                            {:status-code 400
+                             :api-error   true
+                             :error-code  :llm-not-configured
+                             :model-ref   s})))]
+    {:provider    type
+     :stream-fn   (resolve-adapter type)
+     :model       model
+     :credentials credentials
+     :ai-proxy?   ai-proxy?}))
+
+(defn- resolve-context-window-fn [provider]
+  ;; a `case` inside of function instead of a map so that with-redefs work well
+  (case provider
+    "anthropic"  claude/context-window-tokens
+    "azure"      azure/context-window-tokens
+    "bedrock"    bedrock/context-window-tokens
+    "google"     google/context-window-tokens
+    "mistral"    mistral/context-window-tokens
+    "moonshot"   moonshot/context-window-tokens
+    "openai"     openai/context-window-tokens
+    "openrouter" openrouter/context-window-tokens
+    "zai"        zai/context-window-tokens
+    nil))
+
+(defn context-window-tokens
+  "Input context window (tokens) for a `connection-key/model` string, or nil when the
+  connection, provider, or model isn't one we know.
+
+  This is the ceiling a conversation's context (`contextTokens`, the last call's
+  prompt + completion) cannot grow past: the max *input* tokens for providers that
+  publish split input/output limits (OpenAI's 1,050,000 window is 922,000 input +
+  128,000 output), and the shared context window for providers whose output counts
+  against the window itself (Anthropic et al.)."
+  [model-ref]
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
+        window-fn            (resolve-context-window-fn type)]
+    (when (and window-fn model)
+      (window-fn model))))
 
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
-  AWS key material and region (see [[bedrock/list-models]])."
+  optional AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]
@@ -126,14 +214,21 @@
   error: `rethrow-api-error!` rethrows e.g. a `Read timed out` as an
   `ExceptionInfo` (with `:error-code :provider-request-failed` and no `:status`)
   whose *cause* is the original `SocketTimeoutException`. Inspecting only the
-  top-level exception would miss it and we'd never retry a transient timeout."
+  top-level exception would miss it and we'd never retry a transient timeout.
+
+  An adapter opts a specific failure out of that default by tagging its ex-data
+  `:retryable? false` (top-level only), which wins over both checks. Note that
+  omitting `:status` does not — the cause walk still matches."
   [^Exception e]
-  (boolean
-   (or (retryable-status? (:status (ex-data e)))
-       ;; Connection errors (e.g. under load, connection refused/reset), possibly
-       ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
-       ;; levels to guard against a cyclic getCause chain.
-       (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))
+  (let [data (ex-data e)]
+    (if (false? (:retryable? data))
+      false
+      (boolean
+       (or (retryable-status? (:status data))
+           ;; Connection errors (e.g. under load, connection refused/reset), possibly
+           ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
+           ;; levels to guard against a cyclic getCause chain.
+           (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
@@ -166,6 +261,11 @@
          backoff-ms)
        jitter)))
 
+(defn- provider-label
+  "The `:provider` label on an LLM call's metrics: the type of the connection serving it, so `metabase` when proxied."
+  [{:keys [provider ai-proxy?]}]
+  (if ai-proxy? "metabase" provider))
+
 (defn- report-aisdk-errors-xf
   "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
@@ -181,23 +281,33 @@
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
+                            :provider   (provider-label tracking-opts)
                             :error-type "llm-sse-error"}))
          part)))
 
 (defn- report-token-usage-xf
   "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
 
-  Prometheus + Snowplow:
-    - `:profile-id` — the profile id (e.g. `:internal`)
-    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4.5`)
-    - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+  Every field goes to [[metabase.metabot.usage/log-ai-usage!]], where `:tag` stands in for a missing `:source`.
 
-   Snowplow only:
-    - `:request-id` — UUID string for this request
-    - `:session-id` — conversation UUID string
-    - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
-                      Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
+  Prometheus + Snowplow:
+    - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
+    - `:tag`        - the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+
+  Prometheus only:
+    - `:provider`   - the provider type serving it (e.g. `openrouter`)
+    - `:ai-proxy?`  - whether the call went through the managed AI proxy
+
+  Snowplow only:
+    - `:profile-id` - the profile id (e.g. `:internal`)
+    - `:request-id` - UUID string for this request
+    - `:session-id` - conversation UUID string
+    - `:source`     - the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                      Indicates which API endpoint or workflow initiated the LLM call.
+
+  Neither:
+    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)"
+  [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -213,6 +323,7 @@
                  :snowplow              (some? request-id)
                  :profile               (some-> profile-id name)
                  :model-id              model
+                 :provider              (provider-label tracking-opts)
                  :prompt-tokens         prompt
                  :completion-tokens     completion
                  :cache-creation-tokens cache-creation
@@ -228,6 +339,8 @@
                (usage/log-ai-usage!
                 {:source                (or source tag "unknown")
                  :model                 model
+                 :provider              provider
+                 :model-name            model-name
                  :prompt-tokens         prompt
                  :completion-tokens     completion
                  :cache-creation-tokens cache-creation
@@ -263,7 +376,7 @@
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels.
+  Records prometheus metrics with `:model` and `:tag` from `tracking-opts`, and its [[provider-label]], as labels.
 
   `retry?` is an optional predicate on the caught exception, ANDed with
   [[retryable-error?]]; returning false surfaces the error without retrying. The
@@ -271,7 +384,9 @@
   ([tracking-opts thunk]
    (with-retries tracking-opts thunk (constantly true)))
   ([tracking-opts thunk retry?]
-   (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
+   (let [labels {:model    (:model tracking-opts)
+                 :source   (:tag tracking-opts)
+                 :provider (provider-label tracking-opts)}]
      (loop [attempt 1]
        (analytics/inc! :metabase-metabot/llm-requests labels)
        (let [timer  (u/start-timer)
@@ -406,15 +521,18 @@
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
-       (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
+       (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
          (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
-         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
-               streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
-                                system-msg                    (assoc :system system-msg)
+         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :provider provider
+                                     :model-name model :ai-proxy? ai-proxy?)
+               streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
+                                       :credentials credentials :ai-proxy? ai-proxy?
+                                       :fast?       (metabot.settings/llm-fast-mode)}
+                                system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
-                                     tool-choice)             (assoc :tool_choice tool-choice)
-                                (:session-id tracking-opts)   (assoc :prompt-cache-key (:session-id tracking-opts)))
+                                     tool-choice)           (assoc :tool_choice tool-choice)
+                                (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)
                                                 (core/lite-aisdk-xf)
@@ -469,7 +587,7 @@
                      :error-code "ai_usage_limit_reached"
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
-  (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))
                              [(:content (first messages)) (vec (rest messages))]
                              [nil messages])
@@ -479,12 +597,14 @@
                                                            :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
                            (dissoc :required-permission)
-                           (assoc :model provider-and-model :ai-proxy? ai-proxy?))
+                           (assoc :model provider-and-model :provider provider :model-name model
+                                  :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
                                 :input       input
                                 :schema      json-schema
                                 :temperature temperature
                                 :max-tokens  max-tokens
+                                :credentials credentials
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))

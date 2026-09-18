@@ -45,6 +45,11 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     ) {
       if (focus) {
         helpers.focus();
+      } else {
+        // The editor can be a lazily loaded chunk, so it may still be mounting.
+        // Wait for it to hold focus before typing, or the first keystroke goes
+        // nowhere. Do not click it: that would move the caret.
+        helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       }
 
       if (allowFastSet) {
@@ -148,21 +153,19 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers.get().get("[role='textbox']");
     },
     value() {
-      // Get the multiline text content of the editor
-      return helpers
-        .textbox()
-        .get(".cm-line")
-        .then((lines) => {
-          const text: string[] = [];
-          lines.each((_, line) => {
-            const placeholder = line.querySelector(".cm-placeholder");
-            if (placeholder) {
-              return;
-            }
-            text.push(line.textContent ?? "");
-          });
-          return text.join("\n");
-        });
+      // The editor mounts with an empty document and fills it in when the first
+      // format finishes. It can also mount late, because its chunk loads on
+      // demand. Wait for two identical reads before reporting the value, or a
+      // read that lands in either window reports an empty editor.
+      let previous: string | null = null;
+      cy.get(`[data-testid=${testId}] .cm-content`).should(($content) => {
+        const current = textOf($content);
+        const isStable = previous !== null && current === previous;
+        previous = current;
+        expect(isStable, "the editor text is stable").to.be.true;
+      });
+
+      return helpers.get().then(textOf);
     },
     completions() {
       return cy.get(".cm-tooltip-autocomplete").should("be.visible");
@@ -232,4 +235,19 @@ export function codeMirrorValue() {
       }
       return value;
     });
+}
+
+/**
+ * The text of every line in a CodeMirror editor, skipping the placeholder line
+ * that stands in for an empty document.
+ */
+function textOf($content: JQuery<HTMLElement>) {
+  const text: string[] = [];
+  $content.find(".cm-line").each((_, line) => {
+    if (line.querySelector(".cm-placeholder")) {
+      return;
+    }
+    text.push(line.textContent ?? "");
+  });
+  return text.join("\n");
 }

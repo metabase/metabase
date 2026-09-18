@@ -16,6 +16,40 @@ const throwIfNotEnterprise = () => {
   }
 };
 
+const TOKEN_ACTIVATION_ATTEMPTS = 3;
+
+const putTokenWithRetry = (
+  token: string,
+  attempt = 1,
+): Cypress.Chainable<Cypress.Response<unknown>> => {
+  return cy
+    .request({
+      method: "PUT",
+      url: "/api/setting/premium-embedding-token",
+      failOnStatusCode: false,
+      body: {
+        value: token,
+      },
+    })
+    .then((response) => {
+      if (response.status >= 200 && response.status < 300) {
+        return cy.wrap(response, { log: false });
+      }
+
+      if (attempt >= TOKEN_ACTIVATION_ATTEMPTS) {
+        throw new Error(
+          `Failed to activate the token after ${attempt} attempts: ` +
+            `${response.status} ${JSON.stringify(response.body)}`,
+        );
+      }
+
+      cy.log(
+        `Token activation failed with status ${response.status}, retrying`,
+      );
+      return putTokenWithRetry(token, attempt + 1);
+    });
+};
+
 export const activateToken = (
   tokenName: "bleeding-edge" | "starter" | "pro-cloud" | "pro-self-hosted",
 ) => {
@@ -39,14 +73,7 @@ export const activateToken = (
     }
 
     cy.log(`Set the "${tokenName}" token`);
-    return cy.request({
-      method: "PUT",
-      url: "/api/setting/premium-embedding-token",
-      failOnStatusCode: false,
-      body: {
-        value: token,
-      },
-    });
+    return putTokenWithRetry(token);
   });
 };
 

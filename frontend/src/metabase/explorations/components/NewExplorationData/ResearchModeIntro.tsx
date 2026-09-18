@@ -6,7 +6,7 @@ import S from "./ResearchModeIntro.module.css";
 
 export function ResearchModeIntro() {
   return (
-    <Stack align="center" gap="md" maw="24.125rem" mx="auto" ta="center">
+    <Stack align="center" gap="lg" maw="24.125rem" mx="auto" ta="center">
       <Stack align="center" gap={0}>
         <Icon name="ai" size="1rem" className={S.aiIcon} right="-2rem" />
         <Icon name="telescope" size="3rem" />

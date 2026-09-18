@@ -32,6 +32,36 @@ export interface DashboardSubscription {
   updated_at: string;
 }
 
+/** The subscription while it is being edited: server-generated fields are still optional. */
+export type DraftDashboardSubscription = Pick<
+  DashboardSubscription,
+  "cards" | "channels"
+> &
+  Partial<
+    Pick<
+      DashboardSubscription,
+      | "id"
+      | "name"
+      | "dashboard_id"
+      | "parameters"
+      | "skip_if_empty"
+      | "archived"
+      | "can_write"
+      | "collection_id"
+      | "collection_position"
+      | "created_at"
+      | "creator"
+      | "creator_id"
+      | "disable_links"
+      | "entity_id"
+      | "updated_at"
+    >
+  >;
+
+export type DashboardSubscriptionData =
+  | DashboardSubscription
+  | DraftDashboardSubscription;
+
 export interface CreateSubscriptionRequest {
   name: string;
   cards: Card[];

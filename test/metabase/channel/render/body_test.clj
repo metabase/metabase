@@ -11,6 +11,7 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.color :as js.color]
+   [metabase.channel.render.maps :as maps]
    [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
    [metabase.formatter.core :as formatter]
@@ -210,6 +211,78 @@
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
+
+(def ^:private header-alignment-cols
+  "A remapped pair (`rating` -> `rating_desc`) followed by another column, so a shift in the headers is visible. The
+  two halves have different display names so the assertions can tell which one supplied a title."
+  [{:name "id"          :display_name "ID"          :base_type :type/Integer
+    :visibility_type :normal :semantic_type nil}
+   {:name "rating"      :display_name "Rating"      :base_type :type/Integer
+    :visibility_type :normal :semantic_type :type/Category :remapped_to "rating_desc"}
+   {:name "rating_desc" :display_name "Rating Desc" :base_type :type/Text
+    :visibility_type :normal :semantic_type nil :remapped_from "rating"}
+   {:name "title"       :display_name "Title"       :base_type :type/Text
+    :visibility_type :normal :semantic_type nil}])
+
+(def ^:private equal-display-name-cols
+  "[[header-alignment-cols]] with both halves of the pair named `Rating`, as on a real instance. This is the fixture
+  that reproduces the reported symptom (#71069)."
+  (mapv (fn [col]
+          (cond-> col
+            (= "rating_desc" (:name col)) (assoc :display_name "Rating")))
+        header-alignment-cols))
+
+(def ^:private header-alignment-rows [[1 3 "Good" "Widget"]])
+
+(def ^:private header-alignment-table-columns
+  "Viz settings naming every column, in result order. Their presence masked the bug (#71069)."
+  {:metabase.models.visualization-settings/table-columns
+   (vec (for [col-name (map :name header-alignment-cols)]
+          {:metabase.models.visualization-settings/table-column-name    col-name
+           :metabase.models.visualization-settings/table-column-enabled true}))})
+
+(defn- rendered-table-headers
+  "The titles actually rendered into the <th> cells of a `:table` part."
+  ([viz-settings] (rendered-table-headers viz-settings header-alignment-cols))
+  ([viz-settings cols]
+   (let [data {:cols cols :rows header-alignment-rows :viz-settings viz-settings}
+         part (body/render :table :inline pacific-tz {:visualization_settings {}} nil data)]
+     (map last (render.tu/nodes-with-tag (:content part) :th)))))
+
+(deftest ^:parallel remapped-column-header-alignment-test
+  (testing "the header row itself drops the remapped source column and takes its name from the target"
+    (is (= [(number "ID" "ID") "Rating Desc" "Title"]
+           (:row (first (#'body/prep-for-html-rendering
+                         pacific-tz {} {:cols header-alignment-cols
+                                        :rows header-alignment-rows}))))))
+  (testing "rendered <th> titles line up with that header row (#71069)"
+    (is (= ["ID" "Rating Desc" "Title"]
+           (rendered-table-headers {}))))
+  (testing "and are the same with table-columns viz settings present (#71069)"
+    (is (= ["ID" "Rating Desc" "Title"]
+           (rendered-table-headers header-alignment-table-columns))))
+  (testing "with both halves named alike, the reported symptom (#71069)"
+    (is (= ["ID" "Rating" "Title"]
+           (rendered-table-headers {} equal-display-name-cols)))))
+
+(defn- rendered-th-titles
+  "The `:title` attribute of each rendered <th>; the cell text is truncated."
+  [part]
+  (map (comp :title second) (render.tu/nodes-with-tag (:content part) :th)))
+
+;; A real FK remapping and query, so the hand-written remap metadata above matches what the QP emits. Does not
+;; reproduce #71069 by itself: the QP appends the remap target last, so nothing follows it to shift.
+(deftest ^:synchronized remapped-column-header-alignment-e2e-test
+  (mt/with-column-remappings [orders.product_id products.title]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {:limit 1})}]
+      (testing "a real remapped FK column renders its remapped title, currency suffix intact (#71069)"
+        (let [data (:data (:result (notification.execute/execute-card (mt/user->id :crowberto)
+                                                                      (:id card))))
+              part (body/render :table :inline pacific-tz card nil data)]
+          ;; "Product ID [external remap]" is the Dimension name `with-column-remappings` creates
+          (is (= ["ID" "User ID" "Product ID [external remap]" "Subtotal" "Tax" "Total"
+                  "Discount ($)" "Created At" "Quantity"]
+                 (rendered-th-titles part))))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
@@ -1348,8 +1421,10 @@
 (def ^:private pivot-test-data
   "A `:pivot` query result: rows R, cols C, single measure m, plus the pivot-grouping column the QP emits.
   `:pivot-export-options` carries the row/col/measure column indexes in the pivot-grouping-free space (R=0, C=1, m=2)."
-  {:cols                 [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
-                          {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
+  {:cols                 [{:name "R" :display_name "R" :base_type :type/Text}
+                          {:name "C" :display_name "C" :base_type :type/Text}
+                          {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                          {:name "m" :display_name "m" :base_type :type/Integer}]
    :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
    :format-rows?         true
    :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}})
@@ -1374,7 +1449,8 @@
     (testing "a pivot card with no column split degrades to a flat table without erroring"
       (let [part (body/render :pivot :inline "UTC"
                               {:display :pivot :visualization_settings {}} nil
-                              {:cols [{:name "a" :base_type :type/Text} {:name "b" :base_type :type/Number}]
+                              {:cols [{:name "a" :display_name "a" :base_type :type/Text}
+                                      {:name "b" :display_name "b" :base_type :type/Number}]
                                :rows [["x" 1]]})]
         (is (some? (:content part)))))
     (testing "the card's conditional formatting colors the measure value cells"
@@ -1419,9 +1495,11 @@
     ;; uncolored) and the m1 cells labeled m2 (11-44, not > 50 -> uncolored) -- so the m2 cells being the colored
     ;; ones confirms the measure mapping. Totals are off so only the data cells remain.
     (let [split    {:rows ["R"] :columns ["C"] :values ["m1" "m2"]}
-          cols     [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
-                    {:name "pivot-grouping" :base_type :type/Integer}
-                    {:name "m1" :base_type :type/Integer} {:name "m2" :base_type :type/Integer}]
+          cols     [{:name "R" :display_name "R" :base_type :type/Text}
+                    {:name "C" :display_name "C" :base_type :type/Text}
+                    {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                    {:name "m1" :display_name "m1" :base_type :type/Integer}
+                    {:name "m2" :display_name "m2" :base_type :type/Integer}]
           data     {:cols                 cols
                     :rows                 [["a" "x" 0 11 100] ["a" "y" 0 22 200]
                                            ["b" "x" 0 33 300] ["b" "y" 0 44 400]]
@@ -1443,6 +1521,144 @@
       (testing "only the four m2 value cells (> 50) are colored"
         (is (= 4 (count (re-seq #"background-color" h))))))))
 
+(def ^:private simple-pivot-cols
+  [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
+   {:name "SOURCE"   :display_name "Source"   :base_type :type/Text}
+   {:name "count"    :display_name "Count"    :base_type :type/Integer}])
+
+(def ^:private simple-pivot-rows
+  "Ordered by category then source, as a two-breakout query returns them: sorted within each category but not
+  overall, so the browser sorts both axes."
+  [["Gizmo" "Google" 1] ["Gizmo" "Organic" 2]
+   ["Widget" "Affiliate" 3] ["Widget" "Google" 4]])
+
+(def ^:private simple-pivot-settings
+  {:table.pivot true :table.pivot_column "SOURCE" :table.cell_column "count"})
+
+(defn- rendered-grid
+  "The text of every <th> and <td> of a rendered part, one vector per <tr>."
+  [part]
+  (for [tr (render.tu/nodes-with-tag (:content part) :tr)]
+    (->> (tree-seq #(and (seqable? %) (not (map? %)) (not (string? %))) seq tr)
+         (filter #(and (vector? %) (#{:th :td} (first %))))
+         (mapv last))))
+
+(defn- render-simple-pivot
+  ([viz-settings] (render-simple-pivot viz-settings simple-pivot-cols simple-pivot-rows))
+  ([viz-settings cols rows]
+   (body/render :table :inline "UTC" {:display :table :visualization_settings viz-settings} nil
+                {:cols cols :rows rows :viz-settings viz-settings})))
+
+(deftest ^:parallel simple-pivot-test
+  (testing "a Table card with the \"Pivot table\" toggle on renders as the browser's simple pivot (#76931)"
+    (is (= [["Category" "Affiliate" "Google" "Organic"]
+            ["Gizmo"    ""          "1"      "2"]
+            ["Widget"   "3"         "4"      ""]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings)))))
+  (testing "string-keyed settings pivot too"
+    (is (= (rendered-grid (render-simple-pivot simple-pivot-settings))
+           (rendered-grid (render-simple-pivot (update-keys simple-pivot-settings name))))))
+  (testing "the row-label header is the column's display name; a column title override is ignored, as in the browser"
+    (let [card {:display                :table
+                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:column_title "Cat"}}}}
+          part (body/render :table :inline "UTC" card nil
+                            {:cols simple-pivot-cols :rows simple-pivot-rows :viz-settings simple-pivot-settings})]
+      (is (= "Category" (ffirst (rendered-grid part))))))
+  (testing "the flat table is unchanged when the toggle does not apply"
+    (let [flat (html (:content (render-simple-pivot {})))]
+      (doseq [[reason settings] [["toggle off"           (assoc simple-pivot-settings :table.pivot false)]
+                                 ["unknown pivot column" (assoc simple-pivot-settings :table.pivot_column "NOPE")]
+                                 ["cell column missing"  (dissoc simple-pivot-settings :table.cell_column)]
+                                 ["pivot and cell alike" (assoc simple-pivot-settings :table.cell_column "SOURCE")]]]
+        (testing reason
+          (is (= flat (html (:content (render-simple-pivot settings)))))))))
+  (testing "a result with four columns stays flat"
+    (let [cols (conj simple-pivot-cols {:name "extra" :display_name "Extra" :base_type :type/Text})
+          rows (mapv #(conj % "x") simple-pivot-rows)]
+      (is (= [["Category" "Source"    "Count" "Extra"]
+              ["Gizmo"    "Google"    "1"     "x"]
+              ["Gizmo"    "Organic"   "2"     "x"]
+              ["Widget"   "Affiliate" "3"     "x"]
+              ["Widget"   "Google"    "4"     "x"]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows)))))))
+
+(deftest simple-pivot-row-limit-test
+  (testing "the grid is built from every row, not only the first attachment-table-row-limit rows"
+    (mt/with-temporary-setting-values [attachment-table-row-limit 2]
+      (is (= [["Category" "Affiliate" "Google" "Organic"]
+              ["Gizmo"    ""          "1"      "2"]
+              ["Widget"   "3"         "4"      ""]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings)))))))
+
+(deftest ^:parallel simple-pivot-compare-values-test
+  (let [day (fn [d] (java.time.LocalDate/of 2024 1 (int d)))]
+    (doseq [[a b expected] [[nil nil 0] [nil "a" -1] ["a" nil 1] [nil 1 -1] [nil {:a 1} -1] [{:a 1} nil 1]
+                            ["a" "b" -1] ["b" "a" 1] ["a" "a" 0]
+                            [1 2.5 -1] [3N 2 1] [2 2.0 0]
+                            [(day 1) (day 2) -1] [:a :b -1] [false true -1]
+                            ["1" 1 0] [(day 1) "2024-01-01" 0] [{:a 1} {:b 2} 0]]]
+      (testing (pr-str [a b])
+        (is (= expected (Integer/signum (int (#'body/compare-pivot-values a b)))))))))
+
+(deftest ^:parallel simple-pivot-order-test
+  (testing "a native query's deliberate row order is kept when the rows are not sorted within groups"
+    (is (= [["Category" "Organic" "Google"]
+            ["Widget"   "1"       ""]
+            ["Gizmo"    ""        "2"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Widget" "Organic" 1] ["Gizmo" "Google" 2]])))))
+  (testing "rows sorted descending within groups sort the headings descending"
+    (is (= [["Category" "Organic" "Google"]
+            ["Gizmo"    "2"       "1"]
+            ["Widget"   "4"       "3"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" "Organic" 2] ["Gizmo" "Google" 1]
+                                                ["Widget" "Organic" 4] ["Widget" "Google" 3]])))))
+  (testing "nil pivot values sort first and get an empty heading"
+    (is (= [["Category" ""  "Google"]
+            ["Gizmo"    "1" "2"]
+            ["Widget"   "3" "4"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" nil 1] ["Gizmo" "Google" 2]
+                                                ["Widget" nil 3] ["Widget" "Google" 4]]))))
+    (is (= [nil nil 1 2] (sort @#'body/compare-pivot-values [2 nil 1 nil]))))
+  (testing "numeric pivot values are formatted as headings and sorted numerically"
+    (let [cols [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
+                {:name "YEAR"     :display_name "Year"     :base_type :type/Integer}
+                {:name "count"    :display_name "Count"    :base_type :type/Integer}]]
+      (is (= [["Category" "2" "10"]
+              ["Gizmo"    "1" "2"]
+              ["Widget"   "3" "4"]]
+             (rendered-grid (render-simple-pivot (assoc simple-pivot-settings :table.pivot_column "YEAR") cols
+                                                 [["Gizmo" 2 1] ["Gizmo" 10 2] ["Widget" 2 3] ["Widget" 10 4]])))))))
+
+(deftest ^:parallel simple-pivot-sort-state-test
+  (testing "no row sequence leaves a grouped sort state both ascending and descending within groups"
+    ;; every sequence of four rows over these values and groups, and every state along the way
+    (let [row-choices (for [value [nil 1 2 "a"], group [:x :y]] [value group])
+          row-seqs    (reduce (fn [acc _] (for [rows acc, row row-choices] (conj rows row)))
+                              [[]]
+                              (range 4))]
+      (is (empty? (for [rows  row-seqs
+                        state (reductions (fn [state [value group]] (#'body/track-order state value group))
+                                          @#'body/unsorted-state
+                                          rows)
+                        :when (and (:grouped? state) (:group-asc state) (:group-desc state))]
+                    rows))))))
+
+(deftest simple-pivot-conditional-formatting-test
+  (let [render-with (fn [rule]
+                      (html (:content (render-simple-pivot (assoc simple-pivot-settings
+                                                                  :table.column_formatting [rule])))))]
+    (testing "a value rule on the cell column colors the matching cells, and nothing else"
+      (is (= 2 (count (re-seq #"background-color"
+                              (render-with {:type "single" :columns ["count"] :color "#ff0000"
+                                            :operator ">" :value 2}))))))
+    (testing "a row-highlight rule colors only the matching cells, as in the browser's pivoted table"
+      (is (= 2 (count (re-seq #"background-color"
+                              (render-with {:type "single" :columns ["count"] :color "#ff0000"
+                                            :operator ">" :value 2 :highlight_row true}))))))))
+
 (deftest render-pin-map-resolves-columns-by-semantic-type-test
   (testing "render :pin_map finds lat/long columns by semantic type when the column settings aren't persisted"
     (fake/with-fake-routes (render.tu/fake-tile-routes #"https://.*tile\.openstreetmap\.org/.*")
@@ -1454,3 +1670,78 @@
             part (body/render :pin_map :inline "UTC" card nil data)]
         ;; should be a rendered image, NOT a degraded table
         (is (= :img (-> part :content second first)))))))
+
+;;; --------------------------------------------- grid maps ---------------------------------------------
+
+(def ^:private grid-map-card
+  {:display :map :visualization_settings {}})
+
+(def ^:private grid-map-cols
+  "The UXW-5089 repro shape: Count grouped by binned Latitude, binned Longitude, and a third breakout.
+  `ID` is a `:type/PK`, so [[metabase.channel.render.body/metric-col-index]] skips it and picks `count`."
+  [{:name "LATITUDE"  :base_type :type/Float      :semantic_type :type/Latitude
+    :binning_info {:binning_strategy :default :bin_width 1.0}}
+   {:name "LONGITUDE" :base_type :type/Float      :semantic_type :type/Longitude
+    :binning_info {:binning_strategy :default :bin_width 1.0}}
+   {:name "ID"        :base_type :type/BigInteger :semantic_type :type/PK}
+   {:name "count"     :base_type :type/BigInteger :semantic_type :type/Quantity}])
+
+(defn- grid-map-cells
+  "The cells the `:grid_map` render method hands to [[maps/render-grid-map]] for `rows`. Stubs the drawing
+  layer so the assertions run without fetching basemap tiles."
+  [rows]
+  (let [captured (atom ::not-called)]
+    (mt/with-dynamic-fn-redefs [maps/render-grid-map (fn [cells _opts]
+                                                       (reset! captured cells)
+                                                       (byte-array [0]))]
+      (let [part (body/render :grid_map :inline "UTC" grid-map-card nil
+                              {:cols grid-map-cols :rows rows})]
+        (is (= :img (-> part :content second first))
+            "should render a map image, not degrade to a table")))
+    @captured))
+
+(def ^:private grid-map-rows
+  "Three rows in one lat/long bin and one row in another, as an extra breakout produces."
+  [[37.0 -122.0 1 1]
+   [37.0 -122.0 2 1]
+   [37.0 -122.0 3 1]
+   [40.0  -74.0 4 1]])
+
+(deftest ^:parallel render-grid-map-folds-duplicate-bins-test
+  (testing "rows sharing a lat/long bin fold into one cell with the summed metric"
+    (let [cells (grid-map-cells grid-map-rows)]
+      (is (= 2 (count cells))
+          "four rows across two bins should draw two cells, not four overdrawn ones")
+      (is (= #{{:lat 37.0 :lon -122.0 :lat-bin 1.0 :lon-bin 1.0 :metric 3}
+               {:lat 40.0 :lon  -74.0 :lat-bin 1.0 :lon-bin 1.0 :metric 1}}
+             (set cells))
+          "the bin widths must survive the fold; render-grid-map derives its bounds from them"))))
+
+(deftest ^:parallel render-grid-map-color-scale-spans-aggregated-range-test
+  (testing "the metric range driving the color scale is the aggregated one"
+    ;; render-grid-map takes its min/max from (keep :metric cells). Unfolded, every row's count is 1, so
+    ;; mn and mx are both 1 and grid-color paints every cell the same mid-ramp color.
+    (let [metrics (keep :metric (grid-map-cells grid-map-rows))]
+      (is (= [1 3] [(apply min metrics) (apply max metrics)])))))
+
+(deftest ^:parallel render-grid-map-keeps-distinct-bins-test
+  (testing "bins that share only one coordinate stay separate"
+    (let [cells (grid-map-cells [[37.0 -122.0 1 1]
+                                 [37.0 -121.0 2 2]
+                                 [38.0 -122.0 3 4]])]
+      (is (= #{[37.0 -122.0 1] [37.0 -121.0 2] [38.0 -122.0 4]}
+             (set (map (juxt :lat :lon :metric) cells)))))))
+
+(deftest ^:parallel render-grid-map-nil-metric-test
+  (testing "nil metrics are skipped rather than counted as zero, mirroring the frontend's sumMetric"
+    (let [cells  (grid-map-cells [[37.0 -122.0 1 nil]
+                                  [37.0 -122.0 2 5]
+                                  [40.0  -74.0 3 nil]
+                                  [40.0  -74.0 4 nil]])
+          by-bin (into {} (map (juxt (juxt :lat :lon) :metric)) cells)]
+      (is (= 2 (count cells))
+          "a nil metric must not keep a row out of its bin's fold")
+      (is (= 5 (get by-bin [37.0 -122.0]))
+          "a nil alongside a number contributes nothing to the sum")
+      (is (nil? (get by-bin [40.0 -74.0]))
+          "all-nil stays nil; a 0 would drag the low end of the color scale down"))))

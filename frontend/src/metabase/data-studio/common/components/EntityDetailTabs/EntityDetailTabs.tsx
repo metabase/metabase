@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useLocation } from "metabase/router";
 
@@ -20,7 +20,7 @@ type EntityDetailTabsProps = {
 export function EntityDetailTabs({ urls }: EntityDetailTabsProps) {
   const location = useLocation();
 
-  const tabs: PaneHeaderTab[] = [
+  const tabs: PillTab[] = [
     {
       label: t`Definition`,
       to: urls.definition,
@@ -40,5 +40,5 @@ export function EntityDetailTabs({ urls }: EntityDetailTabsProps) {
     });
   }
 
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 }

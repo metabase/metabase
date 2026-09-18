@@ -1,5 +1,11 @@
 import { chain } from "icepick";
 
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
@@ -9,26 +15,26 @@ import {
   getIsEditingParameter,
   getIsSharing,
   getParameters,
+  getQuestionByCard,
+  getSelectedTabId,
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import Field from "metabase-lib/v1/metadata/Field";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
+  createMockDatabase,
   createMockField,
   createMockHeadingDashboardCard,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
@@ -460,6 +466,104 @@ describe("dashboard/selectors", () => {
       expect(cards[2].card.id).toBe(0);
       expect(cards[1].card.id).toBe(1);
       expect(cards[0].card.id).toBe(2);
+    });
+  });
+});
+
+describe("getSelectedTabId", () => {
+  const DASHBOARD_ID = 1;
+
+  const createTabbedState = (siteUrl: string) =>
+    createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD_ID,
+        selectedTabId: null,
+        dashboards: {
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            id: DASHBOARD_ID,
+            tabs: [
+              createMockDashboardTab({ id: 1 }),
+              createMockDashboardTab({ id: 2 }),
+            ],
+          }),
+        },
+      }),
+      settings: createMockSettingsState({ "site-url": siteUrl }),
+    });
+
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("initializes from the tab query param", () => {
+    window.history.replaceState({}, "", "/dashboard/1?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("initializes from the tab query param on a subpath deployment (metabase#76946)", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/metabase/dashboard/1?tab=2-second-tab",
+    );
+
+    const state = createTabbedState("http://localhost:3000/metabase");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("falls back to the first tab while navigating to another dashboard", () => {
+    window.history.replaceState({}, "", "/dashboard/999?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(1);
+  });
+});
+
+describe("getQuestionByCard", () => {
+  function makeState(cards: Card[]): State {
+    const table = createMockTable({
+      id: 1,
+      db_id: 1,
+      fields: [createMockField({ id: 1, table_id: 1 })],
+    });
+
+    return createMockState({
+      settings: createMockSettingsState(),
+      entities: createMockEntitiesState({
+        databases: [createMockDatabase({ id: 1, tables: [table] })],
+        tables: [table],
+        questions: cards,
+      }),
+    });
+  }
+
+  it("returns the identical Question for the same card and state", () => {
+    const card = createMockCard({ id: 1 });
+    const state = makeState([card]);
+
+    // connect() shallow-compares mapped props, so a fresh Question here would
+    // re-render DashCardCardParameterMapper on every store change.
+    expect(getQuestionByCard(state, { card })).toBe(
+      getQuestionByCard(state, { card }),
+    );
+  });
+
+  it("holds an entry per card rather than only the most recent one", () => {
+    const cards = [1, 2, 3].map((id) => createMockCard({ id }));
+    const state = makeState(cards);
+
+    const first = cards.map((card) => getQuestionByCard(state, { card }));
+    // Reading the other cards in between must not evict the first. A one-entry
+    // cache would recompute here and re-render every mapped dashcard.
+    const second = cards.map((card) => getQuestionByCard(state, { card }));
+
+    first.forEach((question, index) => {
+      expect(question).toBe(second[index]);
     });
   });
 });

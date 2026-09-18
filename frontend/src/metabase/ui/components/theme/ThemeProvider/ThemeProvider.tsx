@@ -11,6 +11,7 @@ import { getCspNonce } from "metabase/utils/csp";
 import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
+import "../../overlays/Popover/register-popover-dropdown";
 import { useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 

@@ -6,16 +6,15 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Icon } from "metabase/ui";
-import { displayNameForColumn } from "metabase/utils/formatting";
-import { registerVisualization } from "metabase/visualizations/index";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-import type {
-  AuditTableSorting,
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+import { displayNameForColumn, formatValue } from "metabase/value-formatting";
+import type { AuditTableSorting } from "metabase/visualizations/types";
 import { TABLE_DEFINITION } from "metabase/visualizations/visualizations/Table/definition";
+import {
+  type ComputedVisualizationSettings,
+  type VisualizationDefinition,
+  isColumnRightAligned,
+  registerVisualization,
+} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import type { DatasetColumn, RowValues, Series } from "metabase-types/api";
 
@@ -98,7 +97,6 @@ function AuditTableVisualizationInner({
           {isSelectable && (
             <th>
               <Checkbox
-                size="sm"
                 checked={Object.values(rowChecked).some((elem) => elem)}
                 onChange={() => onAllSelectClick?.({ rows })}
               />
@@ -140,7 +138,6 @@ function AuditTableVisualizationInner({
             {isSelectable && (
               <td>
                 <Checkbox
-                  size="sm"
                   checked={rowChecked[String(row[ROW_ID_IDX])] ?? false}
                   onChange={() => onRowSelectClick?.({ row, rowIndex })}
                 />

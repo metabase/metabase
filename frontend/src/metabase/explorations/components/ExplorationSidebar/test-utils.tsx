@@ -92,7 +92,9 @@ export function setup({
   readPageIds = new Set<string>(),
   tab = "all",
 }: SetupOpts) {
-  const setSelectedPageId = jest.fn();
+  const onPreviousPage = jest.fn();
+  const onNextPage = jest.fn();
+  const onPrefetchPage = jest.fn();
   const onToggleShowHidden = jest.fn();
   const onChangeSortOrder = jest.fn();
 
@@ -134,6 +136,7 @@ export function setup({
 
   const getSelectedPageUrl = (pageId: string) =>
     `${Urls.exploration(exploration.id)}/page/${encodeURIComponent(pageId)}`;
+  const getSelectedSummaryUrl = () => Urls.explorationSummary(exploration.id);
 
   const explorationPath = Urls.exploration(exploration.id);
   const {
@@ -155,9 +158,11 @@ export function setup({
       selectedSidebarTab={selectedSidebarTab}
       getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
       tree={displayTree}
-      selectedPageId={resolvedPageId}
-      setSelectedPageId={setSelectedPageId}
+      selectedEntity={
+        resolvedPageId != null ? { type: "page", id: resolvedPageId } : null
+      }
       getSelectedPageUrl={getSelectedPageUrl}
+      getSelectedSummaryUrl={getSelectedSummaryUrl}
       shouldScrollSelectionRef={{ current: true }}
       isOpen
       readPageIds={readPageIds}
@@ -166,6 +171,9 @@ export function setup({
       sortOrder={sortOrder}
       onChangeSortOrder={onChangeSortOrder}
       contentMode={contentMode}
+      onPreviousPage={onPreviousPage}
+      onNextPage={onNextPage}
+      onPrefetchPage={onPrefetchPage}
     />
   );
 
@@ -174,10 +182,13 @@ export function setup({
     initialRoute: explorationPath,
   });
   return {
-    setSelectedPageId,
+    onPreviousPage,
+    onNextPage,
+    onPrefetchPage,
     onToggleShowHidden,
     onChangeSortOrder,
     getSelectedPageUrl,
+    getSelectedSummaryUrl,
     exploration,
   };
 }

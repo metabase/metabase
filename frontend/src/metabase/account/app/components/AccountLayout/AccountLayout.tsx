@@ -28,8 +28,8 @@ const AccountLayout = ({
       />
       <Box
         mx="auto"
-        px={{ base: "sm", sm: "md" }}
-        py={{ base: "sm", sm: "xl" }}
+        px={{ base: "sm", sm: "lg" }}
+        py={{ base: "sm", sm: "xxl" }}
         w={{ base: "100%", sm: rem(540) }}
       >
         <Outlet />

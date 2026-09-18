@@ -10,17 +10,16 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
    [metabase.llm.anthropic :as llm.anthropic]
+   [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.db :as llm.db]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.self :as metabot.self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [stencil.core :as stencil]
-   [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [throttle.core :as throttle])
   (:import
    (java.time LocalDateTime)
    (java.time.format DateTimeFormatter)))
@@ -42,7 +41,7 @@
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
-    (t2/select-one-fn :engine :model/Database :id database-id)))
+    (llm.db/database-engine database-id)))
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.
@@ -86,23 +85,6 @@
                            :result       result}
                           api/*current-user-id*))
 
-(api.macros/defendpoint :get "/list-models"
-  :- [:map [:models [:sequential [:map
-                                  [:id :string]
-                                  [:display_name :string]]]]]
-  "List available LLM models from the configured provider.
-
-   Requires LLM to be configured for the selected provider in admin settings."
-  [_route-params
-   _query-params]
-  (when-not (metabot.settings/llm-metabot-configured?)
-    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
-                    {:status-code 403})))
-  (let [provider-and-model (metabot.settings/llm-metabot-provider)
-        ai-proxy?          (metabot/metabase-provider? provider-and-model)
-        provider           (metabot/provider-and-model->provider provider-and-model)]
-    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
-
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-sources."
   [:map
@@ -125,7 +107,7 @@
 
 (def ^:private template-tags-schema
   [:map-of :string
-   [:map
+   [:map {:closed true}
     [:type :string]
     [:card-id {:optional true} pos-int?]]])
 
@@ -143,7 +125,7 @@
     or field value fetching."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:database_id pos-int?]
             [:sql :string]
             [:template_tags {:optional true} template-tags-schema]]]
@@ -186,12 +168,12 @@
    Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:referenced_entities {:optional true}
-             [:sequential [:map
+             [:sequential [:map {:closed true}
                            [:model :string]
                            [:id pos-int?]]]]]
    request]
@@ -242,6 +224,7 @@
                 :user-id             api/*current-user-id*
                 :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
                 :model-id            (:model usage)
+                :provider            "anthropic"
                 :prompt-tokens       (:prompt usage)
                 :completion-tokens   (:completion usage)
                 :total-tokens        (+ (:prompt usage) (:completion usage))
@@ -253,6 +236,8 @@
               (metabot/log-ai-usage!
                {:source             "sql-gen"
                 :model              (:model usage)
+                :provider           "anthropic"
+                :model-name         (:model usage)
                 :prompt-tokens      (:prompt usage)
                 :completion-tokens  (:completion usage)})
               (track-sqlgen-event!
@@ -272,4 +257,5 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."
   (handlers/routes
+   (+auth metabase.llm.api.provider/routes)
    (api.macros/ns-handler *ns* +auth)))

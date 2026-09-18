@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]))
 
@@ -214,3 +215,31 @@
                ["2016-09-11T00:00:00+01:00" 23]
                ["2016-09-18T00:00:00+01:00" 18]
                ["2016-09-25T00:00:00+01:00" 32]])))))))
+
+(deftest clickhouse-rebucket-over-date-bucketed-source-query-test
+  ;; Regression for #79648.
+  (mt/test-driver :clickhouse
+    (mt/with-report-timezone-id! "Europe/London"
+      (let [mp          (mt/metadata-provider)
+            orders      (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            created-at  (lib.tu.notebook/find-col-with-spec
+                         orders (lib/breakoutable-columns orders)
+                         {:display-name "Orders"} {:display-name "Created At"})]
+        (doseq [source-unit [:week :month :quarter :year]]
+          (testing (str "source query bucketed by " source-unit)
+            (let [inner (-> orders
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (lib/with-temporal-bucket created-at source-unit)))]
+              (mt/with-temp [:model/Card card {:dataset_query inner}]
+                (let [outer      (lib/query mp (lib.metadata/card mp (:id card)))
+                      inherited  (lib.tu.notebook/find-col-with-spec
+                                  outer (lib/breakoutable-columns outer) {} {:name "created_at"})]
+                  (doseq [outer-unit [:day :week :month :quarter :year]]
+                    (testing (str "re-bucketed by " outer-unit)
+                      (is (some?
+                           (mt/rows
+                            (qp/process-query
+                             (-> outer
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout (lib/with-temporal-bucket
+                                                 inherited outer-unit))))))))))))))))))

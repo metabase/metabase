@@ -13,12 +13,18 @@ In those cases, the dimension word is describing *scope* — it's not an instruc
 
 ## Superlative questions sort and limit
 
-Questions of the form *"which / who / what has the most / highest / slowest / largest / fastest …"* ask for a single winner (or small top-N). Use:
+Questions of the form *"which / who / what has the most / highest / slowest / largest / fastest …"* ask for a single winner (or small top-N). In one stage, set four keys: `aggregation` on the measure, `breakout` on the entity being ranked, `order-by` descending on that aggregation, and `limit`:
 
-- `["aggregate", <agg>]` on the measure
-- `["breakout", <dim>]` on the entity being ranked
-- `["order-by", ["desc", ["aggregation-ref", 0]]]`
-- `["limit", 1]` (or the N the user asked for)
+```json
+{"lib/type": "mbql.stage/mbql",
+ "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+ "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]],
+ "order-by": [["desc", {}, ["aggregation", {}, 0]]],
+ "limit": 1}
+```
+
+`aggregation`, `breakout`, `order-by`, and `limit` are stage *keys*, never clause heads — don't write `["aggregate", …]`, `["order-by", …]`, or `["limit", …]` as clauses. Refer to an aggregation in the same stage by its 0-based index: `["aggregation", {}, 0]`. Direction clauses carry the mandatory options map like every other clause: `["desc", {}, <ref>]`.
 
 Grouping without sort+limit answers a different question — it returns every entity, which obscures the winner.
 

@@ -4,8 +4,8 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.notification.models :as models.notification]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.pulse.db :as pulse.db]
+   [metabase.util.malli :as mu]))
 
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
@@ -58,7 +58,7 @@
   "Removes all of the alerts and notifies all of the email recipients of the alerts change."
   [topic actor card]
   (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
-    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (pulse.db/delete-notifications! (map :id card-notifications))
     (events/publish-event! topic {:card          card
                                   :actor         actor
                                   :notifications card-notifications})))

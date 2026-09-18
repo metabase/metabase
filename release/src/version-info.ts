@@ -147,7 +147,7 @@ export const getSupportedMajorVersions = (
   }
 
   const supported = [
-    ...new Set(lines.filter(line => line.eol >= today).map(line => line.major)),
+    ...new Set(lines.filter(line => line.eol > today).map(line => line.major)),
   ].sort((a, b) => b - a);
 
   if (supported.length === 0) {

@@ -253,25 +253,6 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findAllByTestId("header-cell").should("have.length", 2);
     cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2025
   });
-
-  // flaky test (#19454)
-  it(
-    "should show an info popover when hovering over summarize dimension options",
-    { tags: "@skip" },
-    () => {
-      H.openReviewsTable();
-
-      H.summarize();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Group by")
-        .parent()
-        .findByText("Title")
-        .trigger("mouseenter");
-
-      H.popover().contains("Title");
-      H.popover().contains("199 distinct values");
-    },
-  );
 });
 
 function removeMetricFromSidebar(metricName) {

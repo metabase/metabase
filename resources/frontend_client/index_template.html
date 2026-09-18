@@ -23,6 +23,12 @@
 
     <base href="{{{baseHref}}}" />
 
+    <!--
+      PreloadAssetTags replaces this marker at build time. Keep it after <base href>,
+      which the hints resolve against, and before the inline JSON, which is large.
+    -->
+    <!-- asset-preloads -->
+
     <script type="application/json" id="_metabaseBootstrap">
       {{{bootstrapJSON}}}
     </script>
@@ -39,12 +45,10 @@
       {{{userColorScheme}}}
     </script>
 
-    <script type="application/json" id="_metabaseNonce">
-      {{{nonceJSON}}}
-    </script>
-
     <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
-    <script type="text/javascript">{{{bootstrapJS}}}</script>
+    <!-- The nonce is here so index_bootstrap.js can read it off `document.currentScript.nonce`.
+         The browser blanks the attribute after parsing, so the value stays out of the DOM. -->
+    <script type="text/javascript" nonce="{{{nonce}}}">{{{bootstrapJS}}}</script>
     <script type="text/javascript">{{{assetOnErrorJS}}}</script>
   </head>
 

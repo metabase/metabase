@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
 import type { NativeQuestionDetails } from "e2e/support/helpers";
+import { dayjs } from "metabase/dayjs";
 import { createMockTask } from "metabase-types/api/mocks";
 
 const { H } = cy;
@@ -27,6 +26,42 @@ describe("issue 14636", () => {
           limit,
           offset,
           total,
+        },
+      },
+    ).as(alias);
+  }
+
+  function stubFilteredResponse({
+    status,
+    task,
+    data,
+    alias,
+  }: {
+    status?: string;
+    task?: string;
+    data: ReturnType<typeof createMockTask>[];
+    alias: string;
+  }) {
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/task",
+        query: {
+          limit: String(limit),
+          offset: "0",
+          sort_column: "started_at",
+          sort_direction: "desc",
+          ...(status ? { status } : {}),
+          ...(task ? { task } : {}),
+        },
+      },
+      {
+        statusCode: 200,
+        body: {
+          data,
+          limit,
+          offset: 0,
+          total: data.length,
         },
       },
     ).as(alias);
@@ -131,12 +166,38 @@ describe("issue 14636", () => {
 
   it("filtering should work", () => {
     const total = 57;
-    cy.visit("/monitor/tasks/list?status=success&task=field+values+scanning");
+    const task = "field values scanning";
+    const filteredTask = createMockTask({ task });
 
-    cy.findByPlaceholderText("Filter by task").should(
-      "have.value",
-      "field values scanning",
-    );
+    // Keep this test independent of background tasks created asynchronously by H.restore().
+    // Register the less-specific routes first because Cypress matches intercepts in reverse order.
+    stubFilteredResponse({
+      status: "success",
+      data: [filteredTask],
+      alias: "successfulTasks",
+    });
+    stubFilteredResponse({
+      task,
+      data: [filteredTask],
+      alias: "filteredTasks",
+    });
+    stubFilteredResponse({
+      status: "failed",
+      task,
+      data: [],
+      alias: "failedFilteredTasks",
+    });
+    stubFilteredResponse({
+      status: "success",
+      task,
+      data: [filteredTask],
+      alias: "successfulFilteredTasks",
+    });
+
+    cy.visit("/monitor/tasks/list?status=success&task=field+values+scanning");
+    cy.wait("@successfulFilteredTasks");
+
+    cy.findByPlaceholderText("Filter by task").should("have.value", task);
     getFilterByStatus().should("have.value", "Success");
     cy.findAllByTestId("task").should("have.length", 1);
     cy.findByTestId("task")
@@ -146,6 +207,7 @@ describe("issue 14636", () => {
 
     getFilterByStatus().click();
     H.popover().findByText("Failed").click();
+    cy.wait("@failedFilteredTasks");
     cy.location("search").should(
       "eq",
       "?status=failed&task=field+values+scanning",
@@ -154,6 +216,7 @@ describe("issue 14636", () => {
     cy.findByTestId("monitor-main").should("contain.text", "No results");
 
     getFilterByStatus().parent().findByLabelText("Clear").click();
+    cy.wait("@filteredTasks");
     cy.location("search").should("eq", "?task=field+values+scanning");
     getFilterByStatus().should("have.value", "");
     cy.findAllByTestId("task").should("have.length", 1);
@@ -170,6 +233,7 @@ describe("issue 14636", () => {
     cy.wait("@first");
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     cy.visit("/monitor/tasks/list?page=1");
+    cy.wait("@second");
     cy.findByLabelText("pagination")
       .findByText(`51 - ${total}`)
       .should("be.visible");
@@ -177,10 +241,12 @@ describe("issue 14636", () => {
     cy.log("should reset pagination when changing filters");
     getFilterByStatus().click();
     H.popover().findByText("Success").click();
+    cy.wait("@successfulTasks");
     cy.location("search").should("eq", "?status=success");
 
     cy.log("should remove invalid query params");
     cy.visit("/monitor/tasks/list?status=foobar");
+    cy.wait("@first");
     cy.location("search").should("eq", "");
     getFilterByStatus().should("have.value", "");
   });
@@ -648,11 +714,11 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByTestId("tasks-table").should("be.visible");
 
-    cy.findByRole("tab", { name: /Runs/i }).click();
+    cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
     cy.findByTestId("task-runs-table").should("be.visible");
 
-    cy.findByRole("tab", { name: /Tasks/i }).click();
+    cy.findByRole("link", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
     cy.findByTestId("tasks-table").should("be.visible");
   });

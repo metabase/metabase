@@ -12,8 +12,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
-   [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt])
@@ -36,7 +36,7 @@
                                     (constantly semantic.tu/mock-embedding-model)]
           (is (true? (semantic.core/supported?))))))))
 
-(deftest ^:sequential build-hnsw-index-async-deduplicates-local-builds-test
+(deftest ^:synchronized build-hnsw-index-async-deduplicates-local-builds-test
   (let [started        (CountDownLatch. 1)
         release        (CountDownLatch. 1)
         reset-complete (CountDownLatch. 1)
@@ -65,7 +65,7 @@
              (.countDown release)))
          (is (.await reset-complete 5 TimeUnit/SECONDS) "the build future reset its local gate")))))
 
-(deftest ^:sequential repair-snapshot-precedes-canonical-document-read-test
+(deftest ^:synchronized repair-snapshot-precedes-canonical-document-read-test
   (let [events       (atom [])
         active-state (atom [nil {:metadata-row {:id 17}}])
         documents    (map (fn [document]
@@ -131,7 +131,7 @@
                                         (fn [result _]
                                           {:result (dissoc result :score)
                                            :score  (:score result)})
-                                        in-place.legacy/results
+                                        search.db/in-place-search-reducible
                                         (fn [_]
                                           (reset! legacy-called? true)
                                           (reify clojure.lang.IReduceInit

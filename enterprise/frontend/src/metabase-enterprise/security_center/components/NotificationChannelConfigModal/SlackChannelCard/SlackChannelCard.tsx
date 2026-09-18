@@ -20,7 +20,7 @@ export function SlackChannelCard({ isConfigured }: { isConfigured: boolean }) {
 
   if (!isConfigured) {
     return (
-      <Card withBorder p="lg">
+      <Card withBorder p="xl">
         <Group gap="sm">
           <Icon name="slack" />
           <Title order={4}>{t`Slack`}</Title>
@@ -34,8 +34,8 @@ export function SlackChannelCard({ isConfigured }: { isConfigured: boolean }) {
   }
 
   return (
-    <Card withBorder p="lg" data-testid="slack-channel-card">
-      <Flex justify="space-between" align="center" mb="lg">
+    <Card withBorder p="xl" data-testid="slack-channel-card">
+      <Flex justify="space-between" align="center" mb="xl">
         <Group gap="sm">
           <Icon name="slack" />
           <Title order={4}>{t`Slack`}</Title>
@@ -48,7 +48,7 @@ export function SlackChannelCard({ isConfigured }: { isConfigured: boolean }) {
       </Flex>
       {config.slack.enabled && channels?.slack && (
         <Box>
-          <Text size="sm" fw={500} mb="xs">
+          <Text size="sm" fw={500} mb="xxs">
             {t`Channel`}
           </Text>
           <SlackChannelFieldNew

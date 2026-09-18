@@ -232,8 +232,12 @@ export interface MetabaseQuestionAttributes {
  */
 export interface MetabaseBrowserAttributes {
   /**
-   * Which collection to start from. Use a collection ID (e.g., `14`) to start
-   * in a specific collection, or `"root"` for the top-level "Our Analytics" collection.
+   * Which collection to start from. Values: regular ID, entity ID, `"root"` for
+   * the top-level "Our Analytics" collection, `"personal"` for the viewer's
+   * personal collection, `"tenant"` for the viewer's tenant collection, or
+   * `"all"` to show everything the viewer can access: their personal collection
+   * plus the shared collections. People who aren't tenant members get an error
+   * for `"tenant"`.
    */
   "initial-collection": number | string;
 

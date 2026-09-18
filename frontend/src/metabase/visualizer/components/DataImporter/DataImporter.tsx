@@ -82,7 +82,7 @@ export const DataImporter = ({
       style={{ height: "100%" }}
       data-testid="visualizer-data-importer"
     >
-      <Title order={4} mb="xs" className={S.Title}>
+      <Title order={4} mb="xxs" className={S.Title}>
         {showDatasets ? t`Add data` : t`Manage data`}
       </Title>
       {dataSources.length > 0 && (
@@ -114,7 +114,7 @@ export const DataImporter = ({
         display={showDatasets ? "flex" : "none"}
       >
         <TextInput
-          m="xs"
+          m="xxs"
           variant="filled"
           value={search}
           onChange={handleSearchChange}

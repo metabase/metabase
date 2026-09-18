@@ -166,7 +166,7 @@
         segments-db  {:segments [{:id          segment-id
                                   :name        segment-name
                                   :table-id    (meta/id :venues)
-                                  :definition  {}
+                                  :definition  nil
                                   :description segment-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -192,7 +192,7 @@
         metrics-db  {:segments [{:id          metric-id
                                  :name        metric-name
                                  :table-id    (meta/id :venues)
-                                 :definition  {}
+                                 :definition  nil
                                  :description metric-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -219,9 +219,7 @@
                   (lib/expression expression-name
                                   (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2))
                   (lib/expression other-expression-name
-                                  [:expression {:base-type :type/Integer} expression-name]))
-        ;;
-
+                                  [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} expression-name]))
         stage-number -1]
     (testing "expression references"
       (mu/disable-enforcement

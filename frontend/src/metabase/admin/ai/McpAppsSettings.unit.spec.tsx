@@ -7,11 +7,14 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { McpAppsSettings } from "./McpAppsSettings";
+
+const SITE_URL = "https://metabase.example.com";
+const MCP_URL = `${SITE_URL}/api/metabase-mcp`;
 
 const setup = async ({
   commonOrigins = [],
@@ -26,6 +29,7 @@ const setup = async ({
     "mcp-enabled?": enabled,
     "mcp-apps-cors-enabled-clients": commonOrigins,
     "mcp-apps-cors-custom-origins": customOrigins,
+    "site-url": SITE_URL,
   });
 
   setupPropertiesEndpoints(settings);
@@ -38,7 +42,9 @@ const setup = async ({
     }),
   });
 
-  await screen.findByText("MCP server");
+  if (enabled) {
+    await screen.findByText("MCP server");
+  }
 };
 
 describe("McpAppsSettings", () => {
@@ -149,12 +155,22 @@ describe("McpAppsSettings", () => {
     });
   });
 
-  it("hides MCP client configuration when the MCP server is off", async () => {
+  it("keeps the toggle but hides the server URL and MCP client configuration when the MCP server is off", async () => {
     await setup({ enabled: false });
 
+    expect(
+      await screen.findByRole("switch", { name: "MCP server" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(MCP_URL)).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Claude")).not.toBeInTheDocument();
     expect(
       screen.queryByPlaceholderText("https://*.example.com"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the server URL when the MCP server is on", async () => {
+    await setup();
+
+    expect(await screen.findByDisplayValue(MCP_URL)).toBeInTheDocument();
   });
 });

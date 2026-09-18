@@ -1,7 +1,5 @@
 import { renderHook } from "@testing-library/react";
 
-import type { CollectionItemModel } from "metabase-types/api";
-
 import {
   type EntityPickerProps,
   type OmniPickerCollectionItem,
@@ -12,7 +10,6 @@ import {
   getCollectionType,
   getItemFunctions,
   getNamespacesFromModels,
-  getValidCollectionItemModels,
   isSelectedItem,
   useGetEntityPickerIcon,
 } from "./utils";
@@ -371,32 +368,6 @@ describe("EntityPicker utils", () => {
         // now valid item is also disabled
         expect(isDisabledItem(validItem)).toBe(true);
       });
-    });
-  });
-
-  describe("getValidCollectionItemModels", () => {
-    it("should filter valid collection models and append 'collection'", () => {
-      const input = [
-        "card",
-        "dashboard",
-        "pikachu",
-        "table",
-        "transform",
-        "snippet",
-        "",
-      ];
-      const result = getValidCollectionItemModels(
-        // Unjustified type cast. FIXME
-        input as CollectionItemModel[],
-      );
-      expect(result).toEqual([
-        "card",
-        "dashboard",
-        "table",
-        "transform",
-        "snippet",
-        "collection",
-      ]);
     });
   });
 

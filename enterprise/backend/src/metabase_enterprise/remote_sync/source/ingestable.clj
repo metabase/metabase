@@ -90,14 +90,19 @@
         calls (atom 0)]
     (letfn [(progress-callback [item _]
               (when item
-                (let [current-calls (swap! calls inc)]
+                (let [progress (* (/ (swap! calls inc) total) normalize)]
                   ;; Progress reporting must never abort the ingestion it tracks. The update runs on a
                   ;; separate connection, which on some app DBs can contend with the in-flight load (e.g.
                   ;; a MySQL lock-wait timeout), so swallow DB failures and keep going — but still honor a
                   ;; cancellation signal, which `update-progress!` raises to stop the task.
                   (try
-                    (t2/with-connection [_conn (app-db/app-db)]
-                      (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize)))
+                    (if (app-db/in-transaction?)
+                      ;; The separate connection cannot see the task row if the ambient transaction created it, so it
+                      ;; would block on that row until innodb_lock_wait_timeout before failing. Nobody outside the
+                      ;; transaction can observe progress until it commits anyway, so stay on the current connection.
+                      (remote-sync.task/update-progress! task-id progress)
+                      (t2/with-connection [_conn (app-db/app-db)]
+                        (remote-sync.task/update-progress! task-id progress)))
                     (catch Exception e
                       (if (:cancelled? (ex-data e))
                         (throw e)

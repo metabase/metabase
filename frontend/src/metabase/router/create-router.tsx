@@ -7,7 +7,7 @@ import {
 } from "react-router";
 
 import { AppShell } from "./AppShell";
-import { setRouterExpected } from "./navigator";
+import { setRouter, setRouterExpected } from "./navigator";
 
 export type MemoryTestRouter = DataRouter;
 
@@ -47,14 +47,23 @@ function withAppShell(
   ];
 }
 
+/**
+ * `getIsNavigationPending` reads the router's own navigation state, which
+ * react-router publishes nowhere else outside a component.
+ */
+function register(router: DataRouter): DataRouter {
+  setRouter(router);
+  return router;
+}
+
 export function createAppRouter(
   routes: RouteObject[],
   basename?: string,
   hydrateFallback?: ReactNode,
 ): DataRouter {
-  return createBrowserRouter(withAppShell(routes, hydrateFallback), {
-    basename,
-  });
+  return register(
+    createBrowserRouter(withAppShell(routes, hydrateFallback), { basename }),
+  );
 }
 
 export function createMemoryAppRouter(
@@ -66,8 +75,10 @@ export function createMemoryAppRouter(
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
-  return createMemoryRouter(withAppShell(routes, hydrateFallback), {
-    basename,
-    initialEntries: [entry],
-  });
+  return register(
+    createMemoryRouter(withAppShell(routes, hydrateFallback), {
+      basename,
+      initialEntries: [entry],
+    }),
+  );
 }

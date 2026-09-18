@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { trackExplorationPageHiddenToggled } from "metabase/explorations/analytics";
 import { DEFAULT_SORT_ORDER } from "metabase/explorations/sidebar-preferences";
 import {
@@ -806,9 +806,9 @@ describe("ExplorationTreeNode", () => {
               selectedSidebarTab={selectedSidebarTab}
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={getTree()}
-              selectedPageId={String(PAGE_ID)}
-              setSelectedPageId={jest.fn()}
+              selectedEntity={{ type: "page", id: String(PAGE_ID) }}
               getSelectedPageUrl={() => path}
+              getSelectedSummaryUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
               readPageIds={new Set<string>()}
@@ -817,6 +817,9 @@ describe("ExplorationTreeNode", () => {
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
               contentMode="tree"
+              onPreviousPage={jest.fn()}
+              onNextPage={jest.fn()}
+              onPrefetchPage={jest.fn()}
             />
           }
         />,

@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as app-db]
+   [metabase.app-db.honeysql-guard :as honeysql-guard]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -63,12 +64,11 @@
     (is (= ["WHERE name = 'Cam''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam's")]}
                        {:quoted false}))))
-  (testing "`literal` should only escape single quotes that aren't already escaped -- with two single quotes..."
-    (is (= ["WHERE name = 'Cam''s'"]
+  (testing "`literal` escapes every single quote unconditionally -- no \"already escaped\" exception"
+    (is (= ["WHERE name = 'Cam''''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam''s")]}
-                       {:quoted false}))))
-  (testing "...or with a slash"
-    (is (= ["WHERE name = 'Cam\\'s'"]
+                       {:quoted false})))
+    (is (= ["WHERE name = 'Cam\\''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}
                        {:quoted false}))))
   (testing "`literal` should escape strings that start with a single quote"
@@ -149,9 +149,26 @@
                           :mysql          0.1M)}]
            (app-db/query {:select [[(/ 1 10) :one_tenth]]})))))
 
-(deftest ^:parallel quoted-cast-test
-  (is (= ["SELECT CAST(? AS \"bird type\")" "toucan"]
-         (sql/format {:select [[(h2x/quoted-cast "bird type" "toucan")]]} {:quoted true, :dialect :ansi}))))
+(deftest ^:parallel cast-test
+  (testing "a sane bare type-name token is emitted raw, since most dialects reject a quoted type name in a CAST"
+    (is (= ["SELECT CAST(? AS date)" "toucan"]
+           (sql/format {:select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
+  (testing "a type name that isn't a bare token is quoted, so a hostile type cannot inject SQL"
+    (is (= ["SELECT CAST(? AS \"date) UNION SELECT 1 --\")" "toucan"]
+           (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
+                       {:quoted true, :dialect :ansi})))))
+
+(deftest ^:parallel raw-type-name?-test
+  (are [expected sql-type] (= expected (h2x/raw-type-name? sql-type))
+    true  "timestamp"
+    true  :varchar
+    true  "double precision"
+    true  "decimal(10, 2)"
+    true  "VARCHAR(10)"
+    false "integer); select 1 --"
+    false "\"quoted\""
+    false "schema.type"
+    false "decimal(10, 2); --"))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))
@@ -281,3 +298,27 @@
   (is (=  ["count"]
           (h2x/identifier->components
            (h2x/identifier :field-alias :count)))))
+
+(deftest ^:parallel like-pattern-test
+  (are [s expected] (= expected (second (h2x/like-pattern s)))
+    "plain"   "plain"
+    "a%b_c"   "a!%b!_c"
+    "a!b"     "a!!b"
+    "%%%%"    "!%!%!%!%")
+  (testing "no unescaped LIKE metacharacter survives from the input"
+    (doseq [input ["a%b%c%d" "a_b_c_d" "%%%%%%%%" "!%!_" "plain"]]
+      (is (empty? (re-seq #"(?<!!)[%_]" (second (h2x/like-pattern input)))) (pr-str input))))
+  (testing "wrap is applied to the escaped string and the ESCAPE character is named explicitly"
+    (is (= ["SELECT * FROM t WHERE name LIKE ? ESCAPE '!'" "a!%b%"]
+           (sql/format {:select [:*] :from [:t]
+                        :where  [:like :name (h2x/like-pattern "a%b" #(str % "%"))]}))))
+  (testing "like-substring lowercases, escapes and wraps in %"
+    (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "%a!%b!_c%"]
+           (sql/format {:select [:*] :from [:t]
+                        :where  [:like [:lower :name] (h2x/like-substring "A%b_C")]}))))
+  (testing "like-prefix"
+    (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "a!%b%"]
+           (sql/format {:select [:*] :from [:t]
+                        :where  [:like [:lower :name] (h2x/like-prefix "A%b")]}))))
+  (testing "passes the app-DB HoneySQL guard"
+    (is (honeysql-guard/safe-syntax? {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]}))))

@@ -16,9 +16,8 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
@@ -49,11 +48,7 @@ export function ModelDetailPage() {
     virtualTableId != null
       ? queryMetadata?.tables?.find((table) => table.id === virtualTableId)
       : undefined;
-  const metadata = useSelector(getMetadata);
-  const tableQuery = useMemo(
-    () => getTableQuery(metadata, table),
-    [metadata, table],
-  );
+  const tableQuery = useSelector((state) => getTableQuery(state, table));
   const objectQuery = useMemo(() => {
     return tableQuery && table
       ? filterByPk(tableQuery, table.fields ?? [], rowId)

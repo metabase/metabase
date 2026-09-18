@@ -17,16 +17,10 @@ import {
   getDashboardDrillType,
   getDashboardDrillUrl,
 } from "./dashboard-click-drill";
-
-type DashboardDrillType =
-  | "link-url"
-  | "question-url"
-  | "dashboard-url"
-  | "dashboard-filter"
-  | "dashboard-reset";
+import type { DashboardDrillType, ParameterIdValuePair } from "./types";
 
 type SetOrUnsetParameterValues = (
-  parameterIdValuePairs: [string, ParameterValueOrArray | null][],
+  parameterIdValuePairs: ParameterIdValuePair[],
 ) => (dispatch: Dispatch) => void;
 
 type SetParameterValue = (
@@ -44,7 +38,7 @@ function getAction(
   // "dashboard-filter" and "dashboard-reset" drill types are produced.
   const setOrUnsetParameterValues = clicked.extraData
     ?.setOrUnsetParameterValues as SetOrUnsetParameterValues;
-  // Unjustified type cast. FIXME
+  // Also injected via extraData by the useClickBehaviorData hook.
   const setParameterValue = clicked.extraData
     ?.setParameterValue as SetParameterValue;
 
@@ -65,10 +59,7 @@ function getAction(
     case "dashboard-filter":
       return {
         action: () => {
-          // Unjustified type cast. FIXME
-          const parameterIdValuePairs = getDashboardDrillParameters(
-            clicked,
-          ) as [string, ParameterValueOrArray | null][];
+          const parameterIdValuePairs = getDashboardDrillParameters(clicked);
           return setOrUnsetParameterValues(parameterIdValuePairs);
         },
       };
@@ -81,10 +72,7 @@ function getAction(
             dispatch(selectTab({ tabId }));
           }
 
-          // Unjustified type cast. FIXME
-          const parameterIdValuePairs = getDashboardDrillParameters(
-            clicked,
-          ) as [string, ParameterValueOrArray | null][];
+          const parameterIdValuePairs = getDashboardDrillParameters(clicked);
           parameterIdValuePairs
             .map(([id, value]) => setParameterValue(id, value))
             .forEach((action) => dispatch(action));

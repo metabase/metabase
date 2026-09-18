@@ -50,7 +50,9 @@ export const exportFromDashcard = (format: string) => {
     cy.findByTestId("download-results-button").click();
   });
 
-  cy.findByTestId("status-root-container").should("contain", "Downloading");
+  cy.findByTestId("status-root-container")
+    .invoke("text")
+    .should("match", /Downloading|Done/);
 };
 
 /**

@@ -53,6 +53,50 @@ describe("dev diagnostics collector", () => {
     expect(forwarded).toContainEqual(["passed through"]);
   });
 
+  describe("%s substitution", () => {
+    const lastMessage = () =>
+      formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()));
+
+    it("substitutes them the way the browser console renders them", () => {
+      // The verbatim shape of a React warning: a format string plus its substitutions.
+      console.error(
+        'Warning: Each child in a list should have a unique "key" prop.%s%s See https://reactjs.org/link/warning-keys for more information.%s',
+        "",
+        "\n\nCheck the render method of `App`.",
+        "\n    in div",
+      );
+
+      expect(lastMessage()).toBe(
+        'Warning: Each child in a list should have a unique "key" prop.' +
+          "\n\nCheck the render method of `App`." +
+          " See https://reactjs.org/link/warning-keys for more information." +
+          "\n    in div",
+      );
+    });
+
+    it("leaves other specifiers to the console's raw text", () => {
+      // Only `%s` is substituted — React never emits these, and getting them verbatim in
+      // the toolbar is a cosmetic loss rather than a misleading one.
+      console.error("%d items", 3);
+
+      expect(lastMessage()).toBe("%d items 3");
+    });
+
+    it("leaves a specifier alone when no argument is left, and appends the extras", () => {
+      console.error("only %s and %s", "one");
+      expect(lastMessage()).toBe("only one and %s");
+
+      console.error("%s then", "first", "extra");
+      expect(lastMessage()).toBe("first then extra");
+    });
+
+    it("still space-joins when the first argument carries no specifier", () => {
+      console.error("boom", { code: 1 });
+
+      expect(lastMessage()).toBe('boom {"code":1}');
+    });
+  });
+
   it("survives arguments JSON cannot represent", () => {
     const noop = () => undefined;
 

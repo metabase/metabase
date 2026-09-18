@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.version.settings :as version.settings]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def prevent? #'version.settings/prevent-upgrade?)
 

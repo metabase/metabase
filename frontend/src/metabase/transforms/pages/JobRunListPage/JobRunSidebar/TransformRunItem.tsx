@@ -22,7 +22,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatDurationLong } from "metabase/utils/formatting/time";
+import { formatDurationLong } from "metabase/utils/formatting";
 import type { TransformRunForJobRun } from "metabase-types/api";
 
 import S from "./TransformRunItem.module.css";
@@ -39,7 +39,7 @@ export function TransformRunItem({ transformRun }: TransformRunItemProps) {
   return (
     <Group
       className={S.transformItem}
-      p="md"
+      p="lg"
       gap="sm"
       wrap="nowrap"
       align="start"
@@ -108,7 +108,7 @@ type TransformRunTimesProps = {
 
 function TransformRunTimes({ run }: TransformRunTimesProps) {
   return (
-    <Group gap="xs" wrap="nowrap">
+    <Group gap="xxs" wrap="nowrap">
       <DateTime value={run.start_time} unit="minute" />
       {run.end_time != null && (
         <>

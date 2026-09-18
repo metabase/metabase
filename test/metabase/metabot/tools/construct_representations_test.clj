@@ -2,19 +2,31 @@
   "Tests for `execute-representations-query` - the representations-format entry point for
   `construct_notebook_query`.
 
-  Covers the happy path (external-query JSON -> resolved pMBQL wrapped in structured output),
+  Covers the happy path (external-query JSON -> resolved MBQL 5 wrapped in structured output),
   unknown table, the `:agent-error?` error-translation contract, and the database-id
   resolution from the query's first-stage `source-table:` (per `repr-plan.md` step 13:
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -356,10 +368,14 @@
             (is (= "metric" (:entity-type d)))
             (is (= "76" (:entity-id d)))
             (is (= "metabase://metric/76" (:source-table d)))
-            (is (re-find #"aggregation" (ex-message e))
-                "message should point at aggregation-clause recovery")
-            (is (re-find #"base_table_fully_qualified_name" (ex-message e))
-                "message should name the attribute the LLM needs to look up on the metric")))))
+            (testing "the recovery sentence is the caller's, so the throw carries only the facts to build it"
+              (is (= "`source-table:` does not accept URIs like `metabase://metric/76`." (ex-message e)))
+              (is (re-find #"aggregation" (v1-hints/recovery-hint d))
+                  "v1's table points at aggregation-clause recovery")
+              (is (re-find #"base_table_fully_qualified_name" (v1-hints/recovery-hint d))
+                  "v1's table names the attribute the LLM looks up on the metric")
+              (is (re-find #"aggregation" (message/render (v2-hints/recovery-hint d)))
+                  "v2's table points at aggregation-clause recovery too, in its own vocabulary"))))))
     (testing "question / model URI - hint points at `source-card:`"
       (doseq [t ["question" "model" "card"]]
         (try
@@ -372,8 +388,10 @@
             (let [d (ex-data e)]
               (is (= :uri-in-source-table (:error d)))
               (is (= t (:entity-type d)))
-              (is (re-find #"source-card" (ex-message e))
-                  (str "message for " t " should point at source-card:")))))))
+              (is (re-find #"source-card" (v1-hints/recovery-hint d))
+                  (str "v1 hint for " t " points at source-card:"))
+              (is (re-find #"source-card" (message/render (v2-hints/recovery-hint d)))
+                  (str "v2 hint for " t " points at source-card:")))))))
     (testing "table URI - hint points at portable FK form"
       (try
         (construct/resolve-database-id-from-first-stage
@@ -385,7 +403,8 @@
           (let [d (ex-data e)]
             (is (= :uri-in-source-table (:error d)))
             (is (= "table" (:entity-type d)))
-            (is (re-find #"portable FK" (ex-message e)))))))))
+            (is (re-find #"portable FK" (v1-hints/recovery-hint d)))
+            (is (re-find #"numeric table id" (message/render (v2-hints/recovery-hint d))))))))))
 
 (deftest execute-representations-query-unknown-db-in-source-table-test
   (testing (str "Post step-14-follow-up the first stage's `source-table[0]` is the sole source\n"
@@ -717,7 +736,7 @@
 (deftest expression-map-shape-end-to-end-test
   (testing (str "The LLM-friendly `expressions: {Name: clause, …}` map shape is normalised\n"
                 "to the canonical sequential MBQL 5 form with `lib/expression-name` stamped,\n"
-                "and the resolved query carries the expression in its pMBQL.")
+                "and the resolved query carries the expression in its MBQL 5.")
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
@@ -867,15 +886,25 @@
                 :result-metadata [{:name "ID"    :base-type :type/Integer}
                                   {:name "TOTAL" :base-type :type/Float}]}]}))
 
-(defn- lookup-card-stub [model eid]
-  (when (and (or (= model 'Card) (= model :model/Card))
-             (= eid card-entity-id))
-    {:id 500 :database_id 1 :entity_id eid}))
+(defn- stub-content-store
+  "Stands in for the app-DB store over a mock metadata provider, serving `row` by entity id and
+  by numeric id. It answers from `row` rather than delegating to
+  [[metabase.models.serialization/lookup-by-id]], so code that bypassed the store could not
+  satisfy these tests by reaching the serdes resolver directly."
+  [row]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ eid] (when (= eid (:entity_id row)) row))
+    (measure-by-entity-id [_ _] nil)
+    (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id] (when (= id (:id row)) row))
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
 
 (defn- with-card-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-card)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-card-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 500 :database_id 1 :entity_id card-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -907,6 +936,42 @@
             (let [exported (get-in result [:structured-output :query-json])]
               (is (= card-entity-id
                      (get-in exported ["stages" 0 "source-card"]))))))))))
+
+(deftest source-card-multi-stage-cross-stage-ref-end-to-end-test
+  (testing
+   (str "Regression (BOT-1604): a two-stage query whose FIRST stage sources from a\n"
+        "`source-card:` (not `source-table:`), aggregating and breaking out on the card's own\n"
+        "columns, with a SECOND stage that filters on the aggregation output by cross-stage\n"
+        "name (`count`). `infer-cross-stage-field-types*` mini-resolves stage 0 to learn its\n"
+        "returned columns' types, but stage 0's own `source-card` field refs (`ID` in the\n"
+        "breakout) only get their `base-type` from `infer-source-card-field-types*` - if that\n"
+        "pass runs AFTER the cross-stage pass, the mini-resolve of stage 0 fails\n"
+        "schema-validation on its own untyped refs, is silently swallowed, and stage 1's\n"
+        "`count` ref is left without `base-type` - failing the final `lib.schema/query`\n"
+        "validation (\"missing required key\") every time, regardless of how the LLM retries.")
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {} "ID"]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [[">" {} ["field" {} "count"] 10]]}]}))
+              q             (get-in result [:structured-output :query])
+              filter-clause (get-in q [:stages 1 :filters 0])
+              field-clause  (nth filter-clause 2)]
+          (testing "two-stage shape preserved, stage 0 keeps source-card"
+            (is (= 2 (count (:stages q))))
+            (is (= 500 (get-in q [:stages 0 :source-card]))))
+          (testing "stage-1 cross-stage `count` ref resolved with an inferred base-type"
+            (is (= :> (first filter-clause)))
+            (is (= :field (first field-clause)))
+            (is (= "count" (nth field-clause 2)))
+            (is (= :type/Integer (get-in field-clause [1 :base-type])))))))))
 
 (deftest source-card-unknown-entity-id-surfaces-agent-error-test
   (testing "a valid-shaped entity_id that does not resolve to any card returns :unknown-card with :agent-error? true"
@@ -1014,6 +1079,338 @@
           (is (= "type/Float" (get opts "base-type"))))))))
 
 ;;; ============================================================
+;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
+;;; ============================================================
+
+(defmacro ^:private with-v2-surface
+  "Run `body` with numeric ids accepted, the way
+  `metabase.mcp.v2.common/execute-representations-query` binds it for the v2 dialect."
+  [& body]
+  `(binding [serdes.resolve/*numeric-ids-allowed?* true]
+     ~@body))
+
+(deftest numeric-ids-rejected-on-default-surface-test
+  (testing "the v1 surface keeps the portable-only contract: a numeric field id is a teaching error"
+    (with-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters"      [["=" {} ["field" {} 100] 0]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :numeric-field-id (:error d))))))))))
+
+(deftest numeric-source-rejected-on-default-surface-test
+  (testing "the v1 surface does not recognize a numeric source-table as a source at all"
+    (try
+      (construct/resolve-database-id-from-first-stage
+       {"lib/type" "mbql/query"
+        "stages"   [{"lib/type" "mbql.stage/mbql" "source-table" 10}]})
+      (is false "expected throw")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :missing-source-in-first-stage (:error (ex-data e))))))))
+
+(deftest numeric-ids-resolve-on-v2-surface-test
+  (testing "on the MCP v2 surface a fully numeric query body resolves like the portable one"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "filters"      [[">" {} ["field" {} 101] 0]]}]}))
+                q      (get-in result [:structured-output :query])]
+            (is (= :mbql/query (:lib/type q)))
+            (is (= 1 (:database q)))
+            (is (= 10 (get-in q [:stages 0 :source-table])))
+            (testing "the numeric field ref survives resolution and gets its base-type stamped"
+              (let [filter-ref (nth (get-in q [:stages 0 :filters 0]) 2)]
+                (is (= [:field 101] [(first filter-ref) (nth filter-ref 2)]))
+                (is (= :type/Float (get-in filter-ref [1 :base-type])))))))))))
+
+(deftest numeric-implicit-join-resolves-on-v2-surface-test
+  (testing "repair auto-wires `source-field` for a numeric field ref on an FK-related table"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "breakout"     [["field" {} 201]]}]}))
+                q            (get-in result [:structured-output :query])
+                breakout-ref (get-in q [:stages 0 :breakout 0])]
+            (is (= 201 (nth breakout-ref 2)))
+            (is (= 102 (get-in breakout-ref [1 :source-field]))
+                "the FK column from ORDERS to PRODUCTS is filled in, same as for a portable ref")))))))
+
+(deftest with-recovery-hint-preserves-original-as-cause-test
+  (testing (str "`with-recovery-hint` rebuilds the ex-info with the ORIGINAL exception as its\n"
+                "cause, so the throw-site stack trace survives — not the original's own cause,\n"
+                "which would drop the frame where the agent error was actually raised.")
+    (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})
+          hinted   (#'construct/with-recovery-hint original (constantly "do the thing"))]
+      (testing "message carries the hint"
+        (is (= "boom do the thing" (ex-message hinted))))
+      (testing "the original exception is the direct cause (not its cause, which is nil here)"
+        (is (identical? original (ex-cause hinted)))))))
+
+(defn- with-recording-query-check!
+  "Run `f`, recording every `[model id]` pair passed to `api/query-check`. Returns the set of
+  `:model/Table` ids that were checked."
+  [f]
+  (let [checked (atom [])
+        record  (fn ([obj] obj)
+                  ([entity id] (swap! checked conj [entity id]) {:model entity :id id})
+                  ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
+    (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                  construct/resolve-database-id-from-first-stage (fn [_] 1)
+                  api/read-check  record
+                  api/query-check record]
+      (f))
+    (into #{} (comp (filter (fn [[m _]] (= m :model/Table))) (map second)) @checked)))
+
+(deftest numeric-field-ref-permission-checks-fk-target-table-test
+  (testing (str "a bare numeric field ref on an FK-related table is permission-checked on that\n"
+                "table before repair — the numeric surface must not bypass the check the portable\n"
+                "form gets. Without collecting the numeric field id, `api/query-check` would never\n"
+                "see the FK-target table, and a sandboxed user could break out by an id on a table\n"
+                "they have no data perms for.")
+    (with-v2-surface
+      (let [tables (with-recording-query-check!
+                     (fn []
+                       (construct/execute-representations-query
+                        (query-data
+                         {"lib/type" "mbql/query"
+                          "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                       "source-table" 10
+                                       "aggregation"  [["count" {}]]
+                                       "breakout"     [["field" {} 201]]}]}))))]
+        (testing "the source table (ORDERS, 10) is checked"
+          (is (contains? tables 10)))
+        (testing "the FK-target table the numeric field lives on (PRODUCTS, 20) is checked"
+          (is (contains? tables 20)))))))
+
+(deftest numeric-field-ref-permission-check-blocks-forbidden-fk-target-test
+  (testing (str "when data perms on the FK-target table are denied, the numeric field ref surfaces\n"
+                "the 403 during the pre-repair check — the query never reaches repair's implicit-join\n"
+                "auto-wire, so no `source-field` path for the forbidden table is exported to the agent.")
+    (with-v2-surface
+      (let [deny-table-20 (fn deny
+                            ([obj] obj)
+                            ([entity id] (deny entity id nil))
+                            ([entity id & _]
+                             (if (and (= entity :model/Table) (= id 20))
+                               (throw (ex-info "You don't have permissions to do that." {:status-code 403}))
+                               {:model entity :id id})))]
+        (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                      construct/resolve-database-id-from-first-stage (fn [_] 1)
+                      api/read-check  deny-table-20
+                      api/query-check deny-table-20]
+          (try
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" 10
+                            "aggregation"  [["count" {}]]
+                            "breakout"     [["field" {} 201]]}]}))
+            (is false "expected a throw, got a resolved query (permission bypass)")
+            (catch clojure.lang.ExceptionInfo e
+              ;; Numeric refs collapse a query-check denial to the same not-found a missing id
+              ;; gets, so the status cannot be used to probe for tables. What this test guards is
+              ;; unchanged: the denial stops resolution before repair's implicit-join auto-wire.
+              (is (= 400 (:status-code (ex-data e))))
+              (is (= :unknown-table-id (:error (ex-data e)))))))))))
+
+;;; ----- numeric `source-card:` -----------------------------------------------------------
+
+(defn- numeric-card-source
+  "A v2-dialect first stage sourcing `card-id` by bare numeric id."
+  [card-id]
+  {"lib/type" "mbql/query"
+   "stages"   [{"lib/type" "mbql.stage/mbql" "source-card" card-id}]})
+
+(defn- with-stubbed-card!
+  "Run `f` with `metabot.db/card` serving only card 500, and `api/read-check` bound to
+  `read-check`. Stubs the model lookup rather than the content store: the numeric
+  `source-card` branch resolves the database id straight off the card row, before any
+  metadata provider or resolver exists."
+  [read-check f]
+  (mt/with-dynamic-fn-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
+                              api/read-check  read-check]
+    (f)))
+
+(deftest numeric-source-card-resolves-database-id-test
+  (testing "on the v2 surface a bare numeric `source-card:` resolves to the card's database id"
+    (with-v2-surface
+      (with-stubbed-card! allow-read-check
+        (fn []
+          (is (= 1 (construct/resolve-database-id-from-first-stage (numeric-card-source 500)))))))))
+
+(deftest numeric-source-card-is-read-checked-test
+  (testing "the numeric `source-card:` branch read-checks the card it resolves"
+    (with-v2-surface
+      (let [checked (atom [])]
+        (with-stubbed-card! (fn [obj] (swap! checked conj obj) obj)
+          (fn []
+            (construct/resolve-database-id-from-first-stage (numeric-card-source 500))))
+        (is (= [{:id 500 :database_id 1}] @checked)
+            "the resolved card row is handed to api/read-check")))))
+
+(deftest numeric-source-card-denied-never-yields-database-id-test
+  (testing "a numeric `source-card:` the user cannot read never yields the database id"
+    (with-v2-surface
+      (with-stubbed-card! (fn [_] (throw (ex-info "You don't have permissions to do that."
+                                                  {:status-code 403})))
+        (fn []
+          (try
+            (construct/resolve-database-id-from-first-stage (numeric-card-source 500))
+            (is false "expected a throw, got a resolved database id (permission bypass)")
+            (catch clojure.lang.ExceptionInfo e
+              ;; Collapsed to not-found, not 403: an unreadable card and an absent one must be
+              ;; indistinguishable, or the status code probes for hidden cards. The check still
+              ;; runs — that is what this test guards.
+              (is (= :unknown-card-id (:error (ex-data e)))))))))))
+
+(deftest numeric-source-card-read-checked-without-current-user-test
+  (testing (str "the read check does not depend on `api/*current-user-id*` being bound.\n"
+                "A user-less caller must fail closed like any other: guarding the check on a\n"
+                "bound user makes the numeric branch fail OPEN, while its portable sibling\n"
+                "(`tools.u/get-card-by-entity-id`) read-checks unconditionally.")
+    (with-v2-surface
+      (binding [api/*current-user-id* nil]
+        (with-stubbed-card! (fn [_] (throw (ex-info "You don't have permissions to do that."
+                                                    {:status-code 403})))
+          (fn []
+            (try
+              (construct/resolve-database-id-from-first-stage (numeric-card-source 500))
+              (is false "expected a throw, got a resolved database id (permission bypass)")
+              (catch clojure.lang.ExceptionInfo e
+                ;; The point here is that the check RUNS with no bound user; the denial is
+                ;; collapsed to not-found like every other one.
+                (is (= :unknown-card-id (:error (ex-data e))))))))))))
+
+(deftest numeric-source-card-unknown-id-surfaces-agent-error-test
+  (testing (str "a numeric `source-card:` naming no card surfaces `:unknown-card-id`, not a 404 — "
+                "the numeric-specific key, since a numeric miss and a portable-entity_id miss want "
+                "different recovery advice")
+    (with-v2-surface
+      (with-stubbed-card! allow-read-check
+        (fn []
+          (try
+            (construct/resolve-database-id-from-first-stage (numeric-card-source 999))
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (let [d (ex-data e)]
+                (is (true? (:agent-error? d)))
+                (is (= :unknown-card-id (:error d)))
+                (is (= 999 (:card-id d)))))))))))
+
+;;; ----- numeric `source-table:` that resolves to nothing ----------------------------------
+
+(deftest numeric-source-table-unknown-id-surfaces-agent-error-test
+  (testing (str "a numeric `source-table:` naming no active table surfaces `:unknown-table-id`,\n"
+                "distinct from the portable form's `:unknown-table` — the two want different\n"
+                "recovery vocabulary, so the keys must not be collapsed.")
+    (with-v2-surface
+      (mt/with-dynamic-fn-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
+        (try
+          (construct/resolve-database-id-from-first-stage
+           {"lib/type" "mbql/query"
+            "stages"   [{"lib/type" "mbql.stage/mbql" "source-table" 999}]})
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-table-id (:error d)))
+              (is (= 999 (:table-id d)))
+              (testing "the id renders without locale digit grouping"
+                (is (str/includes? (ex-message e) "999"))))))))))
+
+;;; ----- recovery-hint passthrough ---------------------------------------------------------
+
+(deftest with-recovery-hint-passthrough-test
+  (testing "an error is returned unchanged when there is no hint to add"
+    (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})]
+      (testing "no recovery-hint function at all"
+        (is (identical? original (#'construct/with-recovery-hint original nil))))
+      (testing "a recovery-hint function with nothing to say about this error"
+        (is (identical? original (#'construct/with-recovery-hint original (constantly nil))))))))
+
+(deftest portable-dialect-still-resolves-on-v2-surface-test
+  (testing "surface isolation: the identical portable query resolves under both surfaces"
+    (with-mp-and-stubs!
+      (fn []
+        (let [q  (query-data
+                  {"lib/type" "mbql/query"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [["count" {}]]}]})
+              strip-run-specific
+              (fn [query]
+                (walk/postwalk (fn [node]
+                                 (cond-> node (map? node) (dissoc :lib/uuid :lib/metadata)))
+                               query))
+              v1 (get-in (construct/execute-representations-query q) [:structured-output :query])
+              v2 (with-v2-surface
+                   (get-in (construct/execute-representations-query q) [:structured-output :query]))]
+          (is (= 10 (get-in v1 [:stages 0 :source-table])))
+          (is (= (strip-run-specific v1) (strip-run-specific v2))))))))
+
+(deftest v2-surface-error-hints-name-v2-tools-test
+  (testing "resolution errors under the v2 surface steer to browse_data/search, never read_resource"
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (try
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "NOPE"]
+                            "aggregation"  [["count" {}]]}]}))
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (let [hint (message/render (v2-hints/recovery-hint (ex-data e)))]
+                (is (= :unknown-table (:error (ex-data e))))
+                (is (re-find #"browse_data" hint))
+                (is (not (re-find #"read_resource|metabase://" (str (ex-message e) hint))))))))))))
+
+(deftest numeric-aggregation-index-ref-in-order-by-v2-test
+  (testing (str "`[aggregation, {}, <index>]` composes with numeric field refs: the repair pass\n"
+                "rewrites it to the canonical UUID-keyed form, so the agent never authors a lib/uuid")
+    (with-mp-and-stubs!
+      (fn []
+        (with-v2-surface
+          (let [result    (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" 10
+                                          "aggregation"  [["sum" {} ["field" {} 101]]
+                                                          ["count" {}]]
+                                          "breakout"     [["field" {} 102]]
+                                          "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}))
+                q         (get-in result [:structured-output :query])
+                agg-uuid  (get-in q [:stages 0 :aggregation 0 1 :lib/uuid])
+                order-ref (get-in q [:stages 0 :order-by 0 2])]
+            (is (string? agg-uuid))
+            (is (= :aggregation (first order-ref)))
+            (is (= agg-uuid (nth order-ref 2)))))))))
+
+;;; ============================================================
 ;;; Metric aggregations end-to-end: YoY growth via metric + offset
 ;;; ============================================================
 
@@ -1043,15 +1440,11 @@
                                             :aggregation  [[:sum {}
                                                             [:field {:base-type :type/Float} 101]]]}]}}]}))
 
-(defn- lookup-metric-stub [model eid]
-  (when (and (or (= model 'Card) (= model :model/Card))
-             (= eid metric-entity-id))
-    {:id 900 :database_id 1 :entity_id eid}))
-
 (defn- with-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-metric)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-metric-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 900 :database_id 1 :entity_id metric-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -1109,3 +1502,195 @@
               (testing "and the export round-trips: re-running the exported form yields an equal export"
                 (let [redo (construct/execute-representations-query (walk/keywordize-keys exported))]
                   (is (= exported (get-in redo [:structured-output :query-json]))))))))))))
+
+;;; ============================================================
+;;; Metric explicit-join feedback (BOT-1612)
+;;;
+;;; A metric on ORDERS explicitly joins CAMPAIGNS (NO foreign key from ORDERS) to reach
+;;; CAMPAIGNS.NAME. The fix is feedback-based, not backend-materialization:
+;;;   * the metric's /dimensions resource surfaces the joined dims + the exact join clause to
+;;;     paste (see entity-details-test / llm-shape-test);
+;;;   * a consumer query that INCLUDES that join is honored as-is (no rewrite);
+;;;   * a consumer query that OMITS the join gets an actionable `:no-fk-path` error pointing at
+;;;     the metric's dimensions resource - it is NOT silently repaired.
+;;; ============================================================
+
+(def ^:private metric-eid
+  "Valid 21-char NanoID so `import-mbql` picks up the `[:metric …]` branch."
+  "Metric123_456DefGhI78")
+
+(def ^:private mock-db-id
+  "Must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
+  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
+  treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
+  rather than this provider. With db id 1 that found the real Sample Database's ORDERS, which has
+  no CAMPAIGN_ID, and the failure surfaced only once another namespace had booted the app DB."
+  Integer/MAX_VALUE)
+
+(def ^:private mp-metric-base
+  "ORDERS(10) and CAMPAIGNS(30) with NO foreign key between them."
+  (lib.tu/mock-metadata-provider
+   {:database {:id mock-db-id :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id mock-db-id}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id mock-db-id}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
+               {:id 300 :name "ID"          :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
+
+(def ^:private metric-definition
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  (-> (lib/query mp-metric-base (lib.metadata/table mp-metric-base 10))
+      (lib/join (lib/join-clause (lib.metadata/table mp-metric-base 30)
+                                 [(lib/= (lib.metadata/field mp-metric-base 102)
+                                         (lib.metadata/field mp-metric-base 300))]))
+      (lib/aggregate (lib/count))
+      lib.convert/->legacy-MBQL))
+
+(def ^:private mp-metric
+  (lib.tu/mock-metadata-provider
+   mp-metric-base
+   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id mock-db-id :table-id 10
+             :entity-id metric-eid :dataset-query metric-definition}]}))
+
+(defn- with-joined-metric-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-metric)
+                construct/resolve-database-id-from-first-stage (fn [_] mock-db-id)
+                construct/permission-aware-content-store (stub-content-store
+                                                          {:id 700 :database_id mock-db-id :entity_id metric-eid})
+                api/read-check  allow-read-check
+                api/query-check allow-read-check
+                ;; `metric-details` gates its base table and every surfaced column on app-db
+                ;; Table/sandbox read permissions. The mock provider's table ids have no
+                ;; `:model/Table` rows, so those checks are stubbed open to keep this namespace
+                ;; app-DB-free (see the fixture note above). That the surfaced dimensions ARE
+                ;; permission-filtered is covered against real tables in entity-details-test.
+                mi/can-read?                             (constantly true)
+                mi/can-query?                            (constantly true)
+                entity-details/permission-filter-columns (fn [cols & _] cols)
+                entity-details/verified-review?          (constantly false)]
+    (f)))
+
+;; The join clause the metric /dimensions resource hands the LLM (uuid-free), to paste into `joins:`.
+(def ^:private advertised-campaigns-join
+  {"lib/type"   "mbql/join"
+   "fields"     "all"
+   "strategy"   "left-join"
+   "alias"      "Campaign"
+   "conditions" [["=" {}
+                  ["field" {"base-type" "type/Integer"} ["Sample" "PUBLIC" "ORDERS" "CAMPAIGN_ID"]]
+                  ["field" {"base-type" "type/Integer" "join-alias" "Campaign"}
+                   ["Sample" "PUBLIC" "CAMPAIGNS" "ID"]]]]
+   "stages"     [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "CAMPAIGNS"]}]})
+
+(deftest metric-joined-breakout-with-explicit-join-is-honored-test
+  (testing (str "A consumer query that INCLUDES the advertised explicit join (metric aggregation on "
+                "ORDERS + join to CAMPAIGNS + breakout on CAMPAIGNS.NAME) is honored as-is: the join "
+                "stays, the breakout resolves, and the joined column appears in the result columns. "
+                "No backend materialization needed (BOT-1612).")
+    (with-joined-metric-mp-and-stubs!
+      (fn []
+        (let [result     (construct/execute-representations-query
+                          (query-data
+                           {"lib/type" "mbql/query"
+                            "database" "Sample"
+                            "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                         "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                         "joins"        [advertised-campaigns-join]
+                                         "aggregation"  [["metric" {} metric-eid]]
+                                         "breakout"     [["field" {"join-alias" "Campaign"}
+                                                          ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+              structured (:structured-output result)
+              q          (:query structured)
+              joins      (get-in q [:stages 0 :joins])
+              breakout   (get-in q [:stages 0 :breakout 0])]
+          (testing "the LLM-authored join is preserved (exactly one, targeting CAMPAIGNS)"
+            (is (=? [{:stages [{:source-table 30}]}] joins))
+            (is (= "Campaign" (:alias (first joins)))))
+          (testing "the breakout keeps its join-alias and resolves to CAMPAIGNS.NAME"
+            (is (= "Campaign" (get-in breakout [1 :join-alias])))
+            (is (= 301 (nth breakout 2))))
+          (testing "CAMPAIGNS.NAME is a result column"
+            (is (some #(= 301 (:field_id %)) (:result-columns structured)))))))))
+
+(deftest metric-joined-breakout-without-join-errors-actionably-test
+  (testing (str "A consumer query that OMITS the join (bare breakout on CAMPAIGNS.NAME) is NOT "
+                "silently repaired: it errors :no-fk-path with an actionable message that explains "
+                "the explicit join. The `metabase://` metric-dimensions URI is surface-specific "
+                "vocabulary, so it lives in the v1 recovery-hint, not the base message (BOT-1612).")
+    (with-joined-metric-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["metric" {} metric-eid]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]})
+           {:recovery-hint v1-hints/recovery-hint})
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (= :no-fk-path (:error d)))
+              (is (:agent-error? d))
+              (testing "base message is actionable and surface-neutral: explains the explicit join, no URI"
+                (is (str/includes? (ex-message e) "joins:")))
+              (testing "the v1 recovery-hint carries the `metabase://` metric-dimensions vocabulary"
+                (is (str/includes? (ex-message e) "metabase://metric"))
+                (is (str/includes? (v1-hints/recovery-hint d) "metabase://metric"))))))))))
+
+(deftest metric-details-surfaced-artifacts-round-trip-test
+  (testing (str "END-TO-END: the join AND the per-dimension reference that `metric-details` surfaces "
+                "are pasteable verbatim - a consumer query built from BOTH resolves to CAMPAIGNS.NAME "
+                "without :no-fk-path. Guards against surfacing a bare FK reference that dead-ends "
+                "(BOT-1612).")
+    (with-joined-metric-mp-and-stubs!
+      (fn []
+        (let [entry        (first (:join-required-dimensions
+                                   (entity-details/metric-details
+                                    (lib.metadata/card mp-metric 700) mp-metric {:field-values-fn identity})))
+              surfaced-join (:join entry)
+              name-ref      (:reference (first (filter #(= 301 (:field_id %)) (:dimensions entry))))]
+          (testing "the surfaced reference is alias-qualified (NOT a bare portable FK that dead-ends)"
+            (is (= "field" (first name-ref)))
+            (is (some? (:join_alias entry)))
+            (is (= (:join_alias entry) (get (second name-ref) "join-alias"))
+                "the reference carries the metric join's alias, so QP re-expansion dedupes at execution")
+            (is (= ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"] (nth name-ref 2))))
+          (testing "pasting the surfaced join + reference verbatim resolves cleanly"
+            (let [result     (construct/execute-representations-query
+                              (query-data
+                               {"lib/type" "mbql/query"
+                                "database" "Sample"
+                                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                             "joins"        [surfaced-join]
+                                             "aggregation"  [["metric" {} metric-eid]]
+                                             "breakout"     [name-ref]}]}))
+                  structured (:structured-output result)]
+              (is (= 1 (count (get-in structured [:query :stages 0 :joins]))))
+              (is (some #(= 301 (:field_id %)) (:result-columns structured))
+                  "CAMPAIGNS.NAME resolves from the surfaced artifacts"))))))))
+
+(deftest repair-runs-with-refusal-auditing-off-test
+  (testing "repair's source-card lookups are best-effort and the query is resolved for real afterwards,
+            so a refusal in there must not be audited as an access attempt"
+    (let [seen   (atom ::never-called)
+          repair (mt/original-fn #'repr.repair/repair)]
+      (mt/with-dynamic-fn-redefs
+        [repr.repair/repair (fn [& args]
+                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (apply repair args))]
+        (with-mp-and-stubs!
+          (fn []
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "aggregation"  [["count" {}]]}]})))))
+      (is (false? @seen)))))

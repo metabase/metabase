@@ -1,16 +1,15 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockAppState, createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import type { ChecklistItemValue } from "metabase/redux/store";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -48,6 +47,8 @@ export const setup = ({
   setupBugReportingDetailsEndpoint();
   // The AI item's "Connect to an AI provider" modal reads admin settings.
   setupSettingsEndpoints([]);
+  setupLlmProvidersEndpoint();
+  setupLlmProviderTypesEndpoint();
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {

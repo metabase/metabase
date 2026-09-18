@@ -2,11 +2,12 @@
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [metabase.models.interface :as mi]
+   [metabase.notification.core :as notification]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.task-history.core :as task-history]
    [metabase.util.cron :as u.cron]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,8 +35,9 @@
       (if-not (:id recipient)
         {:type :notification-recipient/raw-value
          :details {:value (:email recipient)}}
-        {:type :notification-recipient/user
-         :user recipient}))
+        {:type    :notification-recipient/user
+         :user_id (:id recipient)
+         :user    recipient}))
     :http
     []
     (do
@@ -43,18 +45,15 @@
       [])))
 
 (defn- pc->channel
-  "Given a pulse channel, return the channel object.
-
-  Only supports HTTP channels for now, returns a map with type key for slack and email"
+  "The Channel row of an HTTP pulse channel, or nil for email and Slack pulse channels, which have none."
   [{channel-type :channel_type :as pulse-channel}]
-  (if (= :http (keyword channel-type))
-    (t2/select-one :model/Channel :id (:channel_id pulse-channel))
-    {:type (keyword "channel" (name channel-type))}))
+  (when (= :http (keyword channel-type))
+    (pulse.db/channel (:channel_id pulse-channel))))
 
 (defn- get-notification-handler
   [pulse-channel]
   (let [channel      (pc->channel pulse-channel)
-        channel-type (:type channel)]
+        channel-type (keyword "channel" (name (:channel_type pulse-channel)))]
     {:channel_type    channel-type
      :channel         channel
      :recipients      (channel-recipients pulse-channel)
@@ -92,13 +91,11 @@
                                        :else                               :goal_below)}
 
      :subscriptions [{:type :notification-subscription/cron
-                      :cron_schedule (u.cron/schedule-map->cron-string (-> pulse-channel
+                      :cron_schedule (u.cron/schedule-map->cron-string (-> (select-keys pulse-channel u.cron/schedule-keys)
                                                                            (update :schedule_type maybe-name)
                                                                            (update :schedule_day maybe-name)
                                                                            (update :schedule_frame maybe-name)))}]
      :handlers      [(get-notification-handler pulse-channel)]}))
-
-(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/send-notification!))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard async?]
@@ -108,7 +105,7 @@
                    channels)]
     (doseq [pulse-channel channels]
       (try
-        (send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
+        (notification/send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
         (catch Exception e
           (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e)))))
     nil))
@@ -149,7 +146,7 @@
   ;; with-task-run is a no-op if already nested (e.g., from scheduler)
   (task-history/with-task-run (some-> (pulse->task-run-info pulse)
                                       (assoc :auto-complete (not async?)))
-    (let [dashboard (t2/select-one :model/Dashboard :id dashboard_id)
+    (let [dashboard (pulse.db/dashboard dashboard_id)
           pulse     (-> (mi/instance :model/Pulse pulse)
                         ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                         ;; to fetch the Pulse.

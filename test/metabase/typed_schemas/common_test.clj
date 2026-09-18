@@ -1,7 +1,9 @@
 (ns metabase.typed-schemas.common-test
   (:require
    [clojure.test :refer :all]
-   [metabase.typed-schemas.common :as typed-schemas.common]))
+   [metabase.test :as mt]
+   [metabase.typed-schemas.common :as typed-schemas.common]
+   [metabase.typed-schemas.schema.common :as schema.common]))
 
 (deftest column-schema-includes-description-test
   (is (= {:type          "column"
@@ -60,3 +62,25 @@
             :id      2
             :tableId 168
             :keyDisambiguator "Orders"}]))))
+
+(deftest destination-db-ids-test
+  (testing "returns only the ids that back a destination (routed) database"
+    (mt/with-temp [:model/Database {router-id :id}      {}
+                   :model/Database {destination-id :id} {:router_database_id router-id}
+                   :model/Database {open-id :id}         {}]
+      (is (= #{destination-id}
+             (schema.common/destination-db-ids #{router-id destination-id open-id})))))
+  (testing "returns nil for an empty input, without querying"
+    (is (nil? (schema.common/destination-db-ids #{})))
+    (is (nil? (schema.common/destination-db-ids nil)))))
+
+(deftest select-schema-cards-excludes-destination-database-cards-test
+  (testing "select-schema-cards excludes cards backed by a destination (routed) database, even for a superuser"
+    (mt/with-temp [:model/Database {router-id :id}           {}
+                   :model/Database {destination-id :id}      {:router_database_id router-id}
+                   :model/Card     {open-card-id :id}        {:type :metric :database_id (mt/id)}
+                   :model/Card     {destination-card-id :id} {:type :metric :database_id destination-id}]
+      (mt/with-test-user :crowberto
+        (let [card-ids (into #{} (map :id) (schema.common/select-schema-cards :metric nil nil))]
+          (is (contains? card-ids open-card-id))
+          (is (not (contains? card-ids destination-card-id))))))))

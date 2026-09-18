@@ -47,7 +47,7 @@ export type InteractiveQuestionBaseProps = Omit<
   SdkQuestionProps,
   | "token"
   | "questionId"
-  | "getClickActionMode"
+  | "clickActionMode"
   | "navigateToNewCard"
   | "backToDashboard"
 >;

@@ -42,7 +42,7 @@ export const EmbedModal = ({
     padding={0}
   >
     <ModalHeader
-      py="lg"
+      py="xl"
       className={S.embedModalHeader}
       onClose={onClose}
       onBack={onBack}

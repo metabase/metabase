@@ -6,6 +6,7 @@ import type {
   DatetimeUnit,
   FieldId,
   FieldValuesType,
+  JoinConditionOperator,
   RowValue,
   SchemaId,
   TableId,
@@ -108,7 +109,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+export type { JoinConditionOperator } from "metabase-types/api/query";
 
 export type Clause =
   | AggregationClause

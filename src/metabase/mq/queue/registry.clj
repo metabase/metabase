@@ -77,23 +77,14 @@
                     {:queue queue-name :config config :errors (mu.humanize/humanize error)}))))
 
 (defn register-queue!
-  "Atomically registers `config` for `queue-name`. Re-registering with identical config is
-  a no-op (handy for repeated `register-queues!` calls in tests); mismatched config throws.
+  "Atomically registers `config` for `queue-name`, replacing any existing registration.
 
   `config` must satisfy [[:metabase.mq.queue/queue-config]]. Invalid config throws."
   [queue-name config]
   (let [config (or config {})]
     (validate-config! queue-name config)
-    (let [[old _] (swap-vals! *queues*
-                              (fn [m] (if (contains? m queue-name)
-                                        m
-                                        (assoc m queue-name config))))]
-      (when-let [existing (get old queue-name)]
-        (when (not= existing config)
-          (throw (ex-info (str "Queue " queue-name " is already registered with different config.")
-                          {:queue    queue-name
-                           :existing existing
-                           :new      config})))))))
+    (swap! *queues* assoc queue-name config)
+    nil))
 
 (defn exclusive?
   "Returns true if `queue-name` is declared with `:exclusive true`."
@@ -159,6 +150,39 @@
   {:arglists '([queue-name])}
   identity)
 
+(defonce ^{:doc "queue-name → symbol of the namespace whose `def-queue!` declaration owns it.
+  The load-time ownership ledger behind [[claim-queue-declaration!]]. `defonce` so reloading
+  this namespace doesn't orphan existing claims. Deliberately not test-rebound like [[*queues*]]:
+  a claim is a fact about the source code, not about a running mq instance."}
+  queue-declaration-sites
+  (atom {}))
+
+(defn claim-queue-declaration!
+  "Records `ns-symb` as the declaration site that owns `queue-name`. An implementation detail of
+  [[def-queue!]] — like [[register-queue!]], public only so the macro expansion can call it.
+
+  Re-claiming from the same namespace is a no-op, so reloading a declaring namespace is always
+  legal. A *different* namespace claiming an already-claimed queue throws, at load time: each
+  declaration installs a [[def-queue*]] method for its queue name, so duplicates would silently
+  clobber each other and which config won would depend on load order.
+
+  If a declaration has genuinely moved between namespaces, evict the stale claim from the REPL
+  with `(swap! metabase.mq.queue.registry/queue-declaration-sites dissoc <queue-name>)`, or
+  restart."
+  [queue-name ns-symb]
+  (let [[old _] (swap-vals! queue-declaration-sites
+                            (fn [m] (if (contains? m queue-name)
+                                      m
+                                      (assoc m queue-name ns-symb))))]
+    (when-let [existing (get old queue-name)]
+      (when (not= existing ns-symb)
+        ;; not i18n'ed because this is developer-facing only.
+        (throw (ex-info (format (str "Queue %s is already declared in %s. A queue has exactly one declaration site; "
+                                     "if you've moved it, remove the old claim with "
+                                     "(swap! metabase.mq.queue.registry/queue-declaration-sites dissoc %s) or restart.")
+                                queue-name existing queue-name)
+                        {:queue queue-name :existing-site existing :new-site ns-symb}))))))
+
 (defmacro def-queue!
   "Declares a queue with its broker-side configuration. Queues exist independently of any
   listener — a publisher can route to a queue declared anywhere in the codebase, and a
@@ -214,6 +238,10 @@
   These are all properties of the queue itself — they take effect at publish time, on every
   node, regardless of whether a listener is registered locally.
 
+  A queue has exactly one declaration site: reloading the declaring namespace is fine (and its
+  latest config wins), but a second namespace declaring the same queue name throws at load time —
+  see [[claim-queue-declaration!]].
+
   PERFORMANCE NOTE ON `:transactional`:
   When messages are sent transactionally (required or try with an active transaction), the batched messages are
   IMMEDIATELY sent as part of the transaction boundary. It does not use the sliding-time-window publish buffer
@@ -228,8 +256,10 @@
       (mq/def-queue! :queue/search-reindex {:transactional :require :exclusive true :max-batch-messages 50})"
   {:arglists '([queue-name config])}
   [queue-name & [config]]
-  `(defmethod def-queue* ~queue-name [~'_]
-     (register-queue! ~queue-name ~config)))
+  `(do
+     (claim-queue-declaration! ~queue-name '~(ns-name *ns*))
+     (defmethod def-queue* ~queue-name [~'_]
+       (register-queue! ~queue-name ~config))))
 
 (defn register-queues!
   "Realizes every [[def-queue!]] declaration into [[*queues*]]. Called at startup before

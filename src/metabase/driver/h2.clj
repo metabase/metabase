@@ -29,11 +29,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [every? some]])
   (:import
-   (java.sql Clob ResultSet ResultSetMetaData SQLException Types)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
+   (org.h2.api JavaObjectSerializer)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)
-   (org.h2.util StringUtils)))
+   (org.h2.util JdbcUtils StringUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,6 +42,22 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+;; H2 materializes a JAVA_OBJECT column value by deserializing its bytes with an ObjectInputStream. That
+;; can happen anywhere a JAVA_OBJECT appears in a result — a top-level column, an ARRAY element, a nested
+;; row — not just where a column's declared type is JAVA_OBJECT. Metabase never reads Java objects out of
+;; query results, so we register the JavaObjectSerializer H2 routes all such deserialization through and
+;; refuse it at that single point, covering every position uniformly. (`read-column-thunk :h2` below also
+;; rejects a top-level JAVA_OBJECT column, for a clearer error on the common case.)
+(def ^:private java-object-serializer
+  (reify JavaObjectSerializer
+    (serialize [_ _obj]
+      (throw (ex-info "Reading and writing Java objects is not supported for H2." {})))
+    (deserialize [_ _bytes]
+      (throw (ex-info "Reading Java objects is not supported for H2." {})))))
+
+(when-not *compile-files*
+  (set! (. JdbcUtils serializer) java-object-serializer))
 
 (defmethod driver/connection-hosts :h2
   [_driver {:keys [db]}]
@@ -173,8 +190,7 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map
-                                                                                       [:type [:enum :native :query]]]]
+(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- :metabase.lib.util/legacy-query]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
@@ -324,11 +340,7 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map
-                                                                             [:type [:enum :query :native]]
-                                                                             [:native
-                                                                              [:map
-                                                                               [:query string?]]]]]
+(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- :metabase.lib.util/legacy-query]
   (when sql
     (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
@@ -345,10 +357,7 @@
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- [:map
-              [:type   [:= :native]]
-              [:native [:map
-                        [:query :string]]]]]
+   query  :- :metabase.lib.util/legacy-query]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
@@ -620,22 +629,17 @@
        (.setReadOnly conn (not write?)))
      (f conn))))
 
-;; de-CLOB any CLOB values that come back
+;; de-CLOB any CLOB values that come back. (A JAVA_OBJECT value is refused during reads by the
+;; JavaObjectSerializer registered above, so it needs no handling here.)
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [col-type (.getColumnType rsmeta i)]
-    (when (= col-type Types/JAVA_OBJECT)
-      (throw (ex-info "Unable to parse jdbc type"
-                      {:column-index i
-                       :column-name  (.getColumnName rsmeta i)
-                       :column-type  col-type})))
-    (let [classname (some-> (.getColumnClassName rsmeta i)
-                            (Class/forName true (driver-api/the-classloader)))]
-      (if (isa? classname Clob)
-        (fn []
-          (driver-api/clob->str (.getObject rs i)))
-        (fn []
-          (.getObject rs i))))))
+  (let [classname (some-> (.getColumnClassName rsmeta i)
+                          (Class/forName true (driver-api/the-classloader)))]
+    (if (isa? classname Clob)
+      (fn []
+        (driver-api/clob->str (.getObject rs i)))
+      (fn []
+        (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]

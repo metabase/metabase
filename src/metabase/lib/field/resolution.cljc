@@ -259,14 +259,22 @@
       (:qp/stage-had-source-card stage)
       (let [card-id (:qp/stage-had-source-card stage)]
         (when-some [card (lib.metadata/card query card-id)]
-          (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
-                                             ;; if we have `id` then filter out anything that is definitely not a
-                                             ;; match
-                                             (:id col) (filter #(= (:id %) (:id col)))))]
-            ;; prefer resolution with `:lib/source-column-alias` over `:id` if we have it because it will be
-            ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
-            ;; returned
-            (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))]
+          (when-some [potential-card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
+                                                       ;; if we have `id` then filter out anything that is definitely
+                                                       ;; not a match
+                                                       (:id col) (filter #(= (:id %) (:id col)))))]
+            ;; prefer resolution with `:lib/source-column-alias` over `:id` if multiple versions of the column (e.g.
+            ;; with different bucketing units) are returned. If there's only one match then use ID for resolution. On
+            ;; very old saved Card source metadata `:lib/source-column-alias` might be set to something like `ID_2`
+            ;; rather than `Products__ID` so, matching on it is not as reliable as `:id`, which has been around since
+            ;; the dawn of human history.
+            (when-some [col (let [resolution-key (if (and (:id col)
+                                                          (= (count potential-card-cols) 1))
+                                                   :id
+                                                   :lib/source-column-alias)]
+                              (resolve-in-previous-stage-returned-columns-and-update-keys query
+                                                                                          potential-card-cols
+                                                                                          (resolution-key col)))]
               (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
                     model?          (= (:type card) :model)
                     col             (cond-> col
@@ -342,14 +350,6 @@
             (log/debug "Unable to resolve in previous stage =(")
             nil))))))
 
-(mr/def ::source-field-info
-  "The subset of field ref options that identify which implicit join a ref refers to: `:source-field` (the FK field ID,
-  required), and optionally `:source-field-name` and `:source-field-join-alias` for disambiguation."
-  [:map
-   [:source-field            ::lib.schema.id/field]
-   [:source-field-name       {:optional true} :string]
-   [:source-field-join-alias {:optional true} :string]])
-
 (mu/defn- resolve-in-implicit-join-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   "First, try to resolve the implicit join from the previous stage columns -- the join might have already been
   performed there and `:source-field` was specified incorrectly. (You're only supposed to specify this in the stage
@@ -360,7 +360,7 @@
   renaming."
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   source-field-info :- ::source-field-info
+   source-field-info :- ::lib.schema.ref/field.options
    id-or-name        :- ::id-or-name]
   (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (let [{:keys [source-field source-field-name source-field-join-alias]} source-field-info
@@ -384,7 +384,9 @@
   "Find the reified implicit join (i.e., a join added by
   the [[metabase.query-processor.middleware.add-implicit-joins]] middleware) that has `:fk-field-id` if one exists;
   returns tuple of `[join join-stage-number]`."
-  [query stage-number source-field-id]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   source-field-id :- ::lib.schema.id/field]
   (or (when-some [join (m/find-first (fn [join]
                                        (= (:fk-field-id join) source-field-id))
                                      (:joins (lib.util/query-stage query stage-number)))]
@@ -465,7 +467,7 @@
 (mu/defn- resolve-in-implicit-join :- [:maybe ::lib.metadata.calculation/visible-column]
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   source-field-info :- ::source-field-info
+   source-field-info :- ::lib.schema.ref/field.options
    id-or-name        :- ::id-or-name]
   (let [source-field-id (:source-field source-field-info)]
     (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
@@ -547,7 +549,9 @@
       :lib/source-column-alias id-or-name})))
 
 (mu/defn- resolve-from-previous-stage-or-source* :- [:maybe ::lib.metadata.calculation/visible-column]
-  [query stage-number id-or-name]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   id-or-name :- ::id-or-name]
   (b/cond
     :let [stage (lib.util/query-stage query stage-number)
           source-table-id (:source-table stage)]
@@ -584,7 +588,9 @@
 
 (mu/defn- resolve-ref-missing-join-alias :- [:maybe ::lib.metadata.calculation/visible-column]
   "Try finding a match in joins (field ref is missing `:join-alias`)."
-  [query stage-number id-or-name]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   id-or-name :- ::id-or-name]
   (log/debugf "Assuming %s is from a join, and missing :join-alias" (pr-str id-or-name))
   (or (when (string? id-or-name)
         (let [parts (str/split id-or-name #"__" 2)]

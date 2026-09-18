@@ -3,12 +3,10 @@ import { useInterval } from "react-use";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
 import { Box, Button, Stack } from "metabase/ui";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Collection } from "metabase-types/api";
 
+import { PLUGIN_FILE_UPLOAD_STATUS } from "../../plugins";
 import {
   isUploadAborted,
   isUploadCompleted,
@@ -19,14 +17,14 @@ import StatusLarge from "../StatusLarge";
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;
 
 export interface FileUploadLargeProps {
-  uploadDestination: Collection | Table;
+  uploadDestinationName: string;
   uploads: FileUpload[];
   resetUploads: () => void;
   isActive?: boolean;
 }
 
 const FileUploadLarge = ({
-  uploadDestination,
+  uploadDestinationName,
   uploads,
   resetUploads,
   isActive,
@@ -46,7 +44,7 @@ const FileUploadLarge = ({
   const title =
     isLoading && loadingTime > 0
       ? getLoadingMessage(loadingTime)
-      : getTitle(uploads, uploadDestination);
+      : getTitle(uploads, uploadDestinationName);
 
   const status = {
     title,
@@ -84,10 +82,7 @@ const getName = (upload: FileUpload) => {
   return upload.name;
 };
 
-const getTitle = (
-  uploads: FileUpload[],
-  uploadDestination: Collection | Table,
-) => {
+const getTitle = (uploads: FileUpload[], uploadDestinationName: string) => {
   const isDone = uploads.every(isUploadCompleted);
   const isOnlyReplace = uploads.every(
     (upload) => upload.uploadMode === UploadMode.replace,
@@ -96,13 +91,13 @@ const getTitle = (
 
   if (isDone) {
     if (isOnlyReplace) {
-      return t`Data replaced in ${uploadDestination.name}`;
+      return t`Data replaced in ${uploadDestinationName}`;
     }
-    return t`Data added to ${uploadDestination.name}`;
+    return t`Data added to ${uploadDestinationName}`;
   } else if (isError) {
     return t`Error uploading your file`;
   } else {
-    return t`Uploading data to ${uploadDestination.name} …`;
+    return t`Uploading data to ${uploadDestinationName} …`;
   }
 };
 
@@ -126,7 +121,7 @@ const Description = ({ upload }: { upload: FileUpload }) => {
 
   if (upload.status === "error") {
     return (
-      <Stack align="start" gap="xs">
+      <Stack align="start" gap="xxs">
         <Box>{upload.message}</Box>
         <UploadErrorDisplay upload={upload} />
       </Stack>
@@ -153,13 +148,13 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
         {t`Show error details`}
       </Button>
       {showErrorModal && (
-        <PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal
+        <PLUGIN_FILE_UPLOAD_STATUS.FileUploadErrorModal
           fileName={upload.name}
           onClose={() => setShowErrorModal(false)}
           opened={showErrorModal}
         >
           {String(upload.error)}
-        </PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal>
+        </PLUGIN_FILE_UPLOAD_STATUS.FileUploadErrorModal>
       )}
     </>
   );

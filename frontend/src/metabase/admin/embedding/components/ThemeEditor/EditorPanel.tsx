@@ -70,8 +70,8 @@ export function EditorPanel({
       maw={480}
       style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
     >
-      <Box flex={1} style={{ overflow: "auto" }} p="xl">
-        <Flex align="center" justify="space-between" mb="xl">
+      <Box flex={1} style={{ overflow: "auto" }} p="xxl">
+        <Flex align="center" justify="space-between" mb="xxl">
           <Text fw={700} fz="xl">{t`Edit theme`}</Text>
           <CopyButton value={themeCodeSnippet}>
             {({ copied, copy }) => (
@@ -87,9 +87,9 @@ export function EditorPanel({
           </CopyButton>
         </Flex>
 
-        <Stack gap="lg">
+        <Stack gap="xl">
           {/* Theme name */}
-          <Card withBorder p="lg">
+          <Card withBorder p="xl">
             <TextInput
               label={t`Theme name`}
               value={currentTheme.name}
@@ -100,7 +100,7 @@ export function EditorPanel({
           </Card>
 
           {/* Main colors */}
-          <Card withBorder p="lg">
+          <Card withBorder p="xl">
             <Flex mb="sm" h="26" align="center" justify="space-between">
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
@@ -130,9 +130,9 @@ export function EditorPanel({
               ))}
             </Flex>
 
-            <Flex mt="md" h="26" align="center" justify="space-between">
+            <Flex mt="lg" h="26" align="center" justify="space-between">
               <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
-                <Flex align="center" gap="xs">
+                <Flex align="center" gap="xxs">
                   <Text c="core-brand" fz="sm" fw={600}>
                     {moreColorsOpen
                       ? t`Show fewer colors`
@@ -215,8 +215,8 @@ export function EditorPanel({
           </Card>
 
           {/* Font */}
-          <Card withBorder p="lg">
-            <Stack gap="md">
+          <Card withBorder p="xl">
+            <Stack gap="lg">
               <Select
                 label={t`Font`}
                 data={FONT_FAMILY_OPTIONS}
@@ -249,7 +249,7 @@ export function EditorPanel({
 
         {onDelete && (
           <Button
-            mt="lg"
+            mt="xl"
             variant="subtle"
             color="feedback-negative"
             px={0}
@@ -263,8 +263,8 @@ export function EditorPanel({
 
       {/* Bottom action bar */}
       <Flex
-        p="lg"
-        gap="md"
+        p="xl"
+        gap="lg"
         justify="space-between"
         style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >

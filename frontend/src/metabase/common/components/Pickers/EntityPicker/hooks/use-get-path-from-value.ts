@@ -12,6 +12,10 @@ import {
   tableApi,
   transformApi,
 } from "metabase/api";
+import {
+  allCollectionModels,
+  getCollectionItemsOptions,
+} from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
@@ -31,10 +35,8 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import { getCollectionItemsOptions, validCollectionModels } from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
-const allCollectionModels = Array.from(validCollectionModels);
 
 const getDefaultPath = async ({
   options,

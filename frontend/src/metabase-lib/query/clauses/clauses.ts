@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import type * as Lib from "metabase-lib";
 
 import { defineClauses, dimension, op } from "./define";

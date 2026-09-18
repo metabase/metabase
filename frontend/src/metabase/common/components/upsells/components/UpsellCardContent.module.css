@@ -11,7 +11,7 @@
 }
 
 .UpsellCta {
-  /* Copied (and slightly adapted if needed) from metabase/css/components/buttons.module.css */
+  /* Inlined from the legacy button styles (buttons.module.css, since removed) */
   display: inline-flex;
   align-items: center;
   justify-content: center;

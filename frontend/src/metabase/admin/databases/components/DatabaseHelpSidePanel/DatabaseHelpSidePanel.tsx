@@ -6,9 +6,9 @@ import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
@@ -58,8 +58,8 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
       h="100%"
       bg="background_page-primary"
     >
-      <Box p="xl" w="100%">
-        <Flex align="baseline" justify="space-between" mb="md">
+      <Box p="xxl" w="100%">
+        <Flex align="baseline" justify="space-between" mb="lg">
           <Title order={2} size="h4">
             {c("{0} is the database engine name").t`Add ${driverName}`}
           </Title>

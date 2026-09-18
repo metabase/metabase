@@ -96,23 +96,27 @@
   (for [arglist (query-defmethod-arglists query-type)]
     {:type :internal
      :fn   (u/qualified-name query-type)
-     :args (for [arg (mapv keyword (rest arglist))]
-             (case arg
-               :datetime-unit     "day"
-               :dashboard-id      (u/the-id dash)
-               :card-id           (u/the-id card)
-               :user-id           (mt/user->id :crowberto)
-               :database-id       (u/the-id database)
-               :table-id          (u/the-id table)
-               :model             "card"
-               :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
-               :query-string      "toucans"
-               :question-filter   "bird sales"
-               :search-term       "toucans"
-               :sort-column       "card.id"
-               :sort-direction    "desc"
-               :dashboard-name    "wow"
-               :card-name         "Credit Card"))}))
+     :args (vec
+            (for [arg (mapv keyword (rest arglist))]
+              (case arg
+                :datetime-unit     "day"
+                :dashboard-id      (u/the-id dash)
+                :card-id           (u/the-id card)
+                :user-id           (mt/user->id :crowberto)
+                :database-id       (u/the-id database)
+                :table-id          (u/the-id table)
+                :model             "card"
+                :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
+                :query-string      "toucans"
+                :question-filter   "bird sales"
+                :collection-filter "coin collection"
+                :error-filter      "a"
+                :db-filter         "PU"
+                :search-term       "toucans"
+                :sort-column       "card_id"
+                :sort-direction    "desc"
+                :dashboard-name    "wow"
+                :card-name         "Credit Card")))}))
 
 (defn- do-tests-for-query-type
   "Run test(s) for the internal query named by `query-type`. Runs one test for each map returned

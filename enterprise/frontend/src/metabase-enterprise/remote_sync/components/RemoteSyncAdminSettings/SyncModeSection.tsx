@@ -47,7 +47,7 @@ export const SyncModeSection = ({ dirty }: SyncModeSectionProps) => {
                 }
                 disabled={hasUnsyncedChanges || isSetByEnv}
                 label={
-                  <Text fw={700} lh="1.25rem" mb="xs">
+                  <Text fw={700} lh="1.25rem" mb="xxs">
                     {t`Read-only`}
                   </Text>
                 }
@@ -59,7 +59,7 @@ export const SyncModeSection = ({ dirty }: SyncModeSectionProps) => {
             value="read-write"
             disabled={isSetByEnv}
             label={
-              <Text fw={700} lh="1.25rem" mb="xs">
+              <Text fw={700} lh="1.25rem" mb="xxs">
                 {t`Read-write`}
               </Text>
             }

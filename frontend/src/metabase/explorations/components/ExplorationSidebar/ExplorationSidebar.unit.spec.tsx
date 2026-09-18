@@ -46,14 +46,14 @@ describe("ExplorationSidebar", () => {
 
   describe("keyboard navigation", () => {
     it("moves selection to the next page with ArrowRight", () => {
-      const { setSelectedPageId } = setup({
+      const { onNextPage } = setup({
         queries: [doneQuery, errorQuery],
         selectedQueryId: 2,
       });
 
       fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-      expect(setSelectedPageId).toHaveBeenCalledWith("3");
+      expect(onNextPage).toHaveBeenCalledTimes(1);
       expect(trackExplorationVisualizationChanged).toHaveBeenCalledWith(
         expect.any(Number),
         "keyboard",
@@ -61,14 +61,14 @@ describe("ExplorationSidebar", () => {
     });
 
     it("moves selection to the previous page with ArrowLeft", () => {
-      const { setSelectedPageId } = setup({
+      const { onPreviousPage } = setup({
         queries: [doneQuery, errorQuery],
         selectedQueryId: 3,
       });
 
       fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
-      expect(setSelectedPageId).toHaveBeenCalledWith("2");
+      expect(onPreviousPage).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -157,9 +157,9 @@ describe("ExplorationSidebar", () => {
             selectedSidebarTab={selectedSidebarTab}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
-            selectedPageId="2"
-            setSelectedPageId={jest.fn()}
+            selectedEntity={{ type: "page", id: "2" }}
             getSelectedPageUrl={(pageId) => `${path}/page/${pageId}`}
+            getSelectedSummaryUrl={() => path}
             shouldScrollSelectionRef={{ current: false }}
             isOpen
             readPageIds={readPageIds}
@@ -168,6 +168,9 @@ describe("ExplorationSidebar", () => {
             sortOrder={DEFAULT_SORT_ORDER}
             onChangeSortOrder={jest.fn()}
             contentMode="tree"
+            onPreviousPage={jest.fn()}
+            onNextPage={jest.fn()}
+            onPrefetchPage={jest.fn()}
           />
         </>
       );
@@ -219,7 +222,7 @@ describe("ExplorationSidebar", () => {
     });
 
     it("toggles show-hidden from the menu without changing selection", async () => {
-      const { onToggleShowHidden, setSelectedPageId } = setup({
+      const { onToggleShowHidden, onNextPage, onPreviousPage } = setup({
         queries: [doneQuery],
       });
       await userEvent.click(filterButton());
@@ -228,7 +231,8 @@ describe("ExplorationSidebar", () => {
       );
       expect(onToggleShowHidden).toHaveBeenCalledTimes(1);
       // toggling the filter must not navigate/select anything
-      expect(setSelectedPageId).not.toHaveBeenCalled();
+      expect(onNextPage).not.toHaveBeenCalled();
+      expect(onPreviousPage).not.toHaveBeenCalled();
     });
 
     it("changes sort order from the menu", async () => {
@@ -516,9 +520,9 @@ describe("ExplorationSidebar", () => {
         selectedSidebarTab={selectedSidebarTab}
         getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
         tree={tree}
-        selectedPageId={String(REVENUE_PAGE_ID)}
-        setSelectedPageId={jest.fn()}
+        selectedEntity={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         getSelectedPageUrl={() => path}
+        getSelectedSummaryUrl={() => path}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         isOpen
         readPageIds={new Set<string>()}
@@ -527,6 +531,9 @@ describe("ExplorationSidebar", () => {
         sortOrder={DEFAULT_SORT_ORDER}
         onChangeSortOrder={jest.fn()}
         contentMode="tree"
+        onPreviousPage={jest.fn()}
+        onNextPage={jest.fn()}
+        onPrefetchPage={jest.fn()}
       />
     );
 
@@ -623,9 +630,9 @@ describe("ExplorationSidebar", () => {
           selectedSidebarTab={selectedSidebarTab}
           getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
           tree={tree}
-          selectedPageId={selectedId}
-          setSelectedPageId={jest.fn()}
+          selectedEntity={{ type: "page", id: selectedId }}
           getSelectedPageUrl={() => path}
+          getSelectedSummaryUrl={() => path}
           shouldScrollSelectionRef={shouldScrollSelectionRef}
           isOpen
           readPageIds={new Set<string>()}
@@ -634,6 +641,9 @@ describe("ExplorationSidebar", () => {
           sortOrder={DEFAULT_SORT_ORDER}
           onChangeSortOrder={jest.fn()}
           contentMode="tree"
+          onNextPage={jest.fn()}
+          onPreviousPage={jest.fn()}
+          onPrefetchPage={jest.fn()}
         />
       );
       // Drive updates through in-component state so the sidebar stays mounted
@@ -987,7 +997,7 @@ describe("ExplorationSidebar", () => {
 
     describe("arrow-key navigation", () => {
       it("Right moves selection from one page to the next within the same heading and keeps that heading expanded", () => {
-        const { setSelectedPageId } = setup({
+        const { onNextPage } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           selectedPageId: planLeafAllId,
@@ -995,7 +1005,7 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(planLeafUsId);
+        expect(onNextPage).toHaveBeenCalledTimes(1);
         // Region heading stayed closed; we never left the plan heading.
         const regionHeading = screen.getByRole("group", {
           name: /Revenue by region/,
@@ -1004,7 +1014,7 @@ describe("ExplorationSidebar", () => {
       });
 
       it("Right past the last page in a heading selects the first page of the next heading and collapses the source heading", () => {
-        const { setSelectedPageId } = setup({
+        const { onNextPage } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           // Selection sits on the LAST page of the plan heading.
@@ -1013,13 +1023,13 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(regionLeafAllId);
+        expect(onNextPage).toHaveBeenCalledTimes(1);
 
         // The keyboard handler imperatively collapses the source
         // heading via `treeController.collapse`. Auto-expanding the
         // target heading happens via `getInitialExpandedIds` on the
         // next render — that's a parent-side effect we don't model
-        // here (the `setSelectedPageId` is a mock so the controlled
+        // here (onNextPage is a mock so the controlled
         // `selectedPageId` prop never updates).
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,
@@ -1028,7 +1038,7 @@ describe("ExplorationSidebar", () => {
       });
 
       it("Left past the first page in a heading selects the last page of the previous heading and collapses the source heading", () => {
-        const { setSelectedPageId } = setup({
+        const { onPreviousPage } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           selectedPageId: regionLeafAllId,
@@ -1036,7 +1046,7 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(planLeafUsId);
+        expect(onPreviousPage).toHaveBeenCalledTimes(1);
 
         const regionHeading = screen.getByRole("group", {
           name: /Revenue by region/,
@@ -1051,7 +1061,7 @@ describe("ExplorationSidebar", () => {
         ];
         const PAGE_BLOCK_ID = 60;
         const PAGE_LEAF_ID = 600;
-        const { setSelectedPageId } = setup({
+        const { onNextPage } = setup({
           queries: [...planQueries, ...pageQueriesNav],
           blocks: [
             blocks[0], // plan block + its two single-query pages
@@ -1076,9 +1086,7 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(
-          String(PAGE_LEAF_ID),
-        );
+        expect(onNextPage).toHaveBeenCalledTimes(1);
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,
         });
@@ -1150,9 +1158,9 @@ describe("ExplorationSidebar", () => {
               selectedSidebarTab={selectedSidebarTab}
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={tree}
-              selectedPageId={String(PAGE_ID)}
-              setSelectedPageId={jest.fn()}
+              selectedEntity={{ type: "page", id: String(PAGE_ID) }}
               getSelectedPageUrl={() => path}
+              getSelectedSummaryUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
               readPageIds={new Set<string>()}
@@ -1161,6 +1169,9 @@ describe("ExplorationSidebar", () => {
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
               contentMode="tree"
+              onPreviousPage={jest.fn()}
+              onNextPage={jest.fn()}
+              onPrefetchPage={jest.fn()}
             />
           </>
         );

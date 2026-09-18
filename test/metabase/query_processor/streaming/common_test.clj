@@ -65,3 +65,72 @@
                              {::mb.viz/column-title "Column Name Title"}}}
               titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
           (is (= ["Column Name Title"] titles)))))))
+
+(deftest ^:parallel viz-settings-for-col-malformed-column-settings-test
+  (testing "a malformed value in a column's stored :settings is dropped instead of killing the export (SEC-868)"
+    (doseq [bad-click-behavior ["x" [1 2] 42 true]]
+      (testing (str "click_behavior = " (pr-str bad-click-behavior))
+        (let [col {:name           "N"
+                   :display_name   "N"
+                   :base_type      :type/Integer
+                   :effective_type :type/Integer
+                   :field_ref      [:field "N" {:base-type :type/Integer}]
+                   :source         :native
+                   :settings       {:click_behavior bad-click-behavior}}
+              settings (streaming.common/viz-settings-for-col col {})]
+          (is (map? settings))
+          (is (not (contains? settings ::mb.viz/click-behavior))))))
+    (testing "well-formed sibling entries in the same :settings map survive"
+      (let [col      {:name      "N"
+                      :base_type :type/Integer
+                      :field_ref [:field "N" {:base-type :type/Integer}]
+                      :settings  {:click_behavior "x"
+                                  :column_title   "Legit Title"}}
+            settings (streaming.common/viz-settings-for-col col {})]
+        (is (= "Legit Title" (::mb.viz/column-title settings)))))
+    (testing "a well-formed :click_behavior is still normalized"
+      (let [col      {:name      "N"
+                      :base_type :type/Integer
+                      :field_ref [:field "N" {:base-type :type/Integer}]
+                      :settings  {:click_behavior {:type "link" :linkType "url" :linkTextTemplate "http://example.com"}}}
+            settings (streaming.common/viz-settings-for-col col {})]
+        (is (= {::mb.viz/click-behavior-type ::mb.viz/link
+                ::mb.viz/link-type           ::mb.viz/url
+                ::mb.viz/link-text-template  "http://example.com"}
+               (::mb.viz/click-behavior settings)))))))
+
+(deftest escape-spreadsheet-formula-test
+  (testing "values that a spreadsheet would evaluate as a formula are prefixed with a single quote"
+    (are [v] (= (str "'" v) (streaming.common/escape-spreadsheet-formula v))
+      "=1+1"
+      "=cmd|' /C calc'!A0"
+      "+cmd|' /C calc'!A0"
+      "-cmd|' /C calc'!A0"
+      "@SUM(1+1)"
+      "=HYPERLINK(\"http://evil.example\",\"click me\")"
+      "-2+3"
+      "\t=1+1"
+      "\r=1+1"))
+  (testing "ordinary values are left alone"
+    (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
+      nil
+      ""
+      "hello"
+      "a=b"
+      "Sale: 50% off"
+      " =1+1"))
+  (testing "values a spreadsheet reads as plain numbers are left alone, so exports stay faithful"
+    (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
+      "-5"
+      "+5"
+      "-1,234.56"
+      "-$1,234.56"
+      "-50%"
+      "-1.5e3"
+      "+1 555 1234"))
+  (testing "non-string values pass through untouched"
+    (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
+      5
+      -5
+      true
+      :kw)))

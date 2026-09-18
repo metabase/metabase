@@ -1,6 +1,6 @@
 (ns metabase.agent-lib.representations.resolve
   "Resolve a parsed (string-keyed, portable) representations query into canonical numeric-ID
-  pMBQL.
+  MBQL 5.
 
   Pipeline:
 
@@ -19,12 +19,12 @@
        * adds `:lib/uuid` to every clause;
        * keywordizes known enum values (temporal units, base-types, join strategies);
        * kebab-cases keys where applicable;
-       * attaches the metadata-provider at `:lib/metadata` so the result is a \"real\" pMBQL that
+       * attaches the metadata-provider at `:lib/metadata` so the result is a \"real\" MBQL 5 that
          can be handed to `lib.query` / the QP directly.
 
   The output is a valid MBQL 5 query ready for the query processor.
 
-  The inverse direction — final pMBQL back to portable form — is handled by [[export-query]];
+  The inverse direction — final MBQL 5 back to portable form — is handled by [[export-query]];
   the result is a Clojure map matching the external (keyword-keyed) shape, ready for JSON
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
@@ -78,7 +78,7 @@
 ;;; ============================================================
 
 (defn- annotate-field-types
-  "Walk a normalized pMBQL query and stamp `:base-type` / `:effective-type` on every
+  "Walk a normalized MBQL 5 query and stamp `:base-type` / `:effective-type` on every
   `[:field opts field-id]` clause whose integer `field-id` is known to `metadata-provider`
   but whose `opts` map is missing `:base-type`.
 
@@ -191,7 +191,7 @@
          validate-absolute-datetime-literals))))
 
 ;;; ============================================================
-;;; Export final pMBQL back to portable representations
+;;; Export final MBQL 5 back to portable representations
 ;;; ============================================================
 
 (defn- keyword->repr-string
@@ -224,7 +224,7 @@
     :else           x))
 
 (defn export-query
-  "Convert a final normalized numeric-ID pMBQL query back to portable representations data.
+  "Convert a final normalized numeric-ID MBQL 5 query back to portable representations data.
 
   This is the inverse of [[resolve-query]] for the agent/tool output path: table/field/card IDs
   are exported to portable FK paths / entity_ids, lib's normalized keyworded form is converted
@@ -250,14 +250,13 @@
   an unusual or partially-broken existing `dataset_query` should gracefully drop out of the
   payload rather than break the whole tool response.
 
-  Like [[export-query]], the 3-arity form accepts an explicit `content-store`; agent callers
-  pass `metabase.metabot.tools.shared.content-store/default-store` for read-checking."
-  ([metadata-provider pmbql-query]
-   (try-export-query metadata-provider pmbql-query resolve.mp/unchecked-app-db-content-store))
-  ([metadata-provider pmbql-query content-store]
-   (when (and metadata-provider (map? pmbql-query) (seq pmbql-query))
-     (try
-       (export-query metadata-provider pmbql-query content-store)
-       (catch Exception e
-         (log/warnf "Failed to export pMBQL query to portable representations; omitting from LLM payload: %s" (ex-message e))
-         nil)))))
+  `content-store` is required: every caller is an LLM context-building path, and falling
+  through to the unchecked app-DB store would skip the permission check without saying so.
+  Agent callers pass `metabase.metabot.tools.shared.content-store/default-store`."
+  [metadata-provider pmbql-query content-store]
+  (when (and metadata-provider (map? pmbql-query) (seq pmbql-query))
+    (try
+      (export-query metadata-provider pmbql-query content-store)
+      (catch Exception e
+        (log/warnf "Failed to export MBQL 5 query to portable representations; omitting from LLM payload: %s" (ex-message e))
+        nil))))

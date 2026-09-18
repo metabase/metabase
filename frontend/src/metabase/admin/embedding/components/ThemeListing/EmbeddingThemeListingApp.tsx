@@ -53,15 +53,15 @@ function EmbeddingThemeListingAppInner() {
   }
 
   return (
-    <Stack mx="auto" gap="xl" maw={1200}>
-      <Stack gap="xs">
+    <Stack mx="auto" gap="xxl" maw={1200}>
+      <Stack gap="xxs">
         <Title order={1}>{t`Themes`}</Title>
         <Text c="text-secondary">
           {t`Create and edit themes to reuse across multiple embeds.`}
         </Text>
       </Stack>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
         {themes?.map((theme) => (
           <EmbeddingThemeCard
             key={theme.id}

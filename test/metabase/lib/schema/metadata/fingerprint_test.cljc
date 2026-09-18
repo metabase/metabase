@@ -26,17 +26,16 @@
                      "type/Number" {"q1" 1.459}}}))))
 
 (deftest ^:parallel fingerprint-schema-test
-  (testing "allows for extra keywords"
-    (let [base {:global
-                {:distinct-count 2, :nil% 0.0}}]
+  (testing "every map in a fingerprint declares its keys"
+    (let [base {:global {:distinct-count 2, :nil% 0.0}}]
+      (is (not (me/humanize (mr/explain ::lib.schema.metadata.fingerprint/fingerprint base))))
       (doseq [path [[:type :type/Text]
                     [:type :type/Number]
                     [:type :type/DateTime]
                     [:global]
                     [:experimental]
-                    [:top-level]
                     []]]
-        (is (not (me/humanize
-                  (mr/explain
-                   ::lib.schema.metadata.fingerprint/fingerprint
-                   (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}]))))))))))
+        (is (me/humanize
+             (mr/explain
+              ::lib.schema.metadata.fingerprint/fingerprint
+              (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}])))))))))

@@ -40,8 +40,23 @@
         "postgresql" :postgres
         (keyword subprotocol)))))
 
+(def ^:private EnvVars
+  [:map {:closed true}
+   [:mb-db-type                             {:optional true} [:maybe :keyword]]
+   [:mb-db-in-memory                        {:optional true} [:maybe :boolean]]
+   [:mb-db-file                             {:optional true} [:maybe :string]]
+   [:mb-db-connection-uri                   {:optional true} [:maybe :string]]
+   [:mb-db-host                             {:optional true} [:maybe :string]]
+   [:mb-db-port                             {:optional true} [:maybe :int]]
+   [:mb-db-dbname                           {:optional true} [:maybe :string]]
+   [:mb-db-user                             {:optional true} [:maybe :string]]
+   [:mb-db-pass                             {:optional true} [:maybe :string]]
+   [:mb-db-azure-managed-identity-client-id {:optional true} [:maybe :string]]
+   [:mb-db-aws-iam                          {:optional true} [:maybe :boolean]]
+   [:mb-db-ssl-cert                         {:optional true} [:maybe :string]]])
+
 (mu/defn- env->db-type :- [:enum :postgres :mysql :h2]
-  [{:keys [mb-db-connection-uri mb-db-type]}]
+  [{:keys [mb-db-connection-uri mb-db-type]} :- EnvVars]
   (or (some-> mb-db-connection-uri raw-connection-string->type)
       mb-db-type))
 

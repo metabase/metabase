@@ -10,22 +10,16 @@
    [metabase.events.core :as events]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.core :as task]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (defn- recent-failed-cron-job-runs
   "Cron job runs that failed or timed out in `[start, end)`, oldest first."
   [start end]
-  (t2/select [:model/TransformJobRun :job_id :start_time :message]
-             {:where    [:and
-                         [:= :run_method "cron"]
-                         [:in :status ["failed" "timeout"]]
-                         [:>= :start_time start]
-                         [:< :start_time end]]
-              :order-by [[:start_time :asc]]}))
+  (transforms.db/failed-cron-job-runs-between start end))
 
 (defn failing-jobs
   "Summarize failed/timed-out cron job runs in `[start, end)`, one entry per job."
@@ -33,7 +27,7 @@
   (let [runs     (recent-failed-cron-job-runs start end)
         job-ids  (distinct (map :job_id runs))
         id->name (when (seq job-ids)
-                   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))]
+                   (transforms.db/job-names-by-id job-ids))]
     (->> (group-by :job_id runs)
          ;; `runs` is oldest-first, and group-by preserves that within each job's group
          (map (fn [[job-id job-runs]]

@@ -1,8 +1,16 @@
+import type {
+  RemoteSyncDependencyRemedy,
+  RemoteSyncIneligibleDependency,
+  RemoteSyncRequiredSync,
+} from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   buildCollectionMap,
+  getBlockedReason,
   getCollectionPathSegments,
+  getListedRequiredSyncs,
+  getRequiredSyncRow,
   isTableChildModel,
 } from "./utils";
 
@@ -216,6 +224,201 @@ describe("remote_sync utils", () => {
 
     it("should return false for dashboard model", () => {
       expect(isTableChildModel("dashboard")).toBe(false);
+    });
+  });
+
+  describe("unsynced dependency failures", () => {
+    const dependency = (
+      overrides: Partial<RemoteSyncIneligibleDependency> = {},
+    ): RemoteSyncIneligibleDependency => ({
+      model: "card",
+      id: 1,
+      name: "Seats over time",
+      used_by: [],
+      ...overrides,
+    });
+
+    const requiredSync = (
+      remedy: RemoteSyncDependencyRemedy,
+      syncable = false,
+    ): RemoteSyncRequiredSync => ({
+      remedy,
+      syncable,
+      blocks: [{ id: 31, name: "Drafts" }],
+      dependencies: [dependency()],
+    });
+
+    const SYNCABLE = requiredSync(
+      {
+        type: "collection",
+        collection: { id: 7, name: "Finance", type: null, personal: false },
+      },
+      true,
+    );
+    const PERSONAL = requiredSync({
+      type: "collection",
+      collection: { id: 5, name: "Personal", type: null, personal: true },
+    });
+    const LIBRARY_COLLECTION = requiredSync(
+      {
+        type: "collection",
+        collection: {
+          id: 2,
+          name: "Library",
+          type: "library",
+          personal: false,
+        },
+      },
+      true,
+    );
+    const ANALYTICS = requiredSync({
+      type: "collection",
+      collection: {
+        id: 3,
+        name: "Usage analytics",
+        type: "instance-analytics",
+        personal: false,
+      },
+    });
+    // No Library exists at all, so the remedy names nothing.
+    const LIBRARY_MISSING = requiredSync({ type: "library" });
+    const ROOT = requiredSync({ type: "none", collection: null });
+    const NAMED_NONE = requiredSync({
+      type: "none",
+      collection: { id: 9, name: "Dangling" },
+    });
+    const UNRESOLVED = requiredSync({ type: "none" });
+
+    describe("getBlockedReason", () => {
+      it("is linked-collections when every remedy is a collection the admin can sync", () => {
+        expect(getBlockedReason([SYNCABLE])).toBe("linked-collections");
+      });
+
+      it("is library-missing when a snippet has no Library to point at", () => {
+        expect(getBlockedReason([SYNCABLE, LIBRARY_MISSING])).toBe(
+          "library-missing",
+        );
+      });
+
+      it("is linked-collections when a snippet points at an existing Library", () => {
+        expect(getBlockedReason([SYNCABLE, LIBRARY_COLLECTION])).toBe(
+          "linked-collections",
+        );
+      });
+
+      it("ranks root content above a missing Library, since it can't be synced at all", () => {
+        expect(getBlockedReason([LIBRARY_MISSING, ROOT])).toBe(
+          "unsyncable-content",
+        );
+      });
+
+      it("is analytics-content when a dependency lives in usage analytics", () => {
+        expect(getBlockedReason([SYNCABLE, ANALYTICS])).toBe(
+          "analytics-content",
+        );
+      });
+
+      it("ranks usage analytics above root content, which at least names a move", () => {
+        expect(getBlockedReason([ROOT, ANALYTICS])).toBe("analytics-content");
+      });
+
+      it("ranks personal content above every other reason", () => {
+        expect(getBlockedReason([LIBRARY_MISSING, ROOT, PERSONAL])).toBe(
+          "personal-content",
+        );
+      });
+    });
+
+    describe("getListedRequiredSyncs", () => {
+      it("lists every entry, in the backend's order, when they can all be synced", () => {
+        expect(getListedRequiredSyncs([LIBRARY_COLLECTION, SYNCABLE])).toEqual([
+          LIBRARY_COLLECTION,
+          SYNCABLE,
+        ]);
+      });
+
+      it("lists only the blockers when one of them can't be synced", () => {
+        expect(
+          getListedRequiredSyncs([
+            SYNCABLE,
+            ROOT,
+            LIBRARY_COLLECTION,
+            PERSONAL,
+          ]),
+        ).toEqual([ROOT, PERSONAL]);
+      });
+
+      it("has nothing to list when a Library that doesn't exist is the blocker", () => {
+        expect(getListedRequiredSyncs([SYNCABLE, LIBRARY_MISSING])).toEqual([]);
+      });
+
+      it("treats usage analytics as a blocker, hiding what could be switched on", () => {
+        expect(getListedRequiredSyncs([SYNCABLE, ANALYTICS])).toEqual([
+          ANALYTICS,
+        ]);
+      });
+    });
+
+    describe("getRequiredSyncRow", () => {
+      it("offers a syncable collection, keeping the type its icon needs", () => {
+        expect(getRequiredSyncRow(LIBRARY_COLLECTION)).toEqual({
+          key: "collection:2",
+          name: "Library",
+          type: "library",
+          personal: false,
+          syncableId: 2,
+          collectionId: 2,
+        });
+      });
+
+      it("names usage analytics but offers nothing to switch on", () => {
+        expect(getRequiredSyncRow(ANALYTICS)).toEqual({
+          key: "collection:3",
+          name: "Usage analytics",
+          type: "instance-analytics",
+          personal: false,
+          syncableId: null,
+          collectionId: 3,
+        });
+      });
+
+      it("names a personal collection but offers nothing to switch on", () => {
+        expect(getRequiredSyncRow(PERSONAL)).toEqual({
+          key: "collection:5",
+          name: "Personal",
+          type: null,
+          personal: true,
+          syncableId: null,
+          collectionId: 5,
+        });
+      });
+
+      it("calls the root collection Our analytics", () => {
+        expect(getRequiredSyncRow(ROOT)).toMatchObject({
+          key: "root",
+          name: "Our analytics",
+          syncableId: null,
+          collectionId: "root",
+        });
+      });
+
+      it("names the collection unsyncable content actually lives in", () => {
+        expect(getRequiredSyncRow(NAMED_NONE)).toMatchObject({
+          key: "none:9",
+          name: "Dangling",
+          syncableId: null,
+          collectionId: 9,
+        });
+      });
+
+      it("still shows a collection the backend couldn't resolve", () => {
+        expect(getRequiredSyncRow(UNRESOLVED)).toMatchObject({
+          key: "unresolved",
+          name: "Unknown collection",
+          syncableId: null,
+          collectionId: null,
+        });
+      });
     });
   });
 });

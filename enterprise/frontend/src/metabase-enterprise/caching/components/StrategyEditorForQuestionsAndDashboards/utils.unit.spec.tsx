@@ -170,6 +170,42 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
       ]);
     });
 
+    it("sorts durations with mixed units by real length", () => {
+      const durationRow = (
+        id: number,
+        duration: number,
+        unit: CacheDurationUnit,
+      ): CacheableItem => ({
+        model: "question",
+        id,
+        strategy: {
+          type: "duration",
+          duration,
+          unit,
+          refresh_automatically: false,
+        },
+      });
+      const rows = [
+        durationRow(0, 1, CacheDurationUnit.Days),
+        durationRow(1, 100, CacheDurationUnit.Minutes),
+        durationRow(2, 90, CacheDurationUnit.Seconds),
+        durationRow(3, 10, CacheDurationUnit.Hours),
+        durationRow(4, 30, CacheDurationUnit.Seconds),
+      ];
+      const sorted = rows.sort((rowA, rowB) => {
+        const a = formatValueForSorting(rowA, "policy");
+        const b = formatValueForSorting(rowB, "policy");
+        return String(a).localeCompare(String(b));
+      });
+      expect(sorted.map((row) => getShortStrategyLabel(row.strategy))).toEqual([
+        "Duration: 30s",
+        "Duration: 90s",
+        "Duration: 100m",
+        "Duration: 10h",
+        "Duration: 1d",
+      ]);
+    });
+
     it("sorts by collection correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
         // Unjustified type cast. FIXME

@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import Field from "metabase-lib/v1/metadata/Field";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { NormalizedField } from "metabase-types/api";
 import {
   createMockNativeCard,
   createMockNormalizedField,
@@ -12,130 +13,76 @@ import { dimensionFilterForParameter } from "./filters";
 
 describe("parameters/utils/field-filters", () => {
   describe("dimensionFilterForParameter", () => {
-    const field = createMockField({
-      isDate: () => false,
-      isID: () => false,
-      isCity: () => false,
-      isState: () => false,
-      isZipCode: () => false,
-      isCountry: () => false,
-      isNumeric: () => false,
-      isString: () => false,
-      isStringLike: () => false,
-      isBoolean: () => false,
-      isAddress: () => false,
-      isCoordinate: () => false,
-    });
-
     const typelessDimension = createMockDimension({
-      field: () => field,
+      base_type: "type/*",
+      semantic_type: null,
     });
 
-    [
+    const CASES: [
+      { type: string },
+      { name: string; field: Partial<NormalizedField> },
+    ][] = [
       [
         { type: "date/single" },
-        {
-          type: "date",
-          field: () => ({ ...field, isDate: () => true }),
-        },
+        { name: "date", field: { base_type: "type/DateTime" } },
       ],
-      [
-        { type: "id" },
-        {
-          type: "id",
-          field: () => ({ ...field, isID: () => true }),
-        },
-      ],
+      [{ type: "id" }, { name: "id", field: { semantic_type: "type/PK" } }],
       [
         { type: "category" },
-        {
-          type: "category",
-          field: () => ({ ...field, has_field_values: "list" }),
-        },
+        { name: "category", field: { has_field_values: "list" } },
       ],
       [
         { type: "location/city" },
         {
-          type: "location",
-          field: () => ({
-            ...field,
-            isString: () => true,
-            isAddress: () => true,
-            isCity: () => true,
-          }),
+          name: "location",
+          field: { base_type: "type/Text", semantic_type: "type/City" },
         },
       ],
       [
         { type: "number/!=" },
-        {
-          type: "number",
-          field: () => ({
-            ...field,
-            isNumeric: () => true,
-            isCoordinate: () => false,
-          }),
-        },
+        { name: "number", field: { base_type: "type/Integer" } },
       ],
       [
         { type: "string/=" },
         {
-          type: "category",
-          field: () => ({
-            ...field,
-            isString: () => true,
-            has_field_values: "list",
-          }),
+          name: "category",
+          field: { base_type: "type/Text", has_field_values: "list" },
         },
       ],
       [
         { type: "string/!=" },
         {
-          type: "category",
-          field: () => ({
-            ...field,
-            isString: () => true,
-            has_field_values: "list",
-          }),
+          name: "category",
+          field: { base_type: "type/Text", has_field_values: "list" },
         },
       ],
       [
         { type: "string/starts-with" },
-        {
-          type: "string",
-          field: () => ({
-            ...field,
-            isString: () => true,
-          }),
-        },
+        { name: "string", field: { base_type: "type/Text" } },
       ],
       [
         { type: "string/=" },
         {
-          type: "string",
-          field: () => ({
-            ...field,
-            isString: () => false,
-            isStringLike: () => true,
-          }),
+          name: "string-like",
+          field: { base_type: "type/TextLike" },
         },
       ],
-    ].forEach(([parameter, dimension]) => {
-      it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
+    ];
+
+    CASES.forEach(([parameter, dimension]) => {
+      it(`should return a predicate that evaluates to true for a ${dimension.name} dimension when given a ${parameter.type} parameter`, () => {
         const predicate = dimensionFilterForParameter(
           createMockParameter(parameter),
         );
         expect(predicate(typelessDimension)).toBe(false);
-        expect(predicate(createMockDimension(dimension))).toBe(true);
+        expect(predicate(createMockDimension(dimension.field))).toBe(true);
       });
     });
 
     it("should return a predicate that evaluates to true for a coordinate dimension when given a number parameter", () => {
       const coordinateDimension = createMockDimension({
-        field: () => ({
-          ...field,
-          isNumeric: () => true,
-          isCoordinate: () => true,
-        }),
+        base_type: "type/Float",
+        semantic_type: "type/Latitude",
       });
 
       const predicate = dimensionFilterForParameter(
@@ -146,10 +93,7 @@ describe("parameters/utils/field-filters", () => {
 
     it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
       const locationDimension = createMockDimension({
-        field: () => ({
-          ...field,
-          isAddress: () => true,
-        }),
+        semantic_type: "type/Address",
       });
 
       const predicate = dimensionFilterForParameter(
@@ -160,12 +104,8 @@ describe("parameters/utils/field-filters", () => {
   });
 });
 
-function createMockField(mocks: Record<string, unknown>): Field {
-  return Object.assign(new Field(createMockNormalizedField({})), mocks);
-}
-
 function createMockDimension(
-  mocks: Record<string, unknown>,
+  field: Partial<NormalizedField>,
 ): TemplateTagDimension {
   const card = createMockNativeCard();
   const metadata = createMockMetadata({ questions: [card] });
@@ -176,8 +116,19 @@ function createMockDimension(
   const dimension = new TemplateTagDimension(
     "tag",
     metadata,
-    // Unjustified type cast. FIXME
+    // `legacyNativeQuery` is typed as the base query class, but a native card's
+    // query is always a NativeQuery.
     question.legacyNativeQuery() as NativeQuery,
   );
-  return Object.assign(dimension, mocks);
+  return Object.assign(dimension, {
+    field: () =>
+      new Field(
+        createMockNormalizedField({
+          base_type: "type/*",
+          semantic_type: null,
+          has_field_values: "none",
+          ...field,
+        }),
+      ),
+  });
 }

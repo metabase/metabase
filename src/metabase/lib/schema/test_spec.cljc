@@ -13,22 +13,23 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::test-table-source-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :table]]
    [:id [:ref ::lib.schema.id/table]]])
 
 (mr/def ::test-card-source-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :card]]
    [:id [:ref ::lib.schema.id/card]]])
 
 (mr/def ::test-source-spec
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:table ::test-table-source-spec]
    [:card ::test-card-source-spec]])
 
 (mr/def ::test-column-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
    [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
@@ -69,7 +70,7 @@
     [:direction {:optional true} [:maybe [:ref ::lib.schema.order-by/direction]]]]])
 
 (mr/def ::test-literal-expression-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
    [:value [:ref ::literal/literal]]])
 
@@ -78,51 +79,53 @@
   keyword?)
 
 (mr/def ::test-operator-expression-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
    [:args {:default []} [:sequential [:ref ::test-expression-spec]]]])
 
 (mr/def ::test-expression-spec
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
 
 (mr/def ::test-segment-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :segment]]
    [:id [:ref ::lib.schema.id/segment]]])
 
 (mr/def ::test-named-expression-spec
-  [:map
+  [:map {:closed true}
    [:name string?]
    [:value [:ref ::test-expression-spec]]])
 
 (mr/def ::test-measure-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]]
    [:id [:ref ::lib.schema.id/measure]]])
 
 (mr/def ::test-metric-spec
-  [:map
+  [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
    [:id [:ref ::lib.schema.id/metric]]])
 
 (mr/def ::test-join-spec
-  [:map
+  [:map {:closed true}
    [:source     [:ref ::test-source-spec]]
    [:strategy   ::lib.schema.join/strategy]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
 (mr/def ::test-join-source-spec
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-with-binning-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
 
 (mr/def ::test-join-condition-spec
-  [:map
+  [:map {:closed true}
    [:operator {:decode/normalize lib.schema.common/normalize-keyword} ::test-operator-spec]
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
@@ -135,7 +138,7 @@
    [:ref ::test-metric-spec]])
 
 (mr/def ::test-stage-spec
-  [:map
+  [:map {:closed true}
    [:source       {:optional true} [:maybe ::test-source-spec]]
    [:fields       {:optional true} [:maybe [:sequential ::test-column-spec]]]
    [:expressions  {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
@@ -147,7 +150,7 @@
    [:limit        {:optional true} [:maybe number?]]])
 
 (mr/def ::test-query-spec
-  [:map
+  [:map {:closed true}
    [:stages [:sequential ::test-stage-spec]]])
 
 (mr/def ::test-common-spec
@@ -192,7 +195,8 @@
 (mr/def ::test-template-tag-spec
   [:map
    [:type ::lib.schema.template-tag/type]]
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:temporal-unit [:ref ::test-temporal-unit-spec]]
    [:dimension     [:ref ::test-field-filter-spec]]
    [:snippet       [:ref ::test-snippet-spec]]
@@ -206,6 +210,6 @@
    ::test-template-tag-spec])
 
 (mr/def ::test-native-query-spec
-  [:map
+  [:map {:closed true}
    [:query         string?]
    [:template-tags {:optional true :default []} [:maybe [:ref ::test-template-tags-spec]]]])

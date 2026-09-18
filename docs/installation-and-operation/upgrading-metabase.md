@@ -14,7 +14,7 @@ This page covers how to upgrade to a new Metabase release.
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the modular embedding SDK](#instances-using-the-modular-embedding-sdk-on-metabase-cloud-must-request-an-upgrade)).
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the modular embedding SDK](#instances-using-the-modular-embedding-sdk-on-metabase-cloud-must-request-an-upgrade)).
 
 How soon we upgrade you depends on the type of release:
 

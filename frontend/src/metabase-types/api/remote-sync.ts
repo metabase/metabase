@@ -1,3 +1,4 @@
+import type { CollectionItemModel, CollectionType } from "./collection";
 import type { EnterpriseSettings } from "./settings";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
@@ -17,7 +18,8 @@ export type RemoteSyncEntityModel =
   | "transform"
   | "transformtag"
   | "transformjob"
-  | "pythonlibrary";
+  | "pythonlibrary"
+  | "glossary";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -133,6 +135,65 @@ export type RemoteSyncConfigurationSettings = Pick<
 export type UpdateRemoteSyncConfigurationResponse = {
   success: boolean;
   task_id?: number;
+};
+
+export type RemoteSyncDependencyModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document" | "snippet"
+>;
+
+export type RemoteSyncCollectionRef = {
+  id: number;
+  name: string;
+};
+
+export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
+  type: CollectionType;
+  personal: boolean;
+};
+
+export type RemoteSyncDependencyRemedy =
+  | { type: "collection"; collection: RemoteSyncRemedyCollection }
+  | { type: "library" }
+  | { type: "none"; collection?: RemoteSyncCollectionRef | null };
+
+export type RemoteSyncDependentModel =
+  | RemoteSyncDependencyModel
+  | "collection"
+  | "timeline";
+
+export type RemoteSyncDependencyEntity = {
+  model: RemoteSyncDependentModel;
+  id: number;
+  name: string;
+  display?: CardDisplayType;
+};
+
+export type RemoteSyncIneligibleDependency = {
+  model: RemoteSyncDependencyModel;
+  id: number;
+  name: string;
+  /** Where it lives — `null` is the root collection, absent means we couldn't resolve one. */
+  collection?: RemoteSyncCollectionRef | null;
+  display?: CardDisplayType;
+  used_by: RemoteSyncDependencyEntity[];
+};
+
+export type RemoteSyncRequiredSync = {
+  remedy: RemoteSyncDependencyRemedy;
+  syncable: boolean;
+  blocks: RemoteSyncCollectionRef[];
+  dependencies: RemoteSyncIneligibleDependency[];
+};
+
+export const UNSYNCED_DEPENDENCIES_ERROR_CODE = "unsynced-dependencies";
+
+export type RemoteSyncDependencyErrorResponse = {
+  error_code: typeof UNSYNCED_DEPENDENCIES_ERROR_CODE;
+  error: string;
+  errors: {
+    required: RemoteSyncRequiredSync[];
+  };
 };
 
 export type RemoteSyncTaskStatus =

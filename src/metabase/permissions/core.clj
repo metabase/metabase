@@ -42,6 +42,8 @@
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
+  data-app-group-ids
+  data-app-view-data-permission-level
   disable-perms-cache
   download-perms-level
   full-database-permission-for-user
@@ -173,3 +175,7 @@
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)
 (p/import-def metabase.permissions.models.data-permissions/least-permissive-value        least-permissive-data-perms-value)
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
+
+(p/import-vars [metabase.permissions.models.permissions-group
+                check-tenant-groups-visible!
+                hidden-tenant-group-ids])

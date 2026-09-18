@@ -58,8 +58,8 @@ export const SavedQuestionIntroModal = ({
   return (
     <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={560}>
       <Modal.Overlay />
-      <Modal.Content p="xl" ta="center">
-        <Modal.Header maw={contentWidth} mx="auto" my="md">
+      <Modal.Content p="xxl" ta="center">
+        <Modal.Header maw={contentWidth} mx="auto" my="lg">
           <Stack align="center" w="100%">
             <Box w="6rem">
               <img
@@ -70,8 +70,8 @@ export const SavedQuestionIntroModal = ({
             <Title order={3}>{title}</Title>
           </Stack>
         </Modal.Header>
-        <Modal.Body maw={contentWidth} mx="auto" my="md">
-          <Text mb="lg">{message}</Text>
+        <Modal.Body maw={contentWidth} mx="auto" my="lg">
+          <Text mb="xl">{message}</Text>
           <Button
             variant="filled"
             onClick={onClose}

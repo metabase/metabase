@@ -18,10 +18,10 @@ export function ChartTypePicker({
   return (
     <Flex
       className={S.root}
-      gap="xs"
+      gap="xxs"
       bg="background_page-secondary"
-      p="xs"
-      bdrs="md"
+      p="xxs"
+      bdrs="sm"
     >
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon

@@ -1,5 +1,5 @@
-import type { CurrencyStyle } from "metabase/utils/formatting";
-import { formatNumber as appFormatNumber } from "metabase/utils/formatting/numbers";
+import { formatNumber as appFormatNumber } from "metabase/utils/formatting";
+import type { CurrencyStyle } from "metabase-types/api";
 
 export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";
 
@@ -35,6 +35,3 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
 
   return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
-
-export const formatPercent = (percent: number) =>
-  `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;

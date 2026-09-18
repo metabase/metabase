@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
-import Question from "metabase-lib/v1/Question";
-
-import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
+import { PaginationFooter } from "metabase/data-grid";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./ObjectDetail.module.css";
 import { ObjectDetailPanel } from "./ObjectDetailPanel";
 import type { ObjectDetailProps } from "./types";
+
+function getItemMessage(index: number, total: number) {
+  return total >= HARD_ROW_LIMIT
+    ? t`Item ${index + 1} of first ${total}`
+    : t`Item ${index + 1} of ${total}`;
+}
 
 export function ObjectDetail({
   question,
@@ -26,10 +33,9 @@ export function ObjectDetail({
     }
   }, [data.rows, currentObjectIndex]);
 
+  const cardQuestion = useQuestionFromCard(card);
   const hasPagination = data?.rows?.length > 1;
-  const resolvedQuestion =
-    question ??
-    (card && rest.metadata ? new Question(card, rest.metadata) : undefined);
+  const resolvedQuestion = question ?? cardQuestion;
 
   return (
     <>
@@ -51,9 +57,9 @@ export function ObjectDetail({
           start={currentObjectIndex}
           end={currentObjectIndex}
           total={data.rows.length}
+          message={getItemMessage(currentObjectIndex, data.rows.length)}
           onNextPage={() => setCurrentObjectIndex((prev) => prev + 1)}
           onPreviousPage={() => setCurrentObjectIndex((prev) => prev - 1)}
-          singleItem
         />
       )}
     </>

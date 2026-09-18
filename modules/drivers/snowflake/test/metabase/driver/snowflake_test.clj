@@ -29,6 +29,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
+   [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
@@ -52,7 +53,13 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io StringWriter)
+   (java.security KeyFactory)
+   (java.security.spec PKCS8EncodedKeySpec)
+   (org.bouncycastle.openssl PKCS8Generator)
+   (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +94,7 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(deftest ^:sequential sanity-check-test
+(deftest ^:synchronized sanity-check-test
   (mt/test-driver
     :snowflake
     (mt/dataset
@@ -97,7 +104,7 @@
               (mt/run-mbql-query attempts
                 {:aggregation [[:count]]})))))))
 
-(deftest ^:sequential describe-fields-test
+(deftest ^:synchronized describe-fields-test
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
@@ -195,9 +202,48 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "additional options wins over top-level schema"
+      ;; https://github.com/metabase/metabase/issues/65493
+      (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (nil? (:schema spec)))
+        (is (re-find #"schema=GOOD" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+
+(defn- pem->private-key
+  [pem]
+  (let [encoded (-> pem
+                    (str/replace #"-----(?:BEGIN|END) (?:\p{Alnum}+ )?PRIVATE KEY-----" "")
+                    (str/replace #"\s" "")
+                    u/decode-base64-to-bytes
+                    (PKCS8EncodedKeySpec.))]
+    (.generatePrivate (KeyFactory/getInstance "RSA") encoded)))
+
+(defn- encrypt-pkcs8-pem
+  [private-key ^String passphrase]
+  (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/AES_256_CBC)
+                      (.setPassword (.toCharArray passphrase))
+                      (.build))
+        sw (StringWriter.)]
+    (with-open [pw (JcaPEMWriter. sw)]
+      (.writeObject pw (JcaPKCS8Generator. private-key encryptor)))
+    (str sw)))
+
+(deftest ^:parallel private-key-passphrase-test
+  (mt/test-driver :snowflake
+    (let [raw-pem (tx/db-test-env-var-or-throw :snowflake :private-key)
+          private-key (pem->private-key raw-pem)]
+      (are [passphrase] (driver/can-connect? :snowflake (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)  ; make sure the stored secret doesn't shadow our new value
+                                                            (assoc :private-key-value      (mt/priv-key->base64-uri (encrypt-pkcs8-pem private-key passphrase))
+                                                                   :private-key-options    "uploaded"
+                                                                   :private-key-passphrase passphrase)))
+        "passphrase"
+        "space and numb3r5"
+        "special,./;'[]-=`~!@#$%^&*()_+|}{:?><}chars"
+        "üñïçodé"))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -255,13 +301,13 @@
   (testing "the simple-select-probe-query used by have-select-privilege? should be qualified with the Database name. Ignore blank keys."
     (mt/test-driver :snowflake
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc (mt/db)
+                                        {:database (assoc (lib.metadata/database (mt/metadata-provider))
                                                           :details {:db     " "
                                                                     :dbname "dbname"})})
         (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
                (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
 
-(deftest ^:sequential have-select-privilege?-test
+(deftest ^:synchronized have-select-privilege?-test
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (sql-jdbc.execute/do-with-connection-with-options
@@ -271,7 +317,7 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
-(deftest ^:sequential can-set-schema-in-additional-options
+(deftest ^:synchronized can-set-schema-in-additional-options
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (let [schema "INFORMATION_SCHEMA"
@@ -286,7 +332,7 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
-(deftest ^:sequential additional-options-test
+(deftest ^:synchronized additional-options-test
   (mt/test-driver
     :snowflake
     (let [existing-details (dissoc (:details (mt/db)) :password)]
@@ -403,8 +449,11 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
+      ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
+      ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
+      ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               db-name db-name db-name)])
       (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
@@ -486,7 +535,7 @@
       (testing "but still escapes for the JDBC metadata call, which treats them as patterns"
         (is (= ["MY_DB" "RAW\\_DATA" "MY\\_TABLE"] @fk-args))))))
 
-(deftest ^:sequential describe-table-fields-uuid-column-test
+(deftest ^:synchronized describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
       (let [db-name    (#'driver.snowflake/db-name (mt/db))
@@ -526,7 +575,7 @@
   ;; Five related repro phases (v1-v5) share Snowflake connection setup and table-name lifecycle.
   ;; Splitting would multiply CI Snowflake setup cost. Kondo's warning is acknowledged.
   ^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
-  (deftest ^:sequential ^:synchronized create-or-replace-table-updates-effective-type-test
+  (deftest ^:synchronized create-or-replace-table-updates-effective-type-test
     (mt/test-driver :snowflake
       (testing "GHY-3388: when a column's database type changes via CREATE OR REPLACE TABLE
              (e.g. TEXT -> NUMBER via TRY_TO_NUMBER), sync should update effective_type to match
@@ -702,7 +751,7 @@
               (u/ignore-exceptions
                 (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])))))))))
 
-(deftest ^:sequential describe-table-test
+(deftest ^:synchronized describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (=? {:name   "categories"
@@ -727,7 +776,7 @@
               (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
-(deftest ^:sequential describe-fks-test
+(deftest ^:synchronized describe-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-fks uses the NAME FROM DETAILS too"
       (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
@@ -1122,7 +1171,7 @@
      #t "2024-04-25T14:44:00-07:00"
      "2024-04-25T14:44:00-07:00")))
 
-(deftest ^:sequential zoned-date-time-parameter-test
+(deftest ^:synchronized zoned-date-time-parameter-test
   (test-temporal-instance
    #t "2024-04-25T14:44:00-07:00[US/Pacific]"
    "2024-04-25T21:44:00Z"))
@@ -1327,7 +1376,7 @@
       (is (not (contains? params "ROLE")))
       (is (contains? params "ASDFROLE")))))
 
-(deftest ^:sequential filter-on-variant-column-test
+(deftest ^:synchronized filter-on-variant-column-test
   (testing "We should still let you do various filter types on VARIANT (anything) columns (#45206)"
     (mt/test-driver :snowflake
       (let [variant-base-type (sql-jdbc.sync/database-type->base-type :snowflake :VARIANT)
@@ -1689,6 +1738,62 @@
           (let [result (qp/process-query (filter-query filter))]
             (is (str/includes? (-> result :data :native_form :query) exp-filter))
             (is (= exp-rows (mt/rows result)))))))))
+
+(def ^:private breakout-payload
+  "A value that closes a Snowflake string literal early unless its backslash is escaped: `a\\' or 1=1 -- `.
+  Kept all-lowercase so the case-insensitive filters, which lower-case the value, expect the same literal."
+  "a\\' or 1=1 -- ")
+
+(def ^:private escaped-breakout-payload
+  "[[breakout-payload]] correctly escaped: the `\\` is doubled so it cannot escape anything, and the `'` is doubled,
+  so the payload stays inside the literal."
+  "a\\\\'' or 1=1 -- ")
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash as well as the quote"
+    ;; Snowflake treats `\` as an escape character inside a string literal, so doubling `'` alone (the default
+    ;; `[:sql String]` behaviour) lets a value like `a\'` close the literal early and run the rest as SQL.
+    (are [s expected] (= expected (sql.qp/inline-value :snowflake s))
+      "Tito's Tacos"   "'Tito''s Tacos'"           ; 'Tito''s Tacos'
+      "'"              "''''"                      ; ''''
+      "back\\slash"    "'back\\\\slash'"           ; 'back\\slash'
+      "trailing\\"     "'trailing\\\\'"            ; 'trailing\\'
+      breakout-payload (str \' escaped-breakout-payload \'))))
+
+;;; `contains` / `starts-with` / `ends-with` are an additional carrier for the escaping defect above, and a
+;;; very common one. On the generic SQL path they compile to `LIKE <pattern>`, and `sql.qp/generate-pattern` runs
+;;; `escape-like-pattern` on the value first -- which doubles `\` and so happens to neutralise this payload shape.
+;;; Snowflake overrides all three to its native scalar functions instead, so `generate-pattern` never runs and the
+;;; value reaches ordinary function-argument position unescaped. Only [[sql.qp/inline-value]] stands between it and
+;;; the SQL text.
+(deftest string-filter-inline-escaping-test
+  ;; no Snowflake warehouse needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (testing "a string filter value cannot break out of the literal when compiled with inline parameters"
+    (let [mp       (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:database {:engine :snowflake, :details {:db "test-data"}}})
+          venues   (lib.metadata/table mp (meta/id :venues))
+          name-col (lib.metadata/field mp (meta/id :venues :name))
+          compile! (fn [filter-clause]
+                     (:query (qp.compile/compile-with-inline-parameters
+                              (-> (lib/query mp venues)
+                                  (lib/filter filter-clause)))))]
+      (doseq [[msg filter-clause expected]
+              [["contains"                     (lib/contains name-col breakout-payload)
+                (format "CONTAINS(\"PUBLIC\".\"VENUES\".\"NAME\", '%s')" escaped-breakout-payload)]
+               ["starts-with"                  (lib/starts-with name-col breakout-payload)
+                (format "STARTSWITH(\"PUBLIC\".\"VENUES\".\"NAME\", '%s')" escaped-breakout-payload)]
+               ["ends-with"                    (lib/ends-with name-col breakout-payload)
+                (format "ENDSWITH(\"PUBLIC\".\"VENUES\".\"NAME\", '%s')" escaped-breakout-payload)]
+               ["case-insensitive contains"    (lib/ignore-case (lib/contains name-col breakout-payload))
+                (format "CONTAINS(LOWER(\"PUBLIC\".\"VENUES\".\"NAME\"), '%s')" escaped-breakout-payload)]
+               ["case-insensitive starts-with" (lib/ignore-case (lib/starts-with name-col breakout-payload))
+                (format "STARTSWITH(LOWER(\"PUBLIC\".\"VENUES\".\"NAME\"), '%s')" escaped-breakout-payload)]
+               ["case-insensitive ends-with"   (lib/ignore-case (lib/ends-with name-col breakout-payload))
+                (format "ENDSWITH(LOWER(\"PUBLIC\".\"VENUES\".\"NAME\"), '%s')" escaped-breakout-payload)]]]
+        (testing msg
+          (is (str/includes? (compile! filter-clause) expected)))))))
 
 (deftest snowflake-collate-comparison-test
   (mt/test-driver :snowflake

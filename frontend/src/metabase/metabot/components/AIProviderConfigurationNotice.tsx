@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { canAccessSettings } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
-import { canAccessSettings } from "metabase/selectors/user";
 import { Anchor, Flex, Text, type TextProps } from "metabase/ui";
 
 import { useUserMetabotPermissions } from "../hooks";
@@ -89,7 +89,7 @@ const MetabotNotConfiguredToastContent = ({
   );
 
   return (
-    <Flex direction="column" gap="xs">
+    <Flex direction="column" gap="xxs">
       <AIProviderConfigurationNotice
         inline={true}
         onConfigureAi={openModal}
@@ -114,7 +114,7 @@ export const getMetabotNotConfiguredToastProps = ({
   timeout: 0,
   style: {
     padding: "1rem",
-    width: "min(24rem, calc(100vw - 2 * var(--mantine-spacing-md)))",
+    width: "min(24rem, calc(100vw - 2 * var(--mantine-spacing-lg)))",
   },
   renderChildren: () => (
     <MetabotNotConfiguredToastContent featureName={featureName} />

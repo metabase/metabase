@@ -5,6 +5,7 @@ import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { documentApi } from "metabase/api/document";
 import { fieldApi } from "metabase/api/field";
+import { glossaryApi } from "metabase/api/glossary";
 import { measureApi } from "metabase/api/measure";
 import { segmentApi } from "metabase/api/segment";
 import { snippetApi } from "metabase/api/snippet";
@@ -16,7 +17,7 @@ import { transformTagApi } from "metabase/api/transform-tag";
 import type { State } from "metabase/redux/store";
 import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
-import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { getCollectionFromCollectionsTree } from "./collection";
 import {
@@ -33,22 +34,6 @@ function getOriginalArgs<T>(action: UnknownAction): T | undefined {
   const meta = (action as { meta?: { arg?: { originalArgs?: unknown } } }).meta;
   // Unjustified type cast. FIXME
   return meta?.arg?.originalArgs as T | undefined;
-}
-
-function getOriginalDocument(originalState: State, id: number) {
-  // RTK Query selector requires RootState type, but our State type is compatible
-  const selector = documentApi.endpoints.getDocument.select({ id });
-  return selector(originalState)?.data;
-}
-
-function getOriginalDashboard(originalState: State, id: DashboardId) {
-  const selector = dashboardApi.endpoints.getDashboard.select({ id });
-  return selector(originalState)?.data || originalState.entities.dashboards[id];
-}
-
-function getOriginalCard(originalState: State, id: CardId) {
-  const selector = cardApi.endpoints.getCard.select({ id });
-  return selector(originalState)?.data || originalState.entities.questions[id];
 }
 
 function getOriginalCollection(originalState: State, id: CollectionId) {
@@ -74,10 +59,8 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     updateEndpoints: [cardApi.endpoints.updateCard.matchFulfilled],
     deleteEndpoints: [cardApi.endpoints.deleteCard.matchFulfilled],
     invalidation: {
-      type: InvalidationType.RemoteSyncedChange,
-      getOriginal: getOriginalCard,
+      type: InvalidationType.Always,
     },
-    getDeleteId: (action) => getOriginalArgs<number>(action),
   },
   {
     modelType: "dashboard",
@@ -85,10 +68,8 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     updateEndpoints: [dashboardApi.endpoints.updateDashboard.matchFulfilled],
     deleteEndpoints: [dashboardApi.endpoints.deleteDashboard.matchFulfilled],
     invalidation: {
-      type: InvalidationType.RemoteSyncedChange,
-      getOriginal: getOriginalDashboard,
+      type: InvalidationType.Always,
     },
-    getDeleteId: (action) => getOriginalArgs<number>(action),
   },
   {
     modelType: "document",
@@ -96,10 +77,8 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     updateEndpoints: [documentApi.endpoints.updateDocument.matchFulfilled],
     deleteEndpoints: [documentApi.endpoints.deleteDocument.matchFulfilled],
     invalidation: {
-      type: InvalidationType.RemoteSyncedChange,
-      getOriginal: getOriginalDocument,
+      type: InvalidationType.Always,
     },
-    getDeleteId: (action) => getOriginalArgs<number>(action),
   },
 
   // Collections have special handling
@@ -180,6 +159,13 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     modelType: "snippet",
     createEndpoints: [snippetApi.endpoints.createSnippet.matchFulfilled],
     updateEndpoints: [snippetApi.endpoints.updateSnippet.matchFulfilled],
+    invalidation: { type: InvalidationType.Always },
+  },
+  {
+    modelType: "glossary",
+    createEndpoints: [glossaryApi.endpoints.createGlossary.matchFulfilled],
+    updateEndpoints: [glossaryApi.endpoints.updateGlossary.matchFulfilled],
+    deleteEndpoints: [glossaryApi.endpoints.deleteGlossary.matchFulfilled],
     invalidation: { type: InvalidationType.Always },
   },
   {

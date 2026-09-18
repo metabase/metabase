@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.base :as base]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
@@ -14,11 +15,10 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.io Closeable)
-   (java.net SocketException)
+   (java.net SocketException SocketTimeoutException)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
@@ -26,9 +26,7 @@
 (defn- save-log-to-transform-run-message!
   "Saves the content of the log into the transform_run's message field. Lossy, string contains user facing information only."
   [run-id message-log]
-  (t2/update! :model/TransformRun
-              :id run-id
-              {:message (base/message-log->string message-log)}))
+  (transforms-python.db/update-run-message! run-id (base/message-log->string message-log)))
 
 (def ^:private ^Duration python-message-loop-sleep-duration
   (Duration/ofMillis 1000))
@@ -45,7 +43,12 @@
         (log/debug "Message update loop interrupted")
         (do (let [sleep-ms (.toMillis python-message-loop-sleep-duration)]
               (when (pos? sleep-ms) (Thread/sleep sleep-ms)))
-            (let [{:keys [status body]} (python-runner/get-logs run-id)]
+            ;; a read timeout here is usually transient, so keep polling rather than ending the loop
+            (if-let [{:keys [status body]} (try
+                                             (python-runner/get-logs run-id)
+                                             (catch SocketTimeoutException _
+                                               (log/debugf "Timed out polling for logs, run-id: %s" run-id)
+                                               nil))]
               (cond
                 (<= 200 status 299)
                 (let [{:keys [execution_id events]} body]
@@ -63,7 +66,8 @@
                 :else
                 (do
                   (log/warnf "Unexpected status polling for logs %s, run-id: %s" status run-id)
-                  (log/debug "Exiting due to poll error")))))))
+                  (log/debug "Exiting due to poll error")))
+              (recur)))))
     (catch SocketException se (when-not (= "Closed by interrupt" (ex-message se)) (throw se)))
     (catch InterruptedException _)
     (catch Throwable e
@@ -101,7 +105,7 @@
   (try
     (let [message-log                                                (base/empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          {driver :engine :as db}                                    (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+          {driver :engine :as db}                                    (transforms-python.db/database (transforms-base.i/target-db-id transform))
           run-user-id                                                (if (and (= run-method :manual) user-id)
                                                                        user-id
                                                                        (or owner_user_id creator_id))

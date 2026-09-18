@@ -29,6 +29,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.test :as qp]
@@ -62,7 +63,8 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        [:field {::add/source-table (mt/id table-key)
+        [:field {:lib/uuid          (str (random-uuid))
+                 ::add/source-table (mt/id table-key)
                  ::add/source-alias field-name
                  ::add/desired-alias field-name}
          field-id])))))
@@ -136,7 +138,7 @@
                         [:raw "{{user}}"]]
                 :order-by [[(identifier :checkins :id) :asc]]})
 
-              :template_tags
+              :template-tags
               {"user" {:name "user"
                        :display-name "User ID"
                        :type :number
@@ -322,6 +324,23 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest e2e-api-key-user-attributes-ignored-test
+  (testing (str "login_attributes stored on an API-key pseudo-user are not used for sandboxing (UXW-4240); the "
+                "query should fail with a missing-attribute error rather than using the stored attributes")
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+      ;; `:attributes` writes `login_attributes` straight to the app DB; attributes on API-key users can't be set
+      ;; via the API but may exist in the wild
+      (met/with-gtaps-for-user! api-key-user-id {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                                 :attributes {"cat" 50}}
+        (is (= {"cat" "50"}
+               (t2/select-one-fn :login_attributes :model/User :id api-key-user-id))
+            "sanity check: the attributes really are stored on the API-key user's row")
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Query requires user attribute `cat`"
+             (run-venues-count-query)))))))
+
 (deftest e2e-test-3
   (mt/test-drivers (e2e-test-drivers)
     (testing (str "When processing a query that requires a user attribute and that user attribute isn't there, throw an "
@@ -351,6 +370,24 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest e2e-uncoerceable-attribute-fails-closed-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "uncoerceable user attribute does not silently drop the sandbox filter (#81821)"
+      (testing "integer column"
+        (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (run-venues-count-query)))))
+      (testing "float column"
+        (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)
+                                           :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
+                          :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (run-venues-count-query))))))))
 
 (deftest e2e-test-6
   (mt/test-drivers (e2e-test-drivers)
@@ -1772,6 +1809,27 @@
                                    (<= 1 day-int 31))))
                           (next result))))))))))
 
+(deftest temporal-bucketing-and-binning-breakouts-test
+  (testing "A sandboxed user can break out by a temporal bucket and a binned column, and gets the unsandboxed column metadata"
+    (mt/test-drivers (into #{} (filter (mt/normal-drivers-with-feature :binning)) (e2e-test-drivers))
+      (met/with-gtaps! {:gtaps      {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}}
+                        :attributes {"user_id" 1}}
+        (let [mp       (mt/metadata-provider)
+              query    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :year))
+                           (lib/breakout (lib/with-binning (lib.metadata/field mp (mt/id :orders :total))
+                                                           {:strategy :num-bins, :num-bins 10})))
+              expected (mt/with-test-user :crowberto
+                         (qp/process-query (lib/filter query (lib/= (lib.metadata/field mp (mt/id :orders :user_id)) 1))))
+              result   (qp/process-query query)]
+          (is (true? (-> result :data :is_sandboxed)))
+          (is (seq (mt/rows expected)))
+          (is (= (mt/rows expected)
+                 (mt/rows result)))
+          (is (= (map (juxt :display_name :unit (comp :num_bins :binning_info)) (mt/cols expected))
+                 (map (juxt :display_name :unit (comp :num_bins :binning_info)) (mt/cols result)))))))))
+
 (deftest sandboxed-join-excludes-hidden-columns-test
   (testing "When joining to a sandboxed table, hidden columns should not be added to join fields (#64317)"
     (mt/dataset test-data
@@ -1846,7 +1904,7 @@
     ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
     ;; another table (`orders.total`) — that one *must* still be filtered out.
     (let [mp            (lib.tu/mock-metadata-provider
-                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
+                         {:database {:id 1 :name "db" :engine :h2}
                           :tables   [{:id 100 :name "customers" :db-id 1}
                                      {:id 200 :name "orders" :db-id 1}]
                           :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
@@ -1991,7 +2049,18 @@
                (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
       (testing "text field → :string/="
         (is (= :string/=
-               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]]))))))))
+               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
+      (testing "uncoerceable attribute against numeric field throws instead of dropping the filter (#81821)"
+        (testing "integer column"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
+        (testing "float column"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"

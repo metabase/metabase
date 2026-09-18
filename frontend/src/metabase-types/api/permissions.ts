@@ -1,5 +1,6 @@
 import type {
   CollectionId,
+  Database,
   DatabaseId,
   SchemaName,
   TableId,
@@ -202,6 +203,13 @@ export type PermissionEntityId = DatabaseEntityId &
   Partial<Omit<TableEntityId, "databaseId">>;
 
 export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+/**
+ * A database as the permissions tree sees it: the API database, with `tables`
+ * from `GET /api/database/:id/metadata` and `router_user_attribute` from
+ * `GET /api/database`. Neither endpoint returns both.
+ */
+export type PermissionsDatabase = Database;
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 

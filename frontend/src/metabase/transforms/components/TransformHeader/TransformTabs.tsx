@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
@@ -17,12 +17,12 @@ type TransformTabsProps = {
 
 export const TransformTabs = ({ transform }: TransformTabsProps) => {
   const tabs = getTabs(transform.id);
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 };
 
-function getTabs(id: TransformId): PaneHeaderTab[] {
+function getTabs(id: TransformId): PillTab[] {
   const inspectUrl = Urls.transformInspect(id);
-  const tabs: PaneHeaderTab[] = [
+  const tabs: PillTab[] = [
     {
       label: t`Definition`,
       to: Urls.transform(id),

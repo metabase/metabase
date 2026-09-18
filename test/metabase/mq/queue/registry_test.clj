@@ -13,6 +13,12 @@
 
 (use-fixtures :each with-fresh-queues)
 
+;;; Declared the production way so [[q.registry/register-queues!]] realizes it.
+(q.registry/def-queue! :queue/registry-test-fn-config
+  {:transactional :try
+   :max-batch-messages 1
+   :on-error (fn [_] nil)})
+
 (deftest transactional-is-required-test
   (testing "register-queue! throws when :transactional is missing"
     (is (thrown-with-msg?
@@ -121,6 +127,52 @@
     (q.registry/register-queue! :queue/just-capped {:transactional :try :max-concurrent-batches 2})
     (is (= 2 (q.registry/max-concurrent-batches :queue/just-capped)))
     (is (false? (q.registry/exclusive? :queue/just-capped)))))
+
+(deftest re-registration-test
+  (testing "re-registering with fresh fn objects for the same declaration doesn't throw"
+    (letfn [(make-config [] {:transactional :try :on-error (fn [_] nil)})]
+      (q.registry/register-queue! :queue/re-reg-fn (make-config))
+      (q.registry/register-queue! :queue/re-reg-fn (make-config))
+      (is (fn? (q.registry/on-error :queue/re-reg-fn)))))
+  (testing "the latest config wins, so an edited declaration takes effect on reload"
+    (q.registry/register-queue! :queue/re-reg {:transactional :try :max-batch-messages 5})
+    (q.registry/register-queue! :queue/re-reg {:transactional :try :max-batch-messages 6})
+    (is (= 6 (q.registry/max-batch-messages :queue/re-reg))))
+  (testing "including its fn values, so a reloaded handler takes effect"
+    (let [v (atom nil)]
+      (q.registry/register-queue! :queue/re-reg-latest {:transactional :try :on-error (fn [_] (reset! v :old))})
+      (q.registry/register-queue! :queue/re-reg-latest {:transactional :try :on-error (fn [_] (reset! v :new))})
+      ((q.registry/on-error :queue/re-reg-latest) nil)
+      (is (= :new @v)))))
+
+(deftest declaration-site-ownership-test
+  (let [q :queue/ownership-claim-test]
+    (try
+      (testing "the first claim owns the queue"
+        (q.registry/claim-queue-declaration! q 'metabase.some.module)
+        (is (= 'metabase.some.module (get @q.registry/queue-declaration-sites q))))
+      (testing "re-claiming from the same namespace (a reload) is a no-op"
+        (q.registry/claim-queue-declaration! q 'metabase.some.module))
+      (testing "a different namespace claiming the same queue throws at load time"
+        (is (thrown-with-msg?
+             ExceptionInfo #"already declared in metabase\.some\.module"
+             (q.registry/claim-queue-declaration! q 'metabase.other.module)))
+        (testing "and the original owner keeps the claim"
+          (is (= 'metabase.some.module (get @q.registry/queue-declaration-sites q)))))
+      (finally
+        ;; claims are global (deliberately not rebound by the fixture), so clean up ours
+        (swap! q.registry/queue-declaration-sites dissoc q)))))
+
+(deftest def-queue-claims-declaration-site-test
+  (testing "def-queue! records the declaring namespace as the queue's owner"
+    (is (= 'metabase.mq.queue.registry-test
+           (get @q.registry/queue-declaration-sites :queue/registry-test-fn-config)))))
+
+(deftest register-queues-is-repeatable-test
+  (testing "register-queues! can run more than once against the same registry"
+    (q.registry/register-queues!)
+    (q.registry/register-queues!)
+    (is (fn? (q.registry/on-error :queue/registry-test-fn-config)))))
 
 (deftest rejects-invalid-max-concurrent-batches-test
   (testing "register-queue! rejects a non-positive :max-concurrent-batches"

@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -7,6 +6,7 @@ import {
   getTimelineIcons,
   getTimelineName,
 } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import {
   Form,
   FormDateInput,
@@ -113,7 +113,7 @@ const EventForm = ({
               placeholder={t`Product launch`}
               data-autofocus
             />
-            <Flex align="end" gap="md">
+            <Flex align="end" gap="lg">
               <FormDateInput
                 name="timestamp"
                 title={t`Date`}
@@ -134,7 +134,7 @@ const EventForm = ({
                 }}
               />
               {values.time_matters ? (
-                <Flex gap="xs" align="end">
+                <Flex gap="xxs" align="end">
                   <TimeInput
                     value={dayjs.tz(values.timestamp).toDate()}
                     name="date"
@@ -190,7 +190,7 @@ const EventForm = ({
                 data={timelineOptions}
               />
             )}
-            <Flex gap="md" justify="end">
+            <Flex gap="lg" justify="end">
               <FormErrorMessage inline />
               {!isNew && (
                 <FormArchiveButton onClick={onArchive}>

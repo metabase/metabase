@@ -59,8 +59,8 @@ export const ParametersPlayground = ({
     <Flex h="100vh">
       <Stack
         w={400}
-        p="md"
-        gap="md"
+        p="lg"
+        gap="lg"
         style={{ borderRight: "1px solid #e0e0e0", overflowY: "auto" }}
       >
         <Title order={4}>{title}</Title>
@@ -76,7 +76,7 @@ export const ParametersPlayground = ({
           </Text>
         )}
 
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <TextInput
             label="Parameter slug (or id)"
             placeholder="e.g. state"
@@ -89,7 +89,7 @@ export const ParametersPlayground = ({
             value={paramValue}
             onChange={(e) => setParamValue(e.currentTarget.value)}
           />
-          <Group gap="xs">
+          <Group gap="xxs">
             <Button
               size="xs"
               onClick={() => paramSlug && onSetOne(paramSlug, paramValue)}

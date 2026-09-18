@@ -85,7 +85,7 @@ export function MetricSearchPanel() {
   const toggleLabel = isFilterPillsExpanded ? t`Hide filters` : t`Show filters`;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Flex align="center" justify="space-between" mih="1.875rem">
         <Text fw={700} size="lg" component="h1">
           {t`Explore`}
@@ -119,7 +119,7 @@ export function MetricSearchPanel() {
                     color="core-filter"
                     size="xs"
                     py="sm"
-                    px="md"
+                    px="lg"
                     aria-label={toggleLabel}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -154,7 +154,7 @@ export function MetricSearchPanel() {
           <Box
             className={S.filterPillsSection}
             px="sm"
-            py="xs"
+            py="xxs"
             bg="background_page-filter"
           >
             <MetricsFilterPills

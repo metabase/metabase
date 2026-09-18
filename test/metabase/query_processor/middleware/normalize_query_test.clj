@@ -4,6 +4,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.normalize-query :as normalize-query]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]))
 
 (deftest ^:parallel normalize-test

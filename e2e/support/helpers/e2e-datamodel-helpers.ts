@@ -1,3 +1,4 @@
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   FieldId,
@@ -31,6 +32,8 @@ export const DataModel = {
   },
   TablePicker: {
     get: getTablePicker,
+    expandDatabase: expandTablePickerDatabase,
+    expandSchema: expandTablePickerSchema,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
     getDatabaseCheckbox,
@@ -286,6 +289,72 @@ function getTablePickerDatabase(name: string) {
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
     .filter(`:contains("${name}")`);
+}
+
+let tablePickerExpandCount = 0;
+
+/**
+ * Expands a database row in the table picker via its toggle, waits for the
+ * schemas request (and, for a lone schema, the dependent tables request) to
+ * resolve, and asserts the children rendered.
+ */
+function expandTablePickerDatabase(name: string) {
+  tablePickerExpandCount += 1;
+  const schemasAlias = `tablePickerSchemas${tablePickerExpandCount}`;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schemas?*").as(schemasAlias);
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerDatabaseToggle(name).click();
+
+  cy.wait(`@${schemasAlias}`, { timeout: 25000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+    const schemas = response?.body;
+    if (
+      Array.isArray(schemas) &&
+      (schemas.length === 1 || schemas.includes(UNNAMED_SCHEMA_NAME))
+    ) {
+      cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(
+        ({ response: tablesResponse }) => {
+          expect(tablesResponse?.statusCode).to.eq(200);
+        },
+      );
+    }
+  });
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "true",
+  );
+}
+
+/**
+ * Expands a schema row in the table picker and synchronizes on its tables
+ * being loaded, mirroring expandTablePickerDatabase.
+ */
+function expandTablePickerSchema(name: string) {
+  tablePickerExpandCount += 1;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerSchemaToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerSchemaToggle(name).click();
+
+  cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+  });
+
+  getTablePickerSchemaToggle(name).should("have.attr", "aria-expanded", "true");
 }
 
 function getTablePickerDatabaseToggle(name: string) {
@@ -589,7 +658,8 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Give it a description");
+  getSegmentEditor().findByLabelText("Give it a description").click();
+  return getSegmentEditor().findByPlaceholderText("Only if it really needs it");
 }
 
 function getSegmentEditorFilterPlaceholder() {
@@ -681,7 +751,8 @@ function getMeasureEditorNameInput() {
 }
 
 function getMeasureEditorDescriptionInput() {
-  return getMeasureEditor().findByLabelText("Give it a description");
+  getMeasureEditor().findByLabelText("Give it a description").click();
+  return getMeasureEditor().findByPlaceholderText("Only if it really needs it");
 }
 
 function getMeasureEditorAggregationPlaceholder() {
@@ -805,13 +876,33 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      hoverHeaderCell();
     }
   });
 
   if (description != null) {
     hovercard().should("contain.text", description);
   }
+}
+
+// Open the preview's column-description hovercard. The hovercard opens on a
+// delayed `openDelay` timer, and a single one-shot `realHover()` can miss it:
+// after `cy.wait("@dataset")` the table re-renders on a microtask (fetch
+// resolution) and Chrome v133+ headless hit-tests CDP mouse events
+// differently, either of which drops the hover and cancels the open timer,
+// leaving the hovercard permanently absent for that attempt. Re-query the cell
+// for each dispatch so the events land on the post-render DOM node, and fire
+// both `mouseover` (bubbles → React 18 synthetic onMouseEnter for any wrapper)
+// and `mouseenter` (for native useEventListener handlers Mantine attaches
+// directly to the cell).
+function hoverHeaderCell() {
+  const headerCell = () =>
+    cy
+      .findByTestId("header-cell")
+      .findByTestId("cell-data")
+      .should("be.visible");
+  headerCell().trigger("mouseenter", { force: true });
+  headerCell().trigger("mouseover", { force: true });
 }
 
 function verifyObjectDetailPreview({

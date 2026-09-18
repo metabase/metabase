@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useRef } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useRef } from "react";
 
 export function calculateFillerHeight(
   scrollContainerEl: HTMLElement,
@@ -47,28 +47,12 @@ function resizeFillerArea(
   }
 }
 
-export function useScrollManager(hasMessages: boolean) {
+export function useScrollManager(hasMessages: boolean, conversationId: string) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fillerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottomRafRef = useRef<number>();
   const resizeRafRef = useRef<number>();
   const scrollToPromptRafRef = useRef<number>();
-
-  // clean animations on clean up if needed
-  useEffect(function cancelAnimations() {
-    return () => {
-      if (scrollToBottomRafRef.current) {
-        cancelAnimationFrame(scrollToBottomRafRef.current);
-      }
-      if (resizeRafRef.current) {
-        cancelAnimationFrame(resizeRafRef.current);
-      }
-      if (scrollToPromptRafRef.current) {
-        cancelAnimationFrame(scrollToPromptRafRef.current);
-      }
-    };
-  }, []);
 
   const scheduleFillerResize = useCallback(() => {
     // only schedule if nothing has been for this frame
@@ -80,7 +64,7 @@ export function useScrollManager(hasMessages: boolean) {
     }
   }, []);
 
-  useEffect(
+  useLayoutEffect(
     function resizeFiller() {
       const scrollContainerEl = scrollContainerRef.current;
       const fillerEl = fillerRef.current;
@@ -88,15 +72,8 @@ export function useScrollManager(hasMessages: boolean) {
         return;
       }
 
-      // resize filler + scroll to the absolute bottom on mount
-      scheduleFillerResize();
-      if (scrollContainerEl) {
-        scrollToBottomRafRef.current = requestAnimationFrame(() => {
-          // put in a RAF so it happens after filler resize
-          scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
-          scrollToBottomRafRef.current = undefined;
-        });
-      }
+      resizeFillerArea(scrollContainerRef, fillerRef);
+      scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
 
       // react to content updates
       const mutationObserver = new MutationObserver((mutations) => {
@@ -152,9 +129,17 @@ export function useScrollManager(hasMessages: boolean) {
       return () => {
         mutationObserver.disconnect();
         resizeObserver.disconnect();
+        if (resizeRafRef.current !== undefined) {
+          cancelAnimationFrame(resizeRafRef.current);
+          resizeRafRef.current = undefined;
+        }
+        if (scrollToPromptRafRef.current !== undefined) {
+          cancelAnimationFrame(scrollToPromptRafRef.current);
+          scrollToPromptRafRef.current = undefined;
+        }
       };
     },
-    [hasMessages, scheduleFillerResize],
+    [conversationId, hasMessages, scheduleFillerResize],
   );
 
   return {

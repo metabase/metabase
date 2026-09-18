@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
-} from "metabase/query_builder/hooks";
+} from "metabase/query_builder";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Button, Divider, Icon, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -30,7 +30,7 @@ export const BreakoutPickerInner = ({
   return (
     <Stack gap={0} w="18.75rem">
       <Button
-        p="md"
+        p="lg"
         fz="lg"
         color="text-secondary"
         variant="subtle"

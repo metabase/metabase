@@ -1,5 +1,11 @@
 import { render, renderRoutes, screen } from "__support__/ui";
-import { type RouteObject, RouterProviderMemory } from "metabase/router";
+import {
+  type NavigateFunction,
+  type RouteObject,
+  RouterProviderMemory,
+  getIsNavigationPending,
+  useNavigate,
+} from "metabase/router";
 
 function Home() {
   return <span data-testid="home">home</span>;
@@ -88,6 +94,34 @@ describe("a lazy route", () => {
     expect(screen.queryByTestId("split")).not.toBeInTheDocument();
   });
 
+  // How a caller sits that window out. `getIsNavigationPending` reads it from
+  // the router, so it is already true on the line after the navigate rather than
+  // after the render that follows. A URL sync running in a promise callback gets
+  // no render in between, which is how the query builder came to replace the
+  // dashboard it had just saved a question into.
+  it("reports the window to a caller navigating in the same tick", async () => {
+    const { navigate } = setupCapturingNavigate();
+
+    navigate?.("/split");
+    expect(getIsNavigationPending()).toBe(true);
+
+    expect(await screen.findByTestId("split")).toBeInTheDocument();
+    expect(getIsNavigationPending()).toBe(false);
+  });
+
+  // The other half of the contract, and the more easily broken one. A route that
+  // is already loaded commits during the call, so there is no window to sit out
+  // and a URL sync that follows must still run. Reporting one here strands
+  // anything that mirrors state into the URL, which is most of the query
+  // builder. See QueryBuilder.unsaved-changes-warning.unit.spec.tsx.
+  it("reports no window for a navigation that commits during the call", () => {
+    const { navigate } = setupCapturingNavigate();
+
+    navigate?.("/plain");
+
+    expect(getIsNavigationPending()).toBe(false);
+  });
+
   // What prefetching on hover buys, and what it does not. The module is already
   // in hand, so the gap is a tick rather than a round trip, but the router still
   // awaits `lazy` and still commits the location late.
@@ -129,3 +163,31 @@ describe("a lazy route", () => {
     expect(router?.location.pathname).toBe("/split");
   });
 });
+
+/**
+ * Renders with a `useNavigate` handle, so a test can navigate and then read the
+ * pending state in the same tick, the way a promise callback does.
+ */
+function setupCapturingNavigate() {
+  let navigate: NavigateFunction | undefined;
+
+  function CaptureNavigate() {
+    navigate = useNavigate();
+    return <span data-testid="home">home</span>;
+  }
+
+  renderRoutes(
+    [
+      { path: "/", element: <CaptureNavigate /> },
+      { path: "/plain", element: <Split /> },
+      { path: "/split", lazy: async () => ({ Component: Split }) },
+    ],
+    { initialRoute: "/" },
+  );
+
+  return {
+    get navigate() {
+      return navigate;
+    },
+  };
+}

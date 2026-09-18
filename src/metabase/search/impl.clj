@@ -1,12 +1,14 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
@@ -42,8 +44,8 @@
   on dynamic variables."
   {:style/indent 0}
   [current-user-id current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
-                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  `(binding [api/*current-user-id*              ~current-user-id
+             api/*current-user-permissions-set* (atom ~current-user-perms)]
      ~@body))
 
 (defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
@@ -124,7 +126,7 @@
   [search-ctx]
   (when (and (not (:is-superuser? search-ctx))
              (some #{"table" "indexed-entity"} (:models search-ctx)))
-    (perms/prime-table-perms-cache {:db-ids (t2/select-pks-set :model/Database :router_database_id nil)})))
+    (perms/prime-table-perms-cache {:db-ids (search.db/non-destination-database-ids)})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -132,7 +134,7 @@
   (let [user-ids             (set (flatten (for [result results]
                                              (remove nil? ((juxt :last_editor_id :creator_id) result)))))
         user-id->common-name (if (pos? (count user-ids))
-                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])
+                               (search.db/user-common-names user-ids)
                                {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
             (assoc result
@@ -147,11 +149,9 @@
                        (cond-> result
                          (= (:model result) "dataset")
                          (assoc :collection_effective_ancestors
-                                (->> (t2/hydrate
-                                      (if (nil? (:collection_id result))
-                                        collection/root-collection
-                                        {:location (:collection_location result)})
-                                      :effective_ancestors)
+                                (->> (t2/hydrate (if (nil? (:collection_id result))
+                                                   collection/root-collection
+                                                   {:location (:collection_location result)}) :effective_ancestors)
                                      :effective_ancestors
                                      ;; two pieces for backwards compatibility:
                                      ;; - remove the root collection
@@ -219,6 +219,7 @@
          :all-scores
          :dataset_query
          :document
+         :document_id
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
@@ -306,7 +307,7 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
-   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
+   [:weights                             {:optional true} [:maybe ::search.config/weights]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -424,7 +425,13 @@
         (update :archived bit->boolean)
         (update :archived_directly bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
-        (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
+        (cond-> (t2/instance-of? :model/Collection instance) map-collection)
+        ;; The Card search spec filters `[:= :this.document_id nil]`, so nothing Document-scoped is
+        ;; ever indexed and every Card result is known not to belong to one. Say so on the instance:
+        ;; the permission checks below consult `document_id` (a Document-scoped Card is gated by its
+        ;; Document), and an instance that merely *omits* it makes that resolve one from the primary
+        ;; key instead — one extra query per result row.
+        (cond-> (t2/instance-of? :model/Card instance) (assoc :document_id nil)))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
@@ -455,7 +462,7 @@
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
-                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
+                        (search.db/card-result-metadata card-ids))]
     (map (fn [{:keys [model id] :as item}]
            (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))

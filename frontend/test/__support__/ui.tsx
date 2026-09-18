@@ -27,6 +27,8 @@ import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
+import "metabase/auth/plugins";
+import { type StoreSeedState, createMockState } from "__support__/state";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
@@ -36,10 +38,6 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import {
-  type StoreSeedState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import {
   type Location,
   type MemoryTestRouterHolder,

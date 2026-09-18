@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test.impl
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test.impl
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -21,6 +21,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.datasets :as datasets]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -77,7 +78,10 @@
      ;; open
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
-                 custom-migrations.util/*allow-temp-scheduling* false]
+                 custom-migrations.util/*allow-temp-scheduling* false
+                 ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
+                 ;; prewarming the test-data Database within it.
+                 data.impl/*skip-dataset-prewarm?* true]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db

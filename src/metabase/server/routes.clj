@@ -2,6 +2,7 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
+   ;; non-/api routes in this ns have no OpenAPI surface; plain compojure is fine
    [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api.macros :as api.macros]
@@ -75,6 +76,7 @@
   ([_request respond _raise]
    (respond (livez-handler))))
 
+;; static-file routes have no OpenAPI surface; plain compojure defroutes is fine
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
@@ -102,6 +104,7 @@
 (mu/defn make-routes :- ::api.macros/handler
   "Create the top-level Ring route handler for Metabase."
   [api-routes :- ::api.macros/handler]
+  ;; top-level routes defined outside the api.macros surface (SPA shell, health, redirects) have no OpenAPI metadata
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    auth-wrapper/routes

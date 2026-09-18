@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { createMockVersion } from "metabase-types/api/mocks";
 

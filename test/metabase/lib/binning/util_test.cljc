@@ -1,8 +1,77 @@
 (ns metabase.lib.binning.util-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.binning.util :as lib.binning.util]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel filter->field-map-test
+  (is (= {}
+         (lib.binning.util/filters->field-map
+          (lib.normalize/normalize
+           ::lib.schema/filters
+           [[:and
+             [:= {} [:field {} 1] 10]
+             [:= {} [:field {} 2] 10]]]))))
+  (is (=? {1 [[:< {} [:field {} 1] 10] [:> {} [:field {} 1] 1]]
+           2 [[:> {} [:field {} 2] 20] [:< {} [:field {} 2] 10]]
+           3 [[:between {} [:field {} 3] 5 10]]}
+          (lib.binning.util/filters->field-map
+           (lib.normalize/normalize
+            ::lib.schema/filters
+            [[:and
+              [:< {} [:field {} 1] 10]
+              [:> {} [:field {} 1] 1]
+              [:> {} [:field {} 2] 20]
+              [:< {} [:field {} 2] 10]
+              [:between {} [:field {} 3] 5 10]]])))))
+
+(def ^:private test-min-max-fingerprint
+  {:type {:type/Number {:min 100 :max 1000}}})
+
+(deftest ^:parallel extract-bounds-test
+  (are [field-id->filters expected] (= expected
+                                       (lib.binning.util/extract-bounds
+                                        1 test-min-max-fingerprint
+                                        (lib.normalize/normalize
+                                         [:map-of ::lib.schema.id/field ::lib.schema/filters]
+                                         field-id->filters)))
+    {1 [[:> {} [:field {} 1] 1]
+        [:< {} [:field {} 1] 10]]}
+    {:min-value 1, :max-value 10}
+
+    {1 [[:between {} [:field {} 1] 1 10]]}
+    {:min-value 1, :max-value 10}
+
+    {}
+    {:min-value 100, :max-value 1000}
+
+    {1 [[:> {} [:field {} 1] 500]]}
+    {:min-value 500, :max-value 1000}
+
+    {1 [[:< {} [:field {} 1] 500]]}
+    {:min-value 100, :max-value 500}
+
+    {1 [[:> {} [:field {} 1] 200] [:< {} [:field {} 1] 800] [:between {} [:field {} 1] 600 700]]}
+    {:min-value 600, :max-value 700}))
+
+(deftest ^:parallel extract-bounds-missing-fingerprint-test
+  (is (nil? (lib.binning.util/extract-bounds 1 nil {})))
+  (is (nil? (lib.binning.util/extract-bounds 1 {:type {:type/Number {:min nil :max nil}}} {}))))
+
+(deftest ^:parallel extract-bounds-field-name-test
+  (testing "Should be able to adjust min max based on filters against named field refs. (#26202)"
+    (is (= {:min-value 1, :max-value 10}
+           (lib.binning.util/extract-bounds
+            "foo" test-min-max-fingerprint
+            {"foo" (lib.normalize/normalize
+                    ::lib.schema/filters
+                    [[:> {} [:field {} 1] 1] [:< {} [:field {} 1] 10]])})))))
 
 (deftest ^:parallel calculate-bin-width-single-value-test
   (are [minv maxv bins] (= 1 (#'lib.binning.util/calculate-bin-width minv maxv bins))

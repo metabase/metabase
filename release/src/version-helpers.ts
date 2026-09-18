@@ -107,11 +107,15 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+// rolling tags like v0.56.x or v0.51.2.x aren't valid version strings,
+// but we can still read a major version off of them
+const isDotXTag = (tagName: string) => /^(v0|v1)\.\d+(\.\d+)*\.x$/.test(tagName);
+
 export const getMajorVersionFromRef = (ref: string) => {
   if (ref.startsWith("refs/tags/")) {
     const tagName = ref.replace("refs/tags/", "");
-    const versionParts = getVersionParts(tagName);
-    return versionParts.major;
+    if (!isValidVersionString(tagName) && !isDotXTag(tagName)) return "";
+    return getMajorVersion(tagName);
   }
 
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
@@ -323,6 +327,7 @@ export function getLastReleaseFromTags({
 }) {
   return tags
     .map((tag) => tag.ref.replace("refs/tags/", ""))
+    .filter((tag) => !tag.endsWith("lts"))
     .filter((tag) => !tag.includes(".x"))
     .filter(ignorePreReleases ? (tag) => !isPreReleaseVersion(tag) : () => true)
     .filter(ignorePatches ? (v) => !isPatchVersion(v) : () => true)

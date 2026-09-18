@@ -971,8 +971,8 @@ describe("issue 50686", () => {
 
   it("should allow selecting more than 1 comparison (metabase#50686)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    // Default comparison
-    H.queryBuilderMain().findByText("N/A");
+    // Default comparison (a single one renders inline)
+    H.queryBuilderMain().findByText("(No data)");
 
     // Add another comparison
     H.openVizSettingsSidebar();
@@ -983,10 +983,10 @@ describe("issue 50686", () => {
 
     H.queryBuilderMain().within(() => {
       // First comparison still exists
-      cy.findByText("N/A");
+      cy.findByText("N/A (No data)");
 
       // New comparison has been added
-      cy.findByText("9.09%");
+      cy.findByText("-9.09% (110)");
       cy.contains("vs. FORECAST");
     });
   });

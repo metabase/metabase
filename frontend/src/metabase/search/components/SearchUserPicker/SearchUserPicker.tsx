@@ -74,11 +74,11 @@ export const SearchUserPicker = ({
       isLoading={isLoading}
       onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" gap="xs">
+      <SearchUserPickerContainer p="sm" gap="xxs">
         <SearchUserSelectBox gap={0}>
           <SearchUserItemContainer
             data-testid="search-user-select-box"
-            p="xs"
+            p="xxs"
             mah="30vh"
           >
             {selectedUserIds.map((userId) => {
@@ -88,7 +88,7 @@ export const SearchUserPicker = ({
                   data-testid="selected-user-button"
                   key={userId}
                   c="core-brand"
-                  px="md"
+                  px="lg"
                   py="sm"
                   maw="100%"
                   rightSection={<Icon name="close" />}
@@ -116,13 +116,13 @@ export const SearchUserPicker = ({
         <SearchUserPickerContent
           data-testid="search-user-list"
           h="100%"
-          gap="xs"
-          p="xs"
+          gap="xxs"
+          p="xxs"
         >
           {filteredUsers.length > 0 ? (
             generateUserListElements(filteredUsers)
           ) : (
-            <Center py="md">
+            <Center py="lg">
               <Text size="md" fw={700}>{t`No results`}</Text>
             </Center>
           )}

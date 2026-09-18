@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { CurrencyStyle } from "metabase/utils/formatting";
-
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
+import type { CurrencyStyle } from "./formatting";
 import type { GroupId } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
@@ -165,22 +164,14 @@ export interface EngineSourceContact {
 }
 
 export interface ScheduleSettings {
-  schedule_type?: ScheduleType | null;
+  schedule_type: ScheduleType;
   schedule_day?: ScheduleDayType | null;
   schedule_frame?: ScheduleFrameType | null;
   schedule_hour?: number | null;
   schedule_minute?: number | null;
 }
 
-export type ScheduleType =
-  | "every_n_minutes"
-  | "hourly"
-  | "daily"
-  | "weekly"
-  | "monthly"
-  // 'cron' type implies usage of more complex expressions represented
-  // by raw cron string.
-  | "cron";
+export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
 
 export type ScheduleDayType =
   | "sun"
@@ -215,11 +206,19 @@ export interface VersionInfoRecord {
   announcement_url?: string;
 }
 
+export interface AlertUpgradeVersion {
+  min: string;
+  fixed: string;
+  message: string;
+  id?: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
+  alert_upgrade_versions?: AlertUpgradeVersion[];
 }
 
 export type LocaleData = [string, string];
@@ -400,6 +399,8 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
+export type MfaEnforcement = "off" | "optional" | "required";
+
 export interface SettingDefinition<
   Key extends EnterpriseSettingKey = EnterpriseSettingKey,
 > {
@@ -541,12 +542,19 @@ interface SettingsManagerSettings {
   "llm-zai-api-key"?: string | null;
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
+  "llm-deepseek-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
+  "llm-google-service-account-key"?: string | null;
+  "llm-google-oauth-access-token"?: string | null;
+  "llm-google-project-id"?: string | null;
+  "llm-google-location"?: string | null;
   "llm-bedrock-access-key-id"?: string | null;
   "llm-bedrock-secret-access-key"?: string | null;
   "llm-bedrock-region"?: string | null;
   "llm-bedrock-session-token"?: string | null;
+  "llm-vllm-api-base-url"?: string | null;
+  "llm-vllm-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -590,7 +598,8 @@ interface PublicSettings {
   "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
-  "mfa-enforcement"?: "off" | "optional";
+  "mfa-enforcement": MfaEnforcement;
+  "mfa-requirement-deadline": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
@@ -621,7 +630,7 @@ interface PublicSettings {
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
-  "ldap-group-membership-filter"?: string;
+  "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
@@ -776,10 +785,12 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
   "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-metabot-supports-fast-mode?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
   "llm-zai-api-key"?: string | null;
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
+  "llm-deepseek-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -837,6 +848,8 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
+  "llm-mini-model"?: string | null;
+  "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;

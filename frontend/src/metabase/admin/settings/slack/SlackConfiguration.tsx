@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { useGetSlackAppInfoQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
+
+import { useGetSlackAppInfoQuery } from "../api/slack";
 
 import { SlackBugReportChannelInput } from "./SlackBugReportChannelInput";
 
@@ -17,7 +18,7 @@ export const SlackConfiguration = () => {
     : `https://api.slack.com/apps`;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Box>
         <Text fz="lg" fw="bold">{t`Slack app icon`}</Text>
         <Text c="text-secondary">
@@ -25,14 +26,14 @@ export const SlackConfiguration = () => {
         </Text>
       </Box>
 
-      <Flex gap="md" align="center">
+      <Flex gap="lg" align="center">
         <Box
           component="img"
           src={iconUrl}
           alt="Metabot icon"
           w={80}
           h={80}
-          bdrs="sm"
+          bdrs="xs"
           bd="1px solid var(--mb-color-border-neutral)"
         />
         <Stack gap="sm" align="flex-start">

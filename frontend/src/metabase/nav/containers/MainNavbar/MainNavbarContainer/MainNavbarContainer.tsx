@@ -17,17 +17,17 @@ import {
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import {
+  getIsTenantUser,
+  getUser,
+  getUserCanWriteToCollections,
+} from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import type { To } from "metabase/router";
-import {
-  getIsTenantUser,
-  getUser,
-  getUserCanWriteToCollections,
-} from "metabase/selectors/user";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, User } from "metabase-types/api";

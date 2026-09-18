@@ -19,7 +19,7 @@ export function AllFieldsSectionList({
   onSelect: (item: DimensionPickerItem) => void;
 }) {
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {sections.map((section, sectionIndex) => {
         const sectionKey = section.name
           ? `${section.name}-${sectionIndex}`
@@ -27,7 +27,7 @@ export function AllFieldsSectionList({
         const sectionName = getSidebarSectionName(section.name);
 
         return (
-          <Stack key={sectionKey} gap="xs">
+          <Stack key={sectionKey} gap="xxs">
             {sectionName && (
               <Text px="sm" size="sm" c="text-secondary">
                 {sectionName}

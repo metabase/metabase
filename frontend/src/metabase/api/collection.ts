@@ -1,16 +1,13 @@
-import {
-  CollectionSchema,
-  ObjectUnionSchema,
-  SnippetCollectionSchema,
-} from "metabase/schema";
 import type {
   Collection,
   CollectionItemModel,
+  CollectionItemsMetadata,
   CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
+  GetCollectionItemsMetadataRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
@@ -31,23 +28,6 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
-
-const flattenCollectionTree = (tree: Collection[]): Collection[] =>
-  tree.flatMap((collection) => [
-    collection,
-    ...flattenCollectionTree(collection.children ?? []),
-  ]);
-
-// Snippet collections live in their own entity slice (`snippetCollections`),
-// so hydrating them through `CollectionSchema` would clobber regular
-// collections. Hydrate through the matching schema instead.
-const collectionSchemaForRequest = (
-  request: { namespace?: string | null } | void,
-) =>
-  request?.namespace === "snippets"
-    ? SnippetCollectionSchema
-    : CollectionSchema;
 
 const getCollectionItemTagModels = (
   models: ListCollectionItemsRequest["models"],
@@ -71,11 +51,6 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
-        onQueryStarted: (request, lifecycle) =>
-          hydrateMetadataStore([collectionSchemaForRequest(request)])(
-            request,
-            lifecycle,
-          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -91,11 +66,6 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateMetadataStore<Collection[]>(
-          [collectionSchemaForRequest(request)],
-          flattenCollectionTree,
-        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -113,10 +83,21 @@ export const collectionApi = Api.injectEndpoints({
         ),
         { type: "collection", id: `${id}-items` },
       ],
-      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
-        [ObjectUnionSchema],
-        (response) => response.data,
-      ),
+    }),
+    getCollectionItemsMetadata: builder.query<
+      CollectionItemsMetadata,
+      GetCollectionItemsMetadataRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/items/metadata`,
+        params,
+      }),
+      // The metadata describes items of every model, so any item change may invalidate it.
+      providesTags: (_response, _error, { id }) => [
+        ...provideCollectionItemListTags([]),
+        { type: "collection", id: `${id}-items` },
+      ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -129,11 +110,6 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateMetadataStore(collectionSchemaForRequest(request))(
-          request,
-          lifecycle,
-        ),
     }),
     getCollectionPermissionsGraph: builder.query<
       CollectionPermissionsGraph,
@@ -171,9 +147,9 @@ export const collectionApi = Api.injectEndpoints({
           idTag("collection", collection.parent_id ?? "root"),
         ];
 
-        // Creating a shared tenant collection affects the embedding hub checklist
+        // Creating a shared tenant collection affects the setup guide checklist
         if (request.namespace === "shared-tenant-collection") {
-          tags.push(listTag("embedding-hub-checklist"));
+          tags.push(listTag("setup-guide-checklist"));
         }
 
         return invalidateTags(error, tags);
@@ -252,6 +228,7 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useGetCollectionItemsMetadataQuery,
   useGetCollectionQuery,
   useGetCollectionPermissionsGraphQuery,
   useUpdateCollectionPermissionsGraphMutation,

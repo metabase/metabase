@@ -41,6 +41,8 @@ describe("scenarios > data studio > library", () => {
     H.popover()
       .findByText(/Data studio/)
       .click();
+    // Let the Data Studio index redirect settle.
+    cy.location("pathname").should("not.eq", "/data-studio");
 
     cy.log(
       "Verify tracking event when opening Data Studio from the profile menu",
@@ -49,7 +51,7 @@ describe("scenarios > data studio > library", () => {
       event: "data_studio_opened",
       triggered_from: "nav_menu",
     });
-    H.DataStudio.nav().findByLabelText("Library").click();
+    H.DataStudio.nav().findByLabelText("Semantic layer").click();
 
     cy.log("Create library via inline empty state");
     H.DataStudio.Library.libraryPage().within(() => {

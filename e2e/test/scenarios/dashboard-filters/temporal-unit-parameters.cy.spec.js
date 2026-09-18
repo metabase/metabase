@@ -385,7 +385,13 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect multiple parameters to a card with multiple breakouts and drill thru", () => {
-      H.createQuestion(multiBreakoutQuestionDetails);
+      H.createQuestion({
+        ...multiBreakoutQuestionDetails,
+        visualization_settings: {
+          "table.pivot": true,
+          "table.pivot_column": "CREATED_AT_2",
+        },
+      });
       H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );

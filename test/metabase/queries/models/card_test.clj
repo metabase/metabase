@@ -13,11 +13,11 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.search.ingestion :as search.ingestion]
@@ -353,7 +353,7 @@
                :slug "date"
                :default nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
@@ -365,7 +365,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
@@ -377,7 +377,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (defn- native-query-card
   "Build a card map with a native query containing the given template tags.
@@ -404,7 +404,7 @@
                :slug     "name"
                :default  "Alice"
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-boolean-tag-test
   (testing ":boolean template tag without widget-type produces :boolean/= parameter type (QUE2-326)"
@@ -422,7 +422,7 @@
                :slug     "active"
                :default  nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-dimension-category-widget-test
   (testing ":dimension template tag with :category widget-type passes through widget-type (QUE2-326)"
@@ -442,7 +442,7 @@
                :slug     "cat"
                :default  nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
@@ -969,35 +969,6 @@
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
-(deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (mt/metadata-provider)
-        venues            (lib.metadata/table metadata-provider (mt/id :venues))
-        query             (lib/query metadata-provider venues)]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card card {:dataset_query query}
-                     :model/Card no-query {}]
-        (is (=? {:can_run_adhoc_query true}
-                (t2/hydrate card :can_run_adhoc_query)))
-        (is (=? {:can_run_adhoc_query false}
-                (t2/hydrate no-query :can_run_adhoc_query)))))))
-
-(deftest can-run-adhoc-query-respects-create-queries-perm-test
-  (testing "can_run_adhoc_query reflects a non-admin's create-queries permission on the card's table (#13347)"
-    (let [mp     (mt/metadata-provider)
-          venues (lib.metadata/table mp (mt/id :venues))
-          query  (lib/query mp venues)]
-      (mt/with-temp [:model/Card card {:dataset_query query}]
-        (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (=? {:can_run_adhoc_query false}
-                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query))))
-          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (=? {:can_run_adhoc_query true}
-                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query)))))))))
-
 (deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
     ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
@@ -1325,7 +1296,7 @@
 
 (deftest assert-no-source-card-id-for-native-query-test
   (testing "assertion fires if native query has source_card_id set"
-    (with-redefs [card/populate-query-fields identity]
+    (mt/with-dynamic-fn-redefs [card/populate-query-fields identity]
       (is (thrown-with-msg? Exception #"Assert failed"
                             (t2/insert! :model/Card
                                         {:name "Bad Card"
@@ -1490,7 +1461,6 @@
                                   :name "Card with parameter reference"
                                   :parameters [{:id "test-param"
                                                 :name "test-param"
-                                                :display_param "test param"
                                                 :type :category
                                                 :values_source_type "card"
                                                 :values_source_config {:card_id remote-synced-card-id}}]}]
@@ -1716,16 +1686,19 @@
                    :model/Card     question3    (dependent-card db1-id question1)
                    :model/Card     question4    (dependent-card db1-id question2)
                    :model/Card     question5    (dependent-card db1-id question4)]
-      (mt/with-test-user :crowberto
-        (card/update-card! {:card-before-update model
-                            :card-updates       {:dataset_query {:lib/type :mbql/query
-                                                                 :database db2-id
-                                                                 :stages   [{:lib/type :mbql.stage/native
-                                                                             :native   "SELECT 1"}]}}}))
+      ;; H2 returns these rows source-first. Reverse them to cover a valid result order from PostgreSQL.
+      (mt/with-dynamic-fn-redefs [queries.db/card-queries
+                                  (comp reverse (mt/original-fn #'queries.db/card-queries))]
+        (mt/with-test-user :crowberto
+          (card/update-card! {:card-before-update model
+                              :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                   :database db2-id
+                                                                   :stages   [{:lib/type :mbql.stage/native
+                                                                               :native   "SELECT 1"}]}}})))
       (doseq [question [question1 question2 question3 question4 question5]]
-        (let [updated-card (t2/select-one :model/Card :id (:id question))]
-          (is (= db2-id (get-in updated-card [:dataset_query :database])))
-          (is (= db2-id (:database_id updated-card))))))))
+        (is (=? {:database_id   db2-id
+                 :dataset_query {:database db2-id}}
+                (t2/select-one :model/Card :id (:id question))))))))
 
 (deftest find-stale-query-test
   (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
@@ -1776,3 +1749,31 @@
       (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
              (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                             :id card-id))))))
+
+(deftest serdes-extract-query-excludes-exploration-summary-cards-test
+  (testing "serdes never extracts a Card scoped to an exploration Summary document"
+    (mt/with-temp [:model/Collection  {coll-id :id}     {}
+                   :model/User        {user-id :id}     {:email "serdes-card@example.com"}
+                   :model/Exploration {expl-id :id}     {:name "Explo" :creator_id user-id}
+                   :model/Document    {summary-id :id}  {:name           "Summary"
+                                                         :creator_id     user-id
+                                                         :collection_id  coll-id
+                                                         :exploration_id expl-id}
+                   :model/Document    {plain-doc :id}   {:name "Plain doc" :creator_id user-id
+                                                         :collection_id coll-id}
+                   :model/Card        {plain-card :id}  {:collection_id coll-id}
+                   :model/Card        {doc-card :id}    {:collection_id coll-id :document_id plain-doc}
+                   :model/Card        {summary-card :id} {:collection_id coll-id :document_id summary-id
+                                                          :name "Orders for Customer = ACME Corp over time"}]
+      (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
+            extracted (into #{}
+                            (map :entity_id)
+                            (serdes/extract-all "Card" {:filter-column :id
+                                                        :filter-ids    [plain-card doc-card summary-card]}))]
+        (is (contains? extracted (eid plain-card))
+            "an ordinary card is still exported")
+        (is (contains? extracted (eid doc-card))
+            "a card belonging to an ordinary document still travels with that document")
+        (is (not (contains? extracted (eid summary-card)))
+            "a card belonging to an exploration Summary is never exported — its name and dataset_query
+             carry values discovered under the creator's lens, and its parent document is excluded")))))

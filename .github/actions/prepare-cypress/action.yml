@@ -25,15 +25,17 @@ runs:
         chrome-version: 144
       id: setup-chrome
 
-    - name: Get cache keys
-      uses: ./.github/actions/get-cache-keys
-      id: get-cache-keys
+    - name: Cache spec
+      id: cache-spec
+      shell: bash
+      run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
 
-    - name: Get Cypress cache
+    - name: Restore Cypress binary
       uses: actions/cache/restore@v5
       with:
-        path: ~/.cache/Cypress
-        key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+        path: ${{ steps.cache-spec.outputs.cypress-path }}
+        key: ${{ steps.cache-spec.outputs.cypress-key }}
+        restore-keys: ${{ steps.cache-spec.outputs.cypress-restore-key }}
 
     - name: Ensure that Cypress executable is ready
       run: |

@@ -6,22 +6,13 @@ import _ from "underscore";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
+import type { Database, Table, TableId } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getDatabase,
-  getError,
-  getHasSingleSchema,
-  getLoading,
-  getTablesByDatabase,
-} from "../selectors";
 
 const emptyStateData = {
   get message() {
@@ -30,45 +21,27 @@ const emptyStateData = {
   icon: "table2" as const,
 };
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  database: getDatabase(state, props),
-  entities: getTablesByDatabase(state, props),
-  hasSingleSchema: getHasSingleSchema(state, props),
-  loading: getLoading(state),
-  loadingError: getError(state),
-});
-
-const mapDispatchToProps = {
-  ...metadataActions,
-};
-
+// Only what the grouping reads, so the spec can drive it with plain objects.
 interface TableLike {
-  id?: number | string;
+  id?: TableId;
   name?: string;
-  display_name?: string;
-  description?: string;
-  initial_sync_status?: string;
-  db_id?: number;
-  schema_name?: string;
+  schema?: string | null;
 }
 
-const createListItem = (table: TableLike) => (
+const createListItem = (table: Table) => (
   <ListItem
     data-testid="table-list-item"
     key={table.id}
     name={table.display_name || table.name || ""}
-    description={table.description}
+    description={table.description ?? undefined}
     disabled={table.initial_sync_status !== "complete"}
     url={`/reference/databases/${table.db_id}/tables/${table.id}`}
     icon="table2"
   />
 );
 
-const createSchemaSeparator = (table: TableLike) => (
-  <li className={R.schemaSeparator}>{table.schema_name}</li>
+const createSchemaSeparator = (table: Table) => (
+  <li className={R.schemaSeparator}>{table.schema}</li>
 );
 
 export const separateTablesBySchema = <T extends TableLike, S, I>(
@@ -78,7 +51,7 @@ export const separateTablesBySchema = <T extends TableLike, S, I>(
 ): Array<I | [S, I] | undefined> => {
   const sortedTables = _.chain(tables)
     .sortBy((table) => table.name)
-    .sortBy((table) => table.schema_name)
+    .sortBy((table) => table.schema)
     .value();
 
   return sortedTables.map((table, index, sortedTables) => {
@@ -86,33 +59,31 @@ export const separateTablesBySchema = <T extends TableLike, S, I>(
       return;
     }
     // add schema header for first element and if schema is different from previous
-    return index === 0 ||
-      sortedTables[index - 1].schema_name !== table.schema_name
+    return index === 0 || sortedTables[index - 1].schema !== table.schema
       ? [createSchemaSeparator(table), createListItem(table)]
       : createListItem(table);
   });
 };
 
 interface TableListProps {
-  entities: Record<string, TableLike>;
-  database: { name?: string };
-  hasSingleSchema?: boolean;
+  database: Database | undefined;
+  tables: Table[];
   loading?: boolean;
   loadingError?: unknown;
 }
 
 class TableList extends Component<TableListProps> {
   render() {
-    const { entities, database, hasSingleSchema, loadingError, loading } =
-      this.props;
+    const { database, tables, loadingError, loading } = this.props;
 
-    const tables = Object.values(entities);
+    const hasSingleSchema =
+      tables.length === 0 ||
+      tables.every((table) => table.schema === tables[0].schema);
 
     return (
       <div data-testid="table-list">
         <ReferenceHeader
-          name={t`Tables in ${database.name}`}
-          type="tables"
+          name={t`Tables in ${database?.name}`}
           headerIcon="database"
         />
         <LoadingAndErrorWrapper
@@ -151,8 +122,4 @@ class TableList extends Component<TableListProps> {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-  // Unjustified type cast. FIXME
-)(TableList as unknown as React.ComponentType);
+export default TableList;

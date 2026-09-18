@@ -3,8 +3,10 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -65,8 +67,8 @@
       (testing (str "Spec for " model-key)
         (let [tracking (:tracking spec)]
           (is (or (contains? tracking :select-fields)
-                  (contains? tracking :hydrate-query))
-              "tracking should have either :select-fields or :hydrate-query")
+                  (:hydrate-query? tracking))
+              "tracking should have either :select-fields or :hydrate-query? true")
           (is (map? (:field-mappings tracking))
               "tracking :field-mappings should be a map"))))))
 
@@ -129,7 +131,8 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 13 (count types))))))
+      (is (contains? types "Glossary"))
+      (is (= 14 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -163,10 +166,16 @@
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
-        ;; NativeQuerySnippet is still excluded because Library isn't remote-synced
+        ;; Library content is still excluded because Library isn't remote-synced
         (is (not (contains? excluded "Transform")))
         (is (not (contains? excluded "TransformTag")))
-        (is (contains? excluded "NativeQuerySnippet"))))))
+        (is (contains? excluded "NativeQuerySnippet"))
+        (is (contains? excluded "Glossary")))))
+  (testing "excluded-model-types when Library is remote-synced"
+    (collections.tu/with-library-synced
+      (let [excluded (spec/excluded-model-types)]
+        (is (not (contains? excluded "NativeQuerySnippet")))
+        (is (not (contains? excluded "Glossary")))))))
 
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
@@ -189,7 +198,16 @@
       (let [enabled (spec/enabled-specs)]
         (is (contains? enabled :model/Card))
         (is (contains? enabled :model/Transform))
-        (is (contains? enabled :model/TransformTag))))))
+        (is (contains? enabled :model/TransformTag)))))
+  (testing "enabled-specs includes Library content only when the Library is remote-synced"
+    (collections.tu/with-library-not-synced
+      (let [enabled (spec/enabled-specs)]
+        (is (not (contains? enabled :model/NativeQuerySnippet)))
+        (is (not (contains? enabled :model/Glossary)))))
+    (collections.tu/with-library-synced
+      (let [enabled (spec/enabled-specs)]
+        (is (contains? enabled :model/NativeQuerySnippet))
+        (is (contains? enabled :model/Glossary))))))
 
 ;;; ------------------------------------------------ Event Helper Tests ------------------------------------------------
 
@@ -473,6 +491,25 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
+(deftest document-spec-excludes-explorations-test
+  (testing "Document spec filters out exploration Summary documents via :conditions (UXW-4091)"
+    (let [spec (spec/spec-for-model-key :model/Document)]
+      (is (= {:exploration_id nil} (:conditions spec))
+          "Document :conditions should require exploration_id IS NULL")
+      (is (= {:exploration_id nil} (spec/export-conditions spec)))
+      (is (= {:exploration_id nil} (spec/removal-conditions spec)))))
+  (testing "check-eligibility returns false for an exploration document, even in a remote-synced collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/" :is_remote_synced true}]
+      (let [spec        (spec/spec-for-model-key :model/Document)
+            plain-doc   {:id 1 :collection_id coll-id :exploration_id nil}
+            explo-doc   {:id 2 :collection_id coll-id :exploration_id 42}
+            partial-doc {:id 3 :collection_id coll-id}]
+        (is (true? (spec/check-eligibility spec plain-doc)))
+        (is (false? (spec/check-eligibility spec explo-doc)))
+        (testing "a payload MISSING the conditioned key does not match the nil condition (fail closed)"
+          (is (false? (spec/check-eligibility spec partial-doc))
+              "eligibility needs an explicit nil, not an absent key — a partial payload must not sneak an exploration Summary into sync scope"))))))
+
 (deftest transform-tag-spec-uses-conditions-test
   (testing "TransformTag spec still uses :conditions (not split)"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
@@ -484,17 +521,17 @@
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
 
-(deftest removal-condition-clauses-value-shapes-test
+(deftest removal-condition-exprs-value-shapes-test
   (testing "removal conditions render each value shape into a well-formed HoneySQL fragment"
     (testing "a scalar value renders as [:= k v]"
       (is (= [[:= :built_in_type nil]]
-             (spec/removal-where-clauses {:removal-conditions {:built_in_type nil}} #{} []))))
+             (#'remote-sync.db/removal-condition-exprs {:built_in_type nil}))))
     (testing "an :entity_id [op value] pair keeps its operator"
       (is (= [[:not= :entity_id "builtin-eid"]]
-             (spec/removal-where-clauses {:removal-conditions {:entity_id [:not= "builtin-eid"]}} #{} []))))
+             (#'remote-sync.db/removal-condition-exprs {:entity_id [:not= "builtin-eid"]}))))
     (testing "a vector value on any other key renders as [:in k v], not a broken scalar [:= k v]"
       (is (= [[:in :status ["removed" "delete"]]]
-             (spec/removal-where-clauses {:removal-conditions {:status ["removed" "delete"]}} #{} []))))))
+             (#'remote-sync.db/removal-condition-exprs {:status ["removed" "delete"]}))))))
 
 (deftest check-eligibility-applies-conditions-uniformly-test
   (testing ":conditions are enforced for non-:collection eligibility types"
@@ -571,10 +608,10 @@
         (is (= 1 (:count conflict)) "the unsynced snippet is flagged; the synced one is excluded")
         (is (= ["Local Snippet"] (:names conflict)))))))
 
-(deftest removal-where-clauses-parity-test
+(deftest removal-exprs-parity-test
   (testing "GHY-4019: the deletion-conflict warning is exactly the unsynced subset of what an import removes"
     ;; Both the delete path (remove-unsynced!) and the warning build their WHERE from
-    ;; spec/removal-where-clauses, so they can't diverge. This locks in that relationship: the rows the
+    ;; remote-sync.db/removal-exprs, so they can't diverge. This locks in that relationship: the rows the
     ;; predicate removes (absent from the import, in a synced collection) minus the already-synced ones are
     ;; exactly the rows the warning flags.
     (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
@@ -587,10 +624,13 @@
             imported-data {:by-entity-id {"Card" imported-eids}}
             synced-ids    (spec/all-syncable-collection-ids)
             card-spec     (spec/spec-for-model-key :model/Card)
+            removal-opts  {:scope-key             (get-in card-spec [:removal :scope-key])
+                           :synced-collection-ids synced-ids
+                           :entity-ids            imported-eids
+                           :removal-conditions    (spec/removal-conditions card-spec)}
             ;; what remove-unsynced! would delete for Card (its predicate, run as a SELECT rather than a delete)
             would-delete  (t2/select-fn-set :name :model/Card
-                                            {:where (into [:and] (spec/removal-where-clauses
-                                                                  card-spec synced-ids imported-eids))})
+                                            {:where (into [:and] (#'remote-sync.db/removal-exprs removal-opts))})
             flagged       (into #{}
                                 (comp (filter #(= "Card" (:model %))) (mapcat :names))
                                 (spec/check-content-deletion-conflicts imported-data))]
@@ -600,3 +640,40 @@
             "the warning covers only the unsynced subset (the potential data loss)")
         (is (set/subset? flagged would-delete)
             "everything the warning flags would indeed be removed")))))
+
+(deftest git-sync-exports-only-user-settings-test
+  (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
+            those belong to sync, which runs against each instance's own warehouse -- as one TableUserSettings
+            entity per Table inlining its Fields' edits, never separate FieldUserSettings entities"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
+                     :model/Database   {db-id :id}    {:name "DB"}
+                     :model/Table      {table-id :id} {:name "T" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {f1 :id}       {:name "F1" :table_id table-id}
+                     :model/Field      {f2 :id}       {:name "F2" :table_id table-id}]
+        (t2/insert! :model/FieldUserSettings {:field_id f2 :description "curated" :description_set true})
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
+        (let [exportable (spec/exportable-entities)]
+          (is (contains? (set (get exportable "TableUserSettings")) table-id)
+              "the Table's own edit, plus its edited Field's, are carried by one TableUserSettings entity")
+          (is (nil? (get exportable "FieldUserSettings"))
+              "FieldUserSettings is never exported as its own entity")
+          (is (not (contains? (set (get exportable "Table")) table-id)))
+          (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))
+
+(deftest git-sync-exports-table-user-settings-for-field-only-edit-test
+  (testing "a Table with no TableUserSettings row of its own, but an edited Field, is still exportable -- the
+            TableUserSettings entity is synthesized to carry the Field's edit"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
+                     :model/Database   {db-id :id}    {:name "DB"}
+                     :model/Table      {table-id :id} {:name "T" :db_id db-id
+                                                       :is_published true :collection_id coll-id}
+                     :model/Field      {f1 :id}       {:name "F1" :table_id table-id}]
+        (t2/insert! :model/FieldUserSettings {:field_id f1 :description "curated" :description_set true})
+        (let [exportable (spec/exportable-entities)]
+          (is (not (t2/exists? :model/TableUserSettings :table_id table-id))
+              "the Table has no settings row of its own")
+          (is (contains? (set (get exportable "TableUserSettings")) table-id)
+              "the Table is still exportable, synthesized from its Field's edit"))))))

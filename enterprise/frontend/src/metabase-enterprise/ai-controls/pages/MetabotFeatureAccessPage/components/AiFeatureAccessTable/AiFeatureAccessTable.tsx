@@ -47,7 +47,7 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
     <Card
       withBorder
       p={0}
-      radius="md"
+      radius="sm"
       data-testid="ai-feature-access-table"
       className={S.card}
     >

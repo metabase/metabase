@@ -9,7 +9,6 @@
   which can post-process the body [[request-body]] returns."
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
@@ -49,11 +48,30 @@
                  (mapcat (fn [group]
                            (if (and (< 1 (count group))
                                     (= "assistant" (:role (first group))))
-                             (let [text       (->> group (keep :content) (str/join ""))
-                                   tool-calls (into [] (mapcat :tool_calls) group)]
+                             (let [tool-calls (into [] (mapcat :tool_calls) group)
+                                   ;; :reasoning_content exists on a member only when the replay
+                                   ;; hook of [[parts->cc-messages]] minted it — today only
+                                   ;; Moonshot, whose dialect replays reasoning as a top-level
+                                   ;; sibling of :content (see
+                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]).
+                                   ;; Joined in part order: the wire has a single field per
+                                   ;; message, so order is the only fidelity available.
+                                   reasoning  (apply str (keep :reasoning_content group))
+                                   ;; Vector (chunk-array) content exists only when the reasoning
+                                   ;; replay hook of [[parts->cc-messages]] produced it — today
+                                   ;; only Mistral's think chunks. Every other provider's members
+                                   ;; are strings or nil, so they always take the original string
+                                   ;; join below.
+                                   content    (if (some (comp vector? :content) group)
+                                                (into [] (mapcat (fn [{c :content}]
+                                                                   (cond (vector? c)   c
+                                                                         (not-empty c) [{:type "text" :text c}])))
+                                                      group)
+                                                (->> group (keep :content) (str/join "")))]
                                ;; :content should be always there, even if empty/nil
-                               [(cond-> {:role "assistant" :content text}
-                                  (seq tool-calls) (assoc :tool_calls tool-calls))])
+                               [(cond-> {:role "assistant" :content content}
+                                  (seq tool-calls)      (assoc :tool_calls tool-calls)
+                                  (not-empty reasoning) (assoc :reasoning_content reasoning))])
                              group))))
         messages))
 
@@ -67,48 +85,76 @@
     {:type :tool-output, :id ..., :result ...}
 
   Output: Chat Completions messages (user, assistant with tool_calls, tool)."
-  [parts]
-  (->> parts
-       (keep (fn [part]
-               (case (:type part)
-                 ;; reasoning is not replayable over Chat Completions
-                 :reasoning   nil
-                 :text        {:role "assistant" :content (:text part)}
-                 :tool-input  {:role       "assistant"
-                               :content    nil
-                               :tool_calls [{:id       (:id part)
-                                             :type     "function"
-                                             :function {:name      (:function part)
-                                                        :arguments (let [args (:arguments part)]
-                                                                     (if (string? args) args (json/encode (or args {}))))}}]}
-                 :tool-output {:role         "tool"
-                               :tool_call_id (:id part)
-                               :content      (or (get-in part [:result :output])
-                                                 (when-let [err (:error part)]
-                                                   (str "Error: " (:message err)))
-                                                 (pr-str (:result part)))}
-                 ;; User messages pass through
-                 {:role    (name (or (:role part) "user"))
-                  :content (or (:content part) "")})))
-       merge-consecutive-assistant-messages))
+  ([parts] (parts->cc-messages parts nil))
+  ([parts {:keys [reasoning-part->message]}]
+   ;; coalescing runs only when a dialect passes a replay hook — today Mistral (think chunks)
+   ;; and Moonshot (top-level reasoning_content), the two Chat Completions dialects that define
+   ;; a reasoning replay channel
+   (->> (cond-> parts reasoning-part->message core/merge-reasoning-parts)
+        (keep (fn [part]
+                (case (:type part)
+                  ;; The generic Chat Completions dialect has no replay channel for
+                  ;; reasoning, so by default it drops here — this arm returns nil for
+                  ;; every provider that doesn't pass a hook. A dialect that defines a
+                  ;; channel passes :reasoning-part->message, a fn from a coalesced
+                  ;; :reasoning part to a replayed assistant message (or nil); today
+                  ;; Mistral (think chunks — see
+                  ;; [[metabase.metabot.self.mistral/think-message]]) and Moonshot
+                  ;; (top-level reasoning_content — see
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) do. Z.AI and
+                  ;; vLLM define no such channel yet; when they grow one, each gets its
+                  ;; own hook fn here rather than more shared code.
+                  :reasoning   (when reasoning-part->message
+                                 (reasoning-part->message part))
+                  :text        {:role "assistant" :content (:text part)}
+                  :tool-input  {:role       "assistant"
+                                :content    nil
+                                :tool_calls [{:id       (:id part)
+                                              :type     "function"
+                                              :function {:name      (:function part)
+                                                         :arguments (let [args (:arguments part)]
+                                                                      (if (string? args)
+                                                                        args
+                                                                        (json/encode (or args {}))))}}]}
+                  :tool-output {:role         "tool"
+                                :tool_call_id (:id part)
+                                :content      (or (get-in part [:result :output])
+                                                  (when-let [err (:error part)]
+                                                    (str "Error: " (:message err)))
+                                                  (pr-str (:result part)))}
+                  ;; User messages pass through
+                  {:role    (name (or (:role part) "user"))
+                   :content (or (:content part) "")})))
+        merge-consecutive-assistant-messages)))
 
 ;;; Tool definition format
 
 (defn- tool->cc-tool
   "Convert a tool definition map to Chat Completions tool format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params     (schema/filter-schema-by-features params)
-        doc        (if (str/starts-with? (or doc "") "Inputs: ")
-                     (second (str/split doc #"\n\n  " 2))
-                     doc)]
-    {:type     "function"
-     :function {:name        tool-name
-                :description doc
-                :parameters  (mjs/transform params {:additionalProperties false})}}))
+  [tool]
+  {:type     "function"
+   :function (schema/tool-function tool)})
 
 ;;; Streaming response → AISDK v5 chunks
+
+(def stop-reasons
+  "Chat Completions `finish_reason` → AI SDK v5 `FinishReason`. Adapters whose dialect adds reasons beyond OpenAI's
+  extend this and pass the result to [[chat-completions->aisdk-chunks-xf]]."
+  {"stop"           "stop"
+   "length"         "length"
+   "tool_calls"     "tool-calls"
+   "function_call"  "tool-calls"
+   "content_filter" "content-filter"})
+
+(defn- delta-reasoning
+  "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
+  emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
+  other OpenAI-compatible servers still emit the latter, and a self-hosted server's version is the
+  customer's choice."
+  [m]
+  (or (not-empty (:reasoning m))
+      (not-empty (:reasoning_content m))))
 
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
@@ -135,123 +181,187 @@
   previous block and opens a new one. That relies on providers sending `id` only
   on a tool call's opening chunk — one that repeated it on continuation chunks
   would lose their arguments, since neither the start branch (needs `:name`) nor
-  the argument-delta branch (needs no `:id`) would fire."
-  []
-  (fn [rf]
-    (let [current-type (volatile! nil) ;; :text | :function_call | nil
-          current-id   (volatile! nil) ;; active chunk id (text-id or tool call_id)
-          message-id   (volatile! nil)
-          model-name   (volatile! nil)
-          payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
-          close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text          :text-end
-                                                             :function_call :tool-input-available)}
-                                                    @payload))
-                           (vreset! current-type nil)
-                           (vreset! current-id nil)
-                           (vreset! payload {})))]
-      (fn
-        ([result]
-         (cond-> result
-           @current-type (close!)
-           true          (rf)))
+  the argument-delta branch (needs no `:id`) would fire.
 
-        ([result {:keys [id model choices usage] :as _chunk}]
-         (let [choice        (first choices)
-               delta         (:delta choice)
-               finish-reason (:finish_reason choice)
-               tool-call     (first (:tool_calls delta))
-               ;; Determine what kind of content this chunk carries.
-               ;; Empty-string content (common between tool calls) is ignored
-               ;; to avoid spurious text blocks that would close open tools.
-               chunk-type    (cond
-                               (not-empty (:content delta)) :text
-                               (some? tool-call)            :function_call
-                               :else                        nil)
-               ;; For new tool calls, the id comes from the chunk; for deltas
-               ;; on the same tool, we keep current-id.
-               chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-           (cond-> result
-             ;; Emit :start on first chunk
-             (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                  (u/prog1
-                                                                    (vreset! message-id id)
-                                                                    (vreset! model-name model)))
-             ;; Close previous block when type changes, or when a new tool
-             ;; call arrives (different id = different tool in parallel)
-             (and @current-type
-                  (or (and chunk-type
-                           (not= chunk-type @current-type))
-                      (and (= chunk-type :function_call)
-                           (not= chunk-id @current-id))))     (close!)
-             ;; Start a new text block
-             (and (= chunk-type :text)
-                  (not= @current-type :text))                 (-> (u/prog1
-                                                                    (let [tid (core/mkid)]
-                                                                      (vreset! current-type :text)
-                                                                      (vreset! current-id tid)
-                                                                      (vreset! payload {:id tid})))
-                                                                  (rf (merge {:type :text-start} @payload)))
-             ;; Text delta
-             (and (= chunk-type :text)
-                  (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                   :id    @current-id
-                                                                   :delta (:content delta)})
-             ;; Start a new tool call block
-             (and (= chunk-type :function_call)
-                  (:id tool-call)
-                  (:name (:function tool-call)))              (-> (u/prog1
-                                                                    (vreset! current-type :function_call)
-                                                                    (vreset! current-id (:id tool-call))
-                                                                    (vreset! payload {:toolCallId (:id tool-call)
-                                                                                      :toolName   (:name (:function tool-call))}))
-                                                                  (rf (merge {:type :tool-input-start} @payload))
-                                                                  ;; Emit initial arguments if present
-                                                                  (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                    (rf {:type           :tool-input-delta
-                                                                         :toolCallId     (:id tool-call)
-                                                                         :inputTextDelta (:arguments (:function tool-call))})))
-             ;; Tool argument delta (continuation of existing tool call)
-             (and (= chunk-type :function_call)
-                  (not (:id tool-call))
-                  (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:arguments (:function tool-call))})
-             ;; Finish reason — close whatever is open
-             (some? finish-reason)                            (cond->
-                                                               @current-type (close!))
-             ;; Usage (often on a separate final chunk with empty choices)
-             (some? usage)                                    (rf {:type  :usage
-                                                                   :usage (usage->aisdk-usage usage)
-                                                                   :id    @message-id
-                                                                   :model @model-name}))))))))
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+
+  `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
+  deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
+  :reasoning-end. Opt-in, because whether a provider's reasoning renders at all is
+  a separate question (see `metabot.settings/llm-metabot-supports-reasoning?`) and
+  chunks nothing consumes only add stream volume."
+  ([]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons {:keys [forward-reasoning?]}]
+   (fn [rf]
+     (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
+           current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
+           message-id   (volatile! nil)
+           model-name   (volatile! nil)
+           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+           stop-reason  (volatile! nil)
+           close!       (fn [result]
+                          (u/prog1 (rf result (merge {:type (case @current-type
+                                                              :text          :text-end
+                                                              :reasoning     :reasoning-end
+                                                              :function_call :tool-input-available)}
+                                                     @payload))
+                            (vreset! current-type nil)
+                            (vreset! current-id nil)
+                            (vreset! payload {})))]
+       (fn
+         ([result]
+          (cond-> result
+            @current-type (close!)
+            true          (rf)))
+
+         ([result {:keys [id model choices usage] :as _chunk}]
+          (let [choice        (first choices)
+                delta         (:delta choice)
+                finish-reason (:finish_reason choice)
+                tool-call     (first (:tool_calls delta))
+                reasoning-md  (:reasoning_metadata delta)
+                ;; Determine what kind of content this chunk carries.
+                ;; Empty-string content (common between tool calls) is ignored
+                ;; to avoid spurious text blocks that would close open tools.
+                chunk-type    (cond
+                                (not-empty (:content delta))  :text
+                                ;; tool_calls outrank reasoning: a delta carrying both would
+                                ;; otherwise classify as :reasoning, and the tool call's opening
+                                ;; chunk — the only one carrying its id and name — would be
+                                ;; lost, breaking the tool loop. Ranked this way, such a delta
+                                ;; loses its reasoning fragment instead: display text,
+                                ;; recoverable. No probed provider combines the two in one
+                                ;; delta today.
+                                (some? tool-call)             :function_call
+                                (and forward-reasoning?
+                                     (delta-reasoning delta)) :reasoning
+                                :else                         nil)
+                ;; For new tool calls, the id comes from the chunk; for deltas
+                ;; on the same tool, we keep current-id.
+                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
+            (cond-> result
+              ;; Emit :start on first chunk
+              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
+                                                                   (u/prog1
+                                                                     (vreset! message-id id)
+                                                                     (vreset! model-name model)))
+              ;; Close previous block when type changes, or when a new tool
+              ;; call arrives (different id = different tool in parallel)
+              (and @current-type
+                   (or (and chunk-type
+                            (not= chunk-type @current-type))
+                       (and (= chunk-type :function_call)
+                            (not= chunk-id @current-id))))     (close!)
+              ;; Start a new text block
+              (and (= chunk-type :text)
+                   (not= @current-type :text))                 (-> (u/prog1
+                                                                     (let [tid (core/mkid)]
+                                                                       (vreset! current-type :text)
+                                                                       (vreset! current-id tid)
+                                                                       (vreset! payload {:id tid})))
+                                                                   (rf (merge {:type :text-start} @payload)))
+              ;; Text delta
+              (and (= chunk-type :text)
+                   (some? (:content delta)))                   (rf {:type  :text-delta
+                                                                    :id    @current-id
+                                                                    :delta (:content delta)})
+              ;; Start a new reasoning block
+              (and (= chunk-type :reasoning)
+                   (not= @current-type :reasoning))            (-> (u/prog1
+                                                                     (let [rid (core/mkid)]
+                                                                       (vreset! current-type :reasoning)
+                                                                       (vreset! current-id rid)
+                                                                       (vreset! payload {:id rid})))
+                                                                   (rf (merge {:type :reasoning-start} @payload)))
+              ;; Reasoning delta
+              (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
+                                                                    :id    @current-id
+                                                                    :delta (delta-reasoning delta)})
+              ;; A delta may carry ready-namespaced provider metadata for the
+              ;; open reasoning block, ridden out on its end chunk the way
+              ;; openai.clj rides out encrypted_content. :reasoning_metadata is
+              ;; not a wire key — no Chat Completions server emits it; only a
+              ;; dialect's own pre-transform mints it (today Mistral's
+              ;; flatten-content-chunks, carrying a think-chunk signature) — so
+              ;; this clause never fires for any other dialect. It is carried
+              ;; opaquely: the minting side owns the namespace inside it.
+              (and reasoning-md
+                   (= @current-type :reasoning))               (u/prog1
+                                                                 (vswap! payload assoc
+                                                                         :providerMetadata reasoning-md))
+              ;; Start a new tool call block
+              (and (= chunk-type :function_call)
+                   (:id tool-call)
+                   (:name (:function tool-call)))              (-> (u/prog1
+                                                                     (vreset! current-type :function_call)
+                                                                     (vreset! current-id (:id tool-call))
+                                                                     (vreset! payload {:toolCallId (:id tool-call)
+                                                                                       :toolName   (:name (:function tool-call))}))
+                                                                   (rf (merge {:type :tool-input-start} @payload))
+                                                                   ;; Emit initial arguments if present
+                                                                   (cond-> (not (str/blank? (:arguments (:function tool-call))))
+                                                                     (rf {:type           :tool-input-delta
+                                                                          :toolCallId     (:id tool-call)
+                                                                          :inputTextDelta (:arguments (:function tool-call))})))
+              ;; Tool argument delta (continuation of existing tool call)
+              (and (= chunk-type :function_call)
+                   (not (:id tool-call))
+                   (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
+                                                                    :toolCallId     (:toolCallId @payload)
+                                                                    :inputTextDelta (:arguments (:function tool-call))})
+              ;; Finish reason — close whatever is open
+              (some? finish-reason)                            (-> (u/prog1
+                                                                     (vreset! stop-reason finish-reason))
+                                                                   (cond->
+                                                                    @current-type (close!)))
+              ;; Usage (often on a separate final chunk with empty choices)
+              (some? usage)                                    (rf (cond-> {:type  :usage
+                                                                            :usage (usage->aisdk-usage usage)
+                                                                            :id    @message-id
+                                                                            :model @model-name}
+                                                                     @stop-reason
+                                                                     (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                                                            :raw-finish-reason @stop-reason)))))))))))
 
 ;;; Request body
 
+(def ^:private CCOpts
+  "Dialect hooks for [[request-body]] that are not request options."
+  [:maybe [:map {:closed true}
+           [:reasoning-part->message {:optional true} [:maybe [:fn fn?]]]]])
+
 (mu/defn request-body
-  "Build the Chat Completions request body for an LLM request."
-  [{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts]
-  (let [messages  (cond-> (parts->cc-messages input)
-                    system (as-> msgs (into [{:role "system" :content system}] msgs)))
-        all-tools (or (when schema
-                        ;; Structured output: force a tool call with the given JSON schema
-                        [{:type     "function"
-                          :function {:name        "structured_output"
-                                     :description "Output structured data"
-                                     :parameters  schema}}])
-                      (seq (mapv tool->cc-tool tools)))]
-    (cond-> {:model          model
-             :stream         true
-             :stream_options {:include_usage true}
-             :messages       messages}
-      all-tools   (assoc :tools       (vec all-tools)
-                         :tool_choice (cond
-                                        schema      "required"
-                                        tool_choice tool_choice
-                                        :else       "auto"))
-      temperature (assoc :temperature temperature)
-      max-tokens  (assoc :max_tokens max-tokens))))
+  "Build the Chat Completions request body for an LLM request.
+
+  The optional `cc-opts` map holds dialect hooks that are not request options —
+  today only `:reasoning-part->message`, threaded to [[parts->cc-messages]]. A
+  fn-valued hook stays out of the traced and logged `LLMRequestOpts` on purpose."
+  ([opts :- core/LLMRequestOpts] (request-body opts nil))
+  ([{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts
+    cc-opts :- CCOpts]
+   (let [messages  (cond-> (parts->cc-messages input cc-opts)
+                     system (as-> msgs (into [{:role "system" :content system}] msgs)))
+         all-tools (or (when schema
+                         ;; Structured output: force a tool call with the given JSON schema
+                         [{:type     "function"
+                           :function {:name        "structured_output"
+                                      :description "Output structured data"
+                                      :parameters  schema}}])
+                       (seq (mapv tool->cc-tool tools)))]
+     (cond-> {:model          model
+              :stream         true
+              :stream_options {:include_usage true}
+              :messages       messages}
+       all-tools   (assoc :tools       (vec all-tools)
+                          :tool_choice (cond
+                                         schema      "required"
+                                         tool_choice tool_choice
+                                         :else       "auto"))
+       temperature (assoc :temperature temperature)
+       max-tokens  (assoc :max_tokens max-tokens)))))
 
 ;;; Model catalog
 
@@ -268,11 +378,15 @@
   no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
   renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
 
-  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes."
-  [provider-name res]
-  (let [data (get-in res [:body :data])]
-    (when-not (sequential? data)
-      (throw (ex-info (tru "{0} returned an unexpected model list response" provider-name)
-                      {:api-error  true
-                       :error-code :malformed-model-catalog})))
-    data))
+  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
+
+  `:detail` is a sentence appended to the message, for a provider that has something more specific to say."
+  ([provider-name res] (models-catalog provider-name res nil))
+  ([provider-name res {:keys [detail]}]
+   (let [data (get-in res [:body :data])]
+     (when-not (sequential? data)
+       (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
+                         detail (str ". " detail))
+                       {:api-error  true
+                        :error-code :malformed-model-catalog})))
+     data)))

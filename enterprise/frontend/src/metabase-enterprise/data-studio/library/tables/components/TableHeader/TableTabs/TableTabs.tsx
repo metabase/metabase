@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -16,14 +16,14 @@ type TableTabsProps = {
 export function TableTabs({ table }: TableTabsProps) {
   const location = useLocation();
   const tabs = getTabs(table, location);
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
   table: Table,
   location: Omit<Location, "query" | "action">,
-): PaneHeaderTab[] {
-  const tabs: PaneHeaderTab[] = [];
+): PillTab[] {
+  const tabs: PillTab[] = [];
 
   tabs.push({
     label: t`Overview`,

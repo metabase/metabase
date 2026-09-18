@@ -1,5 +1,6 @@
 (ns i18n.create-artifacts.frontend
   (:require
+   ;; build tooling never loads app namespaces, so the metabase.util.json facade isn't usable here
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.java.io :as io]

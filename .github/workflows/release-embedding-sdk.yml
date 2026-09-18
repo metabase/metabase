@@ -56,7 +56,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger'))
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       branch: ${{ steps.resolve.outputs.branch }}
@@ -70,7 +70,7 @@ jobs:
   workflow-summary:
     name: Log inputs
     needs: prepare-release
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -381,6 +381,9 @@ jobs:
 
       - name: Generate SDK package.json in the build directory
         run: bun run embedding-sdk:generate-package
+
+      - name: Smoke test the packed SDK CLI
+        run: node bin/embedding-sdk/test-sdk-package.mjs
 
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v7

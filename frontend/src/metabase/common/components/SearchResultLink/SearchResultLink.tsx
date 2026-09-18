@@ -22,7 +22,7 @@ export const SearchResultLink = ({
       <Group
         className={S.resultLinkWrapper}
         data-testid="result-link-wrapper"
-        gap="xs"
+        gap="xxs"
         wrap="nowrap"
       >
         {leftIcon}

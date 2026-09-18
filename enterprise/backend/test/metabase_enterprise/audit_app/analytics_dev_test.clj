@@ -71,31 +71,34 @@
 
 (deftest create-analytics-dev-database-test
   (mt/test-drivers #{:postgres}
-    (mt/with-model-cleanup [:model/Database]
-      (testing "create-analytics-dev-database! creates a non-audit database"
-        (let [user-id (mt/user->id :crowberto)
-              db (analytics-dev/create-analytics-dev-database! user-id)]
-          (is (some? db))
-          (is (false? (:is_audit db)) "Database should NOT be marked as audit")
-          (is (= ee-audit/default-db-name (:name db)))
-          (is (= :postgres (:engine db)))
-          (is (= user-id (:creator_id db)))))
-      (testing "create-analytics-dev-database! returns existing database if already created"
-        (let [user-id (mt/user->id :crowberto)
-              db1 (analytics-dev/create-analytics-dev-database! user-id)
-              db2 (analytics-dev/create-analytics-dev-database! user-id)]
-          (is (= (:id db1) (:id db2))))))))
+    ;; creating (and connecting to) an analytics-dev database is only valid while analytics dev mode is on
+    (mt/with-temporary-setting-values [analytics-dev-mode true]
+      (mt/with-model-cleanup [:model/Database]
+        (testing "create-analytics-dev-database! creates a non-audit database"
+          (let [user-id (mt/user->id :crowberto)
+                db (analytics-dev/create-analytics-dev-database! user-id)]
+            (is (some? db))
+            (is (false? (:is_audit db)) "Database should NOT be marked as audit")
+            (is (= ee-audit/default-db-name (:name db)))
+            (is (= :postgres (:engine db)))
+            (is (= user-id (:creator_id db)))))
+        (testing "create-analytics-dev-database! returns existing database if already created"
+          (let [user-id (mt/user->id :crowberto)
+                db1 (analytics-dev/create-analytics-dev-database! user-id)
+                db2 (analytics-dev/create-analytics-dev-database! user-id)]
+            (is (= (:id db1) (:id db2)))))))))
 
 (deftest find-analytics-dev-database-test
   (mt/test-drivers #{:postgres}
-    (mt/with-model-cleanup [:model/Database]
-      (testing "find-analytics-dev-database finds the dev database"
-        (let [user-id (mt/user->id :crowberto)
-              _ (analytics-dev/create-analytics-dev-database! user-id)
-              found (analytics-dev/find-analytics-dev-database)]
-          (is (some? found))
-          (is (false? (:is_audit found)))
-          (is (= ee-audit/default-db-name (:name found))))))
+    (mt/with-temporary-setting-values [analytics-dev-mode true]
+      (mt/with-model-cleanup [:model/Database]
+        (testing "find-analytics-dev-database finds the dev database"
+          (let [user-id (mt/user->id :crowberto)
+                _ (analytics-dev/create-analytics-dev-database! user-id)
+                found (analytics-dev/find-analytics-dev-database)]
+            (is (some? found))
+            (is (false? (:is_audit found)))
+            (is (= ee-audit/default-db-name (:name found)))))))
     (testing "find-analytics-dev-database does not find audit databases"
       (mt/with-temp [:model/Database _ {:name ee-audit/default-db-name
                                         :engine "postgres"

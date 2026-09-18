@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
+import { useListSegmentsQuery } from "metabase/api";
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
@@ -10,12 +11,10 @@ import { useSelector } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
-import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getError, getLoading } from "../../selectors";
 
 const emptyStateData = {
   get title() {
@@ -38,9 +37,7 @@ interface SegmentListProps {
 }
 
 export function SegmentList({ style }: SegmentListProps) {
-  const entities = useSelector(getShallowSegments);
-  const loading = useSelector(getLoading);
-  const loadingError = useSelector(getError);
+  const { data: segments = [], isLoading, error } = useListSegmentsQuery();
   const adminLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "data-modeling/segments",
@@ -51,28 +48,20 @@ export function SegmentList({ style }: SegmentListProps) {
   return (
     <div style={style} className={CS.full}>
       <ReferenceHeader name={t`Segments`} />
-      <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
-      >
+      <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
         {() =>
-          Object.keys(entities).length > 0 ? (
+          segments.length > 0 ? (
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
-                {Object.values(entities).map(
-                  (entity) =>
-                    entity &&
-                    entity.id &&
-                    entity.name && (
-                      <ListItem
-                        key={entity.id}
-                        name={entity.name}
-                        description={entity.description}
-                        url={`/reference/segments/${entity.id}`}
-                        icon={modelIconMap.segment}
-                      />
-                    ),
-                )}
+                {segments.map((segment) => (
+                  <ListItem
+                    key={segment.id}
+                    name={segment.name}
+                    description={segment.description}
+                    url={`/reference/segments/${segment.id}`}
+                    icon={modelIconMap.segment}
+                  />
+                ))}
               </List>
             </div>
           ) : (

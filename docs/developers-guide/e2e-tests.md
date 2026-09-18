@@ -39,7 +39,7 @@ This flag can be used to run all specs within a folder, or to run multiple assor
 CYPRESS_GUI=false bun run test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
 
-You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/guides/guides/launching-browsers).
+You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/app/references/launching-browsers).
 
 Specifying a browser makes most sense when running Cypress in a _run_ mode. On the other hand, Cypress _open_ mode (GUI) allows one to easily switch between all available browsers on the system. However, some people prefer to specify a browser even in this scenario. If you do this, keep in mind that you are merely preselecting an initial browser for Cypress but you still have the option to choose a different one.
 
@@ -171,8 +171,10 @@ We have a few helpers for dealing with tests involving snowplow
 Some of our tests depend on the email being set up, and require a local SMTP server. We use `maildev` Docker image for that purpose. At the time of this writing the image we use is `maildev/maildev:2.1.0`. The default cypress configuration for local development will handle this for you. If you want to set it up manually, you can use this command:
 
 ```sh
-docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:latest
+docker run -d -p 1180:1080 -p 1125:1025 maildev/maildev:2.2.1
 ```
+
+The e2e maildev is published on host ports 1180 (web UI) and 1125 (SMTP) on purpose. These differ, on purpose, from the 1080/1025 used for development.
 
 ### Running tests that require translation dictionaries
 
@@ -235,7 +237,7 @@ You should provide 4 tokens:
 
 You can configure these via ENVs or via the `cypress.env.json` file (see `cypress.env.json.example` for an example).
 
-For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
+For more information, please see [Metabase pricing page](https://www.metabase.com/pricing).
 
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
@@ -244,7 +246,7 @@ If you navigate to the `/admin/settings/license` page, the license input field s
 
 ## Tags
 
-Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `bun run test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
+Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#filter-by-tags) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `bun run test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
 
 These are the tags currently in use:
 
