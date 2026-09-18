@@ -4,7 +4,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { getSubpathSafeUrl } from "metabase/urls";
 import {
   type VisibleTableData,
@@ -89,7 +89,7 @@ function TableComponent(props: TableProps) {
  * query run, which is when fresh metadata actually needs to be picked up.
  */
 function useSyncedQuestion(series: VisualizationProps["series"]) {
-  const buildQuestionRef = useLatest(useQuestionFromCard());
+  const buildQuestionRef = useLatest(useQuestionFromCardBuilder());
   return useMemo(() => {
     const [{ card }] = series;
     return buildQuestionRef.current(card);
