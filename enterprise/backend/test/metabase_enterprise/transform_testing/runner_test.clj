@@ -297,7 +297,8 @@
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:source {:type  "query"
-                                 :query (lib/native-query mp (str "SELECT " table ".id, " table ".name FROM " table))}
+                                 :query (lib/native-query mp (str "SELECT " table ".id, " table ".name"
+                                                                  " FROM " schema "." table))}
                         :target {:type "table" :schema schema :name "people_qualified" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id transform-id
