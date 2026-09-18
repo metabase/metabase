@@ -359,16 +359,22 @@ jobs:
     uses: ./.github/workflows/embedding-sdk-package-build.yml
     secrets: inherit
 
+  # A skipped artifact build is fine -- the suite's own filters skip the jobs that
+  # would have consumed it. A failed one is not: enter the workflow and every job
+  # dies on a missing download, so stay out and let the unreported required check
+  # block the merge.
   sdk-tests:
     needs: [should-run, uberjar, embedding-sdk-package]
-    if: ${{ !cancelled() && needs.should-run.outputs.verdict != 'force-skip' }}
+    if: >-
+      ${{ !cancelled() &&
+      needs.should-run.outputs.verdict != 'force-skip' &&
+      needs.uberjar.result != 'failure' && needs.uberjar.result != 'cancelled' &&
+      needs.embedding-sdk-package.result != 'failure' &&
+      needs.embedding-sdk-package.result != 'cancelled' }}
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      skip: >-
-        ${{ needs.embedding-sdk-package.result != 'success' ||
-        needs.uberjar.result != 'success' }}
 
   build-scripts-tests:
     needs: [should-run, files-changed]

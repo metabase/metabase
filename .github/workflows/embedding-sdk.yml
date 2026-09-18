@@ -8,10 +8,6 @@ on:
         required: false
         type: boolean
         default: false
-      skip:
-        description: Whether to skip running tests due to one of the artifacts failing to build.
-        required: true
-        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -23,7 +19,7 @@ jobs:
   # workflow at all, and the two ways of saying "run everything" skip the diff
   # outright. Every gate below then reads "run unless the filter said no", so a
   # skipped diff, an unknown filter or a malformed verdict all fail open.
-  # `skip` is separate: it means the artifacts these jobs consume never built.
+  # Whether the artifacts these jobs download exist at all is the caller's gate.
   files-changed:
     name: Detect changed files
     if: ${{ !inputs.force-run && github.event_name != 'workflow_dispatch' }}
@@ -42,7 +38,7 @@ jobs:
 
   embedding-sdk-cli-snippets-type-check:
     needs: files-changed
-    if: ${{ !cancelled() && !inputs.skip && fromJSON(needs.files-changed.outputs.changes || '{}').frontend_sources != 'false' }}
+    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').frontend_sources != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -59,7 +55,7 @@ jobs:
 
   embedding-sdk-docs-snippets-type-check:
     needs: files-changed
-    if: ${{ !cancelled() && !inputs.skip && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_documentation != 'false' }}
+    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_documentation != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -76,7 +72,7 @@ jobs:
 
   embedding-sdk-api-documentation-generation-validation:
     needs: files-changed
-    if: ${{ !cancelled() && !inputs.skip && fromJSON(needs.files-changed.outputs.changes || '{}').frontend_sources != 'false' }}
+    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').frontend_sources != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -127,14 +123,14 @@ jobs:
   embedding-sdk-component-tests:
     name: "SDK component tests"
     needs: files-changed
-    if: ${{ !cancelled() && !inputs.skip && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_sdk_components != 'false' }}
+    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_sdk_components != 'false' }}
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
     needs: files-changed
-    if: ${{ !cancelled() && !inputs.skip && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_sdk_host_sample_apps != 'false' }}
+    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_sdk_host_sample_apps != 'false' }}
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
