@@ -1,5 +1,5 @@
-.root:hover {
-  background-color: var(--mb-color-background_surface-secondary);
+.root:has(.link):hover {
+  background-color: var(--mb-color-background_surface-primary-hover);
 }
 
 .link::after {
