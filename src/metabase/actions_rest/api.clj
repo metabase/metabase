@@ -33,6 +33,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
@@ -54,12 +55,9 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (actions-rest.db/public-actions))
 
-;; Not tagged `data-apps:base`, though the two execute routes below are: the SDK's `useAction`
-;; runs an action by id and never fetches its definition, and a dashboard action button reads
-;; its own from the `:dashcard/action` hydration on the dashboard response. Fetching an action
-;; definition is the action-editor flow, which a data app does not render.
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)

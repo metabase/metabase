@@ -4,6 +4,8 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api-scope.data-app :as api-scope.data-app]
    [metabase.api.macros.scope :as scope]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.test :as mt]))
 
@@ -105,3 +107,20 @@
     (testing "a pre-built-def route (table-routes, mounted by value not ns-symbol) enforces the tag"
       (is (mt/user-http-request :crowberto :get 200
                                 (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))
+
+(deftest data-app-marker-reaches-object-detail-action-reads-test
+  ;; The SDK's "Detail" visualization renders `ObjectDetailPanel`, which lists a writable model's
+  ;; actions, and its `ActionExecuteModal` fetches the one clicked. Both are reads, and both must
+  ;; carry the tag or the menu silently disappears for an admin inside a data app.
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [_ {:type          :model
+                         :dataset_query (lib/query (mt/metadata-provider)
+                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :categories)))}
+                      {:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
+      (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+        (testing "GET /api/action?model-id= -- the object-detail action menu"
+          (is (=? [{:id action-id}]
+                  (mt/user-http-request :crowberto :get 200 "action" as-data-app :model-id model-id))))
+        (testing "GET /api/action/:id -- the execute modal's definition fetch"
+          (is (=? {:id action-id}
+                  (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id) as-data-app))))))))

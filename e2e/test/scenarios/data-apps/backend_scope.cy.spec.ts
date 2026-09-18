@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
@@ -104,6 +106,47 @@ describe("scenarios > data apps > backend scope", () => {
       cy.findByText("Visualize").click();
       cy.findByText("Back to visualization", { timeout: TIMEOUT }).should(
         "not.exist",
+      );
+    });
+  });
+
+  /**
+   * The Detail visualization renders `ObjectDetailPanel`, which lists a writable model's
+   * actions and, on click, opens `ActionExecuteModal` — two reads the row-zoom path never
+   * reaches in the SDK, so nothing else in the suite exercises them inside a data app.
+   */
+  it("serves the Detail visualization's action menu without refusing a request for scope", () => {
+    const { ORDERS_ID } = SAMPLE_DATABASE;
+
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    H.createQuestion({
+      name: "Orders model",
+      type: "model",
+      query: { "source-table": ORDERS_ID },
+    }).then(({ body: { id: modelId } }) => {
+      H.createImplicitActions({ modelId });
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: { ...TEST_ENV, modelId },
+      });
+      H.openDataApp(APP_NAME);
+    });
+
+    H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.findByText("Model detail").click();
+      cy.findByTestId("interactive-question-result-toolbar", {
+        timeout: TIMEOUT,
+      }).should("exist");
+
+      cy.log("Detail visualization — lists the model's actions");
+      cy.findByTestId("chart-type-selector-button").click();
+      cy.findByTestId("Detail-container").click();
+
+      cy.log("Action menu — the execute modal fetches the action definition");
+      cy.findByTestId("actions-menu", { timeout: TIMEOUT }).click();
+      cy.findByText("Update").click();
+      cy.findByTestId("action-execute-modal", { timeout: TIMEOUT }).should(
+        "be.visible",
       );
     });
   });
