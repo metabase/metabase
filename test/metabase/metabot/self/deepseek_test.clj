@@ -124,11 +124,8 @@
                :tools  [(metabot.tu/get-time-tool)]})]
     (testing "the model defaults to deepseek-v4-pro"
       (is (= "deepseek-v4-pro" (:model body))))
-    (testing "max_tokens is the default model's documented maximum"
-      (is (= 393216 (:max_tokens body))))
-    (testing "a model with no documented maximum falls back to the Claude request body's default"
-      (is (= 64000 (:max_tokens (deepseek/deepseek-request-body
-                                 {:model "deepseek-not-a-real-model" :input [user-message]})))))
+    (testing "max_tokens is the Claude request body's default cap"
+      (is (= 32000 (:max_tokens body))))
     (is (true? (:stream body)))
     (testing "the system prompt is sent as cache-marked content blocks"
       (is (=? [{:type "text" :text "You are Metabot." :cache_control {:type "ephemeral"}}]

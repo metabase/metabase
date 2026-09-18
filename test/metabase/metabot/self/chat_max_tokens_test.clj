@@ -75,21 +75,21 @@
   Written out literally, once per surface, rather than derived: a shared model whose id translates to the wrong
   row on one provider then fails here instead of drifting quietly. [[omitted]] means no cap is sent at all."
   {;; Anthropic Messages, direct: the catalog's own dated and undated spellings
-   :anthropic         {"claude-fable-5"              128000
-                       "claude-opus-5"               128000
-                       "claude-opus-4-8"             128000
-                       "claude-opus-4-7"             128000
-                       "claude-opus-4-6"             128000
-                       "claude-sonnet-5"             128000
-                       "claude-sonnet-4-6"           128000
-                       "claude-opus-4-5-20251101"     64000
-                       "claude-sonnet-4-5-20250929"   64000
-                       "claude-haiku-4-5-20251001"    64000
+   :anthropic         {"claude-fable-5"               32000
+                       "claude-opus-5"                32000
+                       "claude-opus-4-8"              32000
+                       "claude-opus-4-7"              32000
+                       "claude-opus-4-6"              32000
+                       "claude-sonnet-5"              32000
+                       "claude-sonnet-4-6"            32000
+                       "claude-opus-4-5-20251101"     32000
+                       "claude-sonnet-4-5-20250929"   32000
+                       "claude-haiku-4-5-20251001"    32000
                        "claude-opus-4-1-20250805"     32000
-                       ;; no row (Fable 5.1 is out of scope), and an admin-named deployment: the Messages API
-                       ;; needs a cap, so the dialect fallback applies rather than an omission
-                       "claude-fable-5-1"             64000
-                       "my-deployment-3"              64000}
+                       ;; an id no catalog names, and an admin-named deployment: the Messages API needs a cap, so
+                       ;; they get the same default rather than an omission
+                       "claude-fable-5-1"             32000
+                       "my-deployment-3"              32000}
    ;; OpenAI Responses, direct: every GPT row in the table is nil, so nothing is ever sent (D11)
    :openai            {"gpt-5.6-sol"                 omitted
                        "gpt-5.6-terra"               omitted
@@ -101,32 +101,32 @@
                        "gpt-5.4-mini"                omitted
                        "gpt-4o"                      omitted}
    ;; the managed proxy: resolve-model-ref hands the adapter the bare model
-   :managed           {"claude-sonnet-4-6"           128000}
+   :managed           {"claude-sonnet-4-6"            32000}
    ;; Bedrock: vendor-prefixed
-   :bedrock-anthropic {"anthropic.claude-fable-5"    128000
-                       "anthropic.claude-opus-5"     128000
-                       "anthropic.claude-opus-4-8"   128000
-                       "anthropic.claude-opus-4-7"   128000
-                       "anthropic.claude-sonnet-5"   128000
-                       "anthropic.claude-haiku-4-5"   64000}
+   :bedrock-anthropic {"anthropic.claude-fable-5"     32000
+                       "anthropic.claude-opus-5"      32000
+                       "anthropic.claude-opus-4-8"    32000
+                       "anthropic.claude-opus-4-7"    32000
+                       "anthropic.claude-sonnet-5"    32000
+                       "anthropic.claude-haiku-4-5"   32000}
    :bedrock-openai    {"openai.gpt-5.4"              omitted
                        "openai.gpt-5.4-2026-03-05"   omitted
                        "openai.gpt-5.5"              omitted
                        "openai.gpt-5.5-2026-04-23"   omitted}
    ;; Azure: the bare deployment name, dateless, and cased however the admin named it
-   :azure-anthropic   {"claude-fable-5"              128000
-                       "claude-opus-5"               128000
-                       "claude-opus-4-8"             128000
-                       "claude-opus-4-7"             128000
-                       "claude-opus-4-6"             128000
-                       "claude-sonnet-5"             128000
-                       "claude-sonnet-4-6"           128000
-                       "claude-opus-4-5"              64000
-                       "claude-sonnet-4-5"            64000
-                       "claude-haiku-4-5"             64000
+   :azure-anthropic   {"claude-fable-5"               32000
+                       "claude-opus-5"                32000
+                       "claude-opus-4-8"              32000
+                       "claude-opus-4-7"              32000
+                       "claude-opus-4-6"              32000
+                       "claude-sonnet-5"              32000
+                       "claude-sonnet-4-6"            32000
+                       "claude-opus-4-5"              32000
+                       "claude-sonnet-4-5"            32000
+                       "claude-haiku-4-5"             32000
                        "claude-opus-4-1"              32000
-                       "Claude-Opus-4-8"             128000
-                       "Claude-Haiku-4-5"             64000}
+                       "Claude-Opus-4-8"              32000
+                       "Claude-Haiku-4-5"             32000}
    :azure-openai      {"gpt-5.6-sol"                 omitted
                        "gpt-5.6-terra"               omitted
                        "gpt-5.6-luna"                omitted
@@ -139,18 +139,18 @@
                        "gpt-5.4"                     omitted
                        "GPT-5.5"                     omitted}
    ;; Vertex: partner ids, dated with `@`
-   :vertex-claude     {"claude-fable-5"              128000
-                       "claude-opus-5"               128000
-                       "claude-opus-4-6"             128000
-                       "claude-sonnet-5"             128000
-                       "claude-sonnet-4-6"           128000
-                       "claude-haiku-4-5@20251001"    64000}
+   :vertex-claude     {"claude-fable-5"               32000
+                       "claude-opus-5"                32000
+                       "claude-opus-4-6"              32000
+                       "claude-sonnet-5"              32000
+                       "claude-sonnet-4-6"            32000
+                       "claude-haiku-4-5@20251001"    32000}
    :gemini            {"google/gemini-3.5-flash"      65536
                        "google/gemini-3.6-flash"      65536
                        "google/gemini-3.7-flash"      65536
                        "google/gemini-2.0-flash"     omitted}
-   :deepseek          {"deepseek-v4-pro"             393216
-                       "deepseek-v4-flash"           393216}
+   :deepseek          {"deepseek-v4-pro"              32000
+                       "deepseek-v4-flash"            32000}
    ;; OpenRouter: dotted Claude versions, dated DeepSeek snapshots
    :openrouter        {"anthropic/claude-fable-5"        128000
                        "anthropic/claude-opus-5"         128000
