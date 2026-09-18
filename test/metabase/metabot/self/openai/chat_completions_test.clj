@@ -453,6 +453,21 @@
       (is (=? [{:type :usage :finish-reason "other" :raw-finish-reason "error"}]
               (chunks-of-type :usage chunks))))))
 
+(deftest ^:parallel chunks-xf-incomplete-finish-reason-on-usage-chunk-test
+  (testing "a truncation or content filter rides the :usage chunk, in each dialect's own spelling"
+    ;; `parts->incomplete-finish-reason` reads exactly this to mark a reloaded turn incomplete, so a
+    ;; dialect whose own spelling were missing from its table would read back as a completed turn.
+    (are [xf raw finish-reason] (=? [{:type :usage :finish-reason finish-reason :raw-finish-reason raw}]
+                                    (chunks-of-type :usage (into [] xf (error-finish-chunks raw))))
+      ;; the base table, used unchanged by vLLM and Moonshot
+      (chat-completions/chat-completions->aisdk-chunks-xf) "length"         "length"
+      (chat-completions/chat-completions->aisdk-chunks-xf) "content_filter" "content-filter"
+      (openrouter/openrouter->aisdk-chunks-xf)             "length"         "length"
+      ;; Mistral's own name for hitting the model's context limit
+      (mistral/mistral->aisdk-chunks-xf)                   "model_length"   "length"
+      ;; Z.AI spells a filtered response `sensitive`
+      (zai/zai->aisdk-chunks-xf)                           "sensitive"      "content-filter")))
+
 (deftest ^:parallel sse-chat-completions-error-finish-is-error-test
   (testing "the failure reaches the client as an error event and finishReason \"error\", not \"stop\""
     (let [lines  (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
