@@ -6,6 +6,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
@@ -79,6 +80,7 @@ function TestEditor({ question }: { question: Question }) {
 
 function setup({ isMetabotEnabled = true } = {}) {
   setupEnterprisePlugins();
+  setupDatabasesEndpoints([TEST_DB]);
   setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({ collections: [] });
   setupNativeQuerySnippetEndpoints();

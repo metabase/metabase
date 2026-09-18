@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
 
+import { useLazyGetTableQuery } from "metabase/api";
 import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
@@ -27,6 +28,8 @@ export const NativeQueryEditor = ({
   readOnly,
   setDatasetQuery,
 }: NativeQueryEditorProps) => {
+  const [fetchTable] = useLazyGetTableQuery();
+
   const onChange = (evt: ChangeEvent<HTMLTextAreaElement>) => {
     setDatasetQuery(query.setQueryText(evt.target.value));
   };
@@ -37,9 +40,9 @@ export const NativeQueryEditor = ({
     }
   };
 
-  const onTableIdChange = (tableId: TableId) => {
-    const table = query.metadata().table(tableId);
-    if (table && table.name !== query.collection()) {
+  const onTableIdChange = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }).unwrap();
+    if (table.name !== query.collection()) {
       setDatasetQuery(query.setCollectionName(table.name));
     }
   };
