@@ -66,7 +66,3 @@ To manually label field or table names in Metabase, check out the [Table Metadat
 ## Enable X-rays
 
 [X-rays](../exploration-and-organization/x-rays.md) are a great way for people to get quick summary stats on your data. If these X-ray queries get too slow or expensive, you can turn them off here.
-
-## Domains
-
-Settings for allowed iframe and image domains moved to [Domains](./domains.md).

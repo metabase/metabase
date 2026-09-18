@@ -427,7 +427,7 @@ categories:
             url: "configuring-metabase/setting-up-metabase"
           - name: "General settings"
             url: "configuring-metabase/settings"
-          - name: "Domains"
+          - name: "Allowed domains"
             url: "configuring-metabase/domains"
           - name: "Set up email"
             url: "configuring-metabase/email"

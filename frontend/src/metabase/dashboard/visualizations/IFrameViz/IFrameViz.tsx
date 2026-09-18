@@ -164,7 +164,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     "configuring-metabase/domains",
-    { anchor: "allowed-domains-for-iframes-in-dashboards" },
+    { anchor: "allow-iframes-from-a-site-in-dashboards" },
   );
 
   const domain = useMemo(() => {

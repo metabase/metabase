@@ -77,7 +77,7 @@ Pass the `allowedCustomVisualizations` prop to `MetabaseProvider`. Like the page
 
 A custom visualization runs third-party JavaScript in your app. Metabase runs that code in an isolated sandbox, so a visualization can't reach the rest of your app or make network requests. The sandbox doesn't block passive image loads, though: a visualization can still trigger outbound requests through `<img>` tags or CSS `url()`.
 
-To limit where custom visualizations can load images from, set a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) with an `img-src` allowlist in your app. The core Metabase app sets this CSP with [Restrict image domains](../configuring-metabase/domains.md#restrict-image-domains), but you should also set a CSP in your app.
+To limit where custom visualizations can load images from, set a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) with an `img-src` allowlist in your app. The core Metabase app sets this CSP with [Restrict image domains](../configuring-metabase/domains.md#restrict-where-images-can-load-from), but you should also set a CSP in your app.
 
 ## Custom visualizations don't work in guest embeds
 

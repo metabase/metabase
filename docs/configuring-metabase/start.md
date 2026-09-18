@@ -14,7 +14,7 @@ A walkthrough of when you first boot up your Metabase.
 
 Site name, report timezone, and more settings.
 
-## [Domains](./domains.md)
+## [Allow iframes and images from other domains](./domains.md)
 
 Allow iframes and images from other domains.
 

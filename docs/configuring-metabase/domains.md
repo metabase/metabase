@@ -1,54 +1,61 @@
 ---
-title: Domains
-summary: Control which domains Metabase allows for iframes in dashboards and for images in text cards, descriptions, and custom visualizations.
+title: Allow iframes and images from other domains
+summary: Let people embed iframes from sites you trust in dashboards, and control which domains images can load from in text cards, descriptions, and custom visualizations.
 ---
 
-# Domains
+# Allow iframes and images from other domains
 
 _Admin > Settings > Domains_
 
-These settings control which external domains Metabase lets content load from: iframes in dashboard cards, and images in dashboard text cards, entity descriptions, and custom visualizations. To change them, click the **grid** icon in the upper right, then go to **Admin** > **Settings** > **Domains**.
+By default, Metabase only lets dashboards embed iframes from a short list of popular sites, and lets images load from anywhere. Admins can allow iframes from more sites, or lock images down to trustworthy domains.
 
-> Looking to change the web address people use to reach your Metabase? On Metabase Cloud, see [Changing your domain name](../cloud/custom-domain.md). On self-hosted Metabases, set the [Site URL](./settings.md#site-url).
+> To change the web address people use to reach your Metabase, see [Changing your domain name](../cloud/custom-domain.md). On self-hosted Metabases, set the [Site URL](./settings.md#site-url).
 
-## Allowed domains for iframes in dashboards
+## Allow iframes from a site in dashboards
 
-Make sure you trust the sources that you allow people to embed in dashboards.
+_Admin > Settings > Domains_
 
-Metabase ships with a default list of popular domains (like YouTube, Loom, Vimeo, and Google Docs) that you can add to or clear. You can also set this list with the [`MB_ALLOWED_IFRAME_HOSTS`](./environment-variables.md#mb_allowed_iframe_hosts) environment variable.
+If someone adds an [iframe card](../dashboards/introduction.md#iframe-cards) to a dashboard and Metabase blocks it, the site isn't on the allowlist. To allow it:
 
-You can include multiple domains separated by a comma. Including a subdomain is more restrictive than including the domain.
+1. Under **Allowed domains for iframes in dashboards**, add the site's domain (like `example.com`). Separate multiple domains with commas.
+2. Click **Save changes**.
 
-- For **Domains**, (e.g., `example.com`), Metabase will allow any iframe from the domain (`example.com`) _and_ its subdomains (e.g., `data.example.com`, `docs.example.com`, etc.).
-- For **Subdomains** (e.g., `data.example.com`) Metabase will restrict iframes to those subdomains. In this case, iframes _must_ be from `data.example.com` (or any of the other allowed domains). Metabase will block iframes from all other subdomains, including `example.com`.
+Only allow sites you trust. An iframe can show whatever the site serves, so anyone who can edit a dashboard can put that content in front of everyone who views it.
 
-So if you included the following:
+Metabase ships with a starter list (YouTube, Loom, Vimeo, Google Docs, and a few others). You can add to that list or clear it entirely. Listing `example.com` also allows its subdomains, while listing `data.example.com` allows only that subdomain. See [How domain matching works](#how-domain-matching-works).
+
+You can also set the list with the [`MB_ALLOWED_IFRAME_HOSTS`](./environment-variables.md#mb_allowed_iframe_hosts) environment variable.
+
+## Restrict where images can load from
+
+_Admin > Settings > Domains_
+
+People can link to images in [dashboard text cards](../dashboards/dashboard-markdown.md#add-an-image), entity descriptions, and [custom visualizations](../questions/visualizations/custom.md). If you don't want those images to load from just anywhere, you can restrict them to your Metabase instance plus domains you choose. You'll also need to do this before you can turn on custom visualizations, since this restriction is required to limit where a visualization's code can send outbound asset requests.
+
+1. Turn on **Restrict image domains**.
+2. Under **Allowed domains for images**, add the domains images can load from (like `images.example.com`). Separate multiple domains with commas. Leave the list empty to only allow images hosted by your Metabase instance.
+3. Click **Save changes**.
+
+Under the hood, this sets the browser's Content Security Policy so images can only load from your Metabase instance, the map tile server that map visualizations use, and any domains you allow. You don't need to add the map tile server yourself.
+
+Domains match the same way as for iframes: `example.com` allows its subdomains too, while `images.example.com` allows only that subdomain. See [How domain matching works](#how-domain-matching-works).
+
+While custom visualizations are enabled, you can't turn off **Restrict image domains**. Disable custom visualizations first.
+
+You can also set these with the [`MB_CSP_IMG_ENABLED`](./environment-variables.md#mb_csp_img_enabled) and [`MB_CSP_IMG_ALLOWED_HOSTS`](./environment-variables.md#mb_csp_img_allowed_hosts) environment variables.
+
+## How domain matching works
+
+Both allowlists use the same rules. Including a subdomain is more restrictive than including the domain.
+
+- A **domain** like `example.com` allows the domain itself _and_ all of its subdomains (`data.example.com`, `docs.example.com`, and so on).
+- A **subdomain** like `data.example.com` allows only that subdomain. Metabase blocks everything else, including `example.com` itself and its other subdomains.
+
+So if your allowlist is:
 
 ```
 data.example.com,
 docs.example.com
 ```
 
-Metabase would only allow iframes from `data.example.com` and `docs.example.com`. Metabase would block iframes from all other domains, including iframes from `example.com` and its other subdomains.
-
-See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
-
-## Restrict image domains
-
-When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance, the map tile server used by map visualizations, or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
-
-By default, images from any domain are allowed.
-
-You must turn on this setting to enable [Custom visualizations](../questions/visualizations/custom.md). While custom visualizations are enabled, you can't turn it back off.
-
-You can also set this with the [`MB_CSP_IMG_ENABLED`](./environment-variables.md#mb_csp_img_enabled) environment variable.
-
-## Allowed domains for images
-
-When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, the map tile server used by map visualizations, and any domains listed here. This applies to images in [dashboard text cards](../dashboards/dashboard-markdown.md#add-an-image), entity descriptions, and [custom visualizations](../questions/visualizations/custom.md).
-
-Leave this input empty to allow images hosted by your Metabase instance and the map tile server. The map tile server is always allowed so map visualizations keep working; you don't need to manually add it here.
-
-Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.
-
-You can also set this list with the [`MB_CSP_IMG_ALLOWED_HOSTS`](./environment-variables.md#mb_csp_img_allowed_hosts) environment variable.
+Metabase only allows `data.example.com` and `docs.example.com`. It blocks `example.com` and every other subdomain.

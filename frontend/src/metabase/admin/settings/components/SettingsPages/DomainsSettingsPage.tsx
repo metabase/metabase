@@ -43,10 +43,10 @@ export function DomainsSettingsPage() {
     ]);
 
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/domains", {
-    anchor: "allowed-domains-for-iframes-in-dashboards",
+    anchor: "allow-iframes-from-a-site-in-dashboards",
   });
   const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/domains", {
-    anchor: "allowed-domains-for-images",
+    anchor: "restrict-where-images-can-load-from",
   });
 
   const customVizAvailable = useHasTokenFeature("custom-viz-available");

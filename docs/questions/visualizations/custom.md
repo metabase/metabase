@@ -19,7 +19,7 @@ This page covers how to add a custom visualization to your Metabase. To _create_
 
 ### Restrict image domains first
 
-Before you can turn on custom visualizations, you need to enable [Restrict image domains](../../configuring-metabase/domains.md#restrict-image-domains). A custom visualization runs third-party JavaScript in your Metabase. By restricting image (and font) domains, you limit where that code can load assets from, which narrows the ways a custom visualization could leak data through outbound asset requests. See [Only add visualizations you trust](#only-add-visualizations-you-trust).
+Before you can turn on custom visualizations, you need to enable [Restrict image domains](../../configuring-metabase/domains.md#restrict-where-images-can-load-from). A custom visualization runs third-party JavaScript in your Metabase. By restricting image (and font) domains, you limit where that code can load assets from, which narrows the ways a custom visualization could leak data through outbound asset requests. See [Only add visualizations you trust](#only-add-visualizations-you-trust).
 
 While custom visualizations are enabled, you can't turn **Restrict image domains** back off. You'll need to first disable custom visualizations.
 
