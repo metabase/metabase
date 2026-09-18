@@ -47,16 +47,17 @@
           s       (mw.body-limit/bounded-input-stream (body-of-size 1000 counter) 16)]
       (is (= 413 (ex-status (is (thrown? clojure.lang.ExceptionInfo (slurp s))))))
       (is (<= @counter 17))))
-  (testing "single-byte reads are bounded too"
+  (testing "single-byte reads are bounded too, and never pull more than one byte past the limit"
     (let [counter (atom 0)
           s       (mw.body-limit/bounded-input-stream (body-of-size 1000 counter) 4)]
-      (dotimes [_ 4] (.read s))
+      (dotimes [_ 5] (.read s))
       (is (= 413 (ex-status (is (thrown? clojure.lang.ExceptionInfo (.read s))))))
       (is (= 5 @counter))))
-  (testing "once the limit is exceeded, further reads keep throwing instead of returning 0 bytes"
+  (testing "once the limit is reached, further reads keep throwing instead of returning 0 bytes or EOF"
     (let [counter (atom 0)
           s       (mw.body-limit/bounded-input-stream (body-of-size 1000 counter) 4)]
-      (is (thrown? clojure.lang.ExceptionInfo (.read s (byte-array 100) 0 100)))
+      (.read s (byte-array 100) 0 100)
+      (is (= 413 (ex-status (is (thrown? clojure.lang.ExceptionInfo (.read s (byte-array 100) 0 100))))))
       (is (= 413 (ex-status (is (thrown? clojure.lang.ExceptionInfo (.read s (byte-array 100) 0 100))))))
       (is (= 5 @counter)))))
 

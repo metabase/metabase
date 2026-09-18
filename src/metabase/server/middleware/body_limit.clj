@@ -11,7 +11,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
-   (java.io InputStream)))
+   (java.io InputStream)
+   (org.apache.commons.io.function IOBiConsumer)
+   (org.apache.commons.io.input BoundedInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -20,29 +22,20 @@
            {:status-code 413, :type ::body-too-large}))
 
 (defn bounded-input-stream
-  "Wrap `in` so that reading more than `max-bytes` bytes from it throws a 413 exception."
+  "Wrap `in` so that reading more than `max-bytes` bytes from it throws a 413 exception.
+
+  The bound is `max-bytes` + 1 so that a body of exactly `max-bytes` still reads through to EOF; that extra byte is
+  also the most this ever pulls out of `in` past the limit. Once the bound is hit every subsequent read throws,
+  rather than reporting EOF and letting the caller treat a truncated body as the whole thing."
   ^InputStream [^InputStream in max-bytes]
-  (let [consumed (atom 0)
-        consume! (fn [n]
-                   (when (> (swap! consumed + n) max-bytes)
-                     (throw (body-too-large-exception max-bytes))))]
-    (proxy [InputStream] []
-      (read
-        ([]
-         (let [b (.read in)]
-           (when (>= b 0) (consume! 1))
-           b))
-        ([^bytes buf off len]
-         ;; already over the limit: keep throwing rather than clamping to a 0-byte read a caller might retry forever
-         (when (> @consumed max-bytes)
-           (throw (body-too-large-exception max-bytes)))
-         ;; never ask the underlying stream for more than one byte past the limit
-         (let [len (min (long len) (inc (- max-bytes @consumed)))
-               n   (.read in buf (int off) (int len))]
-           (when (pos? n) (consume! n))
-           n)))
-      (available [] (.available in))
-      (close [] (.close in)))))
+  (let [max-bytes (long max-bytes)
+        builder   (BoundedInputStream/builder)]
+    (.setInputStream builder in)
+    (.setMaxCount builder (inc max-bytes))
+    (.setOnMaxCount builder (reify IOBiConsumer
+                              (accept [_ _max-count _count]
+                                (throw (body-too-large-exception max-bytes)))))
+    (.get builder)))
 
 (defn- multipart? [request]
   (some->> (get-in request [:headers "content-type"])
