@@ -78,3 +78,11 @@
   [search-model where-clause]
   (-> (spec-index-query search-model)
       (sql.helpers/where where-clause)))
+
+(defn doc-id-select-item
+  "The `:this`-qualified select item `search-model`'s documents take their id from."
+  [search-model]
+  ;; Built through the same attr machinery as [[spec-index-query]], so a compound `:id` lands identically here.
+  (first (search.spec/qualify-columns
+          :this
+          (attrs->select-items {:id (-> (search.spec/spec search-model) :attrs :id)}))))
