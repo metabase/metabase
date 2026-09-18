@@ -26,6 +26,7 @@
    [metabase.mcp.v2.tools.definitions]
    [metabase.mcp.v2.tools.document]
    [metabase.mcp.v2.tools.duplicate]
+   [metabase.mcp.v2.tools.glossary]
    [metabase.mcp.v2.tools.learn]
    [metabase.mcp.v2.tools.metric]
    [metabase.mcp.v2.tools.parameters]
@@ -161,12 +162,16 @@
 
 (def ^:private server-instructions
   "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
-  at the `learn` skills once, settles the routing choices a model makes before reading any tool description closely
+  at the `learn` skills and the `glossary` once, settles the routing choices a model makes before reading any tool
+  description closely
   (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts when listed), and
   explains the scope-denial failures that clients rewrite before the model sees them."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, a multi-stage or joined "
        "query, visualization settings — read the matching skill unless it is already in context.\n"
+       "This instance's glossary defines business terms that matter for answering questions about its data. Fetch "
+       "them with glossary() before you answer — an instance's own definition of a term overrides your reading of "
+       "it.\n"
        "Answer questions from data with execute_query (structured MBQL) by default; execute_sql is the escape hatch "
        "for what MBQL cannot express or an explicit request for SQL.\n"
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
