@@ -112,11 +112,16 @@
   ;; The SDK's "Detail" visualization renders `ObjectDetailPanel`, which lists a writable model's
   ;; actions, and its `ActionExecuteModal` fetches the one clicked. Both are reads, and both must
   ;; carry the tag or the menu silently disappears for an admin inside a data app.
+  ;; Built with plain `with-temp` rather than `mt/with-actions`: that helper's cleanup reindexes search, which
+  ;; drops orphan index tables, and that DDL commits the rollback-only `with-temp` transaction on H2 whenever the
+  ;; `metabase.search.*` namespaces ran earlier in the same JVM.
   (mt/with-actions-test-data-and-actions-enabled
-    (mt/with-actions [_ {:type          :model
-                         :dataset_query (lib/query (mt/metadata-provider)
-                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :categories)))}
-                      {:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (lib/query (mt/metadata-provider)
+                                                                         (lib.metadata/table (mt/metadata-provider)
+                                                                                             (mt/id :categories)))}
+                   :model/Action {action-id :id} {:name "Update category" :model_id model-id :type :implicit}
+                   :model/ImplicitAction _ {:action_id action-id :kind "row/update"}]
       (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
         (testing "GET /api/action?model-id= -- the object-detail action menu"
           (is (=? [{:id action-id}]
