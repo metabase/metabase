@@ -31,7 +31,6 @@ Here's a high-level overview:
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
 3. Generate a key and copy it to your clipboard.
 
-Already using SAML? The hub's **Authentication** page will send you to Admin settings instead.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 
