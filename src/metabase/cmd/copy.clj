@@ -161,6 +161,8 @@
     :model/TransformTransformTag
     :model/TransformJob
     :model/TransformJobTransformTag
+    ;; By table name: migrations create it on every edition, but its model is EE-only.
+    :transform_test
     ;; Serialization never exports run history; a whole-instance move keeps it.
     ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
     :model/TransformJobRun

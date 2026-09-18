@@ -91,6 +91,7 @@
   enable-support-users?
   enable-basic-transforms?
   enable-python-transforms?
+  enable-transform-testing?
   enable-upload-management?
   enable-whitelabeling?
   enable-writable-connection?
