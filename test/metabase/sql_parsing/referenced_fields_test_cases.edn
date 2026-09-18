@@ -234,8 +234,9 @@
   {:name "update-with-join"
    :sql "UPDATE users SET last_purchase = t.max_date FROM (SELECT user_id, MAX(created_at) as max_date FROM transactions GROUP BY user_id) t WHERE users.id = t.user_id"
    :dialect "postgres"
-   ;; Note: UPDATE statements may not be fully parsed by sqlglot for field extraction
-   :expected []}
+   ;; The SET-clause column belongs to the write target. This previously returned []
+   ;; because build_scope does not treat an UPDATE target as a scope source.
+   :expected [["users" "last_purchase"]]}
 
   {:name "delete-with-subquery"
    :sql "DELETE FROM users WHERE id IN (SELECT user_id FROM transactions WHERE total < 10)"
