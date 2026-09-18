@@ -357,15 +357,13 @@ jobs:
   # A skipped artifact build is fine -- the suite's own filters skip the jobs that
   # would have consumed it. A failed one is not: enter the workflow and every job
   # dies on a missing download, so stay out and let the unreported required check
-  # block the merge.
+  # block the merge. `failure()` covers every job this one needs, which is what
+  # "any artifact we download never built" means.
   sdk-tests:
     needs: [should-run, uberjar, embedding-sdk-package]
     if: >-
-      ${{ !cancelled() &&
-      needs.should-run.outputs.verdict != 'force-skip' &&
-      needs.uberjar.result != 'failure' && needs.uberjar.result != 'cancelled' &&
-      needs.embedding-sdk-package.result != 'failure' &&
-      needs.embedding-sdk-package.result != 'cancelled' }}
+      ${{ !failure() && !cancelled() &&
+      needs.should-run.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
