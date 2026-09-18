@@ -4,10 +4,12 @@
   mini model need not be on the same one."
   (:require
    [clj-http.client :as http]
+   [clojure.core.cache :as cache]
    [clojure.test :refer :all]
    [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -22,15 +24,16 @@
   "Stub `http/request` for `/api/show`, answering from `capabilities-by-model` — a model absent from it
   gets a body with no `capabilities` key, which is what an Ollama too old to report them returns.
   Records every request it saw, and which thread made it."
-  [capabilities-by-model seen]
-  (fn [{:keys [body] :as req}]
-    ;; the thread, so a test can tell a lookup made on the caller's thread from one handed to a future
-    (swap! seen conj (assoc req ::thread (Thread/currentThread)))
-    (let [model (:model (json/decode+kw (str body)))]
-      {:status 200
-       :body   (cond-> {:model model}
-                 (contains? capabilities-by-model model)
-                 (assoc :capabilities (get capabilities-by-model model)))})))
+  ([capabilities-by-model] (showing capabilities-by-model (atom [])))
+  ([capabilities-by-model seen]
+   (fn [{:keys [body] :as req}]
+     ;; the thread, so a test can tell a lookup made on the caller's thread from one handed to a future
+     (swap! seen conj (assoc req ::thread (Thread/currentThread)))
+     (let [model (:model (json/decode+kw (str body)))]
+       {:status 200
+        :body   (cond-> {:model model}
+                  (contains? capabilities-by-model model)
+                  (assoc :capabilities (get capabilities-by-model model)))}))))
 
 (defn- with-stub!
   "Call `f` with `handler` standing in for every HTTP request, the capability cache emptied on both
@@ -162,6 +165,44 @@
         (dotimes [_ 5] (is (false? (ollama.capabilities/cached-reasoning-model? credentials ""))))
         (Thread/sleep 100)
         (is (empty? @seen))))))
+
+(defn- age-out-lookups!
+  "Backdate every entry so the next read finds it stale — what the refresh interval elapsing does.
+  Emptying the cache would not do: that is forgetting, which is the thing under test."
+  []
+  (swap! @#'ollama.capabilities/capabilities-cache
+         (fn [c]
+           (reduce (fn [acc [k v]] (cache/miss acc k (assoc v :at 0)))
+                   c
+                   (into {} c)))))
+
+(deftest a-stale-answer-is-served-not-waited-on-test
+  (testing (str "an entry's age says when to re-ask, not what to believe. The listing asks about "
+                "every model in the catalog, so with an answer already in hand there is nothing to "
+                "wait for — serve it and re-ask behind.")
+    (ollama.capabilities/clear-cache!)
+    (try
+      (mt/with-dynamic-fn-redefs [http/request (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]})]
+        (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))
+      (age-out-lookups!)
+      (let [attempts (atom 0)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                                   (swap! attempts inc)
+                                                   (Thread/sleep 300)
+                                                   (throw (ex-info "hang" {})))]
+          (testing "the blocking reader answers from what it has, without waiting on the server"
+            (let [timer  (u/start-timer)
+                  answer (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b")]
+              (is (true? answer))
+              (is (> 200 (u/since-ms timer)))))
+          (testing "and the public setting does too"
+            (is (true? (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))))
+          (testing "once the re-ask has actually failed, the answer still stands — a server that
+                   would not answer is not evidence that the model changed"
+            (is (tu/poll-until 5000 (and (pos? @attempts) (empty? @@#'ollama.capabilities/refreshing))))
+            (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))))
+      (finally
+        (ollama.capabilities/clear-cache!)))))
 
 (deftest a-cold-read-starts-one-lookup-however-many-ask-test
   (testing "a burst of page loads against a cold cache must not each start their own lookup"

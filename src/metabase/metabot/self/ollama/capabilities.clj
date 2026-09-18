@@ -16,17 +16,19 @@
   outside needs to know a cache exists, or to remember to fill it."
   (:require
    [clojure.core.cache :as cache]
-   [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.set :as set]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.ollama.connection :as conn]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,18 +75,19 @@
 
 ;;; -------------------------------------------------- The cache --------------------------------------------------
 
-(def ^:private cache-ttl-ms
-  "How long a model's reported capabilities are reused.
+(def ^:private refresh-after-ms
+  "How old an answer may get before the next read re-asks behind the caller.
 
-  Sized for the answers that go stale rather than the ones that do not. A real capability set is
-  near-immutable for a given server and tag, but not quite — Ollama tags are mutable, so a re-pull or
-  a rebuilt Modelfile can change a template under the same name, and this bounds how long a model
-  that has just gained thinking runs on the smaller token budget. A nil answer is the transient one:
-  a server that was down, or too old to report, recovers on its own."
+  A real capability set is near-immutable for a given server and tag, but not quite — Ollama tags are
+  mutable, so a re-pull or a rebuilt Modelfile can change a template under the same name."
   600000)
 
 (defonce ^:private capabilities-cache
-  (atom (cache/ttl-cache-factory {} :ttl cache-ttl-ms)))
+  ;; `{cache-key {:caps #{...}-or-nil :at ms}}`. LRU rather than TTL because age must not mean
+  ;; forgetting: an entry that has gone stale is still the best answer we have, and an expired one is
+  ;; not evidence that a model stopped thinking. `:at` says when to re-ask, `:caps` what to believe
+  ;; meanwhile, and the bound is on size instead.
+  (atom (cache/lru-cache-factory {} :threshold 256)))
 
 (defn- cache-key
   "What a model's capabilities are filed under: the destination and credential that would be asked,
@@ -99,28 +102,55 @@
   [credentials model]
   [(hash (select-keys credentials [:hosting :base-url :api-key])) model])
 
-(defn- capabilities
-  "`model`'s capability set, fetching and caching it when it is not already known. Nil when the server
-  would not say.
+(defn- stale?
+  "Whether `entry` is old enough to re-ask for."
+  [{:keys [at]}]
+  (< refresh-after-ms (u/since-ms at)))
 
-  Makes an HTTP call, so callers have to be somewhere one is acceptable — see [[cached-capabilities]]
-  for the one that is not."
+(defn- remember!
+  "Record what a lookup returned, and return the capability set now believed.
+
+  A lookup that came back with nothing keeps whatever was believed before — a server that would not
+  answer is not evidence that a model changed — but still stamps `:at`, so a broken endpoint is
+  re-asked on the usual interval rather than once per read."
+  [k caps]
+  (-> (swap! capabilities-cache
+             (fn [c]
+               (cache/miss c k {:caps (or caps (:caps (cache/lookup c k)))
+                                :at   (u/start-timer)})))
+      (cache/lookup k)
+      :caps))
+
+(defn- fetch-and-remember!
+  "Ask the server about `model` and record the answer. Blocks."
   [credentials model]
-  (when-not (str/blank? model)
-    (cache.wrapped/lookup-or-miss capabilities-cache
-                                  (cache-key credentials model)
-                                  (fn [_] (fetch-capabilities credentials model)))))
+  (remember! (cache-key credentials model) (fetch-capabilities credentials model)))
+
+(def ^:private lookup-concurrency
+  "How many models to ask about at once. A catalog listing asks about every model it offers, and
+  `/api/show` opens a fresh connection per call — against Cloud that is a TLS handshake each, to one
+  host. Unbounded, a 40-model catalog is how an instance earns a 429, and a 429 is cached as \"would
+  not say\" for the whole TTL, so one burst would cost reasoning detection for every model on the
+  connection."
+  8)
 
 ;; The cache keys a background lookup is already in flight for. Without this, a burst of page loads
-;; against a cold cache would each start their own: `cache.wrapped/lookup-or-miss` gives every caller
-;; its own `delay`, so it deduplicates within a thread but not across them.
+;; against a stale entry would each start their own.
 (defonce ^:private refreshing
   (atom #{}))
 
-(defn- refresh-in-background!
-  "Fill the cache for `model` on another thread, unless a lookup for it is already in flight.
+(defonce ^:private refresh-permits
+  ;; Background refreshes honour the same bound as the fan-out that triggers them. Serving a believed
+  ;; answer costs nanoseconds, so a stale catalog walks its whole listing in microseconds and would
+  ;; otherwise hand every model its own thread at once — the burst [[lookup-concurrency]] exists to
+  ;; prevent, arriving by the back door.
+  (Semaphore. lookup-concurrency))
 
-  Returns nothing useful: a caller that could wait for the answer would not have come here."
+(defn- refresh-in-background!
+  "Re-ask for `model` on another thread, unless a lookup for it is already in flight.
+
+  Goes straight to [[fetch-and-remember!]]: the read paths serve what is already believed, so routing
+  a refresh through them would never actually re-ask."
   [credentials model]
   (let [k          (cache-key credentials model)
         [claimed?] (swap-vals! refreshing conj k)]
@@ -128,34 +158,43 @@
     (when-not (contains? claimed? k)
       (u.jvm/in-virtual-thread*
        (try
-         (capabilities credentials model)
+         (.acquire ^Semaphore refresh-permits)
+         (try
+           (fetch-and-remember! credentials model)
+           (finally
+             (.release ^Semaphore refresh-permits)))
          (finally
            (swap! refreshing disj k)))))))
 
+(defn- capabilities
+  "`model`'s capability set, or nil when nothing is known about it.
+
+  Serves what is believed whenever there is an entry, re-asking behind the caller once it is stale.
+  Only a model with no entry at all is fetched in front of the caller."
+  [credentials model]
+  (when-not (str/blank? model)
+    (let [k (cache-key credentials model)]
+      (if-let [entry (cache/lookup @capabilities-cache k)]
+        (do (when (stale? entry)
+              (refresh-in-background! credentials model))
+            (:caps entry))
+        (fetch-and-remember! credentials model)))))
+
 (defn- cached-capabilities
-  "`model`'s capability set if a lookup already has it, and nil otherwise — including when the server
-  was asked and would not say.
+  "[[capabilities]] without the cold fetch: nil rather than a wait when nothing is known yet.
 
   There is exactly one such reader, and it is the reason this exists: the public
   `llm-metabot-supports-reasoning?` setting, read on page load by every client, which must never make
-  that client wait on the operator's Ollama. Everything else — the request path, the model listing —
-  uses [[capabilities]] and blocks.
-
-  A miss does still *start* a lookup, on another thread, rather than leaving the answer wrong until
-  something else happens to ask. So a cold read costs one outbound request — collapsed across
-  concurrent readers, and only ever for the model the setting was asked about — but never a wait."
+  that client wait on the operator's Ollama."
   [credentials model]
   ;; the same guard [[capabilities]] has, and here it is load-bearing: a model reference with no model
   ;; segment would never fill the cache, so every page load would hand a future the same nothing to do
   (when-not (str/blank? model)
-    ;; one `lookup` with a sentinel rather than `has?` then `lookup`, which would run the expiry
-    ;; check twice. The sentinel is what keeps a cached nil — "asked, would not say" — distinct from
-    ;; never having asked, which is the whole difference between answering and starting a lookup.
-    (let [v (cache/lookup @capabilities-cache (cache-key credentials model) ::missing)]
-      (if (= ::missing v)
-        (do (refresh-in-background! credentials model)
-            nil)
-        v))))
+    (let [k     (cache-key credentials model)
+          entry (cache/lookup @capabilities-cache k)]
+      (when (or (nil? entry) (stale? entry))
+        (refresh-in-background! credentials model))
+      (:caps entry))))
 
 (defn clear-cache!
   "Forget every lookup. For tests, which must not inherit each other's servers."
@@ -170,8 +209,9 @@
   asked recently. The ordinary accessor: a caller already making a generation request does not notice
   one cached metadata lookup.
 
-  A server that will not say reads as not reasoning. That costs a smaller token budget, not
-  correctness — the `reasoning` field is forwarded whenever it appears, so thinking still renders."
+  A server that will not say reads as not reasoning. Thinking still renders either way — the
+  `reasoning` field is forwarded whenever it appears — but the request keeps the smaller token
+  budget, which a thinking model can exhaust. That surfaces as truncation, not as a wrong answer."
   [credentials :- conn/Credentials
    model       :- [:maybe :string]]
   (contains? (capabilities credentials model) thinking-capability))
@@ -190,14 +230,6 @@
    model       :- [:maybe :string]]
   (let [caps (capabilities credentials model)]
     (or (nil? caps) (set/subset? chat-capabilities caps))))
-
-(def ^:private lookup-concurrency
-  "How many models to ask about at once. A catalog listing asks about every model it offers, and
-  `/api/show` opens a fresh connection per call — against Cloud that is a TLS handshake each, to one
-  host. Unbounded, a 40-model catalog is how an instance earns a 429, and a 429 is cached as \"would
-  not say\" for the whole TTL, so one burst would cost reasoning detection for every model on the
-  connection."
-  8)
 
 (mu/defn chat-capable-ids :- [:set :string]
   "Which of `model-ids` Ollama offers for chat at all, asked [[lookup-concurrency]] at a time."
