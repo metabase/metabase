@@ -53,7 +53,9 @@
   "Every provider type Metabase can connect to, in the order the admin UI offers them.
 
   `:fields` describes the credential inputs for a connection's `:config` map. A `:password` field is treated as
-  secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
+  secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back.
+
+  A type may also carry a `:validate` hook over the whole config — see [[config-problem]]."
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
     :default-model "claude-sonnet-4-6"
@@ -353,9 +355,15 @@
     ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
     ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
-    ;; the two deployments need opposite things: Cloud has a known address and needs a key,
-    ;; self-hosted has an address only the admin knows and often needs no key
+    ;; the coarse rule, which the docs and the connection form read; `:validate` below is the exact one
     :required-any  [[:base-url] [:api-key]]
+    :validate
+    (fn [{:keys [hosting api-key base-url]}]
+      (if (= ollama-cloud hosting)
+        (when-not (u/trimmed-string api-key)
+          (tru "Ollama Cloud needs an API key."))
+        (when-not (u/trimmed-string base-url)
+          (tru "A self-hosted Ollama needs the API base URL of your server."))))
     :fields        [{:key       :hosting
                      :label     (deferred-tru "Where Ollama runs")
                      :type      :segmented
@@ -514,6 +522,15 @@
   (when-let [field (u/find-first-map (:fields (provider-type type-name)) [:key] field-key)]
     (validate-field! type-name field config)))
 
+(defn- config-problem
+  "What `type-name`'s `:validate` hook finds wrong with `config`, as a sentence to show the admin, or nil.
+
+  A field's `:validate` sees one value, and only when it is present. This one sees the whole config, so it is
+  where a rule about an *absent* field, or about two fields together, has to go."
+  [type-name config]
+  (when-let [validate (:validate (provider-type type-name))]
+    (validate config)))
+
 (defn- validate-required-any!
   "Throw a 400 unless `config` satisfies one of `type-name`'s `:required-any` credential groups — for Google, a
   service account key on its own or an OAuth token together with a project ID."
@@ -556,6 +573,8 @@
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config))
   (validate-required-any! type-name config)
+  (when-let [problem (config-problem type-name config)]
+    (throw (ex-info (str problem) {:status-code 400})))
   (validate-requires! type-name config))
 
 (defn credentials-complete?
@@ -593,11 +612,12 @@
 (defn config-complete?
   "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed
   provider — which authenticates with the instance token rather than with credentials of its own — whether the LLM
-  proxy is configured."
+  proxy is configured, and either way [[config-problem]] finds nothing."
   [type-name config]
-  (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
-    (credentials-complete? type-name config)))
+  (and (nil? (config-problem type-name config))
+       (if (managed-type? type-name)
+         (some? (llm.settings/llm-proxy-base-url))
+         (credentials-complete? type-name config))))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
 

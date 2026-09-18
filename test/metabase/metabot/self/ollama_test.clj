@@ -867,6 +867,25 @@
            clojure.lang.ExceptionInfo
            #"ollama needs one of: API base URL or API key"
            (llm.provider/validate-config! "ollama" {:hosting "self-hosted"})))))
+  (testing "the union is satisfied by either credential whichever deployment is picked, so each
+           deployment's own requirement is checked too. Asked of `config-complete?`, which is what the
+           `usable` flag reads: a credential is present either way, the question is reachability."
+    (testing "a self-hosted server needs its address; a key alone is Cloud's credential"
+      (is (false? (llm.provider/config-complete? "ollama" {:hosting "self-hosted" :api-key "sk-x"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"self-hosted Ollama needs the API base URL"
+           (llm.provider/validate-config! "ollama" {:hosting "self-hosted" :api-key "sk-x"}))))
+    (testing "and Cloud needs a key; its address is fixed, so a base URL says nothing about it"
+      (is (false? (llm.provider/config-complete? "ollama" {:hosting "cloud" :base-url base-url})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Ollama Cloud needs an API key"
+           (llm.provider/validate-config! "ollama" {:hosting "cloud" :base-url base-url}))))
+    (testing "the deployment defaults to self-hosted, so MB_LLM_OLLAMA_API_KEY on its own is incomplete
+             rather than a working Cloud connection"
+      (is (false? (llm.provider/config-complete?
+                   "ollama" (llm.provider/with-field-defaults "ollama" {:api-key "sk-x"}))))))
   (testing "a trailing slash still cannot double up when a path is joined onto it"
     (is (= "http://host:11434/v1"
            (:base-url (llm.provider/with-field-defaults "ollama" {:base-url "http://host:11434/v1///"}))))))
