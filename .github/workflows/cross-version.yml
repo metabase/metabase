@@ -24,25 +24,39 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: .github
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Generate version matrix
         id: set-matrix
         uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
         with:
-          script: |
+          script: | # js
+            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
             const { buildCrossVersionMatrix } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
-            const { config } = buildCrossVersionMatrix(${{ vars.CURRENT_VERSION }});
+
+            // run against all supported versions
+            const supportedMajors = await getSupportedMajors();
+            console.log("supported majors:", supportedMajors);
+
+            const { config } = buildCrossVersionMatrix(supportedMajors);
             const matrix = JSON.stringify({ include: config });
             core.setOutput("matrix", matrix);
             console.log("matrix:", matrix);
 
   test:
-    needs: generate-matrix
+    needs: generate-test-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.generate-test-matrix.outputs.matrix) }}
       fail-fast: false
 
     steps:
