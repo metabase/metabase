@@ -28,6 +28,8 @@ Metabase is read-only: your SQL is always a `SELECT` (CTEs/`WITH` are fine for t
 
 {% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
 
+{% include "metabot/prompts/shared/prompt_snippets/show-entity.selmer" %}
+
 # Routing and capabilities
 {% if has_nlq %}
 Natural-language querying is your default for analytical questions — build the visualization directly rather than describing how.
