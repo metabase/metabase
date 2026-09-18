@@ -161,7 +161,7 @@ export function isCartesianChart(display: VisualizationDisplay) {
 
 const getRemapping = (col: RemappingHydratedDatasetColumn) => {
   // copy existing entries so this is idempotent, without mutating the caller's Map
-  if (col.remapping) {
+  if (col.remapping instanceof Map) {
     return new Map(col.remapping);
   }
   if (col.remapped_to != null) {
