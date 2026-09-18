@@ -56,10 +56,12 @@ export const useSyncStatus = () => {
 
   const shouldPoll = isRunning && showModal && !hasPendingMutation;
 
+  // Always subscribed, so a fresh tab discovers a sync started elsewhere (or a stale row the backend
+  // repairs on read); polling only while a task is being watched.
   useGetRemoteSyncCurrentTaskQuery(undefined, {
     pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
     skipPollingIfUnfocused: true,
-    skip: !isRemoteSyncEnabled || !shouldPoll,
+    skip: !isRemoteSyncEnabled,
   });
 
   // A stopped task has nothing left to poll, so drop it instead of hiding the modal; otherwise the next
