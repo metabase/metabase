@@ -2,17 +2,45 @@ import slugg from "slugg";
 
 import { isTransientCardId } from "metabase/common/utils/card";
 import { stringifyHashOptions } from "metabase/utils/browser";
+import { ADHOC_DASHBOARD_PATH } from "metabase/utils/dashboard";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  AdhocDashcard,
   DashCardId,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
+
+export type AdhocDashboardMetabotOrigin = {
+  conversation_id: string;
+  generated_dashboard_id: string;
+};
+
+export type AdhocDashboardDefinition = {
+  name: string;
+  description?: string;
+  dashcards: AdhocDashcard[];
+  metabot?: AdhocDashboardMetabotOrigin;
+};
+
+// An ad-hoc dashboard id is its own url, `/dashboard#<encoded definition>`, like
+// `/question#<hash>`. The definition is the first hash segment; DashboardApp's
+// display options (`fullscreen`, `refresh`, …) append after `&` and round-trip
+// through the hash-option helpers as a bare key.
+export function adhocDashboardId(encodedDefinition: string) {
+  return `${ADHOC_DASHBOARD_PATH}#${encodedDefinition}`;
+}
+
+export function adhocDashboard(definition: AdhocDashboardDefinition) {
+  return adhocDashboardId(
+    utf8_to_b64url(JSON.stringify(definition)).replace(/=+$/, ""),
+  );
+}
 
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;

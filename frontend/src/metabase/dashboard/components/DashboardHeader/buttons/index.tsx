@@ -12,4 +12,5 @@ export * from "./EditDashboardButton";
 export * from "./FullscreenAnalyticsDashboard";
 export * from "./SaveEditButton";
 export * from "./FullscreenToggle";
+export * from "./SaveAdhocDashboardButton";
 export * from "./ExportAsPdfButton";

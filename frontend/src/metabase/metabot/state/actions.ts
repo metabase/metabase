@@ -92,7 +92,7 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setIsPollingForTitle,
-  markChartSaved,
+  markEntitySaved,
 } = metabot.actions;
 
 const TITLE_POLL_INTERVAL_MS = 1500;
@@ -550,7 +550,9 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                const path = Urls.generatedEntity(part.data);
+                const path = Urls.generatedEntity(part.data, {
+                  conversationId,
+                });
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
@@ -564,10 +566,22 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
-                  markChartSaved({
-                    entityId: part.data.chart_id,
-                    cardId: part.data.card_id,
-                  }),
+                  markEntitySaved(
+                    match(part.data)
+                      .with(
+                        { type: "dashboard" },
+                        ({ generated_dashboard_id, dashboard_id }) => ({
+                          conversationId,
+                          entityId: generated_dashboard_id,
+                          savedId: dashboard_id,
+                        }),
+                      )
+                      .otherwise(({ chart_id, card_id }) => ({
+                        conversationId,
+                        entityId: chart_id,
+                        savedId: card_id,
+                      })),
+                  ),
                 );
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {
@@ -921,6 +935,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
         contextWindowTokens: detail.context_window_tokens,
         messages: detail.messages,
         state: detail.state,
+        savedEntities: detail.saved_entities,
         activeToolCalls: [],
       }),
     );
@@ -980,6 +995,7 @@ export const forkConversation = createAsyncThunk(
         contextWindowTokens: conversation.context_window_tokens,
         messages: conversation.messages,
         state: conversation.state,
+        savedEntities: conversation.saved_entities,
         activeToolCalls: [],
       }),
     );
