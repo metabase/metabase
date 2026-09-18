@@ -15,6 +15,39 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(deftest ^:parallel json-temporal-filter-test
+  (testing "JSON legacy date predicates must survive conversion, including inside compound filters (#79629)"
+    (doseq [[date-filter expected]
+            [[["during" ["field" "probe_date" {:base-type "type/Date"}] "2026-07-01" "month"]
+              [:during [:field "probe_date" {:base-type :type/Date}] "2026-07-01" :month]]
+             [["between" ["field" "probe_date" {:base-type "type/Date"}]
+               ["absolute-datetime" "2026-07-01" "day"]
+               ["absolute-datetime" "2026-07-31" "day"]]
+              [:between [:field "probe_date" {:base-type :type/Date}]
+               [:absolute-datetime "2026-07-01" :day]
+               [:absolute-datetime "2026-07-31" :day]]]
+             [["between" ["field" "probe_time" {:base-type "type/DateTime"}]
+               ["absolute-datetime" "2026-07-01T00:00:00" "hour"]
+               ["absolute-datetime" "2026-08-01T00:00:00" "hour"]]
+              [:between [:field "probe_time" {:base-type :type/DateTime}]
+               [:absolute-datetime "2026-07-01T00:00:00" :hour]
+               [:absolute-datetime "2026-08-01T00:00:00" :hour]]]]
+            compound [nil :and :or]]
+      (testing (pr-str [compound date-filter])
+        (let [filter-clause (if compound
+                              [(name compound) ["=" ["field" "is_included" {:base-type "type/Boolean"}] true]
+                               date-filter]
+                              date-filter)
+              expected      (if compound
+                              [compound [:= [:field "is_included" {:base-type :type/Boolean}] true] expected]
+                              expected)
+              query         {:database 1, :type "query", :query {:source-table 2, :filter filter-clause}}]
+          (is (= expected
+                 (-> #?(:clj query :cljs (clj->js query))
+                     lib.convert/js-legacy-query->mbql5
+                     lib.convert/->legacy-MBQL
+                     (get-in [:query :filter])))))))))
+
 (deftest ^:parallel ->mbql5-test
   (is (=? {:lib/type :mbql/query
            :stages   [{:lib/type     :mbql.stage/mbql

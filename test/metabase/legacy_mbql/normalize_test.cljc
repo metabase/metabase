@@ -1524,6 +1524,21 @@
            [:expression "expr" {:base-type :type/Date}]
            [:field 66302 {:base-type :type/DateTime}]]))))
 
+(deftest ^:parallel normalize-temporal-literal-units-test
+  (testing "JSON temporal units must normalize before validating enclosing filter clauses (#79629)"
+    (are [input expected] (= expected (mbql.normalize/normalize input))
+      ["absolute-datetime" "2026-07-01" "day"]
+      [:absolute-datetime "2026-07-01" :day]
+
+      ["absolute-datetime" "2026-07-01T12:30:00" "hour"]
+      [:absolute-datetime "2026-07-01T12:30:00" :hour]
+
+      ["time" "12:30:00" "minute"]
+      [:time "12:30:00" :minute]
+
+      ["during" ["field" "probe_date" {:base-type "type/Date"}] "2026-07-01" "month"]
+      [:during [:field "probe_date" {:base-type :type/Date}] "2026-07-01" :month])))
+
 (deftest ^:parallel do-not-normalize-fingerprints-test
   (testing "Numbers in fingerprints shouldn't get normalized"
     (let [fingerprint {:global {:distinct-count 1, :nil% 0}
