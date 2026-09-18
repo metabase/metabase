@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import attributesIllustration from "assets/img/attributes_illustration.png";
+import attributesIllustration2x from "assets/img/attributes_illustration@2x.png";
 import CS from "metabase/css/core/index.css";
 
 interface AttributeOptionsEmptyStateProps {
@@ -20,11 +22,8 @@ export const AttributeOptionsEmptyState = ({
     )}
   >
     <img
-      src="app/assets/img/attributes_illustration.png"
-      srcSet="
-        app/assets/img/attributes_illustration.png    1x,
-        app/assets/img/attributes_illustration@2x.png 2x,
-      "
+      src={attributesIllustration}
+      srcSet={`${attributesIllustration} 1x, ${attributesIllustration2x} 2x`}
       className={CS.mr2}
     />
     <div>

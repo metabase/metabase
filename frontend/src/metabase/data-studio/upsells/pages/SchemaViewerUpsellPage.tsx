@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import schemaViewerUpsellImage from "assets/img/schema-viewer.svg";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
 import { BaseUpsellPage } from "./BaseUpsellPage";
@@ -14,7 +15,7 @@ export function SchemaViewerUpsellPage() {
       header={t`Schema viewer`}
       title={t`Visualize your database structure`}
       description={t`Explore tables and their relationships at a glance. Follow foreign keys, expand into related tables, and see how your schema fits together.`}
-      image="app/assets/img/schema-viewer.svg"
+      image={schemaViewerUpsellImage}
     />
   );
 }
