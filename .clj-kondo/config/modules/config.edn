@@ -267,7 +267,9 @@
            lib.schema
            models
            request
+           server
            settings
+           system
            util
            util.config}
    :model-imports #{:model/Action
@@ -2470,6 +2472,7 @@
   {:team "UX West"
    :api  #{metabase.server.core
            metabase.server.init
+           metabase.server.lib.etag-cache
            metabase.server.middleware.security
            metabase.server.middleware.session
            metabase.server.settings
@@ -3218,6 +3221,7 @@
            queries
            request
            sample-data
+           server
            settings
            sync
            upload

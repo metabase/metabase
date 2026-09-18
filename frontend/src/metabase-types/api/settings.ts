@@ -585,7 +585,6 @@ interface PublicSettings {
   // Non-null: :public visibility and a total getter (computed from the jar's
   // bundled translation resources), so every viewer always receives a list.
   "available-locales": LocaleData[];
-  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
@@ -605,7 +604,6 @@ interface PublicSettings {
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
   "enable-sandboxes?": boolean;
-  engines: Record<EngineKey, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;

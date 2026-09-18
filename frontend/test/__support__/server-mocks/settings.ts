@@ -108,3 +108,7 @@ export function setupGenerateRandomTokenEndpoint(token: string) {
     { name: "generate-random-token" },
   );
 }
+
+export function setupTimezonesEndpoint(timezones: string[]) {
+  fetchMock.get("path:/api/util/timezones", timezones);
+}

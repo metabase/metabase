@@ -199,13 +199,6 @@ export const createMockSettings = (
     ["zh_HK", "Chinese (Hong Kong SAR China)"],
     ["zh_TW", "Chinese (Taiwan)"],
   ],
-  "available-timezones": [
-    // this is a subset of the timezones we have in the real app
-    "Europe/Paris",
-    "Pacific/Auckland",
-    "US/Mountain",
-    "UTC",
-  ],
   "bug-reporting-enabled": false,
   "bcc-enabled?": true,
   "smtp-override-enabled": false,
@@ -272,7 +265,6 @@ export const createMockSettings = (
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
-  engines: createMockEngines(),
   "example-dashboard-id": 1,
   gsheets: {},
   "humanization-strategy": "simple",
