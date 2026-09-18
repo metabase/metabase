@@ -9,7 +9,11 @@ import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Button, Flex, Icon, Modal, Text, Tooltip } from "metabase/ui";
+import { reload } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import {
@@ -84,6 +88,49 @@ export const NotFound = ({
     />
   </Flex>
 );
+
+/**
+ * Shown when a page could not be downloaded.
+ *
+ * Metabase serves its frontend in files named after their contents, so the files
+ * a page asks for are gone once a newer version is deployed. A tab opened before
+ * that deploy asks for files nobody serves any more.
+ *
+ * A modal, because this only renders where the app decided to keep the current
+ * page. The page behind it is intact, and its unsaved work with it, so closing
+ * this returns the user to it. A full page of its own would cover a page that is
+ * still usable, and give no way back to it.
+ */
+export const ChunkLoadFailed = ({
+  hasUnsavedChanges = false,
+}: {
+  hasUnsavedChanges?: boolean;
+}) => {
+  const applicationName = useSelector(getApplicationName);
+  const navigate = useNavigate();
+  const goBack = () => navigate(-1);
+
+  return (
+    <Modal title={t`${applicationName} was updated`} opened onClose={goBack}>
+      <Text my="lg">
+        {hasUnsavedChanges
+          ? t`This page could not be opened. Your unsaved changes are still here. Save them, then reload to get the latest version.`
+          : t`This page could not be opened. Reload to get the latest version.`}
+      </Text>
+      <Flex justify="flex-end" gap="md">
+        {/* Reloading discards unsaved work, so it leads only where there is none. */}
+        <Button
+          variant={hasUnsavedChanges ? "subtle" : "filled"}
+          onClick={reload}
+        >{t`Reload`}</Button>
+        <Button
+          variant={hasUnsavedChanges ? "filled" : "subtle"}
+          onClick={goBack}
+        >{t`Go back`}</Button>
+      </Flex>
+    </Modal>
+  );
+};
 
 export const Unauthorized = () => (
   <Flex
