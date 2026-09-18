@@ -1,8 +1,5 @@
 export {
   getFieldRemappings,
-  getMetadata,
-  getMetadataUnfiltered,
-  getMetadataWithHiddenTables,
   getRemappedFieldValue,
   getShallowDatabases,
   getShallowDatabaseSchemas,
@@ -24,7 +21,6 @@ export type { MetadataSelectorOpts, ShallowForeignKey } from "./selectors";
 
 export {
   selectMetadataProvider,
-  selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
   selectQuestionFromCard,
@@ -36,7 +32,8 @@ export {
   useMetadataProviderUnfiltered,
   useMetricMetadataProvider,
   useQuestionFromCard,
-  useQuestionFromOpts,
+  useQuestionFromCardBuilder,
+  useQuestionFromOptsBuilder,
 } from "./provider";
 export type {
   CardQuestionBuilder,

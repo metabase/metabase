@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]))
 
@@ -20,10 +21,10 @@
 (registry/deftool refresh-ui-credential
   "Refresh the scoped credential used by a Metabase MCP App. Called by the app itself, not by the model."
   {:name                "refresh_ui_credential"
-   ;; The same scope the iframe shells gate on: this tool exists only to serve them, and a caller who cannot
-   ;; read the shell has nothing to authenticate to.
+   ;; The same scope as the UI tools the iframe renders. Any token can read the shells, so this scope, not the
+   ;; shell read, is what keeps a credential from a token that could not call those tools.
    :scope               metabot.scope/agent-query-run
-   ;; Hidden from clients that cannot render an iframe, exactly like the shells — otherwise a model in a
+   ;; Hidden from clients that cannot render an iframe, like the UI tools it serves. Otherwise a model in a
    ;; text-only client sees a tool whose whole output is a credential it must not handle.
    :required-extensions #{:mcp-app-ui}
    :annotations         {:readOnlyHint true :idempotentHint true}
@@ -33,9 +34,9 @@
   (if (and session-id api/*current-user-id*)
     ;; Always minted with the caller's scopes, which is what subjects the credential to the native-SQL gate
     ;; on /api/dataset. (v1's claimless, gate-exempt 2-arity retired with v1 in this slice.)
-    (assoc (common/success-content "MCP UI credential refreshed.")
+    (assoc (common/success-content (message/msg ["MCP UI credential refreshed."]))
            :_meta {common/mcp-apps-meta-key
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id* token-scopes)
                     :sessionId  session-id}})
-    (common/error-content "Refreshing an MCP UI credential requires an authenticated MCP session."
+    (common/error-content (message/msg ["Refreshing an MCP UI credential requires an authenticated MCP session."])
                           common/error-code-invalid-request)))

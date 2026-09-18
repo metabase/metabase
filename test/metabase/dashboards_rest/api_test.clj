@@ -2744,13 +2744,7 @@
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
-        (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
-          (is (= [{:name true, :id true}]
-                 (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
-                   (m/map-vals boolean (select-keys dash [:name :id]))))))))
-    (testing "and that we can still see them once guest embeds are turned off"
-      (mt/with-temporary-setting-values [enable-embedding-modular false]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (mt/with-temp [:model/Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
@@ -3591,6 +3585,44 @@
         (testing "success if has read permission to the source card's collection"
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
+
+(deftest parameter-values-from-card-nested-source-card-test
+  (testing "users must have permissions to read every card the source card's query nests, not just the source card (SEC-1158)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp
+        [:model/Collection private-coll {:name "Private nested card collection"}
+         :model/Card       {nested-card-id :id} {:collection_id (:id private-coll)
+                                                 :database_id   (mt/id)
+                                                 :table_id      (mt/id :venues)
+                                                 :dataset_query (mt/mbql-query venues {:limit 5})}
+         :model/Collection wrapper-coll {:name "Readable wrapper card collection"}
+         :model/Card       {wrapper-card-id :id} {:collection_id (:id wrapper-coll)
+                                                  :database_id   (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (str "card__" nested-card-id)}}}
+         :model/Collection dash-coll {:name "Dashboard collection"}
+         :model/Dashboard  {dashboard-id :id} {:collection_id (:id dash-coll)
+                                               :parameters    [{:id                   "abc"
+                                                                :type                 "category"
+                                                                :name                 "CATEGORY"
+                                                                :values_source_type   "card"
+                                                                :values_source_config {:card_id     wrapper-card-id
+                                                                                       :value_field (mt/$ids $venues.name)}}]}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) wrapper-coll)
+        (testing "read permission on the wrapper card is not enough when its query nests a card the user cannot read"
+          (is (= (format "You do not have permissions to view Card %d." nested-card-id)
+                 (mt/user-http-request :rasta :get 403 (chain-filter-values-url dashboard-id "abc"))))
+          (is (= (format "You do not have permissions to view Card %d." nested-card-id)
+                 (mt/user-http-request :rasta :get 403 (chain-filter-search-url dashboard-id "abc" "red")))))
+        ;; grant permission to read the collection containing the nested card
+        (perms/grant-collection-read-permissions! (perms-group/all-users) private-coll)
+        (testing "success once the user can read the nested card too"
+          (is (=? {:values seq}
+                  (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
+          (is (=? {:values seq}
+                  (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
 (deftest parameter-values-from-card-test-4
   ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by Lib,
@@ -5576,7 +5608,7 @@
 (deftest update-dashboard-embedding-type-to-nil-test
   (testing "PUT /api/dashboard/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (mt/with-temp [:model/Dashboard dashboard {:enable_embedding true
                                                    :embedding_type "static-legacy"}]
           (with-dashboards-in-writeable-collection! [dashboard]
@@ -6283,7 +6315,7 @@
 
 (deftest update-embedding-type-to-guest-embed-and-static-legacy-test
   (testing "PUT /api/dashboard/:id sets/echoes/persists embedding_type for guest-embed and static-legacy"
-    (mt/with-temporary-setting-values [enable-embedding-modular true]
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (mt/with-temp [:model/Dashboard dashboard {}]
         (doseq [embedding-type ["guest-embed" "static-legacy"]]
           (let [resp (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
