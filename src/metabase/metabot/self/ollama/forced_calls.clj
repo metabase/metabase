@@ -227,20 +227,24 @@
                ;; The connection check cannot catch this: it probes with a non-streaming request.
                (when content (.append buffer ^String content))
                (cond
-                 ;; the answer is complete: flush the call, then the finish chunk that closes it.
-                 ;; `length` stands as it is — truncation has to stay visible, and dressing it up as a
-                 ;; completed call would hide it behind a JSON parse error
-                 finish_reason (-> result
-                                   (flush!)
-                                   (rf (cond-> chunk
-                                         ;; the fragment left with the buffer it was appended to;
-                                         ;; leaving it here too would put the grammar's raw answer on
-                                         ;; the content channel, which is what this transducer exists
-                                         ;; to keep it off
-                                         content (update-in [:choices 0 :delta] dissoc :content)
-
-                                         (= "stop" finish_reason)
-                                         (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
+                 finish_reason
+                 ;; Only a `stop` becomes a call. On anything else the buffer holds a half-written
+                 ;; answer, and `:structured` would mint a call from it regardless — its name is
+                 ;; fixed, so nothing stops it — which reaches the caller as
+                 ;; `structured-output-invalid` rather than the truncation that actually happened.
+                 ;; `:tool-union` cannot read a name out of a partial answer, so it already behaves
+                 ;; this way; discarding here makes the two modes agree.
+                 (let [complete? (= "stop" finish_reason)
+                       result    (if complete?
+                                   (flush! result)
+                                   (do (.setLength buffer 0) result))]
+                   (rf result
+                       (cond-> chunk
+                         ;; the fragment left with the buffer it was appended to; leaving it here too
+                         ;; would put the grammar's raw answer on the content channel, which is what
+                         ;; this transducer exists to keep it off
+                         content   (update-in [:choices 0 :delta] dissoc :content)
+                         complete? (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
 
                  content result
 

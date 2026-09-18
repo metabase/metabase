@@ -195,7 +195,11 @@
       (let [out (read-back structured-plan
                            [(content-chunk "{\"title\": \"Late or" "length")])]
         (is (= ["length"] (finish-reasons out))
-            "the `length` that used to be swallowed, leaving a parse error over a half-written answer")))))
+            "the `length` that used to be swallowed, leaving a parse error over a half-written answer")
+        (is (empty? (tool-calls out))
+            (str "and no call is minted from the half-written buffer: `:structured`'s name is fixed, so it "
+                 "would mint one regardless, and the caller would see `structured-output-invalid` instead "
+                 "of the truncation"))))))
 
 (deftest ^:parallel read-back-leaves-an-unconstrained-stream-alone-test
   (testing "without a grammar there is no transducer, so nothing is buffered or rewritten"
