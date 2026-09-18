@@ -3,11 +3,14 @@ import {
   useMetabaseAuthStatus,
   useMetabot,
 } from "@metabase/embedding-sdk-react";
+import { DataAppDevProvider } from "@metabase/embedding-sdk-react/data-app-dev";
 import * as React from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   getSdkBundleScriptElement,
+  mountSdk,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -107,6 +110,29 @@ describe("scenarios > embedding-sdk > unsupported-react-version", () => {
 
     cy.findByTestId("host-hook-value").should("have.text", "none");
     cy.findByTestId("sdk-unsupported-react-version-error").should("not.exist");
+  });
+
+  // A data app is built as its own Vite project and previewed with `npm run
+  // dev`, so the React it runs is its author's while the bundle comes from the
+  // instance. DataAppDevProvider is what that dev server mounts; a deployed
+  // data app runs Metabase's own React and cannot mismatch.
+  it("replaces a data app in dev mode with the error", () => {
+    mountSdk(
+      <DataAppDevProvider
+        appSlug="unsupported-react-version"
+        authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+      >
+        <div data-testid="data-app-content">data app content</div>
+      </DataAppDevProvider>,
+    );
+
+    assertUnsupportedReactErrorLoggedOnce();
+
+    cy.findByTestId("sdk-unsupported-react-version-error").should(
+      "have.text",
+      UNSUPPORTED_REACT_ERROR,
+    );
+    cy.findByTestId("data-app-content").should("not.exist");
   });
 });
 
