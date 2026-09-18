@@ -163,7 +163,10 @@
                     {:type        :http
                      :status-code 400})))
   (actions/check-actions-enabled! id)
-  (let [existing-action (api/write-check :model/Action id)]
+  (api/write-check :model/Action id)
+  ;; select-action includes :dataset_query, which write-check omits. actions/update! needs it to prevent
+  ;; :database_id-only updates from moving the action to another database.
+  (let [existing-action (actions/select-action :id id)]
     (when (= (:type existing-action) :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http

@@ -340,6 +340,23 @@
                  (is (=? {:database_id query-db-id}
                          (mt/user-http-request :rasta :put 200 url repoint))))))))))))
 
+(deftest action-update-cannot-repoint-database-id-without-the-query-test
+  (testing "PUT /api/action/:id with only :database_id leaves a query action pointed at its query's database"
+    (do-with-two-actions-enabled-dbs!
+     (fn [model-db-id query-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (mt/with-temp [:model/Card {model-id :id} (model-card-def :crowberto)]
+           (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                               (cross-db-native-action model-id model-db-id model-db-id))]
+             (is (=? {:database_id model-db-id}
+                     created))
+             (testing "the declared database_id is re-derived from the existing query, not written through"
+               (is (=? {:database_id model-db-id}
+                       (mt/user-http-request :crowberto :put 200 (str "action/" (:id created))
+                                             {:database_id query-db-id})))
+               (is (=? {:database_id model-db-id}
+                       (mt/user-http-request :crowberto :get 200 (str "action/" (:id created)))))))))))))
+
 (deftest action-creation-checks-actions-enabled-on-query-database-test
   (testing "POST /api/action checks actions-enabled on the database the query targets"
     (mt/dataset test-data
