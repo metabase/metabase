@@ -10,7 +10,21 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { TimelineSidebar } from "./TimelineSidebar";
+import { TimelineSidebar, type TimelineSidebarProps } from "./TimelineSidebar";
+
+const getProps = (
+  opts?: Partial<TimelineSidebarProps>,
+): TimelineSidebarProps => ({
+  collectionId: "root",
+  timelines: [],
+  visibleEventIds: [],
+  selectedEventIds: [],
+  onUpdateVisibility: jest.fn(),
+  onSelectEvents: jest.fn(),
+  onDeselectEvents: jest.fn(),
+  onClose: jest.fn(),
+  ...opts,
+});
 
 describe("TimelineSidebar", () => {
   beforeEach(() => {
@@ -32,19 +46,34 @@ describe("TimelineSidebar", () => {
 
     renderWithProviders(
       <TimelineSidebar
-        collectionId="root"
-        timelines={[timeline]}
-        visibleEventIds={[1]}
-        selectedEventIds={[]}
-        onUpdateVisibility={jest.fn()}
-        onSelectEvents={jest.fn()}
-        onDeselectEvents={jest.fn()}
-        onClose={jest.fn()}
+        {...getProps({ timelines: [timeline], visibleEventIds: [1] })}
       />,
     );
 
     expect(await screen.findByText("Create event")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Create event"));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("waits for the timelines instead of offering to create the first event", () => {
+    renderWithProviders(<TimelineSidebar {...getProps({ isLoading: true })} />);
+
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Add context to your time series charts"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reports a failed load instead of claiming there are no events", () => {
+    renderWithProviders(
+      <TimelineSidebar
+        {...getProps({ error: { data: "Timelines are unavailable" } })}
+      />,
+    );
+
+    expect(screen.getByText("Timelines are unavailable")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Add context to your time series charts"),
+    ).not.toBeInTheDocument();
   });
 });

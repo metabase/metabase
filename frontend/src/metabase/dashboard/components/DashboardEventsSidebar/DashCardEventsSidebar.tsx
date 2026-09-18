@@ -48,6 +48,7 @@ export function DashCardEventsSidebar({
   }, [isOnAnotherTab, closeSidebar]);
 
   const dashcardIds = useMemo(() => [dashcardId], [dashcardId]);
+  const xAxes = useMemo(() => (xAxis ? [xAxis] : null), [xAxis]);
 
   const handleShowAllEvents = useCallback(() => {
     dispatch(openEventsSidebar({ dashcardId }));
@@ -66,7 +67,7 @@ export function DashCardEventsSidebar({
         visibleEventIds={visibleEventIds}
         selectedEventIds={selectedEventIds}
         focusedEventIds={focusedEventIds}
-        xAxis={xAxis}
+        xAxes={xAxes}
         onShowAllEvents={handleShowAllEvents}
       />
     </Sidebar>

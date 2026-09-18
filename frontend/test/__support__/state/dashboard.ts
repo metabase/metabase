@@ -29,6 +29,7 @@ export const createMockDashboardState = (
   },
   timelineEvents: {
     overrides: {},
+    enabledByDashCard: {},
     selection: null,
     hasTrackedEventsShown: false,
   },

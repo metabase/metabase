@@ -30,6 +30,11 @@ export const setDashCardTimelineEventsVisibility = createAction<
   Record<DashCardId, TimelineEventsVisibility>
 >("metabase/dashboard/SET_DASHCARD_TIMELINE_EVENTS_VISIBILITY");
 
+export const setDashCardTimelineEventsEnabled = createAction<{
+  dashcardId: DashCardId;
+  isEnabled: boolean;
+}>("metabase/dashboard/SET_DASHCARD_TIMELINE_EVENTS_ENABLED");
+
 export const selectTimelineEvents = createAction<TimelineEventsSelection>(
   "metabase/dashboard/SELECT_TIMELINE_EVENTS",
 );

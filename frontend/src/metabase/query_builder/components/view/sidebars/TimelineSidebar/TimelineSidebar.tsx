@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
+import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { TimelineSidebar as SharedTimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
@@ -30,6 +31,8 @@ export const TimelineSidebar = () => {
   const selectedEventIds = useSelector(getSelectedTimelineEventIds);
   const focusedEventIds = useSelector(getFocusedTimelineEventIds);
   const xAxis = useSelector(getTimeseriesXAxis);
+  const xAxes = useMemo(() => (xAxis ? [xAxis] : null), [xAxis]);
+  const { isLoading, error } = useListTimelinesQuery({ include: "events" });
 
   const handleUpdateVisibility = useCallback(
     (update: TimelineEventsVisibilityUpdate) =>
@@ -60,7 +63,9 @@ export const TimelineSidebar = () => {
       visibleEventIds={visibleEventIds}
       selectedEventIds={selectedEventIds}
       focusedEventIds={focusedEventIds}
-      xAxis={xAxis}
+      xAxes={xAxes}
+      isLoading={isLoading}
+      error={error}
       onUpdateVisibility={handleUpdateVisibility}
       onSelectEvents={handleSelectEvents}
       onDeselectEvents={handleDeselectEvents}

@@ -64,6 +64,7 @@ import {
   deselectTimelineEvents,
   markTimelineEventsShown,
   selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
   setDashCardTimelineEventsVisibility,
 } from "./actions/timeline-events";
 import { INITIAL_DASHBOARD_STATE, SIDEBAR_NAME } from "./constants";
@@ -225,6 +226,9 @@ export const timelineEvents = createReducer(
       if (Object.keys(state.overrides).length > 0) {
         state.overrides = {};
       }
+      if (Object.keys(state.enabledByDashCard).length > 0) {
+        state.enabledByDashCard = {};
+      }
     });
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
@@ -237,6 +241,14 @@ export const timelineEvents = createReducer(
     builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
       state.overrides = { ...state.overrides, ...action.payload };
     });
+    builder.addCase(
+      setDashCardTimelineEventsEnabled,
+      (state, { payload: { dashcardId, isEnabled } }) => {
+        if (state.enabledByDashCard[dashcardId] !== isEnabled) {
+          state.enabledByDashCard[dashcardId] = isEnabled;
+        }
+      },
+    );
     builder.addCase(selectTimelineEvents, (state, action) => {
       state.selection = action.payload;
     });
