@@ -1,11 +1,14 @@
 (ns metabase-enterprise.transform-testing.run-tracking
   "Cluster-safe lifecycle tracking for transform test runs."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -23,6 +26,9 @@
   ([transform-test-id :- ms/PositiveInt
     initiated-by      :- [:maybe ::lib.schema.id/user]]
    (let [run (transform-testing.db/insert-transform-test-run! transform-test-id initiated-by)]
+     (events/publish-event! :event/transform-test-run-start
+                            (-> {:object run}
+                              (m/assoc-some :user-id initiated-by))
      (swap! active-runs conj (:id run))
      run)))
 
@@ -54,10 +60,20 @@
 (defn reap-orphaned-runs!
   "Time out started runs whose owning process has stopped heartbeating."
   [stale-minutes]
-  (rt/reap-orphaned! {:model    :model/TransformTestRun
-                      :active   [:status "started"]
-                      :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-                      :terminal {:status "timeout" :end_time :%now}}))
+  (let [reaped (rt/reap-orphaned! {:model    :model/TransformTestRun
+                                   :active   [:status "started"]
+                                   :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
+                                   :terminal {:status "timeout" :end_time :%now}})]
+    (doseq [run reaped]
+      (try
+        (events/publish-event! :event/transform-test-run-timeout
+                               (-> {:object (assoc run :status :timeout)}
+                                   (m/assoc-some :user-id (:initiated_by run)))
+        (catch Throwable t
+          (log/warnf "Failed to publish transform-test-run-timeout event for run %s: %s"
+                     (:id run)
+                     (ex-message t)))))
+    reaped))
 
 (defmethod task/init! ::TransformTestRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))

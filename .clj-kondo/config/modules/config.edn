@@ -2323,9 +2323,7 @@
 
   revisions
   {:team "UX West"
-   :api  #{metabase.revisions.api
-           metabase.revisions.core
-           metabase.revisions.init}
+   :api  #{metabase.revisions.api metabase.revisions.core metabase.revisions.init}
    :uses #{api
            collections
            dashboards
@@ -2355,7 +2353,8 @@
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment
-                    :model/Transform}}
+                    :model/Transform
+                    :model/TransformTest}}
 
   run-tracking
   {:team "Gadget"
@@ -4352,12 +4351,14 @@
   {:team "Graphy"
    :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
    :uses #{api
+           audit-app
            driver
            events
            lib
            lib.schema
            models
            premium-features
+           revisions
            run-tracking
            sql-tools
            sql-tools.parsing

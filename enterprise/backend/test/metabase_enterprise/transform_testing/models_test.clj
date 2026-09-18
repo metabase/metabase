@@ -270,3 +270,13 @@
       (is (nil? (t2/select-one-fn :transform_test_id :model/TransformTestRun :id run-id)))
       (is (= 1 (transform-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/TransformTestRun :id run-id))))))
+
+(deftest deleting-run-initiator-preserves-run-test
+  (mt/with-temp [:model/Transform     {transform-id :id} {}
+                 :model/TransformTest {transform-test-id :id} {:transform_id transform-id}
+                 :model/User          {user-id :id} {}]
+    (let [{run-id :id} (transform-testing.run-tracking/start-run! transform-test-id user-id)]
+      (t2/delete! :model/User :id user-id)
+      (is (nil? (t2/select-one-fn :initiated_by :model/TransformTestRun :id run-id)))
+      (is (= 1 (transform-testing.run-tracking/finish-run! run-id :passed)))
+      (is (= :passed (t2/select-one-fn :status :model/TransformTestRun :id run-id))))))

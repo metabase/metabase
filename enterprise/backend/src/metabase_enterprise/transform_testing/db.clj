@@ -20,11 +20,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TransformTest :id id))
 
-(mu/defn transform-test-run :- [:maybe ::transform-testing.schema/transform-test-run]
-  "The TransformTestRun with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTestRun :id id))
-
 (mu/defn insert-transform-test! :- ::transform-testing.schema/transform-test
   "Insert the TransformTest `transform-test` and return the inserted instance."
   [transform-test :- [:merge
