@@ -6,7 +6,12 @@ import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -68,7 +73,16 @@ jest.mock("metabase/common/components/CodeMirror", () => {
 
 const QUERY_TEXT = "SELECT 1";
 
-function TestEditor({ metadata }: { metadata: Metadata }) {
+const setDatasetQuerySpy = jest.fn();
+const runQuerySpy = jest.fn();
+
+function TestEditor({
+  metadata,
+  withRunButton = false,
+}: {
+  metadata: Metadata;
+  withRunButton?: boolean;
+}) {
   const [card, setCard] = useState(() =>
     createMockCard({
       id: 1,
@@ -86,6 +100,7 @@ function TestEditor({ metadata }: { metadata: Metadata }) {
 
   // The query builder passes a dispatch-bound action, whose identity is stable
   const setDatasetQuery = useCallback((updatedQuery: NativeQuery) => {
+    setDatasetQuerySpy(updatedQuery.queryText());
     setCard((previousCard) => ({
       ...previousCard,
       dataset_query: updatedQuery.datasetQuery(),
@@ -98,11 +113,16 @@ function TestEditor({ metadata }: { metadata: Metadata }) {
       query={query}
       isNativeEditorOpen
       setDatasetQuery={setDatasetQuery}
-    />
+      isRunnable
+      runQuery={runQuerySpy}
+      cancelQuery={jest.fn()}
+    >
+      {withRunButton && <NativeQueryEditor.RunButton />}
+    </NativeQueryEditor>
   );
 }
 
-async function typeThreeCharacters() {
+async function setup({ withRunButton = false } = {}) {
   setupNativeQuerySnippetEndpoints();
   setupCollectionsEndpoints({ collections: [] });
 
@@ -110,9 +130,17 @@ async function typeThreeCharacters() {
     databases: [createSampleDatabase()],
   });
 
-  renderWithProviders(<TestEditor metadata={metadata} />);
+  const { unmount } = renderWithProviders(
+    <TestEditor metadata={metadata} withRunButton={withRunButton} />,
+  );
 
   const editor = await screen.findByTestId("mock-code-mirror");
+
+  return { editor, unmount };
+}
+
+async function typeThreeCharacters() {
+  const { editor } = await setup();
 
   receivedProps.length = 0;
   await userEvent.type(editor, "234");
@@ -123,6 +151,8 @@ async function typeThreeCharacters() {
 describe("NativeQueryEditor typing", () => {
   beforeEach(() => {
     receivedProps.length = 0;
+    setDatasetQuerySpy.mockClear();
+    runQuerySpy.mockClear();
   });
 
   it.each(RECONFIGURING_PROPS)(
@@ -134,4 +164,65 @@ describe("NativeQueryEditor typing", () => {
       expect(new Set(renders.map((render) => render[prop])).size).toBe(1);
     },
   );
+});
+
+describe("NativeQueryEditor deferred edits", () => {
+  beforeEach(() => {
+    receivedProps.length = 0;
+    setDatasetQuerySpy.mockClear();
+    runQuerySpy.mockClear();
+  });
+
+  it("should not put the edit in the store during the keystroke", async () => {
+    const { editor } = await setup();
+
+    fireEvent.change(editor, { target: { value: "SELECT 2" } });
+
+    expect(setDatasetQuerySpy).not.toHaveBeenCalled();
+  });
+
+  it("should put the edit in the store once the keystroke is over", async () => {
+    const { editor } = await setup();
+
+    fireEvent.change(editor, { target: { value: "SELECT 2" } });
+
+    await waitFor(() => {
+      expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 2");
+    });
+  });
+
+  it("should only apply the last of several edits made in one task", async () => {
+    const { editor } = await setup();
+
+    fireEvent.change(editor, { target: { value: "SELECT 2" } });
+    fireEvent.change(editor, { target: { value: "SELECT 23" } });
+    fireEvent.change(editor, { target: { value: "SELECT 234" } });
+
+    await waitFor(() => {
+      expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 234");
+    });
+    expect(setDatasetQuerySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not lose a pending edit when the editor unmounts", async () => {
+    const { editor, unmount } = await setup();
+
+    fireEvent.change(editor, { target: { value: "SELECT 2" } });
+    unmount();
+
+    expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 2");
+  });
+
+  it("should apply a pending edit before running the query", async () => {
+    const { editor } = await setup({ withRunButton: true });
+
+    fireEvent.change(editor, { target: { value: "SELECT 2" } });
+    await userEvent.click(screen.getByTestId("run-button"));
+
+    expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 2");
+    expect(runQuerySpy).toHaveBeenCalled();
+    expect(setDatasetQuerySpy.mock.invocationCallOrder[0]).toBeLessThan(
+      runQuerySpy.mock.invocationCallOrder[0],
+    );
+  });
 });

@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLatest, useMount } from "react-use";
+import { useLatest, useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
@@ -226,15 +226,50 @@ export const NativeQueryEditorRoot = forwardRef<
   const queryRef = useLatest(query);
   const questionRef = useLatest(question);
 
+  const pendingQueryTextRef = useRef<string | null>(null);
+  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const flushPendingChange = useCallback(() => {
+    if (flushTimeoutRef.current != null) {
+      clearTimeout(flushTimeoutRef.current);
+      flushTimeoutRef.current = undefined;
+    }
+
+    const queryText = pendingQueryTextRef.current;
+    pendingQueryTextRef.current = null;
+
+    const currentQuery = queryRef.current;
+    if (queryText != null && currentQuery.queryText() !== queryText) {
+      setDatasetQuery(currentQuery.setQueryText(queryText));
+    }
+  }, [queryRef, setDatasetQuery]);
+
+  // Putting the edit in the store rerenders the query builder, which is far
+  // more work than the keystroke that caused it. Doing that in a later task
+  // lets the editor paint the character first, which is what keeps typing
+  // responsive on large queries (DEV-3545).
   const handleChange = useCallback(
     (queryText: string) => {
-      const currentQuery = queryRef.current;
-      if (currentQuery.queryText() !== queryText) {
-        setDatasetQuery(currentQuery.setQueryText(queryText));
+      pendingQueryTextRef.current = queryText;
+      if (flushTimeoutRef.current == null) {
+        flushTimeoutRef.current = setTimeout(flushPendingChange);
       }
     },
-    [queryRef, setDatasetQuery],
+    [flushPendingChange],
   );
+
+  // Anything that reads the query from the store needs the pending edit first.
+  const handleRunQuery = useCallback(() => {
+    flushPendingChange();
+    runQuery?.();
+  }, [flushPendingChange, runQuery]);
+
+  const handleBlur = useCallback(() => {
+    flushPendingChange();
+    onBlur?.();
+  }, [flushPendingChange, onBlur]);
+
+  useUnmount(flushPendingChange);
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
@@ -276,8 +311,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
     const formattedQuery = await formatQuery(queryText, engine);
     handleChange(formattedQuery);
+    flushPendingChange();
     focusEditor();
-  }, [questionRef, focusEditor, handleChange]);
+  }, [questionRef, focusEditor, handleChange, flushPendingChange]);
 
   const handleResize = useCallback(
     (height: number) => {
@@ -312,7 +348,7 @@ export const NativeQueryEditorRoot = forwardRef<
     isRunnable,
     isRunning,
     isResultDirty,
-    runQuery,
+    runQuery: handleRunQuery,
     cancelQuery,
     nativeEditorSelectedText,
     snippets,
@@ -370,9 +406,9 @@ export const NativeQueryEditorRoot = forwardRef<
                   hasSqlGenerationAccess={hasSqlGenerationAccess}
                   highlightedLineNumbers={highlightedLineNumbers}
                   extensions={extensions}
-                  onBlur={onBlur}
+                  onBlur={handleBlur}
                   onChange={handleChange}
-                  onRunQuery={runQuery}
+                  onRunQuery={handleRunQuery}
                   onSelectionChange={setNativeEditorSelectedRange}
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
@@ -402,6 +438,7 @@ export const NativeQueryEditorRoot = forwardRef<
                               proposedQuestion.legacyNativeQuery();
                             if (proposedQuery) {
                               handleChange(proposedQuery.queryText());
+                              flushPendingChange();
                               onAcceptProposed(proposedQuery.datasetQuery());
                             }
                           }}
