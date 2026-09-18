@@ -161,7 +161,7 @@
                    :headers {"Content-Type" "application/json"}}
                   req))
           (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-                  :generationConfig {:maxOutputTokens 65536
+                  :generationConfig {:maxOutputTokens 32000
                                      :thinkingConfig  {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
