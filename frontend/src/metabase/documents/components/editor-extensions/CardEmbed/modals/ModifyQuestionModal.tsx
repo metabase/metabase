@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import {
   selectQuestionFromCard,
-  useQuestionFromCard,
+  useQuestionFromCardBuilder,
 } from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
@@ -33,7 +33,7 @@ export const ModifyQuestionModal = ({
   const store = useStore();
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );

@@ -119,6 +119,8 @@
     :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
+    ;; copied by table name instead, since its model is EE-only
+    :model/TransformTest
     :model/Undo
     :model/UserKeyValue})
 

@@ -158,7 +158,7 @@
 
 ;; Resource
 (api-scope/defscope agent-resource-read "agent:resource:read"
-  (deferred-tru "View resources"))
+  (deferred-tru "Read MCP resources"))
 
 ;; Todo
 (api-scope/defscope agent-todo-read "agent:todo:read"
