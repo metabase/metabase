@@ -55,6 +55,7 @@ export const ENGINE_LOGO: Record<string, string> = {
   "druid-jdbc": "druid.svg",
   h2: "h2.svg",
   mongo: "mongo.svg",
+  motherduck: "motherduck.svg",
   mysql: "mysql.svg",
   oracle: "oracle.svg",
   postgres: "postgres.svg",
