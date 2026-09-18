@@ -71,6 +71,7 @@
 
 (defmethod driver/validate-db-details! :databricks
   [_driver details]
+  (sql-jdbc/reject-dangerous-additional-options! details)
   (when-let [opts (not-empty (:additional-options details))]
     (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
       (throw (Exception. "Potentially dangerous keys in connection details")))))
