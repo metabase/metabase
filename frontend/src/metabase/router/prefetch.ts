@@ -36,7 +36,10 @@ export function registerPagePrefetch(
   {
     exact = false,
     backgroundOnly = false,
-  }: { exact?: boolean; backgroundOnly?: boolean } = {},
+  }: {
+    exact?: boolean;
+    backgroundOnly?: boolean;
+  } = {},
 ): void {
   registrations.push({
     path,
@@ -116,19 +119,34 @@ function shouldPrefetchOnVisible(): boolean {
 const IDLE_TIMEOUT_MS = 10_000;
 const NO_IDLE_CALLBACK_DELAY_MS = 3_000;
 
-function whenIdle(run: () => void): void {
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(run, { timeout: IDLE_TIMEOUT_MS });
-    return;
-  }
-  window.setTimeout(run, NO_IDLE_CALLBACK_DELAY_MS);
+function nextIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    const run = () => resolve();
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout: IDLE_TIMEOUT_MS });
+      return;
+    }
+    window.setTimeout(run, NO_IDLE_CALLBACK_DELAY_MS);
+  });
 }
 
 /**
- * One page at a time, so that a page the user asks for while this runs competes
- * with one background request rather than all of them.
+ * One page at a time, and only while the tab has nothing else to do.
+ *
+ * The browser runs a chunk as it arrives, so the cost of a page is main thread
+ * time and not only a request. Waiting for the tab to be idle again between
+ * pages is what keeps that off the moment the user starts doing something. One
+ * at a time also means a page the user asks for competes with a single
+ * background request rather than with all of them.
  */
-async function startPendingRegistrationsInTurn(): Promise<void> {
+async function startPendingRegistrationsInTurn(
+  shouldStart?: () => boolean,
+): Promise<void> {
+  await nextIdle();
+  if (shouldStart && !shouldStart()) {
+    return;
+  }
+
   for (const registration of registrations) {
     if (registration.isStarted) {
       continue;
@@ -140,6 +158,8 @@ async function startPendingRegistrationsInTurn(): Promise<void> {
     } catch {
       registration.isStarted = false;
     }
+
+    await nextIdle();
   }
 }
 
@@ -162,17 +182,14 @@ async function startPendingRegistrationsInTurn(): Promise<void> {
  */
 export function prefetchRegisteredPages({
   shouldStart,
-}: { shouldStart?: () => boolean } = {}): void {
+}: {
+  shouldStart?: () => boolean;
+} = {}): void {
   if (typeof window === "undefined" || !isConnectionWorthGuessingOn()) {
     return;
   }
 
-  whenIdle(() => {
-    if (shouldStart && !shouldStart()) {
-      return;
-    }
-    void startPendingRegistrationsInTurn();
-  });
+  void startPendingRegistrationsInTurn(shouldStart);
 }
 
 const observedPaths = new WeakMap<Element, string>();
