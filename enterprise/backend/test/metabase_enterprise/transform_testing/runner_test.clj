@@ -43,6 +43,12 @@
                   :expectations expectations}]
     (transform-testing.runner/run-transform-test! transform-test)))
 
+(defn- drivers-resolving-bare-tables
+  "The test drivers that resolve an unqualified table reference to the schema the test data lives in. Redshift reports
+  no default schema, so a read of `people` cannot be matched to the input declared for `sha__….people`."
+  []
+  (disj (mt/normal-drivers-with-feature :transforms/testing) :redshift))
+
 (def ^:private one-row "SELECT 1 AS id, 'abc' AS name")
 
 (deftest run-transform-test-rows-input-test
@@ -292,13 +298,12 @@
 
 (deftest run-transform-test-table-qualified-columns-test
   (testing "column qualifiers naming a replaced table are rewritten along with the table, so the transform reads the input"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (drivers-resolving-bare-tables)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:source {:type  "query"
-                                 :query (lib/native-query mp (str "SELECT " table ".id, " table ".name"
-                                                                  " FROM " schema "." table))}
+                                 :query (lib/native-query mp (str "SELECT " table ".id, " table ".name FROM " table))}
                         :target {:type "table" :schema schema :name "people_qualified" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id transform-id
