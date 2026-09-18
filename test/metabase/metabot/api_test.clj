@@ -639,6 +639,16 @@
                           (agent-request (str (random-uuid)) "first"
                                          :assistant_message_id "not-a-uuid"))))
 
+(deftest agent-streaming-accepts-question-without-data-source-test
+  (testing "a new question with no data source picked yet still gets an answer (#75195)"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [draft    {:database nil :type "query" :query {:source-table nil}}
+              response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                             (agent-request (str (random-uuid)) "Show me all orders"
+                                                            :context {:user_is_viewing [{:type "adhoc" :query draft}]}))]
+          (is (str/includes? response "\"delta\":\"hi\"")))))))
+
 (deftest agent-streaming-replaces-trailing-failed-turn-test
   (testing "a resubmit whose parent points before a mid-stream-errored turn replaces the failed pair"
     (with-mock-streaming-provider!
