@@ -3131,6 +3131,780 @@
       "metabase-enterprise.support-access-grants.schema.timestamp" : {
         "anyOf" : [ { }, { } ]
       },
+      "metabase-enterprise.transform-testing.expectations.empty.result" : {
+        "description" : "What an `empty` expectation found.\n\n  A pass carries nothing beyond the shared keys. A failure adds the rows the query returned as\n  `:sample`, with `:columns` describing them; the sample is capped, and `:truncated` is how many\n  rows that cap dropped.",
+        "oneOf" : [ {
+          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+          "type" : "object",
+          "properties" : {
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "additionalProperties" : false
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+            },
+            "type" : {
+              "const" : "empty"
+            }
+          },
+          "required" : [ "name", "type", "status" ],
+          "additionalProperties" : false
+        }, {
+          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+          "type" : "object",
+          "properties" : {
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "additionalProperties" : false
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+            },
+            "type" : {
+              "const" : "empty"
+            }
+          },
+          "required" : [ "name", "type", "status" ],
+          "additionalProperties" : false
+        }, {
+          "description" : "The rows the query returned, and the columns describing them.",
+          "type" : "object",
+          "properties" : {
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "additionalProperties" : false
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "sample" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+            },
+            "truncated" : {
+              "type" : "integer"
+            },
+            "type" : {
+              "const" : "empty"
+            }
+          },
+          "required" : [ "name", "type", "status", "columns", "sample", "truncated" ],
+          "additionalProperties" : false
+        } ]
+      },
+      "metabase-enterprise.transform-testing.expectations.equals.result" : {
+        "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped.",
+        "oneOf" : [ {
+          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+          "type" : "object",
+          "properties" : {
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "additionalProperties" : false
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "name", "type", "status" ],
+          "additionalProperties" : false
+        }, {
+          "description" : "The comparison's findings, reported in full on a pass as well as a failure.",
+          "type" : "object",
+          "properties" : {
+            "truncated" : {
+              "type" : "integer"
+            },
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "additionalProperties" : false
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+            },
+            "extra-rows" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "type" : {
+              "const" : "equals"
+            },
+            "missing-rows" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "cell-mismatches" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "actual" : {
+                    "oneOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "number"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "column" : {
+                    "type" : "string"
+                  },
+                  "expected" : {
+                    "oneOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "number"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "column", "expected", "actual" ],
+                "additionalProperties" : false
+              }
+            },
+            "row-counts" : {
+              "type" : "object",
+              "properties" : {
+                "actual" : {
+                  "type" : "integer"
+                },
+                "expected" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "actual", "expected" ],
+              "additionalProperties" : false
+            }
+          },
+          "required" : [ "name", "type", "status", "columns", "row-counts", "extra-rows", "missing-rows", "cell-mismatches", "truncated" ],
+          "additionalProperties" : false
+        }, {
+          "description" : "The comparison's findings, reported in full on a pass as well as a failure.",
+          "type" : "object",
+          "properties" : {
+            "truncated" : {
+              "type" : "integer"
+            },
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+              }
+            },
+            "error" : {
+              "type" : "object",
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "additionalProperties" : false
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+            },
+            "extra-rows" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "type" : {
+              "const" : "equals"
+            },
+            "missing-rows" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "cell-mismatches" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "actual" : {
+                    "oneOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "number"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "column" : {
+                    "type" : "string"
+                  },
+                  "expected" : {
+                    "oneOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "number"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "column", "expected", "actual" ],
+                "additionalProperties" : false
+              }
+            },
+            "row-counts" : {
+              "type" : "object",
+              "properties" : {
+                "actual" : {
+                  "type" : "integer"
+                },
+                "expected" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "actual", "expected" ],
+              "additionalProperties" : false
+            }
+          },
+          "required" : [ "name", "type", "status", "columns", "row-counts", "extra-rows", "missing-rows", "cell-mismatches", "truncated" ],
+          "additionalProperties" : false
+        } ]
+      },
+      "metabase-enterprise.transform-testing.schema..expectation-result.base" : {
+        "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
+            }
+          },
+          "error" : {
+            "type" : "object",
+            "properties" : {
+              "message" : {
+                "type" : "string"
+              },
+              "type" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "type", "message" ],
+            "additionalProperties" : false
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "type", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema..expectation.empty" : {
+        "description" : "A check that a SQL query over the transform output returns no rows.",
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "sql" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "type" : {
+            "const" : "empty"
+          }
+        },
+        "required" : [ "type", "name", "sql" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema..expectation.equals" : {
+        "description" : "A check that the transform output holds exactly the declared rows, over exactly the declared columns.",
+        "oneOf" : [ {
+          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "type" : "object",
+          "properties" : {
+            "format" : {
+              "const" : "sql"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "sql" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "type", "name", "format", "sql" ],
+          "additionalProperties" : false
+        }, {
+          "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
+          "type" : "object",
+          "properties" : {
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.column"
+              },
+              "minItems" : 1
+            },
+            "format" : {
+              "const" : "rows"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "rows" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "type", "name", "format", "columns", "rows" ],
+          "additionalProperties" : false
+        } ]
+      },
+      "metabase-enterprise.transform-testing.schema..transform-test.create" : {
+        "description" : "What a client sends to create a transform test.",
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          }
+        },
+        "required" : [ "transform_id", "name", "inputs", "expectations" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema..transform-test.update" : {
+        "description" : "What a client sends to update a transform test. Omitted fields are left unchanged.",
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          }
+        },
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.column" : {
+        "description" : "A column of inline test data, with the type its cells are cast to.\n\n  A cast target, which on some engines is not a type name the warehouse ever reports: MySQL takes\n  `SIGNED` and reports `BIGINT`.",
+        "type" : "object",
+        "properties" : {
+          "cast_type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "cast_type" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.expectation" : {
+        "description" : "A check on the output of the transform under test.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..expectation.equals"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..expectation.empty"
+        } ]
+      },
+      "metabase-enterprise.transform-testing.schema.expectation-result" : {
+        "description" : "What one expectation found. Each type owns the schema of its own result, registered under the key\n  named here.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.expectations.equals.result"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.expectations.empty.result"
+        } ]
+      },
+      "metabase-enterprise.transform-testing.schema.expectations" : {
+        "description" : "The checks run against the transform's output. Names must be unique within a test,\n  case-sensitively.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectation"
+        }
+      },
+      "metabase-enterprise.transform-testing.schema.input" : {
+        "description" : "An input table of the transform under test, replaced with test data.",
+        "oneOf" : [ {
+          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "type" : "object",
+          "properties" : {
+            "format" : {
+              "const" : "sql"
+            },
+            "sql" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "table" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.table"
+            }
+          },
+          "required" : [ "table", "format", "sql" ],
+          "additionalProperties" : false
+        }, {
+          "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
+          "type" : "object",
+          "properties" : {
+            "columns" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.column"
+              },
+              "minItems" : 1
+            },
+            "format" : {
+              "const" : "rows"
+            },
+            "rows" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+              }
+            },
+            "table" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.table"
+            }
+          },
+          "required" : [ "table", "format", "columns", "rows" ],
+          "additionalProperties" : false
+        } ]
+      },
+      "metabase-enterprise.transform-testing.schema.inputs" : {
+        "description" : "Test data for the tables the transform reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.input"
+        }
+      },
+      "metabase-enterprise.transform-testing.schema.result-column" : {
+        "description" : "A column reported by a test run, with its database native type.",
+        "type" : "object",
+        "properties" : {
+          "database_type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "database_type" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.row" : {
+        "description" : "Value must be a map.",
+        "oneOf" : [ {
+          "type" : "object",
+          "additionalProperties" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "number"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "description" : "Value must be a map."
+        } ]
+      },
+      "metabase-enterprise.transform-testing.schema.rows-data" : {
+        "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.column"
+            },
+            "minItems" : 1
+          },
+          "format" : {
+            "const" : "rows"
+          },
+          "rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
+            }
+          }
+        },
+        "required" : [ "format", "columns", "rows" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.run-result" : {
+        "description" : "The outcome of a transform test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
+        "type" : "object",
+        "properties" : {
+          "expectations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectation-result"
+            }
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
+          },
+          "tables" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "status", "expectations", "tables" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.sql-data" : {
+        "description" : "Test data returned by a SQL query run against the transform's source database.",
+        "type" : "object",
+        "properties" : {
+          "format" : {
+            "const" : "sql"
+          },
+          "sql" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "format", "sql" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.status" : {
+        "description" : "The outcome of a transform test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
+        "type" : "string",
+        "enum" : [ "passed", "failed", "error" ]
+      },
+      "metabase-enterprise.transform-testing.schema.table" : {
+        "description" : "A table read by the transform under test, by schema and name.",
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.transform-test" : {
+        "description" : "A saved transform test: the transform it covers, the inputs that stand in for its source\n  tables, and the expectations checked against its output.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "entity_id", "transform_id", "creator_id", "name", "description", "inputs", "expectations", "created_at", "updated_at" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.transforms-inspector.schema..lens-params.request" : {
         "description" : "[[::lens-params]] as the FE echoes them back to the lens endpoints.",
         "$ref" : "#/components/schemas/metabase-enterprise.transforms-inspector.schema.lens-params"
@@ -8104,6 +8878,12 @@
         "required" : [ "type" ],
         "additionalProperties" : false
       },
+      "metabase.comments.schema.reaction-emoji" : {
+        "description" : "Emoji must be 1 to 10 Unicode code points.",
+        "minLength" : 1,
+        "maxLength" : 10,
+        "type" : "string"
+      },
       "metabase.data-studio.api.table.bulk-table-info" : {
         "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
         "type" : "object",
@@ -8544,6 +9324,854 @@
           "updated_at" : { }
         },
         "required" : [ "id", "entity_id", "name", "settings", "is_default", "created_at", "updated_at" ]
+      },
+      "metabase.explorations.api.CanceledThread" : {
+        "description" : "Schema for the cancel endpoint response — just the state-bearing fields the FE needs to\n  reflect the cancellation. EQ status changes are picked up via the existing `/queries` poll.",
+        "type" : "object",
+        "properties" : {
+          "canceled_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "completed_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id", "canceled_at", "completed_at" ]
+      },
+      "metabase.explorations.api.DimensionsResponse" : {
+        "description" : "Schema for GET /dimensions: metrics referencing dimensions by id, plus the grouped dimension list.",
+        "type" : "object",
+        "properties" : {
+          "dimension_groups" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDimensionGroup"
+            }
+          },
+          "metrics" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationMetric"
+            }
+          }
+        },
+        "required" : [ "metrics", "dimension_groups" ]
+      },
+      "metabase.explorations.api.ExplorationBlockNode" : {
+        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading\n   (the metric name). `:position` is the block's 0-indexed authoring slot.",
+        "type" : "object",
+        "properties" : {
+          "explore_filters" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : {
+                    "dimension_name" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "display_value" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "field_ref" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.parameter..dimension.target"
+                    },
+                    "operator" : {
+                      "const" : "="
+                    },
+                    "value" : {
+                      "oneOf" : [ {
+                        "anyOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "number"
+                        }, {
+                          "type" : "boolean"
+                        } ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "operator", "field_ref", "value", "display_value" ],
+                  "additionalProperties" : false
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "dimension_name" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "display_value" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "field_ref" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.parameter..dimension.target"
+                    },
+                    "operator" : {
+                      "const" : "between"
+                    },
+                    "values" : {
+                      "type" : "array",
+                      "prefixItems" : [ {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "number"
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }, {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "number"
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      } ]
+                    }
+                  },
+                  "required" : [ "operator", "field_ref", "values", "display_value" ],
+                  "additionalProperties" : false
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pages" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationPageNode"
+            }
+          },
+          "position" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "id", "name", "position", "pages" ]
+      },
+      "metabase.explorations.api.ExplorationDimensionGroup" : {
+        "description" : "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that\n   refer to the same underlying source (same field/binning) so the FE can show a single user-facing\n   entry while still tracking the actual per-metric dimensions needed by `start exploration`.",
+        "type" : "object",
+        "properties" : {
+          "dimension_interestingness" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dimensions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.metrics.core.dimension"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "dimension_interestingness", "dimensions" ]
+      },
+      "metabase.explorations.api.ExplorationDocument" : {
+        "description" : "Schema for the Summary document attached to an exploration.",
+        "type" : "object",
+        "properties" : {
+          "is_placeholder" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "exploration_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "content_type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "exploration_id", "creator_id", "content_type", "is_placeholder", "created_at", "updated_at" ]
+      },
+      "metabase.explorations.api.ExplorationMetric" : {
+        "description" : "Schema for a metric in the /dimensions response: dimensions referenced by id only.",
+        "type" : "object",
+        "properties" : {
+          "dimension_mappings" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.metrics.core.dimension-mapping"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "id" : {
+                  "oneOf" : [ {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "name" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "result_column_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dimension_ids" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "in_library" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "description", "collection_id", "dimension_ids" ]
+      },
+      "metabase.explorations.api.ExplorationPageNode" : {
+        "description" : "A page within a block: the bundle of queries for one (card, dimension, query_type) under the\n   page's stable id. `:query_ids` reference queries on the same thread, sorted by interestingness.\n   `:position` is the page's 0-indexed slot among its block's pages. `:name` is the page's short,\n   heading-relative label (e.g. `By Category over time`); `:long_name` is the full\n   self-describing name (e.g. `Number of Orders by Category over time`) for use without the block\n   heading for context.",
+        "type" : "object",
+        "properties" : {
+          "hidden" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "long_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "position" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "query_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "starred" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "name", "long_name", "position", "query_ids", "starred", "hidden" ]
+      },
+      "metabase.explorations.api.ExplorationQueryStreamResponse" : {
+        "description" : "Schema for `GET /query/:id`. On success the body is a streamed dataset (api/csv/json/xlsx),\n   so we describe it as `:any`. On a not-yet-done query we return a 409 with a status payload.",
+        "anyOf" : [ { }, {
+          "type" : "object",
+          "properties" : {
+            "body" : {
+              "type" : "object",
+              "properties" : {
+                "error_message" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "finished_at" : {
+                  "oneOf" : [ { }, {
+                    "type" : "null"
+                  } ]
+                },
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                },
+                "started_at" : {
+                  "oneOf" : [ { }, {
+                    "type" : "null"
+                  } ]
+                },
+                "status" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "status" ]
+            },
+            "status" : {
+              "const" : 409
+            }
+          },
+          "required" : [ "status", "body" ]
+        } ]
+      },
+      "metabase.explorations.api.ExplorationQuerySummary" : {
+        "description" : "Schema for a query row in API responses. The result blob and `dataset_query` aren't\n   asserted here; `interestingness_score`, `contextual_interestingness_score`, and `row_count`\n   are batched-hydrated onto each query in `/:id` — the scores from `exploration_query_result`,\n   `row_count` from the linked `stored_result` — and may be nil for pending/errored queries or —\n   for the contextual score — when the LLM is unconfigured or the thread had no prompt.",
+        "type" : "object",
+        "properties" : {
+          "exploration_thread_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "segment_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dimension_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "row_count" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "contextual_interestingness_score" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "interestingness_score" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "started_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "card_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "position" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "error_message" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "query_type" : {
+            "type" : "string"
+          },
+          "segment_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dimension_name" : {
+            "type" : "string"
+          },
+          "finished_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "exploration_thread_id", "card_id", "dimension_id", "query_type", "position", "status" ]
+      },
+      "metabase.explorations.api.ExplorationSummary" : {
+        "description" : "Lightweight row for the `GET /mine` list. No threads/queries — just the metadata\n  needed to render a list entry, plus `current_user_last_touched_at`, the timestamp the list is\n  sorted by (the caller's own most-recent touch of this exploration, composed across the\n  exploration's revisions and its creation).",
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                },
+                "name" : {
+                  "type" : "string",
+                  "minLength" : 1
+                }
+              },
+              "required" : [ "id", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "creator" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "email" : {
+                  "type" : "string",
+                  "minLength" : 1
+                },
+                "first_name" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                },
+                "last_name" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "current_user_last_touched_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "creator_id", "created_at", "updated_at", "current_user_last_touched_at" ]
+      },
+      "metabase.explorations.api.HydratedExploration" : {
+        "description" : "Schema for an Exploration with hydrated creator and threads.",
+        "type" : "object",
+        "properties" : {
+          "threads" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.explorations.api.HydratedThread"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "document" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "creator" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "creator_id" ]
+      },
+      "metabase.explorations.api.HydratedThread" : {
+        "description" : "Schema for an Exploration thread with hydrated selections and queries.",
+        "type" : "object",
+        "properties" : {
+          "queries" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationQuerySummary"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "started_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "blocks" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationBlockNode"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "position" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "pending", "running", "canceled", "empty", "failed", "completed", "forbidden" ]
+          },
+          "source_page_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "prompt" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timelines" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "position" : {
+                    "description" : "value must be an integer greater or equal to than zero.",
+                    "type" : "integer",
+                    "minimum" : 0
+                  },
+                  "timeline" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "timeline_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "timeline_id" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "exploration_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "completed_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "canceled_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "exploration_id", "position", "status" ]
+      },
+      "metabase.explorations.api.MineResponse" : {
+        "description" : "Paginated envelope for `GET /mine`, mirroring the collection-items index shape. `:total` is the\n  count after the membership, permission, and archived filters; `:limit`/`:offset` echo the\n  `offset-paging` middleware (both nil when the request is unpaged).",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationSummary"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "total", "limit", "offset", "data" ]
       },
       "metabase.frontend-errors.api.frontend-error-type" : {
         "type" : "string",
@@ -21622,6 +23250,14 @@
           } ]
         } ]
       },
+      "metabase.metrics.core.dimension" : {
+        "description" : "A metric dimension in its internal kebab-case shape, annotated with the rules that convert it to\n   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension]].",
+        "$ref" : "#/components/schemas/metabase.metrics.dimension.dimension"
+      },
+      "metabase.metrics.core.dimension-mapping" : {
+        "description" : "A dimension mapping in its internal kebab-case shape, annotated with the rules that convert it to\n   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension-mapping]].",
+        "$ref" : "#/components/schemas/metabase.metrics.dimension.dimension-mapping"
+      },
       "metabase.metrics.dimension.dimension" : {
         "description" : "Schema for a persisted dimension definition with status tracking.",
         "type" : "object",
@@ -30595,7 +32231,7 @@
       "get" : {
         "operationId" : "get-api-apps",
         "summary" : "GET /api/apps",
-        "description" : "List the data apps provided by the connected repository. Pass `available=true`\n   to return only enabled apps without sync errors.",
+        "description" : "List the data apps provided by the connected repository. Pass `available=true`\n   to return only enabled apps without sync errors. An outdated app is never\n   available, and otherwise listed only to superusers, who see it badged.",
         "parameters" : [ {
           "in" : "query",
           "name" : "available",
@@ -30661,6 +32297,11 @@
                             "type" : "null"
                           } ]
                         },
+                        "version" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
                         "created_at" : { },
                         "bundle_hash" : {
                           "oneOf" : [ {
@@ -30689,6 +32330,9 @@
                             "type" : "string"
                           }
                         },
+                        "outdated" : {
+                          "type" : "boolean"
+                        },
                         "resource_collection_id" : {
                           "oneOf" : [ {
                             "description" : "value must be an integer greater than zero.",
@@ -30710,7 +32354,7 @@
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -30870,6 +32514,11 @@
                         "type" : "null"
                       } ]
                     },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
                     "created_at" : { },
                     "bundle_hash" : {
                       "oneOf" : [ {
@@ -30898,6 +32547,9 @@
                         "type" : "string"
                       }
                     },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
                     "resource_collection_id" : {
                       "oneOf" : [ {
                         "description" : "value must be an integer greater than zero.",
@@ -30919,7 +32571,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                 }
               }
             }
@@ -31046,6 +32698,11 @@
                           "type" : "null"
                         } ]
                       },
+                      "version" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
                       "created_at" : { },
                       "bundle_hash" : {
                         "oneOf" : [ {
@@ -31074,6 +32731,9 @@
                           "type" : "string"
                         }
                       },
+                      "outdated" : {
+                        "type" : "boolean"
+                      },
                       "resource_collection_id" : {
                         "oneOf" : [ {
                           "description" : "value must be an integer greater than zero.",
@@ -31095,7 +32755,7 @@
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
@@ -31233,6 +32893,11 @@
                         "type" : "null"
                       } ]
                     },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
                     "created_at" : { },
                     "bundle_hash" : {
                       "oneOf" : [ {
@@ -31261,6 +32926,9 @@
                         "type" : "string"
                       }
                     },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
                     "resource_collection_id" : {
                       "oneOf" : [ {
                         "description" : "value must be an integer greater than zero.",
@@ -31282,7 +32950,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                 }
               }
             }
@@ -31557,6 +33225,11 @@
                         "type" : "null"
                       } ]
                     },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
                     "created_at" : { },
                     "bundle_hash" : {
                       "oneOf" : [ {
@@ -31585,6 +33258,9 @@
                         "type" : "string"
                       }
                     },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
                     "resource_collection_id" : {
                       "oneOf" : [ {
                         "description" : "value must be an integer greater than zero.",
@@ -31606,7 +33282,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                 }
               }
             }
@@ -32458,7 +34134,7 @@
                         },
                         "type" : {
                           "type" : "string",
-                          "enum" : [ "card", "dashboard", "collection", "document" ]
+                          "enum" : [ "card", "dashboard", "collection", "document", "exploration" ]
                         }
                       },
                       "required" : [ "type", "item_id" ],
@@ -32486,7 +34162,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard", "collection", "document" ]
+            "enum" : [ "card", "dashboard", "collection", "document", "exploration" ]
           }
         }, {
           "in" : "path",
@@ -32521,7 +34197,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard", "collection", "document" ]
+            "enum" : [ "card", "dashboard", "collection", "document", "exploration" ]
           }
         }, {
           "in" : "path",
@@ -35191,7 +36867,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -35256,7 +36932,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -35874,7 +37550,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -35954,7 +37630,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -36102,7 +37778,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "document" ]
+            "enum" : [ "document", "exploration" ]
           }
         }, {
           "in" : "query",
@@ -36193,7 +37869,7 @@
                   },
                   "target_type" : {
                     "type" : "string",
-                    "enum" : [ "document" ]
+                    "enum" : [ "document", "exploration" ]
                   }
                 },
                 "required" : [ "target_type", "target_id", "content" ],
@@ -36343,9 +38019,7 @@
                 "type" : "object",
                 "properties" : {
                   "emoji" : {
-                    "type" : "string",
-                    "minLength" : 1,
-                    "maxLength" : 10
+                    "$ref" : "#/components/schemas/metabase.comments.schema.reaction-emoji"
                   }
                 },
                 "required" : [ "emoji" ],
@@ -49734,6 +51408,232 @@
         "tags" : [ "/api/ee/tenant" ]
       }
     },
+    "/api/ee/transform-test" : {
+      "get" : {
+        "operationId" : "get-api-ee-transform-test",
+        "summary" : "GET /api/ee/transform-test",
+        "description" : "List the transform tests, optionally only those of one transform.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "transform-id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-transform-test",
+        "summary" : "POST /api/ee/transform-test",
+        "description" : "Create a transform test.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.create"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      }
+    },
+    "/api/ee/transform-test/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-transform-test-id",
+        "summary" : "GET /api/ee/transform-test/{id}",
+        "description" : "Get a transform test.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-transform-test-id",
+        "summary" : "PUT /api/ee/transform-test/{id}",
+        "description" : "Update a transform test.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.update"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-transform-test-id",
+        "summary" : "DELETE /api/ee/transform-test/{id}",
+        "description" : "Delete a transform test.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      }
+    },
+    "/api/ee/transform-test/{id}/run" : {
+      "post" : {
+        "operationId" : "post-api-ee-transform-test-id-run",
+        "summary" : "POST /api/ee/transform-test/{id}/run",
+        "description" : "Run a transform test.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation\n  reports what it found — including one that could not be evaluated, which comes back as that\n  expectation's own `:error` rather than discarding the answers of the others.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was, as [[refusing]] describes.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-result"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      }
+    },
     "/api/ee/transforms-python/library/{path}" : {
       "get" : {
         "operationId" : "get-api-ee-transforms-python-library-path",
@@ -51577,6 +53477,805 @@
           }
         },
         "tags" : [ "/api/eval-trace" ]
+      }
+    },
+    "/api/exploration" : {
+      "post" : {
+        "operationId" : "post-api-exploration",
+        "summary" : "POST /api/exploration",
+        "description" : "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,\n  and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary\n  document in the same collection. Actual planning is async; this endpoint returns immediately\n  with an empty queries list. Clients should poll `GET /:id` until the queries appear and reach\n  a terminal status.\n\n  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted\n  verbatim, plus a thread-scoped `:timeline_ids`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.HydratedExploration"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "blocks" : {
+                    "oneOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "dimensions" : {
+                            "oneOf" : [ {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "object",
+                                "properties" : {
+                                  "dimension-id" : {
+                                    "description" : "value must be a valid UUID.",
+                                    "type" : "string",
+                                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                                  },
+                                  "display-name" : {
+                                    "oneOf" : [ {
+                                      "type" : "string"
+                                    }, {
+                                      "type" : "null"
+                                    } ]
+                                  },
+                                  "effective-type" : {
+                                    "oneOf" : [ {
+                                      "type" : "string"
+                                    }, {
+                                      "type" : "null"
+                                    } ]
+                                  },
+                                  "semantic-type" : {
+                                    "oneOf" : [ {
+                                      "type" : "string"
+                                    }, {
+                                      "type" : "null"
+                                    } ]
+                                  }
+                                },
+                                "required" : [ "dimension-id" ],
+                                "additionalProperties" : false
+                              }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "metrics" : {
+                            "oneOf" : [ {
+                              "type" : "array",
+                              "items" : {
+                                "type" : "object",
+                                "properties" : {
+                                  "card_id" : {
+                                    "description" : "value must be an integer greater than zero.",
+                                    "type" : "integer",
+                                    "minimum" : 1
+                                  },
+                                  "dimension_mappings" : {
+                                    "oneOf" : [ {
+                                      "type" : "array",
+                                      "items" : {
+                                        "$ref" : "#/components/schemas/metabase.metrics.core.dimension-mapping"
+                                      }
+                                    }, {
+                                      "type" : "null"
+                                    } ]
+                                  }
+                                },
+                                "required" : [ "card_id" ],
+                                "additionalProperties" : false
+                              }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "additionalProperties" : false
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1,
+                    "maxLength" : 254
+                  },
+                  "prompt" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "timeline_ids" : {
+                    "oneOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "name" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/dimensions" : {
+      "get" : {
+        "operationId" : "get-api-exploration-dimensions",
+        "summary" : "GET /api/exploration/dimensions",
+        "description" : "Hydrated metrics plus a deduplicated dimension list, for the Exploration data modal.\n\n  Optional `q` filters case-insensitively across metric name and dimension display-name.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.DimensionsResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/mine" : {
+      "get" : {
+        "operationId" : "get-api-exploration-mine",
+        "summary" : "GET /api/exploration/mine",
+        "description" : "Explorations the current user created or edited, most-recently-touched first, paginated.\n\n  \"Touched\" composes the user's own edits to the exploration, to its Summary document, and its\n  creation — see [[metabase.explorations.db/my-explorations]]. Explorations that were moved into a\n  collection the user can no longer read are excluded, as are archived ones. Returns the\n  collection-items envelope: `{:total :limit :offset :data}`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.MineResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/page/{id}/starred" : {
+      "put" : {
+        "operationId" : "put-api-exploration-page-id-starred",
+        "summary" : "PUT /api/exploration/page/{id}/starred",
+        "description" : "Set whether an exploration page is starred.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "starred" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "starred" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/pages/hidden" : {
+      "put" : {
+        "operationId" : "put-api-exploration-pages-hidden",
+        "summary" : "PUT /api/exploration/pages/hidden",
+        "description" : "Set whether one or more exploration pages are hidden from the sidebar. Hiding a single\n  page passes a one-element `page_ids`; hiding a whole group passes all its page ids.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "hidden" : {
+                    "type" : "boolean"
+                  },
+                  "page_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  }
+                },
+                "required" : [ "page_ids", "hidden" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/query/{id}" : {
+      "get" : {
+        "operationId" : "get-api-exploration-query-id",
+        "summary" : "GET /api/exploration/query/{id}",
+        "description" : "Stream the result of a single completed exploration query. The optional `format` query param\n  is one of `api`, `json`, `csv`, `xlsx` (default `api`). When the underlying query is still\n  pending or has errored, returns a 409 with status info instead of streaming.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "format",
+          "required" : false,
+          "schema" : {
+            "default" : "api",
+            "type" : "string",
+            "enum" : [ "api", "csv", "json", "xlsx" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationQueryStreamResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/thread/{thread-id}/cancel" : {
+      "post" : {
+        "operationId" : "post-api-exploration-thread-thread-id-cancel",
+        "summary" : "POST /api/exploration/thread/{thread-id}/cancel",
+        "description" : "Cancel an in-flight exploration thread. Stamps `canceled_at` and `completed_at` on the thread,\n  and bulk-flips any still-`pending` ExplorationQuery rows to `canceled`. In-flight queries\n  currently mid-QP-execution are left to run to natural completion — their result rows are\n  orphaned but harmless (timeline scoring skips canceled threads).\n\n  Idempotent: a thread with `completed_at IS NOT NULL` (already terminal — natural completion or\n  prior cancel) returns 200 with its existing state. Authorization is the same write check as\n  other thread-mutating endpoints.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "thread-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.CanceledThread"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/thread/{thread-id}/restart" : {
+      "post" : {
+        "operationId" : "post-api-exploration-thread-thread-id-restart",
+        "summary" : "POST /api/exploration/thread/{thread-id}/restart",
+        "description" : "Re-run one exploration thread in place, keeping its selections: drops the thread's materialized\n  queries and clears the terminal-state gates so the background planner re-claims it. Returns the\n  parent exploration. Only a terminal thread (completed, failed, or canceled) can restart; while\n  planning, execution, or analysis is still in flight this returns a 409 — cancel the thread\n  first, then restart.\n\n  No `:event/exploration-update` is published: nothing on the Exploration row changes, so there\n  is no revision to record (the revision push skips unchanged objects).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "thread-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.HydratedExploration"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/{id}" : {
+      "get" : {
+        "operationId" : "get-api-exploration-id",
+        "summary" : "GET /api/exploration/{id}",
+        "description" : "Fetch an exploration with its thread, selections, and generated queries.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.HydratedExploration"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      },
+      "put" : {
+        "operationId" : "put-api-exploration-id",
+        "summary" : "PUT /api/exploration/{id}",
+        "description" : "Update an exploration's metadata, archive state, or move it to a different collection.\n\n  When `collection_id` changes, the caller must have write perms on the destination collection\n  (or the root collection when `collection_id` is nil). Source perms are enforced by\n  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.\n  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping\n  `archived` cascades to the same document (skipping any that were directly user-archived,\n  mirroring the dashboard / dashboard-question cascade).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.HydratedExploration"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "archived" : {
+                    "type" : "boolean"
+                  },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "collection_position" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1,
+                    "maxLength" : 254
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-exploration-id",
+        "summary" : "DELETE /api/exploration/{id}",
+        "description" : "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.\n\n  Cascades to every `exploration_thread`, `exploration_query`, and attached Summary `document`\n  via the on-delete-cascade FKs configured in the explorations migration.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/{id}/explore-further" : {
+      "post" : {
+        "operationId" : "post-api-exploration-id-explore-further",
+        "summary" : "POST /api/exploration/{id}/explore-further",
+        "description" : "Start a follow-up investigation scoped to a clicked chart segment.\n\n  The user clicked a bar/point on the chart for `page_id`; we copy that page's block (its metric\n  selection + the same dimensions) into a brand-new thread and append each `explore_filters`\n  entry onto every metric selection's `:explore_filters` vector. The background planner then\n  materializes the same set of charts, but every query is scoped to those filters — and to any\n  filters the source block already carried, so drilling from within an already-drilled thread\n  keeps the earlier scope (see\n  `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new\n  thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.HydratedExploration"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "explore_filters" : {
+                    "type" : "array",
+                    "items" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "dimension_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display_value" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "field_ref" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.parameter..dimension.target"
+                          },
+                          "operator" : {
+                            "const" : "="
+                          },
+                          "value" : {
+                            "oneOf" : [ {
+                              "anyOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "number"
+                              }, {
+                                "type" : "boolean"
+                              } ]
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "operator", "field_ref", "value", "display_value" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "object",
+                        "properties" : {
+                          "dimension_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display_value" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "field_ref" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.parameter..dimension.target"
+                          },
+                          "operator" : {
+                            "const" : "between"
+                          },
+                          "values" : {
+                            "type" : "array",
+                            "prefixItems" : [ {
+                              "oneOf" : [ {
+                                "anyOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "number"
+                                }, {
+                                  "type" : "boolean"
+                                } ]
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }, {
+                              "oneOf" : [ {
+                                "anyOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "number"
+                                }, {
+                                  "type" : "boolean"
+                                } ]
+                              }, {
+                                "type" : "null"
+                              } ]
+                            } ]
+                          }
+                        },
+                        "required" : [ "operator", "field_ref", "values", "display_value" ],
+                        "additionalProperties" : false
+                      } ]
+                    },
+                    "minItems" : 1
+                  },
+                  "page_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "page_id", "explore_filters" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
+      }
+    },
+    "/api/exploration/{id}/summary/append" : {
+      "post" : {
+        "operationId" : "post-api-exploration-id-summary-append",
+        "summary" : "POST /api/exploration/{id}/summary/append",
+        "description" : "Append a static `cardEmbed` representing a *composite chart* — built from one or more\n  `ExplorationQuery` snapshots combined into a single qp-result — to the exploration's\n  Summary document.\n\n  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry\n  for single-query charts; multiple for combined cartesian / heat-map charts). The BE\n  combines those source snapshots (`metabase.explorations.composite/combine`) into one\n  ephemeral `stored_result` and materializes one ephemeral `report_card` referencing it.\n  The cardEmbed node remains single-card.\n\n  - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE\n    can deep-link the embed title back to the source page, share that page's comment\n    stream (`child_target_id`), and resolve highlight hover and explore-further filter\n    pills via opaque `host_data`.\n  - `display` / `visualization_settings` are required FE-computed render settings (from\n    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.\n\n  All source EQs must belong to a thread of this exploration. Appending clears\n  `is_placeholder` when it was set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.explorations.api.ExplorationDocument"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "display" : {
+                    "type" : "string"
+                  },
+                  "exploration_query_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  },
+                  "visualization_settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                },
+                "required" : [ "exploration_query_ids", "display", "visualization_settings" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/exploration" ]
       }
     },
     "/api/field/table-ids" : {
@@ -62618,7 +65317,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -62747,7 +65446,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+            "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
           }
         }, {
           "in" : "query",
@@ -62969,7 +65668,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
               }
             }, {
               "type" : "null"
