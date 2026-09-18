@@ -123,7 +123,12 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    {:message (search/init-index! {:force-reset? true})}
+    (try
+      {:message (search/init-index! {:force-reset? true})}
+      (catch clojure.lang.ExceptionInfo e
+        (if (= ::search/index-busy (:type (ex-data e)))
+          (throw (ex-info (ex-message e) {:error-code "search-index-busy", :status-code 409} e))
+          (throw e))))
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

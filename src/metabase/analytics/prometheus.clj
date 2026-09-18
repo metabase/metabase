@@ -144,11 +144,15 @@
   ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-lock/monitor` is)
   ;; to prevent the deadlock. Hopefully.
   ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
-  (locking pool-lock/monitor
-    (let [bean-id   (.getCanonicalName jmx-bean)
-          props     [:numConnections :numIdleConnections :numBusyConnections
-                     :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))
+  ;; App-db pools are created (and, for the lease coordination pool, destroyed) at runtime under their own
+  ;; monitor, which lives in the app-db module because app-db cannot depend on the driver module. Take it
+  ;; too, always first, so a scrape cannot interleave with app-db pool lifecycle either.
+  (locking @(requiring-resolve 'metabase.app-db.core/c3p0-pool-monitor)
+    (locking pool-lock/monitor
+      (let [bean-id   (.getCanonicalName jmx-bean)
+            props     [:numConnections :numIdleConnections :numBusyConnections
+                       :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+        (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
@@ -374,6 +378,13 @@
                          {:description "Duration in milliseconds that index reindex jobs took."
                           ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-search/reindex-lease-events
+                       {:description "Search reindex lease outcomes and failures by engine."
+                        :labels      [:engine :event]})
+   (prometheus/histogram :metabase-search/reindex-lease-held-duration-ms
+                         {:description "Duration in milliseconds that a search reindex lease was held."
+                          :labels      [:engine]
+                          :buckets     [1000 5000 30000 60000 300000 600000 1800000 3600000 7200000]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size

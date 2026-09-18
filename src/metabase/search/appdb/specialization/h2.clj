@@ -21,15 +21,15 @@
 
 (def ^:private upsert-lock (Object.))
 
-(defmethod specialization/batch-upsert! :h2 [table entries]
+(defmethod specialization/batch-upsert! :h2 [conn table entries]
   ;; it's in memory, let's just do it quick and dirty (HoneySQL can't speak MERGE WITH)
   ;; TODO just generate raw SQL
   (locking upsert-lock
     (when (seq entries)
       (doseq [[model model-entries] (group-by :model entries)]
         (let [ids (map (comp str :model_id) model-entries)]
-          (search.db/delete-index-rows! table model ids)))
-      (search.db/insert-rows! table entries))))
+          (search.db/delete-index-rows! conn table model ids)))
+      (search.db/insert-rows! conn table entries))))
 
 (defn- wildcard-tokens [search-term]
   (->> (str/split search-term #"\s+")

@@ -4,6 +4,21 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::index-coordinate
+  [:map {:closed true}
+   [:engine :keyword]
+   [:lang-code :string]
+   [:version :string]])
+
+(mr/def ::rebuild-context
+  [:map {:closed true}
+   [:coordinate ::index-coordinate]
+   [:table :keyword]])
+
+(mr/def ::document-source
+  [:maybe [:or (ms/InstanceOfClass clojure.lang.IReduceInit)
+           (ms/InstanceOfClass clojure.lang.Seqable)]])
+
 (mr/def ::search-index-metadata
   "A SearchIndexMetadata as selected from the app DB: every column of `:search_index_metadata`."
   [:merge

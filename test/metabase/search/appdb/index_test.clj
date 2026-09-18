@@ -12,6 +12,7 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
@@ -26,6 +27,43 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(deftest ^:parallel lease-and-metadata-identity-test
+  (is (= (search.index/index-version)
+         (:version (search.lease/coordinates :search.engine/appdb))))
+  (let [claim (search.lease/coordinates :search.engine/appdb)]
+    (is (= {:coordinate {:engine    :appdb
+                         :lang-code (:lang_code claim)
+                         :version   (:version claim)}
+            :table      :rebuild-destination}
+           (search.index/rebuild-context :rebuild-destination)))))
+
+(deftest strict-document-construction-test
+  (mt/with-dynamic-fn-redefs [search.ingestion/->document (fn [_] (throw (ex-info "bad document" {})))]
+    (binding [search.ingestion/*fail-on-error* true]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bad document"
+                            (into [] (#'search.ingestion/query->documents [{:id 1, :model "card"}])))))))
+
+(deftest strict-batch-failure-test
+  (t2/with-connection [conn]
+    (binding [search.ingestion/*fail-on-error* true]
+      (is (thrown? Exception
+                   (#'search.index/safe-batch-upsert! conn :pending
+                                                      (constantly :search_index_intentionally_missing)
+                                                      [{:model "card", :model_id "1"}]))))))
+
+(deftest activate-exact-populated-table-test
+  (search.tu/with-temp-index-table
+    (let [active (search.index/active-table)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Pending index was replaced"
+                            (search.index/activate-table!
+                             (search.index/rebuild-context :not-the-pending-table))))
+      (is (= active (search.index/active-table))))))
+
+(deftest staged-activation-refuses-caller-transaction-test
+  (t2/with-transaction [_conn]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"inside a caller transaction"
+                          (search.index/activate-table! (search.index/rebuild-context :not-published))))))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
@@ -573,7 +611,7 @@
               active-after  (search.index/gen-table-name)
               pending-after (search.index/gen-table-name)
               period        @#'search.index/sync-tracking-period
-              version       (search.spec/index-version-hash)]
+              version       (search.index/index-version)]
           (search-index-metadata/create-pending! :appdb version active-after)
           (search.index/create-table! active-after)
           (search-index-metadata/active-pending! :appdb version)
@@ -585,7 +623,7 @@
           (testing "But eventually we refresh"
             (is (= active-after (active-table-after period)))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
+          (t2/delete! :model/SearchIndexMetadata :version (search.index/index-version))
           (search.index/delete-obsolete-tables!))))))
 
 (deftest pending-table-expiry-test
@@ -597,7 +635,7 @@
         (let [active-table (search.index/active-table)
               pending-old  (search.index/gen-table-name)
               pending-new  (search.index/gen-table-name)
-              version      (search.spec/index-version-hash)]
+              version      (search.index/index-version)]
           ;; Set up old pending table (more than a day old)
           (search.index/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
@@ -617,7 +655,7 @@
             (is (= active-table (search.index/active-table)))
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
+          (t2/delete! :model/SearchIndexMetadata :version (search.index/index-version))
           (search.index/delete-obsolete-tables!))))))
 
 (deftest failed-reindex-drops-orphaned-tables-test
@@ -638,7 +676,7 @@
             (is (search.index/exists? (search.index/active-table)))
             (is (search.index/exists? (#'search.index/pending-table)))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "orphan-cleanup-test")
+          (t2/delete! :model/SearchIndexMetadata :version (search.index/index-version))
           (search.index/delete-obsolete-tables!))))))
 
 (deftest strip-junk-chars-test
@@ -746,16 +784,17 @@
         (try
           (search.index/create-table! pending-tbl)
           (is (zero? (t2/count active-tbl)) "active index starts empty")
-          (with-redefs [search.index/insert-batch-size  1
+          (with-redefs [search.index/insert-batch-size 1
                         ;; Real pending table until the first batch is written, then the tracking atom
                         ;; "loses" it -- exactly what a background resync did mid-reindex in the incident.
-                        search.index/pending-table      (fn [] (when-not @pending-lost? pending-tbl))
-                        specialization/batch-upsert!     (fn [t entries]
-                                                           (reset! pending-lost? true)
-                                                           (real-upsert t entries))]
+                        search.index/pending-table     (fn [] (when-not @pending-lost? pending-tbl))
+                        specialization/batch-upsert!   (fn [conn t entries]
+                                                         (reset! pending-lost? true)
+                                                         (real-upsert conn t entries))]
             ;; *force-sync* false so we exercise the real reindex write path (not the dual-write path)
             (binding [search.ingestion/*force-sync* false]
               (#'search.index/index-docs! :search/reindexing docs)))
+          (is @pending-lost? "the test simulated losing pending-table tracking after the first write")
           (testing "no batch is written to the live active table"
             (is (zero? (t2/count active-tbl))))
           (testing "every document lands in the pending table captured at the start of the reindex"
@@ -781,20 +820,50 @@
                       ;; prove the destination captured at the start is used for the whole build.
                       search.index/pending-table    (constantly nil)
                       search.index/active-table     (fn [] (when-not @atom-blank? active-tbl))
-                      specialization/batch-upsert!  (fn [t entries]
+                      specialization/batch-upsert!  (fn [conn t entries]
                                                       (reset! atom-blank? true)
-                                                      (real-upsert t entries))]
+                                                      (real-upsert conn t entries))]
           (binding [search.ingestion/*force-sync* false]
             (#'search.index/index-docs! :search/reindexing docs)))
+        (is @atom-blank? "the test simulated losing active-table tracking after the first write")
         (testing "every document lands in the active table that was captured at the start of the build"
           (is (= (count docs) (t2/count active-tbl))))))))
+
+(deftest failed-pending-upsert-does-not-roll-back-active-upsert-test
+  (when (= :postgres (mdb/db-type))
+    (search.tu/with-temp-index-table
+      (let [active-tbl  (search.index/active-table)
+            pending-tbl (search.index/gen-table-name)
+            real-upsert specialization/batch-upsert!
+            document    {:model "card" :id "savepoint-regression" :name "Savepoint regression"
+                         :display_data {} :legacy_input {} :archived false}]
+        (try
+          (search.index/create-table! pending-tbl)
+          (swap! @#'search.index/*indexes* assoc :pending pending-tbl)
+          (with-redefs [specialization/batch-upsert!
+                        (fn [conn table entries]
+                          (if (= table pending-tbl)
+                            ;; Cause a real PostgreSQL statement error, which leaves the transaction aborted unless
+                            ;; safe-batch-upsert! rolls this attempt back to a savepoint.
+                            (t2/query conn ["SELECT * FROM search_index_intentionally_missing"])
+                            (real-upsert conn table entries)))]
+            (let [result (search.lease/do-with-lease
+                          (search.lease/coordinates :search.engine/appdb)
+                          #(search.engine/update! :search.engine/appdb [document])
+                          {:wait? false})]
+              (is (:acquired? result) "the test acquired the reindex lease")))
+          (is (= 1 (t2/count active-tbl :model "card" :model_id "savepoint-regression"))
+              "the successful active write commits despite the skipped pending write")
+          (finally
+            (swap! @#'search.index/*indexes* dissoc :pending)
+            (#'search.index/drop-table! pending-tbl)))))))
 
 (deftest when-index-created
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
       (try
         (let [table-name (search.index/gen-table-name)
-              version (search.spec/index-version-hash)]
+              version (search.index/index-version)]
           (testing "Nil age if no active table"
             (is (nil? (#'search.index/when-index-created))))
           (testing "Returns age of active table"
@@ -807,7 +876,7 @@
                           {:created_at  update-time})
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
-          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
+          (t2/delete! :model/SearchIndexMetadata :version (search.index/index-version))
           (search.index/delete-obsolete-tables!))))))
 
 (deftest missing-index-table-does-not-abort-enclosing-transaction-test
@@ -822,11 +891,11 @@
               (testing "\nthe enclosing transaction remains usable"
                 (is (true? (t2/exists? :model/User))))))
           (testing "upsert"
-            (t2/with-transaction [_conn]
+            (t2/with-transaction [conn]
               ;; Include a non-key column so PostgreSQL reaches the missing-table failure instead of rejecting an empty
               ;; `DO UPDATE SET` clause.
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Currently tracked index does not exist"
-                                    (#'search.index/safe-batch-upsert! :active (constantly table-name)
+                                    (#'search.index/safe-batch-upsert! conn :active (constantly table-name)
                                                                        [{:model "card" :model_id "1" :name "x"}])))
               (testing "\nthe enclosing transaction remains usable"
                 (is (true? (t2/exists? :model/User)))))))))))

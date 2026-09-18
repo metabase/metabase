@@ -18,7 +18,7 @@
    [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.spec :as search.spec]
+   [metabase.search.lease :as search.lease]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
@@ -53,6 +53,20 @@
             (= 1 (count terms)))
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))
+
+(defn- with-appdb-lease
+  "Run `thunk` if the appdb reindex lease can be acquired immediately."
+  [operation thunk]
+  ;; A busy lease means the index is already being built. Forced-synchronous runs skip the lease for
+  ;; the same reason [[metabase.search.core]]'s engine wrapper does: they are single-process test
+  ;; scenarios, and leases refuse to be acquired inside a transaction.
+  (if search.ingestion/*force-sync*
+    (thunk)
+    (let [{:keys [acquired? result]}
+          (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk {:wait? false})]
+      (if acquired?
+        result
+        (log/infof "Skipping appdb search %s; another node holds its lease" operation)))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
@@ -98,14 +112,15 @@
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
           (future
-            (search.engine/init! search-engine {:force-reset? false}))
+            (with-appdb-lease "late initialization"
+              #(search.engine/init! search-engine {:force-reset? false})))
           (catch Exception e
             (log/error (ex-message e)))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
-                       :version            (search.spec/index-version-hash)
+                       :version            (search.index/index-version)
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
@@ -193,8 +208,11 @@
   [search-ctx model id]
   (appdb-diagnose search-ctx model id))
 
-(defn- populate-index! [context]
-  (search.index/index-docs! context (search.ingestion/searchable-documents)))
+(defn- populate-index!
+  ([context] (populate-index! context nil))
+  ([context rebuild]
+   (binding [search.ingestion/*fail-on-error* true]
+     (search.index/index-docs! context (search.ingestion/searchable-documents) rebuild))))
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
@@ -216,15 +234,21 @@
   (try
     (search.index/delete-obsolete-tables!)
     (search.index/ensure-ready!)
-    (if in-place?
-      (when-let [table (search.index/active-table)]
-        ;; keep the current table, just delete its contents
-        (search.db/delete-all-rows! table))
-      (search.index/maybe-create-pending!))
-    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-      (search.index/activate-table!))
+    (let [table (if in-place?
+                  (search.index/active-table)
+                  (search.index/maybe-create-pending!))]
+      (when-not table
+        (throw (ex-info "No destination for search rebuild" {})))
+      (when in-place?
+        (search.index/clear-active-table! table))
+      (let [rebuild (search.index/rebuild-context table)]
+        (u/prog1 (populate-index! :search/reindexing rebuild)
+          (when-not in-place?
+            (search.index/activate-table! rebuild)))))
     (catch Throwable e
-      (log/errorf "Error during reindexing: %s" (ex-message e))
+      (if (search.lease/expected-abort? e)
+        (log/infof "App-db reindex stopped safely: %s" (ex-message e))
+        (log/errorf "Error during reindexing: %s" (ex-message e)))
       (throw e))))
 
 (events/derive! :event/setting-update ::settings-changed-event)
@@ -233,6 +257,9 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (if search.ingestion/*force-sync*
-      (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+    (let [reindex #(with-appdb-lease "locale-change reindex"
+                     (fn [] (search.engine/reindex! :search.engine/appdb {})))]
+      (if search.ingestion/*force-sync*
+        (reindex)
+        ;; The event fires inside the settings transaction, whose dynamic bindings a future would inherit.
+        (mdb/do-after-commit #(future (reindex)))))))

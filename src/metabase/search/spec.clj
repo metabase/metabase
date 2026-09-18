@@ -531,3 +531,9 @@
    Includes raw spec forms, default-attrs, and attr-types."
   []
   (index-version-hash* *testing-only-index-version-hash*))
+
+(defn effective-index-version
+  "The app-db index compatibility identity shared by metadata and rebuild leases."
+  []
+  ;; Increment when data, layout, or coordination changes outside the specification hash.
+  (str (index-version-hash) "-lease-1"))

@@ -12,14 +12,18 @@
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
+   [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.string :as string]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
 (comment
@@ -43,21 +47,39 @@
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
   (reset! *indexes* nil))
 
+(defn index-version
+  "The version every SearchIndexMetadata row for this engine is keyed by, and so the coordinate at
+  which a node will reuse an existing index."
+  []
+  (or (some-> search.lease/*lease-context* :claim :version)
+      (search.spec/effective-index-version)))
+
+(mu/defn rebuild-context :- ::search.schema/rebuild-context
+  "Capture the identity and destination of an app-db rebuild."
+  [table :- :keyword]
+  {:coordinate {:engine    :appdb
+                :lang-code (i18n/site-locale-string)
+                :version   (index-version)}
+   :table      table})
+
 (declare exists?)
 
 (defn- sync-tracking-atoms!
   "Sync the *indexes* atom with the current database metadata state."
-  []
-  ;; Locks the indexes so the reset! doesn't lose data written to the db by a different thread between the read and write
-  (locking *indexes*
-    (let [indexes (into {}
-                        (for [[status table-name] (search-index-metadata/indexes :appdb (search.spec/index-version-hash))]
-                          (if (exists? table-name)
-                            [status (keyword table-name)]
-                            ;; For debugging, make it clear why we are not tracking the given metadata.
-                            [(keyword (name status) "not-found") (keyword table-name)])))]
-      (log/debugf "Sync tracking atoms: %s" indexes)
-      (reset! *indexes* indexes))))
+  ([]
+   (sync-tracking-atoms! nil))
+  ([conn]
+   ;; Locks the indexes so the reset! doesn't lose data written to the db by a different thread between the read and write
+   (locking *indexes*
+     (let [tracked (search-index-metadata/indexes conn :appdb (index-version))
+           indexes (into {}
+                         (for [[status table-name] tracked]
+                           (if (exists? conn table-name)
+                             [status (keyword table-name)]
+                             ;; For debugging, make it clear why we are not tracking the given metadata.
+                             [(keyword (name status) "not-found") (keyword table-name)])))]
+       (log/debugf "Sync tracking atoms: %s" indexes)
+       (reset! *indexes* indexes)))))
 
 (defn sync-from-restored-db!
   "Re-sync tracking atoms with the current database state.
@@ -104,14 +126,17 @@
 (defn exists?
   "Whether the given index `table` actually exists in the appdb (the tracked active/pending table can be
   briefly stale relative to what has been dropped)."
-  [table]
-  (when table
-    (search.db/table-exists? (table-name table))))
+  ([table]
+   (exists? nil table))
+  ([conn table]
+   (when table
+     (search.db/table-exists? conn (table-name table)))))
 
 (defn- drop-table! [table]
   (boolean
    (when table
-     (search.db/drop-search-index-table-if-exists! (keyword (table-name table))))))
+     (search.lease/do-with-ddl-connection
+      #(search.db/drop-search-index-table-if-exists! % (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -124,12 +149,14 @@
   (when-not *mocking-tables*
     (try
       ;; Delete metadata around indexes that are no longer needed.
-      (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
+      (search.lease/do-with-ddl-connection
+       #(search-index-metadata/delete-obsolete! % (index-version)))
       ;; Drop any indexes that are no longer referenced.
       (let [dropped (volatile! [])]
         (doseq [table (orphan-indexes)]
           (try
-            (search.db/drop-search-index-table! table)
+            (search.lease/do-with-ddl-connection
+             #(search.db/drop-search-index-table! % table))
             (vswap! dropped conj table)
             ;; Deletion could fail if it races with other instances
             (catch Exception e
@@ -141,28 +168,59 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
-  ;; even when already running in a transaction
-  (t2/with-transaction [_ (mdb/app-db)]
-    (search.db/create-search-index-table! table-name)))
+  ;; Always a separate transaction: PostgreSQL needs the post-create indexes committed before returning, and DDL
+  ;; must never run on a caller's ambient transaction (it would implicitly commit it on H2 and MySQL).
+  (search.lease/do-with-ddl-connection
+   (fn [conn]
+     (search.db/create-search-index-table! conn table-name))))
+
+(defn- create-fresh-leased-pending!
+  []
+  (let [table-name (gen-table-name)]
+    (log/infof "Creating owner-isolated pending index %s for lang %s" table-name (i18n/site-locale-string))
+    (try
+      ;; Reserve the name before creating the table, so orphan cleanup can never see a newly created leased table as
+      ;; unreferenced. If creation fails, the next owner atomically replaces this pending reservation.
+      (search.lease/do-with-ddl-connection
+       #(search-index-metadata/replace-pending!
+         % :appdb (index-version) table-name))
+      (create-table! table-name)
+      (sync-tracking-atoms!)
+      table-name
+      (catch Throwable e
+        ;; A table created just before ownership was lost is deliberately left unreferenced and will be collected by
+        ;; the ordinary orphan cleanup. Never let a stale owner delete a table a replacement may have adopted.
+        ;; An obsolete-locale owner must not sync either: its tracking would be for the old locale's tables.
+        (when-not (= ::search.lease/coordinate-obsolete (:type (ex-data e)))
+          (sync-tracking-atoms!))
+        (throw e)))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
   (locking *indexes*
-    (if *mocking-tables*
+    (cond
+      *mocking-tables*
       ;; In a test where the atoms are the source of truth, create a new table if necessary.
       (or (pending-table)
           (let [table-name (gen-table-name)]
             (create-table! table-name)
             (swap! *indexes* assoc :pending table-name) table-name))
+
+      (search.lease/leased?)
+      ;; Never reuse a crashed or replaced owner's partially populated table. A stale worker captured its own table
+      ;; name and transactional fencing prevents it from mutating or promoting this replacement.
+      (create-fresh-leased-pending!)
+
+      :else
       ;; The database is the source of truth
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (or pending
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
               ;; We may fail to insert a new metadata row if we lose a race with another instance.
-              (when (search-index-metadata/create-pending! :appdb (search.spec/index-version-hash) table-name)
+              (when (search.lease/do-with-ddl-connection
+                     #(search-index-metadata/create-pending! % :appdb (index-version) table-name))
                 (try
                   (create-table! table-name)
                   (catch Exception e
@@ -183,31 +241,57 @@
   [table-name]
   (try
     (specialization/analyze-table! table-name)
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
     (catch Exception e
       (log/warnf "Failed to analyze index table %s: %s" table-name (ex-message e)))))
 
-(defn activate-table!
+(mu/defn activate-table! :- :boolean
   "Make the pending index active if it exists. Returns true if it did so."
-  []
-  (locking *indexes*
-    (if *mocking-tables*
-      ;; The atoms are the only source of truth, we must not update the metadata.
-      (boolean
-       (when-let [pending (:pending @*indexes*)]
-         (analyze-table! pending)
-         (reset! *indexes* {:pending nil, :active pending}) true))
-      ;; Ensure the metadata is updated and pruned.
-      (let [{:keys [pending]} (sync-tracking-atoms!)]
-        (log/infof "Activating pending index %s" pending)
-        (when pending
-          (analyze-table! pending)
-          (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
-            (reset! *indexes* {:pending nil :active active})
-            (log/infof "Activated pending index %s" active)))
-        ;; Clean up while we're here
-        (delete-obsolete-tables!)
-        ;; Did *we* do a rotation?
-        (boolean pending)))))
+  ([] (activate-table! nil))
+  ([{:keys [coordinate table] :as rebuild} :- [:maybe ::search.schema/rebuild-context]]
+   (when (and rebuild (mdb/in-transaction?) (not *mocking-tables*))
+     (throw (ex-info "Cannot activate a staged search rebuild inside a caller transaction" {:rebuild rebuild})))
+   (let [{:keys [lang-code version]} coordinate
+         expected-table            table]
+     (when (and rebuild (not= [version lang-code] [(index-version) (i18n/site-locale-string)]))
+       (throw (ex-info "Rebuild coordinate changed before activation" {:rebuild rebuild})))
+     ;; Check before sync-tracking-atoms! can replace this process's current-locale tracking with the old coordinate.
+     (search.lease/assert-coordinate-current!)
+     (locking *indexes*
+       (when (and expected-table
+                  (not= expected-table (:pending (if *mocking-tables* @*indexes* (sync-tracking-atoms!)))))
+         (throw (ex-info "Pending index was replaced before it could be activated"
+                         {:pending expected-table})))
+       (if *mocking-tables*
+         ;; The atoms are the only source of truth, we must not update the metadata.
+         (boolean
+          (when-let [pending (:pending @*indexes*)]
+            (analyze-table! pending)
+            (search.lease/assert-current!)
+            (reset! *indexes* {:active pending, :pending nil}) true))
+         ;; Ensure the metadata is updated and pruned.
+         (let [pending (or expected-table (:pending (sync-tracking-atoms!)))]
+           (log/infof "Activating pending index %s" pending)
+           (when pending
+             (analyze-table! pending)
+             (let [active (search.lease/do-with-ddl-connection
+                           #(some-> (search-index-metadata/activate-named-pending!
+                                     % :appdb (index-version) pending)
+                                    keyword))]
+               (when-not (= active pending)
+                 ;; Another process replaced or retired our pending metadata between the sync and the fenced
+                 ;; transaction; the table we built is left for orphan cleanup.
+                 (sync-tracking-atoms!)
+                 (throw (ex-info "Pending index was replaced before it could be activated"
+                                 {:active active, :pending pending})))
+               (reset! *indexes* {:active active, :pending nil})
+               (log/infof "Activated pending index %s" active)))
+           ;; Clean up while we're here
+           (delete-obsolete-tables!)
+           ;; Did *we* do a rotation?
+           (boolean pending)))))))
 
 (defn- strip-junk-chars
   "Replace control characters (\\p{Cc}: C0 controls including \\t \\n \\r, DEL, C1 controls) and surrogate
@@ -255,11 +339,18 @@
   Returns the table name written, or nil if no table is tracked or the batch is skipped.
   Throws when the tracked table is missing and the refresh names the same table, when the retry hits a missing
   table again, and on interruption.
-  Any other failure is logged and the batch is skipped."
-  [table-type table-name-fn entries]
+  Strict rebuild population propagates every failure; realtime updates log and skip other failures."
+  [conn table-type table-name-fn entries]
   (when-let [table-name (table-name-fn)]
     (let [upsert! (fn [t]
-                    (isolate-write! #(specialization/batch-upsert! t entries))
+                    ;; A failed statement aborts the surrounding transaction on PostgreSQL. Isolate every attempt in
+                    ;; a savepoint so catching a skippable failure here does not roll back a successful write to the
+                    ;; other index table, and so a stale-table retry can still issue SQL on the same connection.
+                    (t2.conn/do-with-transaction
+                     conn
+                     {}
+                     (fn [_]
+                       (specialization/batch-upsert! conn t entries)))
                     t)]
       (try
         (upsert! table-name)
@@ -267,9 +358,11 @@
           (.interrupt (Thread/currentThread))
           (throw ie))
         (catch Exception e
+          (when search.ingestion/*fail-on-error*
+            (throw e))
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (sql-errors/table-not-found? e) (not (exists? table-name)))
-            (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
+          (if (and (sql-errors/table-not-found? e) (not (exists? conn table-name)))
+            (when-let [refreshed-table-name (do (sync-tracking-atoms! conn) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
                 (try
@@ -291,14 +384,12 @@
                 nil)))))))
 
 (defn- batch-update!
-  "Create the given search index entries in bulk. Commits after each batch.
+  "Create the given search index entries in bulk.
+  Commits after each batch.
 
-  `reindex-table`, when non-nil, is the destination captured once at the start of a full reindex (see
-  [[index-docs!]]) -- the pending table when a rebuild is staging one, otherwise the active table for an
-  initial build. During a reindex we write ONLY to that captured table, so a concurrent resync that
-  transiently blanks the tracking atom can't redirect writes elsewhere mid-rebuild. For incremental and
-  in-place updates (`reindex-table` nil) we dual-write to the active and pending tables so an in-progress
-  rebuild stays current."
+  A full reindex passes the `reindex-table` captured by [[index-docs!]] and writes only there.
+  Incremental and in-place updates pass nil and dual-write to the active and pending tables so an
+  in-progress rebuild stays current."
   [reindex-table documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
@@ -312,45 +403,60 @@
         (swap! *indexes* assoc :pending nil))))
 
   (let [reindexing? (some? reindex-table)
-        do-writes   (fn []
+        leased?     (search.lease/leased?)
+        do-writes   (fn [conn]
+                      ;; Outside a leased rebuild this is a cheap no-op. During all rebuild modes (including in-place
+                      ;; and force-sync) it stops a stale owner at the next batch boundary.
+                      (search.lease/throw-if-lost!)
                       (let [entries (map document->entry documents)
                             updated (if reindexing?
-                                      ;; Full reindex: write only to the table captured for the whole run, so a
-                                      ;; transiently-blanked tracking atom can't redirect writes into the live
-                                      ;; active table (which would silently drop documents from the new index).
-                                      (safe-batch-upsert! :pending (constantly reindex-table) entries)
-                                      ;; Incremental / in-place: dual-write so an in-progress rebuild stays
-                                      ;; current. Either table may legitimately be absent.
-                                      (let [active-updated  (safe-batch-upsert! :active active-table entries)
-                                            pending-updated (safe-batch-upsert! :pending pending-table entries)]
+                                      (safe-batch-upsert! conn :pending (constantly reindex-table) entries)
+                                      ;; Either table may legitimately be absent.
+                                      (let [active-updated  (safe-batch-upsert! conn :active active-table entries)
+                                            pending-updated (safe-batch-upsert! conn :pending pending-table entries)]
                                         (or active-updated pending-updated)))]
                         (when updated
                           (u/prog1 (->> entries (map :model) frequencies)
-                            (when reindexing?
-                              (search.db/commit!))
                             (log/trace "indexed documents for " <>)))))]
-    (if reindexing?
-      ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
-      (t2/with-connection [_conn (mdb/data-source)]
-        (do-writes))
-      (do-writes))))
+    (cond
+      (or leased? search.ingestion/*force-sync*)
+      ;; Reuse the batch writer for both the ownership fence and write. This covers staged, force-sync, and in-place
+      ;; rebuilds without acquiring a third connection alongside the streaming reader and batch writer.
+      (search.lease/do-with-mutation-connection do-writes)
 
-(defn index-docs!
+      reindexing?
+      ;; The ambient connection is the streaming reader's transaction, so write on a fresh connection to keep each
+      ;; batch committing on its own.
+      (t2/with-connection [conn (mdb/app-db)]
+        (do-writes conn))
+
+      :else
+      (t2/with-connection [conn]
+        (do-writes conn)))))
+
+(defn clear-active-table!
+  "Delete the active table's contents on the lease's mutation connection."
+  [table]
+  (search.lease/do-with-mutation-connection #(search.db/delete-all-rows! % table)))
+
+(mu/defn index-docs! :- [:maybe [:map-of :string :int]]
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
-  [context document-reducible]
-  (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
-    (let [reindexing?   (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-          ;; Capture the destination table ONCE for the whole reindex: the pending table when a rebuild is
-          ;; staging one, otherwise the active table (initial creation populates the freshly-activated table
-          ;; directly, with no pending). Resolving this per batch is unsafe -- a concurrent TTL resync of the
-          ;; tracking atom can transiently blank :pending, which would otherwise flip the write target to the
-          ;; live active table mid-rebuild and silently drop documents from the index we are about to activate.
-          reindex-table (when reindexing? (or (pending-table) (active-table)))]
-      (transduce (comp (partition-all insert-batch-size)
-                       (map (partial batch-update! reindex-table)))
-                 (partial merge-with +)
-                 document-reducible))))
+  ([context :- :keyword, document-reducible :- ::search.schema/document-source]
+   (index-docs! context document-reducible nil))
+  ([context :- :keyword, document-reducible :- ::search.schema/document-source
+    rebuild :- [:maybe ::search.schema/rebuild-context]]
+   (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
+     (let [reindexing?   (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+           ;; Capture the destination table once for the whole reindex: the pending table when a rebuild is staging
+           ;; one, otherwise the active table (an initial build populates the freshly activated table directly).
+           ;; Resolving it per batch is unsafe: a concurrent TTL resync can transiently blank :pending, which would
+           ;; redirect writes to the live active table mid-rebuild and silently drop documents from the new index.
+           reindex-table (or (:table rebuild) (when reindexing? (or (pending-table) (active-table))))]
+       (transduce (comp (partition-all insert-batch-size)
+                        (map (partial batch-update! reindex-table)))
+                  (partial merge-with +)
+                  document-reducible)))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))
@@ -370,7 +476,7 @@
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."
   []
-  (search.db/active-index-created-at (search.spec/index-version-hash) (i18n/site-locale-string)))
+  (search.db/active-index-created-at (index-version) (i18n/site-locale-string)))
 
 (defn search
   "Use the index table to search for records."
@@ -382,21 +488,21 @@
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []
-  (log/infof "Resetting appdb index for version %s, active table: %s" (search.spec/index-version-hash)
+  (log/infof "Resetting appdb index for version %s, active table: %s" (index-version)
              (pr-str (active-table)))
   (letfn [(reset-logic []
-            ;; stop tracking any pending table
-            (when-let [table-name (pending-table)]
+            ;; A leased reset atomically replaces pending metadata in maybe-create-pending!. Do not let a stale owner
+            ;; pre-delete a replacement owner's metadata or clear the process-wide tracking atom.
+            (when-let [table-name (and (not (search.lease/leased?)) (pending-table))]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-non-active-index! :appdb
-                                                                              (search.spec/index-version-hash)
-                                                                              table-name)]
+                (let [deleted (search.lease/do-with-ddl-connection
+                               #(search-index-metadata/delete-non-active-index! % :appdb (index-version) table-name))]
                   (when (pos? deleted)
                     (log/infof "Deleted %d non-active metadata rows for index %s" deleted table-name))))
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]
-    (if search.ingestion/*force-sync*
+    (if (or search.ingestion/*force-sync* (search.lease/leased?))
       (reset-logic)
       ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
       ;; even while the initial startup and data load may be happening
