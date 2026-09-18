@@ -796,13 +796,19 @@
 
 (defn- dashboard-exposed-timeline-ids
   "The ids of the timelines whose events `card` shows when it is on a dashboard."
-  [{:keys [display archived] settings :visualization_settings}]
+  [{:keys [display] settings :visualization_settings}]
+  ;; Archived cards count too: archiving is undone by a plain `archived: false`, which runs no timeline check.
   (let [timeline-ids (:timeline.selected_timeline_ids settings)]
-    (when (and (not archived)
-               (timeline-events-supported-display? display)
+    (when (and (timeline-events-supported-display? display)
                (not (false? (:timeline_events.enabled settings)))
                (sequential? timeline-ids))
       (filter pos-int? timeline-ids))))
+
+(defn visualizer-dashcard?
+  "Whether `dashcard` renders its own visualizer visualization instead of its card's, in which case it never shows the
+  card's timeline events."
+  [dashcard]
+  (contains? (:visualization_settings dashcard) :visualization))
 
 (defn check-shared-dashboard-timeline-permissions!
   "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is

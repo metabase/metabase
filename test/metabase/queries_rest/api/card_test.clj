@@ -3097,6 +3097,27 @@
                  (:dashboard_id (mt/user-http-request :crowberto :put 200 (str "card/" (:id source-card))
                                                       {:dashboard_id (:id dashboard)})))))))))
 
+(deftest archived-card-with-restricted-timeline-on-public-dashboard-test
+  (testing "PUT /api/card/:id moving an archived card onto a public dashboard unarchives and autoplaces it, so it still needs timeline read access"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues)
+                                                :display                :line
+                                                :archived               true
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})))
+        (is (=? {:archived true, :dashboard_id nil}
+                (t2/select-one :model/Card card-id)))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+        (testing "a user who can read the timeline can still move it"
+          (is (=? {:archived false, :dashboard_id dash-id}
+                  (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"

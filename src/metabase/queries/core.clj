@@ -34,6 +34,7 @@
   check-shared-dashboard-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
   create-card!
+  visualizer-dashcard?
   with-copy-source-card]
  [metabase.queries.card-write-checks
   actual-collection-id
