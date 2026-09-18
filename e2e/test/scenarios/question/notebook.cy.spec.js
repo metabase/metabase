@@ -314,7 +314,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Select all").click();
       cy.findByLabelText("ID").should("have.attr", "aria-disabled", "true");
       cy.findByText("Tax").click();
-      cy.findByLabelText("ID").should("not.have.attr", "aria-disabled").click();
+      cy.findByLabelText("ID").should("not.have.attr", "aria-disabled");
+      cy.findByLabelText("ID").click();
     });
 
     cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
