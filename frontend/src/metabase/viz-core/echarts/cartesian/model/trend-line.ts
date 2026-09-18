@@ -14,6 +14,7 @@ import { msToDays, tryGetDate } from "../utils/timeseries";
 
 import { getScaledMinAndMax } from "./axis";
 import {
+  getDatasetExtents,
   getKeyBasedDatasetTransform,
   getNormalizedDatasetTransform,
   scaleDataset,
@@ -243,5 +244,6 @@ export const getTrendLines = (
   return {
     dataset: transformedDataset,
     seriesModels: trendSeriesModels,
+    extents: getDatasetExtents(dataKeys, transformedDataset),
   };
 };

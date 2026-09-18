@@ -24,6 +24,7 @@ import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../option/goal-line";
+import { applyResponsiveYAxisTicks } from "../../option/responsive-axis";
 import {
   buildEChartsLabelOptions,
   computeContinuousScaleBarWidth,
@@ -249,6 +250,13 @@ export const getWaterfallChartOption = (
   ].flatMap((option) => option ?? []);
 
   const echartsDataset = [{ source: chartModel.transformedDataset }];
+  const axes = buildAxes(
+    chartModel,
+    chartLayout,
+    settings,
+    hasTimelineEvents,
+    renderingContext,
+  );
 
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
@@ -258,12 +266,12 @@ export const getWaterfallChartOption = (
     },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(
+    ...axes,
+    yAxis: applyResponsiveYAxisTicks(
+      axes.yAxis,
       chartModel,
       chartLayout,
       settings,
-      hasTimelineEvents,
-      renderingContext,
     ),
   };
 };

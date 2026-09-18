@@ -458,6 +458,7 @@ export {
 export {
   DEFAULT_VISUALIZATION_THEME,
   getVisualizationTheme,
+  getCartesianChartSize,
 } from "./shared/utils/theme";
 export type {
   PivotedDatasetColumn,
@@ -486,6 +487,7 @@ export type {
   TooltipRowModel,
 } from "./types/hover";
 export type {
+  CartesianChartSize,
   Padding,
   RenderingContext,
   StaticVisualizationProps,

@@ -222,8 +222,14 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
 
     H.getDashboardCard(3).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      H.applyBrush(200, 300);
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("be.visible");
+      const MAY_2026_POINT_INDEX = 13;
+      const FEB_2027_POINT_INDEX = 22;
+      H.applyBrushToPoints(
+        MAY_2026_POINT_INDEX,
+        FEB_2027_POINT_INDEX,
+        H.chartPathWithFillColor("#509EE3"),
+      );
       cy.wait("@dataset");
     });
 

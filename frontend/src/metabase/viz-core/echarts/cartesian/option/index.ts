@@ -34,6 +34,7 @@ import type { TimelineEventsModel } from "../timeline-events/types";
 
 import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
+import { applyResponsiveYAxisTicks } from "./responsive-axis";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
@@ -304,7 +305,7 @@ export const getCartesianChartOption = (
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyResponsiveYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
   };
@@ -516,7 +517,10 @@ export function buildPerPanelYAxes(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] {
-  const yTicksWidth = chartLayout.ticksDimensions.yTicksWidthLeft;
+  const yTicksWidth = settings["graph.y_axis.axis_enabled"]
+    ? chartLayout.ticksDimensions.yTicksWidthLeft -
+      renderingContext.theme.cartesian.ticks.marginY
+    : 0;
   const panelAxisModels = chartModel.splitPanelYAxisModels ?? [];
 
   return panelAxisModels.map((axisModel, index) => {
@@ -524,7 +528,7 @@ export function buildPerPanelYAxes(
       ...buildMetricAxis(
         axisModel,
         chartModel.yAxisScaleTransforms,
-        yTicksWidth - CHART_STYLE.axisTicksMarginY,
+        yTicksWidth,
         settings,
         "left",
         true,
