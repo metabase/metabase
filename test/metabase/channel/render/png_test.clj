@@ -169,6 +169,15 @@
                             "</body></html>")
                        100))
 
+(defn- render-with-head
+  "Render a 20x20 div, with `head` injected into the document's `<head>`."
+  ^BufferedImage [head]
+  (#'png/render-to-png (str "<html><head>" head "</head>"
+                            "<body style=\"margin: 0; padding: 0;\">"
+                            "<div style=\"width: 20px; height: 20px;\">x</div>"
+                            "</body></html>")
+                       100))
+
 (defn- red-data-uri []
   (str "data:image/png;base64," (.encodeToString (Base64/getEncoder) (red-png-bytes))))
 
@@ -217,3 +226,15 @@
       (let [^BufferedImage img (render-img "https://10.0.0.1/red.png")]
         (is (false? (has-red-pixel? img)))
         (is (pos? (.getWidth img)))))))
+
+(deftest external-stylesheet-not-loaded-test
+  (testing "a stylesheet URL is never fetched -- jStyleParser retrieves those itself, outside the BrowserConfig"
+    (mt/with-temp-file [path "sec-872-style.css"]
+      (spit path "div { background-color: #FF0000; }")
+      (let [url (str "file://" path)]
+        (testing "an inline <style> block still applies, so the probe below can tell loading from not loading"
+          (is (true? (has-red-pixel? (render-with-head "<style>div { background-color: #FF0000; }</style>")))))
+        (testing "<link rel=stylesheet>"
+          (is (false? (has-red-pixel? (render-with-head (str "<link rel=\"stylesheet\" href=\"" url "\">"))))))
+        (testing "@import inside a <style> block"
+          (is (false? (has-red-pixel? (render-with-head (str "<style>@import url(\"" url "\");</style>"))))))))))

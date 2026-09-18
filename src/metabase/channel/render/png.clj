@@ -16,7 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (cz.vutbr.web.css MediaSpec)
+   (cz.vutbr.web.css CSSFactory MediaSpec NetworkProcessor)
    (java.awt Font GraphicsEnvironment Graphics2D RenderingHints)
    (java.awt.image BufferedImage)
    (java.io ByteArrayInputStream ByteArrayOutputStream IOException)
@@ -51,6 +51,17 @@
 ;;; `view_as: "image"` table cell puts an attacker-chosen query result in that attribute. So the
 ;;; config below honors only our own inline `data:` chart images plus `https:` through the SSRF-hardened
 ;;; [[u.http/fetch-bytes]]; anything else throws `IOException`, which CSSBox catches and logs.
+
+(defonce ^{:private  true
+           :doc      "jStyleParser retrieves `<link rel=stylesheet>` and `@import` URLs itself, with a bare
+                     `URL.openConnection` that [[browser-config]] never sees. Our documents only ever carry
+                     inline styles, so refuse those outright."
+           :arglists '([])} refuse-external-stylesheets!
+  (let [refused (delay (CSSFactory/setNetworkProcessor
+                        (reify NetworkProcessor
+                          (fetch [_ url]
+                            (throw (IOException. (str "Refusing to load stylesheet: " url)))))))]
+    (fn [] @refused)))
 
 (def ^:private allowed-image-content-types #{"image/png" "image/jpeg" "image/gif"})
 
@@ -111,6 +122,7 @@
    (render-to-png html width 1.0))
   (^java.awt.image.BufferedImage [^String html width scale]
    (style/register-fonts-if-needed!)
+   (refuse-external-stylesheets!)
    (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
                doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
      ;; `setupGraphics` runs for the measuring layout and again for the redraw, but a function `scale` can't be
