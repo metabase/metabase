@@ -270,7 +270,9 @@ const OverviewTemplate: StoryFn<OverviewArgs> = ({ filled }) => {
         <Box
           style={{
             display: "grid",
-            gridTemplateColumns: `repeat(${LABEL_EXAMPLES.length}, max-content)`,
+            gridTemplateColumns: LABEL_EXAMPLES.map(
+              ({ width }) => width ?? INPUT_WIDTH,
+            ).join(" "),
             gridTemplateRows: "repeat(5, auto)",
             columnGap: "2rem",
             rowGap: 0,

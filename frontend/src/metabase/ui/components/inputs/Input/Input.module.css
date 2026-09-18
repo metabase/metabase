@@ -68,7 +68,20 @@
   opacity: 1;
 }
 
+.wrapper[data-with-left-section] .input {
+  --input-padding-inline-start: var(--input-left-section-size);
+}
+
+.wrapper[data-with-right-section] .input {
+  --input-padding-inline-end: calc(
+    var(--input-right-section-size) + var(--mantine-spacing-sm)
+  );
+}
+
 .section {
+  /* Override for Input.ClearButton in right section */
+  --input-bg: transparent;
+
   color: var(--mb-color-icon-primary);
 }
 
