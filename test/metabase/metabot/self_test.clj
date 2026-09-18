@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
@@ -11,6 +12,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
@@ -18,6 +20,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
@@ -101,20 +104,54 @@
                                       (#'self/parse-provider-model model-ref)))]
           (is (= :llm-not-configured (:error-code (ex-data e)))))))))
 
-(deftest ^:parallel resolve-adapter-test
-  (testing "resolves known providers to adapter functions"
-    (is (fn? (#'self/resolve-adapter "anthropic")))
-    (is (fn? (#'self/resolve-adapter "openai")))
-    (is (fn? (#'self/resolve-adapter "openrouter")))
-    (is (fn? (#'self/resolve-adapter "zai")))
-    (is (fn? (#'self/resolve-adapter "mistral")))
-    (is (fn? (#'self/resolve-adapter "moonshot")))
-    (is (fn? (#'self/resolve-adapter "deepseek")))
-    (is (fn? (#'self/resolve-adapter "google")))
-    (is (fn? (#'self/resolve-adapter "vllm"))))
-  (testing "throws for unknown provider"
+(deftest ^:parallel registry-test
+  (testing "every registered provider resolves to an adapter and a listing"
+    ;; derived from the rows rather than listed here, so a provider added to the platform and the registry
+    ;; with an empty row fails this instead of going unchecked. The managed connection is excluded because it
+    ;; is served by the wire family its model names and so has no adapter of its own — asked of the platform
+    ;; rather than named, for the same reason.
+    (let [serving (remove (comp llm.provider/managed-type? key) @#'registry/adapters)]
+      (is (seq serving))
+      (doseq [[provider _row] serving]
+        (is (ifn? (registry/required provider :stream)) provider)
+        (is (ifn? (registry/required provider :list-models)) provider))))
+  (testing "a capability a provider does not have is absent, not a default"
+    (is (nil? (registry/optional "vllm" :supported-models)))
+    (is (nil? (registry/optional "deepseek" :context-window)))
+    (is (some? (registry/optional "anthropic" :supported-models))))
+  (testing "the registry covers exactly the provider types the platform knows about"
+    (is (= (set (map :type (llm.provider/provider-types)))
+           (set (keys @#'registry/adapters)))))
+  (testing "every row conforms to the schema, so a mistyped capability key cannot read as an absent one"
+    (doseq [[provider row] @#'registry/adapters]
+      (is (nil? (mr/explain registry/AdapterRow row)) provider)))
+  (testing "an adapter's own schema and the schema its row declares are the same contract, so a change to
+            one without the other fails here rather than at a call site"
+    ;; compared rather than exercised: the row's `:=>` forms are documentation — Malli checks one no further
+    ;; than `ifn?` — and `mu/defn` already validates each implementation against its own schema on every
+    ;; call. What nothing else covers is the two declarations drifting apart.
+    ;; Skipped: `:stream` is registered as a plain `defn` and carries no schema to compare, and
+    ;; `:supported-models` is a var holding a map rather than a function.
+    (let [declared (into {} (map (fn [[capability _props schema]] [capability (mc/form schema)]))
+                         (mc/children (mc/schema registry/AdapterRow)))]
+      (doseq [[provider row]              @#'registry/adapters
+              [capability implementation] (dissoc row :stream :supported-models)]
+        (is (= (declared capability)
+               (some-> (:schema (meta implementation)) mc/form))
+            (str provider " " capability)))))
+  (testing "every `:supported-models` allow-list conforms to the schema the shared listing helper takes."
+    (doseq [[provider row] @#'registry/adapters
+            :let  [models (some-> (:supported-models row) deref)]
+            :when models]
+      (is (nil? (mr/explain adapter/SupportedModels models)) provider)))
+  (testing "the capability enum and the row schema name the same capabilities, so the two hand-written
+            lists cannot drift apart — a capability in one but not the other would either be unlookupable
+            or unstorable"
+    (is (= (set (mc/children (mc/schema registry/Capability)))
+           (set (map first (mc/children (mc/schema registry/AdapterRow)))))))
+  (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
-                          (#'self/resolve-adapter "unknown")))))
+                          (registry/required "unknown" :stream)))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
@@ -2193,7 +2230,7 @@
     (let [models (self/known-models "anthropic")]
       (is (seq models))
       (is (every? (comp :display-name val) models))))
-  (testing "DeepSeek keys model id straight to a display name, and is normalized to the same shape"
+  (testing "DeepSeek records only a display name, and still comes back in the same shape"
     (let [models (self/known-models "deepseek")]
       (is (seq models))
       (is (every? (comp string? :display-name val) models))))
@@ -2204,7 +2241,19 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unknown LLM provider"
                           (self/known-models "brand-new"))))
-  (testing "an entry that is neither a map nor a string throws"
+  (testing "an entry that is not a map throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unrecognized supported-models entry"
-                          (#'self/normalize-known-model "anthropic" "some-model" 42)))))
+                          (#'self/normalize-known-model "anthropic" "some-model" 42))))
+  (testing "so does a map with no display name — the dox table would print the model id as its name"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
+  (testing "every provider that publishes an allow-list names every model in it"
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "zai"]]
+      (let [models (self/known-models provider)]
+        (is (seq models) provider)
+        (is (every? (comp string? :display-name val) models) provider)))))

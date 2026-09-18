@@ -1,0 +1,378 @@
+(ns metabase.metabot.self.adapter
+  "Shared scaffolding for the LLM provider adapters in `metabase.metabot.self.*`.
+
+  Every adapter does the same handful of things around whatever is genuinely provider-specific
+  (request bodies, stream translation, capability quirks): it names itself in errors, refuses the
+  Metabase Cloud AI proxy unless it can serve one, fetches a model catalog and intersects it with an
+  allow-list, and opens a streaming request wrapped in a span, a debug capture, and provider-friendly
+  error translation. That scaffolding lives here so an adapter is only its differences.
+
+  Adapters start from a [[provider]] descriptor and pass it to the helpers below."
+  (:require
+   [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.o11y :refer [with-span]]))
+
+(set! *warn-on-reflection* true)
+
+;;; -------------------------------------------------- Schemas ---------------------------------------------------
+
+(def Auth
+  "What [[core/request]] sends a request with. A server that takes no key at all (vLLM started without
+  `--api-key`) carries no headers."
+  [:map {:closed true}
+   [:url                  {:optional true} [:maybe :string]]
+   [:headers              {:optional true} [:maybe [:map-of :string :string]]]
+   [:network-policy-floor {:optional true} [:maybe core/NetworkPolicyFloor]]])
+
+(def Request
+  "One HTTP request to a provider, as [[request!]] performs it and a descriptor's `:auth` sees it.
+  `:credentials` and `:ai-proxy?` come from the caller — the latter is the caller asking to be proxied,
+  which [[reject-ai-proxy!]] grants only for a provider whose descriptor says `:supports-ai-proxy?`. The
+  rest describe the wire. `:body` is already encoded, so a provider that signs over it can."
+  [:map {:closed true}
+   [:method                       :keyword]
+   [:path                         :string]
+   [:credentials {:optional true} [:maybe core/LLMCredentials]]
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]
+   [:as          {:optional true} [:maybe :keyword]]
+   [:headers     {:optional true} [:maybe [:map-of :string :string]]]
+   [:body        {:optional true} [:maybe :string]]])
+
+(def ProviderSpec
+  "What an adapter hands [[provider]]; see that fn for what each key means."
+  [:map {:closed true}
+   [:slug                                :string]
+   [:display-name                        :string]
+   [:errors             {:optional true} [:maybe [:map-of :int fn?]]]
+   [:error-fallback     {:optional true} [:maybe fn?]]
+   [:headers            {:optional true} [:maybe [:map-of :string :string]]]
+   [:auth               {:optional true} [:maybe fn?]]
+   [:supports-ai-proxy? {:optional true} [:maybe :boolean]]])
+
+(def Provider
+  "A built descriptor: a [[ProviderSpec]] with `:auth` defaulted and `:span` and `:error-msg` derived.
+  Every helper here takes one as its first argument."
+  [:merge ProviderSpec
+   [:map {:closed true}
+    [:auth      fn?]
+    [:span      :keyword]
+    [:error-msg fn?]]])
+
+(def SupportedModels
+  "An adapter's allow-list of the models it offers in the picker, keyed by model id. A provider that
+  publishes no context window for a model (DeepSeek) records only the display name."
+  [:map-of :string [:map {:closed false, ::mr/deliberately-open true
+                          :description "an allow-list entry; providers add their own flags"}
+                    [:display-name                   :string]
+                    [:context-window {:optional true} [:maybe :int]]]])
+
+(def ResolvedRef
+  "What [[metabase.llm.provider/resolve-model-ref]] turns a `connection-key/model` string into.
+
+  Lives here rather than in the registry: the registry requires the adapters, not the other way round, so
+  this is where both ends can name it."
+  [:map {:closed true}
+   [:connection-key {:optional true} [:maybe :string]]
+   [:type           {:optional true} [:maybe :string]]
+   [:model          {:optional true} [:maybe :string]]
+   [:credentials    {:optional true} [:maybe core/LLMCredentials]]
+   [:ai-proxy?      {:optional true} [:maybe :boolean]]])
+
+(def ListOpts
+  "What a `list-models` call carries. Not [[core/LLMRequestOpts]]: a listing is not a generation, and the
+  connect path adds `:proposed-model` and `:probe?` — the model it believes the connection serves, and
+  permission to spend a probe verifying it (see [[metabase.llm.api.provider]])."
+  [:map {:closed true}
+   [:credentials    {:optional true} [:maybe core/LLMCredentials]]
+   [:ai-proxy?      {:optional true} [:maybe :boolean]]
+   [:model          {:optional true} [:maybe :string]]
+   [:proposed-model {:optional true} [:maybe :string]]
+   [:probe?         {:optional true} [:maybe :boolean]]])
+
+(def CatalogEntry
+  "One row of a provider's model catalog, as the provider sends it. Open: every provider adds its own
+  fields, and an adapter reads only `:id` and whichever name key its catalog uses."
+  [:map {::mr/deliberately-open true
+         :description "a provider catalog entry"}
+   [:id {:optional true} [:maybe :string]]])
+
+(def ModelListing
+  "The model-listing response the admin picker consumes, plus what a connect-time probe learned about the
+  connection for the connect path to store on it."
+  [:map {:closed true}
+   [:models                        [:sequential [:map {:closed true}
+                                                 [:id           :string]
+                                                 [:display_name [:maybe :string]]]]]
+   [:learned-config {:optional true} [:map {:closed true}
+                                      [:model-reasoning {:optional true} :string]
+                                      [:probed-model    {:optional true} :string]]]])
+
+(def StreamOpts
+  "How an adapter puts one request on the wire; see [[stream!]]."
+  [:map {:closed true}
+   [:path                              [:or :string fn?]]
+   [:body                              [:map {::mr/deliberately-open true
+                                              :description "a provider's composed request body"}]]
+   [:headers          {:optional true} [:maybe [:map-of :string :string]]]
+   [:request-options  {:optional true} [:maybe [:map {::mr/deliberately-open true
+                                                      :description "extra clj-http request options"}]]]
+   [:span-attrs       {:optional true} [:maybe [:map {::mr/deliberately-open true
+                                                      :description "extra span attributes"}]]]
+   [:error-msg        {:optional true} [:maybe fn?]]
+   [:wrap-stream      {:optional true} [:maybe fn?]]
+   [:on-request-error {:optional true} [:maybe fn?]]])
+
+;;; ------------------------------------------------- Descriptor -------------------------------------------------
+
+(defn- status-error-msg-fn
+  "Build the `res->message` callback [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]] take.
+
+  `errors` maps an HTTP status to a thunk returning that status's user-facing message; a status with no
+  entry falls back to `fallback`, a fn of the status. The messages stay thunks so each one is rendered in
+  the caller's locale at throw time, the way an inline `tru` would be.
+
+  `:error-fallback` is here to keep old translations working until the new one is properly translated"
+  [display-name errors fallback]
+  (fn [res]
+    (let [status (long (:status res 0))]
+      (if-let [msg (get errors status)]
+        (msg)
+        (if fallback
+          (fallback status)
+          (tru "{0} API error (HTTP {1})" display-name status))))))
+
+;;; --------------------------------------------------- Auth -----------------------------------------------------
+
+(mu/defn reject-ai-proxy! :- :nil
+  "Throw when a caller asks for a proxied request to a provider the proxy cannot serve.
+
+  [[request!]] applies this, so the check lands on every request to a provider — an adapter's own
+  listing and probe paths included, since those go through [[request!]] too. An adapter has to call it
+  itself only on a path that can answer without reaching the provider, which would otherwise accept a
+  proxied call by making no request to refuse."
+  [{:keys [display-name supports-ai-proxy?]} :- Provider
+   requested-proxy?                          :- [:maybe :boolean]]
+  (when (and requested-proxy? (not supports-ai-proxy?))
+    (throw (ex-info (tru "AI proxy is not supported for {0}" display-name)
+                    {:api-error  true
+                     :error-code :proxy-unsupported}))))
+
+(mu/defn bearer-auth :- Auth
+  "The default `:auth`: carry the connection's API key as `Authorization: Bearer`. Nothing about the
+  request itself matters, which is true of every provider that authenticates per connection.
+
+  A blank key passes no auth map at all, so [[core/resolve-auth]] raises the provider's own missing-key
+  error rather than sending an unauthenticated request."
+  [{:keys [slug display-name]}       :- Provider
+   {:keys [credentials ai-proxy?]}   :- Request]
+  (core/resolve-auth slug display-name
+                     (when-let [k (not-empty (:api-key credentials))]
+                       {:url     (:base-url credentials)
+                        :headers {"Authorization" (str "Bearer " k)}})
+                     ai-proxy?))
+
+(mu/defn request!
+  "Perform one HTTP request to `p` and return the response.
+
+  The single door every provider request goes through, so what is true of all of them lives here rather
+  than in each adapter: a proxied request `p` cannot serve is refused, and the descriptor's
+  `:auth` authenticates whatever is left. That the `:auth` fn runs per request is deliberate: it keeps
+  the door single, and an adapter that finds resolution expensive caches it rather than hoisting it out
+  — the one that does, parsing a Google service-account key, memoizes in the adapter.
+
+  A request with a `:body` is sent as JSON unless something overrides the header.
+
+  `req` carries the caller's `:credentials` and `:ai-proxy?` alongside the wire details (`:method`,
+  `:path`, `:as`, `:headers`, and an already-encoded `:body`); `extra` is merged into the
+  [[core/request]] opts, for per-provider timeouts and the like."
+  ([p   :- Provider
+    req :- Request]
+   (request! p req nil))
+  ([{:keys [auth] :as p}                                    :- Provider
+    {:keys [method path body as headers ai-proxy?] :as req} :- Request
+    extra                                                   :- [:maybe [:map {::mr/deliberately-open true
+                                                                              :description "extra clj-http request options"}]]]
+   (reject-ai-proxy! p ai-proxy?)
+   (core/request (auth p req)
+                 (merge (cond-> {:method  method
+                                 :url     path
+                                 :headers (merge (when body {"Content-Type" "application/json"})
+                                                 (:headers p)
+                                                 headers)}
+                          as   (assoc :as as)
+                          body (assoc :body body))
+                        extra))))
+
+(mu/defn provider :- Provider
+  "Build the descriptor the helpers in this namespace take as their first argument.
+
+    :slug               - the `llm-providers` type string. Tags errors and debug logs, and names the
+                          request span `:metabot.{slug}/request`.
+    :display-name       - the human name spliced into user-facing messages.
+    :errors             - HTTP status -> thunk returning that status's message (see
+                          [[status-error-msg-fn]]).
+    :error-fallback     - fn of the status, for a status `:errors` does not name. Each adapter keeps its
+                          own for now for the sake of i18n backward compatibility.
+    :headers            - headers every request to this provider carries (e.g. an API version).
+    :auth               - how this provider authenticates one request: a fn of the descriptor and the
+                          request (`:credentials`, `:ai-proxy?`, `:method`, `:path`, and the encoded
+                          `:body`), returning the `{:url ... :headers ...}` [[core/request]] takes.
+                          Defaults to [[bearer-auth]]. Everything provider-specific about
+                          authenticating lives here — the header the key travels in, the validation its
+                          credentials need, or a signature over the request itself.
+    :supports-ai-proxy? - whether the Metabase Cloud AI proxy can serve this provider. Defaults to
+                          false, which makes [[request!]] reject a request that asked for the proxy.
+                          Distinct from a request's own `:ai-proxy?`, which is a caller asking for it."
+  [{:keys [slug display-name errors error-fallback auth] :as descriptor} :- ProviderSpec]
+  (assoc descriptor
+         :error-msg (status-error-msg-fn display-name errors error-fallback)
+         :auth      (or auth bearer-auth)
+         :span      (keyword (str "metabot." slug) "request")))
+
+(mu/defn rethrow!
+  "Rethrow a provider HTTP exception with `p`'s own user-facing message. See [[core/rethrow-api-error!]]."
+  [{:keys [slug error-msg]} :- Provider
+   e                        :- [:fn #(instance? Throwable %)]]
+  (core/rethrow-api-error! slug error-msg e))
+
+;;; ------------------------------------------------ Model catalog -----------------------------------------------
+
+(mu/defn fetch-catalog :- [:maybe [:sequential :map]]
+  "Fetch a provider's OpenAI-style model catalog and return its entries.
+
+  This doubles as the credential round trip behind the admin Connect button for every provider whose
+  catalog endpoint answers one, so failures are translated with the provider's own messages.
+
+  Entries come from [[chat-completions/models-catalog]], which fails closed: a 2xx whose body is not a
+  recognizable catalog throws rather than yielding no entries, which would leave the admin an empty model
+  picker and a Connect button that succeeded against a provider we never actually reached. A well-formed
+  but empty catalog is a legitimate answer and passes.
+
+  `opts` is the caller's request; `path` is the catalog endpoint relative to the base URL, for a provider
+  that does not serve one at `/models`. The descriptor's own `:headers` ride along either way."
+  ([p    :- Provider
+    opts :- ListOpts]
+   (fetch-catalog p opts "/models"))
+  ([{:keys [display-name] :as p}    :- Provider
+    {:keys [credentials ai-proxy?]} :- ListOpts
+    path                            :- :string]
+   (try
+     (let [res (request! p {:credentials credentials
+                            :ai-proxy?   ai-proxy?
+                            :method      :get
+                            :path        path
+                            :as          :json})]
+       (chat-completions/models-catalog display-name res))
+     (catch Exception e
+       (rethrow! p e)))))
+
+(mu/defn model-listing :- ModelListing
+  "Shape a provider's catalog `entries` into the `{:models [{:id ... :display_name ...}]}` listing response.
+
+  Keeps only the entries `supported-models` allows and sorts by id, so the admin picker is stable across
+  catalog reorderings.
+
+  `catalog-name-key` is the field this provider's catalog carries a model's own name in — `:name` for
+  OpenRouter and Z.AI, `:display_name` for Anthropic. Each provider names its own, rather than the
+  shared code guessing between them: a provider whose catalog grew a second name field would otherwise
+  start rendering a different one. Omit it for a catalog that carries no name and the allow-list's name
+  is used, which is also what happens when an entry is missing the field."
+  ([supported-models :- SupportedModels
+    entries          :- [:maybe [:sequential CatalogEntry]]]
+   (model-listing supported-models entries nil))
+  ([supported-models  :- SupportedModels
+    entries           :- [:maybe [:sequential CatalogEntry]]
+    catalog-name-key  :- [:maybe :keyword]]
+   {:models (->> entries
+                 (filter (comp supported-models :id))
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id] :as entry}]
+                         {:id           id
+                          :display_name (or (get entry catalog-name-key)
+                                            (get-in supported-models [id :display-name]))})))}))
+
+;;; ------------------------------------------------- Streaming --------------------------------------------------
+
+(mu/defn stream!
+  "Open a provider's streaming request and return a reducible over its raw SSE events.
+
+  Wraps the exchange in what every adapter needs around it: the request span, the opt-in debug capture of
+  the composed request and its response, and translation of failures into the provider's own messages —
+  both at request time and mid-stream, since the SSE body is consumed lazily, long after this returns.
+
+  `opts` is the caller's request — its `:model` names the span and the debug log, its `:credentials`
+  and `:ai-proxy?` are what the descriptor's `:auth` authenticates from, and its `:input` and `:tools`
+  are what the span counts.
+
+  The third argument says how this adapter puts that request on the wire:
+
+    :path             - the streaming endpoint, relative to the base URL, or a thunk returning it. A
+                        thunk is called inside the span and behind the proxy refusal, for the one
+                        provider whose path is derived from credentials that can fail to resolve
+                        (Google) — so that failure lands on the trace, and loses to the refusal.
+    :body             - the composed request body. Encoded here.
+    :headers          - extra request headers, beyond the descriptor's own and the `Content-Type`
+                        [[request!]] adds for a request with a body.
+    :request-options  - extra [[core/request]] opts, e.g. per-provider timeouts.
+    :span-attrs       - extra keys merged into the `with-span` map. They reach its log line; clj-otel
+                        drops them from the trace itself, along with the model and the counts, until
+                        BOT-2168 fixes the wrapper.
+    :error-msg        - replaces the descriptor's own `res->message`, for a provider whose message
+                        depends on the connection rather than only on the response. Applies to both
+                        phases below.
+    :wrap-stream      - applied to the reducible before error translation, for an adapter with its own
+                        translation to do first.
+    :on-request-error - replaces the default [[rethrow!]] catch, for an adapter that retries. Only
+                        request-time failures reach it: the body is consumed long after this returns,
+                        so a mid-stream failure is translated by [[core/reducible-with-api-errors]]
+                        instead, which no adapter overrides."
+  [{:keys [slug display-name span] :as p}            :- Provider
+   {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
+   {:keys [path body headers request-options span-attrs wrap-stream on-request-error error-msg]
+    :or   {wrap-stream identity}}                    :- StreamOpts]
+  (let [msg-count  (count input)
+        tool-count (count tools)
+        res->msg   (or error-msg (:error-msg p))]
+    (log/debug (str display-name " request") {:model model :msg-count msg-count :tools tool-count})
+    ;; flat keys, which is what `u.o11y/with-span` renders into its log line. clj-otel reads span
+    ;; attributes only from `:attributes` and drops every other key, so these reach the log and not the
+    ;; trace.
+    (with-span :info (merge {:name       span
+                             :model      model
+                             :msg-count  msg-count
+                             :tool-count tool-count}
+                            span-attrs)
+      (try
+        ;; ahead of `path`, which a provider may derive from credentials that can fail to resolve: a proxied
+        ;; request should say the proxy is unsupported, not report whatever is missing from a connection it
+        ;; will never use. [[request!]] checks again, for callers that do not come through here.
+        (reject-ai-proxy! p ai-proxy?)
+        (let [path (if (fn? path) (path) path)]
+          (-> (request! p {:credentials credentials
+                           :ai-proxy?   ai-proxy?
+                           :method      :post
+                           :path        path
+                           :as          :stream
+                           :headers     headers
+                           ;; encoded up front, since a provider may sign over the body
+                           :body        (json/encode body)}
+                        request-options)
+              :body
+              core/sse-reducible
+              (debug/capture-stream {:provider slug
+                                     :model    model
+                                     :url      path
+                                     :request  body})
+              wrap-stream
+              (core/reducible-with-api-errors slug res->msg)))
+        (catch Exception e
+          (if on-request-error
+            (on-request-error e)
+            (core/rethrow-api-error! slug res->msg e)))))))

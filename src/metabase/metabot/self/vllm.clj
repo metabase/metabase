@@ -9,15 +9,13 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.malli :as mu])
   (:import
    (java.io IOException)
    (java.net SocketTimeoutException)
@@ -29,32 +27,41 @@
   "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
   16384)
 
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for vLLM")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
 (defn- missing-base-url-ex []
   (ex-info (tru "No vLLM base URL is set")
            {:api-error  true
             :error-code :base-url-missing}))
 
+(defn- vllm-auth
+  "vLLM's `:auth`. A server needs a base URL but not a key — one started without `--api-key` is a complete
+  configuration — so the map is never nil and [[core/resolve-auth]] cannot reach its `missing-api-key-ex`
+  branch."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+  (let [base-url (not-empty (:base-url credentials))
+        api-key  (not-empty (:api-key credentials))]
+    (when-not base-url
+      (throw (missing-base-url-ex)))
+    (core/resolve-auth slug display-name
+                       (cond-> {:url base-url}
+                         api-key (assoc :headers {"Authorization" (str "Bearer " api-key)}))
+                       ai-proxy?)))
+
+(def ^:private provider
+  (adapter/provider
+   {:slug              "vllm"
+    :display-name      "vLLM"
+    :auth              vllm-auth
+    :error-fallback    #(tru "vLLM API error (HTTP {0})" %)
+    :errors            {400 #(tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
+                        401 #(tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
+                        404 #(tru "vLLM API endpoint was not found — the base URL should end in /v1")
+                        429 #(tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
+                        500 #(tru "vLLM returned an internal server error")}}))
+
 (defn- missing-model-ex []
   (ex-info (tru "No vLLM model is set")
            {:api-error  true
             :error-code :model-missing}))
-
-(defn- vllm-error-msg
-  "Canonical, status-specific vLLM error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "vLLM rejected the request — usually an unsupported schema, or a model that cannot compile the tool grammar")
-      401 (tru "vLLM API key expired or invalid — check the key your server was started with via --api-key")
-      404 (tru "vLLM API endpoint was not found — the base URL should end in /v1")
-      429 (tru "The vLLM server''s request queue is full — reduce concurrent load, or restart it with a larger --max-num-seqs")
-      500 (tru "vLLM returned an internal server error")
-      (tru "vLLM API error (HTTP {0})" status))))
 
 (def reasoning-config-key
   "The connection `:config` key [[preflight!]]'s reasoning observation is recorded under. It is not an
@@ -69,32 +76,16 @@
   (let [recorded (get credentials reasoning-config-key)]
     (or (true? recorded) (= "true" recorded))))
 
-(defn- vllm-auth
-  "Auth map for a vLLM request, built from the connection's credentials alone. The map is never nil, so
-  `core/resolve-auth` cannot reach its `missing-api-key-ex` branch — a keyless server is a complete
-  configuration."
-  [credentials ai-proxy?]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [base-url (not-empty (:base-url credentials))
-        api-key  (not-empty (:api-key credentials))]
-    (when-not base-url
-      (throw (missing-base-url-ex)))
-    (core/resolve-auth "vllm" "vLLM"
-                       (cond-> {:url base-url}
-                         api-key (assoc :headers {"Authorization" (str "Bearer " api-key)}))
-                       ai-proxy?)))
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. vLLM answers from what its connect-time probe recorded on the connection: the flag
+  depends on the operator's `--reasoning-parser` as well as on the model, so the name cannot settle it."
+  [{:keys [credentials]} :- adapter/ResolvedRef]
+  (reasoning-connection? credentials))
 
 (defn- inference-timeouts
   "Timeouts for a generation request."
   []
   {:socket-timeout     (llm/llm-vllm-request-timeout-ms)
-   :connection-timeout (llm/llm-connection-timeout-ms)})
-
-(defn- control-timeouts
-  "Timeouts for the non-generating `/models` call, on the shared (much shorter) request budget."
-  []
-  {:socket-timeout     (llm/llm-request-timeout-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
 (def ^:private probe-timeout-ceiling-ms
@@ -140,25 +131,27 @@
 
   A 2xx whose body is not a recognizable catalog fails closed via
   [[chat-completions/models-catalog]], naming the base URL — the likeliest cause for the one provider
-  whose base URL the admin types."
-  [auth]
+  whose base URL the admin types.
+
+  No timeouts are passed: this is not a generation, so it rides [[core/request]]'s shared default
+  budget rather than vLLM's longer [[inference-timeouts]] one."
+  [{{:keys [base-url]} :credentials :as req}]
   (try
-    (let [res (core/request auth (merge {:method  :get
-                                         :url     "/models"
-                                         :as      :json
-                                         :headers {"Content-Type" "application/json"}}
-                                        (control-timeouts)))]
-      ;; The URL off `auth`, not the setting: a connect verifies request credentials before saving them.
+    (let [res (adapter/request! provider (assoc req
+                                                :method :get
+                                                :path   "/models"
+                                                :as     :json))]
+      ;; The URL off the request credentials, not the setting: a connect verifies them before they are saved.
       (chat-completions/models-catalog
        "vLLM" res
        {:detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
-                     (str (:url auth)))}))
+                     (str base-url))}))
     ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
     ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
     (catch IOException e
-      (throw (list-models-io-ex e (:url auth))))
+      (throw (list-models-io-ex e base-url)))
     (catch Exception e
-      (core/rethrow-api-error! "vllm" vllm-error-msg e))))
+      (adapter/rethrow! provider e))))
 
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 
@@ -210,18 +203,19 @@
   "Run one non-streaming Chat Completions turn against `model` and return the first choice. The
   `finish_reason` is part of the return value because a generation truncated at
   [[probe-max-tokens]] and a server that will not call tools both produce empty `tool_calls`."
-  [auth model tool-choice]
-  (let [res (core/request auth (merge {:method  :post
-                                       :url     "/chat/completions"
-                                       :as      :json
-                                       :headers {"Content-Type" "application/json"}
-                                       :body    (json/encode {:model       model
-                                                              :messages    probe-messages
-                                                              :tools       [probe-tool]
-                                                              :tool_choice tool-choice
-                                                              :temperature 0
-                                                              :max_tokens  probe-max-tokens})}
-                                      (probe-timeouts)))]
+  [req model tool-choice]
+  (let [res (adapter/request! provider
+                              (assoc req
+                                     :method  :post
+                                     :path    "/chat/completions"
+                                     :as      :json
+                                     :body    (json/encode {:model       model
+                                                            :messages    probe-messages
+                                                            :tools       [probe-tool]
+                                                            :tool_choice tool-choice
+                                                            :temperature 0
+                                                            :max_tokens  probe-max-tokens}))
+                              (probe-timeouts))]
     (get-in res [:body :choices 0])))
 
 (defn- check-context-budget!
@@ -237,8 +231,8 @@
   `content` as prose and Metabot chats without ever acting.
 
   Returns whether the model emitted reasoning, the only signal anywhere that it is a reasoning model."
-  [auth model]
-  (let [{:keys [message finish_reason]} (probe-chat! auth model "auto")
+  [req model]
+  (let [{:keys [message finish_reason]} (probe-chat! req model "auto")
         content    (str (:content message))
         ;; `reasoning` since vLLM 0.26; `reasoning_content` is the deprecated spelling older builds
         ;; and other OpenAI-compatible servers still use.
@@ -289,8 +283,8 @@
 (defn- check-structured-output!
   "Check that guided decoding works. A different failure from [[check-tool-calling!]]: a model whose
   grammar the server cannot compile chats fine but breaks titling and the whole `sql` profile."
-  [auth model]
-  (let [{:keys [message finish_reason]} (probe-chat! auth model "required")]
+  [req model]
+  (let [{:keys [message finish_reason]} (probe-chat! req model "required")]
     (when (empty? (:tool_calls message))
       (throw (preflight-ex
               (if (= "length" finish_reason)
@@ -342,10 +336,10 @@
   They run concurrently; deref order fixes the verdict, tool calling being the more actionable
   diagnosis when a server fails both. The loser is cancelled rather than left generating against the
   operator's server long after anyone is listening."
-  [auth model]
+  [req model]
   (try
-    (let [tool-calling (future (check-tool-calling! auth model))
-          structured   (future (check-structured-output! auth model))]
+    (let [tool-calling (future (check-tool-calling! req model))
+          structured   (future (check-structured-output! req model))]
       (try
         (let [reasoning? (await-probe! tool-calling)]
           (await-probe! structured)
@@ -358,7 +352,7 @@
               (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
                    (str (:socket-timeout (probe-timeouts)))))))
     (catch Exception e
-      (core/rethrow-api-error! "vllm" vllm-error-msg e))))
+      (adapter/rethrow! provider e))))
 
 (defn- preflight!
   "Exercise the contract the agent loop depends on, against the model that will actually be used, and
@@ -368,14 +362,14 @@
   `:reasoning?` reports whether the probed model streamed reasoning. Only the probe can answer that,
   and the answer drives which renderer the frontend picks, so the connection records it (see
   [[reasoning-config-key]])."
-  [auth entries requested-model]
+  [req entries requested-model]
   (let [entry (probe-target entries requested-model)
         model (:id entry)]
     (check-context-budget! entry)
     {:model      model
-     :reasoning? (run-probes! auth model)}))
+     :reasoning? (run-probes! req model)}))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "List the models the connection's vLLM server is serving. Pass-through: there is nothing to
   whitelist, and `display_name` falls back to the served id.
 
@@ -386,13 +380,13 @@
   prefill. On edit, a `:proposed-model` is re-probed only while the server still advertises it;
   otherwise the normal candidate selection chooses a replacement."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
-   (let [auth     (vllm-auth credentials ai-proxy?)
-         entries  (list-all-models auth)
+  ([{:keys [credentials ai-proxy? model proposed-model probe?]} :- adapter/ListOpts]
+   (let [req      {:credentials credentials :ai-proxy? ai-proxy?}
+         entries  (list-all-models req)
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
          probed   (when probe?
-                    (preflight! auth entries (or model proposed)))]
+                    (preflight! req entries (or model proposed)))]
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}
@@ -474,40 +468,21 @@
   Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
   request, and throws without a base URL.
   `:ai-proxy?` is not supported for vLLM and throws when true."
-  [{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
+  [{:keys [model credentials] :as opts} :- core/LLMRequestOpts]
   (when (str/blank? model)
     (throw (missing-model-ex)))
-  (let [req        (vllm-request-body opts)
-        timeout-ms (llm/llm-vllm-request-timeout-ms)]
-    (log/debug "vLLM request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.vllm/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [auth     (vllm-auth credentials ai-proxy?)
-              response (core/request auth
-                                     (merge {:method  :post
-                                             :url     "/chat/completions"
-                                             :as      :stream
-                                             :headers {"Content-Type" "application/json"}
-                                             :body    (json/encode req)}
-                                            (inference-timeouts)))]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "vllm"
-                                     :model    model
-                                     :url      "/chat/completions"
-                                     :request  req})
-              (io-guarded timeout-ms)
-              (core/reducible-with-api-errors "vllm" vllm-error-msg)))
-        ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
-        ;; cannot swallow one `vllm-error-msg` would have translated.
-        (catch IOException e
-          (throw (request-io-ex e (:base-url credentials) timeout-ms)))
-        (catch Exception e
-          (core/rethrow-api-error! "vllm" vllm-error-msg e))))))
+  (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
+    (adapter/stream! provider opts
+                     {:path             "/chat/completions"
+                      :body             (vllm-request-body opts)
+                      :request-options  (inference-timeouts)
+                      :wrap-stream      #(io-guarded % timeout-ms)
+                      ;; clj-http raises an `IOException` only when there is no response at all, so the
+                      ;; IO branch cannot swallow a failure the provider's own messages would have translated.
+                      :on-request-error (fn [e]
+                                          (if (instance? IOException e)
+                                            (throw (request-io-ex e (:base-url credentials) timeout-ms))
+                                            (adapter/rethrow! provider e)))})))
 
 (defn vllm->aisdk-chunks-xf
   "Translates vLLM Chat Completions streaming chunks into AI SDK v5 protocol chunks.
