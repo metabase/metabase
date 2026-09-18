@@ -72,7 +72,7 @@ If you run Metabase yourself, here's the path to working transforms:
 
 Before you can start writing transforms, you'll need to enable transforms in your Metabase instance.
 
-If you're on a Metabase Cloud plan, only people logged in with an email of a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-managers) (not just Metabase _instance_ admins) can enable basic transforms, because transforms incur a cost per run on Metabase Cloud.
+If you're on a Metabase Cloud plan, only people logged in with an email of a [Metabase Store admin](https://www.metabase.com/docs/latest/cloud/accounts-and-billing#add-managers) (not just Metabase _instance_ admins) can enable basic transforms, because transforms incur a cost per run on Metabase Cloud.
 
 To enable transforms:
 

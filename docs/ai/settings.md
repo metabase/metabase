@@ -231,7 +231,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 If you're using the Metabase AI service, you can see how many Metabot requests people have made this month by going to **Admin > AI**.
 
-If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
+If you aren't logged into the [Metabase Store](https://www.metabase.com/docs/latest/cloud/accounts-and-billing), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
 If you're using your own provider credentials, you can track usage and costs through that provider's dashboard.
 
