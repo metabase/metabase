@@ -162,6 +162,8 @@
   (compared with SQL `LIKE`), excluding personal Collections that don't belong to `current-user-id`."
   [location-prefixes :- [:sequential :string]
    current-user-id   :- [:maybe ::lib.schema.id/user]]
+  ;; Each prefix IS marked, inside the `fn`. The lint additionally flags the `fn`'s binding vector, which names the
+  ;; parameter rather than holding a value.
   (t2/select [:model/Collection :name :id :location :description :type]
              {:where [:and
                       (into [:or] (map (fn [prefix] [:like :location [:auto/param prefix]])) location-prefixes)
@@ -338,6 +340,8 @@
    new-children-location  :- :string
    remote-synced?         :- :boolean
    archive-operation-id   :- :string]
+  ;; The two locations sit in the `:set` map, so they are written values (rule 1) and are left bare. HoneySQL
+  ;; already binds them: `[:replace ...]` compiles to `REPLACE(location, ?, ?)`.
   (t2/query-one {:update :collection
                  :set    {:location             [:replace :location orig-children-location new-children-location]
                           :is_remote_synced     remote-synced?
@@ -355,6 +359,8 @@
   [orig-children-location :- :string
    new-children-location  :- :string
    remote-synced?         :- :boolean]
+  ;; As in [[unarchive-descendant-collections!]]: `:set` values are written, not filtered (rule 1), and
+  ;; `[:replace ...]` binds them as `REPLACE(location, ?, ?)` regardless.
   (t2/query-one {:update :collection
                  :set    {:location         [:replace :location orig-children-location new-children-location]
                           :is_remote_synced remote-synced?}
@@ -383,6 +389,8 @@
   "A map of ID to the namespace of the ::collections.schema/collection holding each instance of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
+  ;; `model` names the table here, not a value; the lint reads the model vector as a value slot. Marking it would
+  ;; throw `::marker-outside-value-slot`. `ids` is coerced per rule 4.
   (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) (mapv long ids)]
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
