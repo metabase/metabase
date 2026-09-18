@@ -80,7 +80,7 @@
   "What a Cloud forced call asks for in place of the `tool_choice` Ollama discards. Appended last,
   where an instruction carries furthest. It is not a guarantee and is not treated as one: a model that
   answers in chat anyway produces the caller's ordinary missing-tool-call failure."
-  "Answer by calling the `structured_output` tool. Do not reply in chat.")
+  (str "Answer by calling the `" tool-name "` tool. Do not reply in chat."))
 
 ;;; ------------------------------------------------- The decision -----------------------------------------------
 
