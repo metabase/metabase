@@ -19,6 +19,8 @@ interface Window {
   MetabaseUserColorScheme?: string;
   MetabaseSiteLocalization?: MetabaseLocalization;
   MetabaseUserLocalization?: MetabaseLocalization;
+  /** The locales the document loaded catalogues for, set by index_bootstrap.js. */
+  MetabaseLocales?: { user: string; site: string };
 
   overrideIsWithinIframe?: boolean; // Mock that we're embedding, so we could test embed components
   METABASE?: boolean; // Add a global so we can check if the parent iframe is Metabase

@@ -143,7 +143,10 @@
    #"\.rej$"
    ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
    ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
-   #"^modules/"])
+   #"^modules/"
+   ;; The frontend build compiles each locale catalogue into a hashed script under app/dist, so these
+   ;; sources are build inputs only. They are ~27 MB and nothing reads them at runtime.
+   #"^frontend_client/app/locales/"])
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"

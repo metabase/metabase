@@ -1,7 +1,8 @@
 (function() {
   window.MetabaseBootstrap        = JSON.parse(document.getElementById("_metabaseBootstrap").textContent);
-  window.MetabaseUserLocalization = JSON.parse(document.getElementById("_metabaseUserLocalization").textContent);
-  window.MetabaseSiteLocalization = JSON.parse(document.getElementById("_metabaseSiteLocalization").textContent);
+  // Which catalogues the script tags below carry. The app applies them before
+  // its first render.
+  window.MetabaseLocales          = JSON.parse(document.getElementById("_metabaseLocales").textContent);
   window.MetabaseUserColorScheme = JSON.parse(document.getElementById("_metabaseUserColorScheme").textContent);
   // Read from the script element, not from a JSON block: the browser blanks a nonce content attribute
   // after parsing, so the value never stays readable in the DOM.
