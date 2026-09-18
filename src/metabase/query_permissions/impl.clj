@@ -529,3 +529,75 @@
                          :actual-perms   @api/*current-user-permissions-set*}
                         (when (instance? Throwable required-perms)
                           required-perms)))))))
+
+;;; ---------------------------------------- Saved-Card run semantics (copying) ----------------------------------------
+
+(defn- saved-query-referenced-card-ids
+  "Every Card `mbql5-query` reads at any depth: source stages and joins, `:metric` refs, native `{{#N}}` tags. The same
+  walk [[metabase.query-processor.middleware.permissions.preprocess/record-referenced-card-ids]] uses, so copy-time and
+  run-time agree. Never preprocesses, so a query that cannot be preprocessed (required template tag, deleted nested
+  card) is still fully gated: a deleted Card stays in the set and its read check throws."
+  [mbql5-query]
+  (lib/all-source-card-ids-recursive mbql5-query))
+
+(defn- saved-query-view-data-perms
+  "`{:perms/view-data ...}` in [[has-perm-for-query?]] form. Prefers the preprocessed footprint (implicit joins,
+  remaps); when the query cannot be preprocessed falls back to the lib footprint: a native root stage needs the whole
+  database, anything else needs the Tables the query and the Cards it reads reference. Always returns a map."
+  [mbql5-query card-ids]
+  (let [preprocessed (try
+                       (preprocess-query mbql5-query)
+                       (catch Throwable e
+                         (log/debug e "Could not preprocess query for saved-card permissions; using lib footprint")
+                         nil))]
+    (if preprocessed
+      (select-keys (required-perms-for-query preprocessed :already-preprocessed? true :throw-exceptions? true)
+                   [:perms/view-data])
+      (if (lib/native-stage? mbql5-query 0)
+        {:perms/view-data :unrestricted}
+        (let [card-queries (into []
+                                 (keep #(some->> (lib.metadata/card mbql5-query %)
+                                                 :dataset-query
+                                                 not-empty
+                                                 (lib/query mbql5-query)))
+                                 card-ids)
+              table-ids    (:table (lib/all-referenced-entity-ids (into [mbql5-query] card-queries)))]
+          {:perms/view-data (into {} (map (fn [table-id] [table-id :unrestricted])) table-ids)})))))
+
+(mu/defn check-saved-query-run-permissions
+  "Throw a 403 unless the current user could run `query` as a saved Card: read on every referenced Card at any depth,
+  view-data on its Tables, and view-data on the columns those Cards return. Mirrors what the query processor enforces
+  when a Card is executed (the `*card-id*` branch of `check-query-permissions*`).
+
+  Deliberately NOT [[check-run-permissions-for-query]]: that is the *authoring* check, and copying a Card the caller
+  can read and run is not authoring. The ex-data is exactly `{:status-code 403}` so nothing about the query, the Cards
+  it reads, or the caller's permissions leaks in the response."
+  [{database-id :database, :as query} :- [:maybe ::query]]
+  (when (and (seq query) (not api/*is-superuser?*))
+    (try
+      (qp.store/with-metadata-provider database-id
+        (let [mbql5-query (lib/query (qp.store/metadata-provider) (dissoc query :query-permissions/perms))
+              card-ids    (saved-query-referenced-card-ids mbql5-query)]
+          (doseq [card-id card-ids]
+            (check-card-read-perms database-id card-id))
+          (let [required-perms (saved-query-view-data-perms mbql5-query card-ids)]
+            (when-not (has-perm-for-query? query :perms/view-data required-perms)
+              (throw (perms-exception required-perms))))
+          (doseq [card-id card-ids]
+            (check-card-result-metadata-data-perms database-id card-id))))
+      ;; Fail closed on anything the checks raise, a missing Card included, and never let the cause's data out.
+      (catch Exception e
+        (log/debugf e "Refusing to copy query: %s" (ex-message e))
+        (throw (ex-info (tru "You cannot copy this question because you do not have permissions to run its query.")
+                        {:status-code 403}
+                        e))))))
+
+(mu/defn can-run-saved-query? :- :boolean
+  "Boolean twin of [[check-saved-query-run-permissions]], for callers that discard rather than refuse (dashboard deep
+  copy)."
+  [query :- [:maybe ::query]]
+  (try
+    (check-saved-query-run-permissions query)
+    true
+    (catch clojure.lang.ExceptionInfo _
+      false)))

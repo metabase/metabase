@@ -1610,6 +1610,43 @@
                               :dashcards)]
     (sort dashboard-card/dashcard-comparator (:dashcards dashboard))))
 
+(deftest copy-dashboard-deep-copy-nested-unreadable-card-test
+  (testing "a deep copy leaves out a readable card whose query reads a card the caller cannot read"
+    (mt/with-temp [:model/Collection {hidden-coll :id}  {:name "Hidden"}
+                   :model/Collection {source-coll :id}  {:name "Source"}
+                   :model/Collection {dest-coll :id}    {:name "Destination"}
+                   :model/Card {v-id :id} {:name          "V"
+                                           :creator_id    (mt/user->id :crowberto)
+                                           :collection_id hidden-coll
+                                           :dataset_query (mt/mbql-query venues {:limit 2})}
+                   :model/Card {w-id :id} {:name          "W"
+                                           :creator_id    (mt/user->id :crowberto)
+                                           :collection_id source-coll
+                                           :dataset_query (mt/mbql-query nil {:source-table (format "card__%d" v-id)})}
+                   :model/Card {ok-id :id} {:name          "OK"
+                                            :creator_id    (mt/user->id :crowberto)
+                                            :collection_id source-coll
+                                            :dataset_query (mt/mbql-query venues {:limit 2})}
+                   :model/Dashboard {dash-id :id} {:name "Dash" :collection_id source-coll}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id w-id :size_x 6 :size_y 6}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id ok-id :size_x 6 :size_y 6}]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard]
+        (perms/revoke-collection-permissions! (perms-group/all-users) hidden-coll)
+        (let [before (t2/select-fn-set :id :model/Card :creator_id (mt/user->id :rasta))
+              resp   (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dash-id)
+                                           {:name          "Dash copy"
+                                            :is_deep_copy  true
+                                            :collection_id dest-coll})]
+          (testing "W is reported, by id and name since rasta can read it"
+            (is (=? [{:id w-id :name "W"}] (:uncopied resp))))
+          (testing "only OK was copied"
+            (is (= #{"OK"} (t2/select-fn-set :name :model/Card :collection_id dest-coll))))
+          (testing "no card rasta created reads V"
+            (doseq [q (t2/select-fn-vec :dataset_query :model/Card
+                                        :creator_id (mt/user->id :rasta)
+                                        :id [:not-in (or (not-empty before) #{0})])]
+              (is (not (str/includes? (pr-str q) (format "card__%d" v-id)))))))))))
+
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"

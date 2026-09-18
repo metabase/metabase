@@ -9,6 +9,7 @@
 (p/import-vars
  [metabase.query-permissions.impl
   can-query-table?
+  can-run-saved-query?
   check-parameter-field-permissions
   can-run-query?
   check-card-read-perms
@@ -16,6 +17,7 @@
   check-data-perms
   check-result-metadata-data-perms
   check-run-permissions-for-query
+  check-saved-query-run-permissions
   has-perm-for-query?
   perms-exception
   query->resolved-source-ids

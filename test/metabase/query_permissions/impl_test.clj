@@ -7,12 +7,16 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -385,3 +389,159 @@
         (let [query (mt/mbql-query orders)]
           (is (false? (query-perms/can-run-query? query)))
           (is (false? (query-perms/can-run-query? query false true))))))))
+
+;;; ---------------------------------------- check-saved-query-run-permissions -----------------------------------------
+
+(defn- do-with-copy-perms-fixture!
+  "Two collections; All Users can read `readable-coll` but not `hidden-coll`. Data perms on the test DB start from
+  nothing, then view-data is opened up to `view-data` (default `:unrestricted`; create-queries stays `:no`, so nothing
+  here is authoring). `f` runs as rasta with a map of the collection ids. Data perms must be settled before entering
+  the user scope: [[mt/with-test-user]] caches the user's permissions for its duration."
+  [{:keys [view-data] :or {view-data :unrestricted}} f]
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data view-data)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+      (mt/with-temp [:model/Collection {hidden-coll :id} {}
+                     :model/Collection {readable-coll :id} {}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) readable-coll)
+        (mt/with-test-user :rasta
+          (f {:hidden-coll hidden-coll, :readable-coll readable-coll}))))))
+
+(defn- card-query [card-id]
+  (mt/mbql-query nil {:source-table (format "card__%d" card-id)}))
+
+(deftest check-saved-query-run-permissions-nested-source-card-test
+  (testing "copying W (readable) must not launder V (unreadable) that W reads as its source"
+    (do-with-copy-perms-fixture! nil (fn [{:keys [hidden-coll readable-coll]}]
+                                       (mt/with-temp [:model/Card {v-id :id} {:collection_id hidden-coll
+                                                                              :dataset_query (mt/mbql-query venues {:limit 2})}
+                                                      :model/Card {w-id :id} {:collection_id readable-coll
+                                                                              :dataset_query (card-query v-id)}]
+                                         (let [w-query (t2/select-one-fn :dataset_query :model/Card :id w-id)]
+                                           (testing "the check refuses with a bare 403 that leaks nothing about the query"
+                                             (let [e (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                           (query-perms/check-saved-query-run-permissions w-query)))]
+                                               (is (= {:status-code 403} (ex-data e)))))
+                                           (testing "the boolean twin says no"
+                                             (is (false? (query-perms/can-run-saved-query? w-query))))
+                                           (testing "V's own query is fine: it reads only a table rasta can view"
+                                             (is (nil? (query-perms/check-saved-query-run-permissions
+                                                        (t2/select-one-fn :dataset_query :model/Card :id v-id))))
+                                             (is (true? (query-perms/can-run-saved-query?
+                                                         (t2/select-one-fn :dataset_query :model/Card :id v-id))))
+                                             (is (false? (query-perms/can-run-saved-query? (card-query v-id))) "...but not through V"))))))))
+
+(deftest check-saved-query-run-permissions-join-and-chain-test
+  (do-with-copy-perms-fixture! nil (fn [{:keys [hidden-coll readable-coll]}]
+                                     (mt/with-temp [:model/Card {v-id :id} {:collection_id hidden-coll
+                                                                            :dataset_query (mt/mbql-query venues {:limit 2})}]
+                                       (testing "V reached through a join"
+                                         (let [query (mt/mbql-query venues
+                                                       {:joins [{:source-table (format "card__%d" v-id)
+                                                                 :alias        "V"
+                                                                 :condition    [:= $id [:field (mt/id :venues :id) {:join-alias "V"}]]}]})]
+                                           (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                 (query-perms/check-saved-query-run-permissions query)))))
+                                       (testing "V three levels deep: X -> W -> V"
+                                         (mt/with-temp [:model/Card {w-id :id} {:collection_id readable-coll, :dataset_query (card-query v-id)}
+                                                        :model/Card {x-id :id} {:collection_id readable-coll, :dataset_query (card-query w-id)}]
+                                           (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                 (query-perms/check-saved-query-run-permissions (card-query x-id))))
+                                           (is (false? (query-perms/can-run-saved-query? (card-query x-id))))))))))
+
+(deftest check-saved-query-run-permissions-native-card-tag-test
+  (testing "V referenced from a native {{#card}} template tag"
+    (do-with-copy-perms-fixture! nil (fn [{:keys [hidden-coll]}]
+                                       (mt/with-temp [:model/Card {v-id :id} {:collection_id hidden-coll
+                                                                              :dataset_query (mt/mbql-query venues {:limit 2})}]
+                                         (let [tag-name (format "#%d" v-id)
+                                               query    (mt/native-query {:query         (format "SELECT * FROM {{%s}}" tag-name)
+                                                                          :template-tags {tag-name {:id           "b7e4f2a0-0000-0000-0000-000000000001"
+                                                                                                    :name         tag-name
+                                                                                                    :display-name tag-name
+                                                                                                    :type         :card
+                                                                                                    :card-id      v-id}}})]
+                                           (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                 (query-perms/check-saved-query-run-permissions query)))
+                                           (is (false? (query-perms/can-run-saved-query? query)))))))))
+
+(deftest check-saved-query-run-permissions-metric-test
+  (testing "an unreadable metric referenced from an aggregation"
+    (do-with-copy-perms-fixture! nil (fn [{:keys [hidden-coll]}]
+                                       (mt/with-temp [:model/Card {metric-id :id} {:collection_id hidden-coll
+                                                                                   :type          :metric
+                                                                                   :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                                         (let [query (mt/mbql-query venues {:aggregation [[:metric metric-id]]})]
+                                           (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                 (query-perms/check-saved-query-run-permissions query)))
+                                           (is (false? (query-perms/can-run-saved-query? query)))))))))
+
+(deftest check-saved-query-run-permissions-is-not-authoring-test
+  (testing "copying is not authoring: a native query the user can run as a saved card passes even without native authoring perms"
+    (do-with-copy-perms-fixture! nil (fn [_]
+                                       (let [query (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})]
+                                         (is (thrown-with-msg? ExceptionInfo #"You cannot save this Question"
+                                                               (query-perms/check-run-permissions-for-query query))
+                                             "the authoring check refuses (create-queries is :no)")
+                                         (is (nil? (query-perms/check-saved-query-run-permissions query)))
+                                         (is (true? (query-perms/can-run-saved-query? query))))))))
+
+(deftest check-saved-query-run-permissions-view-data-test
+  (do-with-copy-perms-fixture! nil (fn [{:keys [readable-coll]}]
+                                     (testing "a query over a table the user cannot view data of"
+                                       (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+                                       (let [query (mt/mbql-query checkins {:limit 2})]
+                                         (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                               (query-perms/check-saved-query-run-permissions query)))
+                                         (is (false? (query-perms/can-run-saved-query? query)))
+                                         (is (true? (query-perms/can-run-saved-query? (mt/mbql-query venues {:limit 2})))
+                                             "...while venues is still fine")))
+                                     (testing "a readable nested card whose result_metadata exposes a column the user cannot view"
+                                       (mt/with-temp [:model/Card {v-id :id} {:collection_id   readable-coll
+                                                                              :dataset_query   (mt/mbql-query venues {:limit 2})
+                                                                              :result_metadata [{:name         "DATE"
+                                                                                                 :display_name "Date"
+                                                                                                 :base_type    :type/Date
+                                                                                                 :id           (mt/id :checkins :date)
+                                                                                                 :table_id     (mt/id :checkins)}]}]
+                                         (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                               (query-perms/check-saved-query-run-permissions (card-query v-id)))))))))
+
+(deftest check-saved-query-run-permissions-superuser-and-missing-card-test
+  (do-with-copy-perms-fixture! nil (fn [{:keys [hidden-coll readable-coll]}]
+                                     (mt/with-temp [:model/Card {v-id :id} {:collection_id hidden-coll
+                                                                            :dataset_query (mt/mbql-query venues {:limit 2})}
+                                                    :model/Card {w-id :id} {:collection_id readable-coll
+                                                                            :dataset_query (card-query v-id)}]
+                                       (let [w-query (t2/select-one-fn :dataset_query :model/Card :id w-id)
+                                             broken  (mt/mbql-query nil {:source-table "card__13371337"})]
+                                         (testing "rasta"
+                                           (is (false? (query-perms/can-run-saved-query? w-query)))
+                                           (testing "gets a 403, not a 500, for a query whose nested card no longer exists"
+                                             (let [e (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                           (query-perms/check-saved-query-run-permissions broken)))]
+                                               (is (= {:status-code 403} (ex-data e))))))
+                                         (testing "a superuser passes both"
+                                           (mt/with-test-user :crowberto
+                                             (is (nil? (query-perms/check-saved-query-run-permissions w-query)))
+                                             (is (true? (query-perms/can-run-saved-query? w-query)))
+                                             (is (true? (query-perms/can-run-saved-query? broken))))))))))
+
+(deftest check-saved-query-run-permissions-unpreprocessable-query-test
+  (testing "a native query that cannot be preprocessed (required template tag without a default) is still gated"
+    (let [query (mt/native-query {:query         "SELECT * FROM VENUES WHERE ID = {{id}}"
+                                  :template-tags {"id" {:id           "b7e4f2a0-0000-0000-0000-000000000002"
+                                                        :name         "id"
+                                                        :display-name "Id"
+                                                        :type         :number
+                                                        :required     true}}})]
+      (testing "passes when the user can view the database"
+        (do-with-copy-perms-fixture! nil (fn [_]
+                                           (is (nil? (query-perms/check-saved-query-run-permissions query)))
+                                           (is (true? (query-perms/can-run-saved-query? query))))))
+      (testing "refused when the database's view-data is blocked"
+        (do-with-copy-perms-fixture! {:view-data :blocked} (fn [_]
+                                                             (is (thrown-with-msg? ExceptionInfo #"You cannot copy this question"
+                                                                                   (query-perms/check-saved-query-run-permissions query)))
+                                                             (is (false? (query-perms/can-run-saved-query? query)))))))))
