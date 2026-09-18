@@ -15,6 +15,7 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -950,3 +951,15 @@
     (is (thrown-with-msg? UnsupportedOperationException
                           #"read-only setting"
                           (setting/set! :warehouse-allowed-networks :allow-all)))))
+
+(deftest warehouse-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first query to discover it"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_WAREHOUSE_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks))))))

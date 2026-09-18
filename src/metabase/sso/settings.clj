@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -279,6 +280,11 @@
             (let [[env-var-name raw-value] (setting/env-var-source :oidc-allowed-networks)]
               (or (u.http/env-network-policy env-var-name raw-value)
                   :allow-all))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first login.
+(defmethod startup/def-startup-validation! ::oidc-allowed-networks [_]
+  (oidc-allowed-networks))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?

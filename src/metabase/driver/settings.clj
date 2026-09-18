@@ -5,6 +5,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -41,6 +42,11 @@
                       (if (premium-features/is-hosted?)
                         :external-only
                         :allow-all)))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first query against a warehouse.
+(defmethod startup/def-startup-validation! ::warehouse-allowed-networks [_]
+  (warehouse-allowed-networks))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")

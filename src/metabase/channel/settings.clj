@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -334,6 +335,11 @@
                 (let [[env-var-name raw-value] (setting/env-var-source :http-channel-allowed-networks)]
                   (or (u.http/env-network-policy env-var-name raw-value)
                       :external-only))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first webhook.
+(defmethod startup/def-startup-validation! ::http-channel-allowed-networks [_]
+  (http-channel-allowed-networks))
 
 (defsetting slack-configured?
   "Is Slack integration configured?"

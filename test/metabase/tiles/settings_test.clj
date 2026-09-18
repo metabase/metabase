@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.premium-features.test-util :as premium-features.tu]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.tiles.settings :as tiles.settings]))
 
@@ -116,3 +117,15 @@
     (is (thrown-with-msg? UnsupportedOperationException
                           #"read-only setting"
                           (setting/set! :map-tile-server-allowed-networks :allow-all)))))
+
+(deftest map-tile-server-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first map to discover it"
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_MAP_TILE_SERVER_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! ::tiles.settings/map-tile-server-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-map-tile-server-allowed-networks "allow-all"]
+      (is (= :allow-all
+             (startup/def-startup-validation! ::tiles.settings/map-tile-server-allowed-networks))))))

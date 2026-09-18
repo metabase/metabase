@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n :refer [tru]])
   (:import
@@ -44,6 +45,11 @@
                       (if (premium-features/is-hosted?)
                         :external-only
                         :allow-private)))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first map.
+(defmethod startup/def-startup-validation! ::map-tile-server-allowed-networks [_]
+  (map-tile-server-allowed-networks))
 
 (defn- valid-map-tile-server-url?
   "Whether `template` is safe to store. It must be http(s) and its host must be allowed

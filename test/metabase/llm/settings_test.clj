@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.util.http :as u.http])
   (:import
@@ -445,3 +446,15 @@
   (testing "can be overridden"
     (mt/with-temporary-setting-values [llm-rate-limit-per-ip 200]
       (is (= 200 (llm.settings/llm-rate-limit-per-ip))))))
+
+(deftest llm-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first LLM request to discover it"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_LLM_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! :metabase.llm.provider.settings/llm-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! :metabase.llm.provider.settings/llm-allowed-networks))))))

@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.current :as request.current]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -94,6 +95,11 @@
                 (let [[env-var-name raw-value] (setting/env-var-source :llm-allowed-networks)]
                   (or (u.http/env-network-policy env-var-name raw-value)
                       :external-only))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first LLM request.
+(defmethod startup/def-startup-validation! ::llm-allowed-networks [_]
+  (llm-allowed-networks))
 
 (defn network-policy
   "The network policy for an LLM request.

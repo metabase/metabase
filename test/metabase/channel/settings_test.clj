@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -129,3 +130,15 @@
     (is (thrown-with-msg? UnsupportedOperationException
                           #"read-only setting"
                           (setting/set! :http-channel-allowed-networks :allow-all)))))
+
+(deftest http-channel-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first webhook to discover it"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid MB_HTTP_CHANNEL_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! ::channel.settings/http-channel-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! ::channel.settings/http-channel-allowed-networks))))))
