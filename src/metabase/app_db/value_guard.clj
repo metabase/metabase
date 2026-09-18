@@ -184,6 +184,10 @@
   "The offending entry of `clause`, if `v` puts a marker in an identifier position, else nil."
   [clause v]
   (let [entries (cond
+                  ;; The whole value is a marker -- `:from [:auto/param "t"]`. Split as a list, it
+                  ;; would be `:auto/param` and the payload, and neither is a marker.
+                  (marker-form? v) [v]
+
                   ;; Alternating table / ON condition -- only the table halves are identifiers.
                   (and (contains? on-condition-clauses clause) (sequential? v))
                   (take-nth 2 v)

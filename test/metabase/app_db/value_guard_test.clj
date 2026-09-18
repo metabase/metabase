@@ -88,7 +88,12 @@
       {:select [[:a [:auto/param "al"]]] :from [:t]}
       ;; :cross-join takes only tables -- no ON condition -- so every element is an identifier
       {:select [:*] :from [:a] :cross-join [:b [:auto/param "c"]]}
-      {:create-table :t :with-columns [[[:auto/param "c"] :int]]}))
+      {:create-table :t :with-columns [[[:auto/param "c"] :int]]}
+      ;; the whole clause value is a marker -- read as a list of entries, it splits into
+      ;; `:auto/param` and the payload, neither a marker. This compiled to `FROM param, k` before.
+      {:select [:*] :from [:auto/param "t"]}
+      {:update [:auto/param "t"] :set {:a 1}}
+      {:select [:*] :from [:t] :join [:auto/param "u"]}))
   (testing ":order-by and :group-by bind a param, so a marker there is a no-op rather than a drop"
     ;; `{:order-by [[[:param :k] :asc]]}` compiles to `ORDER BY ? ASC` with the value bound --
     ;; nothing is discarded, so refusing it would turn a harmless mistake into an exception.
