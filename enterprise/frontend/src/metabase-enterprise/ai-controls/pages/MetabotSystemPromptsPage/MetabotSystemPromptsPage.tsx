@@ -65,7 +65,7 @@ export function MetabotChatPromptPage() {
   return (
     <SystemPromptPage
       title={t`AI chat prompt instructions`}
-      description={t`Add instructions here for the sidebar AI chat experience in ${applicationName}. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
+      description={t`Add instructions here for the sidebar AI chat experience in ${applicationName} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
       settingKey="metabot-chat-system-prompt"
     />
   );

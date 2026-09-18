@@ -149,7 +149,12 @@
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
    [:todos {:optional true} [:sequential ::todo]]
    [:transforms {:optional true} [:map-of ::state-map-key ::transform]]
-   [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
+   [:link-registry {:optional true} [:map-of ::state-map-key :string]]
+   ;; JSON has no sets, so a state read back out of metabot_message arrives as a vector here and
+   ;; is validated before [[normalize-state]] gets a chance to turn it back into one
+   [:client-ids {:optional true} [:or {:decode/normalize set}
+                                  [:set ::state-map-key]
+                                  [:sequential ::state-map-key]]]])
 
 (defn normalize-state
   "Normalize dynamic state-map keys to strings according to [[::state]]."
@@ -230,6 +235,8 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:source                {:optional true} [:maybe [:or :keyword :string]]]
    [:model                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model_name            {:optional true} [:maybe :string]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
    [:completion_tokens     {:optional true} [:maybe :int]]
    [:total_tokens          {:optional true} [:maybe :int]]

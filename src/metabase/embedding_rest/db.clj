@@ -14,6 +14,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
+(mu/defn active-card
+  "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
+  select it as absent rather than checking `:archived` after the fact."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id :archived false))
+
 (mu/defn card-embedding-params
   "The embedding parameters of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -67,7 +73,7 @@
 
 (mu/defn insert-embedding-themes!
   "Insert the EmbeddingTheme `rows`. Only seeding - the Light/Dark themes written on the first visit
-  to the embedding hub - sets `is_default`, so the single-row insert above leaves it out."
+  to the themes page - sets `is_default`, so the single-row insert above leaves it out."
   [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings :is_default])]]
   (t2/insert! :model/EmbeddingTheme rows))
 

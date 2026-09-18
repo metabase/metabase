@@ -11,6 +11,7 @@ interface EditableTextRootProps {
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
   position: relative;
+  margin: 0;
   color: var(--mb-color-text-primary);
   padding: 0.25rem;
   border: 1px solid transparent;

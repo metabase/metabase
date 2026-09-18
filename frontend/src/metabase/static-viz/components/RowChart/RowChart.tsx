@@ -17,9 +17,7 @@ import {
   getXValueRange,
 } from "metabase/visualizations/visualizations/RowChart/utils/settings";
 import {
-  type RemappingHydratedChartData,
   RowChart,
-  extractRemappedColumns,
   getChartGoal,
   getGroupedDataset,
   getStackOffset,
@@ -61,10 +59,7 @@ export const StaticRowChart = ({
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
-  // Unjustified type cast. FIXME
-  const data = extractRemappedColumns(
-    rawSeries[0].data,
-  ) as RemappingHydratedChartData;
+  const data = rawSeries[0].data;
   const { getColor } = renderingContext;
   const columnValueFormatter = getColumnValueFormatter();
 

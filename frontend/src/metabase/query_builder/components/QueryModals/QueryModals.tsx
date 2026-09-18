@@ -21,7 +21,7 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
 import { setArchivedQuestion } from "../../actions";
@@ -168,7 +168,7 @@ export function QueryModals({
         dashboardTabId?: DashboardTabId | undefined;
       },
     ) => {
-      const newQuestion = new Question(newCard, question.metadata());
+      const newQuestion = question.setCard(newCard);
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 

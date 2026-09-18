@@ -1,4 +1,4 @@
-import { clickNewEmbedButton, navigateToEmbedOptionsStep } from "./helpers";
+import { navigateToEmbedOptionsStep } from "./helpers";
 
 const { H } = cy;
 
@@ -33,12 +33,20 @@ const assertPreviewFinishesLoading = () => {
   cy.findByTestId("preview-loading-indicator").should("not.exist");
 };
 
+const reopenNewEmbedModal = () => {
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+    .first()
+    .within(() => {
+      cy.findByText("New embed").click();
+    });
+};
+
 describe("scenarios > embedding > sdk iframe embed setup > user settings persistence", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("enable-embedding-modular", true);
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",
@@ -111,7 +119,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     cy.findByTestId("sdk-iframe-embed-setup-modal-content").should("not.exist");
 
     cy.log("reopen the New embed modal");
-    clickNewEmbedButton();
+    reopenNewEmbedModal();
 
     cy.log(
       "the preview must finish loading — the restored saved theme must not leave it stuck on the loader",
