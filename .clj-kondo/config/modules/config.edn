@@ -1084,7 +1084,7 @@
 
   glossary
   {:team "Gadget"
-   :api  #{metabase.glossary.api}
+   :api  #{metabase.glossary.api metabase.glossary.core}
    :uses #{api
            events
            lib.schema
@@ -1323,6 +1323,7 @@
            comments
            dashboards
            documents
+           glossary
            lib
            lib.be
            lib.metadata

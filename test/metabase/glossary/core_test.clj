@@ -77,3 +77,10 @@
     (testing "a missing id returns nil and publishes nothing"
       (is (= {:result nil :events []}
              (with-captured-events! #(glossary.core/delete-entry! user-id Integer/MAX_VALUE)))))))
+
+(deftest entries-test
+  (mt/with-temp [:model/Glossary _ {:term "Churn" :definition "Customers lost"}
+                 :model/Glossary _ {:term "ARR" :definition "Annual recurring revenue"}]
+    (testing "every entry is returned, in term order"
+      (is (= ["ARR" "Churn"]
+             (filter #{"ARR" "Churn"} (map :term (glossary.core/entries))))))))
