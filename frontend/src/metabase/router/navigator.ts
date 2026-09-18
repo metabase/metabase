@@ -1,4 +1,5 @@
 import type {
+  BlockerFunction,
   DataRouter,
   Location,
   NavigateFunction,
@@ -112,6 +113,58 @@ export const getRouterLocation = (): Location | undefined =>
  */
 export function getPendingNavigationPath(): string | null {
   return currentRouter?.state.navigation.location?.pathname ?? null;
+}
+
+/**
+ * The URL of the navigation the router has accepted but not committed yet, or
+ * `null` when none is in flight.
+ *
+ * A `route.lazy` destination is only committed once its module resolves, so
+ * while one is loading `window.location` still holds the URL the user is
+ * leaving. Anything recovering from a module that never arrives has to read the
+ * destination here, or it sends the user back where they came from.
+ *
+ * Built by the router so the basename is applied the same way a `<Link>` would.
+ */
+export function getPendingNavigationHref(): string | null {
+  const navigation = currentRouter?.state.navigation;
+  if (!currentRouter || !navigation || navigation.state === "idle") {
+    return null;
+  }
+  return navigation.location
+    ? currentRouter.createHref(navigation.location)
+    : null;
+}
+
+/**
+ * The navigation a chunk belongs to, described the way a `BlockerFunction`
+ * receives it, for asking the leave guards about a navigation that react-router
+ * has already let through.
+ *
+ * While the navigation is pending, that is its destination. A slow chunk's
+ * location commits without waiting for the chunk (see `withChunkFallback`), and
+ * from then on the destination is the current location. The page being left is
+ * no longer known then, so it is reported as the destination as well: a guard
+ * reads where it is being sent, not where it came from.
+ */
+export function getChunkNavigationArgs():
+  | Parameters<BlockerFunction>[0]
+  | null {
+  const state = currentRouter?.state;
+  if (!state) {
+    return null;
+  }
+  const destination =
+    state.navigation.state === "idle"
+      ? state.location
+      : state.navigation.location;
+  return destination
+    ? {
+        currentLocation: state.location,
+        nextLocation: destination,
+        historyAction: state.historyAction,
+      }
+    : null;
 }
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
