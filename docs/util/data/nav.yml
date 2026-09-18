@@ -567,6 +567,8 @@ categories:
             url: "cloud/change-region"
           - name: "IP addresses to whitelist"
             url: "cloud/ip-addresses-to-whitelist"
+          - name: "IP allowlist"
+            url: "/docs/latest/cloud/ip-allowlist"
           - name: "Migrate from self-hosted to Cloud"
             url: "cloud/migrate/guide"
           - name: "Migrate from Cloud to self-hosted"
