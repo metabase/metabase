@@ -3,11 +3,13 @@ name: SDK
 on:
   workflow_call:
     inputs:
-      force-run:
-        description: Run every job regardless of the diff (master / release branches).
+      changes:
+        description: >-
+          The caller's files-changed verdict, as JSON. Empty means no verdict was
+          computed, and every gate here falls open.
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -16,29 +18,11 @@ concurrency:
 jobs:
   # Tier 1: which suites the diff can affect. Tier 0 (the global force-run /
   # force-skip overrides) stays in run-tests.yml -- a force-skip never calls this
-  # workflow at all, and the two ways of saying "run everything" skip the diff
-  # outright. Every gate below then reads "run unless the filter said no", so a
-  # skipped diff, an unknown filter or a malformed verdict all fail open.
-  # Whether the artifacts these jobs download exist at all is the caller's gate.
-  files-changed:
-    name: Detect changed files
-    if: ${{ !inputs.force-run && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    outputs:
-      changes: ${{ steps.detect.outputs.changes }}
-    steps:
-      # A local action has to be checked out before it can run, and `.github` is
-      # everything either it or the filters need -- seconds, not a full clone.
-      - uses: actions/checkout@v6
-        with:
-          sparse-checkout: .github
-      - id: detect
-        uses: ./.github/actions/files-changed
-
+  # workflow at all. Every gate reads "run unless the filter said no", so an absent
+  # verdict, an unknown filter or a malformed one all fail open. Whether the
+  # artifacts these jobs download exist at all is the caller's gate.
   embedding-sdk-cli-snippets-type-check:
-    needs: files-changed
-    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').frontend_sources != 'false' }}
+    if: ${{ fromJSON(inputs.changes || '{}').frontend_sources != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -54,8 +38,7 @@ jobs:
         run: bun run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: files-changed
-    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_documentation != 'false' }}
+    if: ${{ fromJSON(inputs.changes || '{}').embedding_documentation != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -71,8 +54,7 @@ jobs:
         run: bun run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    needs: files-changed
-    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').frontend_sources != 'false' }}
+    if: ${{ fromJSON(inputs.changes || '{}').frontend_sources != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -122,21 +104,18 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
     name: "SDK component tests"
-    needs: files-changed
-    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_sdk_components != 'false' }}
+    if: ${{ fromJSON(inputs.changes || '{}').embedding_sdk_components != 'false' }}
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    needs: files-changed
-    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').embedding_sdk_host_sample_apps != 'false' }}
+    if: ${{ fromJSON(inputs.changes || '{}').embedding_sdk_host_sample_apps != 'false' }}
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
   embedding-sdk-tests-result:
     needs:
-      - files-changed
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation

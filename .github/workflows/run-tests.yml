@@ -77,6 +77,9 @@ jobs:
         && steps.changes.outputs.frontend_all == 'false'
         && steps.changes.outputs.e2e_all == 'false') }}
 
+      # The whole verdict, for workflows that read their own filters out of it.
+      changes: ${{ toJSON(steps.changes.outputs) }}
+
       all_changed_files: ${{ steps.changes.outputs.all_changed_files }}
       e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
       e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
@@ -262,14 +265,17 @@ jobs:
          !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
         }}
 
-  # `force-run` and `defer` both enter the workflow; it decides for itself whether
-  # the diff warrants running, off a sparse checkout of `.github`.
+  # `force-run` and `defer` both enter the workflow; it reads the filters it cares
+  # about out of the verdict. A force-run skips files-changed, so `changes` arrives
+  # empty and every gate in there falls open.
   app-db-tests:
-    needs: should-run
-    if: ${{ needs.should-run.outputs.verdict != 'force-skip' }}
+    needs: [should-run, files-changed]
+    if: ${{ !cancelled() && needs.should-run.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
+      changes: ${{ needs.files-changed.outputs.changes }}
+      # Not a gate: it widens the matrix to every app-DB version, not just latest.
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   driver-tests:
@@ -287,12 +293,12 @@ jobs:
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   frontend-tests:
-    needs: [should-run, create-test-plan]
+    needs: [should-run, files-changed, create-test-plan]
     if: ${{ !cancelled() && needs.should-run.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      changes: ${{ needs.files-changed.outputs.changes }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 
@@ -360,14 +366,14 @@ jobs:
   # block the merge. `failure()` covers every job this one needs, which is what
   # "any artifact we download never built" means.
   sdk-tests:
-    needs: [should-run, uberjar, embedding-sdk-package]
+    needs: [should-run, files-changed, uberjar, embedding-sdk-package]
     if: >-
       ${{ !failure() && !cancelled() &&
       needs.should-run.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      changes: ${{ needs.files-changed.outputs.changes }}
 
   build-scripts-tests:
     needs: [should-run, files-changed]

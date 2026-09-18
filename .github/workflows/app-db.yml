@@ -3,8 +3,14 @@ name: App DB Tests
 on:
   workflow_call:
     inputs:
+      changes:
+        description: >-
+          The caller's files-changed verdict, as JSON. Empty means no verdict was
+          computed, and every gate here falls open.
+        type: string
+        default: ""
       force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
+        description: Test every app-DB version rather than only the latest of each.
         type: boolean
         default: false
 
@@ -54,28 +60,10 @@ env:
 jobs:
   # Tier 1: whether the diff touches anything this suite tests. Tier 0 (the global
   # force-run / force-skip overrides) stays in run-tests.yml -- a force-skip never
-  # calls this workflow at all, and the two ways of saying "run everything" skip the
-  # diff outright. The gate below then reads "run unless the filter said no", so a
-  # skipped diff, an unknown filter or a malformed verdict all fail open.
-  files-changed:
-    name: Detect changed files
-    if: ${{ !inputs.force-run && github.event_name != 'workflow_dispatch' }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    outputs:
-      changes: ${{ steps.detect.outputs.changes }}
-    steps:
-      # A local action has to be checked out before it can run, and `.github` is
-      # everything either it or the filters need -- seconds, not a full clone.
-      - uses: actions/checkout@v6
-        with:
-          sparse-checkout: .github
-      - id: detect
-        uses: ./.github/actions/files-changed
-
+  # calls this workflow at all. The gate reads "run unless the filter said no", so an
+  # absent verdict, an unknown filter or a malformed one all fail open.
   app-db-matrix:
-    needs: files-changed
-    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').backend_all != 'false' }}
+    if: ${{ fromJSON(inputs.changes || '{}').backend_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -343,7 +331,6 @@ jobs:
 
   app-db-tests-result:
     needs:
-      - files-changed
       - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
