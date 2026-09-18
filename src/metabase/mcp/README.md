@@ -75,9 +75,11 @@ chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
-holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`. Inside
-a JSON-RPC batch the refusal is an in-band `-32600` error instead. UI shell reads are never challenged: see
-[Resources](#resources).
+holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`, which is
+draft [SEP-1488](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1488), supported by ChatGPT. It is
+not part of MCP 2025-03-26 (the version this server reports) or the final 2026-07-28 tools spec, so other clients
+discover the missing scope from the 403 instead. Inside a JSON-RPC batch the refusal is an in-band `-32600` error
+instead. UI shell reads are never challenged: see [Resources](#resources).
 
 OAuth protected resource metadata is available at:
 
@@ -85,7 +87,18 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-The consent screen grants every scope the client requested, without the opportunity to customize.
+On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
+unticked. Only the scopes the user ticks are granted, and only for the token this authorization mints: an untick never
+touches a token the app already has. A scope left unticked is not remembered by Metabase. A later 403 can trigger
+another step-up in clients that support it. Other clients may require manual reauthorization. Each challenge's
+`error_description` ends with a note that the user must tick the permission on the consent screen.
+
+Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
+`instructions` explain scope failures to the model too: an auth error usually means a missing permission rather than an
+expired login, the model should name the failed tool or resource and the permission it requires, and the user grants it
+by reconnecting and ticking permissions on the consent screen. Because every optional permission starts unticked, the
+instructions tell the model to have the user tick every permission they want, not only the new one. The instructions
+are one static string, the same for every caller: there is no per-connection permission list.
 
 ## Available tools
 

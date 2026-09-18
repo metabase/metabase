@@ -70,7 +70,7 @@ const setup = ({
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-modular": options.isEmbeddingSdkEnabled ?? true,
+    "enable-embedding-sdk": options.isEmbeddingSdkEnabled ?? true,
   });
 
   const MINUTE = 60;
@@ -225,7 +225,7 @@ describe("SdkUsageProblemDisplay", () => {
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
 
     // API keys are always allowed on localhost regardless of the
-    // `enable-embedding-modular` setting, so the eval-only warning still shows —
+    // `enable-embedding-sdk` setting, so the eval-only warning still shows —
     // not the "not enabled" error.
     expect(
       within(card).getByText("This embed is powered by the Metabase SDK."),

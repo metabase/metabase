@@ -31,7 +31,6 @@ const SHARED_UTILS_LEVELS = [
     "shared/metadata-store",
     "shared/selectors",
     "shared/content-translation",
-    "shared/error-boundary",
     "shared/forms",
     "shared/archive",
     "shared/hooks",

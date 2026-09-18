@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -48,6 +49,7 @@ export const NotebookNativePreview = ({
   disableConvert,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
+  const metadataProvider = useMetadataProvider(database?.id ?? null);
   const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
 
@@ -61,7 +63,7 @@ export const NotebookNativePreview = ({
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
-  const newQuestion = createNativeQuestion(question, data);
+  const newQuestion = createNativeQuestion(question, data, metadataProvider);
   const newQuery = newQuestion?.query();
 
   const getErrorMessage = (error: unknown) =>
