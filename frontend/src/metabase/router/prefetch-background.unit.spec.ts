@@ -1,4 +1,8 @@
-import { prefetchRegisteredPages, registerPagePrefetch } from "./prefetch";
+import {
+  prefetchPage,
+  prefetchRegisteredPages,
+  registerPagePrefetch,
+} from "./prefetch";
 
 // Its own file, so the module-level registry holds only what these tests put in
 // it. `prefetchRegisteredPages` reaches every registration, so a registry shared
@@ -97,6 +101,20 @@ describe("prefetchRegisteredPages", () => {
     signedIn = true;
     goIdle();
     expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  // No link points at a modal or at a section the user cannot reach, so hovering
+  // is never a signal that either is wanted.
+  it("fetches a background-only page that a link never would", () => {
+    const modal = jest.fn().mockResolvedValue(undefined);
+    registerPagePrefetch("/page/", modal, { backgroundOnly: true });
+
+    prefetchPage("/page/1");
+    expect(modal).not.toHaveBeenCalled();
+
+    prefetchRegisteredPages();
+    goIdle();
+    expect(modal).toHaveBeenCalledTimes(1);
   });
 
   it("fetches nothing on a metered connection", () => {

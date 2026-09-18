@@ -4,6 +4,7 @@ type Registration = {
   path: string;
   load: LoadPage;
   isExact: boolean;
+  isBackgroundOnly: boolean;
   isStarted: boolean;
 };
 
@@ -23,13 +24,27 @@ const registrations: Registration[] = [];
  *
  * `exact` matches the whole path instead. The home page needs it: every path
  * starts with "/", so a prefix registration would fetch it from any link.
+ *
+ * `backgroundOnly` keeps a page out of the fetch that a link triggers, leaving
+ * it to `prefetchRegisteredPages`. Use it where no link points at the page, so
+ * hovering is never a signal that it is wanted: a modal that a menu on the page
+ * opens, or a section that only some people can reach.
  */
 export function registerPagePrefetch(
   path: string,
   load: LoadPage,
-  { exact = false }: { exact?: boolean } = {},
+  {
+    exact = false,
+    backgroundOnly = false,
+  }: { exact?: boolean; backgroundOnly?: boolean } = {},
 ): void {
-  registrations.push({ path, load, isExact: exact, isStarted: false });
+  registrations.push({
+    path,
+    load,
+    isExact: exact,
+    isBackgroundOnly: backgroundOnly,
+    isStarted: false,
+  });
 }
 
 /**
@@ -46,7 +61,7 @@ export function prefetchPage(path: string): void {
       ? path === registration.path
       : path.startsWith(registration.path);
 
-    if (registration.isStarted || !matches) {
+    if (registration.isStarted || registration.isBackgroundOnly || !matches) {
       continue;
     }
 
