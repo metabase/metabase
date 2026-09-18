@@ -85,6 +85,19 @@
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
+(def chat-max-output-tokens
+  "The output-token cap for Metabot chat, sent when the caller passes no `:max-tokens` — only the agent loop does.
+
+  Sized for Metabot's chat rather than for any model: production chat output has a p99.9 of about 7,300 tokens, so
+  32000 truncates only a runaway generation, and it is at or below every catalog model's documented maximum, the
+  lowest being Claude Opus 4.1's 32,000
+  (https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-1.html).
+
+  A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
+  finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
+  (see the OpenAI and vLLM builders), so one global knob would mislead."
+  32000)
+
 (defn mkid
   "Generate a random id"
   []

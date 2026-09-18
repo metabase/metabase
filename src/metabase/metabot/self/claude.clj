@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
-   [metabase.metabot.self.output-limits :as output-limits]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -340,15 +339,6 @@
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :context-window  200000}
    "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :context-window  200000}})
 
-(def ^:private default-max-tokens
-  "The `max_tokens` cap for a model with no documented maximum.
-
-  A cap is sent rather than omitted because the Messages API reference does not mark `max_tokens` as optional:
-  https://platform.claude.com/docs/en/api/messages
-  64000 is the lowest documented maximum among the Claude models still offered; the only lower one, Opus 4.1
-  at 32000, is retired and carries its own row in [[output-limits/max-output-tokens]]."
-  64000)
-
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]
@@ -390,19 +380,6 @@
   Lowercasing lets the model-derived predicates hold for Azure's admin-cased deployment names."
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
-
-(defn- output-limits-key
-  "The [[output-limits/max-output-tokens]] key for `model`: the vendor's own undated model id.
-
-      anthropic.claude-haiku-4-5-20251001 → claude-haiku-4-5"
-  [model]
-  ;; not folded into strip-vendor-prefix: context-window-tokens looks models up by their dated ids
-  (str/replace (strip-vendor-prefix model) #"-\d{8}$" ""))
-
-(defn- model-max-tokens
-  "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
-  [model]
-  (output-limits/max-output-tokens (output-limits-key model)))
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
@@ -482,7 +459,8 @@
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)]
     (cond-> {:model         model
-             :max_tokens    (or max-tokens (model-max-tokens model) default-max-tokens)
+             ;; required by the Messages API (https://platform.claude.com/docs/en/api/messages), so never omitted
+             :max_tokens    (or max-tokens core/chat-max-output-tokens)
              :stream        true
              :cache_control {:type "ephemeral"}
              :messages      messages}

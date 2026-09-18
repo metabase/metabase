@@ -302,9 +302,9 @@
   (json/decode+kw (:body (captured-raw-request! (merge {:input [{:role :user :content "hi"}]} opts)))))
 
 (deftest anthropic-model-max-tokens-test
-  (testing "the `anthropic.` prefix is stripped so the model's own ceiling resolves"
+  (testing "anthropic.* models get the default cap, and the caller's own cap wins"
     (are [opts tokens] (= tokens (:max_tokens (captured-body! opts)))
-      {:model "anthropic.claude-opus-4-8"}                  128000
+      {:model "anthropic.claude-opus-4-8"}                   32000
       {:model "anthropic.claude-opus-4-8" :max-tokens 128}     128))
   (testing "openai.* models omit the field entirely"
     (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))

@@ -24,7 +24,7 @@
   "The direct-API spelling of a platform model ID.
   The Gemini Agent Platform versions a dated model as `{model}@{date}` where the Messages API spells it
   `{model}-{date}`. The Claude adapter's model knowledge (thinking support, context windows) is keyed by the direct
-  spelling, and its max_tokens lookup strips the `-{date}` suffix from it."
+  spelling."
   [model-id]
   (str/replace (str model-id) "@" "-"))
 
