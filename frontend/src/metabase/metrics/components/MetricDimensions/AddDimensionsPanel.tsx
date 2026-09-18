@@ -134,9 +134,7 @@ export function AddDimensionsPanel({
             >
               {groups.map(({ group, dimensions }) => (
                 <Accordion.Item key={group.id} value={group.id}>
-                  <Accordion.Control
-                    icon={<Icon name="table" c="text-secondary" />}
-                  >
+                  <Accordion.Control icon={<Icon name="table" />}>
                     {group.display_name}
                   </Accordion.Control>
                   <Accordion.Panel>

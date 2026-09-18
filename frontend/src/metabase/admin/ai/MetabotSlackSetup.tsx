@@ -254,7 +254,7 @@ export function MetabotSlackSetup() {
 
 function ConnectionDetails({ children }: { children: React.ReactNode }) {
   return (
-    <Accordion variant="contained" radius="sm">
+    <Accordion>
       <Accordion.Item value="connection">
         <Accordion.Control>{t`View connection details`}</Accordion.Control>
         <Accordion.Panel>
