@@ -488,8 +488,8 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
           cy.findByText("Doohickey").should("exist");
           cy.findByText("Widget").should("exist");
           // y-axis labels
-          cy.findByText("6,000").should("exist");
-          cy.findByText("1,000").should("exist");
+          cy.findByText("6.0k").should("be.visible");
+          cy.findByText("3.0k").should("be.visible");
         });
 
         H.dataSource(Q1_NAME).should("exist");

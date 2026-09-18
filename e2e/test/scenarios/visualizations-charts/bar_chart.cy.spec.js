@@ -890,7 +890,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
     // Use a smaller viewport to ensure labels need to rotate
-    cy.viewport(940, 800);
+    cy.viewport(820, 800);
 
     const query = `
       SELECT * FROM (
