@@ -9,13 +9,13 @@ import type {
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
+  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedBaseSettings,
+  SdkIframeQuestionEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import type {
-  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-  SdkIframeQuestionEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
 import type { EntityToken } from "metabase-types/api/entity";
