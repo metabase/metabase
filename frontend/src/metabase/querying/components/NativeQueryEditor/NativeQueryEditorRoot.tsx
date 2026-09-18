@@ -1,4 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
+import { useDebouncedCallback, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   Children,
@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLatest, useMount, useUnmount } from "react-use";
+import { useLatest, useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
@@ -226,50 +226,35 @@ export const NativeQueryEditorRoot = forwardRef<
   const queryRef = useLatest(query);
   const questionRef = useLatest(question);
 
-  const pendingQueryTextRef = useRef<string | null>(null);
-  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-
-  const flushPendingChange = useCallback(() => {
-    if (flushTimeoutRef.current != null) {
-      clearTimeout(flushTimeoutRef.current);
-      flushTimeoutRef.current = undefined;
-    }
-
-    const queryText = pendingQueryTextRef.current;
-    pendingQueryTextRef.current = null;
-
-    const currentQuery = queryRef.current;
-    if (queryText != null && currentQuery.queryText() !== queryText) {
-      setDatasetQuery(currentQuery.setQueryText(queryText));
-    }
-  }, [queryRef, setDatasetQuery]);
-
-  // Putting the edit in the store rerenders the query builder, which is far
-  // more work than the keystroke that caused it. Doing that in a later task
-  // lets the editor paint the character first, which is what keeps typing
-  // responsive on large queries (DEV-3545).
-  const handleChange = useCallback(
+  const applyQueryText = useCallback(
     (queryText: string) => {
-      pendingQueryTextRef.current = queryText;
-      if (flushTimeoutRef.current == null) {
-        flushTimeoutRef.current = setTimeout(flushPendingChange);
+      const currentQuery = queryRef.current;
+      if (currentQuery.queryText() !== queryText) {
+        setDatasetQuery(currentQuery.setQueryText(queryText));
       }
     },
-    [flushPendingChange],
+    [queryRef, setDatasetQuery],
   );
+
+  // Putting the edit in the store rerenders the query builder, which is far
+  // more work than the keystroke that caused it. A zero delay runs it in the
+  // next task, so the editor paints the character first. That is what keeps
+  // typing responsive on large queries (DEV-3545).
+  const handleChange = useDebouncedCallback(applyQueryText, {
+    delay: 0,
+    flushOnUnmount: true,
+  });
 
   // Anything that reads the query from the store needs the pending edit first.
   const handleRunQuery = useCallback(() => {
-    flushPendingChange();
+    handleChange.flush();
     runQuery?.();
-  }, [flushPendingChange, runQuery]);
+  }, [handleChange, runQuery]);
 
   const handleBlur = useCallback(() => {
-    flushPendingChange();
+    handleChange.flush();
     onBlur?.();
-  }, [flushPendingChange, onBlur]);
-
-  useUnmount(flushPendingChange);
+  }, [handleChange, onBlur]);
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
@@ -311,9 +296,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
     const formattedQuery = await formatQuery(queryText, engine);
     handleChange(formattedQuery);
-    flushPendingChange();
+    handleChange.flush();
     focusEditor();
-  }, [questionRef, focusEditor, handleChange, flushPendingChange]);
+  }, [questionRef, focusEditor, handleChange]);
 
   const handleResize = useCallback(
     (height: number) => {
@@ -438,7 +423,7 @@ export const NativeQueryEditorRoot = forwardRef<
                               proposedQuestion.legacyNativeQuery();
                             if (proposedQuery) {
                               handleChange(proposedQuery.queryText());
-                              flushPendingChange();
+                              handleChange.flush();
                               onAcceptProposed(proposedQuery.datasetQuery());
                             }
                           }}
