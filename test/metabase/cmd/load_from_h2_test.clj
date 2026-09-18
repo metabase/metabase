@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.cmd.copy :as copy]
@@ -82,15 +84,14 @@
   (t2.conn/with-connection [conn]
     (liquibase/with-liquibase [liquibase conn]
       (let [change-sets (.. liquibase getDatabaseChangeLog getChangeSets)
-            size (count change-sets)]
-        (if (pos? size)
-          (let [change-set-id (.getId ^ChangeSet (.get change-sets (dec size)))
-                [_ major] (re-find #"v(\d+).*" change-set-id)]
-            (if major
-              (parse-long major)
-              (throw (ex-info "couldn't parse major version from change-set-id " change-set-id
-                              {:change-set-id change-set-id}))))
-          (throw (ex-info "no changesets found" {})))))))
+            ;; the highest `vNN.` major in the changelog. Year-directory migrations (`migrations/2026/...`) have
+            ;; version-less ids and sort last, so "the last changeset's id" no longer necessarily carries a version.
+            majors      (keep (fn [^ChangeSet cs]
+                                (some-> (re-find #"^v(\d+)\." (.getId cs)) second parse-long))
+                              change-sets)]
+        (if (seq majors)
+          (apply max majors)
+          (throw (ex-info "no versioned changesets found" {})))))))
 
 (def ^:private current-major-version
   ;; We are interested in the latest version we started preparing
@@ -99,6 +100,16 @@
   ;; databases is trivial, so the difference is probably not really
   ;; interesting.)
   (delay (liquibase-latest-major-version)))
+
+(defn- fabricate-per-major-version-history!
+  "A fresh install records only its own version, and [[rollback/rollback-major-version!]] only accepts majors recorded
+  for a deployment -- so split the install's single deployment into one per legacy `vNN.` major, as if this database
+  had really been upgraded release by release, giving the rollback a boundary at every major."
+  []
+  (t2.conn/with-connection [conn]
+    (liquibase/with-liquibase [liquibase conn]
+      (versions/ensure-version-tracking! conn (.getDatabase liquibase))
+      (mdb.test-util/split-legacy-majors-into-deployments! conn (liquibase/changelog-table-name liquibase)))))
 
 (defn- migrate-down-then-up-and-create-dump!
   [db-def h2-filename version]
@@ -118,7 +129,11 @@
             (log/info "rolling back to version" version)
             (t2.conn/with-connection [conn]
               (liquibase/with-liquibase [liquibase conn]
-                (liquibase/rollback-major-version! conn liquibase false version))))
+                ;; force: targets more than one major back are outside the default rollback window (current major +
+                ;; previous-major boundary); force widens it to the full recorded history. Every target is a recorded
+                ;; version courtesy of [[fabricate-per-major-version-history!]]. The default-window rule itself is
+                ;; covered in metabase.app-db.liquibase-test.
+                (rollback/rollback-major-version! conn liquibase true version))))
           (log/info "creating dump" filename)
           ;; this migrates the DB back to the newest and creates a dump
           (dump-to-h2/dump-to-h2! filename)
@@ -165,6 +180,8 @@
         ;; migrations and populating with data takes a lot of time.
         (log/info "creating database")
         (create-current-database! db-type source-db-def data-source)
+        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
+          (fabricate-per-major-version-history!))
         (doseq [version versions]
           (migrate-down-then-up-and-create-dump! source-db-def h2-filename version)
           (load-dump! "load-test-target" h2-filename version))))))
