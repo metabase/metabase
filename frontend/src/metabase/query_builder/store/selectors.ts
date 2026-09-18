@@ -18,7 +18,7 @@ import {
 } from "metabase/querying/common/utils/question";
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import { filterTimelinesByXAxis } from "metabase/timelines/panel/utils";
+import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import {
@@ -820,7 +820,8 @@ export const getTimeseriesXAxis = createSelector(
 
 const getFilteredTimelines = createSelector(
   [getTransformedTimelines, getTimeseriesXAxis],
-  filterTimelinesByXAxis,
+  (timelines, xAxis) =>
+    filterTimelinesByXAxes(timelines, xAxis ? [xAxis] : null),
 );
 
 export const getTimelineEventsVisibility = createSelector(

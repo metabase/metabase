@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,6 +7,7 @@ import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
+import { setDashCardTimelineEventsEnabled } from "metabase/dashboard/actions/timeline-events";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -15,7 +16,10 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
-import { useDashCardTimelineEvents } from "metabase/dashboard/timeline-events";
+import {
+  getIsDashCardTimelineEventsEnabled,
+  useDashCardTimelineEvents,
+} from "metabase/dashboard/timeline-events";
 import {
   getVirtualCardType,
   isDashcardAccessRestricted,
@@ -501,8 +505,19 @@ export function DashCardVisualization({
     onDeselectTimelineEvents,
     onTimelineEventsShown,
   } = useDashCardTimelineEvents(dashcard);
-  const [isChartTimelineEventsEnabled, setIsChartTimelineEventsEnabled] =
-    useState(true);
+  const isChartTimelineEventsEnabled = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcard.id),
+  );
+  const handleTimelineEventsEnabledChange = useCallback(
+    (isEnabled: boolean) =>
+      dispatch(
+        setDashCardTimelineEventsEnabled({
+          dashcardId: dashcard.id,
+          isEnabled,
+        }),
+      ),
+    [dispatch, dashcard.id],
+  );
   const withTimelineEvents =
     isTimelineEventsEnabled && isChartTimelineEventsEnabled;
 
@@ -668,7 +683,7 @@ export function DashCardVisualization({
           onSelectTimelineEvents={onSelectTimelineEvents}
           onDeselectTimelineEvents={onDeselectTimelineEvents}
           onTimelineEventsShown={onTimelineEventsShown}
-          onTimelineEventsEnabledChange={setIsChartTimelineEventsEnabled}
+          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings

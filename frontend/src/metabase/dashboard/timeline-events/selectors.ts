@@ -21,6 +21,7 @@ import {
   getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimeseriesXAxis } from "metabase/viz-core";
 import type {
   DashCardDataMap,
   DashCardId,
@@ -42,6 +43,14 @@ const shallowEqualResult = {
 
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
+
+const getTimelineEventsEnabledByDashCard = (state: State) =>
+  state.dashboard.timelineEvents.enabledByDashCard;
+
+export const getIsDashCardTimelineEventsEnabled = (
+  state: State,
+  dashcardId: DashCardId,
+): boolean => getTimelineEventsEnabledByDashCard(state)[dashcardId] !== false;
 
 const resolveDashCardVisibility = (
   overrides: DashboardTimelineEventsState["overrides"],
@@ -111,20 +120,45 @@ export const getDashCardSelectedTimelineEventIds = (
 };
 
 export const getTimelineEventsDashCardIds = createSelector(
-  [getCurrentDashcards, getSelectedTabId, getDashcardDataMap],
-  (dashcards, selectedTabId, dashcardDataMap) =>
+  [
+    getCurrentDashcards,
+    getSelectedTabId,
+    getDashcardDataMap,
+    getTimelineEventsEnabledByDashCard,
+  ],
+  (dashcards, selectedTabId, dashcardDataMap, enabledByDashCard) =>
     dashcards
       .filter((dashcard) => {
         const dashcardData = dashcardDataMap[dashcard.id];
         return (
           isDashCardOnTab(dashcard, selectedTabId) &&
           shouldDashCardDisplayTimelineEvents(dashcard) &&
+          enabledByDashCard[dashcard.id] !== false &&
           (isDashcardLoading(dashcard, dashcardData) ||
             computeCachedDashCardTimeseriesXAxis(dashcard, dashcardData) !=
               null)
         );
       })
       .map((dashcard) => dashcard.id),
+  shallowEqualResult,
+);
+
+// absent while a chart is still loading, so the panel does not filter events out prematurely
+export const getTimelineEventsDashCardXAxes = createSelector(
+  [getTimelineEventsDashCardIds, getDashcards, getDashcardDataMap],
+  (dashcardIds, dashcards, dashcardDataMap): TimeseriesXAxis[] | null => {
+    const xAxes = dashcardIds.flatMap((dashcardId) => {
+      const dashcard = dashcards[dashcardId];
+      const xAxis = dashcard
+        ? computeCachedDashCardTimeseriesXAxis(
+            dashcard,
+            dashcardDataMap[dashcardId],
+          )
+        : null;
+      return xAxis ? [xAxis] : [];
+    });
+    return xAxes.length === dashcardIds.length ? xAxes : null;
+  },
   shallowEqualResult,
 );
 

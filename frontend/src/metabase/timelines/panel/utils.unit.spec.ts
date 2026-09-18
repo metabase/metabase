@@ -1,12 +1,12 @@
 import { dayjs } from "metabase/dayjs";
-import type { TimeSeriesInterval } from "metabase/viz-core";
+import type { TimeseriesXAxis } from "metabase/viz-core";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
 import {
-  filterTimelinesByXAxis,
+  filterTimelinesByXAxes,
   formatTitle,
   getEventsXDomain,
   getFocusedTimelines,
@@ -166,7 +166,7 @@ describe("transformTimelines", () => {
   });
 });
 
-describe("filterTimelinesByXAxis", () => {
+describe("filterTimelinesByXAxes", () => {
   const timelines = transformTimelines([
     createMockTimeline({
       id: 1,
@@ -188,17 +188,21 @@ describe("filterTimelinesByXAxis", () => {
     dayjs("2024-03-01T00:00:00Z"),
   ];
 
-  const filterIds = (interval: TimeSeriesInterval | null) =>
-    filterTimelinesByXAxis(timelines, { domain, interval }).flatMap(
-      (timeline) => (timeline.events ?? []).map((event) => event.id),
+  const filterIds = (xAxes: TimeseriesXAxis[] | null) =>
+    filterTimelinesByXAxes(timelines, xAxes).flatMap((timeline) =>
+      (timeline.events ?? []).map((event) => event.id),
     );
 
   it("keeps events up to the end of the last period and drops empty timelines", () => {
-    expect(filterIds({ count: 1, unit: "month" })).toEqual([1, 2]);
+    expect(
+      filterIds([{ domain, interval: { count: 1, unit: "month" } }]),
+    ).toEqual([1, 2]);
   });
 
   it("extends by whole intervals for sub-day units", () => {
-    expect(filterIds({ count: 6, unit: "hour" })).toEqual([1]);
+    expect(
+      filterIds([{ domain, interval: { count: 6, unit: "hour" } }]),
+    ).toEqual([1]);
   });
 
   it("keeps an event later in the last day, like the chart does", () => {
@@ -211,15 +215,38 @@ describe("filterTimelinesByXAxis", () => {
         ],
       }),
     ]);
-    const [filtered] = filterTimelinesByXAxis([timeline], {
-      domain: [dayjs("2024-01-01T00:30:00Z"), dayjs("2024-03-01T00:30:00Z")],
-      interval: { count: 1, unit: "day" },
-    });
+    const [filtered] = filterTimelinesByXAxes(
+      [timeline],
+      [
+        {
+          domain: [
+            dayjs("2024-01-01T00:30:00Z"),
+            dayjs("2024-03-01T00:30:00Z"),
+          ],
+          interval: { count: 1, unit: "day" },
+        },
+      ],
+    );
     expect(filtered.events?.map((event) => event.id)).toEqual([1]);
   });
 
+  it("keeps an event that falls in any one of the chart ranges", () => {
+    expect(
+      filterIds([
+        { domain, interval: { count: 1, unit: "month" } },
+        {
+          domain: [
+            dayjs("2019-12-01T00:00:00Z"),
+            dayjs("2020-02-01T00:00:00Z"),
+          ],
+          interval: { count: 1, unit: "month" },
+        },
+      ]),
+    ).toEqual([1, 2, 4]);
+  });
+
   it("returns non-empty timelines untouched without an axis", () => {
-    const filtered = filterTimelinesByXAxis(timelines, null);
+    const filtered = filterTimelinesByXAxes(timelines, null);
     expect(filtered.map((timeline) => timeline.id)).toEqual([1, 2]);
   });
 });

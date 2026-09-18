@@ -44,17 +44,21 @@ const filterTimelineEvents = (
 export const getNonEmptyTimelines = (timelines: Timeline[]): Timeline[] =>
   timelines.filter((timeline) => (timeline.events ?? []).length > 0);
 
-export const filterTimelinesByXAxis = (
+/** keeps the events at least one of the charts can render */
+export const filterTimelinesByXAxes = (
   timelines: Timeline[],
-  xAxis: TimeseriesXAxis | null,
+  xAxes: TimeseriesXAxis[] | null | undefined,
 ): Timeline[] => {
-  const domain = xAxis?.domain;
-  if (!domain) {
+  const ranges = (xAxes ?? []).flatMap(({ domain, interval }) =>
+    domain ? [{ domain, interval }] : [],
+  );
+  if (ranges.length === 0) {
     return getNonEmptyTimelines(timelines);
   }
-  const interval = xAxis?.interval ?? null;
   return filterTimelineEvents(timelines, (event) =>
-    isTimelineEventInRange(event, domain, interval),
+    ranges.some(({ domain, interval }) =>
+      isTimelineEventInRange(event, domain, interval),
+    ),
   );
 };
 
