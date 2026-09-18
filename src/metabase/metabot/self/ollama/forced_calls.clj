@@ -209,10 +209,11 @@
     (let [mode (:mode plan)]
       (fn [rf]
         (let [buffer (StringBuilder.)
+              take!  (fn [] (let [held (str buffer)] (.setLength buffer 0) held))
               flush! (fn [result]
-                       (let [chunk (forced-call-chunk mode (str buffer))]
-                         (.setLength buffer 0)
-                         (if chunk (rf result chunk) result)))]
+                       (if-let [chunk (forced-call-chunk mode (take!))]
+                         (rf result chunk)
+                         result))]
           (fn
             ([result]
              (rf (cond-> result (pos? (.length buffer)) (flush!))))
@@ -228,23 +229,30 @@
                (when content (.append buffer ^String content))
                (cond
                  finish_reason
-                 ;; Only a `stop` becomes a call. On anything else the buffer holds a half-written
+                 ;; Only a `stop` can become a call. On anything else the buffer holds a half-written
                  ;; answer, and `:structured` would mint a call from it regardless — its name is
                  ;; fixed, so nothing stops it — which reaches the caller as
                  ;; `structured-output-invalid` rather than the truncation that actually happened.
-                 ;; `:tool-union` cannot read a name out of a partial answer, so it already behaves
-                 ;; this way; discarding here makes the two modes agree.
-                 (let [complete? (= "stop" finish_reason)
-                       result    (if complete?
-                                   (flush! result)
-                                   (do (.setLength buffer 0) result))]
-                   (rf result
-                       (cond-> chunk
-                         ;; the fragment left with the buffer it was appended to; leaving it here too
-                         ;; would put the grammar's raw answer on the content channel, which is what
-                         ;; this transducer exists to keep it off
-                         content   (update-in [:choices 0 :delta] dissoc :content)
-                         complete? (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
+                 (let [held (take!)
+                       call (when (= "stop" finish_reason) (forced-call-chunk mode held))]
+                   (if call
+                     ;; the answer was a call: emit it, then the finish chunk that closes it. The
+                     ;; fragment left with the buffer, so leaving it on the chunk too would put the
+                     ;; grammar's raw answer on the content channel, which is what this transducer
+                     ;; exists to keep it off.
+                     (-> (rf result call)
+                         (rf (-> chunk
+                                 (update-in [:choices 0 :delta] dissoc :content)
+                                 (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
+                     ;; nothing became a call, so nothing may claim one: restating `stop` as
+                     ;; `tool_calls` would promise the agent loop a call and hand it none. On `stop`
+                     ;; the model answered outside the grammar, and that prose is the only answer
+                     ;; there is, so it goes back on the channel it arrived on rather than being
+                     ;; swallowed. On `length` the buffer is a half-written call and `length` is
+                     ;; already the diagnosis, so it is dropped.
+                     (rf result (cond-> chunk
+                                  (and (= "stop" finish_reason) (seq held))
+                                  (assoc-in [:choices 0 :delta :content] held)))))
 
                  content result
 

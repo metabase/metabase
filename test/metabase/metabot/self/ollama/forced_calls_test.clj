@@ -164,6 +164,8 @@
 
 (def ^:private structured-plan (forced/plan {:schema schema} false))
 
+(def ^:private tool-union-plan (forced/plan {:tools tools :tool_choice "required"} false))
+
 (deftest ^:parallel read-back-moves-the-answer-onto-the-tool-channel-test
   (testing "content is held back and re-emitted as one tool call, so the raw answer is never shown"
     (let [out (read-back structured-plan
@@ -200,6 +202,20 @@
             (str "and no call is minted from the half-written buffer: `:structured`'s name is fixed, so it "
                  "would mint one regardless, and the caller would see `structured-output-invalid` instead "
                  "of the truncation"))))))
+
+(deftest ^:parallel a-union-answer-that-is-not-a-call-is-not-reported-as-one-test
+  (testing (str "`:tool-union` reads the tool's name out of the answer, so a model that answers in "
+                "prose yields no call. Restating `stop` as `tool_calls` would promise the agent loop "
+                "a call and hand it none, and dropping the content would swallow the only answer.")
+    (let [out (read-back tool-union-plan
+                         [(content-chunk "No tool is needed ")
+                          (content-chunk "for that." "stop")])]
+      (is (empty? (tool-calls out)))
+      (is (= ["stop"] (finish-reasons out))
+          "the finish reason stands: nothing was turned into a call")
+      (is (= "No tool is needed for that."
+             (apply str (keep #(get-in % [:choices 0 :delta :content]) out)))
+          "and the answer reaches the caller"))))
 
 (deftest ^:parallel read-back-leaves-an-unconstrained-stream-alone-test
   (testing "without a grammar there is no transducer, so nothing is buffered or rewritten"
