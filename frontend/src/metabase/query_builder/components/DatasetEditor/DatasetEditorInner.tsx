@@ -21,6 +21,7 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { getShallowFields } from "metabase/metadata-store";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
@@ -786,6 +787,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                       <HasResultsAlertPrompt question={question} />
                     )
                   }
+                  errorAction={<FixSqlQueryButton />}
                 />
               )}
             </DebouncedFrame>

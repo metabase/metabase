@@ -1,4 +1,6 @@
 (ns metabase-enterprise.embedding-hub.api
+  "Checklist state for the setup guide. Named for the embedding hub because that is the API path
+  (`/api/ee/embedding-hub/checklist`); the UI it serves is the setup guide."
   (:require
    [metabase-enterprise.embedding-hub.db :as embedding-hub.db]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -65,13 +67,13 @@
   (or (embedding-hub.db/embedded-card-exists?)
       (embedding-hub.db/embedded-dashboard-exists?)))
 
-(defn- embedding-hub-checklist []
+(defn- setup-guide-checklist []
   (let [enable-tenants?                  (and (perms/use-tenants)
                                               (has-shared-tenant-collections?))
         create-tenants?                  (has-user-created-tenants?)
         setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
     {"checklist"
-     {;; for the main embedding hub checklist
+     {;; for the main setup guide checklist
       "add-data"                          (has-user-added-database?)
       "create-dashboard"                  (has-user-created-dashboard?)
       "create-models"                     (has-user-created-models?)
@@ -95,8 +97,8 @@
 
      "data-isolation-strategy"           (active-data-segregation-strategy)}))
 
-(def ^:private EmbeddingHubChecklistResponse
-  "Schema for the embedding hub checklist response."
+(def ^:private SetupGuideChecklistResponse
+  "Schema for the setup guide checklist response."
   [:map {:closed true}
    ["checklist"
     [:map {:closed true}
@@ -116,10 +118,10 @@
    ["data-isolation-strategy"
     [:maybe [:enum "row-column-level-security" "connection-impersonation" "database-routing"]]]])
 
-(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklistResponse
-  "Get the embedding hub checklist status, indicating which setup steps have been completed."
+(api.macros/defendpoint :get "/checklist" :- SetupGuideChecklistResponse
+  "Get the setup guide checklist status, indicating which setup steps have been completed."
   []
-  (embedding-hub-checklist))
+  (setup-guide-checklist))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/embedding-hub` routes."

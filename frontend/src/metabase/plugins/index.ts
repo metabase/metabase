@@ -10,6 +10,7 @@ export {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   type AuthSettingsPageProps,
   type AuthSettingsPageTab,
+  type LdapUserProvisioningProps,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,

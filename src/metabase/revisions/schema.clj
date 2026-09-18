@@ -11,18 +11,10 @@
 
 (mr/def ::revision
   "A Revision as selected from the app DB: every column of `:revision`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:model            [:or :keyword :string]]
-   [:model_id         [:maybe :int]]
-   [:user_id          ::lib.schema.id/user]
-   [:timestamp        ms/TemporalInstant]
-   [:object           ::revision.object]
-   [:is_reversion     :boolean]
-   [:is_creation      :boolean]
-   [:message          [:maybe :string]]
-   [:most_recent      :boolean]
-   [:metabase_version [:maybe :string]]])
+  [:merge
+   ::revision.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::revision.update
   "What an update (or insert) of a Revision accepts: every column of `:revision` except `id`, all optional."

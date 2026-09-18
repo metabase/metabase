@@ -4,6 +4,9 @@
    [clojure.set :as s]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.api.slack :as channel.api.slack]
+   [metabase.channel.impl.slack :as channel.impl.slack]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
@@ -302,6 +305,29 @@
         (mt/with-temporary-setting-values [slack-app-token "test-token"]
           (is (=? expected
                   (slack/post-chat-message! {:channel "C94712B6X" :text ":wow:"}))))))))
+
+(deftest post-chat-message!-built-blocks-test
+  (testing "post-chat-message! accepts the blocks Metabase builds for card notifications and bug reports"
+    (let [card-blocks (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card    (fn [& _] {:attachments {}, :content [:div]})
+                                                  channel.render/png-from-render-info (fn [& _] (byte-array [1]))
+                                                  slack/upload-file!                  (fn [_ _] {:id "F0CARD"})]
+                        (mt/with-temporary-setting-values [site-url "a.com"]
+                          (#'channel.impl.slack/part->sections! {:type :card, :card {:id 1, :name "Card"}})))
+          bug-blocks  (#'channel.api.slack/create-slack-message-blocks
+                       {:url "https://test.com", :description "Broken", :bugReportDetails {}}
+                       {:id "F0BUG", :url "https://files.slack.com/files-pri/123/diagnostic.json"})]
+      (is (=? [{:text {:verbatim true}} {:slack_file {:id "F0CARD"}}] card-blocks))
+      (is (=? [{:elements [{:elements [{} {} {:style {:bold true}}]}]}
+               {}
+               {:elements [{} {:border 0}]}
+               {}
+               {:elements [{:url string?, :style "primary"} {}]}]
+              bug-blocks))
+      (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
+                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_post_chat_message_response.json")))}
+        (mt/with-temporary-setting-values [slack-app-token "test-token"]
+          (is (=? {:ok true}
+                  (slack/post-chat-message! {:channel "C94712B6X", :blocks (into card-blocks bug-blocks)}))))))))
 
 (deftest slack-token-error-test
   (notification.tu/with-send-notification-sync

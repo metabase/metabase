@@ -16,9 +16,11 @@
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
@@ -71,7 +73,7 @@
   Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
   [{:keys [name description parameters cache_ttl collection_id collection_position
            width auto_apply_filters]}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
@@ -96,7 +98,7 @@
         dash           (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (dashboards.db/insert-dashboard! dashboard-data))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
@@ -109,14 +111,15 @@
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [dash-before-update dash-updates]
-  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
-            (api/column-will-change? :embedding_type dash-before-update dash-updates)
-            (api/column-will-change? :embedding_params dash-before-update dash-updates))
+  (when (or (api/column-will-change? (:enable_embedding dash-before-update) (get dash-updates :enable_embedding ::api/not-provided))
+            (api/column-will-change? (:embedding_type dash-before-update) (get dash-updates :embedding_type ::api/not-provided))
+            (api/column-will-change? (:embedding_params dash-before-update) (get dash-updates :embedding_params ::api/not-provided)))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
-  [target query]
+  [target :- ::lib.schema.common/possibly-unnormalized-clause
+   query  :- [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
   (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -165,7 +168,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping (lib/normalize ::parameters.schema/parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
@@ -316,7 +319,7 @@
          (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
-           (api/maybe-reconcile-collection-position! current-dash dash-updates)
+           (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
@@ -415,7 +418,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential :any]]
+   dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
         card->decision (fn [parent-card card]
@@ -588,7 +591,7 @@
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (let [dash (dashboards.db/insert-dashboard! dashboard-data)
                                {id->new-card :copied
@@ -617,5 +620,5 @@
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
         (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))

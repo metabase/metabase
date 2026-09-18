@@ -8,7 +8,7 @@
 
 (mu/defn ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Get a MetadataProvider from something that can provide one."
-  ([metadata-providerable]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
    (->metadata-provider metadata-providerable nil))
 
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable

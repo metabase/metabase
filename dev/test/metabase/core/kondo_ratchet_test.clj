@@ -361,10 +361,10 @@
                      {:file "f.clj", :line 2, :linters [:free]}]]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)]
-      (with-redefs [kondo-ratchet/known-linters         (constantly #{:free})
-                    kondo-ratchet/scan                  (constantly occurrences)
-                    kondo-ratchet/config-suppressions   (constantly {})
-                    kondo-ratchet/module-escape-hatches (constantly {})]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:free})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
         (is (= ["seeded :free at 2"
                 (str "wrote " (.getPath budgets))]
                (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))))
@@ -383,8 +383,8 @@
                   (spit (kondo-ratchet/render-module-ratchets {})))]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)]
-      (with-redefs [kondo-ratchet/known-linters (constantly #{:free})
-                    kondo-ratchet/scan          (fn [] (throw (AssertionError. "scanned before validating the seed")))]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{:free})
+                                  kondo-ratchet/scan          (fn [] (throw (AssertionError. "scanned before validating the seed")))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"^cannot seed :bogus: not a known linter -- policies must name"
                               (kondo-ratchet/fix! {:seed ":bogus"})))
@@ -405,10 +405,10 @@
         run!        #(str/split-lines (with-out-str (kondo-ratchet/fix!)))]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)]
-      (with-redefs [kondo-ratchet/known-linters         (constantly #{:free :empty :gone :zero})
-                    kondo-ratchet/scan                  (constantly occurrences)
-                    kondo-ratchet/config-suppressions   (constantly {})
-                    kondo-ratchet/module-escape-hatches (constantly {})]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:free :empty :gone :zero})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
         (is (= ["dropped :gone (no ignores left)"
                 "dropped :zero (no ignores left)"
                 "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
@@ -437,10 +437,10 @@
                           {:api-any 2, :friend-edges 5, :uses-any 1})))]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)]
-      (with-redefs [kondo-ratchet/known-linters         (constantly #{})
-                    kondo-ratchet/scan                  (constantly [])
-                    kondo-ratchet/config-suppressions   (constantly {})
-                    kondo-ratchet/module-escape-hatches (constantly {:api-any 1, :friend-edges 4, :uses-any 0})]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{})
+                                  kondo-ratchet/scan                  (constantly [])
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {:api-any 1, :friend-edges 4, :uses-any 0})]
         (is (= ["lowered module :api-any 2 -> 1"
                 "lowered module :friend-edges 5 -> 4"
                 "dropped module :uses-any (no escape hatches left)"

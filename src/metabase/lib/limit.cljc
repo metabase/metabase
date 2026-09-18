@@ -18,7 +18,8 @@
 
 (mu/defn ^:export limit :- ::lib.schema/query
   "Set the maximum number of rows to be returned by a stage of a query to `n`. If `n` is `nil`, remove the limit."
-  ([query n]
+  ([query :- ::lib.schema/query
+    n     :- [:maybe pos-int?]]
    (limit query -1 n))
 
   ([query        :- ::lib.schema/query

@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.models.interface :as mi]
@@ -204,8 +205,8 @@
                                  [:content_type :string]]
   "Rewrite the card FK (`[:attrs \"id\"]`) of every cardEmbed node found in `card-id-map`.
   Touches nothing else on the node — in particular a node's `:_id` never changes here."
-  [document :- [:map
-                [:document :any]
+  [document :- [:map {:closed true}
+                [:document ::documents.schema/document.document]
                 [:content_type :string]]
    card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
   (cond-> document
@@ -231,7 +232,7 @@
   [cards-to-create :- [:map-of [:int {:max -1}] CardCreateSchema]
    document-id :- ms/PositiveInt
    document-collection-id :- [:or :nil ms/PositiveInt]
-   creator :- [:map [:id ms/PositiveInt]]]
+   creator :- :metabase.users.schema/user]
   (when (seq cards-to-create)
     (reduce-kv
      (fn [result-map original-key card-data]
@@ -255,7 +256,7 @@
 
   Returns:
   - map of old-card-id -> cloned-card-id"
-  [{:keys [id collection_id] :as document}]
+  [{:keys [id collection_id] :as document} :- ::documents.schema/document]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
                                                                 (pos-int? (get (:attrs %) "id")))
                                                        (get (:attrs %) "id")))
@@ -315,9 +316,9 @@
   (`api/create-check`) are the caller's job, run before this — the same split the REST
   `POST /api/document/` handler uses."
   [{:keys [name document collection_id collection_position cards]}
-   :- [:map
+   :- [:map {:closed true}
        [:name DocumentName]
-       [:document :any]
+       [:document ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
@@ -370,11 +371,11 @@
   and return the updated document. Permission checks (write-check, archived state,
   collection-move) are the caller's job, run before this — the same split the REST
   `PUT /api/document/:id` handler uses."
-  [existing-document :- [:map [:id ms/PositiveInt]]
+  [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:name {:optional true} DocumentName]
-       [:document {:optional true} :any]
+       [:document {:optional true} ::documents.schema/document.document]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        ;; Any int key, matching the REST `DocumentUpdateOptions` this backs: with no `:document`
@@ -386,10 +387,10 @@
         document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
     (t2/with-transaction [_conn]
       (when collection_position
-        (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
-                                                                                      collection_id
-                                                                                      (:collection_id existing-document))
-                                                                     :collection_position collection_position}))
+        (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position]) {:collection_id (if (contains? body :collection_id)
+                                                                                                                                          collection_id
+                                                                                                                                          (:collection_id existing-document))
+                                                                                                                         :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
                            (clone-cards-in-document! (assoc existing-document :document document))
@@ -643,17 +644,18 @@
     ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
     ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
     ;; with `node-entity-id` here.
-    (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
-                                              (cond
-                                                (and (= prose-mirror/smart-link-type type)
-                                                     (contains? model->serdes-model (get attrs "model")))
-                                                (get attrs "entityId")
+    (set (prose-mirror/collect-ast (update document :document prose-mirror/normalize-document)
+                                   (fn document-deps [{:keys [type attrs]}]
+                                     (cond
+                                       (and (= prose-mirror/smart-link-type type)
+                                            (contains? model->serdes-model (get attrs "model")))
+                                       (get attrs "entityId")
 
-                                                (= prose-mirror/card-embed-type type)
-                                                (get attrs "id")
+                                       (= prose-mirror/card-embed-type type)
+                                       (get attrs "id")
 
-                                                :else
-                                                nil))))))
+                                       :else
+                                       nil))))))
 
 (defmethod serdes/deserialization-dependencies "Document"
   [{:keys [collection_id] :as document}]

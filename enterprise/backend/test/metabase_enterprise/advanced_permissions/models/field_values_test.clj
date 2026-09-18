@@ -34,10 +34,10 @@
               (testing "and a warm hit is served without a detached fetch — it is one SELECT, so
                         handing it to a background thread costs more than it saves (GHY-2937)"
                 (let [detached (atom 0)
-                      real     field-values/detached-fetch!]
-                  (with-redefs [field-values/detached-fetch! (fn [& args]
-                                                               (swap! detached inc)
-                                                               (apply real args))]
+                      real     (mt/original-fn #'field-values/detached-fetch!)]
+                  (mt/with-dynamic-fn-redefs [field-values/detached-fetch! (fn [& args]
+                                                                             (swap! detached inc)
+                                                                             (apply real args))]
                     (params.field-values/get-or-create-field-values! field)
                     (is (zero? @detached)))))
               (testing "changing the impersonation role creates new FieldValues"

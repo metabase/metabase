@@ -3,6 +3,7 @@ import _ from "underscore";
 import { datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
+  type ShallowForeignKey,
   selectMetadataProvider,
   selectQuestionFromCard,
   selectQuestionFromOpts,
@@ -11,8 +12,13 @@ import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import * as Lib from "metabase-lib";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type { Card, DatasetColumn, Field, FieldId } from "metabase-types/api";
+import type {
+  Card,
+  DatasetColumn,
+  Field,
+  FieldId,
+  NormalizedField,
+} from "metabase-types/api";
 
 import {
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
@@ -41,7 +47,7 @@ export const resetRowZoom = () => (dispatch: Dispatch) => {
 
 function filterByFk(
   query: Lib.Query,
-  field: DatasetColumn | Field,
+  field: DatasetColumn | Field | NormalizedField,
   objectId: ObjectId,
 ) {
   const stageIndex = -1;
@@ -125,14 +131,14 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
       async function getFKCount(
         card: Card,
-        fk: ForeignKey,
+        fk: ShallowForeignKey,
       ): Promise<FKInfo | undefined> {
         const databaseId = selectQuestionFromCard(
           getState(),
           card,
         ).databaseId();
-        const tableId = fk.origin?.table_id;
-        if (!tableId || !databaseId || !fk.origin) {
+        const tableId = fk.origin.table_id;
+        if (!tableId || !databaseId) {
           return;
         }
         const metadataProvider = selectMetadataProvider(getState(), databaseId);
@@ -145,12 +151,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
           table,
         );
         const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
-        const query = filterByFk(
-          aggregatedQuery,
-          // Unjustified type cast. FIXME
-          fk.origin.getPlainObject() as Field,
-          objectId,
-        );
+        const query = filterByFk(aggregatedQuery, fk.origin, objectId);
         const finalCard = selectQuestionFromOpts(getState(), {
           dataset_query: Lib.toJsQuery(query),
         }).datasetQuery();

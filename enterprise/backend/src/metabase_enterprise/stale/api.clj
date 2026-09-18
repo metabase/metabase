@@ -58,11 +58,11 @@
 
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
+       (map #(assoc % :fully_parameterized (queries/fully-parameterized? %)))
        present-collections
        (map (fn [card]
               (-> card
                   (assoc :model (if (queries/model? card) "dataset" "card"))
-                  (assoc :fully_parameterized (queries/fully-parameterized? card))
                   (dissoc :dataset_query))))))
 
 (defn- annotate-dashboard-with-collection-info
