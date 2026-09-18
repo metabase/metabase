@@ -198,18 +198,19 @@
   (testing "Guard A: a join declaring only some of its input tables is rejected, naming the gap,"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
       ;; reads orders and people; declares only orders → people would fall through to the real table.
-      (let [mp     (mt/metadata-provider)
-            people (:name (lib.metadata/table mp (mt/id :people)))
-            orders (:name (lib.metadata/table mp (mt/id :orders)))
-            {oschema :schema}            (table-ref :orders)]
+      (let [mp                              (mt/metadata-provider)
+            {pschema :schema, people :name} (table-ref :people)
+            {oschema :schema, orders :name} (table-ref :orders)]
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:source {:type  "query"
                                  :query (lib/native-query
-                                         mp (str "SELECT o.id, p.name FROM " orders " o JOIN " people " p ON o.user_id = p.id"))}
+                                         mp (str "SELECT o.id, p.name"
+                                                 " FROM " oschema "." orders " o"
+                                                 " JOIN " pschema "." people " p ON o.user_id = p.id"))}
                         :target {:type "table" :schema oschema :name "order_owners" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id transform-id
-                        :inputs       [{:table (table-ref :orders) :format :sql
+                        :inputs       [{:table {:schema oschema :name orders} :format :sql
                                         :sql "SELECT 1 AS id, 1 AS user_id"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " oschema ".order_owners")}]}]
           (let [ex (try (transform-testing.runner/run-transform-test! transform-test)

@@ -1041,11 +1041,14 @@
                           {:name          (.getColumnLabel md (int i))
                            :database_type (.getColumnTypeName md (int i))})
                         (range 1 (inc column-count)))
-         ;; `setMaxRows` reads 0 as unlimited, so the cap is enforced here rather than left to it.
+         ;; The ResultSet is read to its end even once `max-rows` rows are in hand: closing one with rows still
+         ;; pending abandons a result the server is still producing, which on Redshift aborts the whole transaction.
+         ;; `setMaxRows` above is what keeps that cheap -- it stops the server after `max-rows` rows.
          :rows    (loop [rows []]
-                    (if (and (or (nil? max-rows) (< (count rows) max-rows))
-                             (.next rs))
-                      (recur (conj rows (mapv #(.getObject rs (int %)) (range 1 (inc column-count)))))
+                    (if (.next rs)
+                      (recur (if (and max-rows (>= (count rows) max-rows))
+                               rows
+                               (conj rows (mapv #(.getObject rs (int %)) (range 1 (inc column-count))))))
                       rows))}))))
 
 (defmethod driver/execute-raw-queries! :sql-jdbc
