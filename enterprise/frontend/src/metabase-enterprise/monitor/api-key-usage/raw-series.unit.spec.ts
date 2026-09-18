@@ -1,9 +1,12 @@
-import type { DatasetQuery } from "metabase-types/api";
+import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import { toCountBreakoutRawSeries } from "./raw-series";
 
-// Unjustified type cast. FIXME
-const jsQuery = { database: 1, type: "query", query: {} } as DatasetQuery;
+const jsQuery: StructuredDatasetQuery = {
+  database: 1,
+  type: "query",
+  query: {},
+};
 
 const opts = {
   display: "row" as const,
