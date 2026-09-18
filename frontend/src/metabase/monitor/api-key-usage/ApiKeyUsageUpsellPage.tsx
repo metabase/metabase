@@ -13,6 +13,7 @@ export function ApiKeyUsageUpsellPage() {
       header={t`API key usage`}
       title={t`See who's calling your API`}
       description={t`Track which API keys are active, who's using them, and which routes and clients they're calling — so you can spot stale keys and unexpected usage.`}
+      image="app/assets/img/upsell-api-usage-analytics.png"
     />
   );
 }
