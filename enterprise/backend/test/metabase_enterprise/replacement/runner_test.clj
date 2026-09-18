@@ -4,15 +4,20 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.models.dependency :as deps]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase-enterprise.replacement.db :as replacement.db]
+   [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
+   [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-user-settings]
@@ -22,6 +27,73 @@
 
 (comment
   metabase-enterprise.dependencies.events/keep-me)
+
+(deftest run-swap-source!-phase-barrier-test
+  (testing "All upgrades finish before any swaps, and phase two reloads upgraded objects across batches"
+    (let [entities (mapv #(vector :card %) (range 1 502))
+          stored   (atom (zipmap entities (repeat {:upgraded? false})))
+          calls    (atom [])
+          received (atom [])]
+      (mt/with-dynamic-fn-redefs [replacement.usages/transitive-usages (constantly entities)
+                                  replacement.db/card-database-id (constantly 1)
+                                  lib-be/application-database-metadata-provider (constantly nil)
+                                  replacement.runner/bulk-load-metadata-for-entities!
+                                  (fn [_ batch] (select-keys @stored batch))
+                                  replacement.field-refs/upgrade-field-refs!
+                                  (fn [entity _]
+                                    (swap! calls conj [:upgrade entity])
+                                    (swap! stored assoc entity {:upgraded? true}))
+                                  replacement.source-swap/swap-source!
+                                  (fn [entity object _ _]
+                                    (swap! calls conj [:swap entity])
+                                    (swap! received conj object))]
+        (replacement.runner/run-swap-source! [:card 1000] [:card 1001]))
+      (is (= (into (mapv #(vector :upgrade %) entities) (map #(vector :swap %) entities)) @calls))
+      (is (= (vec (repeat (count entities) {:upgraded? true})) @received)))))
+
+(deftest run-swap-source!-mixed-chain-results-test
+  (mt/with-test-user :crowberto
+    (let [mp (mt/metadata-provider)
+          columns [{:name "id" :display_name "id" :base_type :type/Integer}
+                   {:name "amount" :display_name "amount" :base_type :type/Integer}]
+          card (fn [query] {:database_id (mt/id) :dataset_query query :result_metadata columns})
+          results (fn [id]
+                    (let [result (qp/process-query (:dataset_query (replacement.db/card id)))]
+                      (is (= :completed (:status result)))
+                      {:columns (mapv :name (get-in result [:data :cols]))
+                       :rows (frequencies (get-in result [:data :rows]))}))]
+      (mt/with-temp [:model/Card {old-id :id}
+                     (card (lib/native-query mp "SELECT 1 AS \"id\", 10 AS \"amount\""))
+                     :model/Card {new-id :id}
+                     (card (lib/native-query mp "SELECT 1 AS \"id\", 20 AS \"amount\""))
+                     :model/Card {native-id :id}
+                     (card (lib/native-query mp (str "SELECT * FROM {{#" old-id "}} a UNION ALL "
+                                                     "SELECT * FROM {{#" old-id "}} b")))
+                     :model/Card {mbql-id :id}
+                     (card (lib/query mp {:database (mt/id) :type :query
+                                          :query {:source-table (str "card__" native-id)
+                                                  :filter [:> [:field "id" {:base-type :type/Integer}] 0]}}))
+                     :model/Card {leaf-id :id}
+                     (card (lib/native-query mp (str "SELECT * FROM {{#" mbql-id "}} src")))]
+        (let [ids [native-id mbql-id leaf-id]
+              queries #(mapv (comp :dataset_query replacement.db/card) ids)]
+          (try
+            (doseq [[child parent] [[native-id old-id] [mbql-id native-id] [leaf-id mbql-id]]]
+              (deps/replace-dependencies! :card child {:card #{parent}}))
+            (testing "The original source produces a distinguishable result at every layer"
+              (is (= (repeat 3 {:columns ["id" "amount"] :rows {[1 10] 2}}) (mapv results ids))))
+            (replacement.runner/run-swap-source! [:card old-id] [:card new-id])
+            (testing "Every layer uses replacement data and preserves UNION ALL multiplicity"
+              (is (= (repeat 3 {:columns ["id" "amount"] :rows {[1 20] 2}}) (mapv results ids))))
+            (is (empty? (replacement.usages/transitive-usages [:card old-id])))
+            (is (= (set (map #(vector :card %) ids))
+                   (set (replacement.usages/transitive-usages [:card new-id]))))
+            (let [before (queries)]
+              (replacement.runner/run-swap-source! [:card old-id] [:card new-id])
+              (is (= before (queries)) "Retry must preserve persisted queries, including UUIDs"))
+            (finally
+              (doseq [id ids]
+                (deps/replace-dependencies! :card id {})))))))))
 
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"
