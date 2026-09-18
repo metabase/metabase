@@ -2,6 +2,9 @@ name: Cross-Version Migration Tests
 
 on:
   workflow_call:
+    inputs:
+      digest:
+        description: "HEAD image digest. Ensures we test against the image built for the current commit."
 
   workflow_dispatch:
     inputs:
@@ -75,6 +78,7 @@ jobs:
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           RESULT_FILE: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
+          HEAD_DIGEST: ${{ inputs.digest }}
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"

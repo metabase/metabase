@@ -173,6 +173,15 @@ jobs:
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       edition: ${{ matrix.edition }}
       release: false
+  
+  # Should only run when we push an image to metabase/metabase-head
+  cross-version-tests:
+    name: Cross-version migration tests
+    needs: [containerize]
+    uses: ./.github/workflows/cross-version.yml
+    secrets: inherit
+    with:
+      digest: ${{ needs.containerize.outputs.digest }}
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION
@@ -420,13 +429,6 @@ jobs:
       skip-embedder-plugin: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.embedder_plugin != 'true' }}
-
-  cross-version-tests:
-    name: Cross-version migration tests
-    needs: [should-run, uberjar]
-    if: needs.should-run.outputs.verdict == 'force-run'
-    uses: ./.github/workflows/cross-version.yml
-    secrets: inherit
 
   bundle-size:
     needs: [uberjar, files-changed]
