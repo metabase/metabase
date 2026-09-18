@@ -57,9 +57,13 @@
        :vertex-claude (get (raw-predict/request-body model opts) :max_tokens omitted)
        :deepseek      (get (deepseek/deepseek-request-body opts) :max_tokens omitted)
 
-       ;; OpenAI Responses: direct, Bedrock's `openai.` prefix, Azure's deployment name.
-       (:openai :bedrock-openai :azure-openai)
+       ;; OpenAI Responses: direct, and Azure's deployment name.
+       (:openai :azure-openai)
        (get (openai/openai-request-body opts) :max_output_tokens omitted)
+
+       ;; Bedrock's `openai.` prefix, through the mantle adaptation bedrock-raw applies to the same builder.
+       :bedrock-openai
+       (get (bedrock/->mantle-openai-body (openai/openai-request-body opts)) :max_output_tokens omitted)
 
        :openrouter (get (openrouter/openrouter-request-body opts) :max_tokens omitted)
        :zai        (get (zai/zai-request-body opts) :max_tokens omitted)
@@ -90,7 +94,7 @@
                        ;; they get the same default rather than an omission
                        "claude-fable-5-1"             32000
                        "my-deployment-3"              32000}
-   ;; OpenAI Responses, direct: every GPT row in the table is nil, so nothing is ever sent (D11)
+   ;; OpenAI Responses, direct: no default cap is sent (see openai/openai-request-body)
    :openai            {"gpt-5.6-sol"                 omitted
                        "gpt-5.6-terra"               omitted
                        "gpt-5.6-luna"                omitted
@@ -109,10 +113,10 @@
                        "anthropic.claude-opus-4-7"    32000
                        "anthropic.claude-sonnet-5"    32000
                        "anthropic.claude-haiku-4-5"   32000}
-   :bedrock-openai    {"openai.gpt-5.4"              omitted
-                       "openai.gpt-5.4-2026-03-05"   omitted
-                       "openai.gpt-5.5"              omitted
-                       "openai.gpt-5.5-2026-04-23"   omitted}
+   :bedrock-openai    {"openai.gpt-5.4"               32000
+                       "openai.gpt-5.4-2026-03-05"    32000
+                       "openai.gpt-5.5"               32000
+                       "openai.gpt-5.5-2026-04-23"    32000}
    ;; Azure: the bare deployment name, dateless, and cased however the admin named it
    :azure-anthropic   {"claude-fable-5"               32000
                        "claude-opus-5"                32000
