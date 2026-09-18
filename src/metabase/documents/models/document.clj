@@ -191,14 +191,17 @@
 (defn clone-card!
   "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
 
-  Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the authoring
-  checks (run permission on the query, parameter source-card and parameter field permissions): the query and
-  parameters come from an existing card row the caller passed a read check on rather than from the request, so the
-  user is not authoring anything -- they may be able to view (and run) the source card without having permission to
-  write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
-  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
+  Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the *authoring*
+  checks (authoring permission on the query, parameter field permissions): the query and parameters come from an
+  existing card row the caller passed a read check on rather than from the request, so the user is not authoring
+  anything -- they may be able to view (and run) the source card without having permission to write such a query
+  themselves, e.g. a native card when they lack native query editing perms. What it does require, through
+  [[metabase.queries.core/check-allowed-to-copy-card!]], is that the user could run the query as a saved card (read on
+  every card it reads at any depth, view-data on their tables) and can read the cards its parameters draw values
+  from: reading the source card does not stand in for reading the cards *it* reads, and the clone must not become a
+  card the user owns that is built on one they cannot read."
   [card creator]
-  (api/create-check :model/Card {:collection_id (:collection_id card)})
+  (card/check-allowed-to-copy-card! card)
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]

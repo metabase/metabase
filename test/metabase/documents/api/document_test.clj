@@ -2701,6 +2701,49 @@
               (testing "the document-owned card is copied"
                 (is (t2/exists? :model/Card :document_id (:id result)))))))))))
 
+(deftest post-document-embedding-card-with-unreadable-source-card-refused-test
+  (testing "embedding a readable card whose query reads a card the user cannot read is refused"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {hidden-coll :id} {}
+                       :model/Collection {coll-id :id} {}
+                       :model/Card {v-id :id} {:name          "V"
+                                               :collection_id hidden-coll
+                                               :dataset_query (mt/mbql-query venues {:limit 2})}
+                       :model/Card {w-id :id} {:name          "W"
+                                               :collection_id coll-id
+                                               :dataset_query (mt/mbql-query nil {:source-table (format "card__%d" v-id)})}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (is (= "You cannot copy this question because you do not have permissions to run its query."
+                 (mt/user-http-request :rasta
+                                       :post 403 "document/"
+                                       {:name          "Doc embedding W"
+                                        :collection_id coll-id
+                                        :document      (card-embed-ast w-id)})))
+          (is (zero? (t2/count :model/Card :name "W" :creator_id (mt/user->id :rasta) :document_id [:not= nil]))))))))
+
+(deftest copy-document-containing-card-with-unreadable-source-card-refused-test
+  (testing "copying a document whose card reads a card the user cannot read is refused"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {hidden-coll :id} {}
+                       :model/Collection {coll-id :id} {}
+                       :model/Card {v-id :id} {:name          "V"
+                                               :collection_id hidden-coll
+                                               :dataset_query (mt/mbql-query venues {:limit 2})}
+                       :model/Document {doc-id :id} {:name          "Doc with W"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "placeholder")}
+                       :model/Card {w-id :id} {:name          "W"
+                                               :collection_id coll-id
+                                               :document_id   doc-id
+                                               :dataset_query (mt/mbql-query nil {:source-table (format "card__%d" v-id)})}]
+          (t2/update! :model/Document doc-id {:document (card-embed-ast w-id)})
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (is (= "You cannot copy this question because you do not have permissions to run its query."
+                 (mt/user-http-request :rasta :post 403 (format "document/%d/copy" doc-id) {:collection_id coll-id})))
+          (is (= 1 (t2/count :model/Document :name [:like "Doc with W%"]))))))))
+
 (deftest post-document-draft-native-card-still-requires-native-perms-test
   (testing "POST /api/document/ - client-supplied draft native cards still require native query perms"
     (mt/with-non-admin-groups-no-root-collection-perms

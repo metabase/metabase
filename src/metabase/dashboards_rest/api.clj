@@ -440,7 +440,11 @@
 
                            (or (:dashboard_id card)
                                (and deep-copy? (not= :model (:type card))))
-                           :copy
+                           ;; Copying creates a card the caller owns, so they must be able to run its query as
+                           ;; a saved card: reading it does not stand in for reading the cards *it* reads, and a
+                           ;; copy they own must not become a way around that. Referencing creates nothing, so
+                           ;; needs nothing more.
+                           (if (query-perms/can-run-saved-query? (:dataset_query card)) :copy :discard)
 
                            :else :reference))
         split-cards (fn [{:keys [card] :as db-card}]

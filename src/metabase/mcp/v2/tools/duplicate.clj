@@ -65,16 +65,18 @@
    refuses it, because `document_id` carries the card's read gate rather than its placement.
 
    Copy semantics, not create semantics: the query comes from a row the caller already passed a
-   read check on, so they are not authoring it. `check-allowed-to-create-card!` would additionally
-   demand run-permission on that query, which refuses a user who can read and run a native card but
-   lacks native authoring perms — the case `documents.models.document/clone-card!` calls out
-   (UXW-5037), and one `POST /api/card/:id/copy` allows. Destination create-permission is still
-   enforced."
+   read check on, so they are not authoring it. `check-allowed-to-create-card!` would demand
+   *authoring* permission on that query, which refuses a user who can read and run a native card
+   but lacks native authoring perms — the case `documents.models.document/clone-card!` calls out,
+   and one `POST /api/card/:id/copy` allows. `check-allowed-to-copy-card!` instead requires that
+   the caller could run the query as a saved card — read on every card it reads at any depth — so
+   owning a copy cannot become a way to read a card they cannot. Destination create-permission is
+   still enforced."
   [card collection-id new-name]
   (let [new-card (-> card
                      (assoc :name new-name :collection_id collection-id)
                      (dissoc :dashboard_id :collection_position))]
-    (api/create-check :model/Card {:collection_id collection-id})
+    (queries/check-allowed-to-copy-card! new-card)
     (queries/create-card! new-card @api/*current-user*)))
 
 (defn- fetch-dashboard

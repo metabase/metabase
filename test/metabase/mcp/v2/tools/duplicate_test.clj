@@ -207,6 +207,26 @@
                                                      :collection_id dest-coll}))))
         (is (= 1 (t2/count :model/Card :name "Revenue")))))))
 
+(deftest duplicate-question-nested-unreadable-card-refused-test
+  (testing "copying is not authoring, but it still needs saved-card run permission — a readable
+            question whose query reads a card the caller cannot read is refused, and nothing is written"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {secret-coll :id} {}
+                     :model/Collection {coll-id :id} {}
+                     :model/Card {v-id :id} {:name          "Salaries"
+                                             :type          :question
+                                             :collection_id secret-coll
+                                             :dataset_query (venues-query)}
+                     :model/Card {w-id :id} {:name          "Wrapper"
+                                             :type          :question
+                                             :collection_id coll-id
+                                             :dataset_query (lib/query (mt/metadata-provider)
+                                                                       (lib.metadata/card (mt/metadata-provider) v-id))}]
+        (mt/with-non-admin-groups-no-collection-perms secret-coll
+          (is (re-find #"(?i)permission"
+                       (tool-error (call-tool! :rasta {:type "question" :id w-id :collection_id coll-id}))))
+          (is (zero? (t2/count :model/Card :name "Copy of Wrapper"))))))))
+
 (deftest duplicate-card-flavor-mismatch-test
   (testing "GHY-4151: a model or metric passed as a question is a teaching error saying so, rather than
             silently copying it as a question — the other card flavors aren't supported yet"
@@ -325,6 +345,35 @@
                                  :name "Revenue"
                                  :collection_id (:id (collection/user->personal-collection
                                                       (mt/user->id :rasta)))))))))))))
+
+(deftest duplicate-dashboard-deep-nested-unreadable-card-uncopied-test
+  (testing "a deep copy leaves behind a readable card whose query reads a card the caller cannot read,
+            reporting it as uncopied"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {secret-coll :id} {}
+                     :model/Card {v-id :id} {:name          "Salaries"
+                                             :type          :question
+                                             :collection_id secret-coll
+                                             :dataset_query (venues-query)}
+                     :model/Card {w-id :id} {:name          "Wrapper"
+                                             :type          :question
+                                             :collection_id coll-id
+                                             :dataset_query (lib/query (mt/metadata-provider)
+                                                                       (lib.metadata/card (mt/metadata-provider) v-id))}
+                     :model/Card {ok-card :id} {:name          "Revenue"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (venues-query)}
+                     :model/Dashboard {dash-id :id} {:name "Sales" :collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id w-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id ok-card}]
+        (mt/with-non-admin-groups-no-collection-perms secret-coll
+          (let [result (tool-result (call-tool! :rasta {:type "dashboard" :id dash-id :is_deep_copy true}))]
+            (is (=? [{:id w-id}] (:uncopied result)))
+            (is (= 1 (count (copied-dashcards (:id result)))))
+            (is (= 1 (t2/count :model/Card :name "Wrapper"))
+                "only the source Wrapper exists — no copy of it was written")))))))
 
 (deftest duplicate-dashboard-shallow-uncopied-test
   (testing "GHY-4218: a *shallow* copy drops unreadable cards too, and reports them. `card->decision`

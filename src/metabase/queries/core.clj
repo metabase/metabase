@@ -34,6 +34,7 @@
   create-card!]
  [metabase.queries.card-write-checks
   actual-collection-id
+  check-allowed-to-copy-card!
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!

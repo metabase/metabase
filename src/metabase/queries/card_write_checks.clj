@@ -9,6 +9,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
@@ -115,6 +116,18 @@
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (check-no-save-cycle! ::no-id query)))
+
+(defn check-allowed-to-copy-card!
+  "The pre-write stack for COPYING a card the caller already passed a read check on. Not the authoring stack
+   ([[check-allowed-to-create-card!]]): a user who can read and run a native card without native authoring perms
+   may still copy it. It does require that the caller could *run* the query as a saved card -- read on every card it
+   reads at any depth plus view-data on their tables -- so no one ends up owning a copy built on a card they cannot
+   read; read on the cards its parameters draw values from, since the after-insert hook mints the
+   `ParameterCard` rows without one; and create permission on the destination collection."
+  [card]
+  (parameter-card/check-parameter-source-card-permissions (:parameters card))
+  (query-perms/check-saved-query-run-permissions (:dataset_query card))
+  (api/create-check :model/Card card))
 
 (mu/defn check-allowed-to-update-card!
   "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.
