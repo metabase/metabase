@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-01 05:46+0000\n"
+"POT-Creation-Date: 2026-09-08 05:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Finnish\n"
 "Language: fi_FI\n"
-"PO-Revision-Date: 2026-09-08 05:40\n"
+"PO-Revision-Date: 2026-09-15 05:40\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -80,7 +80,6 @@ msgstr "Ryhmitelty :n mukaan"
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/ConfirmMoveDashboardQuestionCandidatesModal.tsx
 #: frontend/src/metabase/common/components/upsells/components/UpgradeModal/UpgradeModalError.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarContainer.tsx
 #: frontend/src/metabase/questions/components/MoveCardModal/MoveCardToast/MoveCardToast.tsx
 #: metabase/server/middleware/exceptions.clj
@@ -176,7 +175,7 @@ msgstr "Valitse tietokanta"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 msgid "Select a table"
 msgstr "Valitse taulu"
 
@@ -260,7 +259,7 @@ msgstr "Muokkaa yhteyttä"
 #: frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.tsx
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobTriggersSidebar.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/SidebarHeader.tsx
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
 #: frontend/src/metabase/transforms/components/RunInfo/RunInfo.tsx
 #: frontend/src/metabase/transforms/pages/JobRunListPage/JobRunSidebar/JobRunSidebar.tsx
 #: frontend/src/metabase/transforms/pages/RunListPage/RunSidebar/SidebarHeader/SidebarHeader.tsx
@@ -703,9 +702,9 @@ msgstr "Poista käyttöoikeus kaikista ryhmistä"
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/hooks/useCommandPalette.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
 #: frontend/src/metabase/transforms/components/TransformHeader/TransformTabs.tsx
 #: frontend/src/metabase/visualizer/components/Footer/Footer.tsx
 msgid "Settings"
@@ -1340,6 +1339,12 @@ msgid "JWT"
 msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Server settings"
+msgstr "Palvelinasetukset"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
 msgid "JWT Identity Provider URI"
 msgstr "JWT-identiteetintarjoajan URI"
@@ -1349,31 +1354,45 @@ msgid "String used by the JWT signing key"
 msgstr "JWT-allekirjoitusavain käyttää tätä merkkijonoa"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Email attribute"
-msgstr "Sähköpostiattribuutti"
+msgid "User attribute configuration"
+msgstr "Käyttäjäattribuuttien määritys"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "You can send additional user attributes to {0} by adding the attributes as key/value pairs to your JWT"
+msgstr "Voit lähettää lisäkäyttäjäattribuutteja {0}:lle lisäämällä attribuutit avain/arvo-pareina JWT:hen"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Email attribute key"
+msgstr "Sähköposti-attribuutin avain"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "First name attribute key"
+msgstr "Etunimi-attribuutin avain"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Last name attribute key"
+msgstr "Sukunimi-attribuutin avain"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Group assignment attribute key"
+msgstr "Ryhmämäärityksen attribuuttiavain"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Tenant assignment attribute key"
+msgstr "Tenant-määrityksen attribuuttiavain"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "First name attribute"
-msgstr "Etunimiattribuutti"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-msgid "Last name attribute"
-msgstr "Sukunimiattribuutti"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Group assignment attribute"
-msgstr "Ryhmämääritysattribuutti"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tenant assignment attribute"
-msgstr "Vuokralaisen määritysattribuutti"
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Group mapping"
+msgstr "Ryhmäkartoitus"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#, javascript-format
+msgid "Lets you assign users to custom {0} groups based on their JWT attributes"
+msgstr "Mahdollistaa käyttäjien liittämisen mukautettuihin {0}-ryhmiin heidän JWT-attribuuttien perusteella"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Group Name"
@@ -1400,6 +1419,7 @@ msgstr "Tallenna ja ota käyttöön"
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
 #: frontend/src/metabase/admin/settings/components/Email/BaseSMTPConnectionForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/EditWebhookModal.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx
@@ -1470,10 +1490,6 @@ msgid "OpenID Connect"
 msgstr "OpenID Connect"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Server settings"
-msgstr "Palvelinasetukset"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributeMappingEditor.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
@@ -1541,10 +1557,6 @@ msgstr "Jätä tyhjäksi säilyttääksesi nykyisen arvon"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Synchronize group membership with your SSO"
-msgstr "Synkronoi ryhmäjäsenyys SSO:si kanssa"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
 msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
 msgstr "Ottaaksesi tämän käyttöön sinun täytyy luoda mappaukset, jotta {0} tietää, mihin ryhm(i)in käyttäjäsi lisätään sen perusteella, mihin SSO-ryhmään he kuuluvat."
@@ -1577,6 +1589,21 @@ msgstr "Attribuuttien mappaus"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
 msgstr "Mapppaa OIDC-claimit käyttäjäattribuutteihin. Käytä standardeja OIDC-claim-nimiä tai palveluntarjoajasi omia claimeja."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Email attribute"
+msgstr "Sähköpostiattribuutti"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "First name attribute"
+msgstr "Etunimiattribuutti"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Last name attribute"
+msgstr "Sukunimiattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
@@ -1623,10 +1650,6 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Set up SAML-based SSO"
-msgstr "Määritä SAML-pohjainen SSO"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #, javascript-format
 msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
 msgstr "Määritä SSO SAML:n avulla alla olevilla asetuksilla. Jos sinulla on kysyttävää, tutustu {0}."
@@ -1642,8 +1665,9 @@ msgid "Configure your identity provider (IdP)"
 msgstr "Määritä identiteetintarjoajasi (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Your identity provider will need the following info about Metabase."
-msgstr "Identiteetintarjoajasi tarvitsee seuraavat tiedot Metabasesta."
+#, javascript-format
+msgid "Your identity provider will need the following info about {0}."
+msgstr "Identiteetintarjoajasi tarvitsee seuraavat tiedot {0}:sta."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1674,12 +1698,18 @@ msgid "User's last name attribute"
 msgstr "Käyttäjän sukunimiattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Tell Metabase about your identity provider"
-msgstr "Kerro Metabaselle identiteetintarjoajastasi"
+msgid "Tenant assignment attribute"
+msgstr "Vuokralaisen määritysattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Metabase will need the following info about your provider."
-msgstr "Metabase tarvitsee seuraavat tiedot palveluntarjoajastasi."
+#, javascript-format
+msgid "Tell {0} about your identity provider"
+msgstr "Kerro {0}:lle identiteetintarjoajastasi"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "{0} will need the following info about your provider."
+msgstr "{0} tarvitsee seuraavat tiedot tarjoajastasi."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
@@ -1716,12 +1746,6 @@ msgstr "Shh..."
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore alias"
 msgstr "SAML-avainsäilön alias"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
-"be added to based on the SSO group they're in."
-msgstr "Ottaaksesi tämän käyttöön sinun täytyy luoda mappaukset, jotka kertovat Metabaselle mihin ryhmiin käyttäjäsi pitäisi\n"
-"lisätä sen perusteella, mihin SSO-ryhmään he kuuluvat."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "You cannot enable SAML user provisioning while user provisioning is [managed by SCIM]"
@@ -2427,6 +2451,7 @@ msgstr "Aseta dev-palvelimen URL, jotta plugin-koodi ladataan paikalliselta dev-
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
@@ -2559,6 +2584,7 @@ msgstr "Katso SDK:n muutosloki"
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 msgid "Enabled"
@@ -2592,6 +2618,7 @@ msgid "Add"
 msgstr "Lisää"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
 #: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
 #: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
@@ -2627,6 +2654,11 @@ msgstr "Rakennettu SDK-versiolla 1.x, mutta tämä Metabasen versio on testattu 
 #, javascript-format
 msgid "Requires Metabase {0}, but this instance is on {1}."
 msgstr "Vaatii Metabase {0}, mutta tämä instanssi on versiossa {1}."
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/warning-messages.ts
+#, javascript-format
+msgid "The identifier \"{0}\" contains \":\", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without \":\"."
+msgstr "Tunniste \"{0}\" sisältää merkin \":\", jota ei enää sallita, joten tätä visualisointia ei tarjota katselijoille. Poista se ja lataa bundle uudelleen nimellä, jossa ei ole merkkiä \":\"."
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/custom-viz-plugins.tsx
 msgid "Plugin bundle must have a default export that is a factory function"
@@ -2866,7 +2898,7 @@ msgstr "Dataa ei voitu hakea oikein: {0}"
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/DataStep/DataStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/DataStep/DataStep.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/Funnel/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
@@ -3261,14 +3293,12 @@ msgid "Move table to…"
 msgstr "Siirrä taulu kohteeseen…"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table name"
 msgstr "Taulun nimen päivittäminen epäonnistui"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/components/TableHeader/TableNameInput/TableNameInput.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table name updated"
 msgstr "Taulun nimi päivitetty"
 
@@ -3347,14 +3377,12 @@ msgid "New measure"
 msgstr "Uusi mittari"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Failed to update table description"
 msgstr "Taulun kuvauksen päivittäminen epäonnistui"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/DescriptionSection/DescriptionSection.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
 msgid "Table description updated"
 msgstr "Taulun kuvaus päivitetty"
 
@@ -3752,7 +3780,7 @@ msgid "The following tables will be replicated."
 msgstr "Seuraavat taulut replikoidaan."
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #, javascript-format
 msgid "{0} rows"
 msgstr "{0} riviä"
@@ -4002,7 +4030,7 @@ msgstr "Voit myös lisätä tietokantoja ohjelmallisesti API:n kautta."
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 #: frontend/src/metabase/admin/upsells/UpsellRemoteSync.tsx
@@ -4013,8 +4041,8 @@ msgstr "Voit myös lisätä tietokantoja ohjelmallisesti API:n kautta."
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx
 #: frontend/src/metabase/databases/components/DatabaseSslKeyDescription/DatabaseSslKeyDescription.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/HelpText/HelpText.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 msgid "Learn more"
 msgstr "Lue lisää"
 
@@ -4504,8 +4532,8 @@ msgstr "Malli"
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Table"
 msgstr "Taulu"
@@ -5299,7 +5327,7 @@ msgstr "Poista vahvistus"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts
 #: frontend/src/metabase/common/components/RevisionHistoryTimeline/utils.ts
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionItem.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "You"
 msgstr "Sinä"
 
@@ -6100,8 +6128,8 @@ msgstr "Profiili"
 #: frontend/src/metabase/admin/ai/OAuthAuthorizationsPage.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePickerBody/SingleDatePickerBody.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
 msgid "Date"
 msgstr "Päivämäärä"
@@ -7191,6 +7219,7 @@ msgid "No collections found"
 msgstr "Kokoelmia ei löytynyt"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TopLevelCollectionsList/TopLevelCollectionsList.tsx
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 msgid "Failed to load collections"
 msgstr "Kokoelmien lataaminen epäonnistui"
 
@@ -7255,6 +7284,7 @@ msgid "Something went wrong. Please try again."
 msgstr "Jokin meni pieleen. Yritä uudelleen."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/collections/constants.ts
 #: frontend/src/metabase/common/collections/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
@@ -7718,6 +7748,7 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "Tämä attribuutti periytyy vuokralaiselta, mutta voit ohittaa sen arvon"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
 msgid "Attributes"
@@ -8898,7 +8929,9 @@ msgstr "ja"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "taulu"
+msgid_plural "tables"
+msgstr[0] "taulu"
+msgstr[1] "taulut"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9004,6 +9037,7 @@ msgid "Items cannot be saved directly to the tenant root collection. Please sele
 msgstr "Kohteita ei voi tallentaa suoraan vuokralaisen juurikokoelmaan. Valitse alikokoelma."
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-root-items.ts
 #: frontend/src/metabase/dashboard/components/QuestionPicker/utils/tenant-collections.ts
 #: frontend/src/metabase/reference/databases/DatabaseList.tsx
@@ -10142,7 +10176,7 @@ msgstr "Värit"
 #: frontend/src/metabase/metadata/components/FieldSection/FieldSection.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStep.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx
 #: frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.tsx
 msgid "Preview"
@@ -10588,9 +10622,17 @@ msgid "The analytics server is undergoing maintenance. {0}."
 msgstr "Analytiikkapalvelimella on käynnissä huolto. {0}."
 
 #: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "All collections"
+msgstr "Kaikki kokoelmat"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableCollection.tsx
 msgid "You don't have access to this collection"
 msgstr "Sinulla ei ole pääsyä tähän kokoelmaan"
+
+#: frontend/src/embedding-sdk-bundle/components/public/CollectionBrowser/CollectionBrowser.tsx
+msgid "There are no collections to show"
+msgstr "Ei ole näytettäviä kokoelmia"
 
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "Something's gone wrong"
@@ -10609,6 +10651,11 @@ msgstr "Sinun täytyy tallentaa muutoksesi ennen poistumista, jotta voit luoda u
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
 msgid "You can't save questions in Guest Embed mode"
 msgstr "Et voi tallentaa kysymyksiä Guest upotustilassa"
+
+#: frontend/src/embedding-sdk-bundle/hooks/private/use-all-collections-items.ts
+#: frontend/src/metabase/common/collections/utils.ts
+msgid "Your personal collection"
+msgstr "Henkilökohtainen kokoelmasi"
 
 #: frontend/src/embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token.ts
 msgid "JWT tokens cannot be passed as id. Use the token prop instead."
@@ -11818,7 +11865,7 @@ msgstr "Sisällä"
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/utils.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/Scalar/definition.ts
 msgid "Number"
 msgstr "Numero"
@@ -11910,7 +11957,7 @@ msgstr "Merkkijono"
 #: frontend/src/metabase-lib/v1/parameters/constants.ts
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics-viewer/utils/dimension-breakouts.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Boolean"
 msgstr "Boolean"
 
@@ -12168,7 +12215,7 @@ msgstr "Tämä poistaa rivin pysyvästi. Tätä ei voi kumota, joten varmista en
 #: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/AddHeadingOrTextButton.tsx
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/dashboard/visualizations/Text/index.ts
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/visualizations/visualizations/List/definition.ts
 #: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
 msgid "Text"
@@ -12280,7 +12327,7 @@ msgstr "Pakollinen"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FieldSettingsPopover.tsx
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Default value"
 msgstr "Oletusarvo"
 
@@ -12434,6 +12481,14 @@ msgstr "Oletusmalli"
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Metabot, AI explorations and SQL generation all run on this model."
 msgstr "Metabot, AI-tutkimukset ja SQL-generointi ajetaan kaikki tällä mallilla."
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Fast mode"
+msgstr "Nopea tila"
+
+#: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
+msgid "Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment."
+msgstr "Saat nopeammat vastaukset oletusmallista korkeammalla hinnalla per token. Anthropicin kohdalla tämä edellyttää tiliä, joka on mukana fast mode research preview -ohjelmassa, eikä ole saatavilla Priority Tier -sitoumuksella."
 
 #: frontend/src/metabase/admin/ai/AIModelSettingsSection.tsx
 msgid "Mini model"
@@ -12893,7 +12948,7 @@ msgstr "Suorituskyky"
 #: frontend/src/metabase/admin/app/reducers.ts
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Ohje"
 
@@ -15215,10 +15270,10 @@ msgstr "Sinun kannattaa luultavasti muuttaa tämä asetus arvoon {0}."
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "None"
 msgstr "Ei mitään"
@@ -15358,6 +15413,10 @@ msgid "Password"
 msgstr "Salasana"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "User schema"
+msgstr "Käyttäjäskeema"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User search base"
 msgstr "Käyttäjähakujen perus-DN"
 
@@ -15391,6 +15450,12 @@ msgstr "Hallitse visualisointeja"
 #: frontend/src/metabase/palette/constants.ts
 msgid "General"
 msgstr "Yleiset"
+
+#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: frontend/src/metabase/palette/constants.ts
+msgid "Domains"
+msgstr "Verkkotunnukset"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/WebhooksSettingsPage.tsx
@@ -15471,8 +15536,8 @@ msgid "Turn on \"Restrict image domains\" in {0} before enabling custom visualiz
 msgstr "Ota \"Restrict image domains\" käyttöön kohdassa {0} ennen kuin otat mukautetut visualisoinnit käyttöön."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
-msgid "General settings"
-msgstr "Yleiset asetukset"
+msgid "Domains settings"
+msgstr "Verkkotunnusasetukset"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Custom chart types"
@@ -15505,6 +15570,56 @@ msgstr "Täysi hallinta"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage.tsx
 msgid "Enable, disable, and manage custom visualization plugins"
 msgstr "Ota mukautetut visualisointipluginit käyttöön, poista käytöstä ja hallitse niitä"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for iframes in dashboards"
+msgstr "Sallitut domainit koontinäyttöjen iframeille"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
+msgstr "Varmista, että luotat lähteisiin, joita sallit käyttäjien upottaa koontinäyttöihin. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict image domains"
+msgstr "Rajoita kuvien domainit"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
+msgstr "Mukautetut visualisoinnit vaativat tämän. Kytke {0} pois päältä ennen kuin poistat tämän asetuksen käytöstä."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Custom Visualizations"
+msgstr "Mukautetut visualisoinnit"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
+msgstr "Rajoita selaimen Content Security Policy -käytäntöä niin, että kuvat voivat latautua vain tästä Metabase-instanssista tai alla luettelemistasi domaineista. Vaaditaan Mukautettujen visualisointien käyttöönottoon. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
+msgstr "Rajoita selaimen Content Security Policy -käytäntöä niin, että kuvat voivat latautua vain tästä Metabase-instanssista tai alla luettelemistasi domaineista."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Allowed domains for images"
+msgstr "Kuville sallitut domainit"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "Domainit, joista kuvia voidaan ladata koontinäytön tekstiin, entiteettikuvauksiin ja mukautettuihin visualisointeihin. Jätä tyhjäksi, jotta sallitaan vain tästä Metabase-instanssista hostatut kuvat. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#, javascript-format
+msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
+msgstr "Domainit, joista kuvia voidaan ladata koontinäytön tekstiin ja entiteettikuvauksiin. Jätä tyhjäksi, jotta sallitaan vain tästä Metabase-instanssista hostatut kuvat. {0}"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
+msgstr "Ota yllä oleva \"Rajoita kuvien domainit\" -asetus käyttöön, jotta tätä sallittujen listausta valvotaan."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.tsx
 msgid "From Name"
@@ -15555,8 +15670,8 @@ msgid "Email address for help requests"
 msgstr "Sähköpostiosoite tukipyyntöjä varten"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Tables, X-Rays and domains"
-msgstr "Taulut, X-Rayt ja domainit"
+msgid "Tables and X-Rays"
+msgstr "Taulut ja röntgenkuvat"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Friendly table and field names"
@@ -15569,56 +15684,6 @@ msgstr "Korvaa alaviivat ja väliviivat välilyönneillä"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Enable X-Ray features"
 msgstr "Ota X-Ray-ominaisuudet käyttöön"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for iframes in dashboards"
-msgstr "Sallitut domainit koontinäyttöjen iframeille"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "You should make sure to trust the sources you allow your users to embed in dashboards. {0}"
-msgstr "Varmista, että luotat lähteisiin, joita sallit käyttäjien upottaa koontinäyttöihin. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict image domains"
-msgstr "Rajoita kuvien domainit"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Required by Custom Visualizations. Turn off {0} before disabling this setting."
-msgstr "Mukautetut visualisoinnit vaativat tämän. Kytke {0} pois päältä ennen kuin poistat tämän asetuksen käytöstä."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Custom Visualizations"
-msgstr "Mukautetut visualisoinnit"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. {0}"
-msgstr "Rajoita selaimen Content Security Policy -käytäntöä niin, että kuvat voivat latautua vain tästä Metabase-instanssista tai alla luettelemistasi domaineista. Vaaditaan Mukautettujen visualisointien käyttöönottoon. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below."
-msgstr "Rajoita selaimen Content Security Policy -käytäntöä niin, että kuvat voivat latautua vain tästä Metabase-instanssista tai alla luettelemistasi domaineista."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Allowed domains for images"
-msgstr "Kuville sallitut domainit"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "Domainit, joista kuvia voidaan ladata koontinäytön tekstiin, entiteettikuvauksiin ja mukautettuihin visualisointeihin. Jätä tyhjäksi, jotta sallitaan vain tästä Metabase-instanssista hostatut kuvat. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#, javascript-format
-msgid "Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. {0}"
-msgstr "Domainit, joista kuvia voidaan ladata koontinäytön tekstiin ja entiteettikuvauksiin. Jätä tyhjäksi, jotta sallitaan vain tästä Metabase-instanssista hostatut kuvat. {0}"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Turn on the \"Restrict image domains\" setting above to enforce this allowlist."
-msgstr "Ota yllä oleva \"Rajoita kuvien domainit\" -asetus käyttöön, jotta tätä sallittujen listausta valvotaan."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
@@ -15892,8 +15957,8 @@ msgstr "Esimerkkiarvot:"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Select…"
 msgstr "Valitse…"
 
@@ -16543,12 +16608,12 @@ msgid "Create custom chart types tailored to your data using the Custom visualiz
 msgstr "Luo dataasi varten räätälöityjä omia kaaviotyyppejä Custom visualizations SDK:lla."
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Build apps on your data"
-msgstr "Rakenna sovelluksia datasi päälle"
+msgid "Build custom data apps"
+msgstr "Rakenna mukautettuja datasovelluksia"
 
 #: frontend/src/metabase/admin/upsells/UpsellDataApps.tsx
-msgid "Ship interactive apps powered by your data, served right inside Metabase."
-msgstr "Toimita datallasi toimivia interaktiivisia sovelluksia, suoraan Metabasen sisällä."
+msgid "Build custom user interfaces, forms, and other tools that write back to your database. Automate chores, manage back-office work, and set up workflows to act on your data, all built with AI on top of your semantic layer."
+msgstr "Rakenna mukautettuja käyttöliittymiä, lomakkeita ja muita työkaluja, jotka kirjoittavat takaisin tietokantaasi. Automatisoi rutiinitehtäviä, hallitse back-office-työtä ja määritä työnkulkuja toimimaan datasi perusteella — kaikki AI:n avulla semanttisen kerroksesi päällä rakennettuna."
 
 #: frontend/src/metabase/admin/upsells/UpsellDevInstances.tsx
 msgid "Get a development instance"
@@ -17610,10 +17675,6 @@ msgstr "Valitse tämä koontinäyttö"
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVUpload.tsx
 msgid "Select this collection"
 msgstr "Valitse tämä kokoelma"
-
-#: frontend/src/metabase/common/collections/utils.ts
-msgid "Your personal collection"
-msgstr "Henkilökohtainen kokoelmasi"
 
 #: frontend/src/metabase/common/components/AccordionList/AccordionListCell.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.tsx
@@ -18876,7 +18937,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "Minuutti"
 msgstr[1] "{0} minuuttia"
 
@@ -19556,7 +19617,7 @@ msgstr "Tutkimus"
 #: frontend/src/metabase/common/utils/timelines.ts
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Note"
 msgstr "Huom"
 
@@ -20811,7 +20872,7 @@ msgid "For Native Questions use {0} to make Linked Filters available here."
 msgstr "Natiiveissa kysymyksissä käytä {0}, jotta Linked Filters on käytettävissä täällä."
 
 #: frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
 msgid "Field Filters"
 msgstr "Kenttäsuodattimet"
 
@@ -20868,7 +20929,7 @@ msgid "Filter or parameter type"
 msgstr "Suodattimen tai parametrin tyyppi"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
 msgid "Time grouping options"
 msgstr "Aikaryhmittelyn asetukset"
 
@@ -20877,24 +20938,24 @@ msgid "How should people filter on this column?"
 msgstr "Miten ihmiset suodattavat tätä saraketta?"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "People can pick"
 msgstr "Ihmiset voivat valita"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "Multiple values"
 msgstr "Useita arvoja"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
 msgid "A single value"
 msgstr "Yhden arvon"
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
 #: frontend/src/metabase/utils/errors/validation.ts
 msgid "required"
 msgstr "pakollinen"
@@ -20916,7 +20977,7 @@ msgstr "Jos haluat aina vaatia arvon, siirry ensin upotusasetuksiin,\n"
 "koontinäyttö uudelleen ja palaa sitten tälle sivulle."
 
 #: frontend/src/metabase/dashboard/components/ParameterSettings/ParameterSettings.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
@@ -21146,7 +21207,7 @@ msgstr "Päivämääräväli, tietty päivämäärä…"
 
 #: frontend/src/metabase/dashboard/utils/dashboard-options.ts
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionTimeGroupingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 msgid "Time grouping"
 msgstr "Aikaryhmittely"
 
@@ -21596,16 +21657,6 @@ msgstr "Ei näytettävää dataa"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Failed to update field order"
-msgstr "Kenttien järjestyksen päivittäminen epäonnistui"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
-msgid "Field order updated"
-msgstr "Kenttien järjestys päivitetty"
-
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
-#: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 msgid "Give this table a description"
 msgstr "Anna tälle taululle kuvaus"
 
@@ -21848,7 +21899,7 @@ msgstr "loi tämän mitan"
 
 #: frontend/src/metabase/data-studio/measures/components/MeasureRevisionHistory/MeasureRevisionHistory.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
 msgid "reverted to a previous version"
 msgstr "palautti aiempaan versioon"
 
@@ -24126,14 +24177,13 @@ msgid "AI can make mistakes. Double check your plan and modify it as needed."
 msgstr "AI voi tehdä virheitä. Tarkista suunnitelmasi ja muokkaa sitä tarvittaessa."
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
 #: frontend/src/metabase/status/components/StatusLarge/StatusLarge.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 msgid "Collapse"
 msgstr "Supista"
 
 #: frontend/src/metabase/explorations/components/NewExplorationData/EntityBlock.tsx
-#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbs.tsx
+#: frontend/src/metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView.tsx
 #: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
 #: frontend/src/metabase/visualizer/components/DataImporter/ColumnsList/ColumnsList.tsx
 msgid "Expand"
@@ -24298,11 +24348,6 @@ msgstr "Määritä salainen avain"
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Copy to clipboard"
 msgstr "Kopioi leikepöydälle"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
-#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
-msgid "Preview the query"
-msgstr "Esikatsele kysely"
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Secret key copied to clipboard"
@@ -25259,6 +25304,11 @@ msgstr "Lähetä"
 msgid "Copy chart"
 msgstr "Kopioi kaavio"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineChart.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
+msgid "Run query"
+msgstr "Suorita kysely"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotInlineDashboardLink.tsx
 msgid "Open dashboard"
 msgstr "Avaa koontinäyttö"
@@ -26047,6 +26097,14 @@ msgstr "Valitse, puretaanko JSON auki"
 #: frontend/src/metabase/metadata/components/UserInput.tsx
 msgid "Pick someone, or type an email"
 msgstr "Valitse joku tai kirjoita sähköpostiosoite"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Failed to update field order"
+msgstr "Kenttien järjestyksen päivittäminen epäonnistui"
+
+#: frontend/src/metabase/metadata/hooks/use-table-update-handlers.ts
+msgid "Field order updated"
+msgstr "Kenttien järjestys päivitetty"
 
 #: frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/components/Search.tsx
 msgid "No results."
@@ -27562,6 +27620,15 @@ msgstr "Etusivu"
 msgid "Other users' personal collections"
 msgstr "Muiden käyttäjien henkilökohtaiset kokoelmat"
 
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+#, javascript-format
+msgid "You can also {0} when there are some results."
+msgstr "Voit myös {0}, kun tuloksia on."
+
+#: frontend/src/metabase/notifications/HasResultsAlertPrompt/HasResultsAlertPrompt.tsx
+msgid "get an alert"
+msgstr "tilaa hälytys"
+
 #: frontend/src/metabase/notifications/channels/RecipientPicker.tsx
 msgid "Enter user names or email addresses"
 msgstr "Syötä käyttäjänimiä tai sähköpostiosoitteita"
@@ -28166,9 +28233,9 @@ msgid "Format custom expression or native query"
 msgstr "Muotoile mukautettu lauseke tai natiivi kysely"
 
 #: frontend/src/metabase/parameters/components/ParameterDropdownWidget.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.tsx
 #: frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
 msgid "Enter a default value…"
 msgstr "Syötä oletusarvo…"
 
@@ -28179,6 +28246,171 @@ msgstr "Vaadi aina arvo"
 #: frontend/src/metabase/parameters/components/RequiredParamToggle/RequiredParamToggle.tsx
 msgid "When enabled, people can change the value or reset it, but can't clear it entirely."
 msgstr "Kun tämä on käytössä, käyttäjät voivat muuttaa arvoa tai palauttaa sen, mutta eivät voi tyhjentää sitä kokonaan."
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+#, javascript-format
+msgid "{0} active filter"
+msgid_plural "{0} active filters"
+msgstr[0] "{0} aktiivinen suodatin"
+msgstr[1] "{0} aktiivista suodatinta"
+
+#: frontend/src/metabase/parameters/components/ResponsiveParametersList.tsx
+msgid "Filters"
+msgstr "Suodattimet"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Example:"
+msgstr "Esimerkki:"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Try it"
+msgstr "Kokeile"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "What's this for?"
+msgstr "Mihin tätä käytetään?"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
+msgstr "Natiiveissa kyselyissä muuttujien avulla voit korvata kyselyissäsi arvoja dynaamisesti suodatinwidgeteillä tai URL:n kautta."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
+msgid "Variables"
+msgstr "Muuttujat"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
+msgstr "{0} luo tähän kyselymalliin muuttujan nimeltä \"variable_name\". Muuttujille voidaan antaa tyypit sivupaneelissa, mikä muuttaa niiden toimintaa. Kaikki muut muuttujatyypit paitsi \"Field Filter\" lisäävät tähän kysymykseen automaattisesti suodatinwidgetin; Field Filter -tyypillä tämä on valinnaista. Kun tämä suodatinwidget täytetään, sen arvo korvaa muuttujan kyselymallissa."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
+msgstr "Kun annat muuttujalle tyypin \"Field Filter\", voit linkittää kysymyksiä koontinäytön suodatinwidgeteihin tai käyttää useampia suodatinwidget-tyyppejä SQL-kysymyksessäsi. Field Filter -muuttuja lisää SQL:ää, joka on samanlaista kuin GUI-kyselyrakentajan tuottama, kun lisäät suodattimia olemassa oleviin sarakkeisiin."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
+msgstr "Kun lisäät Field Filter -muuttujan, sinun täytyy mappata se tiettyyn kenttään. Sen jälkeen voit valita, näytetäänkö kysymyksessäsi suodatinwidget, mutta vaikka et näyttäisikään, voit silti mappata Field Filter -muuttujasi koontinäytön suodattimeen, kun lisäät tämän kysymyksen koontinäyttöön. Kenttäsuodattimia tulisi käyttää \"WHERE\"-lausekkeen sisällä."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Optional Clauses"
+msgstr "Valinnaiset lausekkeet"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+#, javascript-format
+msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
+msgstr "Hakasulkeet {0}:n ympärillä luovat malliin valinnaisen lausekkeen. Jos \"variable\" on asetettu, koko lauseke lisätään malliin. Jos ei, koko lauseke ohitetaan."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
+msgstr "Jos haluat käyttää useita valinnaisia lausekkeita, voit lisätä vähintään yhden ei-valinnaisen WHERE-lausekkeen ja sen jälkeen valinnaiset lausekkeet, jotka alkavat \"AND\":lla."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
+msgstr "Kun käytät Field Filteriä, sarakkeen nimeä ei pidä sisällyttää SQL:ään. Sen sijaan muuttuja pitää mappata kenttään sivupaneelissa."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorHelp/TagEditorHelp.tsx
+msgid "Read the full documentation"
+msgstr "Lue koko dokumentaatio"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "Variable name"
+msgstr "Muuttujan nimi"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParam.tsx
+msgid "How should users filter on this variable?"
+msgstr "Miten käyttäjien pitäisi suodattaa tällä muuttujalla?"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Select a default value…"
+msgstr "Valitse oletusarvo…"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "This filter is set to disabled in an embedded question."
+msgstr "Tämä suodatin on asetettu poistetuksi käytöstä upotetussa kysymyksessä."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "To always require a value, first visit embedding settings,\n"
+"make this filter editable or locked, re-publish the\n"
+"question, then return to this page."
+msgstr "Jos haluat aina vaatia arvon, siirry ensin upotusasetuksiin,\n"
+"tee tästä suodattimesta muokattava tai lukittu, julkaise\n"
+"kysymys uudelleen ja palaa sitten tälle sivulle."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default parameter widget value"
+msgstr "Parametriwidgetin oletusarvo"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/DefaultRequiredValueControl.tsx
+msgid "Default filter widget value"
+msgstr "Suodatinwidgetin oletusarvo"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+msgid "Table and field alias"
+msgstr "Taulun ja kentän alias"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldAliasInput.tsx
+#, javascript-format
+msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
+msgstr "Vaaditaan vain, jos kysely käyttää aliasta viitatakseen mapatun kentän tauluun. Esimerkiksi, jos mapaat muuttujan kenttään {0}, mutta kysely aliasoi taulun {1} nimellä {2}, syöttäisit {3}."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+msgid "Field to map to"
+msgstr "Kartoitettava kenttä"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FieldMappingSelect.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "(required)"
+msgstr "(pakollinen)"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Parameter widget label"
+msgstr "Parametriwidgetin selite"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetLabelInput.tsx
+msgid "Filter widget label"
+msgstr "Suodatinwidgetin nimi"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "Filter widget type"
+msgstr "Suodatinwidgetin tyyppi"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+msgid "There aren't any filter widgets for this type of field yet."
+msgstr "Tälle kenttätyypille ei ole vielä suodatinwidgettejä."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/ParameterMultiSelectInput.tsx
+#, javascript-format
+msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
+msgstr "Useimmiten tätä kannattaa käyttää {0}-lausekkeen kanssa, kuten {1}"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Table to map to"
+msgstr "Taulu, johon yhdistetään"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "Use variable name as alias"
+msgstr "Käytä muuttujan nimeä aliaksena"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/TableMappingSelect.tsx
+msgid "You can refer to this table by the variable name in other parts of the query."
+msgstr "Voit viitata tähän tauluun muuttujan nimellä kyselyn muissa osissa."
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Field Filter"
+msgstr "Kenttäsuodatin"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
+msgid "Variable type"
+msgstr "Muuttujan tyyppi"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Variables and parameters"
+msgstr "Muuttujat ja parametrit"
+
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
+msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
+msgstr "Lisää kyselyysi muuttuja, kuten {{variable_name}}, jotta voit määrittää sen täällä."
 
 #: frontend/src/metabase/parameters/components/UpdateFilterButton/getUpdateButtonProps.ts
 msgid "Set to default"
@@ -29067,6 +29299,31 @@ msgstr "{0} on ladattu."
 msgid "Data Reference"
 msgstr "Datareferenssi"
 
+#: frontend/src/metabase/querying/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
+#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
+#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
+msgid "Combine columns"
+msgstr "Yhdistä sarakkeet"
+
+#: frontend/src/metabase/querying/click-actions/actions/CopyValueAction/CopyValueAction.tsx
+msgid "Copy value"
+msgstr "Kopioi arvo"
+
+#: frontend/src/metabase/querying/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
+msgid "Extract part of column"
+msgstr "Poimi osa sarakkeesta"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "Save"
+msgstr "Tallenna"
+
+#: frontend/src/metabase/querying/click-actions/actions/NativeQueryClickFallback.tsx
+#, javascript-format
+msgctxt "in the sentence \"Save this question to drill-through\""
+msgid "{0} this question to drill-through."
+msgstr "{0} tämä kysymys, jotta voit porautua."
+
 #: frontend/src/metabase/querying/common/components/AggregationPicker/AggregationPicker.tsx
 msgid "Basic functions"
 msgstr "Perustoiminnot"
@@ -29370,18 +29627,13 @@ msgid "Run selected text"
 msgstr "Suorita valittu teksti"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
-msgid "Run query"
-msgstr "Suorita kysely"
-
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorRunButton/NativeQueryEditorRunButton.tsx
 #, javascript-format
 msgid "({0} + enter)"
 msgstr "({0} + enter)"
 
-#: frontend/src/metabase/querying/components/NativeQueryEditor/NativeVariablesButton/NativeVariablesButton.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables"
-msgstr "Muuttujat"
+#: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+msgid "Preview the query"
+msgstr "Esikatsele kysely"
 
 #: frontend/src/metabase/querying/components/NativeQueryEditor/RightClickPopover/RightClickPopover.tsx
 msgid "Run selection"
@@ -29474,28 +29726,8 @@ msgid "This may be the answer you’re looking for. If not, try removing or chan
 msgstr "Tämä voi olla etsimäsi vastaus. Jos ei, kokeile poistaa tai muuttaa suodattimia vähemmän tarkaksi."
 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-#, javascript-format
-msgid "You can also {0} when there are some results."
-msgstr "Voit myös {0}, kun tuloksia on."
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
-msgid "get an alert"
-msgstr "tilaa hälytys"
-
-#: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Takaisin edellisiin tuloksiin"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-#, javascript-format
-msgid "{0} active filter"
-msgid_plural "{0} active filters"
-msgstr[0] "{0} aktiivinen suodatin"
-msgstr[1] "{0} aktiivista suodatinta"
-
-#: frontend/src/metabase/querying/components/ResponsiveParametersList.tsx
-msgid "Filters"
-msgstr "Suodattimet"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -29618,12 +29850,6 @@ msgid "{0} to navigate. {1} to select."
 msgstr "{0} navigointiin. {1} valintaan."
 
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
-#: frontend/src/metabase/querying/drills/utils/combine-columns-drill.tsx
-#: frontend/src/metabase/visualizations/click-actions/actions/CombineColumnsAction/CombineColumnsAction.tsx
-msgid "Combine columns"
-msgstr "Yhdistä sarakkeet"
-
-#: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 msgid "Extract columns"
 msgstr "Pura sarakkeita"
 
@@ -29687,155 +29913,6 @@ msgstr "Anna suodattimellesi nimi…"
 #: frontend/src/metabase/querying/components/expressions/NameInput/utils.ts
 msgid "Give your expression a name…"
 msgstr "Anna lausekkeellesi nimi…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Example:"
-msgstr "Esimerkki:"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Try it"
-msgstr "Kokeile"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "What's this for?"
-msgstr "Mihin tätä käytetään?"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL."
-msgstr "Natiiveissa kyselyissä muuttujien avulla voit korvata kyselyissäsi arvoja dynaamisesti suodatinwidgeteillä tai URL:n kautta."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
-msgstr "{0} luo tähän kyselymalliin muuttujan nimeltä \"variable_name\". Muuttujille voidaan antaa tyypit sivupaneelissa, mikä muuttaa niiden toimintaa. Kaikki muut muuttujatyypit paitsi \"Field Filter\" lisäävät tähän kysymykseen automaattisesti suodatinwidgetin; Field Filter -tyypillä tämä on valinnaista. Kun tämä suodatinwidget täytetään, sen arvo korvaa muuttujan kyselymallissa."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "Kun annat muuttujalle tyypin \"Field Filter\", voit linkittää kysymyksiä koontinäytön suodatinwidgeteihin tai käyttää useampia suodatinwidget-tyyppejä SQL-kysymyksessäsi. Field Filter -muuttuja lisää SQL:ää, joka on samanlaista kuin GUI-kyselyrakentajan tuottama, kun lisäät suodattimia olemassa oleviin sarakkeisiin."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "Kun lisäät Field Filter -muuttujan, sinun täytyy mappata se tiettyyn kenttään. Sen jälkeen voit valita, näytetäänkö kysymyksessäsi suodatinwidget, mutta vaikka et näyttäisikään, voit silti mappata Field Filter -muuttujasi koontinäytön suodattimeen, kun lisäät tämän kysymyksen koontinäyttöön. Kenttäsuodattimia tulisi käyttää \"WHERE\"-lausekkeen sisällä."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Optional Clauses"
-msgstr "Valinnaiset lausekkeet"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-#, javascript-format
-msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr "Hakasulkeet {0}:n ympärillä luovat malliin valinnaisen lausekkeen. Jos \"variable\" on asetettu, koko lauseke lisätään malliin. Jos ei, koko lauseke ohitetaan."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
-msgstr "Jos haluat käyttää useita valinnaisia lausekkeita, voit lisätä vähintään yhden ei-valinnaisen WHERE-lausekkeen ja sen jälkeen valinnaiset lausekkeet, jotka alkavat \"AND\":lla."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr "Kun käytät Field Filteriä, sarakkeen nimeä ei pidä sisällyttää SQL:ään. Sen sijaan muuttuja pitää mappata kenttään sivupaneelissa."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorHelp/TagEditorHelp.tsx
-msgid "Read the full documentation"
-msgstr "Lue koko dokumentaatio"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "Variable name"
-msgstr "Muuttujan nimi"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParam.tsx
-msgid "How should users filter on this variable?"
-msgstr "Miten käyttäjien pitäisi suodattaa tällä muuttujalla?"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Select a default value…"
-msgstr "Valitse oletusarvo…"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "This filter is set to disabled in an embedded question."
-msgstr "Tämä suodatin on asetettu poistetuksi käytöstä upotetussa kysymyksessä."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "To always require a value, first visit embedding settings,\n"
-"make this filter editable or locked, re-publish the\n"
-"question, then return to this page."
-msgstr "Jos haluat aina vaatia arvon, siirry ensin upotusasetuksiin,\n"
-"tee tästä suodattimesta muokattava tai lukittu, julkaise\n"
-"kysymys uudelleen ja palaa sitten tälle sivulle."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default parameter widget value"
-msgstr "Parametriwidgetin oletusarvo"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx
-msgid "Default filter widget value"
-msgstr "Suodatinwidgetin oletusarvo"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-msgid "Table and field alias"
-msgstr "Taulun ja kentän alias"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldAliasInput.tsx
-#, javascript-format
-msgid "Required only if the query uses an alias to refer to the mapped field's table. For example, if you map the variable to the {0} field, but the query aliases the {1} table as {2}, you'd enter {3}."
-msgstr "Vaaditaan vain, jos kysely käyttää aliasta viitatakseen mapatun kentän tauluun. Esimerkiksi, jos mapaat muuttujan kenttään {0}, mutta kysely aliasoi taulun {1} nimellä {2}, syöttäisit {3}."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-msgid "Field to map to"
-msgstr "Kartoitettava kenttä"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FieldMappingSelect.tsx
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "(required)"
-msgstr "(pakollinen)"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Parameter widget label"
-msgstr "Parametriwidgetin selite"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetLabelInput.tsx
-msgid "Filter widget label"
-msgstr "Suodatinwidgetin nimi"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "Filter widget type"
-msgstr "Suodatinwidgetin tyyppi"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-msgid "There aren't any filter widgets for this type of field yet."
-msgstr "Tälle kenttätyypille ei ole vielä suodatinwidgettejä."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/ParameterMultiSelectInput.tsx
-#, javascript-format
-msgid "Most of the time you’ll want to use this with an {0} clause, like {1}"
-msgstr "Useimmiten tätä kannattaa käyttää {0}-lausekkeen kanssa, kuten {1}"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Table to map to"
-msgstr "Taulu, johon yhdistetään"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "Use variable name as alias"
-msgstr "Käytä muuttujan nimeä aliaksena"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/TableMappingSelect.tsx
-msgid "You can refer to this table by the variable name in other parts of the query."
-msgstr "Voit viitata tähän tauluun muuttujan nimellä kyselyn muissa osissa."
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Field Filter"
-msgstr "Kenttäsuodatin"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorParamParts/VariableTypeSelect.tsx
-msgid "Variable type"
-msgstr "Muuttujan tyyppi"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Variables and parameters"
-msgstr "Muuttujat ja parametrit"
-
-#: frontend/src/metabase/querying/components/template_tags/TagEditorSidebar.tsx
-msgid "Add a variable to your query, like {{variable_name}}, to configure it here."
-msgstr "Lisää kyselyysi muuttuja, kuten {{variable_name}}, jotta voit määrittää sen täällä."
 
 #: frontend/src/metabase/querying/drills/utils/automatic-insights-drill.tsx
 msgid "X-ray"
@@ -30207,18 +30284,6 @@ msgstr "Tuntematon sarake, aggregointi, mitta tai mittari: {0}"
 msgid "Unknown column: {0}"
 msgstr "Tuntematon sarake: {0}"
 
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Search for a column…"
-msgstr "Hae saraketta…"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Add all"
-msgstr "Lisää kaikki"
-
-#: frontend/src/metabase/querying/fields/components/FieldPanel/FieldPanel.tsx
-msgid "Remove all"
-msgstr "Poista kaikki"
-
 #: frontend/src/metabase/querying/filters/components/FilterPicker/FilterSubmitButton/FilterSubmitButton.tsx
 msgid "Apply filter"
 msgstr "Ota suodatin käyttöön"
@@ -30257,8 +30322,8 @@ msgid "Pick columns"
 msgstr "Valitse sarakkeet"
 
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-#: frontend/src/metabase/querying/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+#: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
 msgid "Add filters to narrow your answer"
 msgstr "Lisää suodattimia tarkentaaksesi vastausta"
 
@@ -30380,34 +30445,6 @@ msgstr "Vaihda suuntaa"
 #: frontend/src/metabase/querying/notebook/components/SummarizeStep/SummarizeStepHeader/SummarizeStepHeader.tsx
 msgid "Formula"
 msgstr "Kaava"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Filtered by"
-msgstr "Suodatettu perusteella"
-
-#: frontend/src/metabase/querying/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
-msgid "Add filters"
-msgstr "Lisää suodattimia"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "created"
-msgstr "loi"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the title"
-msgstr "muokkasi otsikkoa"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the description"
-msgstr "muokkasi kuvausta"
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "edited the "
-msgstr "muokkasi "
-
-#: frontend/src/metabase/querying/segments/components/revisions/Revision.tsx
-msgid "made some changes"
-msgstr "teki joitain muutoksia"
 
 #: frontend/src/metabase/questions/components/ArchiveCardModal/ArchiveCardModal.tsx
 msgid "This question will be removed from its dashboard and any alerts using it."
@@ -30882,6 +30919,34 @@ msgstr " tyyppiä valittu"
 #, javascript-format
 msgid "Results for \"{0}\""
 msgstr "Tulokset haulle \"{0}\""
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Filtered by"
+msgstr "Suodatettu perusteella"
+
+#: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
+msgid "Add filters"
+msgstr "Lisää suodattimia"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "created"
+msgstr "loi"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the title"
+msgstr "muokkasi otsikkoa"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the description"
+msgstr "muokkasi kuvausta"
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "edited the "
+msgstr "muokkasi "
+
+#: frontend/src/metabase/segments/components/revisions/Revision.tsx
+msgid "made some changes"
+msgstr "teki joitain muutoksia"
 
 #: frontend/src/metabase/settings/use-admin-setting.ts
 #, javascript-format
@@ -33210,28 +33275,9 @@ msgstr "24-tuntinen kello"
 msgid "Column formatting"
 msgstr "Sarakemuotoilu"
 
-#: frontend/src/metabase/visualizations/click-actions/actions/CopyValueAction/CopyValueAction.tsx
-msgid "Copy value"
-msgstr "Kopioi arvo"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/ExtractColumnAction/ExtractColumnAction.tsx
-msgid "Extract part of column"
-msgstr "Poimi osa sarakkeesta"
-
 #: frontend/src/metabase/visualizations/click-actions/actions/HideColumnAction/HideColumnAction.tsx
 msgid "Hide column"
 msgstr "Piilota sarake"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "Save"
-msgstr "Tallenna"
-
-#: frontend/src/metabase/visualizations/click-actions/actions/NativeQueryClickFallback.tsx
-#, javascript-format
-msgctxt "in the sentence \"Save this question to drill-through\""
-msgid "{0} this question to drill-through."
-msgstr "{0} tämä kysymys, jotta voit porautua."
 
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.ts
@@ -33484,7 +33530,6 @@ msgid "Rows {0}-{1} of first {2}"
 msgstr "Rivit {0}–{1} ensimmäisestä {2}"
 
 #: frontend/src/metabase/visualizations/components/TrendInfo/TrendInfo.tsx
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
 #: metabase/channel/render/body.clj
 msgid "No change"
 msgstr "Ei muutosta"
@@ -33637,6 +33682,18 @@ msgstr "Lisää tai poista sarakkeita"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/ChartSettingTableColumns.tsx
 msgid "Done picking columns"
 msgstr "Valmis sarakkeiden valinta"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Search for a column…"
+msgstr "Hae saraketta…"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Add all"
+msgstr "Lisää kaikki"
+
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingTableColumns/FieldPanel/FieldPanel.tsx
+msgid "Remove all"
+msgstr "Poista kaikki"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleDescription.tsx
 msgid "Cells in this column will be tinted based on their values."
@@ -34384,11 +34441,6 @@ msgstr "Hajonta"
 msgid "scatter plot"
 msgstr "hajontakaavio"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar/PreviousValueComparison/DetailCandidate.tsx
-#, javascript-format
-msgid "{0}: {1}"
-msgstr "{0}: {1}"
-
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/AnotherColumnForm.tsx
 msgid "Value from another column"
 msgstr "Arvo toisesta sarakkeesta"
@@ -34424,6 +34476,26 @@ msgstr "vs. {0}"
 msgid "N/A"
 msgstr "Ei käytettävissä"
 
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "DoD"
+msgstr "Pv/Pv"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "WoW"
+msgstr "Vk/Vk"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "MoM"
+msgstr "Kk/Kk"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "QoQ"
+msgstr "Nelj/Nelj"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+msgid "YoY"
+msgstr "V/V"
+
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Primary number"
 msgstr "Ensisijainen luku"
@@ -34439,6 +34511,10 @@ msgstr "Vaihda positiiviset / negatiiviset värit?"
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Compact number"
 msgstr "Kompakti luku"
+
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
+msgid "Show comparison value"
+msgstr "Näytä vertailuarvo"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/definition.ts
 msgid "Trend"
@@ -36092,8 +36168,8 @@ msgstr "Määrittää, millaiset hostit sallitaan HTTP-kanavien kohteina.\n"
 "- allow-all (ei rajoituksia, mukaan lukien localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Virheellinen http-channel-host-strategy! Vain arvot external-only, allow-private ja allow-all ovat sallittuja."
+msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Virheellinen http-channel-allowed-networks! Vain arvot external-only, allow-private ja allow-all ovat sallittuja."
 
 #: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
@@ -37475,6 +37551,10 @@ msgstr "Virheelliset parametrien arvot"
 #: metabase/embedding_rest/api/common.clj
 msgid "Invalid query params: could not determine slug for parameter with ID {0}"
 msgstr "Virheelliset query-parametrit: parametrin, jonka tunnus on {0}, slugia ei voitu määrittää"
+
+#: metabase/embedding_rest/api/common.clj
+msgid "The parameter {0} does not exist on this dashboard."
+msgstr "Parametria {0} ei ole tässä koontinäytössä."
 
 #: metabase/embedding_rest/api/common.clj
 msgid "Cannot search for values: {0} is not an enabled parameter."
@@ -39186,6 +39266,14 @@ msgid "Access key ID"
 msgstr "Käyttöavaimen tunnus"
 
 #: metabase/llm/provider.clj
+msgid "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile)."
+msgstr "Jätä avaimet tyhjiksi, jotta autentikointi tehdään AWS:n oletusarvoisella tunnistetietoketjulla (IRSA, EKS Pod Identity tai instanssiprofiili)."
+
+#: metabase/llm/provider.clj
+msgid "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+msgstr "Metabase Cloudissa Bedrock autentikoi aina omilla AWS-avaimillasi."
+
+#: metabase/llm/provider.clj
 msgid "Secret access key"
 msgstr "Salainen käyttöavain"
 
@@ -39232,6 +39320,10 @@ msgstr "Virheellinen {0} kohteelle {1}."
 #: metabase/llm/provider.clj
 msgid "{0} needs one of: {1}."
 msgstr "{0} tarvitsee jonkin seuraavista: {1}."
+
+#: metabase/llm/provider.clj
+msgid "{0} takes {1} only together with {2}."
+msgstr "{0} hyväksyy {1} vain yhdessä {2}:n kanssa."
 
 #: metabase/llm/settings.clj
 msgid "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server."
@@ -39326,12 +39418,12 @@ msgid "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive 
 msgstr "Gemini Enterprise Agent Platform API:n base URL. Jätä asettamatta, jotta se johdetaan sijainnista."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Access Key ID for Amazon Bedrock."
-msgstr "Amazon Bedrockin AWS Access Key ID."
+msgid "The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "Amazon Bedrockin AWS Access Key ID. Itse ylläpidetyssä Metabasessa jätä tämä ja secret access key asettamatta, jotta autentikointi tehdään AWS:n oletusarvoisella tunnistetietoketjulla (IRSA, EKS Pod Identity tai instanssiprofiili); Metabase Cloudissa molemmat avaimet vaaditaan."
 
 #: metabase/llm/settings.clj
-msgid "The AWS Secret Access Key for Amazon Bedrock."
-msgstr "Amazon Bedrockin AWS Secret Access Key."
+msgid "The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required."
+msgstr "Amazon Bedrockin AWS Secret Access Key. Itse ylläpidetyssä Metabasessa jätä tämä ja access key ID asettamatta, jotta autentikointi tehdään AWS:n oletusarvoisella tunnistetietoketjulla (IRSA, EKS Pod Identity tai instanssiprofiili); Metabase Cloudissa molemmat avaimet vaaditaan."
 
 #: metabase/llm/settings.clj
 msgid "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials."
@@ -39452,6 +39544,14 @@ msgid "Whether the MCP server is enabled."
 msgstr "Onko MCP-palvelin käytössä."
 
 #: metabase/mcp/settings.clj
+msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
+msgstr "Käytöstä poistettavien v2 MCP -työkalujen nimet, tallennetaan CSV:nä. Käytöstä poistetut työkalut piilotetaan tools/list:stä ja hylätään tools/call:ssa."
+
+#: metabase/mcp/settings.clj
+msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
+msgstr "Kuinka monta tuntia tallennettu MCP-kyselykahva säilytetään ennen kuin ajastettu GC-tehtävä poistaa sen."
+
+#: metabase/mcp/settings.clj
 msgid "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode)."
 msgstr "Suositut CORS:lle käyttöön otetut MCP-asiakkaat, tallennetaan CSV-asiakasavaimina (esim. claude, vscode)."
 
@@ -39531,6 +39631,26 @@ msgstr "Muodosta kyselyitä"
 #: metabase/metabot/scope.clj
 msgid "Execute queries"
 msgstr "Suorita kyselyitä"
+
+#: metabase/metabot/scope.clj
+msgid "See your Metabase content and data structure"
+msgstr "Näe Metabase-sisältösi ja datarakenteesi"
+
+#: metabase/metabot/scope.clj
+msgid "Create, edit and trash Metabase content"
+msgstr "Luo, muokkaa ja siirrä Metabase-sisältö roskakoriin"
+
+#: metabase/metabot/scope.clj
+msgid "Run queries against your connected databases and see the results"
+msgstr "Suorita kyselyitä yhdistetyissä tietokannoissasi ja näe tulokset"
+
+#: metabase/metabot/scope.clj
+msgid "Write and run its own raw SQL on your connected databases"
+msgstr "Kirjoittaa ja suorittaa omaa raakaa SQL:ää yhdistetyissä tietokannoissasi"
+
+#: metabase/metabot/scope.clj
+msgid "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"
+msgstr "Määritä datasi ajastettu toimitus valitsemiinsa sähköpostiosoitteisiin ja Slack-kanaviin"
 
 #: metabase/metabot/scope.clj
 msgid "Create saved questions"
@@ -39693,12 +39813,28 @@ msgid "Azure API error (HTTP {0})"
 msgstr "Azure API -virhe (HTTP {0})"
 
 #: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported."
+msgstr "AWS Bedrock ei saanut tunnistetietoja AWS:n oletusarvoisesta tunnistetietoketjusta. Katso Metabase-lokeista, mitä kukin tarjoaja raportoi."
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported."
+msgstr "AWS Bedrock ei pystynyt päivittämään AWS-tunnistetietojaan. Katso Metabase-lokeista, mitä AWS raportoi."
+
+#: metabase/metabot/self/bedrock.clj
 msgid "Invalid AWS Bedrock region {0}"
 msgstr "Virheellinen AWS Bedrock -alue {0}"
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock credentials are not configured"
-msgstr "AWS Bedrock -tunnistetietoja ei ole määritetty"
+msgid "AWS Bedrock cannot use a session token without its access key pair"
+msgstr "AWS Bedrock ei voi käyttää session tokenia ilman access key -pariaan"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock on Metabase Cloud requires an access key pair"
+msgstr "Metabase Cloudissa AWS Bedrock vaatii access key -parin"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain"
+msgstr "AWS Bedrock tarvitsee sekä access key ID:n että secret access keyn, tai ei kumpaakaan, jotta se voi käyttää oletusarvoista tunnistetietoketjua"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "AI proxy is not supported for AWS Bedrock"
@@ -40241,6 +40377,10 @@ msgid "The AI provider connection and model used for quick background tasks, suc
 msgstr "AI-tarjoajayhteys ja malli nopeisiin taustatehtäviin, kuten Metabot-keskustelujen nimeämiseen, samassa connection-key/model-name-muodossa kuin `llm-metabot-provider`. Oletuksena yhteyden tarjoama nopein malli, jolla Metabot toimii."
 
 #: metabase/metabot/settings.clj
+msgid "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment."
+msgstr "Suorita Metabot tarjoajan nopeassa tilassa, kun valittu malli tukee sitä. Nopea tila vastaa nopeammin korkeammalla hinnalla per token; Anthropicin kohdalla se edellyttää tiliä, joka on mukana fast-mode research preview -ohjelmassa, eikä ole saatavilla Priority Tier -sitoumuksella."
+
+#: metabase/metabot/settings.clj
 msgid "Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely."
 msgstr "Päivien määrä, jonka ajan rivejä säilytetään tauluissa ai_usage_log, metabot_conversation ja metabot_message. Minimiarvo on 30; aseta arvoon 0, jos haluat säilyttää datan pysyvästi."
 
@@ -40257,7 +40397,6 @@ msgid "Multiple databases share the name `{0}` (ids: {1}). The agent has no way 
 msgstr "Useilla tietokannoilla on sama nimi `{0}` (id:t: {1}). Agentti ei pysty yksiselitteistämään; pyydä käyttäjää nimeämään jokin tietokannoista uudelleen tai käyttämään tarkempaa tunnistetta."
 
 #: metabase/metabot/tools/construct.clj
-#: metabase/models/serialization/resolve/mp.clj
 msgid "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
 msgstr "Tallennettua kysymystä tai mallia ei löytynyt entity_id:llä {0}. Älä keksi tai arvaile entity_id:tä: kutsu ensin `read_resource` arvolla `metabase://question/<numeric id>` tai `metabase://model/<numeric id>`, ja kopioi sitten vastauksesta tarkka `portable_entity_id` kenttään `source-card:`."
 
@@ -40458,24 +40597,24 @@ msgid "To make table and field names more human-friendly, Metabase will replace 
 msgstr "Jotta taulujen ja kenttien nimet olisivat ihmisystävällisempiä, Metabase korvaa niissä olevat viivat ja alaviivat välilyönneillä. Samalla kirjoitamme jokaisen sanan isolla alkukirjaimella, joten ‘last_visited_at’ muuttuu muotoon ‘Last Visited At’."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-msgstr "No table found matching portable FK {0}. Kutsu `read_resource` arvolla `metabase://database/<numeric id>/tables` listataksesi saatavilla olevat taulut ja skeemat, ja yritä sitten uudelleen käyttäen vastauksesta saatua tarkkaa portable FK:ta."
+msgid "No table found matching portable FK {0}."
+msgstr "Kannettavaa FK:ta {0} vastaavaa taulua ei löytynyt."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable table FK references database {0}, but metadata provider is for {1}."
 msgstr "Portable-taulun FK viittaa tietokantaan {0}, mutta metatietopalvelu on tietokannalle {1}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
-msgstr "Epäyksiselitteinen portable table FK {0}: {1} ehdokasta. Kutsu `read_resource` arvolla `metabase://database/<numeric id>/tables` listataksesi saatavilla olevat taulut ja yritä uudelleen tarkemmalla portable FK:lla."
+msgid "Ambiguous portable table FK {0}: {1} candidates."
+msgstr "Monitulkintainen kannettava taulun FK {0}: {1} ehdokasta."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Portable field FK {0} must have at least 4 elements."
 msgstr "Siirrettävä kentän FK {0} on oltava vähintään 4 elementtiä."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
-msgstr "Taulussa {1}.{2}.{3} ei ole saraketta {0}. Listaa tämän taulun sarakkeet kutsumalla `read_resource` arvolla `metabase://table/<numeric id>/fields`."
+msgid "No column {0} on table {1}.{2}.{3}."
+msgstr "Taulussa {1}.{2}.{3} ei ole saraketta {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Ambiguous column {0} on table {1}.{2}.{3}."
@@ -40498,20 +40637,24 @@ msgid "No saved question, model, or metric found with id {0}."
 msgstr "Tallennettua kysymystä, mallia tai mittaria ei löytynyt tunnuksella {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-msgstr "Tallennettu kysymys / malli / mittari -tunnus {0} kuuluu tietokantaan {1}, mutta tämä ratkaisija kohdistuu tietokantaan {2}."
+msgid "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+msgstr "Tallennettu kysymys / malli / mittari id {0} kuuluu tietokantaan {1}, mutta tämä kysely kohdistuu tietokantaan {2}. Tietokantojen välisiä kyselyitä ei tueta."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "Tallennetulla kysymyksellä, mallilla tai mittarilla id {0} ei ole entity_id:tä, joten sitä ei voi viedä portable-representaationa."
 
 #: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with entity_id {0}."
+msgstr "Tallennettua kysymystä tai mallia ei löytynyt entity_id:llä {0}."
+
+#: metabase/models/serialization/resolve/mp.clj
 msgid "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
 msgstr "Tallennettu kysymys / malli {0} kuuluu tietokantaan {1}, mutta tämä kysely kohdistuu tietokantaan {2}. Tietokantojen välisiä kyselyjä ei tueta."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-msgstr "Mittaria ei löytynyt entity_id:llä {0}. Älä keksi tai arvaile entity_id:tä: lue mittarin omistava taulu `read_resource`-kutsulla (`metabase://table/<numeric id>`) ja kopioi sen `<measure>`-tagista tarkka `portable_entity_id`."
+msgid "No measure found with entity_id {0}."
+msgstr "Mittaria ei löytynyt entity_id:llä {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
@@ -40522,8 +40665,8 @@ msgid "No measure found with id {0}."
 msgstr "Mittaria ei löytynyt id:llä {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Measure id {0} belongs to a table outside this metadata provider''s database."
-msgstr "Mittarin id {0} kuuluu tauluun, joka on tämän metatietopalvelun tietokannan ulkopuolella."
+msgid "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "Mittari id {0} kuuluu tauluun, joka on eri tietokannassa kuin tämä kysely. Tietokantojen välisiä kyselyitä ei tueta."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
@@ -40534,28 +40677,28 @@ msgid "No segment found with id {0}."
 msgstr "Segmenttiä ei löytynyt id:llä {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "Segment id {0} belongs to a table outside this metadata provider''s database."
-msgstr "Segmentin id {0} kuuluu tauluun, joka on tämän metatietopalvelun tietokannan ulkopuolella."
+msgid "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+msgstr "Segmentti id {0} kuuluu tauluun, joka on eri tietokannassa kuin tämä kysely. Tietokantojen välisiä kyselyitä ei tueta."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
 msgstr "Segmentillä id {0} ei ole entity_id:tä, joten sitä ei voi viedä portable-representaationa."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-msgstr "Segmenttia ei löytynyt entity_id:llä {0}. Älä keksi tai arvaile entity_id:tä: lue segmentin omistava taulu `read_resource`-kutsulla (`metabase://table/<numeric id>`) ja kopioi sen `<segment>`-tagista tarkka `portable_entity_id`."
+msgid "No segment found with entity_id {0}."
+msgstr "Segmenttiä ei löytynyt entity_id:llä {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
 msgid "Segment {0} belongs to a table in a different database than this query (target database id {1}). Cross-database queries are not supported."
 msgstr "Segmentti {0} kuuluu tauluun, joka on eri tietokannassa kuin tämä kysely (kohdetietokannan id {1}). Tietokantojen välisiä kyselyitä ei tueta."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No table with id {0} in metadata provider."
-msgstr "Metatietopalvelusta ei löytynyt taulua id:llä {0}."
+msgid "No table found with id {0}."
+msgstr "Taulua ei löytynyt id:llä {0}."
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No field with id {0} in metadata provider."
-msgstr "Metatietopalvelusta ei löytynyt kenttää id:llä {0}."
+msgid "No field found with id {0}."
+msgstr "Kenttää ei löytynyt id:llä {0}."
 
 #: metabase/mq/settings.clj
 msgid "Maximum number of times a failed queue message will be retried before being dropped."
@@ -41017,6 +41160,10 @@ msgid "An error occurred while running the query."
 msgstr "Kyselyn suorittamisen aikana tapahtui virhe."
 
 #: metabase/pulse/api/pulse.clj
+msgid "Invalid :cards: each entry must be a card reference."
+msgstr "Virheellinen :cards: jokaisen merkinnän on oltava korttiviite."
+
+#: metabase/pulse/api/pulse.clj
 msgid "Non-admin users without subscription permissions are not allowed to add recipients"
 msgstr "Ei-ylläpitäjät ilman tilausten oikeuksia eivät saa lisätä vastaanottajia"
 
@@ -41079,6 +41226,10 @@ msgstr "Sinulla ei ole oikeuksia nähdä tätä välimuistissa olevaa tulosta."
 #: metabase/queries/card.clj
 msgid "Card does not have a parameter with the ID {0}"
 msgstr "Kortilla ei ole parametria, jonka tunnus on {0}"
+
+#: metabase/queries/card.clj
+msgid "The parameter {0} does not exist on this card."
+msgstr "Parametria {0} ei ole tässä kortissa."
 
 #: metabase/queries/models/card.clj
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
@@ -41162,8 +41313,8 @@ msgid "You do not have permissions to view Card {0}."
 msgstr "Sinulla ei ole oikeuksia katsoa Korttia {0}."
 
 #: metabase/query_permissions/impl.clj
-msgid "You must have data permissions to add a parameter referencing the Table {0}."
-msgstr "Sinulla on oltava dataoikeudet, jotta voit lisätä parametrin, joka viittaa tauluun {0}."
+msgid "You must have data permissions to add a parameter referencing this Field."
+msgstr "Sinulla täytyy olla dataoikeudet, jotta voit lisätä tähän Kenttään viittaavan parametrin."
 
 #: metabase/query_permissions/impl.clj
 msgid "You cannot save this Question because you do not have permissions to run its query."
@@ -41761,7 +41912,7 @@ msgstr "Haun debuggausta ei tueta indexed-entity-mallille."
 
 #: metabase/search/filter.clj metabase/search/in_place/filter.clj
 #: metabase/task_history/api.clj metabase/transforms/models/util.clj
-#: metabase_enterprise/metabot_analytics/conversations.clj
+#: metabase_enterprise/metabot_analytics/db.clj
 msgid "Failed to parse datetime value: {0}"
 msgstr "Datetime-arvon jäsentäminen epäonnistui: {0}"
 
@@ -41828,8 +41979,8 @@ msgid "Failed to load template ''{0}''. Did you remember to build the Metabase f
 msgstr "Mallin ''{0}'' lataus epäonnistui. Muistitko buildata Metabase-frontendin?"
 
 #: metabase/server/settings.clj
-msgid "Allowed iframe hosts"
-msgstr "Sallitut iframe-hostit"
+msgid "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list."
+msgstr "Sallitut iframe-hostit. Sisältää oletuksena listan suosittuja hosteja; aseta arvoksi '' '' poistaaksesi oletuslistan käytöstä."
 
 #: metabase/server/settings.clj
 msgid "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations."
@@ -42342,8 +42493,16 @@ msgid "Query failed"
 msgstr "Kysely epäonnistui"
 
 #: metabase/tiles/settings.clj
+msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
+msgstr "Virheellinen map-tile-server-allowed-networks! Vain arvot external-only, allow-private ja allow-all ovat sallittuja."
+
+#: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
 msgstr "Karttavisualisoinneissa käytettävä karttatiilipalvelimen URL-malli, esimerkiksi OpenStreetMapsista tai MapBoxista."
+
+#: metabase/tiles/settings.clj
+msgid "Invalid map tile server URL: must be a relative path, or an http:// or https:// URL whose host is resolvable and permitted by map-tile-server-allowed-networks."
+msgstr "Virheellinen map tile server URL: sen on oltava suhteellinen polku tai http://- tai https://-URL, jonka host on ratkaistavissa ja sallittu map-tile-server-allowed-networks-asetuksen mukaan."
 
 #: metabase/timeline/api/timeline_event.clj
 msgid "Timeline with id {0} not found"
@@ -43030,9 +43189,25 @@ msgstr "FieldValues-kohteelle ei voi päivittää field_id:tä, typea eikä hash
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ":values-kentän on oltava olemassa, jotta :human_readable_values voidaan hakea"
 
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out fetching field values."
+msgstr "Kenttäarvojen hakeminen aikakatkaistiin."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Too many field values fetches are already running. Please try again shortly."
+msgstr "Liian monta kenttäarvojen hakua on jo käynnissä. Yritä pian uudelleen."
+
+#: metabase/warehouse_schema/models/field_values.clj
+msgid "Timed out waiting for field values."
+msgstr "Kenttäarvoja odotettaessa tapahtui aikakatkaisu."
+
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid "Incompatible coercion strategy."
 msgstr "Yhteensopimaton coercion-strategia."
+
+#: metabase/warehouse_schema_rest/api/field.clj
+msgid "Failed to scan field values. Check the server logs for the underlying error."
+msgstr "Kenttäarvojen skannaus epäonnistui. Tarkista palvelinlokit taustalla olevan virheen varalta."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj

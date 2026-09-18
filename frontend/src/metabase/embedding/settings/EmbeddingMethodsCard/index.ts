@@ -1,1 +1,0 @@
-export { EmbeddingMethodsCard } from "./EmbeddingMethodsCard";

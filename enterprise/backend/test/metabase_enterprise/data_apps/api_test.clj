@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
@@ -13,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -725,6 +727,50 @@
       (is (=? [{:name "ready" :display_name "Ready"}]
               (mt/user-http-request :rasta :get 200 "apps?available=true"))))))
 
+(deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (t2/insert! :model/DataApp :name "old" :display_name "Old" :bundle_path "data_apps/old/index.js"
+                    :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "abc123" :version 1)
+        (t2/insert! :model/DataApp :name "current" :display_name "Current" :bundle_path "data_apps/current/index.js"
+                    :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "def456" :version 2)
+        (doseq [slug ["old" "current"]
+                :let [{:keys [permission_group_id]}
+                      (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name slug))]]
+          (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id))
+        (with-redefs [data-app.config/supported-app-version 2]
+          (testing "a regular user is never told about the outdated app in a list"
+            (doseq [url ["apps" "apps?available=true"]]
+              (is (= [{:name "current" :display_name "Current"}]
+                     (mt/user-http-request :rasta :get 200 url)))))
+          (testing "for a regular user, opening an outdated app is a 409 that says what to do"
+            (doseq [url ["apps/old" "apps/old/bundle"]]
+              (is (=? {:error-code "data-app-outdated"
+                       :message    #"This app was built for version 1 of data apps.*"}
+                      (mt/user-http-request :rasta :get 409 url)))))
+          (testing "the current app still opens"
+            (is (= {:name "current" :display_name "Current"}
+                   (mt/user-http-request :rasta :get 200 "apps/current")))
+            (is (str/includes?
+                 (str (mt/user-real-request :crowberto :get 200 "apps/current/bundle"))
+                 "BUNDLE")))
+          (testing "an admin sees the outdated app flagged, and can still read it to manage its users"
+            (is (=? [{:name "current" :version 2 :outdated false}
+                     {:name "old" :version 1 :outdated true}]
+                    (mt/user-http-request :crowberto :get 200 "apps")))
+            (is (=? [{:name "current"}]
+                    (mt/user-http-request :crowberto :get 200 "apps?available=true"))
+                "but the navbar's available list leaves it out for admins too")
+            (is (=? {:name "old" :version 1 :outdated true :permission_group_id pos-int?}
+                    (mt/user-http-request :crowberto :get 200 "apps/old"))))
+          (testing "nobody gets an outdated bundle"
+            (is (=? {:error-code "data-app-outdated"}
+                    (mt/user-http-request :crowberto :get 409 "apps/old/bundle"))))
+          (testing "a management response carries the flag too"
+            (is (=? {:name "old" :outdated true}
+                    (mt/user-http-request :crowberto :put 200 "apps/old" {:enabled false})))))))))
+
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -737,15 +783,24 @@
                   :allowed_hosts ["https://api.example.com"])
       ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
       (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-      (testing "the bundle response carries the app's allowed_hosts as a JSON header"
-        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-          (is (= "[\"https://api.example.com\"]"
-                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))
-      (testing "an app with no allowed_hosts still sends the header as an empty JSON array"
-        (t2/update! :model/DataApp :name "demo" {:allowed_hosts []})
-        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
-          (is (= "[]"
-                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
+      (testing "the bundle response normalizes the configured product analytics origin"
+        (mt/with-temporary-setting-values
+          [metaplow-url "HTTPS://product-analytics-ingestion.metabase.com/api/send"]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+            (is (= (json/encode ["https://api.example.com"
+                                 "https://product-analytics-ingestion.metabase.com"])
+                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))
+      (testing "the configured staging origin replaces the production origin"
+        (mt/with-temporary-setting-values [metaplow-url "https://product-analytics-ingestion.staging.metabase.com/api/send"]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+            (is (= (json/encode ["https://api.example.com"
+                                 "https://product-analytics-ingestion.staging.metabase.com"])
+                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))
+      (testing "an unset product analytics URL leaves the app's allowlist unchanged"
+        (mt/with-temporary-setting-values [metaplow-url nil]
+          (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
+            (is (= (json/encode ["https://api.example.com"])
+                   (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))))))
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps-preview}

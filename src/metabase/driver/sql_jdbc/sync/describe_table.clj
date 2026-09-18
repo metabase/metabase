@@ -466,7 +466,7 @@
                 [:cat
                  (lib.schema.common/instance-of-class Connection)
                  [:map
-                  {:description "Table"}
+                  {:closed true, :description "Table"}
                   [:schema {:optional true} [:maybe :string]]
                   [:name   :string]]]
                 ::driver/describe-fks.result]]

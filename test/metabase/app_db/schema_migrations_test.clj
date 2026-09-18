@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -3406,3 +3406,27 @@
         (testing "only the columns that are non-NULL are flagged true"
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
+
+(deftest glossary-entity-id-backfill-test
+  (testing "v65.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
+    (impl/test-migrations ["v65.2026-09-11T12:00:00" "v65.2026-09-11T12:00:03"] [migrate!]
+      (let [row      (fn [term] {:term       term
+                                 :definition (str term " definition")
+                                 :creator_id 13371338
+                                 :created_at :%now
+                                 :updated_at :%now})
+            arr-id   (t2/insert-returning-pk! :glossary (row "ARR"))
+            churn-id (t2/insert-returning-pk! :glossary (row "Churn"))]
+        (migrate!)
+        (let [arr-eid   (t2/select-one-fn :entity_id :glossary :id arr-id)
+              churn-eid (t2/select-one-fn :entity_id :glossary :id churn-id)]
+          (testing "existing rows receive distinct 21-character entity_ids"
+            (is (= 21 (count arr-eid)))
+            (is (= 21 (count churn-eid)))
+            (is (not= arr-eid churn-eid)))
+          (testing "entity_id is NOT NULL"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "MRR") :entity_id nil)))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "NRR") :entity_id arr-eid))))))))))

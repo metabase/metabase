@@ -106,15 +106,17 @@
   (^String []
    (results-timezone-id driver/*driver* ::db-from-store))
 
-  (^String [database]
+  (^String [database :- ::database]
    (results-timezone-id (:engine database) database))
 
   (^String [driver   :- :keyword
             database :- ::database
             & {:keys [use-report-timezone-id-if-unsupported?]
-               :or   {use-report-timezone-id-if-unsupported? false}}]
+               :or   {use-report-timezone-id-if-unsupported? false}}
+            :- [:maybe [:map {:closed true}
+                        [:use-report-timezone-id-if-unsupported? {:optional true} [:maybe :boolean]]]]]
    (valid-timezone-id
-    (or *results-timezone-id-override*
+    (or (valid-timezone-id *results-timezone-id-override*)
         (if use-report-timezone-id-if-unsupported?
           (valid-timezone-id (report-timezone-id*))
           (report-timezone-id-if-supported driver database))

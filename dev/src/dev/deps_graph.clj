@@ -22,6 +22,12 @@
 ;; mechanism for bounded caching of those parsed files.
 (def ^:dynamic *parsed-file-cache* nil)
 
+(def ^:private File
+  "A path string or `java.io.File`, as accepted by `rewrite-clj.parser/parse-file-all` and friends."
+  [:or
+   string?
+   [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]])
+
 (defn- parse-file-all
   "Calls `rewrite-.clj.parser/parse-file-all`, but first checks in `*parsed-file-cache*` if it is bound."
   [file]
@@ -121,7 +127,7 @@
 
 (mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
   "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
-  [file]
+  [file :- File]
   (try
     (find-required-namespaces file)
     (catch Throwable e
@@ -142,7 +148,7 @@
 
 (mu/defn find-defenterprises
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise forms in a file."
-  [file]
+  [file :- :string]
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
@@ -160,7 +166,7 @@
 
 (mu/defn find-defenterprise-schemas
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise-schema forms in a file."
-  [file]
+  [file :- :string]
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
@@ -204,19 +210,37 @@
   don't include them in our deps tree."
   '{metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
-(mu/defn- file-dependencies :- [:map
-                                [:namespace simple-symbol?]
-                                [:filename  string?] ; filename is relative to [[project-root]]
-                                [:module    symbol?]
-                                [:deps      [:sequential
-                                             [:map
-                                              [:namespace simple-symbol?]
-                                              [:module    symbol?]
-                                              [:dynamic {:optional true} :keyword]]]]]
-  [prefix->module :- map?
-   file :- [:or
-            string?
-            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
+(def ^:private ModuleConfig
+  [:map {:closed true}
+   [:team           {:optional true} :string]
+   [:ns-prefix      {:optional true} :string]
+   [:api            {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:uses           {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:friends        {:optional true} [:set :symbol]]
+   [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
+   [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
+   [:module-exports {:optional true} [:set :symbol]]])
+
+(def ^:private ModulesConfig
+  [:map-of :symbol ModuleConfig])
+
+(def ^:private PrefixToModule
+  [:map-of :string :symbol])
+
+(def ^:private FileDependencies
+  [:map {:closed true}
+   [:namespace {:optional true} [:maybe simple-symbol?]]
+   [:filename  string?] ; filename is relative to [[project-root]]
+   [:module    symbol?]
+   [:deps      [:sequential
+                [:map {:closed true}
+                 [:namespace simple-symbol?]
+                 [:module    symbol?]
+                 [:dynamic {:optional true} :keyword]]]]])
+
+(mu/defn- file-dependencies :- FileDependencies
+  [prefix->module :- PrefixToModule
+   file :- File]
   (try
     (let [decl         (ns.file/read-file-ns-decl file)
           ns-symb      (ns.parse/name-from-ns-decl decl)
@@ -612,7 +636,8 @@
 
 (mu/defn- module->source-files :- [:set :string]
   "Return the set of all *source* filenames (relative to the [[project-root]] directory) for a `module`."
-  [deps module]
+  [deps :- [:sequential FileDependencies]
+   module :- symbol?]
   (into
    (sorted-set)
    (comp (filter #(= (:module %) module))
@@ -721,11 +746,11 @@
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  ([modules-config :- map?
+  ([modules-config :- ModulesConfig
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
-  ([modules-config :- map?
-    prefix->module :- map?
+  ([modules-config :- ModulesConfig
+    prefix->module :- PrefixToModule
     module-sym :- :symbol]
    (let [path-prefix  (module->test-path-prefix modules-config module-sym)
          test-dir     (io/file path-prefix)
@@ -767,7 +792,7 @@
 
 (mu/defn find-model-keywords :- [:set :keyword]
   "Find all `:model/X` keywords referenced in a source file, ignoring comments."
-  [file]
+  [file :- File]
   (try
     (let [models (atom #{})]
       (walk-parsed-ignore-comments!
@@ -787,7 +812,7 @@
 
 (mu/defn find-model-definitions :- [:set :keyword]
   "Find all models with their `t2/table-name` defined in this file."
-  [file]
+  [file :- File]
   (let [models (atom #{})]
     (walk-parsed-ignore-comments!
      (fn [node]

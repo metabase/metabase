@@ -139,7 +139,7 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-modular true
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true
                                       ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))
@@ -1105,6 +1105,16 @@
         (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key! (dashcard-url dashcard)))))))))
 
+(deftest dashcard-archived-card-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id[/:export-format]"
+    (testing "refuses a trashed Card, indistinguishably from a missing one, even though its DashboardCard row survives"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:archived true}}]
+          (do-response-formats [response-format _request-options]
+            (is (= "Not found."
+                   (client/client :get 400 (str (dashcard-url dashcard) response-format))))))))))
+
 (deftest dashboard-locked-params-test
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
@@ -1199,8 +1209,8 @@
 
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
-    (is (= {:parameters []}
-           (#'api.embed.common/enabled-params {:parameters {:slug "foo"}} {})))))
+    (is (= []
+           (#'api.embed.common/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
@@ -1254,7 +1264,7 @@
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
     (binding [custom-values/*max-rows* 5]
-      (mt/with-temporary-setting-values [enable-embedding-modular true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (with-new-secret-key!
           (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
             (t2/update! :model/Card (:id field-filter-card)
@@ -1409,28 +1419,29 @@
 
 (deftest card-param-values-native-card-without-parameters-test
   (testing "a native card described only by its template tags, with an empty locked value, still serves values"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp
-        [:model/Card card {:enable_embedding true
-                           :embedding_params {:total "locked" :state "enabled"}
-                           :dataset_query
-                           {:database (mt/id)
-                            :type     :native
-                            :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
-                                       :template-tags {"total" {:id           "t1"
-                                                                :name         "total"
-                                                                :display-name "Total"
-                                                                :type         :dimension
-                                                                :widget-type  :number/>=
-                                                                :dimension    [:field (mt/id :orders :total) nil]}
-                                                       "state" {:id           "s1"
-                                                                :name         "state"
-                                                                :display-name "State"
-                                                                :type         :dimension
-                                                                :widget-type  :string/=
-                                                                :dimension    [:field (mt/id :people :state) nil]}}}}}]
-        (let [token (card-token card {:params {:total []}})]
-          (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token))))))))))
+    (mt/with-temporary-setting-values [enable-embedding-static true]
+      (with-new-secret-key!
+        (mt/with-temp
+          [:model/Card card {:enable_embedding true
+                             :embedding_params {:total "locked" :state "enabled"}
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :native
+                              :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
+                                         :template-tags {"total" {:id           "t1"
+                                                                  :name         "total"
+                                                                  :display-name "Total"
+                                                                  :type         :dimension
+                                                                  :widget-type  :number/>=
+                                                                  :dimension    [:field (mt/id :orders :total) nil]}
+                                                         "state" {:id           "s1"
+                                                                  :name         "state"
+                                                                  :display-name "State"
+                                                                  :type         :dimension
+                                                                  :widget-type  :string/=
+                                                                  :dimension    [:field (mt/id :people :state) nil]}}}}}]
+          (let [token (card-token card {:params {:total []}})]
+            (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token)))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -1627,7 +1638,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding-modular false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1689,7 +1700,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding-modular false]
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)
@@ -1705,6 +1716,16 @@
                                      :dashcard {:parameter_mappings []}}]
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (pivot-dashcard-url dashcard))))))))
+
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
+                                       :card     (assoc (api.pivots/pivot-card) :archived true)
+                                       :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (client/client :get 400 (pivot-dashcard-url dashcard)))))))))
 
 (deftest pivot-dashcard-signing-check-test
   (mt/dataset test-data
@@ -1807,18 +1828,20 @@
 
 (deftest apply-slug->value-test
   (testing "For operator filter types treat a lone value as a one-value sequence (#20438)"
-    (is (= (#'api.embed.common/apply-slug->value [{:type    :string/=
+    (is (= (#'api.embed.common/apply-slug->value [{:id      "NAME"
+                                                   :type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
-                                                 {:NAME ["Aaron Hand"]})
-           (#'api.embed.common/apply-slug->value [{:type    :string/=
+                                                 {"NAME" ["Aaron Hand"]})
+           (#'api.embed.common/apply-slug->value [{:id      "NAME"
+                                                   :type    :string/=
                                                    :target  [:dimension [:template-tag "NAME"]]
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
-                                                 {:NAME "Aaron Hand"})))))
+                                                 {"NAME" "Aaron Hand"})))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
@@ -1872,6 +1895,36 @@
                                          :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
+
+(deftest numeric-parameters-json-query-param-test
+  (testing "Card and dashcard query endpoints accept numeric values in the `parameters` JSON query param"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (-> (lib/native-query (mt/metadata-provider)
+                                                                                                    "SELECT count(*) FROM orders WHERE quantity = {{qty}}")
+                                                                                  (lib/with-template-tags
+                                                                                    {"qty" {:id           "_qty_tag_"
+                                                                                            :name         "qty"
+                                                                                            :display-name "Quantity"
+                                                                                            :type         :number}}))
+                                                            :enable_embedding true
+                                                            :embedding_params {:qty "enabled"}}
+                       :model/Dashboard dashboard {:enable_embedding true
+                                                   :embedding_params {:qty "enabled"}
+                                                   :parameters       [{:id "_qty_" :slug "qty" :name "Quantity" :type :number/=}]}
+                       :model/DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
+                                                      :card_id            card-id
+                                                      :parameter_mappings [{:parameter_id "_qty_"
+                                                                            :card_id      card-id
+                                                                            :target       [:variable [:template-tag "qty"]]}]}]
+          (let [expected (mt/rows (client/client :get 202 (card-query-url card "") :qty "1"))]
+            (is (pos? (ffirst expected)))
+            (testing "Card"
+              (is (= expected
+                     (mt/rows (client/client :get 202 (card-query-url card "") :parameters (json/encode {:qty 1}))))))
+            (testing "Dashcard"
+              (is (= expected
+                     (mt/rows (client/client :get 202 (dashcard-url dashcard) :parameters (json/encode {:qty 1}))))))))))))
 
 (deftest biginteger-numeric-param-between-test
   (testing "Embedded numeric params with mixed long and biginteger values in a between filter should be correctly applied"
@@ -2235,6 +2288,20 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (client/client :get 400 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                               (dash-token dashboard-id) dashcard-id card-id)
+                              :latField (tiles.api-test/encoded-lat-field-ref)
+                              :lonField (tiles.api-test/encoded-lon-field-ref))))))))
 
 (deftest dashcard-tile-query-does-not-save-last-used-parameters-test
   (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"

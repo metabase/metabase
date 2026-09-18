@@ -1,3 +1,4 @@
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupParameterValuesEndpoints,
@@ -6,7 +7,6 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type { TemplateTag } from "metabase-types/api";
@@ -35,7 +35,7 @@ const setup = ({ query, templateTags = {} }: SetupOpts) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [database] }),
   });
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const question = new Question(card, metadata);
 
   setupDatabasesEndpoints([database]);

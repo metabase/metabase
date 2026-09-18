@@ -2,6 +2,7 @@
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -77,7 +78,9 @@
 (mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
   result map when a second factor is required), or `nil` if they couldn't be authenticated."
-  [username password device-info :- request/DeviceInfo]
+  [username    :- ms/NonBlankString
+   password    :- ms/NonBlankString
+   device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
     (let [result (auth-identity/login! :provider/ldap
                                        {:username username
@@ -457,6 +460,7 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
+  {:scope api-scope/data-app}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 

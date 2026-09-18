@@ -8,6 +8,7 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
@@ -26,11 +27,11 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
-   [metabase.parameters.core :as parameters]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -38,6 +39,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -189,7 +191,7 @@
         dash           (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (dashboards-rest.db/insert-dashboard! dashboard-data))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
@@ -425,7 +427,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential :any]]
+   dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
         card->decision (fn [parent-card card]
@@ -593,7 +595,7 @@
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
                          (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
                                {id->new-card :copied
@@ -622,7 +624,7 @@
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
         (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))
 
 ;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
@@ -648,8 +650,7 @@
   endpoints and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
-  ;; published. Publishing itself stays gated.
+  (embedding.validation/check-embedding-enabled)
   (dashboards-rest.db/embeddable-dashboards))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
@@ -661,6 +662,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
@@ -728,9 +730,9 @@
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [dash-before-update dash-updates]
-  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
-            (api/column-will-change? :embedding_type dash-before-update dash-updates)
-            (api/column-will-change? :embedding_params dash-before-update dash-updates))
+  (when (or (api/column-will-change? (:enable_embedding dash-before-update) (get dash-updates :enable_embedding ::api/not-provided))
+            (api/column-will-change? (:embedding_type dash-before-update) (get dash-updates :embedding_type ::api/not-provided))
+            (api/column-will-change? (:embedding_params dash-before-update) (get dash-updates :embedding_params ::api/not-provided)))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
@@ -750,7 +752,8 @@
   api/generic-204-no-content)
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
-  [target query]
+  [target :- ::lib.schema.parameter/target
+   query  :- [:maybe ::queries.schema/card.dataset-query]]
   (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -796,7 +799,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping (lib/normalize ::parameters.schema/parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
@@ -1017,7 +1020,7 @@
          (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
-           (api/maybe-reconcile-collection-position! current-dash dash-updates)
+           (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
@@ -1158,6 +1161,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
@@ -1307,6 +1311,7 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
+  {:scope api-scope/data-app}
   [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
@@ -1329,6 +1334,7 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
+  {:scope api-scope/data-app}
   [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
@@ -1349,6 +1355,7 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
+  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
@@ -1382,6 +1389,7 @@
   Results are returned as a map of
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
@@ -1399,6 +1407,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1420,6 +1429,7 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1438,6 +1448,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
@@ -1449,7 +1460,7 @@
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
-               body
+               (dissoc body :dashboard_load_id)
                {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
                 :card      (api/check-404 (dashboards-rest.db/card card-id))
                 :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))
@@ -1464,6 +1475,7 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
@@ -1501,6 +1513,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
