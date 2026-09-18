@@ -239,7 +239,7 @@
   [table-name :- :string]
   (t2/query-one {:select [:reltuples :relpages]
                  :from   [:pg_class]
-                 :where  [:= :oid [:to_regclass table-name]]}))
+                 :where  [:= :oid [:to_regclass [:auto/param table-name]]]}))
 
 (mu/defn pg-text-search-configs
   "The `:cfgname`s of the Postgres text search configurations."
