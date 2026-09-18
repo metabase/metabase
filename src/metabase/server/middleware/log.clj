@@ -3,7 +3,10 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [java-time.api :as t]
+   [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.request.core :as request]
@@ -24,12 +27,13 @@
 
 (set! *warn-on-reflection* true)
 
-;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
+;; To simplify passing large amounts of arguments around, the logging functions below take an "info" map that
 ;; looks like
 ;;
-;;     {:request ..., :response ..., :start-time ..., :call-count-fn ...}
+;;     {:request ..., :response ..., :start-time ..., :call-count-fn ..., :diag-info-fn ..., :log-context ...}
 ;;
-;; This map is created in `log-api-call` at the bottom of this namespace.
+;; This map is built in `log-api-call` at the bottom of this namespace, once a response exists. API-key usage
+;; recording is a separate concern with its own inputs — see [[record-api-key-usage!]] — and never touches it.
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Getting & Formatting Request/Response Info                                   |
@@ -193,6 +197,43 @@
   response)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             API Key Usage Analytics                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- api-key-request?
+  "Whether `request` authenticated with an API key — the only kind of request that gets recorded. Resolved well
+  outside this middleware by `metabase.server.middleware.session/wrap-current-user-info`, so it is already on the
+  request we closed over. Everything else pays this one keyword lookup and nothing more."
+  [request]
+  (= "api-key" (:embedding/auth-method request)))
+
+(defn- record-api-key-usage!
+  "Record API-key usage analytics for a completed request.
+
+  Hands the recorder the raw `request`/`response` plus the handful of values only this middleware can supply:
+  `route-template` (from the carrier — nil for a request that matched no endpoint and for raw-Compojure handlers that
+  bypass `defendpoint`, since neither ever fills it in; a dynamic binding wouldn't survive an async `respond` on
+  another thread, which is why this is a carrier and not `api/*current-route*` or similar), `duration-ms` (time to
+  `respond`, not to the last byte written — for streaming and core.async responses `respond` is called when the
+  response object is created, so this is time-to-response, as it is for the CLI usage log), and `occurred-at`
+  (captured here on the request thread rather than left for the DB to fill in at INSERT time — the row lands via a
+  Grouper batch, up to the batch interval later, so a DB-computed default would record when the batch flushed, not
+  when the request happened).
+
+  Best-effort throughout: the recorders swallow their own failures, and this catches anything else, so usage
+  analytics can never fail a request or alter its response."
+  [request response route-template-carrier start-time]
+  (when (api-key-request? request)
+    (try
+      (api-keys.usage/record-api-key-usage!
+       request response
+       {:route-template (some-> route-template-carrier deref)
+        :duration-ms    (long (u/since-ms start-time))
+        :occurred-at    (t/offset-date-time)})
+      (catch Throwable e
+        (log/warn e "Error recording API key usage")))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -215,23 +256,38 @@
        (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call
-  "Logs info about request such as status code, number of DB calls, and time taken to complete."
+  "Logs info about request such as status code, number of DB calls, and time taken to complete. Also the write point
+  for API-key usage analytics — see [[record-api-key-usage!]]; requests that didn't authenticate with an API key are
+  unaffected.
+
+  Console logging and API-key usage recording are independent concerns with independent eligibility: a request
+  suppressed from the console log (health checks, `/api/logger/logs`) still has its usage recorded if it
+  authenticated with an API key, and vice versa. Neither gates the other."
   [handler]
   (fn [request respond raise]
-    (if-not (should-log-request? request)
-      ;; non-API call or health or logs call, don't log it
-      (handler request respond raise)
-      ;; API call, log info about it
-      (t2/with-call-count [call-count-fn]
-        (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
-          (let [info           {:request       request
-                                :start-time    (u/start-timer)
-                                :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn}
-                response->info (fn [response]
-                                 (assoc info
-                                        :response response
-                                        :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
-                                                                            api/*current-user-id*)}))
-                respond        (comp respond logged-response response->info)]
-            (handler request respond raise)))))))
+    (let [should-log? (should-log-request? request)
+          api-key?    (api-key-request? request)]
+      (if-not (or should-log? api-key?)
+        ;; neither concern applies — skip the wrapping entirely
+        (handler request respond raise)
+        (t2/with-call-count [call-count-fn]
+          (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
+            (let [;; only API-key requests need to know which route matched, and only they pay for finding out
+                  carrier    (when api-key?
+                               (volatile! nil))
+                  request    (cond-> request
+                               carrier (assoc api.macros/route-template-carrier-key carrier))
+                  start-time (u/start-timer)
+                  respond*   (fn [response]
+                               (when api-key?
+                                 (record-api-key-usage! request response carrier start-time))
+                               (when should-log?
+                                 (logged-response {:request       request
+                                                   :response      response
+                                                   :start-time    start-time
+                                                   :call-count-fn call-count-fn
+                                                   :diag-info-fn  diag-info-fn
+                                                   :log-context   {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                                         api/*current-user-id*)}}))
+                               (respond response))]
+              (handler request respond* raise))))))))

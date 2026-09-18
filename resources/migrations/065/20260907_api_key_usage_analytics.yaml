@@ -1,0 +1,164 @@
+## API Key usage analytics storage layer.
+##
+## Two pieces:
+##   - api_key.last_used_at — cheap liveness for "is this key still in use?", updated in place.
+##   - api_key_usage_log    — one row per API-key-authenticated request, modeled on
+##                            agent_api_call_log / mcp_tool_call_log.
+##
+## The log row carries the resolved user and the key's real creator so the view needs no join back
+## to api_key, which lets rows outlive a deleted key. `user_id` is the key's own synthetic
+## service-account user (used for permission checks); `created_by_id` is the real human who created
+## the key. `route_template` is the reconstructed Compojure route (e.g. /api/card/:id), never the raw
+## URI or query string — those carry entity ids and filter values. Route reconstruction is EMB-2150;
+## row insertion and PII gating are later tickets.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/065_update_migrations.yaml
+
+  - changeSet:
+      id: v65.2026-09-07T00:00:00
+      author: sfragnaud
+      comment: Add api_key.last_used_at
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: When this API key was last used to authenticate a request; NULL until first use. Updated in place (throttled), not per request.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-07T00:00:01
+      author: sfragnaud
+      comment: Create api_key_usage_log table
+      changes:
+        - createTable:
+            tableName: api_key_usage_log
+            remarks: One row per API-key-authenticated request; user and key creator denormalized on so the view needs no api_key join (modeled on agent_api_call_log)
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Autoincrement primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: api_key_id
+                  type: int
+                  remarks: The API key that authenticated the request. Deliberately not a foreign key so deleting a key does not cascade away its usage history.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The API key's own synthetic service-account user, resolved at request time; NULL when the key has no user. Used for permission checks, not a real person. Not a foreign key, for the same reason as api_key_id. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_by_id
+                  type: int
+                  remarks: The real human who created the API key, resolved from the same auth query as user_id; NULL when the key has no user. Not a foreign key, for the same reason as api_key_id. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: route_template
+                  type: varchar(255)
+                  remarks: Reconstructed route template of the request, e.g. /api/card/:id. Never the raw URI or query string. Non-PII.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: http_method
+                  type: varchar(10)
+                  remarks: HTTP method of the request, e.g. GET or POST. Non-PII.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: int
+                  remarks: HTTP status code of the response. Non-PII.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration_ms
+                  type: int
+                  remarks: Wall-clock duration of the request in milliseconds
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the request happened, captured on the request thread. The default is a fallback only — the recorder always sets this explicitly, since the row itself may not land in the table until a Grouper batch flushes later.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP captured at request time, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: Raw User-Agent header captured at request time, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Caller classified from the raw User-Agent (metabase-cli, curl, postman, python-requests, r, node, or other). Non-PII, always recorded — distinct from the raw, PII-gated user_agent column.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_client
+                  type: varchar(255)
+                  remarks: Raw X-Metabase-Client header value, when present. Non-PII, same status as view_log/query_execution.embedding_client. Supplementary to client_name (the primary classification axis) — almost never set on API-key traffic, since the SDK/embed.js clients that send it authenticate via JWT/SSO, not API keys.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: api_key_usage_log
+
+  - changeSet:
+      id: v65.2026-09-07T00:00:02
+      author: sfragnaud
+      comment: Index on api_key_usage_log.api_key_id
+      changes:
+        - createIndex:
+            indexName: idx_api_key_usage_log_api_key_id
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: api_key_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-09-07T00:00:03
+      author: sfragnaud
+      comment: Index on api_key_usage_log.created_by_id
+      changes:
+        - createIndex:
+            indexName: idx_api_key_usage_log_created_by_id
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: created_by_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v65.2026-09-07T00:00:04
+      author: sfragnaud
+      comment: Index on api_key_usage_log.occurred_at
+      changes:
+        - createIndex:
+            indexName: idx_api_key_usage_log_occurred_at
+            tableName: api_key_usage_log
+            columns:
+              - column:
+                  name: occurred_at
+      rollback: # dropped with table
