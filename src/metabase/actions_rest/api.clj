@@ -48,6 +48,12 @@
         (when-not (query->database-id (:dataset_query existing-action))
           (:database_id action)))))
 
+(defn- check-actions-enabled-for-database-id!
+  "Throws a 404 when `db-id` is not a Database, otherwise checks that it allows actions."
+  [db-id]
+  (actions/check-actions-enabled-for-database!
+   (api/check-404 (actions-rest.db/database db-id))))
+
 (defn- check-native-query-perms!
   "Creating or updating a native query action requires ad-hoc native query permission on the target database."
   [database-id dataset-query]
@@ -134,8 +140,7 @@
     (doseq [db-id (distinct (cond-> [(:database_id model)]
                               database_id (conj database_id)
                               query-db-id (conj query-db-id)))]
-      (actions/check-actions-enabled-for-database!
-       (actions-rest.db/database db-id))))
+      (check-actions-enabled-for-database-id! db-id)))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -175,13 +180,11 @@
       (when (not= model-id (:model_id existing-action))
         ;; moving the action onto another model means the model's database has to allow actions too
         (let [model (api/write-check :model/Card model-id)]
-          (actions/check-actions-enabled-for-database!
-           (actions-rest.db/database (:database_id model))))))
+          (check-actions-enabled-for-database-id! (:database_id model)))))
     (when-let [dataset-query (not-empty (:dataset_query action))]
       (check-native-query-perms! (:database_id action) dataset-query))
     (when-let [new-db-id (updated-query-action-database-id action existing-action)]
-      (actions/check-actions-enabled-for-database!
-       (actions-rest.db/database new-db-id)))
+      (check-actions-enabled-for-database-id! new-db-id))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action

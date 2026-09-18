@@ -412,6 +412,29 @@
              (is (=? {:database_id model-db-id}
                      (mt/user-http-request :crowberto :get 200 url))))))))))
 
+(deftest action-creation-with-unknown-database-id-test
+  (testing "POST /api/action with a database_id that does not exist is a 404, not a 500"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Card {model-id :id} (model-card-def :crowberto)]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 "action"
+                                       (cross-db-native-action model-id Integer/MAX_VALUE (mt/id))))))))))
+
+(deftest action-update-with-unknown-database-id-test
+  (testing "PUT /api/action/:id with a database_id that does not exist is a 404, not a 500"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Card {model-id :id} (model-card-def :crowberto)]
+          (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                              (cross-db-native-action model-id (mt/id) (mt/id)))
+                url     (str "action/" (:id created))]
+            ;; blank the query so that the declared database_id is what reaches the database
+            (mt/user-http-request :crowberto :put 200 url {:dataset_query {}})
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :put 404 url
+                                         {:database_id Integer/MAX_VALUE})))))))))
+
 (deftest action-update-checks-actions-enabled-on-new-model-database-test
   (testing "PUT /api/action/:id checks actions-enabled on the database of the model it is moved to"
     (do-with-actions-enabled-on-model-db-only!
