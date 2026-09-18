@@ -431,6 +431,18 @@
                (get-in (probe! [{:id "first-model"} {:id "second-model"}] tool-calling-message)
                        [:learned-config :probed-model])))))))
 
+(deftest preflight-says-so-when-no-model-can-chat-test
+  (testing (str "a server that rules every model out gets told that, rather than being handed one "
+                "to probe and failing on whatever that model happens to do")
+    (with-clean-capabilities!
+      (fn []
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"None of the models on this server can chat and call tools"
+             (probe! [{:id "embed-a" :capabilities ["embedding"]}
+                      {:id "embed-b" :capabilities ["embedding"]}]
+                     tool-calling-message)))))))
+
 (deftest preflight-diagnoses-a-model-that-was-asked-for-by-name-test
   (testing "an API client can name an embedding model, which the picker no longer offers. Saying so
            beats Ollama's own 400, and beats reporting a model the server plainly has as missing."

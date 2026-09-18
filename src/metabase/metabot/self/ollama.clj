@@ -274,7 +274,9 @@
   That fallback takes the first *chat-capable* entry rather than the first entry. Ollama lists models
   newest-first, so the newest pull being an embedding model was enough to fail a connect against a
   server with a perfectly good chat model on it — with no way out, since the form hides the model
-  picker for a type whose catalog is not fixed.
+  picker for a type whose catalog is not fixed. A server that rules every model out is told so,
+  rather than being handed one to probe and failing on whatever that model happens to do; a server
+  that reports nothing rules nothing out, so it still gets its first entry.
 
   `entries` is the whole catalog as [[tag-chat-capable]] left it, not the subset [[list-models]]
   offers, so that a model requested by name is answered about rather than reported missing."
@@ -290,8 +292,9 @@
                                   (str requested-model)))))
       entry)
     (or (u/seek ::chat? entries)
-        (first entries)
-        (throw (no-models-ex)))))
+        (throw (if (seq entries)
+                 (preflight-ex (tru "None of the models on this server can chat and call tools. Pull one that can, then connect again."))
+                 (no-models-ex))))))
 
 (defn- run-probes!
   "Run both contract probes, throwing on the first failure.
