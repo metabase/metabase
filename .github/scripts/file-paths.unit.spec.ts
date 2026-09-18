@@ -139,4 +139,21 @@ describe("file-paths.yaml", () => {
   ])("does not run Loki stories when %s changes", (file) => {
     expect(matches("frontend_loki_all", file)).toBe(false);
   });
+
+  // The SDK package has to be built whenever any job that downloads it runs, so its
+  // filter is the union of theirs. One of these drifting apart starves that job of
+  // its artifact.
+  it.each([
+    "embedding_sdk_components",
+    "embedding_sdk_host_sample_apps",
+    "embedding_sdk_ci",
+    "embedding_documentation",
+    "frontend_sources",
+  ])("builds the SDK package for every path %s follows", (name) => {
+    const uncovered = patterns(filters[name]).filter(
+      (pattern) => !patterns(filters.build_embedding_sdk_package).includes(pattern),
+    );
+
+    expect(uncovered).toEqual([]);
+  });
 });

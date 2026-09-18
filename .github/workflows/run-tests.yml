@@ -63,20 +63,19 @@ jobs:
       frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
-      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
-      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
+      build_embedding_sdk_package: ${{ steps.changes.outputs.build_embedding_sdk_package }}
       project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
       project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
       project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
+      # Stays a computed output rather than a filter: dorny ORs a filter's patterns, so
+      # it can answer "does the diff touch X", never "touches X and nothing else".
       # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
-      no_source_code_changes: >-
-        ${{ (steps.changes.outputs.documentation == 'true'
+      build_uberjar: >-
+        ${{ !((steps.changes.outputs.documentation == 'true'
         || steps.changes.outputs.project_ratchet_checks == 'true')
         && steps.changes.outputs.backend_all == 'false'
         && steps.changes.outputs.frontend_all == 'false'
-        && steps.changes.outputs.e2e_all == 'false' }}
+        && steps.changes.outputs.e2e_all == 'false') }}
 
       all_changed_files: ${{ steps.changes.outputs.all_changed_files }}
       e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
@@ -146,7 +145,7 @@ jobs:
     if: |
       !cancelled() && needs.should-run.outputs.verdict != 'force-skip' &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.outputs.no_source_code_changes != 'true')
+      needs.files-changed.outputs.build_uberjar == 'true')
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
@@ -351,11 +350,7 @@ jobs:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.outputs.embedding_sdk_components == 'true' ||
-      needs.files-changed.outputs.frontend_sources == 'true' ||
-      needs.files-changed.outputs.embedding_documentation == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_ci == 'true' ||
-      needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true')
+      needs.files-changed.outputs.build_embedding_sdk_package == 'true')
     uses: ./.github/workflows/embedding-sdk-package-build.yml
     secrets: inherit
 
