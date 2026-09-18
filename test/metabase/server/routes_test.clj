@@ -102,7 +102,11 @@
           (testing "so a client that already holds it gets a body-less 304"
             (let [not-modified (get-static-asset 304 {"if-none-match" etag})]
               (is (= 304 (:status not-modified)))
-              (is (str/blank? (body-text (:body not-modified))))))
+              (is (str/blank? (body-text (:body not-modified))))
+              (testing "carrying the validator and the directives a cache needs"
+                (is (= etag (get-in not-modified [:headers "ETag"])))
+                (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+                       (get-in not-modified [:headers "Cache-Control"]))))))
           (testing "while a client holding different bytes is sent the file"
             (let [stale (get-static-asset 200 {"if-none-match" "\"not-the-one\""})]
               (is (= 200 (:status stale)))

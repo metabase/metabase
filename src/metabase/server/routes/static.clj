@@ -11,7 +11,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :as compojure]
-   [ring.util.io :as ring.io]
+   [metabase.server.lib.etag-cache :as lib.etag-cache]
    [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
 
@@ -72,18 +72,18 @@
   [resource-path encoding]
   (str resource-path (encoding->extension encoding)))
 
-(defn- content-etag
-  "A strong ETag for the bytes of one variant on the classpath.
+(defn- content-hash
+  "A hash of the bytes of one variant on the classpath.
 
    Each encoding is a separate representation and so needs its own validator,
    which hashing the bytes we actually send gives us for free."
   [variant-path]
   (with-open [stream (io/input-stream (io/resource variant-path))]
-    (format "\"%s\"" (codecs/bytes->hex (buddy-hash/sha256 stream)))))
+    (codecs/bytes->hex (buddy-hash/sha256 stream))))
 
-(def ^:private variant-etag
+(def ^:private variant-hash
   "Static resources cannot change while the process runs, so each is hashed once."
-  (memoize content-etag))
+  (memoize content-hash))
 
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
@@ -94,13 +94,13 @@
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
     (let [variant-path (compressed-path resource-path encoding)]
-      ;; `resource-response` returning nil is what proves the path resolves, so only
-      ;; a real file ever reaches `variant-etag` and grows its memo.
+      ;; `resource-response` not returning nil is what proves the path resolves, so only
+      ;; a real file ever reaches `variant-hash` and grows its memo.
       (some-> (response/resource-response variant-path)
               (response/content-type (mime/ext-mime-type resource-path))
               (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
               (assoc-in [:headers "Vary"] "Accept-Encoding")
-              (assoc-in [:headers "ETag"] (variant-etag variant-path))))))
+              (assoc ::content-hash (variant-hash variant-path))))))
 
 (defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
@@ -111,25 +111,6 @@
 
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
-
-(defn- parse-if-none-match
-  [header-value]
-  (into #{} (map str/trim) (str/split (or header-value "") #",")))
-
-(defn- client-holds-this-resource?
-  "True when the client's `If-None-Match` names the exact bytes we would send."
-  [request response]
-  (when-let [etag (response/get-header response "ETag")]
-    (let [held (some-> (response/get-header request "if-none-match") str/trim)]
-      (or (= "*" held)
-          (contains? (parse-if-none-match held) etag)))))
-
-(defn- not-modified
-  [response]
-  (ring.io/close! (:body response))
-  (-> response
-      (assoc :status 304 :body nil)
-      (update :headers dissoc "Content-Length")))
 
 (defn- wrap-etag-validation
   "Answers a 304 for a client whose `If-None-Match` names the bytes we would send.
@@ -142,10 +123,8 @@
    dropping it makes the security middleware substitute the time of the response."
   [handler]
   (letfn [(answer [response request]
-            (if (and (#{:get :head} (:request-method request))
-                     (= 200 (:status response))
-                     (client-holds-this-resource? request response))
-              (not-modified response)
+            (if-let [etag (::content-hash response)]
+              (lib.etag-cache/with-etag response request {:etag etag})
               response))]
     (fn
       ([request]

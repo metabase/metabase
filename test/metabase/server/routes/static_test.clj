@@ -1,5 +1,6 @@
 (ns metabase.server.routes.static-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.server.routes.static :as static]))
 
@@ -148,7 +149,7 @@
     (let [response (get-static "/index_template.html"
                                {"if-none-match" (etag-of "/index_template.html")})]
       (is (= 304 (:status response)))
-      (is (nil? (:body response)))))
+      (is (str/blank? (:body response)))))
   (testing "a client holding different bytes is sent the resource"
     (let [response (get-static "/index_template.html" {"if-none-match" "\"not-the-one\""})]
       (is (= 200 (:status response)))
@@ -169,6 +170,17 @@
     (let [gzipped (static/static-resource (request-with-encoding "gzip") "static_test/app.js")
           plain   (static/static-resource {} "static_test/app.js")]
       (is (= "gzip" (get-in gzipped [:headers "Content-Encoding"])))
-      (is (re-matches #"\"[0-9a-f]{64}\"" (get-in plain [:headers "ETag"])))
-      (is (not= (get-in gzipped [:headers "ETag"])
-                (get-in plain [:headers "ETag"]))))))
+      (is (re-matches #"[0-9a-f]{64}" (::static/content-hash plain)))
+      (is (not= (::static/content-hash gzipped)
+                (::static/content-hash plain))))))
+
+(deftest ^:parallel not-modified-carries-only-cache-headers-test
+  (testing "a 304 echoes the headers that guide a cache and drops the metadata of a body it has no room for"
+    (let [served   (get-static "/index_template.html")
+          response (get-static "/index_template.html"
+                               {"if-none-match" (get-in served [:headers "ETag"])})]
+      (is (= 304 (:status response)))
+      (is (some? (get-in response [:headers "ETag"])))
+      (doseq [header ["Content-Type" "Content-Encoding" "Content-Length"]]
+        (testing header
+          (is (nil? (get-in response [:headers header]))))))))
