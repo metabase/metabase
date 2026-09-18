@@ -4,7 +4,7 @@ import { useApiKeyUsageContext } from "./context";
 export function ApiKeyUsageEventsPage() {
   const {
     dataSources: { provider, table, groupMembersTable },
-    chartFilters: { dateFilter, userId, groupId },
+    chartFilters: { dateFilter, apiKeyId, userId, groupId },
     hasPii,
     page,
     total,
@@ -19,6 +19,7 @@ export function ApiKeyUsageEventsPage() {
       table={table}
       groupMembersTable={groupMembersTable}
       dateFilter={dateFilter}
+      apiKeyId={apiKeyId}
       userId={userId}
       groupId={groupId}
       hasPii={hasPii}

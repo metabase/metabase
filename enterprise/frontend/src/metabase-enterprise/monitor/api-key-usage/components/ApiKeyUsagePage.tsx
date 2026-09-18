@@ -10,16 +10,28 @@ import { useApiKeyUsageContext } from "./context";
 export function ApiKeyUsagePage() {
   const {
     dataSources: { provider, table, groupMembersTable },
-    chartFilters: { dateFilter, userId, groupId },
+    chartFilters: { dateFilter, apiKeyId, userId, groupId },
   } = useApiKeyUsageContext();
 
   return (
     <Stack gap="xl">
+      <ApiKeyActivityTable
+        provider={provider}
+        table={table}
+        groupMembersTable={groupMembersTable}
+        dateFilter={dateFilter}
+        apiKeyId={apiKeyId}
+        userId={userId}
+        groupId={groupId}
+        title={t`Key activity`}
+        h={500}
+      />
       <ApiKeyUsageCallsTimelineChart
         provider={provider}
         table={table}
         groupMembersTable={groupMembersTable}
         dateFilter={dateFilter}
+        apiKeyId={apiKeyId}
         userId={userId}
         groupId={groupId}
         title={t`Calls over time`}
@@ -30,6 +42,7 @@ export function ApiKeyUsagePage() {
           table={table}
           groupMembersTable={groupMembersTable}
           dateFilter={dateFilter}
+          apiKeyId={apiKeyId}
           userId={userId}
           groupId={groupId}
           title={t`Calls by client`}
@@ -42,6 +55,7 @@ export function ApiKeyUsagePage() {
           table={table}
           groupMembersTable={groupMembersTable}
           dateFilter={dateFilter}
+          apiKeyId={apiKeyId}
           userId={userId}
           groupId={groupId}
           title={t`Calls by route`}
@@ -49,21 +63,6 @@ export function ApiKeyUsagePage() {
           breakoutColumn="route_template"
           h={500}
         />
-      </SimpleGrid>
-      <SimpleGrid cols={2} spacing="xl">
-        <ApiKeyUsageBreakoutChart
-          provider={provider}
-          table={table}
-          groupMembersTable={groupMembersTable}
-          dateFilter={dateFilter}
-          userId={userId}
-          groupId={groupId}
-          title={t`Calls by user`}
-          display="row"
-          breakoutColumn="user_display_name"
-          h={500}
-        />
-        <ApiKeyActivityTable title={t`Key activity`} h={500} />
       </SimpleGrid>
     </Stack>
   );

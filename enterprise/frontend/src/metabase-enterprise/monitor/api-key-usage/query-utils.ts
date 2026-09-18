@@ -18,6 +18,7 @@ import type { SortDirection } from "metabase-types/api";
 
 export type ApiKeyUsageFilters = {
   dateFilter: DateFilterValue;
+  apiKeyId?: number;
   userId?: number;
   groupId?: number;
 };
@@ -32,15 +33,21 @@ type ApiKeyUsageDataSources = {
 const COUNT_COLUMN = "count";
 
 /**
- * Apply the shared user/group filters to a query. The group filter joins the audit
- * `v_group_members` view and filters by `group_id` (a user can belong to several groups); the
- * user filter is a plain `user_id` equality. Each no-ops when its id is unset.
+ * Apply the shared API key/user/group filters to a query. The API key and user filters are plain
+ * equality checks on columns the view already has; the group filter joins the audit
+ * `v_group_members` view and filters by `group_id` (a user can belong to several groups). Each
+ * no-ops when its id is unset.
  */
 function applyScopeFilters(
   query: Query,
-  { userId, groupId }: Pick<ApiKeyUsageFilters, "userId" | "groupId">,
+  {
+    apiKeyId,
+    userId,
+    groupId,
+  }: Pick<ApiKeyUsageFilters, "apiKeyId" | "userId" | "groupId">,
   groupMembersTable: TableMetadata | CardMetadata,
 ): Query {
+  query = applyIdFilter(query, "api_key_id", apiKeyId);
   query = applyIdFilter(query, "user_id", userId);
   query = groupId != null ? joinGroupMembers(query, groupMembersTable) : query;
   query = groupId != null ? applyIdFilter(query, "group_id", groupId) : query;
@@ -49,20 +56,25 @@ function applyScopeFilters(
 
 /**
  * The shared prelude every builder starts from: the view query with the date + scope
- * (user/group) filters applied. Centralizing it keeps the filter handling in one place so a
- * builder can't silently drop a filter.
+ * (API key/user/group) filters applied. Centralizing it keeps the filter handling in one place so
+ * a builder can't silently drop a filter.
  */
 function buildBaseQuery({
   provider,
   table,
   groupMembersTable,
   dateFilter,
+  apiKeyId,
   userId,
   groupId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
   let query = Lib.queryFromTableOrCardMetadata(provider, table);
   query = applyDateFilter(query, dateFilter, "occurred_at");
-  query = applyScopeFilters(query, { userId, groupId }, groupMembersTable);
+  query = applyScopeFilters(
+    query,
+    { apiKeyId, userId, groupId },
+    groupMembersTable,
+  );
   return query;
 }
 
@@ -99,6 +111,7 @@ export function buildCountBreakoutQuery({
   table,
   groupMembersTable,
   dateFilter,
+  apiKeyId,
   userId,
   groupId,
   breakoutColumn,
@@ -108,6 +121,7 @@ export function buildCountBreakoutQuery({
     table,
     groupMembersTable,
     dateFilter,
+    apiKeyId,
     userId,
     groupId,
   });
@@ -126,6 +140,7 @@ export function buildCallsByDayQuery({
   table,
   groupMembersTable,
   dateFilter,
+  apiKeyId,
   userId,
   groupId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
@@ -134,6 +149,7 @@ export function buildCallsByDayQuery({
     table,
     groupMembersTable,
     dateFilter,
+    apiKeyId,
     userId,
     groupId,
   });
@@ -151,6 +167,7 @@ export function buildTotalCountQuery({
   table,
   groupMembersTable,
   dateFilter,
+  apiKeyId,
   userId,
   groupId,
 }: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
@@ -159,10 +176,58 @@ export function buildTotalCountQuery({
     table,
     groupMembersTable,
     dateFilter,
+    apiKeyId,
     userId,
     groupId,
   });
   query = Lib.aggregateByCount(query, 0);
+  return query;
+}
+
+/** Add a MAX(occurred_at) aggregation, mirroring the shared module's `addSumAggregation`. */
+function aggregateByMaxOccurredAt(query: Query): Query {
+  const operators = Lib.availableAggregationOperators(query, 0);
+  const maxOperator = operators.find(
+    (operator) => Lib.displayInfo(query, 0, operator).shortName === "max",
+  );
+  if (!maxOperator) {
+    return query;
+  }
+  const column = Lib.aggregationOperatorColumns(maxOperator).find(
+    (col) =>
+      Lib.displayInfo(query, 0, col).name?.toLowerCase() === "occurred_at",
+  );
+  return column
+    ? Lib.aggregate(query, 0, Lib.aggregationClause(maxOperator, column))
+    : query;
+}
+
+/**
+ * Build a "most recent activity per API key" query: one row per key with at least one call
+ * matching the current filters, breaking out by `api_key_id` and aggregating its latest
+ * `occurred_at`. Used to scope the Key activity table's rows — and its "Last used" column — to
+ * the same date/API key/user/group filters as the rest of the page.
+ */
+export function buildKeyActivityQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  apiKeyId,
+  userId,
+  groupId,
+}: ApiKeyUsageFilters & ApiKeyUsageDataSources): Query {
+  let query = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    apiKeyId,
+    userId,
+    groupId,
+  });
+  query = breakoutByColumn(query, "api_key_id");
+  query = aggregateByMaxOccurredAt(query);
   return query;
 }
 
@@ -224,6 +289,7 @@ export function buildEventsQuery({
   table,
   groupMembersTable,
   dateFilter,
+  apiKeyId,
   userId,
   groupId,
   sortColumn = "occurred_at",
@@ -235,6 +301,7 @@ export function buildEventsQuery({
     table,
     groupMembersTable,
     dateFilter,
+    apiKeyId,
     userId,
     groupId,
   });

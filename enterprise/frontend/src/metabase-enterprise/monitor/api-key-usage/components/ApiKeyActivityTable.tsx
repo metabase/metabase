@@ -10,6 +10,7 @@ import {
   Card,
   Ellipsified,
   Flex,
+  Skeleton,
   Text,
   TreeTable,
   type TreeTableColumnDef,
@@ -17,29 +18,139 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
+import type { ApiKeyUsageFilters } from "metabase-enterprise/monitor/api-key-usage/query-utils";
+import { buildKeyActivityQuery } from "metabase-enterprise/monitor/api-key-usage/query-utils";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
 import type { ApiKey } from "metabase-types/api";
 
 const getNodeId = (apiKey: ApiKey) => String(apiKey.id);
 
 type ApiKeyActivityRow = ApiKey;
 
-type Props = {
+type DataSources = {
+  provider: MetadataProvider | null;
+  table: TableMetadata | CardMetadata | null;
+  groupMembersTable: TableMetadata | CardMetadata | null;
+};
+
+type Props = DataSources &
+  ApiKeyUsageFilters & {
+    title: string;
+    h?: number;
+  };
+
+type InnerProps = ApiKeyUsageFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
   title: string;
-  h?: number;
+  h: number;
 };
 
 const TABLE_HEIGHT = 500;
 
 /**
- * Per-key activity table: name, group, and `last_used_at` for every API key, most recently used
- * first — `GET /api/api-key` already returns them in that order, so an admin can spot which keys
- * are still active and which have gone quiet without any client-side sorting. `last_used_at` is a
- * throttled timestamp on the `api_key` table itself (not in `v_api_key_usage`, which only covers
- * request logs), so this queries the regular `/api/api-key` list endpoint rather than the audit
- * database.
+ * Per-key activity table: name, group, and most recent activity for every API key matching the
+ * page's date/API key/user/group filters, most recently active first. Key metadata (name, group)
+ * comes from `GET /api/api-key`; which keys appear, and their "Last used" timestamp, come from a
+ * `MAX(occurred_at)` breakout over the audit view scoped to the same filters as the rest of the
+ * page — so a key with no activity in the selected window drops out entirely, rather than always
+ * showing every key that has ever existed.
  */
-export function ApiKeyActivityTable({ title, h = TABLE_HEIGHT }: Props) {
-  const { data: apiKeys, isLoading, error } = useListApiKeysQuery();
+export function ApiKeyActivityTable({
+  provider,
+  table,
+  groupMembersTable,
+  h = TABLE_HEIGHT,
+  ...filters
+}: Props) {
+  if (!provider || !table || !groupMembersTable) {
+    return <Skeleton h={h} />;
+  }
+  return (
+    <ApiKeyActivityTableInner
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      h={h}
+      {...filters}
+    />
+  );
+}
+
+function ApiKeyActivityTableInner({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  apiKeyId,
+  userId,
+  groupId,
+  title,
+  h,
+}: InnerProps) {
+  const {
+    data: apiKeys,
+    isLoading: isLoadingKeys,
+    error: keysError,
+  } = useListApiKeysQuery();
+
+  const activityQuery = useMemo(
+    () =>
+      buildKeyActivityQuery({
+        provider,
+        table,
+        groupMembersTable,
+        dateFilter,
+        apiKeyId,
+        userId,
+        groupId,
+      }),
+    [provider, table, groupMembersTable, dateFilter, apiKeyId, userId, groupId],
+  );
+  const {
+    data: activityData,
+    isFetching: isFetchingActivity,
+    error: activityError,
+  } = useAdhocBreakoutQuery(activityQuery);
+
+  // Maps each key with activity in the filtered window to the timestamp of its latest call.
+  const lastActivityByKeyId = useMemo(() => {
+    const cols = activityData?.data?.cols ?? [];
+    const rows = activityData?.data?.rows ?? [];
+    const keyIdIndex = cols.findIndex(
+      (col) => col.name?.toLowerCase() === "api_key_id",
+    );
+    const lastActivityIndex = cols.findIndex(
+      (col) => col.source === "aggregation",
+    );
+    const entries: [number, string | null][] =
+      keyIdIndex < 0 || lastActivityIndex < 0
+        ? []
+        : rows.map((row) => [
+            Number(row[keyIdIndex]),
+            row[lastActivityIndex] == null
+              ? null
+              : String(row[lastActivityIndex]),
+          ]);
+    return new Map(entries);
+  }, [activityData]);
+
+  const rows = useMemo<ApiKeyActivityRow[] | undefined>(
+    () =>
+      apiKeys
+        ?.filter((apiKey) => lastActivityByKeyId.has(apiKey.id))
+        .map((apiKey) => ({
+          ...apiKey,
+          last_used_at: lastActivityByKeyId.get(apiKey.id) ?? null,
+        })),
+    [apiKeys, lastActivityByKeyId],
+  );
 
   const columns = useMemo<TreeTableColumnDef<ApiKeyActivityRow>[]>(
     () => [
@@ -76,10 +187,13 @@ export function ApiKeyActivityTable({ title, h = TABLE_HEIGHT }: Props) {
   );
 
   const treeTableInstance = useTreeTableInstance<ApiKeyActivityRow>({
-    data: apiKeys ?? [],
+    data: rows ?? [],
     columns,
     getNodeId,
   });
+
+  const isLoading = isLoadingKeys || (isFetchingActivity && !activityData);
+  const error = keysError ?? activityError;
 
   return (
     <Card withBorder shadow="none" px="xl" pt="lg" pb="lg" h={h}>
@@ -105,7 +219,7 @@ export function ApiKeyActivityTable({ title, h = TABLE_HEIGHT }: Props) {
             instance={treeTableInstance}
             hierarchical={false}
             ariaLabel={t`API keys`}
-            emptyState={<MonitorEmptyState label={t`No API keys found`} />}
+            emptyState={<MonitorEmptyState label={t`No key activity`} />}
           />
         )}
       </Box>
