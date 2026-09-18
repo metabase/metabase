@@ -34,7 +34,10 @@ const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
+const {
+  SVGO_CONFIG,
+  SVGO_ASSET_CONFIG,
+} = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
@@ -235,7 +238,16 @@ const config = {
         type: "javascript/auto",
       },
       {
-        test: /\.(svg|png)$/,
+        test: /\.svg$/,
+        type: "asset/resource",
+        resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
+        use: [{ loader: "svgo-loader", options: SVGO_ASSET_CONFIG }],
+      },
+      {
+        test: /\.png$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
         // No `[query]`: a `?url` import must emit the same name as the SDK
