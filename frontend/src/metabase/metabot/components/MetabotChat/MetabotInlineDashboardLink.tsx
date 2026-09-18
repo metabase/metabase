@@ -80,7 +80,13 @@ function SaveDashboardAction({
     useDisclosure(false);
 
   const handleSaved = (saved: SaveMetabotDashboardResponse) => {
-    dispatch(markEntitySaved({ entityId: dashboard.id, savedId: saved.id }));
+    dispatch(
+      markEntitySaved({
+        conversationId,
+        entityId: dashboard.id,
+        savedId: saved.id,
+      }),
+    );
     dispatch(
       addUndo({
         icon: "check_filled",

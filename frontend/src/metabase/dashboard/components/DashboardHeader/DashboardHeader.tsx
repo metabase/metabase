@@ -62,11 +62,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
       getSetting(state, "custom-homepage-dashboard") === dashboard?.id,
   );
 
+  const hasCollection = !isGuestEmbed && !isAdhocDashboardId(dashboard.id);
   const { data: collection, isLoading: isLoadingCollection } =
     useGetCollectionQuery(
       { id: dashboard.collection_id || "root" },
       {
-        skip: isGuestEmbed,
+        skip: !hasCollection,
       },
     );
 
@@ -117,8 +118,8 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
     ];
   };
 
-  // We don't fetch collection info for static embedding
-  if (!isGuestEmbed) {
+  // We don't fetch collection info for static embedding or unsaved ad-hoc dashboards
+  if (hasCollection) {
     if (isLoadingCollection || !collection) {
       return (
         <Flex justify="center" py="1.5rem">

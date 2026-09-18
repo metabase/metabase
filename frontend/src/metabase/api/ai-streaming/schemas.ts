@@ -131,7 +131,7 @@ type EntitySavedBase = {
 };
 
 export type EntitySavedValue =
-  | (EntitySavedBase & { type: "card"; chart_id: string; card_id: number })
+  | (EntitySavedBase & { type?: "card"; chart_id: string; card_id: number })
   | (EntitySavedBase & {
       type: "dashboard";
       generated_dashboard_id: string;

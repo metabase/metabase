@@ -51,6 +51,7 @@ export const SaveAdhocDashboardButton = () => {
   const handleSaved = (saved: SaveMetabotDashboardResponse) => {
     dispatch(
       markEntitySaved({
+        conversationId: metabot.conversation_id,
         entityId: metabot.generated_dashboard_id,
         savedId: saved.id,
       }),

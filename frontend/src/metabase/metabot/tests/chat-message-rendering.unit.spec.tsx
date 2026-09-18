@@ -256,6 +256,33 @@ describe("AgentMessage", () => {
       expect(screen.queryByText(/saved to/)).not.toBeInTheDocument();
     });
 
+    it("renders a saved chart persisted before saved entities carried a type", async () => {
+      setupCollectionByIdEndpoint({
+        collections: [createMockCollection({ id: 5, name: "Analytics" })],
+      });
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
+      setup({
+        parts: [
+          {
+            id: "s1",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-entity_saved",
+              data: {
+                chart_id: "chart-1",
+                card_id: 99,
+                destination: { type: "collection", id: 5 },
+              },
+            },
+          },
+        ],
+      });
+
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+      expect(await screen.findByText("Analytics")).toBeInTheDocument();
+    });
+
     it("resolves a document destination's current name", async () => {
       setupDocumentEndpoints(createMockDocument({ id: 7, name: "Q3 report" }));
       setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));

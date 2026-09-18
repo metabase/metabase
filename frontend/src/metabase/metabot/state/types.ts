@@ -195,7 +195,7 @@ export interface MetabotState {
   reactions: MetabotReactionsState;
   titlePollingConversationIds: string[];
   debugMode: boolean;
-  savedEntityIds: Record<string, number>;
+  savedEntityIds: Record<string, Record<string, number>>;
 }
 
 export interface SlashCommand {

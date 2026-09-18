@@ -281,7 +281,13 @@ describe("MetabotInlineChart", () => {
       );
 
       act(() => {
-        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
+        store.dispatch(
+          markEntitySaved({
+            conversationId: "convo-1",
+            entityId: "card-1",
+            savedId: 99,
+          }),
+        );
       });
 
       await waitFor(() => {
@@ -297,7 +303,13 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
+        store.dispatch(
+          markEntitySaved({
+            conversationId: "convo-1",
+            entityId: "card-1",
+            savedId: 99,
+          }),
+        );
       });
 
       expect(
@@ -311,7 +323,13 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
+        store.dispatch(
+          markEntitySaved({
+            conversationId: "convo-1",
+            entityId: "card-1",
+            savedId: 99,
+          }),
+        );
       });
 
       expect(
@@ -329,7 +347,13 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
+        store.dispatch(
+          markEntitySaved({
+            conversationId: "convo-1",
+            entityId: "card-1",
+            savedId: 99,
+          }),
+        );
       });
 
       await waitFor(() => {
@@ -349,7 +373,13 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(markEntitySaved({ entityId: "card-1", savedId: 99 }));
+        store.dispatch(
+          markEntitySaved({
+            conversationId: "convo-1",
+            entityId: "card-1",
+            savedId: 99,
+          }),
+        );
       });
 
       expect(await screen.findByText("Saved")).toBeInTheDocument();

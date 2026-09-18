@@ -43,31 +43,43 @@
   (if card-id
     (let [card (api/read-check :model/Card card-id)]
       (api/check (nil? (:dashboard_id card))
-                 [400 (tru "Question {0} belongs to another dashboard and cannot be placed on this one." card-id)]))
+                 [400 (tru "Question {0} belongs to another dashboard and cannot be placed on this one." card-id)])
+      (api/check (nil? (:document_id card))
+                 [400 (tru "Question {0} belongs to a document and cannot be placed on a dashboard." card-id)]))
     (query-perms/check-run-permissions-for-query dataset-query)))
 
 (defn- already-saved [conversation-id generated-id]
   (when (and conversation-id generated-id)
     (when-let [dash (metabot.db/saved-dashboard-for-conversation conversation-id generated-id)]
-      {:dashboard dash :cards []})))
+      {:dashboard (api/read-check dash) :cards []})))
 
-(defn- create! [{:keys [name description collection-id tiles conversation-id generated-id]}]
+(defn- insert! [{:keys [name description collection-id tiles conversation-id generated-id]}]
+  (let [dash (metabot.db/insert-dashboard!
+              {:name          name
+               :description   description
+               :parameters    []
+               :creator_id    api/*current-user-id*
+               :collection_id collection-id})]
+    (when (and conversation-id generated-id)
+      (metabot.db/link-dashboard-to-conversation! (:id dash) conversation-id generated-id))
+    {:dashboard dash
+     :cards     (vec (keep #(place-tile! (:id dash) conversation-id %) tiles))
+     :created?  true}))
+
+(defn- create! [{:keys [collection-id tiles conversation-id generated-id] :as args}]
   (run! check-tile-permissions! tiles)
   (api/create-check :model/Dashboard {:collection_id collection-id})
-  (let [[dash cards] (t2/with-transaction [_conn]
-                       (let [dash (metabot.db/insert-dashboard!
-                                   {:name          name
-                                    :description   description
-                                    :parameters    []
-                                    :creator_id    api/*current-user-id*
-                                    :collection_id collection-id})]
-                         (when (and conversation-id generated-id)
-                           (metabot.db/link-dashboard-to-conversation! (:id dash) conversation-id generated-id))
-                         [dash (vec (keep #(place-tile! (:id dash) conversation-id %) tiles))]))]
-    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (doseq [card cards]
-      (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
-    {:dashboard dash :cards cards}))
+  (let [{:keys [dashboard cards created?]}
+        (t2/with-transaction [_conn]
+          (when conversation-id
+            (metabot.db/lock-conversation conversation-id))
+          (or (already-saved conversation-id generated-id)
+              (insert! args)))]
+    (when created?
+      (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+      (doseq [card cards]
+        (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
+    {:dashboard dashboard :cards cards}))
 
 (defn materialize!
   "Create the dashboard `name`/`description` in `collection-id` (nil for the root
@@ -77,7 +89,8 @@
   keyword and optional `:visualization-settings` become a new dashboard question, stamped with the conversation + chart
   origin when `conversation-id` and `:chart-id` are known; the dashboard itself is
   stamped with `conversation-id` + `generated-id` (the id `create_dashboard` gave it). Saving the same generated
-  dashboard again returns the dashboard already saved from the conversation instead of creating a second one.
+  dashboard again returns the dashboard already saved from the conversation (read-checked) instead of creating a
+  second one; concurrent saves serialize on the conversation row.
   Checks query/card and collection permissions first, publishes the create events after the transaction
   commits, and returns `{:dashboard :cards}` (the newly created cards only)."
   [{:keys [conversation-id generated-id] :as args}]
