@@ -988,6 +988,28 @@
             (testing "a non-admin user cannot"
               (send! :rasta 403))))))))
 
+(deftest send-unsaved-notification-existing-channel-permissions-test
+  (testing "POST /api/notification/send naming an existing channel by channel_id requires channel write permission"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card    {card-id :id} {}
+                     :model/Channel {chn-id :id}  {:type    :channel/http
+                                                   :details {:url         "https://example.com/webhook"
+                                                             :auth-method "none"}}]
+        (let [send! (fn [user-or-id channel-id expected-status]
+                      (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                        (mt/user-http-request user-or-id :post expected-status "notification/send"
+                                              {:payload_type  :notification/card
+                                               :handlers      [{:channel_type :channel/http
+                                                                :channel_id   channel-id}]
+                                               :subscriptions []
+                                               :payload       {:card_id card-id}})))]
+          (testing "an admin can send to an existing channel"
+            (send! :crowberto chn-id 200))
+          (testing "a non-admin user cannot"
+            (send! :rasta chn-id 403))
+          (testing "a non-admin user gets the same 403 for a channel id that doesn't exist"
+            (send! :rasta Integer/MAX_VALUE 403)))))))
+
 (deftest list-notifications-basic-test
   (testing "GET /api/notification"
     (mt/with-model-cleanup [:model/Notification]
