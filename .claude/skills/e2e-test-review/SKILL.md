@@ -47,16 +47,6 @@ The checklist mirrors the order of the conventions file. Items marked **(lint)**
 - [ ] **No hardcoded numeric IDs anywhere** — including for entities the test creates itself. Capture from the create response or alias the intercept.
 - [ ] Existing navigation helpers used (`H.openOrdersTable`, `H.visitDashboard(id)`, etc.) instead of raw `cy.visit()` chains
 
-### Shared helper changes
-
-When a diff changes a shared helper, inspect its callers rather than reviewing the helper in isolation:
-
-- [ ] Default behavior changes are justified for every caller; otherwise the new behavior is explicit and opt-in.
-- [ ] Repeated calls with identical and different arguments are safe.
-- [ ] Mandatory network waits account for cache hits, request deduplication, unchanged query arguments, and conditional fetches where no request occurs.
-- [ ] Intercepts and aliases cannot accumulate, collide, or resolve against the wrong request.
-- [ ] Verification covers both an affected caller and a representative caller using unchanged defaults.
-
 ### Selectors
 
 - [ ] Prefers a11y queries (`findByRole`, `findByLabelText`) over `findByText`

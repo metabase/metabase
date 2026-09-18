@@ -55,7 +55,7 @@ function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
       permissions: { can_access_subscription: true },
     }),
     settings: createMockSettingsState({
-      "enable-embedding-modular": true,
+      "enable-embedding-sdk": true,
       "token-features": createMockTokenFeatures({
         embedding_sdk: true,
         advanced_permissions: false,
