@@ -269,6 +269,18 @@
               (is (not= model-db-id query-db-id))
               (f model-db-id query-db-id))))))))
 
+(defn- do-with-actions-enabled-on-model-db-only!
+  "Runs `f` with two test databases, passing it `[model-db-id other-db-id]`. Actions are enabled on the model's
+  database only, so anything that reaches the other one has to be rejected."
+  [f]
+  (mt/dataset test-data
+    (let [other-db-id (mt/id)]                             ;; actions stay DISABLED here
+      (mt/dataset time-test-data
+        (mt/with-actions-enabled                           ;; enabled only on the model's DB
+          (let [model-db-id (mt/id)]
+            (is (not= model-db-id other-db-id))
+            (f model-db-id other-db-id)))))))
+
 (deftest action-query-db-differs-from-declared-db-test
   (testing "a query action cannot execute against a database other than the one its query targets"
     (mt/dataset test-data
@@ -359,20 +371,46 @@
 
 (deftest action-creation-checks-actions-enabled-on-query-database-test
   (testing "POST /api/action checks actions-enabled on the database the query targets"
-    (mt/dataset test-data
-      (let [query-db-id (mt/id)]                           ;; actions stay DISABLED here
-        (mt/dataset time-test-data
-          (mt/with-actions-enabled                         ;; enabled only on the model's DB
-            (let [model-db-id (mt/id)]
-              (is (not= model-db-id query-db-id))
-              (mt/with-model-cleanup [:model/Action]
-                (mt/with-temp [:model/Card {model-id :id}
-                               {:type          :model
-                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
-                  (is (=? {:message "Actions are not enabled."
-                           :data    {:database-id query-db-id}}
-                          (mt/user-http-request :crowberto :post 400 "action"
-                                                (cross-db-native-action model-id model-db-id query-db-id)))))))))))))
+    (do-with-actions-enabled-on-model-db-only!
+     (fn [model-db-id query-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (mt/with-temp [:model/Card {model-id :id} (model-card-def :crowberto)]
+           (is (=? {:message "Actions are not enabled."
+                    :data    {:database-id query-db-id}}
+                   (mt/user-http-request :crowberto :post 400 "action"
+                                         (cross-db-native-action model-id model-db-id query-db-id))))))))))
+
+(deftest action-update-checks-actions-enabled-on-query-database-test
+  (testing "PUT /api/action/:id checks actions-enabled on the database the updated query targets"
+    (do-with-actions-enabled-on-model-db-only!
+     (fn [model-db-id query-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (mt/with-temp [:model/Card {model-id :id} (model-card-def :crowberto)]
+           (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                               (cross-db-native-action model-id model-db-id model-db-id))]
+             (is (=? {:message "Actions are not enabled."
+                      :data    {:database-id query-db-id}}
+                     (mt/user-http-request :crowberto :put 400 (str "action/" (:id created))
+                                           {:dataset_query (write-query query-db-id)}))))))))))
+
+(deftest action-update-cannot-repoint-a-query-action-with-a-blanked-query-test
+  (testing "PUT /api/action/:id checks actions-enabled on a database_id that no query overrides"
+    (do-with-actions-enabled-on-model-db-only!
+     (fn [model-db-id other-db-id]
+       (mt/with-model-cleanup [:model/Action]
+         (mt/with-temp [:model/Card {model-id :id} (model-card-def :crowberto)]
+           (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                               (cross-db-native-action model-id model-db-id model-db-id))
+                 url     (str "action/" (:id created))]
+             (testing "blanking the query leaves the action on the database it was created against"
+               (is (=? {:database_id model-db-id}
+                       (mt/user-http-request :crowberto :put 200 url {:dataset_query {}}))))
+             (testing "the database_id that would now be written through is checked"
+               (is (=? {:message "Actions are not enabled."
+                        :data    {:database-id other-db-id}}
+                       (mt/user-http-request :crowberto :put 400 url {:database_id other-db-id}))))
+             (is (=? {:database_id model-db-id}
+                     (mt/user-http-request :crowberto :get 200 url))))))))))
 
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
