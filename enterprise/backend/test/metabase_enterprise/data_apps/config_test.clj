@@ -15,9 +15,32 @@
   ([s dir] (data-app.config/parse-app-config (->bytes s) dir)))
 
 (deftest parse-valid-config-test
-  (is (= {:slug "sales" :display_name "Sales dashboard" :description nil :path "dist/index.js" :allowed_hosts []}
+  (is (= {:slug "sales" :display_name "Sales dashboard" :description nil :version 1
+          :path "dist/index.js" :allowed_hosts []}
          (parse "name: Sales dashboard
 path: ./dist/index.js"))))
+
+(deftest parse-version-test
+  (testing "absent means 1: every app predates the field"
+    (is (= 1 (:version (parse "name: X\npath: dist/index.js")))))
+  (testing "a whole number is carried through"
+    (is (= 3 (:version (parse "name: X\nversion: 3\npath: dist/index.js")))))
+  (testing "anything but a positive whole number is rejected, not coerced or compared as-is"
+    (doseq [bad ["0" "-1" "1.5" "'1'" "one" "[1]" "1.0.0"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"version.*positive whole number"
+                            (parse (str "name: X\nversion: " bad "\npath: dist/index.js")))
+          (str "should reject: " (pr-str bad))))))
+
+(deftest template-manifest-declares-the-supported-version-test
+  (testing "the scaffolding template stamps the version this Metabase serves, so a new app is never born outdated"
+    (is (= data-app.config/supported-app-version
+           (:version (parse (slurp "skills/metabase-data-app-setup/template/data_app.yaml")))))))
+
+(deftest outdated-test
+  (testing "an app below the supported version is outdated; one at it is not"
+    (with-redefs [data-app.config/supported-app-version 2]
+      (is (data-app.config/outdated? {:version 1}))
+      (is (not (data-app.config/outdated? {:version 2}))))))
 
 (deftest parse-description-test
   (testing "an optional one-liner is trimmed and carried through"
@@ -82,7 +105,7 @@ path: ./dist/index.js"))))
 
 (deftest unknown-fields-are-ignored-test
   (testing "unknown keys don't fail the parse — including a stray `slug`, which the directory name overrides"
-    (is (= {:slug "sales" :display_name "X" :description nil :path "dist/index.js" :allowed_hosts []}
+    (is (= {:slug "sales" :display_name "X" :description nil :version 1 :path "dist/index.js" :allowed_hosts []}
            (parse "name: X\nslug: elsewhere\nfuture_option: 1\npath: dist/index.js")))))
 
 (deftest parse-errors-test

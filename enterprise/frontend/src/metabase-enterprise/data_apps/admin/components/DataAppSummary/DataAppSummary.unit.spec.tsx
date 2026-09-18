@@ -48,6 +48,23 @@ describe("DataAppSummary", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders an outdated app's name as plain text (it refuses to open)", () => {
+    renderWithProviders(
+      <DataAppSummary
+        app={createMockDataApp({
+          display_name: "Sales",
+          enabled: true,
+          outdated: true,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Sales")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Sales" }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("description", () => {
     it("renders the description when the app declares one", () => {
       renderWithProviders(
