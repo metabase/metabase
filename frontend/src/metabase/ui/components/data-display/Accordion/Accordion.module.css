@@ -21,7 +21,7 @@
 .control {
   padding-block: var(--mantine-spacing-md);
   padding-inline: var(--mantine-spacing-lg);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--accordion-radius);
   background-color: var(--mb-color-background_surface-secondary);
   color: var(--mb-color-text-primary);
   transition: background-color 150ms ease;
@@ -67,7 +67,11 @@
 
 .control:hover .icon,
 .control:active .icon {
-  color: var(--mb-color-text-hover);
+  color: var(--mb-color-text-brand-hover);
+}
+
+.control:disabled .icon {
+  color: inherit;
 }
 
 .content {

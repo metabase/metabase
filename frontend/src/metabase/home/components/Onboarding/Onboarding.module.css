@@ -66,6 +66,7 @@
 
 .accordion .control:hover .icon {
   background-color: var(--mb-color-background_surface-brand-subtle-hover);
+  color: var(--mb-color-core-brand);
 }
 
 .accordion .control[data-active] .icon {
