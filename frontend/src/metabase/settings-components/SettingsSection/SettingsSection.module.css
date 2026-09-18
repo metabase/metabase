@@ -102,3 +102,15 @@
 .CollapsibleAccordion .CollapsibleControl:disabled::after {
   cursor: default;
 }
+
+/* the title is the switch's label, so it borrows the switch's pointer while the switch is live */
+.TitleLabel {
+  cursor: pointer;
+}
+
+/* a switch held during its write stays focusable, so it dims here rather than through :disabled */
+/* the root class scopes the rule above the theme's track class, whatever the stylesheet order */
+.BusySwitch .BusyTrack {
+  opacity: 0.6;
+  cursor: default;
+}

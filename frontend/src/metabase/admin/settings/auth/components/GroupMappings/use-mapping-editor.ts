@@ -17,6 +17,8 @@ export type MappingEditorState = {
   draft: MappingDraft | null;
   nameError: string | null;
   canSave: boolean;
+  // true from the save click until the write answers
+  isSubmitting: boolean;
   startNew: () => void;
   startEdit: (name: string, groupIds: GroupId[]) => void;
   change: (draft: MappingDraft) => void;
@@ -34,6 +36,7 @@ export function useMappingEditor({
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const trimmedName = draft?.name.trim() ?? "";
   const isDuplicateName =
@@ -62,22 +65,27 @@ export function useMappingEditor({
       return;
     }
     const isNewMapping = draft.originalName == null;
-    const result = await groupMapping.saveMappings(
-      withMappingEntry(
-        groupMapping.mappings,
-        draft.originalName,
-        trimmedName,
-        draft.groupValues.map(Number),
-      ),
-      {
-        successMessage: isNewMapping ? t`Mapping added` : t`Mapping updated`,
-        showErrorToast: false,
-      },
-    );
-    if (result.ok) {
-      replaceDraft(null);
-    } else {
-      setSubmitError(result.error);
+    setIsSubmitting(true);
+    try {
+      const result = await groupMapping.saveMappings(
+        withMappingEntry(
+          groupMapping.mappings,
+          draft.originalName,
+          trimmedName,
+          draft.groupValues.map(Number),
+        ),
+        {
+          successMessage: isNewMapping ? t`Mapping added` : t`Mapping updated`,
+          showErrorToast: false,
+        },
+      );
+      if (result.ok) {
+        replaceDraft(null);
+      } else {
+        setSubmitError(result.error);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -85,6 +93,7 @@ export function useMappingEditor({
     draft,
     nameError,
     canSave,
+    isSubmitting,
     startNew: () =>
       replaceDraft({ name: "", groupValues: [], originalName: null }),
     startEdit: (name, groupIds) =>

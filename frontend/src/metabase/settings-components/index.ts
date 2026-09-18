@@ -13,4 +13,6 @@ export {
   SETTINGS_CARD_TITLE_PROPS,
   SettingsPageWrapper,
   SettingsSection,
+  SwitchSettingsSection,
+  useSwitchWrite,
 } from "./SettingsSection";

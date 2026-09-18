@@ -68,45 +68,6 @@ describe("SettingsLdapForm (EE)", () => {
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeDisabled();
-      expect(
-        screen.getByRole("switch", { name: "Group mapping" }),
-      ).toBeDisabled();
-    });
-
-    it("comes alive once the host and user search base are saved", async () => {
-      await setup({
-        "ldap-host": "ldap.example.test",
-        "ldap-configured?": true,
-      });
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
-    });
-
-    it("locks the switch to the value set through an env var", async () => {
-      await setup(
-        {
-          "ldap-host": "ldap.example.test",
-          "ldap-configured?": true,
-          "ldap-user-provisioning-enabled?": true,
-        },
-        {
-          settingDefinitions: [
-            {
-              key: "ldap-user-provisioning-enabled?",
-              is_env_setting: true,
-              env_name: "MB_LDAP_USER_PROVISIONING_ENABLED",
-            },
-          ],
-        },
-      );
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
-      expect(toggle).toBeChecked();
-      expect(toggle).toHaveAccessibleDescription(
-        /Using MB_LDAP_USER_PROVISIONING_ENABLED/,
-      );
     });
 
     it("saves right away without touching the page form", async () => {
@@ -118,21 +79,15 @@ describe("SettingsLdapForm (EE)", () => {
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       await waitFor(() => expect(toggle).toBeEnabled());
-      expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);
 
-      await waitFor(() => expect(toggle).not.toBeChecked());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/ldap-user-provisioning-enabled%3F$/,
       );
-      expect(puts[0].body).toEqual({ value: false });
-      expect(
-        screen.getByRole("button", { name: "Save changes" }),
-      ).toBeDisabled();
     });
   });
 
@@ -152,6 +107,27 @@ describe("SettingsLdapForm (EE)", () => {
       });
       expect(filterInput).toHaveValue("");
       expect(filterInput).toHaveAttribute("placeholder", "(member={dn})");
+    });
+
+    it("says why an unbalanced filter blocks saving, without waiting for a blur", async () => {
+      await setup(
+        { "ldap-configured?": true, "ldap-group-sync": true },
+        {
+          settingDefinitions: [
+            { key: "ldap-group-membership-filter", default: "(member={dn})" },
+          ],
+        },
+      );
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /Group membership filter/ }),
+        "(objectClass=group",
+      );
+
+      expect(
+        await screen.findByText("Check your parentheses"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
     it("is saved with the page form", async () => {

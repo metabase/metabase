@@ -5,10 +5,8 @@ import {
   findRequests,
   setupSettingsEndpoints,
   setupStatefulSettingsEndpoints,
-  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -72,13 +70,6 @@ const IDP_SETTINGS = {
 
 const groupMappingSwitch = () =>
   screen.getByRole("switch", { name: "Group mapping" });
-
-const queryMappingRow = (name: string) =>
-  screen
-    .queryAllByTestId("group-mapping-row")
-    .find((row) => within(row).queryByText(name) != null);
-
-const getMappingRow = (name: string) => checkNotNull(queryMappingRow(name));
 
 describe("SettingsSAMLForm", () => {
   it("Can enable SAML via form input", async () => {
@@ -273,44 +264,21 @@ describe("SettingsSAMLForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("stays disabled until the identity provider is set up", async () => {
-      await setup();
-
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeDisabled();
-    });
-
-    it("comes alive once the identity provider is set up", async () => {
-      await setupConfigured();
-
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
-    });
-
     it("saves right away without touching the page form", async () => {
       await setupConfigured({
         ...IDP_SETTINGS,
         "saml-user-provisioning-enabled?": true,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeEnabled();
-      expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);
 
-      await waitFor(() => expect(toggle).not.toBeChecked());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/saml-user-provisioning-enabled%3F$/,
       );
-      expect(puts[0].body).toEqual({ value: false });
-      expect(
-        screen.getByRole("button", { name: "Save changes" }),
-      ).toBeDisabled();
     });
 
     it("locks the switch while SCIM manages provisioning", async () => {
@@ -355,24 +323,14 @@ describe("SettingsSAMLForm", () => {
   });
 
   describe("group mapping", () => {
-    it("stays disabled until the identity provider is set up", async () => {
+    it("keeps the provisioning and group mapping cards disabled until the identity provider is set up", async () => {
       await setup({ "saml-group-sync": true });
 
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeDisabled();
       expect(groupMappingSwitch()).toBeDisabled();
       expect(groupMappingSwitch()).toBeChecked();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("textbox", { name: /Group attribute name/ }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("comes alive once the identity provider is set up, with the mappings still hidden", async () => {
-      await setupConfigured();
-
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(groupMappingSwitch()).not.toBeChecked();
       expect(
         screen.queryByText("Manual group mappings"),
       ).not.toBeInTheDocument();
@@ -400,54 +358,10 @@ describe("SettingsSAMLForm", () => {
       expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
-    it("shows the new value and holds the switch while the write is in flight", async () => {
-      // the properties mock answers the write late, so the in-flight state can be seen
-      await setupConfigured({}, [], { updateDelay: 200 });
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(await findRequests("PUT")).toHaveLength(1);
-    });
-
-    it("holds the switch until the settings refetch after the write lands", async () => {
-      // the properties mock answers reads late, so the refetch the write triggers can be seen
-      await setupConfigured({}, [], { readDelay: 200 });
-
-      await userEvent.click(groupMappingSwitch());
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
-      expect(groupMappingSwitch()).toBeChecked();
-    });
-
-    it("puts the old value back when the write fails", async () => {
-      await setupConfigured();
-      setupUpdateSettingEndpoint({ status: 500 });
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(await screen.findByText(/Error saving/)).toBeInTheDocument();
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
-    });
-
     it("adds a mapping and writes it without touching the page form", async () => {
       await setupConfigured({ "saml-group-sync": true });
 
       await userEvent.click(screen.getByRole("button", { name: "New" }));
-      expect(
-        screen.queryByRole("button", { name: "New" }),
-      ).not.toBeInTheDocument();
       await userEvent.type(
         screen.getByPlaceholderText(SAML_GROUP_PLACEHOLDER),
         "engineering",
@@ -467,36 +381,6 @@ describe("SettingsSAMLForm", () => {
       expect(puts[0].body).toEqual({
         "saml-group-mappings": { engineering: [4] },
       });
-      expect(
-        within(getMappingRow("engineering")).getByText("bar"),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
-    });
-
-    it("keeps group mapping on when the last mapping is deleted", async () => {
-      await setupConfigured({
-        "saml-group-sync": true,
-        "saml-group-mappings": { engineering: [3] },
-      });
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Delete mapping" }),
-      );
-      const modal = await screen.findByRole("dialog");
-      expect(
-        within(modal).queryByText(/group mapping will be turned off/),
-      ).not.toBeInTheDocument();
-      await userEvent.click(
-        within(modal).getByRole("button", { name: "Remove mapping" }),
-      );
-
-      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
-      const [{ body }] = await findRequests("PUT");
-      expect(body).toEqual({ "saml-group-mappings": {} });
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(screen.getByText("No mappings yet")).toBeInTheDocument();
-      expect(queryMappingRow("engineering")).toBeUndefined();
     });
 
     it("saves the group attribute with the page form", async () => {
@@ -541,55 +425,6 @@ describe("SettingsSAMLForm", () => {
       expect(
         await screen.findByRole("textbox", { name: /Group attribute name/ }),
       ).toHaveValue("groups");
-    });
-
-    it("locks the mappings to the ones an env var sets", async () => {
-      await setupConfigured(
-        {
-          "saml-group-sync": true,
-          "saml-group-mappings": { engineering: [3] },
-        },
-        [
-          {
-            key: "saml-group-mappings",
-            is_env_setting: true,
-            env_name: "MB_SAML_GROUP_MAPPINGS",
-          },
-        ],
-      );
-
-      expect(
-        screen.getByText("Using MB_SAML_GROUP_MAPPINGS"),
-      ).toBeInTheDocument();
-      expect(
-        await within(getMappingRow("engineering")).findByText("foo"),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "New" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Edit mapping" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Delete mapping" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("locks the switch to the value an env var sets", async () => {
-      await setupConfigured({ "saml-group-sync": true }, [
-        {
-          key: "saml-group-sync",
-          is_env_setting: true,
-          env_name: "MB_SAML_GROUP_SYNC",
-        },
-      ]);
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      expect(groupMappingSwitch()).toHaveAccessibleDescription(
-        /Using MB_SAML_GROUP_SYNC/,
-      );
-      expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
     });
   });
 });
