@@ -124,12 +124,14 @@
 
 (defn- get-static
   ([path] (get-static path nil))
-  ([path if-modified-since]
+  ([path validators]
    (static-handler {:request-method :get
                     :uri            path
                     :route-params   {:* (subs path 1)}
-                    :headers        (cond-> {}
-                                      if-modified-since (assoc "if-modified-since" if-modified-since))})))
+                    :headers        (or validators {})})))
+
+(defn- etag-of [path]
+  (get-in (get-static path) [:headers "ETag"]))
 
 (deftest ^:parallel static-resource-reports-its-own-last-modified-test
   (testing "a static resource carries the time it was modified, not the time it was served"
@@ -137,19 +139,36 @@
       (is (= 200 (:status response)))
       (is (some? (get-in response [:headers "Last-Modified"]))))))
 
+(deftest ^:parallel static-resource-carries-a-strong-content-etag-test
+  (testing "a static resource is validated by a strong hash of its bytes"
+    (is (re-matches #"\"[0-9a-f]{64}\"" (etag-of "/index_template.html")))))
+
 (deftest ^:parallel static-resource-answers-conditional-request-test
   (testing "a client that already holds the resource is answered without the body"
-    (let [modified (get-in (get-static "/index_template.html") [:headers "Last-Modified"])
-          response (get-static "/index_template.html" modified)]
+    (let [response (get-static "/index_template.html"
+                               {"if-none-match" (etag-of "/index_template.html")})]
       (is (= 304 (:status response)))
       (is (nil? (:body response)))))
-  (testing "a client holding an older copy is sent the resource"
-    (let [response (get-static "/index_template.html" "Tue, 03 Jul 2001 06:00:00 GMT")]
+  (testing "a client holding different bytes is sent the resource"
+    (let [response (get-static "/index_template.html" {"if-none-match" "\"not-the-one\""})]
       (is (= 200 (:status response)))
       (is (some? (:body response))))))
 
-(deftest ^:parallel static-resource-ignores-a-newer-validator-test
-  (testing "a client holding a copy newer than this build's is sent the resource, so a downgrade replaces it"
-    (let [response (get-static "/index_template.html" "Fri, 01 Jan 2100 00:00:00 GMT")]
-      (is (= 200 (:status response)))
-      (is (some? (:body response))))))
+(deftest ^:parallel static-resource-never-validates-on-a-date-test
+  (testing "a date validator alone is never enough for a 304, whichever way it points"
+    (doseq [held ["Tue, 03 Jul 2001 06:00:00 GMT"
+                  "Fri, 01 Jan 2100 00:00:00 GMT"
+                  (get-in (get-static "/index_template.html") [:headers "Last-Modified"])]]
+      (testing (str "if-modified-since " held)
+        (let [response (get-static "/index_template.html" {"if-modified-since" held})]
+          (is (= 200 (:status response)))
+          (is (some? (:body response))))))))
+
+(deftest ^:parallel each-encoding-is-validated-separately-test
+  (testing "every encoding is its own representation, so each carries its own validator"
+    (let [gzipped (static/static-resource (request-with-encoding "gzip") "static_test/app.js")
+          plain   (static/static-resource {} "static_test/app.js")]
+      (is (= "gzip" (get-in gzipped [:headers "Content-Encoding"])))
+      (is (re-matches #"\"[0-9a-f]{64}\"" (get-in plain [:headers "ETag"])))
+      (is (not= (get-in gzipped [:headers "ETag"])
+                (get-in plain [:headers "ETag"]))))))

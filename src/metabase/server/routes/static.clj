@@ -5,13 +5,15 @@
    instead of compressing on the fly. This avoids CPU overhead at request time
    and lets us use higher compression levels during the build."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :as compojure]
-   [ring.middleware.not-modified :as not-modified]
+   [ring.util.io :as ring.io]
    [ring.util.mime-type :as mime]
-   [ring.util.response :as response]
-   [ring.util.time :as ring.time]))
+   [ring.util.response :as response]))
 
 (def ^:private encoding->extension
   {:gzip     ".gz"
@@ -70,6 +72,19 @@
   [resource-path encoding]
   (str resource-path (encoding->extension encoding)))
 
+(defn- content-etag
+  "A strong ETag for the bytes of one variant on the classpath.
+
+   Each encoding is a separate representation and so needs its own validator,
+   which hashing the bytes we actually send gives us for free."
+  [variant-path]
+  (with-open [stream (io/input-stream (io/resource variant-path))]
+    (format "\"%s\"" (codecs/bytes->hex (buddy-hash/sha256 stream)))))
+
+(def ^:private variant-etag
+  "Static resources cannot change while the process runs, so each is hashed once."
+  (memoize content-etag))
+
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
    response map if a compressed variant exists and the client accepts it,
@@ -78,10 +93,14 @@
    If encoding is :identity, we don't compress at all and serve the raw resource."
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
-    (some-> (response/resource-response (compressed-path resource-path encoding))
-            (response/content-type (mime/ext-mime-type resource-path))
-            (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
-            (assoc-in [:headers "Vary"] "Accept-Encoding"))))
+    (let [variant-path (compressed-path resource-path encoding)]
+      ;; `resource-response` returning nil is what proves the path resolves, so only
+      ;; a real file ever reaches `variant-etag` and grows its memo.
+      (some-> (response/resource-response variant-path)
+              (response/content-type (mime/ext-mime-type resource-path))
+              (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
+              (assoc-in [:headers "Vary"] "Accept-Encoding")
+              (assoc-in [:headers "ETag"] (variant-etag variant-path))))))
 
 (defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
@@ -93,29 +112,44 @@
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
 
-(defn- serves-the-clients-copy?
-  "True when the client's validator is exactly the one this build serves.
+(defn- parse-if-none-match
+  [header-value]
+  (into #{} (map str/trim) (str/split (or header-value "") #",")))
 
-   Every resource in a build carries that build's timestamp, so an exact match
-   means the client holds this build's copy. The ordered comparison HTTP defines
-   would also answer 304 when the client holds a copy *newer* than the file on
-   disk, which is what an instance serves after a downgrade: the client would
-   keep the newer build's resource and never be sent the one it should have."
+(defn- client-holds-this-resource?
+  "True when the client's `If-None-Match` names the exact bytes we would send."
   [request response]
-  (let [served (some-> (response/get-header response "Last-Modified") ring.time/parse-date)
-        held   (some-> (response/get-header request "if-modified-since") ring.time/parse-date)]
-    (boolean (and served held (= served held)))))
+  (when-let [etag (response/get-header response "ETag")]
+    (let [held (some-> (response/get-header request "if-none-match") str/trim)]
+      (or (= "*" held)
+          (contains? (parse-if-none-match held) etag)))))
 
-(defn- wrap-not-modified-for-this-build
-  "Answers a 304 only for a client that holds this build's copy of the resource."
+(defn- not-modified
+  [response]
+  (ring.io/close! (:body response))
+  (-> response
+      (assoc :status 304 :body nil)
+      (update :headers dissoc "Content-Length")))
+
+(defn- wrap-etag-validation
+  "Answers a 304 for a client whose `If-None-Match` names the bytes we would send.
+
+   The validator is the content hash and is compared for equality, so the answer
+   holds however the versions move. `If-Modified-Since` is deliberately not
+   consulted: it is compared as an ordered date, which also answers 304 when the
+   client holds a copy newer than the file on disk, and a downgraded instance
+   serves exactly that. The `Last-Modified` header stays on the response because
+   dropping it makes the security middleware substitute the time of the response."
   [handler]
   (letfn [(answer [response request]
-            (cond-> response
-              (serves-the-clients-copy? request response)
-              (not-modified/not-modified-response request)))]
+            (if (and (#{:get :head} (:request-method request))
+                     (= 200 (:status response))
+                     (client-holds-this-resource? request response))
+              (not-modified response)
+              response))]
     (fn
       ([request]
-       (-> (handler request) (answer request)))
+       (answer (handler request) request))
       ([request respond raise]
        (handler request (fn [response] (respond (answer response request))) raise)))))
 
@@ -129,7 +163,7 @@
    `no-cache, must-revalidate`, which obliges the client to ask every time;
    without this it has to be sent the file every time as well."
   [path {root :root}]
-  (wrap-not-modified-for-this-build
+  (wrap-etag-validation
    (compojure/GET (add-wildcard path) request
      (let [{{request-path :*} :route-params} request
            resource-path (str root "/" request-path)]

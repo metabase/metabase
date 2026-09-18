@@ -83,29 +83,37 @@
 
 (defn- get-static-asset
   "Fetches a file under `/app` through the real server, so the security middleware,
-  gzip and the not-modified handling all take part."
+  gzip and the validator handling all take part."
   ([] (get-static-asset 200 nil))
-  ([expected-status if-modified-since]
+  ([expected-status validators]
    (binding [client/*url-prefix* ""]
      (client/client-full-response
       :get expected-status static-asset-path
-      {:request-options
-       {:headers (cond-> {}
-                   if-modified-since (assoc "if-modified-since" if-modified-since))}}))))
+      {:request-options {:headers (or validators {})}}))))
 
 (deftest static-asset-revalidation-test
   (testing "an unhashed static asset is revalidated rather than cached outright"
     (let [response (get-static-asset)]
       (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
              (get-in response [:headers "Cache-Control"])))
-      (testing "and reports the time it was modified, not the time it was served"
-        (let [modified (get-in response [:headers "Last-Modified"])]
-          (is (some? modified))
+      (testing "and is validated by a strong hash of its bytes"
+        (let [etag (get-in response [:headers "ETag"])]
+          (is (re-matches #"\"[0-9a-f]{64}\"" etag))
           (testing "so a client that already holds it gets a body-less 304"
-            (let [not-modified (get-static-asset 304 modified)]
+            (let [not-modified (get-static-asset 304 {"if-none-match" etag})]
               (is (= 304 (:status not-modified)))
               (is (str/blank? (body-text (:body not-modified))))))
-          (testing "while a client holding an older copy is sent the file"
-            (let [stale (get-static-asset 200 "Tue, 03 Jul 2001 06:00:00 GMT")]
+          (testing "while a client holding different bytes is sent the file"
+            (let [stale (get-static-asset 200 {"if-none-match" "\"not-the-one\""})]
               (is (= 200 (:status stale)))
               (is (not (str/blank? (body-text (:body stale))))))))))))
+
+(deftest static-asset-is-never-validated-by-date-test
+  (testing "a date validator alone never produces a 304, so a downgrade replaces the client's copy"
+    (let [served (get-in (get-static-asset) [:headers "Last-Modified"])]
+      (is (some? served) "the header stays on the response")
+      (doseq [held [served "Fri, 01 Jan 2100 00:00:00 GMT"]]
+        (testing (str "if-modified-since " held)
+          (let [response (get-static-asset 200 {"if-modified-since" held})]
+            (is (= 200 (:status response)))
+            (is (not (str/blank? (body-text (:body response)))))))))))
