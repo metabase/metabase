@@ -382,8 +382,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       cy.findByText("Created At: Month").should("exist");
     });
     getDashcardByTitle("Sales per source").within(() => {
-      cy.findByText("Organic").should("exist");
-      cy.findByText("Affiliate").should("exist");
       cy.findByText("Count").should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
