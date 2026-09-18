@@ -114,16 +114,28 @@
   ;; every element is an identifier.
   #{:join :left-join :right-join :inner-join :full-join})
 
+(def ^:private expression-entry-clauses
+  "Identifier clauses where index 0 of an `[expr alias]` entry is an expression, so HoneySQL binds a
+  param there."
+  ;; Each of these formats `[[:param :k] :a]` as `? AS a` or `? a`. The table clauses bind it too --
+  ;; `FROM ? AS a` -- but a table cannot be a parameter, so the database rejects the statement, and
+  ;; refusing it here names the mistake instead. `:with` throws inside HoneySQL, and the DDL clauses
+  ;; format it as an identifier or inline the value.
+  #{:select :select-distinct :select-top :returning :partition-by})
+
 (declare marker-in-identifier-position?)
 
 (defn- marker-in-entry?
-  "Whether a marker sits in an identifier position of `entry`, one element of an identifier clause.
+  "Whether a marker sits in an identifier position of `entry`, one element of identifier `clause`.
 
   An entry is `expr`, or `[expr alias]`. HoneySQL tells those apart POSITIONALLY, not by shape, so
   only index 0 may be an expression -- everything after it is an alias, which is always an
   identifier. Checking by head shape instead let `[:t [:auto/param \"al\"]]` pass as though `:t`
-  headed an operator form, and the value was silently compiled to the identifier `param`."
-  [entry]
+  headed an operator form, and the value was silently compiled to the identifier `param`.
+
+  A marker directly at index 0 is bound, not dropped, in a clause in [[expression-entry-clauses]], so
+  it does not count there."
+  [clause entry]
   (cond
     ;; The entry IS a marker -- `:select [[:auto/param "n"]]`. Destructuring it below would read
     ;; `:auto/param` as the expression, so catch it before that.
@@ -131,7 +143,9 @@
     (not (sequential? entry)) (marker-in-identifier-position? entry)
     :else
     (let [[expr & aliases] entry]
-      (boolean (or (marker-in-identifier-position? expr)
+      (boolean (or (and (not (and (marker-form? expr)
+                                  (contains? expression-entry-clauses clause)))
+                        (marker-in-identifier-position? expr))
                    ;; An alias slot can only be a name. A marker anywhere in one is a mistake.
                    ;; A nested query map is not an alias -- `:with` pairs a name with a query --
                    ;; so those are scanned separately by [[query-maps]].
@@ -180,7 +194,7 @@
 
                   ;; A bare value is its own single entry -- `:update :some_table`.
                   :else [v])]
-    (first (filter marker-in-entry? entries))))
+    (first (filter #(marker-in-entry? clause %) entries))))
 
 (defn- check-marker-placement
   "Refuse a marker sitting in a clause that names columns or tables, in `query` or any subquery."

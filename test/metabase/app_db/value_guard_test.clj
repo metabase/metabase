@@ -123,3 +123,21 @@
                {:select [[[:exists {:select [[[:inline 1]]]
                                     :from   [[:content_translation]]
                                     :where  [:auto/param :locale "de"]}] :exists]]})))))
+
+(deftest ^:parallel marker-at-index-0-of-an-entry-test
+  (testing "a marker directly at index 0 of an [expr alias] entry is bound where that index is an expression"
+    ;; `{:select [[[:param :k] :a]]}` compiles to `SELECT ? AS a` -- the value is bound, not dropped.
+    (are [query] (nil? (#'value-guard/check-marker-placement query))
+      {:select [[[:auto/param 1] :a]] :from [:t]}
+      {:select-distinct [[[:auto/param 1] :a]] :from [:t]}
+      {:delete-from :t :returning [[[:auto/param 1] :a]]})
+    (is (= ["SELECT ? AS a FROM t" 1]
+           (formatted {:select [[[:auto/param 1] :a]] :from [:t]}))))
+  (testing "a marker at index 0 of a table entry is still refused"
+    ;; HoneySQL binds it -- `FROM ? AS a` -- but a table cannot be a parameter, so the statement
+    ;; fails at the database. Refusing here names the mistake instead.
+    (are [query] (= ::value-guard/marker-outside-value-slot
+                    (try (#'value-guard/check-marker-placement query) nil
+                         (catch clojure.lang.ExceptionInfo e (:type (ex-data e)))))
+      {:select [:*] :from [[[:auto/param "t"] :a]]}
+      {:select [:*] :from [:t] :join [[[:auto/param "u"] :a] [:= 1 1]]})))
