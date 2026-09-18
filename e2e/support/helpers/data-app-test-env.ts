@@ -57,13 +57,6 @@ export type DataAppTestEnv = {
   /** `/actions` page: the parameters the page passes to `execute()`. */
   actionParams?: Record<string, string | number>;
   /**
-   * `/model-detail` page: a model rendered by id. Loading the card itself is what
-   * makes `question.type()` read "model", so the Detail visualization's
-   * implicit-action menu can appear; a query over a model source reads as a
-   * plain question and never shows it.
-   */
-  modelId?: number;
-  /**
    * `/native-query` page: a hand-built native query the app renders through
    * `<StaticQuestion card={{ query }}>`. Data apps aren't allowed to run native
    * SQL (the backend rejects it for the `data-app` client), so the page exists to

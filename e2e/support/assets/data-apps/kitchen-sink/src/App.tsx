@@ -437,25 +437,7 @@ const ROUTES: Record<string, ComponentType> = {
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,
   "/throw": ThrowingPage,
-  "/model-detail": ModelDetail,
 };
-
-function ModelDetail() {
-  const { modelId } = getTestEnv();
-
-  return (
-    <div data-testid="data-app-model-detail" style={{ padding: 24 }}>
-      <h1>Model detail</h1>
-      <div style={{ height: 400 }}>
-        {modelId !== undefined ? (
-          <InteractiveQuestion questionId={modelId} />
-        ) : (
-          <div>…</div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function Shell() {
   const { pathname, navigate } = useDataAppLocation();
@@ -476,7 +458,6 @@ function Shell() {
         <DataAppLink to="/details">Details</DataAppLink>
         <DataAppLink to="/sandboxing">Sandbox</DataAppLink>
         <DataAppLink to="/isolation">Isolation</DataAppLink>
-        <DataAppLink to="/model-detail">Model detail</DataAppLink>
         <button
           type="button"
           data-testid="navigate-to-details"
