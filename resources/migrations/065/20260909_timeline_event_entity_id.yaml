@@ -13,7 +13,6 @@ databaseChangeLog:
                   remarks: NanoID used to identify the event across instances
                   constraints:
                     nullable: true
-                    unique: true
 
   - changeSet:
       id: v65.zvhbd7
@@ -40,3 +39,17 @@ databaseChangeLog:
             tableName: timeline_event
             columnName: entity_id
             columnDataType: char(21)
+
+  - changeSet:
+      id: v65.lpm4z3
+      author: havenchyk
+      comment: entity_id is unique on timeline events
+      changes:
+        - addUniqueConstraint:
+            tableName: timeline_event
+            columnNames: entity_id
+            constraintName: uq_timeline_event_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: timeline_event
+            constraintName: uq_timeline_event_entity_id
