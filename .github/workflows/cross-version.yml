@@ -4,6 +4,9 @@ on:
   workflow_call:
     inputs:
       digest:
+        type: string
+        required: false
+        default: ""
         description: "HEAD image digest. Ensures we test against the image built for the current commit."
 
   workflow_dispatch:
