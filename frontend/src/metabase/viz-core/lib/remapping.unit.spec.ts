@@ -1,4 +1,4 @@
-import type { DatasetData } from "metabase-types/api";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -80,6 +80,17 @@ describe("extractRemappedColumns", () => {
         [2, "Type B"],
       ]),
     );
+  });
+
+  it("does not throw when remapping is a JSON-serialized empty object", () => {
+    const data = remappedCategoryData();
+    data.cols[0] = createMockColumn({
+      ...data.cols[0],
+      // JSON.stringify(Map) is always {}; storybook/loki fixtures have this shape
+      remapping: {} as DatasetColumn["remapping"],
+    });
+
+    expect(() => extractRemappedColumns(data)).not.toThrow();
   });
 
   it("does not mutate the input column's remapping Map", () => {
