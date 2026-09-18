@@ -490,7 +490,7 @@ export const getBoxPlotModel = (
     settings,
     columnByDataKey,
     yAxisScaleTransforms,
-    cartesianSize == null ? undefined : labelValueFormatting === "compact",
+    hasResponsiveTicks ? labelValueFormatting === "compact" : undefined,
     hasResponsiveTicks,
   );
 

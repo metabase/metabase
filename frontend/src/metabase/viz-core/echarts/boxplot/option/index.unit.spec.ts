@@ -62,7 +62,7 @@ function setup({
     "graph.y_axis.axis_enabled": true,
     "graph.x_axis.axis_enabled": true,
     "graph.y_axis.auto_range": true,
-    "graph.label_value_formatting": "auto",
+    "graph.label_value_formatting": "compact",
     "graph.show_values": true,
     "graph.label_value_frequency": "all",
     "boxplot.show_values_mode": "all",
@@ -125,10 +125,19 @@ describe("responsive BoxPlot presentation", () => {
       );
       expect(
         model.seriesLabelsFormatters[model.seriesModels[0].dataKey]?.(1000),
-      ).toBe(responsive ? "1.0k" : "1,000");
+      ).toBe("1.0k");
       expect(model.leftAxisModel?.formatGoal(1000)).toBe("1,000");
     },
   );
+
+  it("keeps native large-axis formatting when data labels are hidden", () => {
+    const { model } = setup({
+      cartesianSize: "large",
+      settings: { "graph.show_values": false },
+    });
+
+    expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
+  });
 
   it("preserves native tick density on large boxplots", () => {
     const { option } = setup({ cartesianSize: "large" });
