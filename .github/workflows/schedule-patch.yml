@@ -18,11 +18,11 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: | # js
-            const autoPatchVersionsCount = Number('${{ vars.AUTO_PATCH_VERSIONS_COUNT }}') || 1;
+            const autoPatchVersionsCount = Number('${{ vars.AUTO_PATCH_VERSIONS_COUNT }}') || 0;
             const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
-            // [currentRelease, currentRelease - 1, ..., currentRelease - (autoPatchVersionsCount - 1)]
+            // [currentRelease, currentRelease - 1, ..., currentRelease - autoPatchVersionsCount]
             const majors = Array.from(
-              { length: autoPatchVersionsCount },
+              { length: autoPatchVersionsCount + 1 },
               (_, i) => currentRelease - i,
             );
 
