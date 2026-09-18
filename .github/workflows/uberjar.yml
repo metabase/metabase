@@ -14,6 +14,13 @@ on:
         type: string
         default: ''
         required: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. Leave it alone: it is how run-tests.yml
+          gates the jobs below, and `{}` means "no plan, run everything".
+        type: string
+        default: '{}'
+        required: false
   workflow_call:
     inputs:
       commit:
@@ -21,9 +28,18 @@ on:
         type: string
         default: ''
         required: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The `uberjar` workflow in it decides the
+          jobs below. Callers outside run-tests.yml leave it at `{}`, which
+          runs everything.
+        type: string
+        default: '{}'
+        required: false
 
 jobs:
   setup:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.uberjar.jobs.setup.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -88,7 +104,9 @@ jobs:
 
   build:
     needs: [setup]
-    if: ${{ needs.setup.outputs.build_editions != '[]' }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.uberjar.jobs.build.run) &&
+      needs.setup.outputs.build_editions != '[]' }}
     name: build (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20

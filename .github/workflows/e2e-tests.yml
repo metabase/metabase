@@ -3,27 +3,82 @@ name: E2E Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      specs:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `e2e-tests`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
         type: string
-        required: false
-        default: ""
+        default: '{}'
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.e2e-tests-result.outputs.ok }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
   cancel-in-progress: true
 
 jobs:
+  # Which specs to run is this workflow's own question, so it asks it here off
+  # its own diff rather than having the caller hand it an answer. The plan gates
+  # this to pull requests where narrowing is allowed at all; on a push, or when
+  # an override settled the run, the job is skipped, `specs` comes out empty and
+  # the full suite runs.
+  changed-specs:
+    name: Decide which specs to run
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-tests.jobs.changed-specs.run }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      specs: ${{ steps.pick.outputs.specs }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          # comma separated list of files
+          list-files: csv
+          filters: .github/file-paths.yaml
+      - name: Narrow to the specs the diff touched
+        id: pick
+        env:
+          # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
+          ALL_FILES: ${{ steps.changes.outputs.all_changed_files }}
+          SPEC_FILES: ${{ steps.changes.outputs.e2e_specs_files }}
+        run: | # sh
+          # Only when the diff is specs and nothing else can the run be narrowed
+          # to the specs it touched -- anything else in it could change how any
+          # spec behaves. Both lists come off the same diff in the same order,
+          # so equal strings mean the spec list is the whole diff.
+          if [ "$ALL_FILES" = "$SPEC_FILES" ]; then
+            echo "Running only the specs this diff touched: $SPEC_FILES"
+            echo "specs=$SPEC_FILES" >> "$GITHUB_OUTPUT"
+          else
+            echo "Diff is not specs alone -- running the full suite"
+            echo "specs=" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e-matrix-builder:
+    needs: [changed-specs]
+    # A skipped or failed `changed-specs` supplies no specs, so the suite runs
+    # in full.
+    if: >-
+      ${{ !cancelled() &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-tests.jobs.e2e-matrix-builder.run) }}
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
+      plan: ${{ inputs.plan }}
       chunks: 50
-      specs: ${{ inputs.specs }}
+      specs: ${{ needs.changed-specs.outputs.specs }}
 
   reset-e2e-test-comment:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-tests.jobs.reset-e2e-test-comment.run }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -58,13 +113,15 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-    if: |
-      !cancelled() && !inputs.skip
+    if: >-
+      ${{ !cancelled() &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-tests.jobs.e2e-tests.run) }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
     secrets: inherit
     with:
+      plan: ${{ inputs.plan }}
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
@@ -78,7 +135,9 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: >-
+      ${{ always() && !cancelled() &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-tests.jobs.collect-timings.run) }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -137,24 +196,25 @@ jobs:
 
   e2e-tests-result:
     needs:
+      # Every job the `e2e-tests` plan names, so the roll-up below can see each
+      # one's result.
+      - changed-specs
+      - e2e-matrix-builder
+      - reset-e2e-test-comment
       - e2e-tests
+      - collect-timings
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()
-    env:
-      E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Stub
-        if: ${{ needs.e2e-tests.result == 'skipped' }}
-        run: |
-          echo "Didn't run due to conditional filtering"
-      - name: Test results
-        if: ${{ needs.e2e-tests.result != 'skipped' }}
-        run: | # sh
-          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-
-          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
-            echo "E2E Tests failed"
-            exit 1
-          fi
+      - uses: actions/checkout@v6
+      - name: Roll the e2e results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
+        with:
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: e2e-tests

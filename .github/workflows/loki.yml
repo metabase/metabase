@@ -3,14 +3,24 @@ name: Loki Visual Regression Testing
 on:
   workflow_call:
     inputs:
-      skip:
-        description: "Skip the Loki visual tests."
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `loki` workflow in
+          it decides the jobs below. `{}` means there is no plan, and everything
+          runs.
+        type: string
+        default: '{}'
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
         type: string
         default: ""
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.loki-tests-result.outputs.ok }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-loki
@@ -18,7 +28,9 @@ concurrency:
 
 jobs:
   story-selection:
-    if: ${{ !inputs.skip && inputs.test-plan-artifact-id != '' }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.loki.jobs.story-selection.run) &&
+      inputs.test-plan-artifact-id != '' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -49,7 +61,9 @@ jobs:
     needs: story-selection
     # A missing job output compares equal to '0' in GitHub expressions,
     # so an empty selection is marked with a non-numeric value.
-    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.selection != 'empty' }}
+    if: >-
+      ${{ !cancelled() && (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.loki.jobs.visual-test.run) &&
+      needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -110,35 +124,22 @@ jobs:
 
   loki-tests-result:
     name: visual-test
-    needs: [story-selection, visual-test]
+    needs:
+      # Every job the `loki` plan names, so the roll-up below can see each
+      # one's result.
+      - story-selection
+      - visual-test
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check Loki job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      - name: Roll the Loki results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log('Some Loki jobs failed');
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-            process.exit(1);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: loki

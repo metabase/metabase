@@ -2,6 +2,14 @@ name: Embedding SDK Component Tests
 
 on:
   workflow_call:
+    inputs:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `embedding-sdk-component-tests`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
 
 env:
   DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
@@ -17,6 +25,7 @@ env:
 
 jobs:
   sdk-component-tests:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-component-tests.jobs.sdk-component-tests.run }}
     name: "SDK component tests (React ${{ matrix.react-version }})"
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
@@ -209,6 +218,7 @@ jobs:
              await core.summary.addRaw(summary).write();
 
   decide-target-ref:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-component-tests.jobs.decide-target-ref.run }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -233,6 +243,7 @@ jobs:
   sdk-component-tests-backward-compatibility:
     name: "SDK component tests (Backward compatibility)"
     needs: [decide-target-ref]
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.embedding-sdk-component-tests.jobs.sdk-component-tests-backward-compatibility.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     env:

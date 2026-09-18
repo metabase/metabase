@@ -29,6 +29,13 @@ on:
         description: Platforms the image is built for.
         type: string
         default: linux/amd64,linux/arm64
+      plan:
+        description: >-
+          The CI test plan, as JSON. The `containerize-jar` workflow in it
+          decides the jobs below. Release callers leave it at `{}`, which runs
+          everything.
+        type: string
+        default: '{}'
   workflow_dispatch:
     inputs:
       edition:
@@ -62,10 +69,19 @@ on:
         description: Platforms the image is built for.
         type: string
         default: linux/amd64,linux/arm64
+      plan:
+        description: >-
+          The CI test plan, as JSON. Leave it alone: `{}` means "no plan, run
+          everything".
+        type: string
+        default: '{}'
 
 jobs:
   containerize:
     name: containerize (${{ inputs.edition }})
+    if: >-
+      ${{ inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.containerize-jar.jobs.containerize.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     outputs:
@@ -163,6 +179,8 @@ jobs:
   verify-docker-pull-amd64:
     needs: containerize
     if: >-
+      (inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.containerize-jar.jobs.verify-docker-pull-amd64.run) &&
       inputs.release &&
       inputs.registry != 'ecr'
     name: verify-docker-pull-amd64 (${{ inputs.edition }})
@@ -186,6 +204,8 @@ jobs:
   verify-docker-pull-arm:
     needs: containerize
     if: >-
+      (inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.containerize-jar.jobs.verify-docker-pull-arm.run) &&
       inputs.release &&
       inputs.registry != 'ecr' &&
       contains(inputs.platforms, 'linux/arm64')

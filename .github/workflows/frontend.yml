@@ -3,24 +3,32 @@ name: Frontend
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      skip-lint:
-        type: boolean
-        default: false
-      skip-custom-viz:
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `frontend` workflow in
+          it decides the jobs below. `{}` means there is no plan, and everything
+          runs.
+        type: string
+        default: '{}'
       # ID of this run's test-plan.json artifact, or '' to run the full suite.
       test-plan-artifact-id:
         type: string
         default: ""
-      skip-ci-scripts:
-        type: boolean
-        default: false
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.fe-tests-result.outputs.ok }}
   workflow_dispatch:
     inputs:
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
+      # A hand-dispatched run gets no plan, so these are how you narrow one.
       skip:
         description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
         type: boolean
@@ -47,7 +55,9 @@ env:
 
 jobs:
   fe-lint:
-    if: ${{ !inputs.skip-lint }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.frontend.jobs.fe-lint.run) &&
+      !inputs.skip-lint }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -81,7 +91,9 @@ jobs:
         run: bun run lint-css
 
   fe-type-check:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.frontend.jobs.fe-type-check.run) &&
+      !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -96,7 +108,9 @@ jobs:
         name: Check types
 
   fe-tests-unit:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.frontend.jobs.fe-tests-unit.run) &&
+      !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -160,7 +174,9 @@ jobs:
           enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
   fe-tests-timezones:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.frontend.jobs.fe-tests-timezones.run) &&
+      !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -172,7 +188,7 @@ jobs:
 
   # No CLJS compile: the CI-script specs don't import app code.
   fe-tests-ci-scripts:
-    if: ${{ !inputs.skip-ci-scripts }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.frontend.jobs.fe-tests-ci-scripts.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -185,7 +201,9 @@ jobs:
   # The custom-viz package is an isolated Bun workspace under
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
-    if: ${{ !inputs.skip-custom-viz }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.frontend.jobs.fe-custom-viz.run) &&
+      !inputs.skip-custom-viz }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     defaults:
@@ -208,6 +226,8 @@ jobs:
 
   fe-tests-result:
     needs:
+      # Every job the `frontend` plan names, so the roll-up below can see each
+      # one's result.
       - fe-lint
       - fe-type-check
       - fe-tests-unit
@@ -217,33 +237,14 @@ jobs:
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check frontend job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      - name: Roll the frontend results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log('Some frontend jobs failed');
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-            process.exit(1);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: frontend

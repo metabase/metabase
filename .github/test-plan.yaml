@@ -1,0 +1,425 @@
+# TEST PLAN SYNTAX
+#  - overrides ALWAYS take precedence over workflow level settings
+#    - unless `ignore-overrides` is set for the specified run/skip block, then the listed overrides are ignored
+#      and run/skip resolution proceeds as normal. `ignore-overrides` can also be a glob to match multiple ids.
+#  - if workflow condition matches, THEN check job conditions. Workflow level conditions narrower than job
+#    conditions will skip those jobs.
+#  - default: `condition: all` for skip and run blocks for example: a label `skip-all` AND this is a PR == this job is skipped
+#  - optionally can specify `condition: any` in which case if any of label,
+#    event, branch, or path matches skip/run will execute
+#  - if run and skip both match, run ALWAYS takes precedence and the job/workflow will run
+#  - force-skip ALWAYS takes precedence over run and skips the job or workflow
+#  - for workflow jobs that call another workflow, a run/skip block can be set in the
+#    calling workflow's job block which determines if that workflow is called at all. This
+#    takes precedence over any of the called workflow's conditionals
+
+overrides:
+  - id: protected-branch-master
+    reason: master should test everything
+    run:
+      branch:
+        - master
+
+  - id: protected-branch-releases
+    reason: release branches should test everything
+    run:
+      branch:
+        - release-x.*
+
+  - id: force-run-label
+    reason: the ci:run-all label asks for everything
+    run:
+      labels:
+        - ci:run-all
+
+  - id: skip-label
+    reason: the ci:skip label holds the whole run back
+    skip:
+      labels:
+        - ci:skip
+
+workflows:
+  run-tests:
+    jobs:
+      should-run:
+        calls: should-run
+      upload-affected-tests-stats:
+        run:
+          # always & only run on PRs
+          ignore-overrides:
+            - protected-branch-*
+          event:
+            - pull_request
+      uberjar:
+        calls: uberjar
+      containerize:
+        calls: containerize-jar
+        run:
+          # don't push to Dockerhub for merge to release branches
+          ignore-overrides:
+            - protected-branch-releases
+          labels:
+            - build-docker-uberjar
+      e2e-cljs:
+        run:
+          paths:
+            - e2e_all
+      backend-tests:
+        calls: backend
+      semantic-search-tests:
+        calls: semantic-search
+      app-db-tests:
+        calls: app-db
+      driver-tests:
+        calls: drivers
+      frontend-tests:
+        calls: frontend
+      loki-tests:
+        calls: loki
+      e2e-tests:
+        calls: e2e-tests
+      sdk-tests:
+        calls: embedding-sdk
+      build-scripts-tests:
+        calls: build-scripts
+      bundle-size:
+        calls: bundle-size
+        run:
+          ignore-overrides:
+            - protected-branch-*
+          paths:
+            - frontend_sources
+          event:
+            - pull_request
+
+  should-run:
+    jobs:
+      frontend-test-plan:
+        run:
+          # always & only run on PRs
+          ignore-overrides:
+            - protected-branch-*
+          event:
+            - pull_request
+      static-viz:
+        skip:
+          ignore-overrides:
+            - protected-branch-*
+          event:
+            - pull_request
+          paths:
+            - backend_all
+
+  uberjar:
+    run:
+      condition: any
+      paths:
+        - backend_all
+        - frontend_all
+        - e2e_all
+    jobs:
+      setup:
+      build:       
+
+  containerize-jar:
+    run:
+      condition: any
+      paths:
+        - backend_all
+        - frontend_all
+        - e2e_all
+    jobs:
+      containerize:
+      verify-docker-pull-amd64:
+        force-skip:
+          event:
+            - pull_request
+      verify-docker-pull-arm:
+        force-skip:
+          event:
+            - pull_request
+
+  backend:
+    run:
+      condition: any
+      paths:
+        - backend_all
+        - project_backend_checks
+        - project_migration_checks
+        - project_ratchet_checks
+    jobs:
+      # TODO: likely should add support for gating `steps` as well
+      project-checks:
+        run:
+          condition: any
+          paths:
+            - project_backend_checks
+            - project_migration_checks
+            - project_ratchet_checks
+      project-tests:
+        run:
+          condition: any
+          paths:
+            - project_backend_checks
+            - project_migration_checks
+            - project_ratchet_checks
+      be-linter-clj-kondo:
+        run:
+          paths:
+            - backend_all
+      be-linter-eastwood:
+        run:
+          paths:
+            - backend_all
+      be-linter-eastwood-test:
+        run:
+          condition: any
+          branch:
+            - master
+            - release-x.*
+          labels:
+            - ci:run-all
+      be-linter-eastwood-test-changed:
+        run:
+          ignore-overrides:
+            - protected-branch-*
+          paths:
+            - backend_all
+          event:
+            - pull_request
+      be-tests:
+        run:
+          paths:
+            - backend_all
+      be-check:
+        run:
+          paths:
+            - backend_all
+      be-cljfmt:
+        run:
+          paths:
+            - backend_all
+
+  semantic-search:
+    run:
+      paths:
+        - backend_all
+    jobs:
+      semantic-search-tests-h2:
+        run:
+          labels:
+            - ci:run-semantic-search-tests
+      semantic-search-tests-mariadb:
+        run:
+          labels:
+            - ci:run-semantic-search-tests
+      semantic-search-tests-mysql:
+        run:
+          labels:
+            - ci:run-semantic-search-tests
+      # TODO: find a better way to conditionally run a part of a matrix, currently suboptimal
+      semantic-search-tests-postgres:
+      semantic-search-tests-appdb-mode:
+        run:
+          labels:
+            - ci:run-semantic-search-tests
+
+  app-db:
+    run:
+      paths:
+        - backend_all
+    jobs:
+      app-db-matrix:
+      be-tests-mariadb:
+      be-tests-mysql:
+      be-tests-postgres:
+
+  drivers:
+    run:
+      paths:
+        - backend_all
+    jobs:
+      determine-driver-skips:
+      be-tests-athena-ee:
+      be-tests-bigquery-cloud-sdk-ee:
+      be-tests-bigquery-transforms-python-ee:
+      be-tests-clickhouse-ee:
+      be-tests-druid-jdbc-ee:
+      be-tests-databricks-ee:
+      be-tests-h2:
+      be-tests-h2-oss:
+      be-tests-mysql-mariadb:
+      be-tests-mongo:
+      be-tests-mongo-ssl:
+      be-tests-mongo-sharded-cluster-ee:
+      be-tests-oracle:
+      be-tests-postgres:
+      be-tests-presto-jdbc-ee:
+      be-tests-redshift-ee:
+      be-tests-snowflake-ee:
+      be-tests-sparksql-ee:
+      be-tests-sqlite-ee:
+      be-tests-sqlserver:
+      login-to-ecr:
+      be-tests-vertica-ee:
+
+  frontend:
+    run:
+      condition: any
+      paths:
+        - frontend_all
+        - e2e_all
+        - ci_scripts
+        - custom_viz_all
+    jobs:
+      fe-lint:
+        run:
+          condition: any
+          paths:
+            - frontend_all
+            - e2e_all
+      fe-type-check:
+        run:
+          paths:
+            - frontend_all
+      fe-tests-unit:
+        run:
+          paths:
+            - frontend_all
+      fe-tests-timezones:
+        run:
+          paths:
+            - frontend_all
+      fe-tests-ci-scripts:
+        run:
+          paths:
+            - ci_scripts
+      fe-custom-viz:
+        run:
+          paths:
+            - custom_viz_all
+
+  loki:
+    run:
+      paths:
+        - frontend_loki_all
+    jobs:
+      story-selection:
+      visual-test:
+
+  e2e-tests:
+    run:
+      paths:
+        - e2e_all
+    jobs:
+      changed-specs:
+        run:
+          # only & always run on PRs
+          ignore-overrides:
+            - protected-branch-*
+            - force-run-label
+          event:
+            - pull_request
+        force-skip:
+          labels:
+            - ci:run-all
+      e2e-matrix-builder:
+        calls: e2e-matrix-builder
+      reset-e2e-test-comment:
+        run:
+          # only & always run on PRs
+          ignore-overrides:
+            - protected-branch-*
+          event:
+            - pull_request
+      e2e-tests:
+        calls: e2e-test
+      collect-timings:
+        run:
+          branch:
+            - master
+
+  e2e-matrix-builder:
+    jobs:
+      build-matrix:
+
+  e2e-test:
+    jobs:
+      e2e-tests:
+
+  embedding-sdk:
+    run:
+      condition: any
+      paths:
+        - embedding_sdk_components
+        - frontend_sources
+        - embedding_documentation
+        - embedding_sdk_ci
+        - embedding_sdk_host_sample_apps
+    jobs:
+      build-sdk-package:
+        run:
+          condition: any
+          paths:
+            - embedding_sdk_components
+            - frontend_sources
+            - embedding_documentation
+            - embedding_sdk_ci
+            - embedding_sdk_host_sample_apps
+      embedding-sdk-cli-snippets-type-check:
+        run:
+          paths:
+            - frontend_sources
+      embedding-sdk-docs-snippets-type-check:
+        run:
+          paths:
+            - embedding_documentation
+      embedding-sdk-api-documentation-generation-validation:
+        run:
+          paths:
+            - frontend_sources
+      embedding-sdk-component-tests:
+        calls: embedding-sdk-component-tests
+        run:
+          paths:
+            - embedding_sdk_components
+      not-required-embedding-sdk-apps-compatibility-tests:
+        calls: embedding-sdk-host-sample-apps-tests
+        run:
+          paths:
+            - embedding_sdk_host_sample_apps
+
+  embedding-sdk-component-tests:
+    jobs:
+      sdk-component-tests:
+      decide-target-ref:
+      sdk-component-tests-backward-compatibility:
+
+  embedding-sdk-host-sample-apps-tests:
+    jobs:
+      get-sample-apps-data:
+      e2e-sample-apps-tests:
+      e2e-shoppy-tests:
+        run:
+          branch:
+            - master
+      e2e-shoppy-synthetic-tests:
+        run:
+          branch:
+            - master
+      e2e-host-apps-tests:
+
+  build-scripts:
+    jobs:
+      test-embedder-plugin:
+        run:
+          paths:
+            - embedder_plugin
+      test-build-scripts:
+        run:
+          paths:
+            - build_scripts
+
+  bundle-size:
+    jobs:
+      bundle-size-check:
