@@ -55,13 +55,26 @@
 
 (def ^:private disallowed-additional-opts
   "JDBC connection properties that are not needed to connect to a warehouse and are rejected for every
-  SQL-JDBC driver. Matched case-insensitively against the raw `additional-options` string."
-  #"(?i)(?:socketFactory|sslfactory|sslhostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile)")
+  SQL-JDBC driver. Matched case-insensitively as substrings of the raw `additional-options` string, so a token here
+  also catches its longer spellings (`socketFactory` covers `socketFactoryClass`, `socketfactoryname`,
+  `sslsocketfactoryname`; `hostnameverifier` covers `sslhostnameverifier`).
+
+  These are all properties whose value a JDBC driver loads and instantiates as a Java class -- a no-arg constructor
+  and/or static initializer runs inside the Metabase process -- which is arbitrary-class-instantiation leading to
+  code execution when a gadget is on the classpath. None is needed to reach a data warehouse."
+  #"(?i)(?:socketFactory|sslfactory|hostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile|queryInterceptors|dnsResolver)")
+
+(defn reject-dangerous-additional-options!
+  "Throw if `details` name a JDBC connection property on the shared SQL-JDBC denylist. Drivers that override
+  `validate-db-details!` must call this themselves -- a multimethod override replaces the `:sql-jdbc` body rather
+  than extending it, so the shared denylist does not otherwise reach them."
+  [details]
+  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
+    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
 
 (defmethod driver/validate-db-details! :sql-jdbc
   [_driver details]
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+  (reject-dangerous-additional-options! details))
 
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]

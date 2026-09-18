@@ -115,7 +115,17 @@
                  "sslhostnameverifier=a.b.C"
                  "sslpasswordcallback=a.b.C"
                  "xmlFactoryFactory=a.b.C"
-                 "loggerFile=a/b"]]
+                 "loggerFile=a/b"
+                 ;; class-instantiation sinks on drivers that inherit this method:
+                 "queryInterceptors=a.b.C"   ; presto-jdbc
+                 "dnsResolver=a.b.C"         ; starburst / trino
+                 "hostnameverifier=a.b.C"    ; vertica (bare, not just the ssl-prefixed form)
+                 "socketfactoryname=a.b.C"   ; vertica
+                 "sslsocketfactoryname=a.b.C" ; vertica
+                 "socketFactoryClass=a.b.C"  ; sqlserver-style spelling
+                 ;; matching is case-insensitive
+                 "SOCKETFACTORY=a.b.C"
+                 "DnsResolver=a.b.C"]]
       (testing opt
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"dangerous"

@@ -230,9 +230,10 @@
   #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options]}]
+  [_driver {:keys [host additional-options] :as details}]
   (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match}))))
+    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
+  (sql-jdbc/reject-dangerous-additional-options! details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]
