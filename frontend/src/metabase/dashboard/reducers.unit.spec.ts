@@ -51,6 +51,7 @@ describe("dashboard reducers", () => {
       sidebar: { props: {} },
       timelineEvents: {
         overrides: {},
+        enabledByDashCard: {},
         selection: null,
         hasTrackedEventsShown: false,
       },
@@ -485,6 +486,7 @@ describe("dashboard reducers", () => {
       });
       expect(state.timelineEvents).toEqual({
         overrides: {},
+        enabledByDashCard: {},
         selection: null,
         hasTrackedEventsShown: false,
       });

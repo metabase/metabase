@@ -42,6 +42,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   sidebar: { props: {} },
   timelineEvents: {
     overrides: {},
+    enabledByDashCard: {},
     selection: null,
     hasTrackedEventsShown: false,
   },

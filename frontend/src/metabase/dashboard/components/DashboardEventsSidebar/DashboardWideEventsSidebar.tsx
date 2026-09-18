@@ -7,6 +7,7 @@ import {
   getDashCardSelectedTimelineEventIds,
   getDashboardTimelineEventsAggregate,
   getTimelineEventsDashCardIds,
+  getTimelineEventsDashCardXAxes,
 } from "metabase/dashboard/timeline-events";
 import { useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
@@ -18,6 +19,7 @@ export function DashboardWideEventsSidebar() {
   const { closeSidebar } = useDashboardContext();
   const timelines = useSelector(getTransformedTimelines);
   const dashcardIds = useSelector(getTimelineEventsDashCardIds);
+  const xAxes = useSelector(getTimelineEventsDashCardXAxes);
   const { visibleEventIds, partiallyVisibleEventIds } = useSelector(
     getDashboardTimelineEventsAggregate,
   );
@@ -41,6 +43,7 @@ export function DashboardWideEventsSidebar() {
           visibleEventIds={visibleEventIds}
           partiallyVisibleEventIds={partiallyVisibleEventIds}
           selectedEventIds={selectedEventIds}
+          xAxes={xAxes}
         />
       )}
     </Sidebar>
