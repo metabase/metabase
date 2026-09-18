@@ -118,18 +118,25 @@
   via `task-id` as specs are produced; pass nil for `task-id` to serialize without progress reporting
   (e.g. for a dry-run merge preview).
 
+  `stream` is traversed exactly once. Progress needs a denominator: pass `:total` (see
+  [[metabase-enterprise.remote-sync.spec/exportable-entity-count]]) to keep an uncounted stream such as the
+  extraction eduction streaming; without it an uncounted stream is realized first.
+
   Throws Exception if any entity in the stream is an Exception instance."
-  [stream task-id]
-  (let [opts (storage-context)
-        stream-count (bounded-count 10000 stream)]
+  [stream task-id & {:keys [total]}]
+  (let [opts   (storage-context)
+        stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
+        total  (or total (when task-id (count stream)))
+        report (if (and task-id (pos? total))
+                 (fn [n]
+                   (remote-sync.task/update-progress! task-id (-> n (/ total) (min 1) (* 0.65) (+ 0.3))))
+                 (constantly nil))]
     (into []
           (map-indexed (fn [idx entity]
                          (when (instance? Exception entity)
                            (throw entity))
                          (let [spec (entity->file-spec opts entity)]
-                           (when task-id
-                             (remote-sync.task/update-progress!
-                              task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))
+                           (report (inc idx))
                            spec)))
           stream)))
 
@@ -150,19 +157,19 @@
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
   `:force-push-casualties` (remote content a force push would discard; see
-  [[remote-sync.merge/force-push-casualties]]):
+  [[remote-sync.merge/force-push-casualties]]), via [[remote-sync.merge/merge-with-casualties]]:
   - `base-snapshot` - the last successfully synced state (the merge base)
   - `stream`        - the local state to serialize (ours)
   - `snapshot`      - the current remote tip (theirs)
 
   `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
-  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]."
-  [stream snapshot base-snapshot task-id]
-  (let [ours   (serialize-specs stream task-id)
+  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` is passed
+  through to [[serialize-specs]]."
+  [stream snapshot base-snapshot task-id & {:keys [total]}]
+  (let [ours   (serialize-specs stream task-id :total total)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (assoc (remote-sync.merge/three-way-merge base ours theirs)
-           :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))))
+    (remote-sync.merge/merge-with-casualties base ours theirs)))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
