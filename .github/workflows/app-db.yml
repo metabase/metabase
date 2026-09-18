@@ -55,7 +55,8 @@ jobs:
   # Tier 1: whether the diff touches anything this suite tests. Tier 0 (the global
   # force-run / force-skip overrides) stays in run-tests.yml -- a force-skip never
   # calls this workflow at all, and the two ways of saying "run everything" skip the
-  # diff outright.
+  # diff outright. The gate below then reads "run unless the filter said no", so a
+  # skipped diff, an unknown filter or a malformed verdict all fail open.
   files-changed:
     name: Detect changed files
     if: ${{ !inputs.force-run && github.event_name != 'workflow_dispatch' }}
@@ -74,10 +75,7 @@ jobs:
 
   app-db-matrix:
     needs: files-changed
-    if: >-
-      ${{ !cancelled() &&
-      (needs.files-changed.result == 'skipped' ||
-      fromJSON(needs.files-changed.outputs.changes).backend_all == 'true') }}
+    if: ${{ !cancelled() && fromJSON(needs.files-changed.outputs.changes || '{}').backend_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions

@@ -67,8 +67,6 @@ jobs:
       embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
-      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
-      ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
       project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
       project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
@@ -290,29 +288,14 @@ jobs:
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   frontend-tests:
-    needs: [should-run, files-changed, create-test-plan]
-    if: |
-      !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.files-changed.result == 'success')
+    needs: [should-run, create-test-plan]
+    if: ${{ !cancelled() && needs.should-run.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' }}
+      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
-      skip-lint: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
-      skip-custom-viz: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.custom_viz_all != 'true' }}
-      skip-ci-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.ci_scripts != 'true' }}
 
   loki-tests:
     needs: [should-run, files-changed, create-test-plan]
