@@ -8,9 +8,9 @@ import type { GroupId, GroupListQuery } from "metabase-types/api";
 
 import type { CascadeValue, MappingsType } from "./types";
 
-/** Rebuilds in place so a renamed mapping keeps its position in the list */
 export const EMPTY_MAPPINGS: MappingsType = {};
 
+/** Rebuilds in place so a renamed mapping keeps its position in the list */
 export function withMappingEntry(
   mappings: MappingsType,
   originalName: string | null,

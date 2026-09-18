@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type React from "react";
 import { useId, useState } from "react";
+import { t } from "ttag";
 
 import {
   Accordion,
@@ -96,6 +97,8 @@ type SwitchSettingsSectionProps = {
   switchDisabled?: boolean;
   // holds the switch while its write is in flight, staying focusable so a keyboard user keeps their place
   switchBusy?: boolean;
+  // the env var that owns the value, which locks the switch and is named under the description
+  lockedEnvName?: string;
   onChange: (checked: boolean) => void;
   children?: React.ReactNode;
 } & BoxProps;
@@ -109,13 +112,14 @@ export function SwitchSettingsSection({
   disabled = false,
   switchDisabled = false,
   switchBusy = false,
+  lockedEnvName,
   onChange,
   children,
   ...boxProps
 }: SwitchSettingsSectionProps) {
   const inputId = useId();
   const descriptionId = useId();
-  const isSwitchLocked = disabled || switchDisabled;
+  const isSwitchLocked = disabled || switchDisabled || lockedEnvName != null;
 
   const handleChange = (nextChecked: boolean) => {
     // aria-disabled keeps the switch focusable, so it cannot block the event on its own
@@ -144,10 +148,9 @@ export function SwitchSettingsSection({
             <Text
               component="label"
               htmlFor={inputId}
-              className={cx(
-                S.TitleLabel,
-                (isSwitchLocked || switchBusy) && S.DisabledTitleLabel,
-              )}
+              className={
+                isSwitchLocked || switchBusy ? undefined : S.TitleLabel
+              }
               inherit
             >
               {title}
@@ -158,6 +161,12 @@ export function SwitchSettingsSection({
             <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
               {description}
             </Text>
+            {lockedEnvName != null && (
+              <Text
+                c="text-secondary"
+                mt="sm"
+              >{t`Using ${lockedEnvName}`}</Text>
+            )}
             {note}
           </Box>
         </Box>

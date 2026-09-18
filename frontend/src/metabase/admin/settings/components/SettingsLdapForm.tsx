@@ -3,6 +3,7 @@ import { c, t } from "ttag";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
+import { SettingsGroupMappingSection } from "metabase/admin/settings/auth/components/GroupMappings";
 import {
   getDefaultPlaceholder,
   getExtraFormFieldProps,
@@ -40,8 +41,6 @@ import type {
 } from "metabase-types/api";
 
 import { useUpdateLdapMutation } from "../api/ldap";
-
-import { LdapGroupMappingSection } from "./LdapGroupMappingSection";
 
 // the membership filter is hidden while group mapping is off, so its check must not block the page then
 const getLdapSchema = (isGroupMappingOn: boolean) => {
@@ -287,7 +286,15 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </CollapsibleSettingsSection>
-              <LdapGroupMappingSection
+              <SettingsGroupMappingSection
+                syncSettingKey="ldap-group-sync"
+                mappingsSettingKey="ldap-group-mappings"
+                description={t`Automatically assign people to ${applicationName} groups based on their LDAP group membership`}
+                // LDAP users are never tenants, so tenant groups stay out of the picker
+                tenancy="internal"
+                nameLabel={t`LDAP group name`}
+                // mapping names are group DNs, which the backend validates on write
+                namePlaceholder="cn=people,ou=groups,dc=example,dc=org"
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
                 onToggle={(enabled) => {
@@ -318,7 +325,7 @@ export const SettingsLdapForm = () => {
                   )}
                 />
                 <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
-              </LdapGroupMappingSection>
+              </SettingsGroupMappingSection>
               <Flex justify="end" gap="md">
                 <Box>
                   <FormErrorMessage />

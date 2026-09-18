@@ -4,27 +4,21 @@ import { t } from "ttag";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+import type { GroupId } from "metabase-types/api";
 
-import type { DeleteMappingModalValueType, GroupIds } from "../types";
+import type { DeleteMappingModalValueType } from "../types";
 
 export type DeleteGroupMappingModalProps = {
-  name: string;
-  groupIds: GroupIds;
+  groupIds: GroupId[];
   // names of the mapped groups that clearing leaves alone
-  keptOnClear?: string[];
+  keptOnClear: string[];
   // names of the mapped groups that deleting leaves alone
-  keptOnDelete?: string[];
+  keptOnDelete: string[];
   // an extra consequence the caller wants spelled out, shown under the lead text
   note?: string;
-  onConfirm: (
-    value: DeleteMappingModalValueType,
-    groupIds: GroupIds,
-    name: string,
-  ) => void;
+  onConfirm: (value: DeleteMappingModalValueType) => void;
   onHide: () => void;
 };
-
-const NO_GROUPS: string[] = [];
 
 function getKeptNote(names: string[]): string | null {
   if (names.length === 0) {
@@ -37,10 +31,9 @@ function getKeptNote(names: string[]): string | null {
 }
 
 export const DeleteGroupMappingModal = ({
-  name,
   groupIds,
-  keptOnClear = NO_GROUPS,
-  keptOnDelete = NO_GROUPS,
+  keptOnClear,
+  keptOnDelete,
   note,
   onConfirm,
   onHide,
@@ -59,7 +52,7 @@ export const DeleteGroupMappingModal = ({
   };
 
   const handleConfirm = () => {
-    onConfirm(value, groupIds, name);
+    onConfirm(value);
   };
 
   const submitButtonLabels: Record<DeleteMappingModalValueType, string> = {

@@ -6,36 +6,29 @@ import {
   useDeletePermissionsGroupMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import type { GroupId } from "metabase-types/api";
 
-import type {
-  CascadeValue,
-  DeleteMappingModalValueType,
-  GroupIds,
-} from "./types";
+import type { CascadeValue, DeleteMappingModalValueType } from "./types";
 import type { GroupMappingsState } from "./use-group-mappings";
 import { type GroupLookup, withoutGroups, withoutMapping } from "./utils";
 
 type MappingCascade = {
   value: CascadeValue;
-  groupIds: GroupIds;
+  groupIds: GroupId[];
 };
 
 type CascadeOutcome = {
-  deletedIds: GroupIds;
+  deletedIds: GroupId[];
   failureCount: number;
 };
 
 export type MappingDeletionState = {
   target: string | null;
-  targetGroupIds: GroupIds;
+  targetGroupIds: GroupId[];
   isDeleting: boolean;
   requestDelete: (name: string) => void;
   cancelDelete: () => void;
-  confirmDelete: (
-    value: DeleteMappingModalValueType,
-    groupIds: GroupIds,
-    name: string,
-  ) => Promise<void>;
+  confirmDelete: (value: DeleteMappingModalValueType) => Promise<void>;
 };
 
 export function useMappingDeletion({
@@ -75,7 +68,7 @@ export function useMappingDeletion({
     );
     const failures = results.filter((result) => result.status === "rejected");
     failures.forEach((failure) => console.error(failure.reason));
-    let deletedIds: GroupIds = [];
+    let deletedIds: GroupId[] = [];
     if (cascade.value === "delete") {
       deletedIds = cascade.groupIds.filter(
         (_groupId, index) => results[index].status === "fulfilled",
@@ -126,11 +119,12 @@ export function useMappingDeletion({
     });
   };
 
-  const confirmDelete = async (
-    value: DeleteMappingModalValueType,
-    groupIds: GroupIds,
-    name: string,
-  ) => {
+  const confirmDelete = async (value: DeleteMappingModalValueType) => {
+    if (target == null) {
+      return;
+    }
+    const name = target;
+    const groupIds = targetGroupIds;
     setTarget(null);
     const cascade =
       value === "nothing"

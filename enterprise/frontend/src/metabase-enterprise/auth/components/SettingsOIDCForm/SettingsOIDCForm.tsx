@@ -47,8 +47,7 @@ import {
   DEFAULT_LAST_NAME_ATTRIBUTE,
   DEFAULT_SCOPES,
 } from "./constants";
-
-type OidcGroupSync = NonNullable<CustomOidcConfig["group-sync"]>;
+import { type OidcGroupSync, toGroupSync } from "./group-sync";
 
 function getOidcFormSchema() {
   return Yup.object({
@@ -140,7 +139,7 @@ function providerToFormValues(
 
 function formValuesToProvider(
   values: OIDCFormValues,
-  groupSync: OidcGroupSync | undefined,
+  groupSync: Partial<OidcGroupSync> | undefined,
 ): Partial<CustomOidcConfig> {
   const scopes = values.scopes
     ? values.scopes
@@ -169,11 +168,9 @@ function formValuesToProvider(
     enabled: true,
     "attribute-map": attributeMap,
     // the switch and the mappings save on their own, so the form carries their latest saved state next to the attribute
-    "group-sync": {
-      enabled: groupSync?.enabled ?? false,
+    "group-sync": toGroupSync(groupSync, {
       "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
-      "group-mappings": groupSync?.["group-mappings"] ?? {},
-    },
+    }),
   };
 
   if (values["client-secret"]) {
@@ -322,7 +319,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="okta"
                     required
-                    disabled={existingProvider != null}
+                    disabled={isConfigured}
                     readOnly={isLocked}
                   />
                   <FormTextInput
@@ -456,11 +453,7 @@ export function SettingsOIDCForm() {
                   <FormSubmitButton
                     // a card write still in flight would be overwritten by this save
                     disabled={!dirty || groupSyncWriter.isSaving}
-                    label={
-                      existingProvider && isEnabled
-                        ? t`Save changes`
-                        : t`Save and enable`
-                    }
+                    label={isEnabled ? t`Save changes` : t`Save and enable`}
                     variant="filled"
                   />
                 )}

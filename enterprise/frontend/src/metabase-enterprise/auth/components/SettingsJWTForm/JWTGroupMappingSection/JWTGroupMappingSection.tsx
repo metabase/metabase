@@ -33,9 +33,6 @@ export function JWTGroupMappingSection({
   const groupLookup = useGroupLookup();
   const groupMapping = useGroupMappingSettings();
   const modeSwitch = useGroupMappingMode(groupMapping);
-  // a settings refetch still in flight could overwrite a new write, so the section waits for it too
-  const isWriting =
-    groupMapping.isSaving || groupMapping.isAdminSettingsFetching;
 
   // saving a mapping always turns sync on, since a mapping is only meaningful while it is
   const editorStore: GroupMappingsState = {
@@ -65,7 +62,11 @@ export function JWTGroupMappingSection({
     groupLookup,
     lastMappingDeletedMessage: t`Mapping deleted and group mapping turned off`,
   });
-  const isBusy = isWriting || deletion.isDeleting;
+  // a settings refetch still in flight could overwrite a new write, so the section waits for it too
+  const isBusy =
+    groupMapping.isSaving ||
+    groupMapping.isAdminSettingsFetching ||
+    deletion.isDeleting;
 
   const isLocked = lockedEnvNames.length > 0;
   const isReadOnly = isLocked || !isServerConfigured;
@@ -102,10 +103,9 @@ export function JWTGroupMappingSection({
         )}
       </Flex>
 
-      {isLocked &&
-        lockedEnvNames.map((envName) => (
-          <Text key={envName} c="text-secondary">{t`Using ${envName}`}</Text>
-        ))}
+      {lockedEnvNames.map((envName) => (
+        <Text key={envName} c="text-secondary">{t`Using ${envName}`}</Text>
+      ))}
 
       {modeSwitch.mode === "automatic" && (
         <Text c="text-secondary">
@@ -114,28 +114,22 @@ export function JWTGroupMappingSection({
       )}
 
       {modeSwitch.mode === "manual" && (
-        <Stack gap="sm">
-          {!modeSwitch.hasMappings && editor.draft == null && !isReadOnly && (
-            <Text c="text-secondary">
-              {t`Add at least one mapping to use manual group mapping`}
-            </Text>
-          )}
-          <GroupMappingList
-            mappings={groupMapping.mappings}
-            groupLookup={groupLookup}
-            editor={editor}
-            deletion={deletion}
-            readOnly={isReadOnly}
-            disabled={isBusy}
-            nameLabel={t`JWT group name`}
-            namePlaceholder={t`Enter JWT group...`}
-            deleteNote={
-              isLastMapping
-                ? t`This is the last mapping, so group mapping will be turned off.`
-                : undefined
-            }
-          />
-        </Stack>
+        <GroupMappingList
+          mappings={groupMapping.mappings}
+          groupLookup={groupLookup}
+          editor={editor}
+          deletion={deletion}
+          readOnly={isReadOnly}
+          disabled={isBusy}
+          nameLabel={t`JWT group name`}
+          namePlaceholder={t`Enter JWT group...`}
+          emptyMessage={t`Add at least one mapping to use manual group mapping`}
+          deleteNote={
+            isLastMapping
+              ? t`This is the last mapping, so group mapping will be turned off.`
+              : undefined
+          }
+        />
       )}
 
       <ConfirmModal

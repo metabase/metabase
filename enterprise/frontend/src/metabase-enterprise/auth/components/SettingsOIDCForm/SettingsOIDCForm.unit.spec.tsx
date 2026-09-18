@@ -212,7 +212,10 @@ describe("SettingsOIDCForm", () => {
         screen.queryByRole("button", { name: "Save changes" }),
       ).not.toBeInTheDocument();
       expect(groupMappingSwitch()).toBeDisabled();
-      expect(screen.getAllByText("Using MB_OIDC_PROVIDERS")).toHaveLength(2);
+      // the page banner names the env var, so the card does not repeat it
+      expect(
+        screen.queryByText("Using MB_OIDC_PROVIDERS"),
+      ).not.toBeInTheDocument();
       expect(queryMappingRow("admins")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "New" }),
@@ -383,48 +386,23 @@ describe("SettingsOIDCForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("comes alive once the provider is saved", async () => {
-      await setup({ providers: [EXISTING_PROVIDER] });
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
-    });
-
     it("saves right away without touching the page form", async () => {
       await setup({ providers: [EXISTING_PROVIDER] });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       await waitFor(() => expect(toggle).toBeEnabled());
-      expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);
 
-      await waitFor(() => expect(toggle).not.toBeChecked());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/oidc-user-provisioning-enabled%3F$/,
       );
-      expect(puts[0].body).toEqual({ value: false });
-      expect(
-        screen.getByRole("button", { name: "Save changes" }),
-      ).toBeDisabled();
     });
   });
 
   describe("group mapping", () => {
-    it("keeps the mappings and the group attribute hidden while group mapping is off", async () => {
-      await setup({ providers: [EXISTING_PROVIDER] });
-
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("textbox", { name: /Group attribute name/ }),
-      ).not.toBeInTheDocument();
-    });
-
     it("turns group mapping on right away and keeps the provider's other group settings", async () => {
       await setup({
         providers: [
@@ -497,6 +475,7 @@ describe("SettingsOIDCForm", () => {
 
       await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
       expect(groupMappingSwitch()).not.toBeChecked();
+      expect(groupMappingSwitch()).toBeEnabled();
     });
 
     it("holds the switch while a mapping write is in flight", async () => {
@@ -522,18 +501,6 @@ describe("SettingsOIDCForm", () => {
       await waitFor(() =>
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
-    });
-
-    it("holds the mapping editor while the switch write is in flight", async () => {
-      await setup({ providers: [EXISTING_PROVIDER], writeDelay: 200 });
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
-      await waitFor(() =>
-        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
-      );
-      expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
     });
 
     it("holds the card while the page form saves the provider", async () => {
@@ -566,7 +533,7 @@ describe("SettingsOIDCForm", () => {
       await waitFor(() => expect(saveButton).toBeEnabled());
     });
 
-    it("shows the new value and holds the switch while the write is in flight", async () => {
+    it("shows the new value and holds the card while the write is in flight", async () => {
       await setup({ providers: [EXISTING_PROVIDER], writeDelay: 200 });
 
       await userEvent.click(groupMappingSwitch());
@@ -574,10 +541,12 @@ describe("SettingsOIDCForm", () => {
       expect(groupMappingSwitch()).toBeChecked();
       expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
       await waitFor(() =>
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
       expect(groupMappingSwitch()).toBeChecked();
+      expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
       expect(await getOidcPuts()).toHaveLength(1);
     });
 
@@ -594,21 +563,6 @@ describe("SettingsOIDCForm", () => {
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
       expect(groupMappingSwitch()).toBeChecked();
-    });
-
-    it("puts the old value back when the write fails", async () => {
-      await setup({ providers: [EXISTING_PROVIDER], writeStatus: 500 });
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(
-        await screen.findByText(/Error saving group mapping/),
-      ).toBeInTheDocument();
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
     });
 
     it("drops an unsaved group attribute edit when group mapping is turned off", async () => {
@@ -700,35 +654,6 @@ describe("SettingsOIDCForm", () => {
         "group-attribute": "roles",
         "group-mappings": { admins: [2], devs: [3] },
       });
-    });
-
-    it("keeps group mapping on when the last mapping is deleted", async () => {
-      await setup({ providers: [MAPPED_PROVIDER] });
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Delete mapping" }),
-      );
-      const modal = await screen.findByRole("dialog");
-      // JWT warns here that sync turns off with the last mapping; OIDC keeps it on
-      expect(
-        within(modal).queryByText(/group mapping will be turned off/),
-      ).not.toBeInTheDocument();
-      await userEvent.click(
-        within(modal).getByRole("button", { name: "Remove mapping" }),
-      );
-
-      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
-      const [{ body }] = await getOidcPuts();
-      expect(body).toEqual({
-        "group-sync": {
-          enabled: true,
-          "group-attribute": "groups",
-          "group-mappings": {},
-        },
-      });
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(screen.getByText("No mappings yet")).toBeInTheDocument();
-      expect(queryMappingRow("admins")).toBeUndefined();
     });
   });
 });

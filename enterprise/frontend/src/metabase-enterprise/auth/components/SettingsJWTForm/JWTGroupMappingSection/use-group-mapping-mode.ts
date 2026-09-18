@@ -7,7 +7,6 @@ export type JWTGroupSyncMode = "automatic" | "manual" | "off";
 
 type GroupMappingModeState = {
   mode: JWTGroupSyncMode;
-  hasMappings: boolean;
   isClearConfirmOpen: boolean;
   select: (nextMode: JWTGroupSyncMode) => Promise<void>;
   confirmClear: () => Promise<void>;
@@ -95,7 +94,6 @@ export function useGroupMappingMode(
 
   return {
     mode,
-    hasMappings,
     isClearConfirmOpen,
     select,
     confirmClear,

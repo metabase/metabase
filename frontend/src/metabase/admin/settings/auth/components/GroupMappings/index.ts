@@ -1,5 +1,6 @@
 export { GroupMappingList } from "./GroupMappingList";
 export { GroupMappingsPanel } from "./GroupMappingsPanel";
+export { SettingsGroupMappingSection } from "./SettingsGroupMappingSection";
 export { useGroupLookup } from "./use-group-lookup";
 export {
   type GroupMappingsSaveResult,

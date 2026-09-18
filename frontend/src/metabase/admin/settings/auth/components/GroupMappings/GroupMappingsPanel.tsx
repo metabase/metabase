@@ -13,9 +13,10 @@ type GroupMappingsPanelProps = {
   groupLookup: GroupLookup;
   // another reason the panel is busy, on top of its own save and delete
   isBusy?: boolean;
+  // locks the mappings for a reason the page explains elsewhere
   readOnly?: boolean;
-  // says why the mappings cannot be edited, already styled by the caller
-  note?: React.ReactNode;
+  // the env var that owns the mappings, which locks them and is named above the rows
+  lockedEnvName?: string;
   nameLabel: string;
   namePlaceholder: string;
 };
@@ -26,7 +27,7 @@ export function GroupMappingsPanel({
   groupLookup,
   isBusy = false,
   readOnly = false,
-  note,
+  lockedEnvName,
   nameLabel,
   namePlaceholder,
 }: GroupMappingsPanelProps) {
@@ -34,12 +35,13 @@ export function GroupMappingsPanel({
   const editor = useMappingEditor({ groupMapping, groupLookup });
   // the editor and the deletion own their in-flight flags, so the panel releases as soon as they do
   const isDisabled = isBusy || editor.isSubmitting || deletion.isDeleting;
+  const isReadOnly = readOnly || lockedEnvName != null;
 
   return (
     <Stack gap="sm">
       <Flex justify="space-between" align="center" gap="lg">
         <Text fw="bold">{t`Manual group mappings`}</Text>
-        {!readOnly && editor.draft == null && (
+        {!isReadOnly && editor.draft == null && (
           <Button
             variant="subtle"
             // the heading wraps before the button does, so the button keeps its whole label
@@ -50,13 +52,15 @@ export function GroupMappingsPanel({
           >{t`New`}</Button>
         )}
       </Flex>
-      {note}
+      {lockedEnvName != null && (
+        <Text c="text-secondary">{t`Using ${lockedEnvName}`}</Text>
+      )}
       <GroupMappingList
         mappings={groupMapping.mappings}
         groupLookup={groupLookup}
         editor={editor}
         deletion={deletion}
-        readOnly={readOnly}
+        readOnly={isReadOnly}
         disabled={isDisabled}
         nameLabel={nameLabel}
         namePlaceholder={namePlaceholder}

@@ -20,7 +20,7 @@ type GroupMappingListProps = {
   disabled: boolean;
   nameLabel: string;
   namePlaceholder: string;
-  emptyMessage?: string;
+  emptyMessage: string;
   // a warning the delete confirmation shows, for instance that this is the last mapping
   deleteNote?: string;
 };
@@ -59,7 +59,7 @@ export function GroupMappingList({
   return (
     <>
       <Stack gap="sm">
-        {!hasMappings && draft == null && !readOnly && emptyMessage != null && (
+        {!hasMappings && draft == null && !readOnly && (
           <Text c="text-secondary">{emptyMessage}</Text>
         )}
         {Object.entries(mappings).map(([name, groupIds]) =>
@@ -93,7 +93,6 @@ export function GroupMappingList({
       </Stack>
       {deletion.target != null && (
         <DeleteGroupMappingModal
-          name={deletion.target}
           groupIds={deletion.targetGroupIds}
           keptOnClear={groupLookup.keptGroupNames(
             deletion.targetGroupIds,

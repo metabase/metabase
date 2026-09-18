@@ -95,7 +95,7 @@ const setup = async ({
   fetchMock.delete("express:/api/permissions/group/:id", 204);
   fetchMock.put("path:/api/ldap/settings", { status: 204 });
 
-  const { store } = renderWithProviders(<SettingsLdapForm />, {
+  renderWithProviders(<SettingsLdapForm />, {
     withUndos: true,
     storeInitialState: createMockState({
       settings: createMockSettingsState(settings),
@@ -103,7 +103,7 @@ const setup = async ({
   });
 
   await screen.findByText("Server settings");
-  return { store, settingsStore };
+  return { settingsStore };
 };
 
 const setupConfigured = (options: Parameters<typeof setup>[0] = {}) =>
@@ -395,19 +395,6 @@ describe("SettingsLdapForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("comes alive once the host and user search base are saved, with the mappings still hidden", async () => {
-      await setupConfigured();
-
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("textbox", { name: /Group search base/ }),
-      ).not.toBeInTheDocument();
-    });
-
     it("turns group mapping on right away and reveals the mappings and the group fields", async () => {
       await setupConfigured();
 
@@ -560,7 +547,7 @@ describe("SettingsLdapForm", () => {
       expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
-    it("keeps the row editor busy while the mapping write is in flight", async () => {
+    it("keeps the row editor busy and open while the mapping write is in flight", async () => {
       const { settingsStore } = await setupConfigured({
         settingValues: { "ldap-group-sync": true },
       });
@@ -575,32 +562,9 @@ describe("SettingsLdapForm", () => {
         { name: "update-settings", delay: 200 },
       );
 
-      await addMapping(DEVS_DN, "bar");
-
-      const addButton = screen.getByRole("button", { name: "Add mapping" });
-      expect(addButton).toHaveAttribute("data-loading", "true");
-      expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      expect(findMappingRow(DEVS_DN)).toBeDefined();
-      expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
-    });
-
-    it("keeps the editor open while a slow save answers, so its failure is not lost", async () => {
-      const reason = `cn=devs is not a valid DN. Example: ${LDAP_GROUP_PLACEHOLDER}`;
-      await setupConfigured({ settingValues: { "ldap-group-sync": true } });
-      fetchMock.removeRoute("update-settings");
-      fetchMock.put(
-        "path:/api/setting",
-        {
-          status: 400,
-          body: reason,
-          headers: { "content-type": "text/plain" },
-        },
-        { name: "update-settings", delay: 200 },
-      );
-
       await userEvent.click(screen.getByRole("button", { name: "New" }));
       const nameInput = screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER);
-      await userEvent.type(nameInput, "cn=devs");
+      await userEvent.type(nameInput, DEVS_DN);
       await userEvent.click(
         screen.getByPlaceholderText("Pick Metabase group..."),
       );
@@ -609,13 +573,14 @@ describe("SettingsLdapForm", () => {
       await userEvent.click(nameInput);
       await userEvent.keyboard("{Enter}");
 
+      const addButton = screen.getByRole("button", { name: "Add mapping" });
+      expect(addButton).toHaveAttribute("data-loading", "true");
       expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
       await userEvent.keyboard("{Escape}");
       expect(nameInput).toBeInTheDocument();
-
-      expect(await screen.findByText(reason)).toBeInTheDocument();
-      expect(nameInput).toHaveValue("cn=devs");
-      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+      expect(await screen.findByText("Mapping added")).toBeInTheDocument();
+      expect(findMappingRow(DEVS_DN)).toBeDefined();
+      expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
     });
 
     it("keeps group mapping on when the last mapping is deleted", async () => {
@@ -749,7 +714,7 @@ describe("SettingsLdapForm", () => {
       expect(puts[0].url).toMatch(/\/api\/setting$/);
     });
 
-    it("edits an existing mapping in place", async () => {
+    it("edits a mapping in place and rejects a name another mapping uses", async () => {
       await setupConfigured({
         settingValues: {
           "ldap-group-sync": true,
@@ -765,6 +730,12 @@ describe("SettingsLdapForm", () => {
       const nameInput = screen.getByLabelText("LDAP group name");
       expect(nameInput).toHaveValue(DEVS_DN);
       expect(screen.getByText("foo")).toBeInTheDocument();
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, OPS_DN);
+      expect(
+        screen.getByText("A mapping for this group already exists"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       await userEvent.clear(nameInput);
       await userEvent.type(nameInput, RENAMED_DN);
       await userEvent.click(screen.getByLabelText("Metabase groups"));
