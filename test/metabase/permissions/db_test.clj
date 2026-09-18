@@ -80,3 +80,16 @@
       (is (= 1 (permissions.db/update-users! [a] {:is_data_analyst true})))
       (is (true? (t2/select-one-fn :is_data_analyst :model/User :id a)))
       (is (false? (t2/select-one-fn :is_data_analyst :model/User :id b))))))
+
+(deftest ^:parallel collection-graph-rows-binds-its-admin-group-id-test
+  (testing "the admin group id is selected as a bound value on the implicit-admin rows"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Collection {collection-id :id} {}]
+      (let [admin-rows (fn [admin-group-id]
+                         (->> (permissions.db/collection-graph-rows
+                               nil true "/collection/root/" [collection-id] [group-id] admin-group-id)
+                              (into [] (comp (filter (fn [row] (= collection-id (:collection_id row))))
+                                             (map :group_id)))
+                              set))]
+        (is (contains? (admin-rows group-id) group-id))
+        (is (contains? (admin-rows nil) nil))))))

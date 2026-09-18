@@ -693,7 +693,7 @@
      ;; Query 3: The Administrators group has write access to all collections
      ;; but does not have any explicit permissions.
      ^:allow-subquery
-     {:select [[admin-group-id :group_id]
+     {:select [[(some-> admin-group-id long) :group_id]
                [:c.id :collection_id]
                [[:inline 1] :writable]
                [[:inline 1] :readable]]
